@@ -3,7 +3,31 @@ from anndata import AnnData
 import pandas as pd
 import numpy as np
 import logging
-from typing import Optional, Dict, Tuple
+import re
+from typing import Optional, Dict
+
+_TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _auto_time_order(unique_times) -> list:
+    """Robust auto ordering for mixed/string time labels."""
+    unique_times = list(unique_times)
+    series = pd.Series(unique_times)
+    if pd.api.types.is_numeric_dtype(series):
+        return sorted(unique_times, key=float)
+
+    parsed = []
+    for idx, value in enumerate(unique_times):
+        match = _TIME_PATTERN.search(str(value))
+        parsed.append((float(match.group()) if match else None, idx, value))
+
+    # If every label has an embedded number (e.g. 24hpf, E10.5), sort by that.
+    if all(item[0] is not None for item in parsed):
+        parsed.sort(key=lambda x: (x[0], x[1]))
+        return [item[2] for item in parsed]
+
+    # Fallback to observed order to avoid lexicographic mis-ordering.
+    return unique_times
 
 
 def preprocess(
@@ -16,7 +40,7 @@ def preprocess(
     normalization: bool = True,
     log1p: bool = True,
     select_hvg: bool = True,
-) -> Tuple[AnnData, Optional[AnnData]]:
+) -> AnnData:
     """
     Preprocess step for dynamical optimal transport analysis.
 
@@ -51,18 +75,10 @@ def preprocess(
         If True, select highly variable genes.
     Returns
     -------
-    Tuple containing:
-        - processed_adata: Original processed `AnnData` object (unchanged structure)
-        - n_pc_adata: New `AnnData` object with reduced dimension as `X` (only created when 
-          dim_reduction is 'pca' or 'umap'). Its structure:
-            - X: Reduced dimension data (n_samples × n_dimensions, from X_latent)
-            - obs: Complete original obs information
-            - var: New var information for reduced dimensions (dimension names and properties)
-            - uns['original_gene_info']: Stores original gene-related information including:
-                - var: Original var DataFrame
-                - var_names: Original gene names
-                - X_shape: Original X shape (n_samples × n_genes)
-                - hvg_mask: Highly variable gene mask (if HVG selection was applied)
+    AnnData
+        Processed AnnData used for training/downstream.
+        `adata.X` is kept as gene-level expression matrix (after optional normalization/log1p/HVG).
+        Reduced representation is stored in `adata.obsm['X_latent']`.
     """
     # --- Input Validation and Setup ---
     if time_key not in adata.obs.keys():
@@ -91,8 +107,8 @@ def preprocess(
 
     else:
         print("No time mapping provided. Generating automatic mapping.")
-        # Automatically sort unique time points and map them to integers
-        sorted_times = sorted(unique_times)
+        # Automatically map time points with robust numeric-aware ordering.
+        sorted_times = _auto_time_order(unique_times)
         auto_mapping = {time_point: i for i, time_point in enumerate(sorted_times)}
         print(f"Automatically generated time mapping: {auto_mapping}")
         # Apply the automatic mapping
@@ -101,6 +117,11 @@ def preprocess(
     print(f"Numerical time points stored in `adata.obs['{time_key_added}']`.")
 
     # --- Standard Preprocessing Steps ---
+    # Keep raw counts for downstream modules that need gene-space count values
+    # (e.g., ligand-receptor interaction graph construction).
+    if "counts" not in adata.layers:
+        adata.layers["counts"] = adata.X.copy()
+
     if normalization:
         print("Normalizing total counts and applying log1p transformation.")
         sc.pp.normalize_total(adata, target_sum=1e4)
@@ -117,99 +138,71 @@ def preprocess(
             n_top_genes=n_top_genes,
         )
         hvg_mask = adata.var.highly_variable.copy()
-        adata = adata[:, hvg_mask]
+        print(f"HVG marked: {int(np.sum(hvg_mask.values))} genes (no subsetting of adata.X).")
 
     # --- Dimension Reduction ---
     # ---------- : PCA | UMAP | none ----------
-    n_pc_adata = None  # Initialize n_pc_adata as None
     if dim_reduction.lower() == 'pca':
-        sc.pp.pca(adata, n_comps=n_pcs, svd_solver='arpack')
-        adata.obsm['X_latent'] = adata.obsm['X_pca']
-        # Create n_pc_adata
-        n_dim = n_pcs
-
-        dim_names = [f'PC{i+1}' for i in range(n_dim)]
-        
-        # Construct the new var (to match the reduced dimensions)
-        new_var = pd.DataFrame(
-            index=dim_names,
-            data={
-
-                'dimension_type': 'PCA',
-                'explained_variance': adata.uns['pca']['variance_ratio'][:n_dim] if 'pca' in adata.uns else np.nan,
-                'cumulative_variance': np.cumsum(adata.uns['pca']['variance_ratio'][:n_dim]) if 'pca' in adata.uns else np.nan
-            }
+        sc.pp.pca(
+            adata,
+            n_comps=n_pcs,
+            svd_solver='arpack',
+            use_highly_variable=bool(select_hvg),
         )
+        adata.obsm['X_latent'] = np.asarray(adata.obsm['X_pca'], dtype=np.float32)
 
     elif dim_reduction.lower() == 'umap':
-        sc.pp.pca(adata, n_comps=n_pcs, svd_solver='arpack')
+        sc.pp.pca(
+            adata,
+            n_comps=n_pcs,
+            svd_solver='arpack',
+            use_highly_variable=bool(select_hvg),
+        )
         sc.pp.neighbors(adata, n_pcs=n_pcs)
         sc.tl.umap(adata)
-        adata.obsm['X_latent'] = adata.obsm['X_umap']
-        
-        # Create n_pc_adata
-        n_dim = adata.obsm['X_umap'].shape[1]  # Usually 2
-        dim_names = [f'UMAP{i+1}' for i in range(n_dim)]
-        
-        # Construct the new var (to match the reduced dimensions)
-        new_var = pd.DataFrame(
-            index=dim_names,
-            data={
-                'dimension_type': 'UMAP',
-                'n_neighbors_used': adata.uns['neighbors']['params']['n_neighbors'] if 'neighbors' in adata.uns else np.nan,
-                'min_dist_used': adata.uns['umap']['params']['min_dist'] if 'umap' in adata.uns else np.nan
-            }
-        )
+        adata.obsm['X_latent'] = np.asarray(adata.obsm['X_umap'], dtype=np.float32)
 
     elif dim_reduction.lower() == 'none' or dim_reduction is None:
-        adata.obsm['X_latent'] = adata.X
-        n_pc_adata = adata
-        print("Dimension reduction set to 'none', not creating n_pc_adata.")
+        # Convert to dense float array so downstream torch.tensor(...) is safe.
+        if hasattr(adata.X, "toarray"):
+            adata.obsm['X_latent'] = adata.X.toarray().astype(np.float32)
+        else:
+            adata.obsm['X_latent'] = np.asarray(adata.X, dtype=np.float32)
+        print("Dimension reduction set to 'none'.")
 
     else:
         raise ValueError(f"Invalid dimension reduction method: {dim_reduction}")
 
-    # If PCA or UMAP, complete the creation of n_pc_adata
-    if dim_reduction.lower() in ['pca', 'umap']:
-        # Extract the reduced data as the new X
-        reduced_X = adata.obsm['X_latent'].copy()
-        
-        # Create the core structure of n_pc_adata
-        n_pc_adata = AnnData(
-            X=reduced_X,
-            obs=adata.obs.copy(deep=True),  # Fully retain the original obs
-            var=new_var,
-            uns=adata.uns.copy()  # Copy the original uns, to be supplemented with original_gene_info later
-        )
-        
-        # Copy the original obsm (excluding X_latent to avoid redundancy)
-        for key, value in adata.obsm.items():
-                n_pc_adata.obsm[key] = value.copy()
-        
-        # Copy the original obsp
-        if adata.obsp is not None and len(adata.obsp) > 0:
-            n_pc_adata.obsp = adata.obsp.copy()
-        
-        # Store the original gene-related information in uns['original_gene_info']
-        original_gene_info = {
-            'var': adata.var.copy(deep=True),  # Original var (after HVG selection)
-            'var_names': adata.var_names.tolist(),  # Original gene name list
-            'X_shape': np.array(adata.X.shape),  # Original X shape (n_samples × n_genes)
-            'select_hvg': select_hvg,  # Whether HVG selection was performed
-        }
+    # Store preprocessing provenance in-place.
+    preprocess_info = {
+        'time_key': time_key,
+        'time_key_added': time_key_added,
+        'normalization': bool(normalization),
+        'log1p': bool(log1p),
+        'select_hvg': bool(select_hvg),
+        'n_top_genes': int(n_top_genes),
+        'dim_reduction': str(dim_reduction).lower() if dim_reduction is not None else 'none',
+        'n_pcs': int(n_pcs),
+        'hvg_for_latent_only': bool(select_hvg),
+        'x_representation': 'gene_expression',
+        'latent_key': 'X_latent',
+        'counts_layer': 'counts',
+    }
+    adata.uns['preprocess_info'] = preprocess_info
+    original_gene_info = {
+        'var': adata.var.copy(deep=True),
+        'var_names': adata.var_names.tolist(),
+        'X_shape': np.array(adata.X.shape),
+        'select_hvg': select_hvg,
+    }
+    if hvg_mask is not None:
+        original_gene_info['hvg_mask'] = hvg_mask.values.astype(bool)
+    adata.uns['original_gene_info'] = original_gene_info
 
-        # If hvg_mask exists, add it to the dictionary
-        if hvg_mask is not None:
-            original_gene_info['hvg_mask'] = hvg_mask.values
-
-        # If n_top_genes exists, add it to the dictionary
-        if n_top_genes is not None:
-            original_gene_info['n_top_genes'] = n_top_genes
-
-        n_pc_adata.uns['original_gene_info'] = original_gene_info
-        
-        print(f"Created n_pc_adata with reduced dimension: {reduced_X.shape[0]} samples × {reduced_X.shape[1]} dimensions")
-        print(f"Original gene information stored in n_pc_adata.uns['original_gene_info']")
+    print(
+        "Preprocess output: "
+        f"X(gene) shape={adata.X.shape}, X_latent shape={adata.obsm['X_latent'].shape}"
+    )
 
     print("Preprocessing recipe finished.")
-    return n_pc_adata
+    return adata

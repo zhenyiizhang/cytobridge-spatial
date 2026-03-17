@@ -186,6 +186,35 @@ Both snippets return an `AnnData` object containing:
 - latent velocity: `adata.obsm['velocity_latent']`  
 - growth rates: `adata.obsm['growth_rate']` (when applicable)
 
+## One `fit` entrypoint (recommended)
+
+To keep the pipeline **AnnData-centered**, the recommended pattern is:
+
+1) Use preprocessing/alignment to produce an aligned `AnnData` that contains:
+   - `adata.obs['time_point_processed']` (numeric time)
+   - `adata.obsm['X_latent']` (aligned + reduced features used for training)
+2) Call **one** training entrypoint: `cb.tl.fit(adata, config=..., device=...)`.
+
+`cb.tl.fit(...)` also accepts `.h5ad` / `.csv` paths as a convenience, but the canonical API is still `fit(AnnData, ...)`.
+
+For spatial alignment, prefer the package-level atomic API:
+
+```python
+from CytoBridge.pp import AlignConfig, align_spatial
+
+cfg = AlignConfig(n_pcs=50, spatial_dim=2)
+adata_aligned = align_spatial(
+    adata_or_h5ad="/path/to/raw.h5ad",
+    time_key="time",
+    cfg=cfg,
+    output_csv="/path/to/aligned.csv",      # optional
+    output_h5ad="/path/to/aligned.h5ad",    # optional
+)
+```
+
+Project-level multi-step preprocessing (alignment + graph + edge predictor) is
+kept in `scripts/preprocess_pipeline.py` rather than package API.
+
 ## Detailed usage
 
 Please refer to webpage ：https://cytobridge.readthedocs.io/en/latest/

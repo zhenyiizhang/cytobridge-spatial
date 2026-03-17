@@ -1,0 +1,836 @@
+"""SDE simulation and velocity decomposition for downstream analysis.
+
+Downstream simulation APIs are AnnData-first and do not require a dataframe
+intermediate.
+"""
+
+from __future__ import annotations
+
+from typing import Dict, Optional, Sequence, TYPE_CHECKING
+
+import numpy as np
+import torch
+import torch.nn as nn
+
+if TYPE_CHECKING:
+    import anndata as ad
+
+__all__ = [
+    "simulate_sde_points",
+    "simulate_sde_points_split",
+    "compute_velocity_components",
+    "compute_velocity_components_from_adata",
+    "compute_drift",
+    "compute_drift_from_adata",
+    "compute_umap_embedding",
+]
+
+
+def _sorted_unique(values) -> list[float]:
+    uniq = list(dict.fromkeys(list(values)))
+    try:
+        return sorted(float(x) for x in uniq)
+    except Exception:
+        return [float(x) for x in uniq]
+
+
+def _coerce_feature_matrix_from_adata(
+    adata,
+    *,
+    obsm_key: str,
+    spatial_key: str,
+    concat_spatial: Optional[bool],
+) -> tuple[np.ndarray, int]:
+    if obsm_key in adata.obsm:
+        latent = np.asarray(adata.obsm[obsm_key], dtype=np.float32)
+    else:
+        latent = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+        latent = np.asarray(latent, dtype=np.float32)
+
+    use_spatial = bool(concat_spatial) if concat_spatial is not None else (spatial_key in adata.obsm)
+    if not use_spatial:
+        return latent, 0
+
+    if spatial_key not in adata.obsm:
+        raise KeyError(f"concat_spatial=True but adata.obsm['{spatial_key}'] is missing.")
+    spatial = np.asarray(adata.obsm[spatial_key], dtype=np.float32)
+    if spatial.shape[0] != latent.shape[0]:
+        raise ValueError(
+            f"Row mismatch between '{spatial_key}' ({spatial.shape[0]}) and "
+            f"'{obsm_key}' ({latent.shape[0]})."
+        )
+    return np.hstack((spatial, latent)).astype(np.float32), int(spatial.shape[1])
+
+
+def _prepare_adata_arrays(
+    adata,
+    dim: Optional[int],
+    *,
+    time_key: Optional[str],
+    obsm_key: str,
+    spatial_key: str,
+    concat_spatial: Optional[bool],
+) -> tuple[np.ndarray, np.ndarray, list[float], int]:
+    if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
+        raise TypeError(
+            "Downstream simulation APIs require AnnData input. "
+            f"Got: {type(adata)}"
+        )
+
+    from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
+
+    resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
+    raw_times = adata.obs[resolved_time_key].values
+    times = np.asarray([parse_time_value(v) for v in raw_times], dtype=np.float64)
+
+    X, _ = _coerce_feature_matrix_from_adata(
+        adata,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+    if dim is None:
+        dim = int(X.shape[1])
+    else:
+        dim = int(dim)
+        if dim > X.shape[1]:
+            raise ValueError(f"Requested dim={dim}, but feature matrix has dim={X.shape[1]}.")
+    X = X[:, :dim]
+    unique_times = _sorted_unique(times)
+    return X, times, unique_times, dim
+
+
+def _time_mask(times: np.ndarray, t: float) -> np.ndarray:
+    return np.isclose(times, float(t), rtol=0.0, atol=1e-9)
+
+
+def _build_perturbation_keep_mask(
+    adata,
+    *,
+    exclude_indices: Optional[Sequence[object]],
+    exclude_cell_types: Optional[Sequence[str]],
+    annotation_key: str,
+) -> np.ndarray:
+    n_obs = int(adata.n_obs)
+    keep = np.ones(n_obs, dtype=bool)
+    if not exclude_indices and not exclude_cell_types:
+        return keep
+
+    if exclude_indices:
+        obs_names = np.asarray(adata.obs_names.astype(str))
+        name_to_pos = {name: idx for idx, name in enumerate(obs_names)}
+        for raw in exclude_indices:
+            if raw is None:
+                continue
+            if isinstance(raw, (int, np.integer)):
+                idx = int(raw)
+                if idx < 0 or idx >= n_obs:
+                    raise IndexError(f"exclude index {idx} out of range [0, {n_obs-1}]")
+                keep[idx] = False
+                continue
+            token = str(raw).strip()
+            if token == "":
+                continue
+            if token in name_to_pos:
+                keep[name_to_pos[token]] = False
+                continue
+            try:
+                idx = int(token)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid exclude index token '{token}'. Use integer row index or valid obs_name."
+                ) from exc
+            if idx < 0 or idx >= n_obs:
+                raise IndexError(f"exclude index {idx} out of range [0, {n_obs-1}]")
+            keep[idx] = False
+
+    if exclude_cell_types:
+        if annotation_key not in adata.obs.columns:
+            raise KeyError(
+                f"exclude_cell_types was provided but adata.obs['{annotation_key}'] is missing."
+            )
+        exclude_set = {str(x) for x in exclude_cell_types if str(x).strip() != ""}
+        if exclude_set:
+            labels = adata.obs[annotation_key].astype(str).values
+            keep &= ~np.isin(labels, list(exclude_set))
+
+    return keep
+
+
+def _freeze_model_for_inference(model) -> Optional[list[tuple[torch.nn.Parameter, bool]]]:
+    if not isinstance(model, nn.Module):
+        return None
+    state: list[tuple[torch.nn.Parameter, bool]] = []
+    for param in model.parameters():
+        state.append((param, bool(param.requires_grad)))
+        if param.requires_grad:
+            param.requires_grad_(False)
+    return state
+
+
+def _restore_model_after_inference(state: Optional[list[tuple[torch.nn.Parameter, bool]]]) -> None:
+    if not state:
+        return
+    for param, requires_grad in state:
+        param.requires_grad_(requires_grad)
+
+
+def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
+    import math
+
+    device = initial_state[0].device
+    t0 = float(ts[0].item())
+    tf = float(ts[-1].item())
+    current_state = initial_state
+    current_time = t0
+
+    output_states = []
+    ts_list = [float(x) for x in ts.tolist()]
+    next_output_idx = 0
+
+    while current_time <= tf + 1e-8:
+        if current_time >= ts_list[next_output_idx] - 1e-8:
+            output_states.append(current_state)
+            next_output_idx += 1
+            if next_output_idx >= len(ts_list):
+                break
+
+        t_tensor = torch.tensor([current_time], device=device, dtype=torch.float32)
+        f_z, f_lnw = sde.f(t_tensor, current_state)
+        noise_z = torch.randn_like(current_state[0]) * math.sqrt(dt)
+        g_z = sde.g(t_tensor, current_state[0])
+        new_z = current_state[0] + f_z * dt + g_z * noise_z
+        new_lnw = current_state[1] + f_lnw * dt
+        current_state = (new_z, new_lnw)
+        current_time += dt
+
+    while len(output_states) < len(ts_list):
+        output_states.append(current_state)
+
+    traj_z = torch.stack([state[0] for state in output_states], dim=0)
+    traj_lnw = torch.stack([state[1] for state in output_states], dim=0)
+    return traj_z, traj_lnw
+
+
+def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor, noise_std: float = 0.01):
+    import math
+
+    device = initial_state[0].device
+    t0 = float(ts[0].item())
+    tf = float(ts[-1].item())
+    current_state = initial_state
+    current_time = t0
+
+    output_states = []
+    ts_list = [float(x) for x in ts.tolist()]
+    next_output_idx = 0
+    w_prev = torch.exp(current_state[1])
+
+    while current_time <= tf + 1e-8:
+        t_tensor = torch.tensor([current_time], device=device, dtype=torch.float32)
+        f_z, f_lnw = sde.f(t_tensor, current_state)
+        noise_z = torch.randn_like(current_state[0]) * math.sqrt(dt)
+        g_z = sde.g(t_tensor, current_state[0])
+        new_z = current_state[0] + f_z * dt + g_z * noise_z
+        new_lnw = current_state[1] + f_lnw * dt
+
+        current_time += dt
+        if current_time >= ts_list[next_output_idx] - 1e-8:
+            w_next = torch.exp(new_lnw)
+            r = w_next / w_prev
+
+            mask_split = (r >= 1).squeeze()
+            mask_extinct = ~mask_split
+
+            if mask_split.any():
+                r_split = r[mask_split]
+                new_z_split = new_z[mask_split]
+                new_lnw_split = new_lnw[mask_split]
+
+                r_floor = torch.floor(r_split)
+                r_frac = r_split - r_floor
+                rand_frac = torch.rand_like(r_frac)
+                m_j = r_floor.int().squeeze() + (rand_frac < r_frac).int().squeeze()
+
+                valid_mask = m_j > 0
+                m_j = m_j[valid_mask]
+                if m_j.numel() > 0:
+                    repeated_z = torch.repeat_interleave(new_z_split[valid_mask], m_j, dim=0)
+                    repeated_lnw = torch.repeat_interleave(new_lnw_split[valid_mask], m_j, dim=0)
+                    noise = torch.normal(0, noise_std, size=repeated_z.shape, device=device)
+                    split_z = repeated_z + noise
+                    split_lnw = repeated_lnw
+                else:
+                    split_z = torch.empty(0, new_z.shape[1], device=device)
+                    split_lnw = torch.empty(0, 1, device=device)
+            else:
+                split_z = torch.empty(0, new_z.shape[1], device=device)
+                split_lnw = torch.empty(0, 1, device=device)
+
+            if mask_extinct.any():
+                r_extinct = r[mask_extinct]
+                new_z_extinct = new_z[mask_extinct]
+                new_lnw_extinct = new_lnw[mask_extinct]
+                rand_keep = torch.rand_like(r_extinct)
+                keep_mask = rand_keep < r_extinct
+                if keep_mask.dim() > 1 and keep_mask.shape[-1] == 1:
+                    keep_mask = keep_mask.squeeze(-1)
+                if keep_mask.any():
+                    extinct_z = new_z_extinct[keep_mask]
+                    extinct_lnw = new_lnw_extinct[keep_mask]
+                else:
+                    extinct_z = torch.empty(0, new_z.shape[1], device=device)
+                    extinct_lnw = torch.empty(0, 1, device=device)
+            else:
+                extinct_z = torch.empty(0, new_z.shape[1], device=device)
+                extinct_lnw = torch.empty(0, 1, device=device)
+
+            if split_z.shape[0] > 0 or extinct_z.shape[0] > 0:
+                new_z = torch.cat([split_z, extinct_z], dim=0)
+                new_lnw = torch.cat([split_lnw, extinct_lnw], dim=0)
+                new_lnw = torch.log(torch.ones(new_z.shape[0], 1, device=device) / initial_state[0].shape[0])
+            else:
+                new_z = torch.empty(0, current_state[0].shape[1], device=device)
+                new_lnw = torch.empty(0, 1, device=device)
+
+            current_state = (new_z, new_lnw)
+            output_states.append(current_state)
+            next_output_idx += 1
+            w_prev = torch.exp(new_lnw)
+            if next_output_idx >= len(ts_list):
+                break
+        else:
+            current_state = (new_z, new_lnw)
+
+    while len(output_states) < len(ts_list):
+        output_states.append(current_state)
+
+    traj_z = [state[0] for state in output_states]
+    traj_lnw = [state[1] for state in output_states]
+    return traj_z, traj_lnw
+
+
+def simulate_sde_points(
+    adata: "ad.AnnData",
+    model,
+    dim: Optional[int] = None,
+    time_index: int = 0,
+    n_samples: int = 5000,
+    ts_points: Optional[Sequence[float]] = None,
+    dt: float = 0.1,
+    sigma: float = 0.0,
+    include_score: bool = False,
+    interaction_m: int = 512,
+    device: str = "cuda",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+    exclude_indices: Optional[Sequence[object]] = None,
+    exclude_cell_types: Optional[Sequence[str]] = None,
+    annotation_key: str = "Annotation",
+) -> tuple[np.ndarray, np.ndarray]:
+    from CytoBridge.tl.core.interaction import cal_interaction
+
+    X, times, time_points, dim = _prepare_adata_arrays(
+        adata,
+        dim,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+    if ts_points is None:
+        ts_points = [0, 1, 2, 3, 4]
+    if time_index < 0 or time_index >= len(time_points):
+        raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+
+    t0 = time_points[time_index]
+    mask = _time_mask(times, t0)
+    keep_mask = _build_perturbation_keep_mask(
+        adata,
+        exclude_indices=exclude_indices,
+        exclude_cell_types=exclude_cell_types,
+        annotation_key=annotation_key,
+    )
+    mask = mask & keep_mask
+    if not np.any(mask):
+        raise ValueError(f"No rows found for time point {t0}.")
+    data = torch.tensor(X[mask], dtype=torch.float32)
+    x0 = data.to(device)
+    if x0.shape[0] > n_samples:
+        indices = torch.randperm(x0.shape[0])[:n_samples]
+        x0 = x0[indices]
+
+    lnw0 = torch.log(torch.ones(x0.shape[0], 1, device=device) / x0.shape[0])
+    initial_state = (x0, lnw0)
+
+    interaction_net = getattr(model, "interaction_net", None)
+    components = set(getattr(model, "components", []))
+    use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
+
+    class SDE(nn.Module):
+        noise_type = "diagonal"
+        sde_type = "ito"
+
+        def __init__(self, sigma_val: float):
+            super().__init__()
+            self.sigma = sigma_val
+
+        def f(self, t, y):
+            z, lnw = y
+            t_expand = t.expand(z.shape[0], 1).to(dtype=z.dtype)
+            with torch.no_grad():
+                if "velocity" not in components:
+                    raise ValueError("Model missing velocity_net.")
+                drift = model.predict_velocity(t=t_expand, x=z)
+                if "growth" in components:
+                    dlnw = model.predict_growth(t=t_expand, x=z)
+                else:
+                    dlnw = torch.zeros_like(lnw)
+
+            net_forces = torch.zeros_like(z)
+            if "interaction" in components and interaction_net is not None:
+                if getattr(interaction_net, "requires_time", False):
+                    with torch.no_grad():
+                        net_forces = cal_interaction(
+                            z=z,
+                            lnw=lnw,
+                            interaction_potential=interaction_net,
+                            m=interaction_m,
+                            cutoff=1000,
+                            use_mass=use_mass,
+                            t=t,
+                        ).float()
+                else:
+                    net_forces = cal_interaction(
+                        z=z,
+                        lnw=lnw,
+                        interaction_potential=interaction_net,
+                        m=interaction_m,
+                        cutoff=1000,
+                        use_mass=use_mass,
+                        t=t,
+                    ).float()
+
+            if include_score and "score" in components:
+                z_req = z.detach().requires_grad_(True)
+                _, score_grad = model.compute_score(
+                    t=t_expand.detach(),
+                    x=z_req,
+                    create_graph=False,
+                )
+                drift = drift + score_grad
+            return (drift + net_forces, dlnw)
+
+        def g(self, t, z):
+            return torch.ones_like(z) * self.sigma
+
+    freeze_state = _freeze_model_for_inference(model)
+    try:
+        sde = SDE(sigma_val=sigma)
+        ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
+        sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
+        weight = torch.exp(traj_lnw)
+        sde_point_np = [p.detach().cpu().numpy() for p in sde_point]
+        return np.array(sde_point_np, dtype=object), weight.detach().cpu().numpy()
+    finally:
+        _restore_model_after_inference(freeze_state)
+
+
+def simulate_sde_points_split(
+    adata: "ad.AnnData",
+    model,
+    dim: Optional[int] = None,
+    time_index: int = 0,
+    n_samples: int = 5000,
+    ts_points: Optional[Sequence[float]] = None,
+    dt: float = 0.01,
+    sigma: float = 0.03,
+    interaction_m: int = 1024,
+    device: str = "cuda",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+    exclude_indices: Optional[Sequence[object]] = None,
+    exclude_cell_types: Optional[Sequence[str]] = None,
+    annotation_key: str = "Annotation",
+) -> np.ndarray:
+    from CytoBridge.tl.core.interaction import cal_interaction
+
+    X, times, time_points, dim = _prepare_adata_arrays(
+        adata,
+        dim,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+    if ts_points is None:
+        ts_points = [0, 1, 2, 3, 4]
+    if time_index < 0 or time_index >= len(time_points):
+        raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+
+    t0 = time_points[time_index]
+    mask = _time_mask(times, t0)
+    keep_mask = _build_perturbation_keep_mask(
+        adata,
+        exclude_indices=exclude_indices,
+        exclude_cell_types=exclude_cell_types,
+        annotation_key=annotation_key,
+    )
+    mask = mask & keep_mask
+    if not np.any(mask):
+        raise ValueError(f"No rows found for time point {t0}.")
+    data = torch.tensor(X[mask], dtype=torch.float32)
+    x0 = data.to(device)
+    if x0.shape[0] > n_samples:
+        indices = torch.randperm(x0.shape[0])[:n_samples]
+        x0 = x0[indices]
+
+    lnw0 = torch.log(torch.ones(x0.shape[0], 1, device=device) / x0.shape[0])
+    initial_state = (x0, lnw0)
+
+    interaction_net = getattr(model, "interaction_net", None)
+    components = set(getattr(model, "components", []))
+    use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
+
+    class SDE(nn.Module):
+        noise_type = "diagonal"
+        sde_type = "ito"
+
+        def __init__(self, sigma_val: float):
+            super().__init__()
+            self.sigma = sigma_val
+
+        def f(self, t, y):
+            z, lnw = y
+            t_expand = t.expand(z.shape[0], 1).to(dtype=z.dtype)
+            with torch.no_grad():
+                if "velocity" not in components:
+                    raise ValueError("Model missing velocity_net.")
+                drift = model.predict_velocity(t=t_expand, x=z)
+                if "growth" in components:
+                    dlnw = model.predict_growth(t=t_expand, x=z)
+                else:
+                    dlnw = torch.zeros_like(lnw)
+
+            net_forces = torch.zeros_like(z)
+            if "interaction" in components and interaction_net is not None:
+                if getattr(interaction_net, "requires_time", False):
+                    with torch.no_grad():
+                        net_forces = cal_interaction(
+                            z=z,
+                            lnw=lnw,
+                            interaction_potential=interaction_net,
+                            m=interaction_m,
+                            cutoff=1000,
+                            use_mass=use_mass,
+                            t=t,
+                        ).float()
+                else:
+                    net_forces = cal_interaction(
+                        z=z,
+                        lnw=lnw,
+                        interaction_potential=interaction_net,
+                        m=interaction_m,
+                        cutoff=1000,
+                        use_mass=use_mass,
+                        t=t,
+                    ).float()
+
+            if "score" in components:
+                z_req = z.detach().requires_grad_(True)
+                _, score_grad = model.compute_score(
+                    t=t_expand.detach(),
+                    x=z_req,
+                    create_graph=False,
+                )
+                drift = drift + score_grad
+            return (drift + net_forces, dlnw)
+
+        def g(self, t, z):
+            return torch.ones_like(z) * self.sigma
+
+    freeze_state = _freeze_model_for_inference(model)
+    try:
+        sde = SDE(sigma_val=sigma)
+        ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
+        sde_points, _ = _euler_sdeint_split(sde, initial_state, dt=dt, ts=ts_tensor, noise_std=0.0)
+        sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
+        return np.array(sde_point_np, dtype=object)
+    finally:
+        _restore_model_after_inference(freeze_state)
+
+
+def compute_velocity_components(
+    data: np.ndarray,
+    time_value: float,
+    model,
+    interaction_m: int = 1024,
+    interaction_threshold: int = 1000,
+    device: str = "cuda",
+    spatial_dim: int = 2,
+) -> Dict[str, np.ndarray]:
+    from CytoBridge.tl.core.interaction import cal_interaction
+
+    data = np.asarray(data, dtype=np.float32)
+    n_cells = data.shape[0]
+    data_tensor = torch.tensor(data, device=device, dtype=torch.float32)
+    t_tensor = torch.full((n_cells, 1), float(time_value), device=device, dtype=torch.float32)
+    interaction_net = getattr(model, "interaction_net", None)
+    components = set(getattr(model, "components", []))
+    use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
+    freeze_state = _freeze_model_for_inference(model)
+
+    try:
+        with torch.no_grad():
+            if "velocity" not in components:
+                raise ValueError("Model missing velocity_net.")
+            drift = model.predict_velocity(t=t_tensor, x=data_tensor)
+        drift_np = drift.detach().cpu().numpy()
+
+        lnw = torch.log(torch.ones(n_cells, 1, device=device, dtype=torch.float32) / float(n_cells))
+        interaction_np = np.zeros_like(drift_np)
+        if "interaction" in components and interaction_net is not None:
+            t_scalar = torch.tensor([float(time_value)], dtype=torch.float32, device=device)
+            if getattr(interaction_net, "requires_time", False):
+                with torch.no_grad():
+                    interaction_t = cal_interaction(
+                        z=data_tensor.detach(),
+                        lnw=lnw,
+                        interaction_potential=interaction_net,
+                        m=interaction_m,
+                        cutoff=float(interaction_threshold),
+                        use_mass=use_mass,
+                        t=t_scalar,
+                    )
+            else:
+                interaction_t = cal_interaction(
+                    z=data_tensor.detach(),
+                    lnw=lnw,
+                    interaction_potential=interaction_net,
+                    m=interaction_m,
+                    cutoff=float(interaction_threshold),
+                    use_mass=use_mass,
+                    t=t_scalar,
+                )
+            interaction_np = interaction_t.detach().cpu().numpy()
+
+        score_np = np.zeros_like(drift_np)
+        if "score" in components:
+            _, score_grad = model.compute_score(
+                t=t_tensor,
+                x=data_tensor,
+                create_graph=False,
+            )
+            score_np = score_grad.detach().cpu().numpy()
+
+        return {
+            "drift": drift_np,
+            "interaction": interaction_np,
+            "score": score_np,
+            "full": drift_np + interaction_np + score_np,
+        }
+    finally:
+        _restore_model_after_inference(freeze_state)
+
+
+def _store_vector_component(
+    adata: "ad.AnnData",
+    *,
+    name: str,
+    values: np.ndarray,
+    spatial_dim: int,
+) -> None:
+    adata.obsm[f"{name}_model"] = values
+    if spatial_dim > 0:
+        split = min(spatial_dim, values.shape[1])
+        adata.obsm[f"{name}_spatial"] = values[:, :split]
+        adata.obsm[f"{name}_latent"] = values[:, split:]
+    else:
+        adata.obsm[f"{name}_latent"] = values
+
+
+def compute_velocity_components_from_adata(
+    adata: "ad.AnnData",
+    model,
+    *,
+    dim: Optional[int] = None,
+    interaction_m: int = 1024,
+    interaction_threshold: Optional[float] = None,
+    device: str = "cuda",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+    write_to_adata: bool = True,
+    reuse_if_present: bool = True,
+) -> Dict[str, np.ndarray]:
+    """Compute per-cell velocity decomposition from AnnData and optionally write back.
+
+    Output keys follow training-time naming for consistency:
+    - ``velocity_model``, ``interaction_model``, ``score_gradient_model``, ``full_drift_model``
+    plus their ``*_spatial``/``*_latent`` splits when spatial features are present.
+    """
+    X, times, time_points, dim = _prepare_adata_arrays(
+        adata,
+        dim,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+
+    use_spatial = bool(concat_spatial) if concat_spatial is not None else (spatial_key in adata.obsm)
+    spatial_dim = int(adata.obsm[spatial_key].shape[1]) if use_spatial and spatial_key in adata.obsm else 0
+
+    components = set(getattr(model, "components", []))
+    has_interaction = "interaction" in components
+    has_score = "score" in components
+    if interaction_threshold is None:
+        interaction_threshold = float(getattr(getattr(model, "interaction_net", None), "cutoff", 1000.0))
+
+    if write_to_adata and reuse_if_present:
+        required = ["velocity_model", "full_drift_model"]
+        if has_interaction:
+            required.append("interaction_model")
+        if has_score:
+            required.append("score_gradient_model")
+        if all(k in adata.obsm for k in required):
+            out_cached = {
+                "drift": np.asarray(adata.obsm["velocity_model"], dtype=np.float32),
+                "interaction": (
+                    np.asarray(adata.obsm["interaction_model"], dtype=np.float32)
+                    if "interaction_model" in adata.obsm
+                    else np.zeros((adata.n_obs, dim), dtype=np.float32)
+                ),
+                "score": (
+                    np.asarray(adata.obsm["score_gradient_model"], dtype=np.float32)
+                    if "score_gradient_model" in adata.obsm
+                    else np.zeros((adata.n_obs, dim), dtype=np.float32)
+                ),
+                "full": np.asarray(adata.obsm["full_drift_model"], dtype=np.float32),
+                "times": np.asarray(times, dtype=np.float64),
+                "features": np.asarray(X, dtype=np.float32),
+            }
+            return out_cached
+
+    n = X.shape[0]
+    drift_all = np.zeros((n, dim), dtype=np.float32)
+    interaction_all = np.zeros((n, dim), dtype=np.float32)
+    score_all = np.zeros((n, dim), dtype=np.float32)
+    full_all = np.zeros((n, dim), dtype=np.float32)
+
+    for t_val in time_points:
+        mask = _time_mask(times, t_val)
+        if not np.any(mask):
+            continue
+        comp = compute_velocity_components(
+            data=X[mask],
+            time_value=float(t_val),
+            model=model,
+            interaction_m=interaction_m,
+            interaction_threshold=float(interaction_threshold),
+            device=device,
+            spatial_dim=spatial_dim,
+        )
+        drift_all[mask] = comp["drift"]
+        interaction_all[mask] = comp["interaction"]
+        score_all[mask] = comp["score"]
+        full_all[mask] = comp["full"]
+
+    if write_to_adata:
+        _store_vector_component(adata, name="velocity", values=drift_all, spatial_dim=spatial_dim)
+        _store_vector_component(adata, name="interaction", values=interaction_all, spatial_dim=spatial_dim)
+        _store_vector_component(adata, name="score_gradient", values=score_all, spatial_dim=spatial_dim)
+        _store_vector_component(adata, name="full_drift", values=full_all, spatial_dim=spatial_dim)
+
+    return {
+        "drift": drift_all,
+        "interaction": interaction_all,
+        "score": score_all,
+        "full": full_all,
+        "times": np.asarray(times, dtype=np.float64),
+        "features": np.asarray(X, dtype=np.float32),
+    }
+
+
+def compute_drift(
+    adata: "ad.AnnData",
+    model,
+    dim: Optional[int] = None,
+    interaction_m: int = 1024,
+    device: str = "cuda",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+) -> Dict[str, np.ndarray]:
+    X, times, time_points, dim = _prepare_adata_arrays(
+        adata,
+        dim,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+    result = {}
+    for t_val in time_points:
+        mask = _time_mask(times, t_val)
+        if not np.any(mask):
+            continue
+        data = X[mask]
+        components = compute_velocity_components(
+            data=data,
+            time_value=float(t_val),
+            model=model,
+            interaction_m=interaction_m,
+            device=device,
+        )
+        result[t_val] = components["full"]
+    return result
+
+
+def compute_drift_from_adata(
+    adata: "ad.AnnData",
+    model,
+    *,
+    dim: Optional[int] = None,
+    interaction_m: int = 1024,
+    device: str = "cuda",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+) -> Dict[str, np.ndarray]:
+    return compute_drift(
+        adata=adata,
+        model=model,
+        dim=dim,
+        interaction_m=interaction_m,
+        device=device,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+    )
+
+
+def compute_umap_embedding(
+    data: np.ndarray,
+    n_neighbors: int = 30,
+    min_dist: float = 0.3,
+    seed: int = 0,
+) -> tuple:
+    try:
+        import umap
+    except ImportError as exc:
+        raise ImportError(
+            "umap-learn is required for UMAP embedding. Install with: pip install umap-learn"
+        ) from exc
+
+    reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, random_state=seed)
+    embedding = reducer.fit_transform(np.asarray(data, dtype=float))
+    return embedding, reducer

@@ -17,3 +17,5 @@ ipywidgets
 scanpy
 geomloss
 scvelo
+qnorm
+torch-geometric

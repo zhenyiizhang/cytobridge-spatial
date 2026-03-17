@@ -7,7 +7,7 @@ from anndata import AnnData
 from torchdiffeq import odeint
 from sklearn.decomposition import PCA
 
-from ..tl.models import DynamicalModel
+from ..tl.core.models import DynamicalModel
 
 def trace_df_dz(f, z):
     sum_diag = 0.0
@@ -55,9 +55,10 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False 
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-def sample(data, size):
+def sample(data, size, replace: bool = False):
     N = data.shape[0]
-    indices = torch.tensor(random.sample(range(N), size))
+    indices_np = np.random.choice(N, size=size, replace=replace)
+    indices = torch.tensor(indices_np, device=data.device, dtype=torch.long)
     sampled = data[indices]
     return sampled
 
@@ -81,7 +82,7 @@ def load_model_from_adata(adata: AnnData) -> torch.nn.Module:
         training_config['plan'] = json.loads(training_config['plan'])  # Convert JSON string back to list
 
     model_config = adata.uns['all_model']['model_config']
-    dim = adata.obsm['X_latent'].shape[1]
+    dim = int(adata.uns['all_model'].get('model_input_dim', adata.obsm['X_latent'].shape[1]))
     model = DynamicalModel(dim, model_config)
 
     state_dict_np = adata.uns['all_model']['model_state_dict']
@@ -95,7 +96,7 @@ def load_model_from_adata(adata: AnnData) -> torch.nn.Module:
 #%%
 import torch
 from anndata import AnnData
-from CytoBridge.tl.models import DynamicalModel
+from CytoBridge.tl.core.models import DynamicalModel
 import os
 
 def save_model_to_adata(adata: AnnData, model: DynamicalModel) -> None:

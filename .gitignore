@@ -1,0 +1,57 @@
+# Python cache / build
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+site/
+*.egg-info/
+.eggs/
+
+# Virtual environments / local tooling
+.venv/
+venv/
+env/
+.env
+.python-version
+.vscode/
+.idea/
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local planning notes
+task_plan.md
+findings.md
+progress.md
+COMPARISON_ST1104.md
+extracted_evaluation.py
+spatial.ipynb
+
+# Data / training outputs
+data/
+results/
+logs/
+input_graph/
+metadata/
+*.h5ad
+*.log
+*.out
+*.tmp
+*.zip
+zebrafish_predicted_labels.html
+zebrafish_predicted_labels.png/
+zebrafish_aligned.csv
+
+# Generated figures; keep assets referenced by the docs
+figures/*
+!figures/logo.png
+!figures/model.png

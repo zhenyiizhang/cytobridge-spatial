@@ -74,7 +74,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
-from CytoBridge.tl.analysis import generate_ode_trajectories
+from CytoBridge.tl.downstream.analysis import generate_ode_trajectories
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -416,7 +416,7 @@ from torch.nn import Module
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
-from CytoBridge.tl.analysis import generate_sde_trajectories
+from CytoBridge.tl.downstream.analysis import generate_sde_trajectories
 
 
 def plot_sde_trajectories(
@@ -676,17 +676,17 @@ import scvelo as scv
 import scanpy as sc
 import numpy as np
 import pandas as pd
-from CytoBridge.tl.analysis import compute_velocity
+from CytoBridge.tl.downstream.analysis import compute_velocity
 
 def plot_velocity_stream(adata, model,output_path, dim_reduction='none', device='cuda',color_key = None):
     """
     Plot latent space velocity field streamlines
     Coordinates always use adata.obsm['X_latent'][:, :2]
-    Velocity uses adata.layers['velocity_latent']
+    Velocity uses adata.obsm['velocity_model']
     If velocity is not 2-D, perform projection using its own basis
     """
     # 1. Ensure velocity has been calculated
-    if 'velocity_latent' not in adata.layers:
+    if 'velocity_model' not in adata.obsm:
         adata = compute_velocity(adata, model,device)
 
     # 2. Prepare coordinates (2-D)
@@ -703,8 +703,16 @@ def plot_velocity_stream(adata, model,output_path, dim_reduction='none', device=
         adata.obsm['X_umap'] = adata.obsm['X_latent'][:, :2].copy()
 
     # 3. Place velocity in scVelo's specified key
-    adata.layers['Ms']   = adata.obsm['X_latent'].copy()
-    adata.layers['velocity'] = adata.layers['velocity_latent']
+    velocity_model = adata.obsm['velocity_model']
+    if (
+        'spatial_aligned' in adata.obsm
+        and velocity_model.shape[1] == adata.obsm['spatial_aligned'].shape[1] + adata.obsm['X_latent'].shape[1]
+    ):
+        state_matrix = np.hstack((adata.obsm['spatial_aligned'], adata.obsm['X_latent']))
+    else:
+        state_matrix = adata.obsm['X_latent'].copy()
+    adata.layers['Ms'] = state_matrix
+    adata.layers['velocity'] = velocity_model
 
     # 4. 2-D velocity processing
     if adata.layers['velocity'].shape[1] == 2:
@@ -754,7 +762,7 @@ import scanpy as sc
 import numpy as np
 import pandas as pd
 import torch
-from CytoBridge.tl.analysis import compute_interaction_force  # Import interaction calculation function
+from CytoBridge.tl.downstream.analysis import compute_interaction_force  # Import interaction calculation function
 
 def plot_interaction_stream(adata, output_path, dim_reduction='none', device='cuda'):
     """
@@ -763,7 +771,7 @@ def plot_interaction_stream(adata, output_path, dim_reduction='none', device='cu
     Force vectors are calculated from the model's interaction component
     """
     # 1. Ensure interaction force has been calculated
-    if 'interaction_force' not in adata.layers:
+    if 'interaction_force_model' not in adata.obsm:
         adata = compute_interaction_force(adata, device)
     
     # 2. Check required data
@@ -786,7 +794,7 @@ def plot_interaction_stream(adata, output_path, dim_reduction='none', device='cu
         coords_2d = adata.obsm['X_latent'][:, :2].copy()
     
     # 4. Prepare interaction force vectors
-    force = adata.layers['interaction_force']
+    force = adata.obsm['interaction_force_model']
     # print(force.shape)
     # print(force)
     # 5. Process force vectors for 2D visualization
@@ -966,11 +974,11 @@ def plot_combined_velocity_stream(adata,model,output_path, dim_reduction='none',
     # --------------------------
     # 1. Calculate and obtain both velocities
     # --------------------------
-    # 1.1 Obtain model velocity (velocity_latent)
-    if 'velocity_latent' not in adata.layers:
-        from CytoBridge.tl.analysis import compute_velocity
+    # 1.1 Obtain model velocity (velocity_model)
+    if 'velocity_model' not in adata.obsm:
+        from CytoBridge.tl.downstream.analysis import compute_velocity
         adata = compute_velocity(adata, model,device)
-    vel = adata.layers['velocity_latent'].copy()  # Model velocity
+    vel = adata.obsm['velocity_model'].copy()  # Model velocity
     norms = np.linalg.norm(vel, axis=1, keepdims=True)
     vel_model = np.divide(vel, norms, out=np.zeros_like(vel), where=norms!=0) * 5
     # 1.2 Calculate score gradient velocity
@@ -979,7 +987,14 @@ def plot_combined_velocity_stream(adata,model,output_path, dim_reduction='none',
     model.eval()
     
     # Prepare input data
-    all_data = torch.tensor(adata.obsm['X_latent'], dtype=torch.float32, device=device)
+    if (
+        'spatial_aligned' in adata.obsm
+        and vel.shape[1] == adata.obsm['spatial_aligned'].shape[1] + adata.obsm['X_latent'].shape[1]
+    ):
+        model_input = np.hstack((adata.obsm['spatial_aligned'], adata.obsm['X_latent']))
+    else:
+        model_input = adata.obsm['X_latent']
+    all_data = torch.tensor(model_input, dtype=torch.float32, device=device)
     all_data.requires_grad_(True)
     all_times = torch.tensor(
         adata.obs['time_point_processed'].values, 
@@ -996,7 +1011,7 @@ def plot_combined_velocity_stream(adata,model,output_path, dim_reduction='none',
     # 2. Combine both velocities (weighted sum, maintaining original calculation method)
     # --------------------------
     combined_vel = alpha * vel_model + beta * vel_score  # Consistent with overall calculation logic in example
-    adata.layers['combined_velocity'] = combined_vel  # Store combined velocity
+    adata.obsm['combined_velocity_model'] = combined_vel  # Store combined velocity
 
     # --------------------------
     # 3. Prepare coordinates (2D), maintaining same dimensionality reduction logic as existing plotting functions
@@ -1016,8 +1031,8 @@ def plot_combined_velocity_stream(adata,model,output_path, dim_reduction='none',
     # --------------------------
     # 4. Adapt to scVelo format, maintaining same projection logic as existing functions
     # --------------------------
-    adata.layers['Ms'] = adata.obsm['X_latent'].copy()  # Original high-dimensional state
-    adata.layers['velocity'] = adata.layers['combined_velocity']  # Combined velocity
+    adata.layers['Ms'] = np.asarray(model_input, dtype=np.float32)  # Original high-dimensional state
+    adata.layers['velocity'] = adata.obsm['combined_velocity_model']  # Combined velocity
 
     # Process velocity projection (judge based on dimensions, consistent with logic in plot_velocity_stream/plot_score_stream)
     if combined_vel.shape[1] == 2:
@@ -1214,7 +1229,7 @@ import torch
 def plot_landscape(adata,model,output_path=None,dim_reduction="none",device="cuda"):
 
     # 1. Ensure velocity has been calculated
-    if 'velocity_latent' not in adata.layers:
+    if 'velocity_model' not in adata.obsm:
         adata = compute_velocity(adata, model,device)
 
     # 2. Prepare coordinates (2-D)
@@ -1231,8 +1246,16 @@ def plot_landscape(adata,model,output_path=None,dim_reduction="none",device="cud
         adata.obsm['X_umap'] = adata.obsm['X_latent'][:, :2].copy()
 
     # 3. Place velocity in scVelo's specified key
-    adata.layers['Ms']   = adata.obsm['X_latent'].copy()
-    adata.layers['velocity'] = adata.layers['velocity_latent']
+    velocity_model = adata.obsm['velocity_model']
+    if (
+        'spatial_aligned' in adata.obsm
+        and velocity_model.shape[1] == adata.obsm['spatial_aligned'].shape[1] + adata.obsm['X_latent'].shape[1]
+    ):
+        state_matrix = np.hstack((adata.obsm['spatial_aligned'], adata.obsm['X_latent']))
+    else:
+        state_matrix = adata.obsm['X_latent'].copy()
+    adata.layers['Ms'] = state_matrix
+    adata.layers['velocity'] = velocity_model
 
     # 4. 2-D velocity processing
     if adata.layers['velocity'].shape[1] == 2:
@@ -1243,7 +1266,7 @@ def plot_landscape(adata,model,output_path=None,dim_reduction="none",device="cud
         scv.tl.velocity_graph(adata, vkey='velocity', n_jobs=16)  # Build velocity graph from high-dim velocity vectors
         scv.tl.velocity_embedding(adata, basis='umap', vkey='velocity')  # Project 
 
-    if 'velocity_latent' not in adata.layers:
+    if 'velocity_model' not in adata.obsm:
         adata = compute_velocity(adata, model,device)
     if dim_reduction == 'umap':
         if 'X_umap' not in adata.obsm:
@@ -1406,7 +1429,7 @@ def analyze_terminal_states(adata, classified_type="cell_type", terminal_states=
     g.compute_fate_probabilities(tol=1e-5, preconditioner="ilu")
     g.plot_fate_probabilities(mode="embedding", title='All fate probabilities', save=output_path + '/all_fate_probabilities_plot.svg')
 #%%
-from CytoBridge.tl.analysis import train_mlp_classifier,MLPClassifier
+from CytoBridge.tl.downstream.analysis import train_mlp_classifier,MLPClassifier
 from anndata import AnnData
 from typing import  Optional
 import joblib
@@ -1505,7 +1528,10 @@ def process_sde_classification(
     if os.path.exists(model_path) and os.path.exists(encoder_path):
         print("Loading existing MLP classifier...")
         label_encoder = joblib.load(encoder_path)
-        input_size = adata.X.shape[1]
+        if "X_latent" in adata.obsm:
+            input_size = int(np.asarray(adata.obsm["X_latent"]).shape[1])
+        else:
+            input_size = int(adata.X.shape[1])
         num_classes = len(label_encoder.classes_)
         mlp_model = MLPClassifier(input_size, hidden_size, num_classes).to(device)
         mlp_model.load_state_dict(torch.load(model_path, map_location=device))
