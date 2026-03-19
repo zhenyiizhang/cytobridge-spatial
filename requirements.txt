@@ -14,8 +14,11 @@ tqdm
 seaborn
 pandas
 ipywidgets
+anndata
 scanpy
 geomloss
 scvelo
 qnorm
+plotly
+umap-learn
 torch-geometric

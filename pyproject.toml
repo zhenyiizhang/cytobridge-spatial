@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CytoBridge"
+version = "0.1.0"
+description = "CytoBridge package for spatiotemporal single-cell and spatial transcriptomics analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools.packages.find]
+include = ["CytoBridge*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

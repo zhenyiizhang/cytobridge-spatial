@@ -3,7 +3,6 @@
 from . import core
 from . import downstream
 from . import graph
-from . import train
 
 try:
     from .core import flow_matching
@@ -53,19 +52,14 @@ from .downstream import (
     train_mlp_classifier_from_adata,
 )
 from .graph import train_edge_predictor
-from .train import fit, fit_spatial_csv, fit_spatial_h5ad
 
 __all__ = [
     "analysis",
     "core",
     "downstream",
-    "fit",
-    "fit_spatial_csv",
-    "fit_spatial_h5ad",
     "flow_matching",
     "graph",
     "methods",
-    "train",
     "train_edge_predictor",
     "load_dynamical_model_from_dir",
     "LoadedModel",

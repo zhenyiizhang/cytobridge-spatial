@@ -1374,7 +1374,6 @@ def plot_landscape(adata,model,output_path=None,dim_reduction="none",device="cud
 import numpy as np
 import matplotlib.pyplot as plt
 import scanpy as sc
-import cellrank as cr
 import os
 
 
@@ -1388,6 +1387,13 @@ def analyze_terminal_states(adata, classified_type="cell_type", terminal_states=
     terminal_states: List of strings representing the terminal states to be analyzed.
     output_path: String specifying the folder path where results will be saved.
     """
+    try:
+        import cellrank as cr
+    except ImportError as exc:
+        raise ImportError(
+            "cellrank is required for `analyze_terminal_states`. "
+            "Install it separately if you need terminal-state analysis."
+        ) from exc
 
     # Check if classified_type exists in adata.obs
     if classified_type not in adata.obs.columns:
