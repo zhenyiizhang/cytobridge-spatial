@@ -1,25 +1,27 @@
 """Checkpoint loading utilities for downstream analysis.
 
-This module is intentionally lightweight and **does not** change any training logic.
-It provides helpers to reconstruct a :class:`~CytoBridge.tl.core.models.DynamicalModel`
-from a training output directory (e.g. ``results/...``).
+This module exposes two stable entrypoints:
+- ``load_dynamical_model_from_dir`` for current CytoBridge checkpoints
+- ``load_legacy_dynamical_model_from_dir`` for legacy ST-1104 checkpoints
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Iterable, Optional, Sequence
 
 import torch
+import torch.nn as nn
 import yaml
 
 from CytoBridge.tl.core.models import DynamicalModel
+from .legacy_models import LegacyDynamicalModel
 
 
 @dataclass(frozen=True)
 class LoadedModel:
-    model: DynamicalModel
+    model: nn.Module
     config: dict
     weight_stage: str
     score_stage: Optional[str]
@@ -53,6 +55,62 @@ def _iter_stage_names_from_config(cfg: dict) -> Iterable[str]:
         name = stage.get("name")
         if name:
             yield str(name)
+
+
+def _build_legacy_model_config(
+    legacy_cfg: dict,
+    *,
+    model_dir: Path,
+    edge_predictor_root: Optional[str | Path] = None,
+) -> dict:
+    model_cfg = legacy_cfg.get("model", {})
+    if not model_cfg:
+        raise KeyError("Legacy params.yml is missing the required 'model' section.")
+    latent_dim = int(legacy_cfg.get("data", {}).get("dim", model_cfg.get("in_out_dim", 0)))
+    if latent_dim <= 0:
+        raise ValueError("Could not infer latent dimension from legacy params.yml.")
+
+    edge_predictor_path = model_cfg.get("edge_predictor_path")
+    if edge_predictor_path:
+        edge_predictor_path = Path(str(edge_predictor_path))
+        if not edge_predictor_path.is_absolute():
+            root = Path(edge_predictor_root) if edge_predictor_root is not None else model_dir.parent.parent / "edge_classifier"
+            edge_predictor_path = root / edge_predictor_path.name
+
+    return {
+        "components": ["velocity", "growth", "score", "interaction"],
+        "interaction_type": "gnn",
+        "interaction_group_size": 1024,
+        "velocity_net": {
+            "hidden_dim": int(model_cfg["hidden_dim"]),
+            "n_layers": int(model_cfg["n_hiddens"]),
+            "residual": False,
+            "activation": str(model_cfg["activation"]),
+            "use_spatial": bool(model_cfg.get("use_spatial", True)),
+        },
+        "growth_net": {
+            "hidden_dim": int(model_cfg["hidden_dim"]),
+            "n_layers": 3,
+            "residual": False,
+            "activation": str(model_cfg["activation"]),
+        },
+        "score_net": {
+            "hidden_dim": int(model_cfg["score_hidden_dim"]),
+            "n_layers": 3,
+            "activation": str(model_cfg["activation"]),
+        },
+        "interaction_net": {
+            "hidden_dim": int(model_cfg["hidden_dim"]),
+            "num_heads": 8,
+            "num_layers": 1,
+            "activation": str(model_cfg["activation"]),
+            "num_rbf": 8,
+            "cutoff": float(model_cfg["thre"]),
+            "use_spatial": bool(model_cfg.get("use_spatial", True)),
+            "edge_predictor_path": str(edge_predictor_path) if edge_predictor_path is not None else None,
+            "edge_predictor_thre": float(model_cfg.get("edge_predictor_thre", 0.45)),
+        },
+    }
 
 
 def load_dynamical_model_from_dir(
@@ -133,3 +191,61 @@ def load_dynamical_model_from_dir(
     model.eval()
     return LoadedModel(model=model, config=cfg, weight_stage=weight_stage, score_stage=score_stage_used)
 
+
+def load_legacy_dynamical_model_from_dir(
+    model_dir: str | Path,
+    *,
+    device: str | torch.device = "cpu",
+    edge_predictor_root: Optional[str | Path] = None,
+    params_name: str = "params.yml",
+    model_name: str = "model_final",
+    score_name: str = "score_model",
+) -> LoadedModel:
+    """Load a legacy ST-1104 result directory with the canonical legacy architecture.
+
+    Expected legacy layout:
+    - ``params.yml``
+    - ``model_final``
+    - ``score_model``
+    """
+    model_dir = Path(model_dir)
+    device = _coerce_device(device)
+
+    params_path = model_dir / params_name
+    model_path = model_dir / model_name
+    score_path = model_dir / score_name
+    if not params_path.exists():
+        raise FileNotFoundError(f"Legacy params file not found: {params_path}")
+    if not model_path.exists():
+        raise FileNotFoundError(f"Legacy model checkpoint not found: {model_path}")
+    if not score_path.exists():
+        raise FileNotFoundError(f"Legacy score checkpoint not found: {score_path}")
+
+    legacy_cfg = _load_yaml(params_path)
+    latent_dim = int(legacy_cfg.get("data", {}).get("dim", 0))
+    if latent_dim <= 0:
+        raise ValueError("Legacy params.yml is missing a valid data.dim.")
+
+    edge_root = Path(edge_predictor_root) if edge_predictor_root is not None else model_dir.parent.parent / "edge_classifier"
+    model_cfg = _build_legacy_model_config(
+        legacy_cfg,
+        model_dir=model_dir,
+        edge_predictor_root=edge_root,
+    )
+    model = LegacyDynamicalModel(
+        legacy_cfg,
+        edge_predictor_root=str(edge_root),
+    ).to(device)
+
+    old_state = torch.load(str(model_path), map_location=device)
+    old_score_state = torch.load(str(score_path), map_location=device)
+
+    model.f_net.load_state_dict(old_state, strict=True)
+    model.score_model.load_state_dict(old_score_state, strict=True)
+    model.eval()
+    return LoadedModel(
+        model=model,
+        config={"legacy": legacy_cfg, "model": model_cfg},
+        weight_stage=f"legacy:{model_name}",
+        score_stage=f"legacy:{score_name}",
+    )

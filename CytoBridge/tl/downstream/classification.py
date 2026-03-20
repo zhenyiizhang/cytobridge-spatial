@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+import re
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -9,8 +11,13 @@ import torch
 import torch.nn as nn
 
 __all__ = [
+    "build_cached_classifier_inputs_from_adata",
+    "LoadedClassifierCache",
     "train_mlp_classifier",
     "train_mlp_classifier_from_adata",
+    "load_cached_mlp_classifier",
+    "predict_cached_mlp_classifier_from_adata",
+    "predict_labels_for_points",
     "predict_labels_for_trajectories",
     "MLP",
 ]
@@ -50,6 +57,232 @@ class ResidualMLP(nn.Module):
 
 
 MLP = ResidualMLP
+
+
+@dataclass(frozen=True)
+class LoadedClassifierCache:
+    model: MLP
+    label_encoder: object
+    feature_cols: tuple[str, ...]
+    label_col: str
+    accuracy: Optional[float]
+    balanced_accuracy: Optional[float]
+    metadata: dict
+
+    @property
+    def include_time_feature(self) -> bool:
+        return bool(self.feature_cols) and str(self.feature_cols[0]) == "samples"
+
+    @property
+    def feature_dim(self) -> int:
+        if self.include_time_feature:
+            return max(0, len(self.feature_cols) - 1)
+        return len(self.feature_cols)
+
+
+def load_cached_mlp_classifier(
+    cache_path: str,
+    *,
+    device: str = "cpu",
+) -> LoadedClassifierCache:
+    """Load an MLP classifier checkpoint saved by the legacy downstream cache logic.
+
+    The old MOSTA/ARISTA review scripts store classifier checkpoints as a dict with:
+    - ``state_dict``
+    - ``meta`` containing ``feature_cols`` / ``classes`` / ``input_size``
+    - optional ``acc`` / ``bacc``
+    """
+    from sklearn.preprocessing import LabelEncoder
+
+    payload = torch.load(str(cache_path), map_location="cpu")
+    if not isinstance(payload, dict):
+        raise TypeError(f"Unsupported classifier cache payload type: {type(payload)}")
+
+    meta = payload.get("meta", {})
+    if not isinstance(meta, dict):
+        raise TypeError("Classifier cache is missing a valid `meta` dictionary.")
+
+    feature_cols = tuple(str(c) for c in meta.get("feature_cols", []))
+    classes = tuple(str(c) for c in meta.get("classes", []))
+    if not feature_cols:
+        raise KeyError("Classifier cache meta is missing `feature_cols`.")
+    if not classes:
+        raise KeyError("Classifier cache meta is missing `classes`.")
+    if "state_dict" not in payload:
+        raise KeyError("Classifier cache payload is missing `state_dict`.")
+
+    input_size = int(meta.get("input_size", len(feature_cols)))
+    hidden_size = int(meta.get("hidden_size", 128))
+    num_classes = int(len(classes))
+    model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes)
+    model.load_state_dict(payload["state_dict"], strict=True)
+
+    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    model = model.to(dev)
+    model.eval()
+
+    label_encoder = LabelEncoder()
+    label_encoder.classes_ = np.asarray(classes)
+
+    return LoadedClassifierCache(
+        model=model,
+        label_encoder=label_encoder,
+        feature_cols=feature_cols,
+        label_col=str(meta.get("label_col", "Annotation")),
+        accuracy=float(payload["acc"]) if payload.get("acc") is not None else None,
+        balanced_accuracy=float(payload["bacc"]) if payload.get("bacc") is not None else None,
+        metadata=dict(meta),
+    )
+
+
+def _resolve_cached_latent_indices(feature_cols: Sequence[str], latent_dim: int) -> np.ndarray:
+    if not feature_cols:
+        return np.zeros((0,), dtype=int)
+
+    indices = []
+    for col in feature_cols:
+        match = re.fullmatch(r"x(\d+)", str(col))
+        if match is None:
+            raise ValueError(
+                "Unsupported cached classifier feature columns. "
+                "Expected latent feature names like x1, x2, ..., xN; "
+                f"got {tuple(feature_cols)}."
+            )
+        idx = int(match.group(1)) - 1
+        if idx < 0 or idx >= int(latent_dim):
+            raise IndexError(
+                f"Cached classifier requests latent dimension {idx + 1}, "
+                f"but adata.obsm latent matrix only has {latent_dim} columns."
+            )
+        indices.append(idx)
+    return np.asarray(indices, dtype=int)
+
+
+def build_cached_classifier_inputs_from_adata(
+    adata,
+    cached: LoadedClassifierCache,
+    *,
+    latent_key: str = "latent_x",
+    samples_column: str = "samples",
+) -> np.ndarray:
+    """Build an input matrix compatible with a legacy cached classifier.
+
+    Legacy downstream caches store feature names such as ``samples`` and ``x1``..``x10``.
+    This helper maps those feature names onto an AnnData object with latent coordinates in
+    ``adata.obsm[latent_key]``.
+    """
+    if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
+        raise TypeError(
+            "Cached-classifier utilities require AnnData input. "
+            f"Got: {type(adata)}"
+        )
+    if latent_key not in adata.obsm:
+        raise KeyError(f"adata.obsm['{latent_key}'] is required to rebuild cached classifier inputs.")
+
+    latent = np.asarray(adata.obsm[latent_key], dtype=np.float32)
+    blocks = []
+    latent_feature_cols = cached.feature_cols
+
+    if cached.include_time_feature:
+        if samples_column not in adata.obs.columns:
+            raise KeyError(f"adata.obs['{samples_column}'] is required when the cached classifier uses `samples`.")
+        from CytoBridge.tl.downstream.downstream_data import parse_time_value
+
+        samples = np.asarray(
+            [parse_time_value(v) for v in adata.obs[samples_column].values],
+            dtype=np.float32,
+        ).reshape(-1, 1)
+        blocks.append(samples)
+        latent_feature_cols = cached.feature_cols[1:]
+
+    latent_indices = _resolve_cached_latent_indices(latent_feature_cols, latent.shape[1])
+    blocks.append(latent[:, latent_indices].astype(np.float32))
+
+    X = np.hstack(blocks).astype(np.float32)
+    expected_dim = int(cached.metadata.get("input_size", X.shape[1]))
+    if X.shape[1] != expected_dim:
+        raise ValueError(
+            f"Rebuilt cached classifier input has shape {X.shape[1]}, "
+            f"but checkpoint metadata expects {expected_dim}."
+        )
+    return X
+
+
+def predict_cached_mlp_classifier_from_adata(
+    adata,
+    cached: LoadedClassifierCache,
+    *,
+    latent_key: str = "latent_x",
+    samples_column: str = "samples",
+    device: Optional[str] = None,
+) -> np.ndarray:
+    """Predict labels for an AnnData object using a loaded legacy classifier cache."""
+    X = build_cached_classifier_inputs_from_adata(
+        adata,
+        cached,
+        latent_key=latent_key,
+        samples_column=samples_column,
+    )
+
+    if device is None:
+        dev = next(cached.model.parameters()).device
+        model = cached.model
+    else:
+        dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+        model = cached.model.to(dev)
+
+    model.eval()
+    with torch.no_grad():
+        logits = model(torch.tensor(X, dtype=torch.float32, device=dev))
+        pred_idx = torch.argmax(logits, dim=1).detach().cpu().numpy()
+    return cached.label_encoder.inverse_transform(pred_idx)
+
+
+def predict_labels_for_points(
+    *,
+    points: np.ndarray,
+    time_value: float,
+    model: MLP,
+    label_encoder,
+    feature_dim: int,
+    device: str = "cuda",
+    knn_neighbors: int = 50,
+    include_time_feature: bool = True,
+) -> np.ndarray:
+    from sklearn.neighbors import KNeighborsClassifier
+
+    pts = np.asarray(points, dtype=np.float32)
+    n = int(pts.shape[0])
+    if n == 0:
+        return np.asarray([], dtype=str)
+
+    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    model.eval()
+    model.to(dev)
+
+    feature_t = torch.tensor(pts[:, :feature_dim], dtype=torch.float32)
+    if include_time_feature:
+        samples_t = torch.full((n, 1), fill_value=float(time_value), dtype=torch.float32)
+        input_t = torch.cat((samples_t, feature_t), dim=1)
+        spatial_start = 1
+    else:
+        input_t = feature_t
+        spatial_start = 0
+
+    with torch.no_grad():
+        outputs = model(input_t.float().to(dev))
+        _, predicted = torch.max(outputs, 1)
+        predicted_labels = label_encoder.inverse_transform(predicted.detach().cpu().numpy())
+
+    coords = input_t[:, spatial_start:spatial_start + 2].cpu().numpy()
+    k = int(min(knn_neighbors, max(1, len(coords))))
+    if k <= 1:
+        return np.asarray(predicted_labels).astype(str)
+
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(coords, predicted_labels)
+    refined_labels = knn.predict(coords)
+    return np.asarray(refined_labels).astype(str)
 
 
 def _prepare_classifier_arrays(

@@ -41,9 +41,12 @@ def _prepare_model_input_from_adata(adata) -> np.ndarray:
 def save_interpolated_attention(
     adata: "ad.AnnData",
     time_value: float,
-    model,
+    model=None,
+    f_net=None,
     device: str = "cpu",
     out_dir: Optional[str] = None,
+    save_files: bool = True,
+    save_dense_matrix: bool = True,
 ) -> Dict[str, np.ndarray]:
     """Compute and save attention weights at an interpolated time point.
     
@@ -53,30 +56,41 @@ def save_interpolated_attention(
         AnnData with model input features (prefers obsm['X_latent'] and optional obsm['spatial_aligned']).
     time_value : float
         Time point for attention computation.
-    model : DynamicalModel
+    model : DynamicalModel, optional
         Trained CytoBridge DynamicalModel with interaction_net.
+    f_net : torch.nn.Module, optional
+        Legacy interaction/ODE module used by the original MOSTA helper.
     device : str
         Device for computation.
     out_dir : str, optional
         Output directory for saving arrays. If None, uses current directory.
+    save_files : bool
+        Whether to save arrays to disk.
+    save_dense_matrix : bool
+        Whether to materialize the dense N x N attention matrix.
         
     Returns
     -------
     dict
         Dictionary with keys: 'attn_matrix', 'attn_mean', 'edge_index'.
     """
-    import os
     import torch
-    
-    # Extract interaction network from model (DynamicalModel expected).
-    interaction_net = getattr(model, "interaction_net", None)
-    if interaction_net is None and hasattr(model, "ode_func"):
-        f_net = model.ode_func
+
+    if f_net is not None:
+        interaction_net_owner = f_net
+    elif model is not None:
+        interaction_net_owner = model
+    else:
+        raise ValueError("Provide either `model` or `f_net`.")
+
+    interaction_net = getattr(interaction_net_owner, "interaction_net", None)
+    if interaction_net is None and hasattr(interaction_net_owner, "ode_func"):
+        f_net = interaction_net_owner.ode_func
         interaction_net = getattr(f_net, "interaction_net", None)
-    
+
     if interaction_net is None:
         raise ValueError("Model does not have an interaction_net component")
-    
+
     interaction_net = interaction_net.to(device)
     model_input = _prepare_model_input_from_adata(adata)
     data = torch.tensor(model_input, dtype=torch.float32, device=device)
@@ -100,19 +114,26 @@ def save_interpolated_attention(
     m = edge_index[0] != edge_index[1]
     edge_index = edge_index[:, m]
     attn_mean = attn_mean[m]
-    
-    attn_matrix = np.zeros((n_particles, n_particles))
-    attn_matrix[edge_index[0], edge_index[1]] = attn_mean
-    
-    if out_dir is None:
-        out_dir = os.getcwd()
-    os.makedirs(out_dir, exist_ok=True)
-    
-    np.save(os.path.join(out_dir, f"attn_interp_t{time_value}.npy"), attn_matrix)
-    np.save(os.path.join(out_dir, f"attn_mean_interp_t{time_value}.npy"), attn_mean)
-    np.save(os.path.join(out_dir, f"edge_index_interp_t{time_value}.npy"), edge_index)
-    
-    return {"attn_matrix": attn_matrix, "attn_mean": attn_mean, "edge_index": edge_index}
+
+    out = {"attn_mean": attn_mean, "edge_index": edge_index}
+    attn_matrix = None
+    if save_dense_matrix:
+        attn_matrix = np.zeros((n_particles, n_particles), dtype=float)
+        attn_matrix[edge_index[0], edge_index[1]] = attn_mean
+        out["attn_matrix"] = attn_matrix
+
+    if save_files:
+        import os
+
+        if out_dir is None:
+            out_dir = os.getcwd()
+        os.makedirs(out_dir, exist_ok=True)
+        if save_dense_matrix and attn_matrix is not None:
+            np.save(os.path.join(out_dir, f"attn_interp_t{time_value}.npy"), attn_matrix)
+        np.save(os.path.join(out_dir, f"attn_mean_interp_t{time_value}.npy"), attn_mean)
+        np.save(os.path.join(out_dir, f"edge_index_interp_t{time_value}.npy"), edge_index)
+
+    return out
 
 
 def analyze_attention_by_celltype(
@@ -127,6 +148,7 @@ def analyze_attention_by_celltype(
     n_permutations: int = 0,
     random_state: int = 0,
     show_plots: bool = True,
+    plot: Optional[bool] = None,
 ) -> Dict:
     """Aggregate attention weights at cell-type level with optional distance stratification.
     
@@ -274,6 +296,9 @@ def analyze_attention_by_celltype(
             distance_panels = {"bins": bins, "M_per_source_bybin": Mps_list}
     
     # Plotting
+    if plot is not None:
+        show_plots = bool(plot)
+
     if show_plots:
         try:
             import seaborn as sns

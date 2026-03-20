@@ -19,6 +19,8 @@ scanpy
 geomloss
 scvelo
 qnorm
-plotly
+plotly==6.5.2
+kaleido==0.2.1
 umap-learn
 torch-geometric
+imageio

@@ -15,7 +15,7 @@ try:
     from . import pp
 except ModuleNotFoundError as exc:
     # Allow downstream-only usage when optional preprocessing deps are missing.
-    if exc.name in {"scanpy", "anndata", "squidpy"}:
+    if exc.name in {"scanpy", "anndata", "squidpy", "qnorm"}:
         pp = None
     else:
         raise

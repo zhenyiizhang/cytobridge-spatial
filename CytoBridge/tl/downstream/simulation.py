@@ -18,6 +18,10 @@ if TYPE_CHECKING:
 __all__ = [
     "simulate_sde_points",
     "simulate_sde_points_split",
+    "sample_observed_x0",
+    "simulate_sde_points_split_from_x0",
+    "apply_spatial_warp_to_segments",
+    "simulate_piecewise_spatially_warped_split",
     "compute_velocity_components",
     "compute_velocity_components_from_adata",
     "compute_drift",
@@ -310,9 +314,366 @@ def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tens
     return traj_z, traj_lnw
 
 
+def sample_observed_x0(
+    df,
+    *,
+    time_value: float,
+    feature_cols: Sequence[str],
+    label_col: str,
+    n_samples_cap: Optional[int],
+    rng: np.random.Generator,
+) -> tuple[np.ndarray, np.ndarray]:
+    subset = df[df["samples"] == float(time_value)]
+    X = subset[list(feature_cols)].values.astype(np.float32)
+    labels = subset[label_col].astype(str).values
+    if n_samples_cap is None:
+        return X, labels
+    cap = int(n_samples_cap)
+    if cap <= 0:
+        raise ValueError("n_samples_cap must be > 0 when provided")
+    if X.shape[0] <= cap:
+        return X, labels
+    idx = rng.choice(X.shape[0], size=cap, replace=False)
+    return X[idx], labels[idx]
+
+
+def _compute_spatial_warp_displacements(
+    query_xy: np.ndarray,
+    anchor_source_xy: np.ndarray,
+    anchor_target_xy: np.ndarray,
+    *,
+    k: int,
+    eps: float,
+) -> np.ndarray:
+    from sklearn.neighbors import NearestNeighbors
+
+    query_xy = np.asarray(query_xy, dtype=np.float32)
+    anchor_source_xy = np.asarray(anchor_source_xy, dtype=np.float32)
+    anchor_target_xy = np.asarray(anchor_target_xy, dtype=np.float32)
+
+    if query_xy.ndim != 2 or query_xy.shape[1] < 2:
+        raise ValueError("query_xy must be a 2D array with at least 2 columns")
+    if anchor_source_xy.ndim != 2 or anchor_source_xy.shape[1] != 2:
+        raise ValueError("anchor_source_xy must have shape (n, 2)")
+    if anchor_target_xy.ndim != 2 or anchor_target_xy.shape[1] != 2:
+        raise ValueError("anchor_target_xy must have shape (m, 2)")
+    if anchor_source_xy.shape[0] == 0 or anchor_target_xy.shape[0] == 0:
+        return np.zeros((query_xy.shape[0], 2), dtype=np.float32)
+
+    target_nn = NearestNeighbors(n_neighbors=1)
+    target_nn.fit(anchor_target_xy)
+    _, target_idx = target_nn.kneighbors(anchor_source_xy)
+    anchor_disp = anchor_target_xy[target_idx[:, 0]] - anchor_source_xy
+
+    k_eff = max(1, min(int(k), anchor_source_xy.shape[0]))
+    source_nn = NearestNeighbors(n_neighbors=k_eff)
+    source_nn.fit(anchor_source_xy)
+    dists, src_idx = source_nn.kneighbors(query_xy[:, :2])
+
+    weights = 1.0 / np.maximum(dists, float(eps))
+    weights /= weights.sum(axis=1, keepdims=True)
+    disp = (anchor_disp[src_idx] * weights[..., None]).sum(axis=1)
+    return disp.astype(np.float32, copy=False)
+
+
+def simulate_sde_points_split_from_x0(
+    *,
+    x0: np.ndarray,
+    f_net,
+    score_net,
+    ts_points: Sequence[float],
+    dt: float,
+    sigma: float,
+    sigma_by_dim: Optional[Sequence[float]],
+    growth_alpha: float,
+    interaction_m: int,
+    device: str,
+    verbose: bool = True,
+) -> np.ndarray:
+    from CytoBridge.tl.core.interaction import cal_interaction
+
+    if len(ts_points) < 1:
+        raise ValueError("ts_points must be non-empty")
+
+    x0_t = torch.tensor(np.asarray(x0, dtype=np.float32), device=device)
+    lnw0 = torch.log(torch.ones(x0_t.shape[0], 1, device=device) / x0_t.shape[0])
+    initial_state = (x0_t, lnw0)
+
+    class SDE(nn.Module):
+        noise_type = "diagonal"
+        sde_type = "ito"
+
+        def __init__(self, ode_drift, g, score, interaction, sigma, sigma_by_dim):
+            super().__init__()
+            self.drift = ode_drift
+            self.score = score
+            self.interaction = interaction
+            self.g_net = g
+            if sigma_by_dim is None:
+                self.register_buffer("sigma_vec", None)
+                self.sigma = float(sigma)
+            else:
+                sigma_arr = np.asarray(list(sigma_by_dim), dtype=np.float32).reshape(-1)
+                if sigma_arr.shape[0] != x0_t.shape[1]:
+                    raise ValueError(
+                        f"sigma_by_dim must have length {x0_t.shape[1]}, got {sigma_arr.shape[0]}"
+                    )
+                self.register_buffer("sigma_vec", torch.tensor(sigma_arr, dtype=torch.float32))
+                self.sigma = None
+
+        def f(self, t, y):
+            z, lnw = y
+            with torch.no_grad():
+                drift = self.drift(t, z)
+                dlnw = self.g_net(t, z) * growth_alpha
+                net_forces = cal_interaction(
+                    z=z,
+                    lnw=lnw,
+                    interaction_potential=self.interaction,
+                    m=interaction_m,
+                    t=t,
+                )
+            t_expand = t.expand(z.shape[0], 1)
+            score_grad = self.score.compute_gradient(t_expand, z)
+            return (drift + score_grad + net_forces, dlnw)
+
+        def g(self, t, y):
+            if self.sigma_vec is None:
+                return torch.ones_like(y) * self.sigma
+            return self.sigma_vec.to(device=y.device, dtype=y.dtype).unsqueeze(0).expand_as(y)
+
+    if verbose:
+        try:
+            t_min = float(min(ts_points))
+            t_max = float(max(ts_points))
+            est_steps = int(round((t_max - t_min) / dt)) if dt > 0 else None
+        except Exception:
+            t_min, t_max, est_steps = None, None, None
+        print(
+            "[piecewise split-SDE] start | "
+            f"n_init={x0_t.shape[0]}, ts_points={len(ts_points)}, "
+            f"dt={dt}, sigma={'vector' if sigma_by_dim is not None else sigma}, "
+            f"growth_alpha={growth_alpha}, "
+            f"t_range=({t_min},{t_max}), est_steps={est_steps}"
+        )
+
+    sde = SDE(
+        f_net.v_net,
+        f_net.g_net,
+        score_net,
+        f_net.interaction_net,
+        sigma=sigma,
+        sigma_by_dim=sigma_by_dim,
+    )
+    ts_tensor = torch.tensor(list(ts_points), dtype=torch.float32, device=device)
+    sde_points, _ = _euler_sdeint_split(sde, initial_state, dt=dt, ts=ts_tensor, noise_std=0.0)
+    sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
+
+    if verbose:
+        print(
+            "[piecewise split-SDE] done | "
+            f"timepoints={len(sde_point_np)}, "
+            f"shape0={sde_point_np[0].shape if sde_point_np else None}"
+        )
+    return np.array(sde_point_np, dtype=object)
+
+
+def apply_spatial_warp_to_segments(
+    *,
+    sde_points_split: np.ndarray,
+    ts_points: Sequence[float],
+    observed_time_points: Sequence[float],
+    df,
+    feature_cols_full: Sequence[str],
+    label_col: str,
+    rng: np.random.Generator,
+    piecewise: bool,
+    piecewise_include_end: bool,
+    piecewise_endpoint_by_observed: Optional[Dict[float, np.ndarray]],
+    use_real_for_observed: bool,
+    k: int,
+    eps: float,
+) -> np.ndarray:
+    if len(ts_points) == 0 or len(observed_time_points) < 2:
+        return sde_points_split
+
+    sde_points_out = np.array(
+        [np.asarray(p, dtype=np.float32).copy() for p in sde_points_split],
+        dtype=object,
+    )
+    ts_index = {float(t): i for i, t in enumerate(ts_points)}
+
+    for t_start, t_end in zip(observed_time_points[:-1], observed_time_points[1:]):
+        t_start = float(t_start)
+        t_end = float(t_end)
+        interior_ts = sorted([float(t) for t in ts_points if t_start < float(t) < t_end])
+
+        if piecewise:
+            if not piecewise_include_end or not piecewise_endpoint_by_observed:
+                print(
+                    f"[spatial-warp] skip segment {t_start}->{t_end}: "
+                    "--split-sde-piecewise requires --split-sde-piecewise-include-end for warp anchors"
+                )
+                continue
+            source_endpoint = piecewise_endpoint_by_observed.get(t_end)
+            if source_endpoint is None:
+                print(f"[spatial-warp] skip segment {t_start}->{t_end}: missing simulated endpoint cache")
+                continue
+            source_endpoint_xy = np.asarray(source_endpoint, dtype=np.float32)[:, :2]
+        else:
+            idx_end = ts_index.get(t_end)
+            if idx_end is None:
+                continue
+            source_endpoint_xy = np.asarray(sde_points_out[idx_end], dtype=np.float32)[:, :2]
+
+        if source_endpoint_xy.shape[0] == 0:
+            continue
+
+        X_target, _ = sample_observed_x0(
+            df,
+            time_value=t_end,
+            feature_cols=feature_cols_full,
+            label_col=label_col,
+            n_samples_cap=int(source_endpoint_xy.shape[0]),
+            rng=rng,
+        )
+        target_endpoint_xy = np.asarray(X_target, dtype=np.float32)[:, :2]
+        if target_endpoint_xy.shape[0] == 0:
+            continue
+
+        segment_apply_ts = list(interior_ts)
+        if (not use_real_for_observed) and (t_end in ts_index):
+            segment_apply_ts.append(t_end)
+        if len(segment_apply_ts) == 0:
+            continue
+
+        for t_val in segment_apply_ts:
+            idx = ts_index.get(float(t_val))
+            if idx is None:
+                continue
+            alpha = (float(t_val) - t_start) / max(t_end - t_start, float(eps))
+            pts = np.asarray(sde_points_out[idx], dtype=np.float32)
+            if pts.shape[0] == 0:
+                continue
+            disp = _compute_spatial_warp_displacements(
+                pts[:, :2],
+                source_endpoint_xy,
+                target_endpoint_xy,
+                k=k,
+                eps=eps,
+            )
+            pts[:, :2] = pts[:, :2] + float(alpha) * disp
+            sde_points_out[idx] = pts
+
+        print(
+            f"[spatial-warp] segment {t_start}->{t_end} | "
+            f"anchors_sim={source_endpoint_xy.shape[0]} anchors_real={target_endpoint_xy.shape[0]} "
+            f"targets={segment_apply_ts}"
+        )
+
+    return sde_points_out
+
+
+def simulate_piecewise_spatially_warped_split(
+    *,
+    x0: np.ndarray,
+    f_net,
+    score_net,
+    observed_time_points: Sequence[float],
+    ts_points: Sequence[float],
+    df,
+    feature_cols_full: Sequence[str],
+    label_col: str,
+    dt: float,
+    sigma: float,
+    sigma_by_dim: Optional[Sequence[float]],
+    growth_alpha: float,
+    interaction_m: int,
+    device: str,
+    rng: np.random.Generator,
+    k: int,
+    eps: float,
+) -> np.ndarray:
+    ts_sorted = [float(t) for t in ts_points]
+    observed_sorted = [float(t) for t in observed_time_points if ts_sorted[0] <= float(t) <= ts_sorted[-1]]
+    if len(observed_sorted) < 2:
+        return simulate_sde_points_split_from_x0(
+            x0=x0,
+            f_net=f_net,
+            score_net=score_net,
+            ts_points=ts_sorted,
+            dt=dt,
+            sigma=sigma,
+            sigma_by_dim=sigma_by_dim,
+            growth_alpha=growth_alpha,
+            interaction_m=interaction_m,
+            device=device,
+            verbose=True,
+        )
+
+    current_x0 = np.asarray(x0, dtype=np.float32)
+    points_by_time: Dict[float, np.ndarray] = {}
+
+    for t_start, t_end in zip(observed_sorted[:-1], observed_sorted[1:]):
+        seg_ts = [float(t) for t in ts_sorted if float(t_start) <= float(t) <= float(t_end)]
+        if len(seg_ts) == 0:
+            continue
+        if len(seg_ts) == 1:
+            points_by_time[float(seg_ts[0])] = np.asarray(current_x0, dtype=np.float32).copy()
+            continue
+
+        print(f"[spatial-warp piecewise] segment {t_start}->{t_end} | targets={seg_ts}")
+        seg_points = simulate_sde_points_split_from_x0(
+            x0=current_x0,
+            f_net=f_net,
+            score_net=score_net,
+            ts_points=seg_ts,
+            dt=dt,
+            sigma=sigma,
+            sigma_by_dim=sigma_by_dim,
+            growth_alpha=growth_alpha,
+            interaction_m=interaction_m,
+            device=device,
+            verbose=True,
+        )
+
+        source_endpoint_xy = np.asarray(seg_points[-1], dtype=np.float32)[:, :2]
+        X_target, _ = sample_observed_x0(
+            df,
+            time_value=float(t_end),
+            feature_cols=feature_cols_full,
+            label_col=label_col,
+            n_samples_cap=min(int(source_endpoint_xy.shape[0]), int((df["samples"] == float(t_end)).sum())),
+            rng=rng,
+        )
+        target_endpoint_xy = np.asarray(X_target, dtype=np.float32)[:, :2]
+
+        for t_val, pts_raw in zip(seg_ts, seg_points):
+            pts = np.asarray(pts_raw, dtype=np.float32).copy()
+            alpha = (float(t_val) - float(t_start)) / max(float(t_end - t_start), float(eps))
+            if alpha > 0.0:
+                disp = _compute_spatial_warp_displacements(
+                    pts[:, :2],
+                    source_endpoint_xy,
+                    target_endpoint_xy,
+                    k=k,
+                    eps=eps,
+                )
+                pts[:, :2] = pts[:, :2] + float(alpha) * disp
+            points_by_time[float(t_val)] = pts
+
+        current_x0 = np.asarray(points_by_time[float(t_end)], dtype=np.float32).copy()
+
+    missing = [float(t) for t in ts_sorted if float(t) not in points_by_time]
+    if missing:
+        raise ValueError(f"Piecewise spatial-warp split-SDE missing timepoints: {missing}")
+
+    return np.array([points_by_time[float(t)] for t in ts_sorted], dtype=object)
+
+
 def simulate_sde_points(
-    adata: "ad.AnnData",
-    model,
+    adata: Optional["ad.AnnData"] = None,
+    model=None,
     dim: Optional[int] = None,
     time_index: int = 0,
     n_samples: int = 5000,
@@ -329,8 +690,98 @@ def simulate_sde_points(
     exclude_indices: Optional[Sequence[object]] = None,
     exclude_cell_types: Optional[Sequence[str]] = None,
     annotation_key: str = "Annotation",
+    df=None,
+    f_net=None,
+    score_net=None,
+    verbose: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     from CytoBridge.tl.core.interaction import cal_interaction
+
+    if df is not None:
+        if f_net is None or score_net is None:
+            raise ValueError("Legacy dataframe mode requires both f_net and score_net.")
+        if dim is None:
+            raise ValueError("Legacy dataframe mode requires dim.")
+        if ts_points is None:
+            ts_points = [0, 1, 2, 3, 4]
+
+        time_points = df["samples"].unique()
+        if time_index < 0 or time_index >= len(time_points):
+            raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+
+        t0 = time_points[time_index]
+        numeric_cols = ["samples"] + [f"x{i}" for i in range(1, int(dim) + 1)]
+        data = torch.tensor(df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32)
+        x0 = data[:, 1:].requires_grad_().to(device)
+
+        if x0.shape[0] > n_samples:
+            indices = torch.randperm(x0.shape[0])[:n_samples]
+            x0 = x0[indices]
+
+        lnw0 = torch.log(torch.ones(x0.shape[0], 1, device=device) / x0.shape[0])
+        initial_state = (x0, lnw0)
+
+        class SDE(nn.Module):
+            noise_type = "diagonal"
+            sde_type = "ito"
+
+            def __init__(self, ode_drift, g, score, interaction, sigma):
+                super().__init__()
+                self.drift = ode_drift
+                self.score = score
+                self.interaction = interaction
+                self.g_net = g
+                self.sigma = sigma
+
+            def f(self, t, y):
+                z, lnw = y
+                with torch.no_grad():
+                    drift = self.drift(t, z)
+                    dlnw = self.g_net(t, z)
+                    net_forces = cal_interaction(
+                        z=z,
+                        lnw=lnw,
+                        interaction_potential=self.interaction,
+                        m=interaction_m,
+                        t=t,
+                    )
+                if include_score:
+                    t_expand = t.expand(z.shape[0], 1)
+                    with torch.enable_grad():
+                        z_req = z.detach().requires_grad_(True)
+                        drift = drift + self.score.compute_gradient(t_expand, z_req)
+                return (drift + net_forces, dlnw)
+
+            def g(self, t, y):
+                return torch.ones_like(y) * self.sigma
+
+        if verbose:
+            try:
+                t_min = float(min(ts_points))
+                t_max = float(max(ts_points))
+                est_steps = int(round((t_max - t_min) / dt)) if dt > 0 else None
+            except Exception:
+                t_min, t_max, est_steps = None, None, None
+            print(
+                "[simulate_sde_points] start | "
+                f"n_init={x0.shape[0]}, ts_points={len(ts_points)}, "
+                f"dt={dt}, sigma={sigma}, include_score={include_score}, "
+                f"t_range=({t_min},{t_max}), est_steps={est_steps}"
+            )
+
+        sde = SDE(f_net.v_net, f_net.g_net, score_net, f_net.interaction_net, sigma=sigma)
+        ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
+        sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
+        weight = torch.exp(traj_lnw)
+        weight_normed = weight / weight.sum(dim=1, keepdim=True)
+        sde_point_np = [p.detach().cpu().numpy() for p in sde_point]
+        if verbose:
+            print(
+                "[simulate_sde_points] done | "
+                f"timepoints={len(sde_point_np)}, "
+                f"shape0={sde_point_np[0].shape if sde_point_np else None}"
+            )
+        return np.array(sde_point_np, dtype=object), weight_normed.detach().cpu().numpy()
 
     X, times, time_points, dim = _prepare_adata_arrays(
         adata,
@@ -439,8 +890,8 @@ def simulate_sde_points(
 
 
 def simulate_sde_points_split(
-    adata: "ad.AnnData",
-    model,
+    adata: Optional["ad.AnnData"] = None,
+    model=None,
     dim: Optional[int] = None,
     time_index: int = 0,
     n_samples: int = 5000,
@@ -456,8 +907,49 @@ def simulate_sde_points_split(
     exclude_indices: Optional[Sequence[object]] = None,
     exclude_cell_types: Optional[Sequence[str]] = None,
     annotation_key: str = "Annotation",
+    df=None,
+    f_net=None,
+    score_net=None,
+    sigma_by_dim: Optional[Sequence[float]] = None,
+    growth_alpha: float = 0.5,
+    verbose: bool = True,
 ) -> np.ndarray:
     from CytoBridge.tl.core.interaction import cal_interaction
+
+    if df is not None:
+        if f_net is None or score_net is None:
+            raise ValueError("Legacy dataframe mode requires both f_net and score_net.")
+        if dim is None:
+            raise ValueError("Legacy dataframe mode requires dim.")
+        if ts_points is None:
+            ts_points = [0, 1, 2, 3, 4]
+
+        time_points = df["samples"].unique()
+        if time_index < 0 or time_index >= len(time_points):
+            raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+
+        t0 = time_points[time_index]
+        numeric_cols = ["samples"] + [f"x{i}" for i in range(1, int(dim) + 1)]
+        data = torch.tensor(df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32)
+        x0 = data[:, 1:].to(device)
+
+        if x0.shape[0] > n_samples:
+            indices = torch.randperm(x0.shape[0])[:n_samples]
+            x0 = x0[indices]
+
+        return simulate_sde_points_split_from_x0(
+            x0=x0.detach().cpu().numpy(),
+            f_net=f_net,
+            score_net=score_net,
+            ts_points=ts_points,
+            dt=dt,
+            sigma=sigma,
+            sigma_by_dim=sigma_by_dim,
+            growth_alpha=growth_alpha,
+            interaction_m=interaction_m,
+            device=device,
+            verbose=verbose,
+        )
 
     X, times, time_points, dim = _prepare_adata_arrays(
         adata,
