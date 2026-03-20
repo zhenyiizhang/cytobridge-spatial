@@ -94,7 +94,12 @@ def load_cached_mlp_classifier(
     """
     from sklearn.preprocessing import LabelEncoder
 
-    payload = torch.load(str(cache_path), map_location="cpu")
+    try:
+        payload = torch.load(str(cache_path), map_location="cpu")
+    except Exception as exc:
+        if "Weights only load failed" not in str(exc):
+            raise
+        payload = torch.load(str(cache_path), map_location="cpu", weights_only=False)
     if not isinstance(payload, dict):
         raise TypeError(f"Unsupported classifier cache payload type: {type(payload)}")
 
@@ -103,7 +108,7 @@ def load_cached_mlp_classifier(
         raise TypeError("Classifier cache is missing a valid `meta` dictionary.")
 
     feature_cols = tuple(str(c) for c in meta.get("feature_cols", []))
-    classes = tuple(str(c) for c in meta.get("classes", []))
+    classes = tuple(str(c) for c in meta.get("classes", payload.get("classes", [])))
     if not feature_cols:
         raise KeyError("Classifier cache meta is missing `feature_cols`.")
     if not classes:
@@ -111,9 +116,9 @@ def load_cached_mlp_classifier(
     if "state_dict" not in payload:
         raise KeyError("Classifier cache payload is missing `state_dict`.")
 
-    input_size = int(meta.get("input_size", len(feature_cols)))
-    hidden_size = int(meta.get("hidden_size", 128))
-    num_classes = int(len(classes))
+    input_size = int(meta.get("input_size", payload.get("input_size", len(feature_cols))))
+    hidden_size = int(meta.get("hidden_size", payload.get("hidden_size", 128)))
+    num_classes = int(payload.get("num_classes", len(classes)))
     model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes)
     model.load_state_dict(payload["state_dict"], strict=True)
 
