@@ -195,6 +195,7 @@ def plot_growth_per_time(
     out_dir: str,
     device: str = "cpu",
     point_size: float = 0.6,
+    point_alpha: float = 0.9,
     samples_column: str = "samples",
     cmap: str = "rainbow",
 ):
@@ -214,6 +215,8 @@ def plot_growth_per_time(
         Device for computation.
     point_size : float
         Scatter point size.
+    point_alpha : float
+        Scatter alpha.
     samples_column : str
         Name of time/samples column.
     cmap : str
@@ -262,7 +265,7 @@ def plot_growth_per_time(
             s=point_size,
             cmap="RdYlBu_r",
             linewidths=0,
-            alpha=0.9,
+            alpha=float(point_alpha),
         )
         ax.set_title(f"Growth g (t={t_val})", fontsize=10)
         ax.axis("off")
@@ -284,6 +287,7 @@ def plot_growth_per_time_from_adata(
     out_dir: str,
     device: str = "cpu",
     point_size: float = 0.6,
+    point_alpha: float = 0.9,
     time_key: Optional[str] = None,
     obsm_key: str = "X_latent",
     spatial_key: str = "spatial_aligned",
@@ -332,7 +336,7 @@ def plot_growth_per_time_from_adata(
             s=point_size,
             cmap="RdYlBu_r",
             linewidths=0,
-            alpha=0.9,
+            alpha=float(point_alpha),
         )
         ax.set_title(f"Growth g (t={t_val})", fontsize=10)
         ax.axis("off")
