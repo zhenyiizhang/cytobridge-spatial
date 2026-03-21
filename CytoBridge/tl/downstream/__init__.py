@@ -1,7 +1,7 @@
 """Downstream analysis utilities."""
 
 from .attention import analyze_attention_by_celltype, save_interpolated_attention
-from .ablation import AblationPanelSeriesResult, crop_ablation_panel, export_ablation_panel_series
+from .ablation import AblationGifResult, AblationPanelSeriesResult, crop_ablation_panel, export_ablation_gifs, export_ablation_panel_series
 from .checkpoint import LoadedModel, load_dynamical_model_from_dir, load_legacy_dynamical_model_from_dir
 from .classification import (
     build_cached_classifier_inputs_from_adata,
@@ -64,7 +64,9 @@ __all__ = [
     "LoadedClassifierCache",
     "LoadedModel",
     "AblationPanelSeriesResult",
+    "AblationGifResult",
     "crop_ablation_panel",
+    "export_ablation_gifs",
     "export_ablation_panel_series",
     "GeneProgramPanelResult",
     "collect_top_variable_heatmaps",

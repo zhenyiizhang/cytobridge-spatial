@@ -29,6 +29,7 @@ except ModuleNotFoundError as exc:
         raise
 
 from .downstream import (
+    AblationGifResult,
     AblationPanelSeriesResult,
     DynamicalRuntime,
     GeneProgramPanelResult,
@@ -53,6 +54,7 @@ from .downstream import (
     compute_velocity_components_from_adata,
     copy_if_needed,
     crop_ablation_panel,
+    export_ablation_gifs,
     export_ablation_panel_series,
     infer_feature_columns,
     infer_time_key,
@@ -104,12 +106,14 @@ __all__ = [
     "LoadedClassifierCache",
     "apply_spatial_warp_to_segments",
     "AblationPanelSeriesResult",
+    "AblationGifResult",
     "GeneProgramPanelResult",
     "LRMultipanelSpec",
     "LRPanelResult",
     "collect_top_variable_heatmaps",
     "copy_if_needed",
     "crop_ablation_panel",
+    "export_ablation_gifs",
     "export_ablation_panel_series",
     "simulate_sde_points",
     "simulate_sde_points_split",

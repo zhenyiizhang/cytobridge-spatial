@@ -13,6 +13,12 @@ class AblationPanelSeriesResult:
     files: list[Path]
 
 
+@dataclass(frozen=True)
+class AblationGifResult:
+    output_dir: Path
+    gifs: list[Path]
+
+
 def trim_white(img: Image.Image) -> Image.Image:
     bg = Image.new("RGB", img.size, "white")
     diff = ImageChops.difference(img.convert("RGB"), bg)
@@ -57,3 +63,45 @@ def export_ablation_panel_series(
             crop_ablation_panel(variant_dir / f"frame_{fid}.png", "ablation").save(variant_png)
             files.append(variant_png)
     return AblationPanelSeriesResult(output_dir=out_dir, files=files)
+
+
+def export_ablation_gifs(
+    *,
+    frame_dirs: Mapping[str, str | Path],
+    out_dir: str | Path,
+    frame_step: int = 2,
+    resize_factor: float = 0.5,
+    duration_ms: int = 120,
+) -> AblationGifResult:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    gif_paths: list[Path] = []
+
+    for label, frame_dir in frame_dirs.items():
+        frame_dir = Path(frame_dir)
+        frame_paths = sorted(frame_dir.glob("frame_*.png"))[:: max(1, frame_step)]
+        if not frame_paths:
+            continue
+        frames: list[Image.Image] = []
+        for path in frame_paths:
+            img = Image.open(path).convert("P", palette=Image.ADAPTIVE)
+            if resize_factor != 1.0:
+                new_size = (
+                    max(1, int(img.width * resize_factor)),
+                    max(1, int(img.height * resize_factor)),
+                )
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+            frames.append(img)
+        out_path = out_dir / f"{label}.gif"
+        frames[0].save(
+            out_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration_ms,
+            loop=0,
+            optimize=False,
+            disposal=2,
+        )
+        gif_paths.append(out_path)
+
+    return AblationGifResult(output_dir=out_dir, gifs=gif_paths)
