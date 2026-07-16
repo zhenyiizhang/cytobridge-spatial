@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import yaml
 from CytoBridge.utils.config import load_config
+from CytoBridge.utils.utils import set_seed
 from CytoBridge.tl.core.models import DynamicalModel
 from CytoBridge.tl.train.trainer import TrainingPipeline
 
@@ -426,6 +427,7 @@ def _fit_adata(
     edge_predictor_threshold: float | None = None,
     ckpt_dir: str | pathlib.Path | None = None,
     sigma: float | None = None,
+    evaluate_after_training: bool = True,
 ) -> sc.AnnData:
     """
     Internal training entrypoint: requires `adata.obs['time_point_processed']`
@@ -476,8 +478,21 @@ def _fit_adata(
 
     # ---------- 4. build & train model ----------
     dim = data_torch[0].shape[1]
+    # Model construction consumes random numbers.  Seeding only inside the
+    # trainer makes data sampling repeatable but leaves the initial weights
+    # process-dependent, so seed once before constructing the model as well.
+    seed = resolved_config.get("seed")
+    if seed is not None:
+        set_seed(int(seed))
     model = DynamicalModel(dim, resolved_config["model"])
-    trainer = TrainingPipeline(model, resolved_config, batch_size, device, data=data_torch)
+    trainer = TrainingPipeline(
+        model,
+        resolved_config,
+        batch_size,
+        device,
+        data=data_torch,
+        seed_already_applied=seed is not None,
+    )
     model = trainer.train(data_torch, time_points)
 
     # ---------- 5. compute model outputs (component-aware) ----------
@@ -638,7 +653,8 @@ def _fit_adata(
 
     print(f"Model & data saved -> {ckpt_dir}")
 
-    trainer.evaluate(adata, data_torch, time_points)  # TODO handle hold-out
+    if evaluate_after_training:
+        trainer.evaluate(adata, data_torch, time_points)  # TODO handle hold-out
 
     return adata
 
@@ -658,6 +674,7 @@ def fit(
     edge_predictor_threshold: float | None = None,
     ckpt_dir: str | pathlib.Path | None = None,
     sigma: float | None = None,
+    evaluate_after_training: bool = True,
 ) -> sc.AnnData:
     """
     Main training entrypoint (prefer this single API).
@@ -672,7 +689,9 @@ def fit(
     Runtime override priority for selected training parameters:
     `fit(...) arguments` > `adata.uns['fit_params'/'cytobridge_fit'/'training_params']` > `config`.
     Supported overrides: `interaction_cutoff`, `edge_predictor_path`,
-    `edge_predictor_threshold`, `ckpt_dir`, `sigma`.
+    `edge_predictor_threshold`, `ckpt_dir`, `sigma`. Set
+    `evaluate_after_training=False` when evaluation is run separately through
+    the distribution-evaluation API (recommended for large spatial datasets).
     """
     if isinstance(adata, str):
         path = pathlib.Path(adata)
@@ -699,6 +718,7 @@ def fit(
                 edge_predictor_threshold=edge_predictor_threshold,
                 ckpt_dir=ckpt_dir,
                 sigma=sigma,
+                evaluate_after_training=evaluate_after_training,
             )
         if path.suffix.lower() == ".csv":
             df = pd.read_csv(str(path))
@@ -728,6 +748,7 @@ def fit(
                 edge_predictor_threshold=edge_predictor_threshold,
                 ckpt_dir=ckpt_dir,
                 sigma=sigma,
+                evaluate_after_training=evaluate_after_training,
             )
         raise ValueError(f"Unsupported input path: {path} (expected .h5ad or .csv)")
 
@@ -750,6 +771,7 @@ def fit(
         edge_predictor_threshold=edge_predictor_threshold,
         ckpt_dir=ckpt_dir,
         sigma=sigma,
+        evaluate_after_training=evaluate_after_training,
     )
 
 
@@ -764,6 +786,7 @@ def fit_spatial_csv(
     edge_predictor_threshold: float | None = None,
     ckpt_dir: str | pathlib.Path | None = None,
     sigma: float | None = None,
+    evaluate_after_training: bool = True,
 ) -> sc.AnnData:
     warnings.warn(
         "`fit_spatial_csv` is deprecated and will be removed in a future release; "
@@ -784,6 +807,7 @@ def fit_spatial_csv(
         edge_predictor_threshold=edge_predictor_threshold,
         ckpt_dir=ckpt_dir,
         sigma=sigma,
+        evaluate_after_training=evaluate_after_training,
     )
 
 
@@ -799,6 +823,7 @@ def fit_spatial_h5ad(
     edge_predictor_threshold: float | None = None,
     ckpt_dir: str | pathlib.Path | None = None,
     sigma: float | None = None,
+    evaluate_after_training: bool = True,
 ) -> sc.AnnData:
     warnings.warn(
         "`fit_spatial_h5ad` is deprecated and will be removed in a future release; "
@@ -819,4 +844,5 @@ def fit_spatial_h5ad(
         edge_predictor_threshold=edge_predictor_threshold,
         ckpt_dir=ckpt_dir,
         sigma=sigma,
+        evaluate_after_training=evaluate_after_training,
     )

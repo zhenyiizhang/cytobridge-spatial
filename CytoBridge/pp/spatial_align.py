@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -27,6 +27,7 @@ except ImportError as exc:  # pragma: no cover
 class AlignConfig:
     n_top_genes: int = 2000
     n_pcs: int = 50
+    normalization_target_sum: Optional[float] = 1e4
     spatial_dim: int = 2
     auto_scale_from_centered_x_max: bool = True
     shared_scale: Optional[float] = None
@@ -46,6 +47,7 @@ class AlignConfig:
     batch_size: int = 1024
     distance_pairs: int = 10000
     learning_rate: float = 1e-3
+    random_seed: int = 42
     max_cells_per_timepoint: Optional[int] = None
     output_chunk_size: int = 50000
 
@@ -250,6 +252,11 @@ def _align_preprocessed_adata(
     log_every: Optional[int] = None,
 ) -> Tuple[sc.AnnData, pd.DataFrame]:
     """Run alignment only, assuming gene preprocessing has already been done."""
+    np.random.seed(int(cfg.random_seed))
+    torch.manual_seed(int(cfg.random_seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(cfg.random_seed))
+
     adata, batch_names = _prepare_adata_for_alignment(
         adata=adata,
         time_key=time_key,
@@ -471,6 +478,23 @@ def _align_preprocessed_adata(
 
     # Attach aligned coordinates to adata in original order for convenience.
     adata.obsm["spatial_aligned"] = aligned_full
+    adata.uns["spatial_alignment_info"] = {
+        "time_key": str(time_key),
+        "batch_names": [str(value) for value in batch_names],
+        "shared_scale_base": (
+            float(shared_scale_base) if shared_scale_base is not None else "disabled"
+        ),
+        "config": {
+            key: (
+                value
+                if value is not None
+                else "median"
+                if key == "normalization_target_sum"
+                else "none"
+            )
+            for key, value in asdict(cfg).items()
+        },
+    }
     if verbose:
         print(
             f"[align_spatial] done: aligned_shape={adata.obsm['spatial_aligned'].shape}, "
@@ -507,6 +531,7 @@ def preprocess_and_align(
         dim_reduction="pca",
         n_pcs=cfg.n_pcs,
         normalization=True,
+        normalization_target_sum=cfg.normalization_target_sum,
         log1p=True,
         select_hvg=True,
     )

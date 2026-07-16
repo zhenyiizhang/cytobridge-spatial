@@ -218,7 +218,7 @@ def analyze_attention_by_celltype(
         m = send != recv
         send, recv, w = send[m], recv[m], w[m]
     
-    if winsor_quantile is not None and 0.9 < winsor_quantile < 1.0:
+    if w.size > 0 and winsor_quantile is not None and 0.9 < winsor_quantile < 1.0:
         hi = np.quantile(w, winsor_quantile)
         w = np.minimum(w, hi)
     
@@ -263,15 +263,18 @@ def analyze_attention_by_celltype(
         p = (null >= obs[..., None]).mean(axis=2)
         p_flat = p.ravel()
         order = np.argsort(p_flat)
-        rank = np.empty_like(order)
-        rank[order] = np.arange(1, p_flat.size + 1)
-        fdr_flat = p_flat * p_flat.size / np.maximum(rank, 1)
+        adjusted_sorted = (
+            p_flat[order] * p_flat.size / np.arange(1, p_flat.size + 1)
+        )
+        adjusted_sorted = np.minimum.accumulate(adjusted_sorted[::-1])[::-1]
+        fdr_flat = np.empty_like(p_flat)
+        fdr_flat[order] = np.minimum(adjusted_sorted, 1.0)
         fdr = fdr_flat.reshape(T, T)
         sig_mask = fdr < 0.05
     
     # Distance stratification
     distance_panels = None
-    if spatial_coord is not None:
+    if spatial_coord is not None and w.size > 0:
         pair_dist = np.linalg.norm(spatial_coord[recv] - spatial_coord[send], axis=1)
         if distance_bins == "quartile":
             bins = np.quantile(pair_dist, [0, 0.25, 0.5, 0.75, 1.0])

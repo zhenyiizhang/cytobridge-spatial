@@ -38,6 +38,7 @@ def preprocess(
     n_pcs: int = 50,
     time_mapping: Optional[Dict[str, float]] = None,
     normalization: bool = True,
+    normalization_target_sum: Optional[float] = 1e4,
     log1p: bool = True,
     select_hvg: bool = True,
 ) -> AnnData:
@@ -69,6 +70,10 @@ def preprocess(
         0, 1, 2, ...
     normalization
         If True, normalize the data.
+    normalization_target_sum
+        Target total count passed to :func:`scanpy.pp.normalize_total`. Use
+        ``None`` to normalize to the median total count, matching Scanpy's
+        historical default and the published ARISTA preprocessing notebook.
     log1p
         If True, apply log1p transformation to the data.
     select_hvg
@@ -123,8 +128,16 @@ def preprocess(
         adata.layers["counts"] = adata.X.copy()
 
     if normalization:
-        print("Normalizing total counts and applying log1p transformation.")
-        sc.pp.normalize_total(adata, target_sum=1e4)
+        if normalization_target_sum is not None:
+            normalization_target_sum = float(normalization_target_sum)
+            if not np.isfinite(normalization_target_sum) or normalization_target_sum <= 0:
+                raise ValueError(
+                    "normalization_target_sum must be a positive finite value or None, "
+                    f"got {normalization_target_sum}."
+                )
+        target_label = "median library size" if normalization_target_sum is None else normalization_target_sum
+        print(f"Normalizing total counts to {target_label}.")
+        sc.pp.normalize_total(adata, target_sum=normalization_target_sum)
 
     if log1p:
         sc.pp.log1p(adata)
@@ -178,6 +191,9 @@ def preprocess(
         'time_key': time_key,
         'time_key_added': time_key_added,
         'normalization': bool(normalization),
+        'normalization_target_sum': (
+            float(normalization_target_sum) if normalization_target_sum is not None else 'median'
+        ),
         'log1p': bool(log1p),
         'select_hvg': bool(select_hvg),
         'n_top_genes': int(n_top_genes),

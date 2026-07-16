@@ -26,6 +26,7 @@ class GNNInteraction(nn.Module):
         num_rbf: int = 8,
         cutoff: float = 0.2,
         use_spatial: bool = True,
+        rbf_trainable: bool = False,
         edge_predictor_path: Optional[str] = None,
         edge_predictor_thre: float = 0.5,
         edge_predictor_root: Optional[str] = None,
@@ -56,7 +57,15 @@ class GNNInteraction(nn.Module):
         self.cutoff = cutoff
         self.edge_predictor_thre = edge_predictor_thre
 
-        self.rbf_expansion = ExpNormalSmearing(cutoff=cutoff, num_rbf=num_rbf, trainable=True)
+        # The released ARISTA/DeepRUOT GNN kept the RBF centers and widths
+        # fixed. Preserve that behavior by default; a trainable RBF remains an
+        # explicit model ablation rather than an accidental semantic change.
+        self.rbf_trainable = bool(rbf_trainable)
+        self.rbf_expansion = ExpNormalSmearing(
+            cutoff=cutoff,
+            num_rbf=num_rbf,
+            trainable=self.rbf_trainable,
+        )
 
         if edge_predictor_path is None:
             raise ValueError("edge_predictor_path must be provided for GNNInteraction.")

@@ -6,6 +6,8 @@ for post-hoc visualization only (does not affect training).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
 import numpy as np
@@ -14,7 +16,256 @@ __all__ = [
     "plot_velocity_component",
     "plot_intrinsic_interaction_direction_correlation",
     "plot_intrinsic_interaction_direction_correlation_from_adata",
+    "SpatialDirectionCorrelationResult",
+    "embed_velocity_to_spatial",
+    "plot_spatial_component_direction_correlation_roi_from_adata",
 ]
+
+
+@dataclass(frozen=True)
+class SpatialDirectionCorrelationResult:
+    """Projected component directions and the selected spatial ROI."""
+
+    table: object
+    embedded_a: np.ndarray
+    embedded_b: np.ndarray
+    roi_bounds: tuple[float, float, float, float]
+    figure_path: Path
+    csv_path: Optional[Path]
+
+
+def embed_velocity_to_spatial(
+    feature_matrix: np.ndarray,
+    coordinates: np.ndarray,
+    velocity: np.ndarray,
+    *,
+    n_neighbors: int = 30,
+    neighbor_rep: str = "X_spatial",
+) -> np.ndarray:
+    """Project a high-dimensional velocity field into a 2D spatial basis."""
+    import anndata as ad
+    import scanpy as sc
+    import scvelo as scv
+
+    feature_matrix = np.asarray(feature_matrix, dtype=np.float32)
+    coordinates = np.asarray(coordinates, dtype=np.float32)
+    velocity = np.asarray(velocity, dtype=np.float32)
+    if feature_matrix.ndim != 2 or coordinates.ndim != 2 or velocity.ndim != 2:
+        raise ValueError("feature_matrix, coordinates, and velocity must be 2D.")
+    if coordinates.shape[1] != 2:
+        raise ValueError("coordinates must have shape (n_cells, 2).")
+    if feature_matrix.shape != velocity.shape:
+        raise ValueError("feature_matrix and velocity must have identical shapes.")
+    if feature_matrix.shape[0] != coordinates.shape[0]:
+        raise ValueError("All arrays must have the same number of rows.")
+    if feature_matrix.shape[0] < 2:
+        raise ValueError("At least two cells are required for velocity embedding.")
+    finite_nonzero = np.isfinite(velocity).all(axis=1) & (
+        np.linalg.norm(velocity, axis=1) > 1e-12
+    )
+    if int(finite_nonzero.sum()) < 2:
+        return np.zeros_like(coordinates, dtype=np.float32)
+
+    plot_adata = ad.AnnData(X=feature_matrix.copy())
+    plot_adata.obsm["X_spatial"] = coordinates.copy()
+    plot_adata.layers["Ms"] = feature_matrix.copy()
+    plot_adata.layers["velocity"] = velocity.copy()
+    use_rep = neighbor_rep
+    if use_rep == "X" or use_rep is None:
+        use_rep = "X"
+    elif use_rep not in plot_adata.obsm:
+        raise KeyError(
+            f"neighbor_rep='{neighbor_rep}' is not available; use 'X' or 'X_spatial'."
+        )
+    n_neighbors = max(1, min(int(n_neighbors), feature_matrix.shape[0] - 1))
+    sc.pp.neighbors(plot_adata, n_neighbors=n_neighbors, use_rep=use_rep)
+    scv.tl.velocity_graph(plot_adata, vkey="velocity", xkey="Ms")
+    scv.tl.velocity_embedding(
+        plot_adata,
+        basis="spatial",
+        vkey="velocity",
+    )
+    return np.asarray(plot_adata.obsm["velocity_spatial"], dtype=np.float32)
+
+
+def plot_spatial_component_direction_correlation_roi_from_adata(
+    adata,
+    out_path: str,
+    *,
+    target_timepoint: float,
+    component_a_key: str = "full_drift_model",
+    component_b_key: str = "interaction_model",
+    component_a_label: str = "full",
+    component_b_label: str = "interaction",
+    time_key: Optional[str] = None,
+    annotation_key: str = "Annotation",
+    focus_label_keyword: Optional[str] = None,
+    pad_ratio: float = 0.15,
+    n_neighbors: int = 30,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: bool = True,
+    csv_path: Optional[str] = None,
+) -> SpatialDirectionCorrelationResult:
+    """Plot scVelo-projected directional similarity inside a label-defined ROI."""
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
+
+    required_obsm = [spatial_key, component_a_key, component_b_key]
+    missing = [key for key in required_obsm if key not in adata.obsm]
+    if missing:
+        raise KeyError(f"adata.obsm is missing required arrays: {missing}")
+    resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
+    times = np.asarray(
+        [parse_time_value(value) for value in adata.obs[resolved_time_key]],
+        dtype=float,
+    )
+    available = np.unique(times)
+    selected_time = float(
+        available[np.argmin(np.abs(available - float(target_timepoint)))]
+    )
+    mask = np.isclose(times, selected_time, rtol=0.0, atol=1e-9)
+    coordinates = np.asarray(adata.obsm[spatial_key], dtype=np.float32)[mask, :2]
+    component_a = np.asarray(adata.obsm[component_a_key], dtype=np.float32)[mask]
+    component_b = np.asarray(adata.obsm[component_b_key], dtype=np.float32)[mask]
+    if obsm_key in adata.obsm:
+        latent = np.asarray(adata.obsm[obsm_key], dtype=np.float32)[mask]
+    else:
+        latent_raw = adata.X[mask]
+        if hasattr(latent_raw, "toarray"):
+            latent_raw = latent_raw.toarray()
+        latent = np.asarray(latent_raw, dtype=np.float32)
+    features = (
+        np.hstack((coordinates, latent)).astype(np.float32)
+        if concat_spatial
+        else latent
+    )
+    if component_a.shape != features.shape or component_b.shape != features.shape:
+        raise ValueError(
+            "Component arrays must match the selected model feature matrix; "
+            f"features={features.shape}, {component_a_key}={component_a.shape}, "
+            f"{component_b_key}={component_b.shape}."
+        )
+
+    embedded_a = embed_velocity_to_spatial(
+        features,
+        coordinates,
+        component_a,
+        n_neighbors=n_neighbors,
+        neighbor_rep="X_spatial",
+    )
+    embedded_b = embed_velocity_to_spatial(
+        features,
+        coordinates,
+        component_b,
+        n_neighbors=n_neighbors,
+        neighbor_rep="X_spatial",
+    )
+    dot = np.einsum("ij,ij->i", embedded_a, embedded_b)
+    denominator = np.linalg.norm(embedded_a, axis=1) * np.linalg.norm(
+        embedded_b, axis=1
+    )
+    cosine = np.divide(
+        dot,
+        denominator,
+        out=np.zeros_like(dot),
+        where=denominator > 0,
+    )
+
+    labels = (
+        adata.obs.loc[mask, annotation_key].astype(str).to_numpy()
+        if annotation_key in adata.obs.columns
+        else np.full(coordinates.shape[0], "unknown", dtype=object)
+    )
+    focus_mask = np.zeros(coordinates.shape[0], dtype=bool)
+    if focus_label_keyword:
+        focus_mask = np.char.find(
+            np.char.lower(labels.astype(str)),
+            str(focus_label_keyword).lower(),
+        ) >= 0
+    if np.any(focus_mask):
+        focus_coordinates = coordinates[focus_mask]
+        x0, y0 = focus_coordinates.min(axis=0)
+        x1, y1 = focus_coordinates.max(axis=0)
+        dx = max(float(x1 - x0), 1e-6)
+        dy = max(float(y1 - y0), 1e-6)
+        x_min, x_max = x0 - pad_ratio * dx, x1 + pad_ratio * dx
+        y_min, y_max = y0 - pad_ratio * dy, y1 + pad_ratio * dy
+    else:
+        x_min, x_max = np.quantile(coordinates[:, 0], [0.72, 0.92])
+        y_min, y_max = np.quantile(coordinates[:, 1], [0.40, 0.70])
+    roi_mask = (
+        (coordinates[:, 0] >= x_min)
+        & (coordinates[:, 0] <= x_max)
+        & (coordinates[:, 1] >= y_min)
+        & (coordinates[:, 1] <= y_max)
+    )
+    table = pd.DataFrame(
+        {
+            "timepoint": selected_time,
+            "x": coordinates[roi_mask, 0],
+            "y": coordinates[roi_mask, 1],
+            "cosine": cosine[roi_mask],
+            "celltype": labels[roi_mask],
+        }
+    )
+    if table.empty:
+        raise ValueError("The selected ROI contains no cells.")
+
+    figure_path = Path(out_path).expanduser().resolve()
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+    csv_output = Path(csv_path).expanduser().resolve() if csv_path else None
+    if csv_output is not None:
+        csv_output.parent.mkdir(parents=True, exist_ok=True)
+        table.to_csv(csv_output, index=False)
+
+    with plt.rc_context(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "axes.edgecolor": "black",
+        }
+    ):
+        fig, ax = plt.subplots(figsize=(6.6, 6.0), dpi=150)
+        cmap = plt.cm.plasma
+        norm = mpl.colors.TwoSlopeNorm(vmin=-1, vcenter=0, vmax=1)
+        scatter = ax.scatter(
+            table["x"],
+            table["y"],
+            c=table["cosine"],
+            s=22,
+            linewidths=0,
+            cmap=cmap,
+            norm=norm,
+            alpha=0.95,
+        )
+        ax.set_xlabel("X (spatial)")
+        ax.set_ylabel("Y (spatial)")
+        ax.set_aspect("equal")
+        ax.set_title(
+            f"ROI t={selected_time:g} | {component_a_label} vs {component_b_label}"
+        )
+        colorbar = fig.colorbar(scatter, ax=ax, pad=0.02)
+        colorbar.set_label(
+            f"Cosine similarity ({component_a_label} vs {component_b_label})"
+        )
+        fig.savefig(figure_path, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+
+    return SpatialDirectionCorrelationResult(
+        table=table,
+        embedded_a=embedded_a,
+        embedded_b=embedded_b,
+        roi_bounds=(float(x_min), float(x_max), float(y_min), float(y_max)),
+        figure_path=figure_path,
+        csv_path=csv_output,
+    )
 
 
 def plot_velocity_component(

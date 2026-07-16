@@ -31,10 +31,14 @@ def plot_sankey(
     time_axis_y: float = -0.08,
     normalize_mode: Optional[str] = None,
     min_flow: Optional[float] = None,
+    keep_source_cumfrac: Optional[float] = None,
     label_to_color: Optional[Dict[str, str]] = None,
     lineage_anchor_mode: bool = False,
     anchor_time_index: int = 0,
-    title: str = "Cell Lineage Sankey",
+    style: str = "default",
+    title: Optional[str] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
 ):
     """Create a Sankey diagram showing cell lineage transitions.
     
@@ -93,6 +97,12 @@ def plot_sankey(
         raise ValueError("normalize_mode must be None, 'source', or 'global'")
     if min_flow is not None and min_flow < 0:
         raise ValueError("min_flow must be >= 0")
+    if keep_source_cumfrac is not None:
+        keep_source_cumfrac = float(keep_source_cumfrac)
+        if not 0.0 < keep_source_cumfrac <= 1.0:
+            raise ValueError("keep_source_cumfrac must be in (0, 1].")
+    if style not in {"default", "nature-methods"}:
+        raise ValueError("style must be 'default' or 'nature-methods'.")
     
     def _align_for_anchor(lbl_list: Sequence[Sequence[str]], anchor_idx: int):
         arrs = [pd.Series(list(x)).astype(str).values for x in lbl_list]
@@ -117,6 +127,18 @@ def plot_sankey(
             raise ValueError("No labels available for ancestor-coupled Sankey.")
     else:
         labels_aligned = [list(x) for x in labels_list]
+
+    def _filter_keep_source_cumfrac(df, cumfrac: float, group_cols: Sequence[str]):
+        keep_indices = []
+        for _, group in df.groupby(list(group_cols), sort=False):
+            group = group.sort_values("value", ascending=False)
+            total = float(group["value"].sum())
+            if total <= 0:
+                continue
+            cumulative = (group["value"].cumsum() / total).to_numpy()
+            keep_n = int(np.searchsorted(cumulative, cumfrac, side="left")) + 1
+            keep_indices.extend(group.head(max(1, min(len(group), keep_n))).index.tolist())
+        return df.loc[keep_indices] if keep_indices else df.iloc[0:0]
     
     if focus_source_label is not None:
         min_len_focus = min(len(labels_aligned[t]) for t in range(start_index, num_timepoints))
@@ -157,6 +179,14 @@ def plot_sankey(
                 total = counts["value"].sum()
                 if total > 0:
                     counts["value"] = counts["value"] / total
+            if keep_source_cumfrac is not None:
+                counts = _filter_keep_source_cumfrac(
+                    counts,
+                    keep_source_cumfrac,
+                    group_cols=["ancestor", "source"],
+                )
+                if counts.empty:
+                    continue
             if min_flow is not None:
                 counts = counts[counts["value"] >= min_flow]
                 if counts.empty:
@@ -182,6 +212,14 @@ def plot_sankey(
                 total = counts["value"].sum()
                 if total > 0:
                     counts["value"] = counts["value"] / total
+            if keep_source_cumfrac is not None:
+                counts = _filter_keep_source_cumfrac(
+                    counts,
+                    keep_source_cumfrac,
+                    group_cols=["source"],
+                )
+                if counts.empty:
+                    continue
             if min_flow is not None:
                 counts = counts[counts["value"] >= min_flow]
                 if counts.empty:
@@ -275,10 +313,11 @@ def plot_sankey(
             node_y.append(pos / (len(group) - 1))
     
     link_colors = []
+    link_alpha = 0.4 if style == "nature-methods" else 0.5
     for src_idx in all_links_df["source_idx"]:
         source_node_label = all_nodes[src_idx]
         base_color = _base_color(source_node_label)
-        link_colors.append(_sanitize_color(base_color, alpha=0.5))
+        link_colors.append(_sanitize_color(base_color, alpha=link_alpha))
     
     displayed_steps = num_timepoints - start_index
     if displayed_steps < 2:
@@ -289,20 +328,22 @@ def plot_sankey(
             time_idx = int(node_id.rsplit("__T", 1)[1]) - (start_index + 1)
         else:
             time_idx = 0
+        if style == "nature-methods":
+            return 0.05 + (time_idx / (displayed_steps - 1)) * 0.9
         return time_idx / (displayed_steps - 1)
     
     fig = go.Figure(
         data=[
             go.Sankey(
-                arrangement="fixed",
+                arrangement="snap" if style == "nature-methods" else "fixed",
                 node=dict(
-                    pad=20,
-                    thickness=25,
+                    pad=15 if style == "nature-methods" else 20,
+                    thickness=20 if style == "nature-methods" else 25,
                     line=dict(color="black", width=0.5),
                     label=node_labels,
                     color=node_colors,
                     x=[_node_x(node) for node in all_nodes],
-                    y=node_y,
+                    **({} if style == "nature-methods" else {"y": node_y}),
                 ),
                 link=dict(
                     source=all_links_df["source_idx"],
@@ -314,13 +355,25 @@ def plot_sankey(
         ]
     )
     
-    fig.update_layout(
-        title_text=title,
+    if title is None:
+        title = "Cell Fate Transitions" if style == "nature-methods" else "Cell Lineage Sankey"
+    layout_kwargs = dict(
         font_family="Arial",
         font_size=12,
         plot_bgcolor="white",
         paper_bgcolor="white",
     )
+    if style == "nature-methods":
+        layout_kwargs["title"] = dict(text=title, x=0.5, xanchor="center")
+        layout_kwargs["width"] = 1600 if width is None else int(width)
+        layout_kwargs["height"] = 1000 if height is None else int(height)
+    else:
+        layout_kwargs["title_text"] = title
+        if width is not None:
+            layout_kwargs["width"] = int(width)
+        if height is not None:
+            layout_kwargs["height"] = int(height)
+    fig.update_layout(**layout_kwargs)
     
     if show_time_axis:
         if time_keys_list is None:

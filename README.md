@@ -143,6 +143,12 @@ The main package-level entry points are:
 - `CytoBridge.pp.generate_interaction_graph`
 - `CytoBridge.pp.train_edge_predictor`
 - `CytoBridge.tl.fit`
+- `CytoBridge.tl.evaluate_model_distributions`
+- `CytoBridge.tl.train_cached_mlp_classifier_from_adata`
+- `CytoBridge.tl.run_interpolation_workflow`
+- `CytoBridge.tl.compute_timepoint_communications`
+- `CytoBridge.tl.plot_lineage_sankey`
+- `CytoBridge.tl.plot_spatiotemporal_3d`
 
 A typical AnnData-first workflow is:
 
@@ -209,10 +215,278 @@ The feature table must match the checkpoint contract recorded in
 (two aligned spatial coordinates followed by 50 expression PCs). The companion
 `cb_reproducibility` repository contains the canonical executable notebook.
 
+## Canonical ARISTA reproduction
+
+ARISTA has a dataset-specific entry point, but all computation is delegated to
+the same public preprocessing, training, evaluation, simulation, communication,
+lineage, and plotting APIs used by other datasets.
+
+### Full H5AD-to-model run
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_arista_end_to_end.py \
+  --profile full \
+  --stage all \
+  --threshold-policy preprocess \
+  --h5ad-path /path/to/ARTISTA_after_pp_with_ae_and_center.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.human.csv \
+  --output-dir /path/to/runs/arista-full \
+  --device cuda
+```
+
+The full profile uses the recovered CytoBridge six-stage spatial schedule in
+`CytoBridge/configs/arista_spatial_full.yaml`: 100 pretraining epochs, 100
+refinement epochs, 50 interaction-initialization epochs, 2,001 score-matching
+epochs, 1,000 finetuning epochs, and a final 2,001-epoch score refinement. It
+preserves the recovered weighted-OT objective (`alpha_spatial=10`,
+`alpha_express=0.05`), stage-specific mass conventions, forward-OT checkpoint
+selection for intermediate stages, and the finetuning plateau scheduler.
+Finetuning also restores the historical checkpoint rule: the best forward
+last-interval OT state is captured before reverse-time updates, rather than
+unconditionally using epoch 1,000's final weights.
+`CytoBridge/configs/arista_spatial_compact_full.yaml` retains the earlier
+three-stage `500/2001/1000` profile for explicitly labeled method/threshold
+ablations; it is not the six-stage package profile. The released ARISTA
+checkpoint's `params.yml` records the older top-level `500/2001/1000` fields,
+but the original interaction-stage training driver and execution log are not
+part of the released assets. Therefore exact historical retraining should not
+be claimed from metadata alone; the formal comparison treats the saved model as
+the reference and the recovered package schedule as a separately labeled run.
+The ARISTA
+alignment recipe uses median-library-size normalization (`target_sum=None` in
+Scanpy), 2,000 HVGs, 50 PCs, two aligned spatial coordinates, and seed 42.
+The canonical runner sets `evaluate_after_training=False` because the trainer's
+historical in-memory evaluation is redundant and can retain a large autograd
+graph. It evaluates the saved checkpoint immediately afterward through the
+bounded, reproducible distribution-evaluation API instead.
+
+The seed is applied before model construction as well as before sampling.
+For stages that explicitly use `save_strategy: last`, the saved state follows
+exactly the declared epoch count and does not run an undocumented extra
+optimizer epoch. Non-finite ODE states,
+losses, and gradients fail loudly. The ARISTA finetuning profile uses gradient
+clipping (`max_grad_norm=10`) as an explicit numerical safeguard; this is the
+only intentional stabilization relative to the released script and is recorded
+in the resolved configuration.
+
+For parity with the released ARISTA GNN, radial-basis centers and widths are
+fixed (`model.interaction_net.rbf_trainable: false`). Set this option to `true`
+only for an explicit trainable-RBF ablation; doing so changes the interaction
+model and is not a reproduction of the released checkpoint semantics.
+
+For downstream loading, score-matching stages are inferred from the resolved
+training plan and searched in reverse execution order. Thus the six-stage
+ARISTA profile loads `Score_Refine/score_model.pth`, while configurations ending
+in `Train_Score_Final` load that final stage. The selected `score_stage` is
+recorded in every downstream manifest.
+
+The run writes:
+
+- `preprocess/arista_aligned.h5ad` and `arista_aligned.csv`
+- per-timepoint graph inputs and edge-predictor metadata
+- staged checkpoints under `training/`
+- PCA/spatial generated-versus-observed figures
+- joint, spatial, and PCA W1/W2 metrics plus TMV and local-structure diagnostics
+- compressed generated/observed sample arrays used to calculate the figures
+- a machine-readable `downstream/run_manifest.json`, including the exact
+  weight/score checkpoint paths and SHA-256 hashes
+
+Use `--profile smoke` only to test wiring. Its per-timepoint subsampling changes
+nearest-neighbor distances, so its automatically estimated spatial cutoff is not
+scientifically comparable with the full-data or published cutoff.
+
+### Auditing a released model-input CSV
+
+Some historical runs begin from an already aligned/reduced table such as
+`arista_1108_with_annotation.csv` rather than gene-level AnnData. Import that
+table explicitly as a legacy model state:
+
+```bash
+python scripts/convert_legacy_model_input_csv.py \
+  --input-csv /path/to/arista_1108_with_annotation.csv \
+  --output-h5ad /path/to/arista_legacy_model_input.h5ad \
+  --interaction-cutoff 0.05 \
+  --edge-predictor-threshold 0.45 \
+  --edge-predictor-path /path/to/edge_classifier/arista.pt
+```
+
+The generic `legacy_model_input_csv_to_adata` API maps `x1,x2` to
+`obsm['spatial_aligned']`, the remaining numeric columns to
+`obsm['X_latent']`, and preserves numeric time values and optional annotation.
+The source path/hash, column order, and interaction settings are written into
+AnnData provenance. Because the CSV contains no gene-level expression, this is
+an audit/migration input—not a substitute for the full H5AD preprocessing
+workflow. It is useful for separating training-code changes from preprocessing
+and coordinate changes in a controlled comparison.
+
+### Threshold provenance
+
+With `--threshold-policy preprocess` (recommended), preprocessing estimates the
+spatial neighborhood cutoff from the aligned coordinates and selects the edge
+classifier threshold on validation data. Both effective values and their sources
+are stored in `adata.uns` and edge metadata. `CytoBridge.tl.fit` reads those values
+directly from the aligned H5AD, so preprocessing and training cannot silently use
+different thresholds.
+
+For an explicit historical control, `--threshold-policy published` stores and
+uses the ARISTA manuscript values:
+
+- spatial neighborhood cutoff: `0.05`
+- edge-predictor decision threshold: `0.45`
+
+This control is useful for sensitivity analysis; it is not an instruction to
+reuse a smoke-run threshold on the full dataset.
+
+Because the neighborhood policy also changes the graph used to train the edge
+classifier, two independently preprocessed policy runs may have different edge
+weights even when their aligned coordinates and PCA values match. To isolate
+fit-time thresholds, copy one prepared H5AD and edge model byte-for-byte and use
+the runner's explicit training overrides:
+
+```bash
+python scripts/run_arista_end_to_end.py \
+  --profile full --stage train \
+  --h5ad-path /path/to/frozen/preprocess/arista_aligned.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.human.csv \
+  --output-dir /path/to/frozen-control \
+  --training-interaction-cutoff 0.05 \
+  --training-edge-predictor-threshold 0.45 \
+  --training-edge-predictor-path /path/to/frozen/preprocess/edge_classifier/arista_edge_model.pt
+```
+
+The resolved `training/config.yaml` records the effective values and edge-model
+path. A defensible paired control must also verify identical aligned-H5AD and
+edge-model hashes before training.
+
+Raw cutoff values should be interpreted together with coordinate scale. For
+cross-run comparisons, report the coordinate range/standard deviation, median
+nearest-neighbor distance, and `cutoff / median_nn`; do not attribute a cutoff
+difference to biology until the aligned-coordinate scales have been checked.
+
+In the full ARISTA audit, the historical and current aligned coordinates have
+nearly identical scale (median nearest-neighbor distance `0.003160` versus
+`0.003142`; coordinate correlations `0.9977` and `0.9900`). The historical
+`0.05` cutoff is therefore not explained by a coordinate rescaling: it spans
+about `15.8` historical median-neighbor distances, whereas the full-data
+preprocessing cutoff `0.031543` spans about `10.0`. The current edge threshold
+is `0.35` (validation-selected), compared with the historical `0.45`.
+
+The formal full-data comparison uses mean metrics across the five observed
+times. The strict threshold control reuses the exact same aligned H5AD and edge
+weights as the current-auto run, changing only fit-time thresholds:
+
+| condition | spatial W1 | spatial W2 | TMV | NN dispersion ratio | clump fraction |
+|---|---:|---:|---:|---:|---:|
+| published saved model | 0.07377 | 0.08815 | 0.02321 | 0.9449 | 0.0110 |
+| recovered six-stage, legacy input | 0.06308 | 0.07515 | 0.01366 | 0.7981 | 0.0261 |
+| recovered six-stage, current preprocess + auto thresholds | 0.06648 | 0.08182 | 0.00624 | 0.8966 | 0.0127 |
+| same current input/edge model, fit with `0.05/0.45` | 0.06949 | 0.08095 | 0.00652 | 0.3128 | 0.0976 |
+
+The strict control illustrates why W1/W2/TMV are insufficient on their own:
+its aggregate distances look competitive while the generated spatial clouds
+collapse into repeated local clumps. The current-preprocess/auto-threshold run
+is therefore the selected retrained model; the published checkpoint remains a
+separate saved-model reference.
+
+`compare_distribution_metric_tables` and
+`save_distribution_metric_comparison` provide a dataset-agnostic paired
+comparison of W1, W2, TMV, and local-structure tables and figures. Candidate
+deltas are defined as `candidate - baseline`. Lower W1/W2/TMV and clump
+fraction are better; the nearest-neighbor dispersion ratio should be near one,
+and support recall/precision should be high.
+
+Additional shared ARISTA panel APIs include
+`summarize_growth_interaction_by_celltype`,
+`plot_growth_interaction_bubble`, and
+`plot_spatial_component_direction_correlation_roi_from_adata`. The shared
+`summarize_label_composition` and `plot_celltype_composition` APIs export the
+interpolated cell-type composition table and stacked fraction panel used for
+S14b; `evaluate_growth_by_timepoint` and `plot_growth_timepoint_grid` produce
+the S13 per-cell table and dense observed/generated spatial grid. Their inputs are
+generic AnnData keys and model components; the companion notebooks contain only
+the ARISTA timepoint, annotation, and reaEGC ROI choices.
+
+Temporal gene and ligand-receptor panels use the same separation of concerns:
+
+- `summarize_temporal_gene_patterns` uses either the PCA contract retained in
+  processed AnnData or an explicit `PCAReconstructionSpec`, inverse-projects
+  simulated PCA states, and clusters the resulting gene trajectories;
+- `project_communication_to_lr_timecourses` combines those reconstructed
+  expression values with per-timepoint `M_per_source` communication matrices;
+- `load_pca_reconstruction_spec` loads historical loading/center tables through
+  a generic, validated feature-alignment contract rather than dataset-local
+  parsing;
+- `plot_temporal_gene_heatmap`, `plot_temporal_pattern_prototypes`, and
+  `plot_temporal_profile_small_multiples` render dataset-agnostic S15-S17-style
+  panels.
+
+The default, prospective workflow requires a package-processed reference H5AD
+that retains PCA loadings. An older H5AD containing only `X_pca` coordinates is
+not sufficient by itself. For a declared historical reproduction, callers may
+instead load the archived PCA components and center with
+`load_pca_reconstruction_spec`; both source paths and hashes should be recorded
+in the run manifest. `preferred_species_tag` makes cross-species symbol choice
+explicit, while `profile_linkage_method` and `profile_cluster_order` expose the
+clustering contract. For ARISTA, the paper's 68 LR pairs arise from the
+historical first-symbol mapping (`preferred_species_tag=None`); preferring
+`[hs]` yields 89 pairs. Ward linkage with dendrogram cluster ordering reproduces
+the paper's clustering rule.
+
+### Shared spatiotemporal downstream workflow
+
+The following command replaces the historical ARISTA-local copies of
+`DeepRUOT`, classifier, piecewise warp, interaction, Sankey, and 3D plotting
+code. The YAML contains only dataset keys, timepoints, and figure styling.
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_spatiotemporal_downstream.py \
+  --config CytoBridge/configs/arista_downstream.yaml \
+  --aligned-h5ad /path/to/runs/arista-full/preprocess/arista_aligned.h5ad \
+  --model-dir /path/to/runs/arista-full/training \
+  --model-format current \
+  --output-dir /path/to/runs/arista-full/spatiotemporal \
+  --spatial-warp-to-observed-piecewise \
+  --classifier-knn-neighbors 1 \
+  --classifier-cache-dir /path/to/runs/arista-full/classifier_cache \
+  --device cuda
+```
+
+The classifier cache is now created through
+`train_cached_mlp_classifier_from_adata`. It remains compatible with historical
+`classifier_resmlp_*.pt` files and is reused only when its feature/data/training
+metadata match. The downstream command produces observed/generated snapshots,
+lineage Sankey, per-timepoint attention-based interactions, and the focus-anchor
+3D plot as HTML plus static SVG/PDF/PNG when Plotly image export is available.
+
+To use the workflow with another dataset, create a small YAML analogous to
+`arista_downstream.yaml` and specify its AnnData time, annotation, latent, and
+spatial keys. No dataset-specific simulation or interaction implementation is
+required.
+
+### Running on a shared server
+
+Keep code, immutable source data, environments, scratch files, and run outputs
+separate so multiple users do not overwrite each other:
+
+```text
+/data/cytobridge/projects/<project>/
+├── repos/cytobridge-spatial/       # Git checkout; no large outputs
+├── envs/<environment>/             # project-owned Python environment
+├── workspace/                      # read-mostly source data/databases
+├── runs/<dataset>/<run-id>/        # one directory per immutable run
+└── scratch/                         # temporary archives and smoke tests
+```
+
+Use a descriptive run ID, record the Git commit in the run manifest, and select
+GPUs per command with `CUDA_VISIBLE_DEVICES`; do not modify another user's
+environment or results directory.
+
 ## Key Scripts
 
 - `scripts/preprocess_pipeline.py`: end-to-end preprocessing, alignment, graph generation, and edge predictor training
 - `scripts/run_spatial_training.py`: preset-based spatial training entry point
+- `scripts/run_arista_end_to_end.py`: canonical ARISTA preprocess/train/evaluate entry point
+- `scripts/run_spatiotemporal_downstream.py`: dataset-configured interpolation/lineage/communication/3D entry point
 - `scripts/convert_legacy_weights_to_ckpt.py`: convert legacy checkpoints into the current checkpoint format
 - `scripts/run_downstream_workflow_example.py`: downstream example workflow based on trained results
 

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha1
+import json
+from pathlib import Path
 import re
+import time
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -15,6 +19,7 @@ __all__ = [
     "LoadedClassifierCache",
     "train_mlp_classifier",
     "train_mlp_classifier_from_adata",
+    "train_cached_mlp_classifier_from_adata",
     "load_cached_mlp_classifier",
     "predict_cached_mlp_classifier_from_adata",
     "predict_labels_for_points",
@@ -353,18 +358,64 @@ def _train_mlp_classifier_arrays(
     seed: int = 42,
     device: str = "cuda",
 ) -> Tuple[MLP, object, float]:
+    model, label_encoder, accuracy, _ = _train_mlp_classifier_arrays_detailed(
+        X=X,
+        y=y,
+        hidden_size=hidden_size,
+        epochs=epochs,
+        lr=lr,
+        test_size=test_size,
+        seed=seed,
+        device=device,
+        best_epoch_metric="accuracy",
+        train_on_full_data=False,
+    )
+    return model, label_encoder, accuracy
+
+
+def _train_mlp_classifier_arrays_detailed(
+    X: np.ndarray,
+    y: Sequence[str],
+    hidden_size: int = 128,
+    epochs: int = 50,
+    lr: float = 1e-3,
+    test_size: float = 0.1,
+    seed: int = 42,
+    device: str = "cuda",
+    best_epoch_metric: str = "accuracy",
+    train_on_full_data: bool = False,
+) -> Tuple[MLP, object, float, float]:
     import copy
 
-    from sklearn.metrics import accuracy_score
+    from sklearn.metrics import accuracy_score, balanced_accuracy_score
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import LabelEncoder
 
+    metric = str(best_epoch_metric).strip().lower()
+    if metric not in {"accuracy", "bacc"}:
+        raise ValueError("best_epoch_metric must be one of {'accuracy', 'bacc'}.")
+    if int(epochs) <= 0:
+        raise ValueError("epochs must be > 0.")
+    if not 0.0 < float(test_size) < 1.0:
+        raise ValueError("test_size must be in (0, 1).")
+
     torch.manual_seed(seed)
     np.random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=test_size, random_state=seed)
+    if train_on_full_data:
+        X_train, y_train = X, y_encoded
+        X_test, y_test = X, y_encoded
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y_encoded,
+            test_size=test_size,
+            random_state=seed,
+        )
 
     dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=dev)
@@ -378,7 +429,7 @@ def _train_mlp_classifier_arrays(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(epochs), eta_min=1e-5)
 
-    best_acc = 0.0
+    best_score = float("-inf")
     best_model_wts = copy.deepcopy(model.state_dict())
     for _ in range(int(epochs)):
         model.train()
@@ -394,8 +445,10 @@ def _train_mlp_classifier_arrays(
             val_outputs = model(X_test_t)
             _, val_preds = torch.max(val_outputs, 1)
             val_acc = accuracy_score(y_test, val_preds.detach().cpu().numpy())
-            if val_acc > best_acc:
-                best_acc = float(val_acc)
+            val_bacc = balanced_accuracy_score(y_test, val_preds.detach().cpu().numpy())
+            score = float(val_acc if metric == "accuracy" else val_bacc)
+            if score > best_score:
+                best_score = score
                 best_model_wts = copy.deepcopy(model.state_dict())
 
     model.load_state_dict(best_model_wts)
@@ -403,7 +456,144 @@ def _train_mlp_classifier_arrays(
     with torch.no_grad():
         preds = torch.argmax(model(X_test_t), dim=1)
     accuracy = accuracy_score(y_test, preds.detach().cpu().numpy())
-    return model, label_encoder, float(accuracy)
+    balanced_accuracy = balanced_accuracy_score(y_test, preds.detach().cpu().numpy())
+    return model, label_encoder, float(accuracy), float(balanced_accuracy)
+
+
+def _classifier_cache_fingerprint(adata, *, label_col: str, time_key: Optional[str]) -> str:
+    """Build a stable, content-aware fingerprint without hashing the expression matrix."""
+    from CytoBridge.tl.downstream.downstream_data import infer_time_key
+
+    resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
+    digest = sha1()
+    digest.update(f"{adata.n_obs}|{adata.n_vars}|{label_col}|{resolved_time_key}".encode("utf-8"))
+    for values in (
+        adata.obs_names.astype(str),
+        adata.obs[label_col].astype(str).values,
+        adata.obs[resolved_time_key].astype(str).values,
+    ):
+        digest.update("\x1f".join(map(str, values)).encode("utf-8"))
+    return digest.hexdigest()
+
+
+def train_cached_mlp_classifier_from_adata(
+    adata,
+    *,
+    cache_path: Optional[str | Path] = None,
+    cache_dir: Optional[str | Path] = None,
+    cache_tag: Optional[str] = None,
+    reuse_if_compatible: bool = True,
+    label_col: str = "Annotation",
+    time_key: Optional[str] = None,
+    obsm_key: str = "X_latent",
+    spatial_key: str = "spatial_aligned",
+    concat_spatial: Optional[bool] = None,
+    samples_column: str = "samples",
+    hidden_size: int = 128,
+    epochs: int = 500,
+    lr: float = 1e-3,
+    test_size: float = 0.1,
+    seed: int = 42,
+    device: str = "cuda",
+    include_time_feature: bool = True,
+    best_epoch_metric: str = "bacc",
+    train_on_full_data: bool = False,
+) -> tuple[LoadedClassifierCache, Path]:
+    """Train, persist, and reload a trajectory-label classifier from AnnData.
+
+    The cache format is intentionally compatible with historical ARISTA/MOSTA
+    ``classifier_resmlp_*.pt`` files, so current workflows can either reuse an old
+    cache or create one through this public API. Feature names describe the joint
+    aligned state (``samples``, then ``x1..xD``), independent of dataset-specific
+    AnnData key names.
+    """
+    if cache_path is None and cache_dir is None:
+        raise ValueError("Provide cache_path or cache_dir.")
+
+    X, y = _prepare_classifier_arrays(
+        adata,
+        label_col=label_col,
+        time_key=time_key,
+        obsm_key=obsm_key,
+        spatial_key=spatial_key,
+        concat_spatial=concat_spatial,
+        samples_column=samples_column,
+        include_time_feature=include_time_feature,
+    )
+    feature_dim = int(X.shape[1] - (1 if include_time_feature else 0))
+    feature_cols = ([samples_column] if include_time_feature else []) + [
+        f"x{i + 1}" for i in range(feature_dim)
+    ]
+    classes = sorted({str(v) for v in y})
+    metadata = {
+        "version": 2,
+        "feature_cols": feature_cols,
+        "label_col": str(label_col),
+        "hidden_size": int(hidden_size),
+        "epochs": int(epochs),
+        "lr": float(lr),
+        "test_size": float(test_size),
+        "seed": int(seed),
+        "input_size": int(X.shape[1]),
+        "classes": classes,
+        "best_epoch_metric": str(best_epoch_metric).strip().lower(),
+        "train_on_full_data": bool(train_on_full_data),
+        "include_time_feature": bool(include_time_feature),
+        "source": {
+            "kind": "AnnData",
+            "n_obs": int(adata.n_obs),
+            "n_vars": int(adata.n_vars),
+            "fingerprint": _classifier_cache_fingerprint(
+                adata,
+                label_col=label_col,
+                time_key=time_key,
+            ),
+            "obsm_key": str(obsm_key),
+            "spatial_key": str(spatial_key),
+            "concat_spatial": concat_spatial,
+        },
+    }
+
+    if cache_path is None:
+        cache_root = Path(cache_dir).expanduser().resolve()
+        cache_root.mkdir(parents=True, exist_ok=True)
+        key_payload = dict(metadata)
+        key_payload["cache_tag"] = str(cache_tag or "")
+        key = sha1(
+            json.dumps(key_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()[:16]
+        resolved_path = cache_root / f"classifier_resmlp_{key}.pt"
+    else:
+        resolved_path = Path(cache_path).expanduser().resolve()
+        resolved_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if reuse_if_compatible and resolved_path.exists():
+        cached = load_cached_mlp_classifier(str(resolved_path), device=device)
+        if cached.metadata == metadata:
+            return cached, resolved_path
+
+    model, label_encoder, accuracy, balanced_accuracy = _train_mlp_classifier_arrays_detailed(
+        X=X,
+        y=y,
+        hidden_size=hidden_size,
+        epochs=epochs,
+        lr=lr,
+        test_size=test_size,
+        seed=seed,
+        device=device,
+        best_epoch_metric=best_epoch_metric,
+        train_on_full_data=train_on_full_data,
+    )
+    payload = {
+        "meta": metadata,
+        "state_dict": {key: value.detach().cpu() for key, value in model.state_dict().items()},
+        "acc": float(accuracy),
+        "bacc": float(balanced_accuracy),
+        "num_classes": int(len(label_encoder.classes_)),
+        "saved_at": float(time.time()),
+    }
+    torch.save(payload, str(resolved_path))
+    return load_cached_mlp_classifier(str(resolved_path), device=device), resolved_path
 
 
 def train_mlp_classifier(

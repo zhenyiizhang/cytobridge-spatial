@@ -42,9 +42,15 @@ def plot_3d_spatial_sankey_style(
     edge_center_highlight_width_scale: float = 0.45,
     edge_center_highlight_alpha: float = 0.9,
     edge_color: Optional[str] = None,
+    edge_show_arrows: bool = False,
+    edge_arrow_length_scale: float = 0.14,
+    edge_arrow_width_scale: float = 0.5,
+    edge_arrow_position: float = 0.78,
+    edge_arrow_in_slice_plane: bool = False,
     ribbon_top_k=None,
     ribbon_count_quantile=None,
     ribbon_min_count: Optional[float] = None,
+    ribbon_keep_source_cumfrac: Optional[float] = None,
     ribbon_focus_celltype=None,
     ribbon_focus_target_only=False,
     ribbon_render_mode="line",
@@ -260,6 +266,66 @@ def plot_3d_spatial_sankey_style(
             "colors": vertex_colors,
         }
 
+    def create_arrowhead_segments(
+        p_prev,
+        p_tip,
+        *,
+        length_scale: float,
+        width_scale: float,
+        plane_normal=None,
+        reference_length: Optional[float] = None,
+    ):
+        p_prev = np.asarray(p_prev, dtype=float)
+        p_tip = np.asarray(p_tip, dtype=float)
+        direction = p_tip - p_prev
+        direction_len = float(np.linalg.norm(direction))
+        if direction_len < 1e-6:
+            return None
+        direction /= direction_len
+        edge_len = direction_len if reference_length is None else float(reference_length)
+        arrow_len = min(edge_len * max(float(length_scale), 0.0), edge_len * 0.35)
+        if arrow_len < 1e-6:
+            return None
+        arrow_width = arrow_len * max(float(width_scale), 0.0)
+
+        if plane_normal is not None:
+            normal = np.asarray(plane_normal, dtype=float)
+            normal_norm = float(np.linalg.norm(normal))
+            if normal_norm >= 1e-6:
+                normal /= normal_norm
+                perpendiculars = [np.cross(normal, direction)]
+            else:
+                perpendiculars = []
+        else:
+            reference = np.array([0.0, 0.0, 1.0])
+            if abs(float(np.dot(direction, reference))) > 0.9:
+                reference = np.array([0.0, 1.0, 0.0])
+            first = np.cross(direction, reference)
+            second = np.cross(direction, first)
+            perpendiculars = [first, second]
+
+        wings = []
+        base = p_tip - direction * arrow_len
+        for perpendicular in perpendiculars:
+            perpendicular_norm = float(np.linalg.norm(perpendicular))
+            if perpendicular_norm < 1e-6:
+                continue
+            perpendicular = perpendicular / perpendicular_norm
+            wings.extend(
+                [
+                    base + perpendicular * arrow_width,
+                    base - perpendicular * arrow_width,
+                ]
+            )
+        if not wings:
+            return None
+        xs, ys, zs = [], [], []
+        for wing in wings:
+            xs.extend([wing[0], p_tip[0], None])
+            ys.extend([wing[1], p_tip[1], None])
+            zs.extend([wing[2], p_tip[2], None])
+        return xs, ys, zs
+
     if anchor_mode not in ("centroid", "nearest"):
         raise ValueError("anchor_mode must be 'centroid' or 'nearest'")
     if slices_only:
@@ -303,6 +369,32 @@ def plot_3d_spatial_sankey_style(
             return coords
         idx = rng.choice(coords.shape[0], size=int(max_n), replace=False)
         return coords[idx]
+
+    def _normalize_focus_labels(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            labels = [item.strip() for item in value.split(",") if item.strip()]
+        elif isinstance(value, (list, tuple, set, np.ndarray, pd.Index)):
+            labels = [str(item).strip() for item in value if str(item).strip()]
+        else:
+            labels = [str(value).strip()]
+        return set(labels) if labels else None
+
+    def _filter_transitions_keep_source_cumfrac(df, cumfrac: float):
+        cumfrac = float(cumfrac)
+        if not 0.0 < cumfrac <= 1.0:
+            raise ValueError("ribbon_keep_source_cumfrac must be in (0, 1].")
+        keep_indices = []
+        for _, group in df.groupby("source", sort=False):
+            group = group.sort_values("count", ascending=False)
+            total = float(group["count"].sum())
+            if total <= 0:
+                continue
+            cumulative = (group["count"].cumsum() / total).to_numpy()
+            keep_n = int(np.searchsorted(cumulative, cumfrac, side="left")) + 1
+            keep_indices.extend(group.head(max(1, min(len(group), keep_n))).index.tolist())
+        return df.loc[keep_indices] if keep_indices else df.iloc[0:0]
 
     def _canonical_time_value(value):
         if isinstance(value, str):
@@ -561,6 +653,9 @@ def plot_3d_spatial_sankey_style(
     anchor_labels: Optional[np.ndarray] = None
     if predicted_labels_list:
         labels_flow, anchor_labels = _align_labels_for_flow(predicted_labels_list, anchor_time_index)
+    focus_labels = _normalize_focus_labels(
+        ribbon_focus_celltype if ribbon_focus_celltype is not None else focus_celltype
+    )
 
     for layer_idx, (tk, z) in enumerate(zip(time_keys, z_values)):
         ad = adata_dict[tk]
@@ -870,8 +965,21 @@ def plot_3d_spatial_sankey_style(
                         line_color = to_valid_color(label_to_color.get(t_f, "#cccccc"), default_alpha=0.85)
                     if curve_points is not None:
                         xs, ys, zs = zip(*curve_points)
+                        segments = np.diff(np.asarray(curve_points, dtype=float), axis=0)
+                        arrow_reference_length = float(np.linalg.norm(segments, axis=1).sum())
+                        arrow_idx = min(
+                            len(curve_points) - 1,
+                            max(1, int(round(float(edge_arrow_position) * (len(curve_points) - 1)))),
+                        )
+                        arrow_prev = curve_points[arrow_idx - 1]
+                        arrow_tip = curve_points[arrow_idx]
                     else:
                         xs, ys, zs = [p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]]
+                        arrow_reference_length = float(np.linalg.norm(np.asarray(p2) - np.asarray(p1)))
+                        arrow_fraction = min(0.95, max(0.15, float(edge_arrow_position)))
+                        previous_fraction = max(0.0, arrow_fraction - 0.12)
+                        arrow_prev = np.asarray(p1) + (np.asarray(p2) - np.asarray(p1)) * previous_fraction
+                        arrow_tip = np.asarray(p1) + (np.asarray(p2) - np.asarray(p1)) * arrow_fraction
                     fig.add_trace(
                         go.Scatter3d(
                             x=xs,
@@ -884,6 +992,27 @@ def plot_3d_spatial_sankey_style(
                             hovertext=f"Comm: {t_f} -> {t_t}<br>{tk}<br>Val: {w:.3f}",
                         )
                     )
+                    if edge_show_arrows:
+                        arrow_segments = create_arrowhead_segments(
+                            arrow_prev,
+                            arrow_tip,
+                            length_scale=edge_arrow_length_scale,
+                            width_scale=edge_arrow_width_scale,
+                            plane_normal=np.array([0.0, 0.0, 1.0]) if edge_arrow_in_slice_plane else None,
+                            reference_length=arrow_reference_length,
+                        )
+                        if arrow_segments is not None:
+                            fig.add_trace(
+                                go.Scatter3d(
+                                    x=arrow_segments[0],
+                                    y=arrow_segments[1],
+                                    z=arrow_segments[2],
+                                    mode="lines",
+                                    line=dict(width=max(0.8, float(line_w)), color=line_color),
+                                    showlegend=False,
+                                    hoverinfo="skip",
+                                )
+                            )
                     if edge_center_highlight:
                         hl_color = _lighten_color(
                             line_color,
@@ -1020,6 +1149,13 @@ def plot_3d_spatial_sankey_style(
                 transitions = transitions[transitions["count"] >= ribbon_min_count]
                 if transitions.empty:
                     continue
+            if ribbon_keep_source_cumfrac is not None:
+                transitions = _filter_transitions_keep_source_cumfrac(
+                    transitions,
+                    ribbon_keep_source_cumfrac,
+                )
+                if transitions.empty:
+                    continue
             if ribbon_count_quantile is not None and len(transitions) > 1:
                 try:
                     ribbon_cut = float(transitions["count"].quantile(ribbon_count_quantile))
@@ -1037,15 +1173,14 @@ def plot_3d_spatial_sankey_style(
                 flow_val = row["value"]
                 if ribbon_cut is not None and count < ribbon_cut:
                     continue
-                focus_target = ribbon_focus_celltype or focus_celltype
-                if focus_target:
+                if focus_labels:
                     if ribbon_focus_source_only:
-                        if src != focus_target:
+                        if src not in focus_labels:
                             continue
                     elif ribbon_focus_target_only:
-                        if tgt != focus_target:
+                        if tgt not in focus_labels:
                             continue
-                    elif src != focus_target and tgt != focus_target:
+                    elif src not in focus_labels and tgt not in focus_labels:
                         continue
                 anchor_pair = _get_anchor_cross_layer(t1_key, t2_key, src, tgt, z_values[t_idx], z_values[t_idx + 1])
                 if anchor_pair is None:

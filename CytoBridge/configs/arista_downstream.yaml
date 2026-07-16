@@ -1,0 +1,84 @@
+# Dataset-specific definitions for the shared spatiotemporal downstream runner.
+dataset:
+  name: arista
+  annotation_key: Annotation
+  time_key: time_point_processed
+  obsm_key: X_latent
+  spatial_key: spatial_aligned
+  concat_spatial: true
+
+time:
+  observed: [0.0, 1.0, 2.0, 3.0, 4.0]
+  interpolated: [0.5, 1.5, 2.5, 3.5]
+  plot_3d: [0.0, 0.5, 1.0, 1.5, 2.0]
+
+simulation:
+  n_samples: 7668
+  sde_dt: 0.05
+  split_sde_dt: 0.01
+  split_sigma: 0.03
+  split_growth_alpha: 1.0
+  spatial_warp_k: 8
+  spatial_warp_eps: 1.0e-6
+
+classifier:
+  epochs: 1000
+  hidden_size: 128
+  best_metric: bacc
+  train_on_full_data: false
+  knn_neighbors: 1
+
+communication:
+  remove_self_loop: false
+  winsor_quantile: 0.995
+
+lineage:
+  keep_source_cumfrac: 0.8
+  style: nature-methods
+  title: Cell Fate Transitions
+
+plot_3d:
+  z_spacing: 3.8
+  intra_threshold: 0.0
+  edge_focus_celltype: reaEGC
+  edge_top_k: 5
+  edge_top_k_focus_label: reaEGC
+  ribbon_min_count: 10
+  ribbon_keep_source_cumfrac: 0.85
+  ribbon_focus_celltype: [reaEGC]
+  ribbon_focus_source_only: true
+  focus_anchor_label: reaEGC
+  focus_anchor_frac: 0.2
+  focus_anchor_k: null
+  focus_anchor_min_count: null
+  edge_color: rgba(25,25,25,0.75)
+  edge_show_arrows: true
+  edge_arrow_position: 0.7
+  edge_arrow_in_slice_plane: true
+  edge_arrow_length_scale: 0.14
+  edge_arrow_width_scale: 0.65
+  edge_line_width_base: 5
+  edge_line_width_scale: 0.7
+  bidirectional_offset: 0.2
+  bidirectional_curve: true
+  bidirectional_curve_points: 18
+  ribbon_line_width_base: 6
+  ribbon_line_width_scale: 1.0
+  ribbon_line_alpha: 0.55
+  ribbon_line_curve: 0.12
+  ribbon_line_points: 18
+  point_size: 1.0
+  observed_point_alpha: 0.7
+  generated_point_alpha: 0.7
+  show_slice_border: true
+  slice_border_width: 5
+  slice_border_color_observed: "#5f6a72"
+  slice_border_color_generated: "#8c6d5a"
+  slice_fill_color_observed: "#e6f0f6"
+  slice_fill_color_generated: "#f6eee5"
+  slice_fill_opacity: 0.5
+  show_time_axis: false
+  show_legend: false
+  show_title: false
+  width: 1200
+  height: 900

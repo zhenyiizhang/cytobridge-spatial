@@ -17,7 +17,16 @@ import ot
 from torchdiffeq import odeint
 from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau  # Import StepLR scheduler
 class TrainingPipeline:
-    def __init__(self, model, config, batch_size, device, data):  # Added 'data' parameter for initialization
+    def __init__(
+        self,
+        model,
+        config,
+        batch_size,
+        device,
+        data,
+        *,
+        seed_already_applied: bool = False,
+    ):  # Added 'data' parameter for initialization
         self.model = model
         self.config = config
         self.batch_size = batch_size
@@ -25,7 +34,7 @@ class TrainingPipeline:
         self.scheduler = None  # Initialize scheduler variable
         self.device = device
         seed = self.config.get('seed')
-        if seed is not None:
+        if seed is not None and not seed_already_applied:
             set_seed(seed)
         self.model.to(device)
         # Determine if mass component is used based on model configuration
@@ -272,6 +281,7 @@ class TrainingPipeline:
 
         # Training loop over epochs
         # Run training loop for the specified number of epochs
+        checkpoint_metric = stage_params.get('checkpoint_metric', 'average_loss')
         for epoch in range(1, epochs + 1):
             loss = self.train_neural_ode_epoch(stage_params, data, time_points, self.ode_func)
 
@@ -288,13 +298,30 @@ class TrainingPipeline:
             #         plot_interaction_potential_epoch(self.model,d=1,num_points=21,output_path=self.config["ckpt_dir"]+f"/interfigures/{train_name}_epoch_{epoch}_inter",device="cuda")
             #         print(f"{train_name} plot_interaction_potential_epoch {epoch} has done")
             # Update best model if current loss is lower than previous best
-            if loss < best_loss:
-                best_loss = loss
+            if checkpoint_metric == 'legacy_forward_last_ot':
+                candidate_loss = self._last_neural_ode_epoch['forward_last_ot']
+                candidate_state = self._last_neural_ode_epoch['state_after_forward']
+            elif checkpoint_metric == 'average_loss':
+                candidate_loss = loss
+                candidate_state = self.model.state_dict()
+            else:
+                raise ValueError(
+                    "checkpoint_metric must be 'average_loss' or "
+                    "'legacy_forward_last_ot'."
+                )
+            if candidate_loss < best_loss:
+                best_loss = candidate_loss
                 self.logger.info(f"Epoch {epoch:3d} has a lower loss| all_loss {best_loss:.4f}")
-                best_state = copy.deepcopy(self.model.state_dict())
-            if self.scheduler is not None:
+                best_state = copy.deepcopy(candidate_state)
+            if self.scheduler is not None and not stage_params.get('scheduler_step_before_reverse', False):
+                scheduler_metric = stage_params.get('scheduler_metric', 'average_loss')
+                scheduler_value = (
+                    self._last_neural_ode_epoch['forward_last_ot']
+                    if scheduler_metric == 'forward_last_ot'
+                    else loss
+                )
                 if isinstance(self.scheduler, ReduceLROnPlateau):
-                    self.scheduler.step(loss)
+                    self.scheduler.step(scheduler_value)
                 else:
                     self.scheduler.step()
 
@@ -303,10 +330,11 @@ class TrainingPipeline:
             save_state = best_state
             save_loss = best_loss
         else:  # 'last' strategy
-            save_state = self.model.state_dict()
-            # Recalculate loss for last epoch to ensure accuracy
-            last_loss = self.train_neural_ode_epoch(stage_params, data, time_points, self.ode_func)
-            save_loss = last_loss
+            # Snapshot the state produced by the declared number of epochs.
+            # Calling train_neural_ode_epoch here used to perform an undocumented
+            # extra optimizer update (e.g. 1001 updates for a 1000-epoch stage).
+            save_state = copy.deepcopy(self.model.state_dict())
+            save_loss = loss
 
         # Load saved state (best or last) back to model
         self.model.load_state_dict(save_state)
@@ -364,6 +392,16 @@ class TrainingPipeline:
         forward_mass0 = mass_0
 
         total_loss = 0.0
+        valid_intervals = 0
+        expected_intervals = (len(time_points) - 1) * (
+            2 if self.config.get('reverse', False) else 1
+        )
+        max_grad_norm = stage_params.get('max_grad_norm')
+        optimizer_parameters = [
+            parameter
+            for group in self.optimizer.param_groups
+            for parameter in group['params']
+        ]
         # Iterate over all time intervals (from t_{i-1} to t_i)
         for idx in range(1, len(time_points)):
             # Reset gradients before each time interval update
@@ -381,7 +419,10 @@ class TrainingPipeline:
             x1, lnw1, e1 = neural_ode_step(ode_func, x0, lnw0, t0, t1, self.device)
 
             if not torch.isfinite(x1).all() or not torch.isfinite(lnw1).all():
-                continue
+                raise FloatingPointError(
+                    f"Non-finite ODE state during {stage_params['name']} "
+                    f"forward interval {t0}->{t1}."
+                )
             # Calculate individual loss components
             try:
                 loss_ot = calc_ot_loss(
@@ -393,10 +434,16 @@ class TrainingPipeline:
                     alpha_express=alpha_express,
                     spatial_dim=self.config.get('spatial_dim', 2),
                 )
-            except Exception:
-                continue
+            except Exception as exc:
+                raise RuntimeError(
+                    f"OT loss failed during {stage_params['name']} "
+                    f"forward interval {t0}->{t1}."
+                ) from exc
             if not torch.isfinite(loss_ot):
-                continue
+                raise FloatingPointError(
+                    f"Non-finite OT loss during {stage_params['name']} "
+                    f"forward interval {t0}->{t1}."
+                )
             # Calculate mass loss only if mass component is enabled
             loss_mass = (
                 calc_mass_loss(
@@ -415,6 +462,11 @@ class TrainingPipeline:
 
             # Combine losses with respective weights
             loss = (lambda_ot * loss_ot) + (lambda_mass * loss_mass) + (lambda_energy * loss_energy)
+            if not torch.isfinite(loss):
+                raise FloatingPointError(
+                    f"Non-finite combined loss during {stage_params['name']} "
+                    f"forward interval {t0}->{t1}."
+                )
 
             if use_density_loss:          
                 density_loss = density_fn(x1, data_t1, top_k=top_k)
@@ -433,11 +485,22 @@ class TrainingPipeline:
                 # print("loss_pinn",loss_pinn)
                 # print("loss",loss)
                 loss += lambda_pinn * loss_pinn
+            if not torch.isfinite(loss):
+                raise FloatingPointError(
+                    f"Non-finite final loss during {stage_params['name']} "
+                    f"forward interval {t0}->{t1}."
+                )
             # print(f"OT Loss: {loss_ot:.4f} (λ={lambda_ot}), Mass Loss: {loss_mass:.4f} (λ={lambda_mass}), Energy Loss: {loss_energy:.4f} (λ={lambda_energy}), Density Loss: {density_loss:.4f} (λ={lambda_density})" if use_density_loss else f"OT Loss: {loss_ot:.4f} (λ={lambda_ot}), Mass Loss: {loss_mass:.4f} (λ={lambda_mass}), Energy Loss: {loss_energy:.4f} (λ={lambda_energy})", end="")
             # if use_pinn_loss:
             #     print(f", PINN Loss: {loss_pinn:.4f} (λ={lambda_pinn})")
             # Backpropagate gradients and update optimizer
             loss.backward()
+            if max_grad_norm is not None:
+                torch.nn.utils.clip_grad_norm_(
+                    optimizer_parameters,
+                    max_norm=float(max_grad_norm),
+                    error_if_nonfinite=True,
+                )
             self.optimizer.step()
 
             # Update initial state for next time interval (detach to avoid gradient accumulation)
@@ -446,6 +509,28 @@ class TrainingPipeline:
 
             # Accumulate total loss over all time intervals
             total_loss += loss.item()
+            valid_intervals += 1
+
+        # The released DeepRUOT scripts selected intermediate stage checkpoints
+        # using the final forward interval's OT loss and captured the weights
+        # before the reverse pass.  Keep that behavior opt-in so generic configs
+        # retain their average-loss checkpointing semantics.
+        forward_last_ot = float(loss_ot.detach().item())
+        state_after_forward = None
+        if stage_params.get('checkpoint_metric') == 'legacy_forward_last_ot':
+            state_after_forward = copy.deepcopy(self.model.state_dict())
+        self._last_neural_ode_epoch = {
+            'forward_last_ot': forward_last_ot,
+            'state_after_forward': state_after_forward,
+        }
+
+        if self.scheduler is not None and stage_params.get('scheduler_step_before_reverse', False):
+            scheduler_metric = stage_params.get('scheduler_metric', 'forward_last_ot')
+            scheduler_value = forward_last_ot if scheduler_metric == 'forward_last_ot' else total_loss / valid_intervals
+            if isinstance(self.scheduler, ReduceLROnPlateau):
+                self.scheduler.step(scheduler_value)
+            else:
+                self.scheduler.step()
 
         # Optional reverse-time training to mirror legacy DeepRUOT behavior
         if self.config.get('reverse', False):
@@ -475,7 +560,10 @@ class TrainingPipeline:
                 x1, lnw1, e1 = neural_ode_step(ode_func, x0, lnw0, t0, t1, self.device)
 
                 if not torch.isfinite(x1).all() or not torch.isfinite(lnw1).all():
-                    continue
+                    raise FloatingPointError(
+                        f"Non-finite ODE state during {stage_params['name']} "
+                        f"reverse interval {t0}->{t1}."
+                    )
                 try:
                     loss_ot = calc_ot_loss(
                         x1,
@@ -486,10 +574,16 @@ class TrainingPipeline:
                         alpha_express=alpha_express,
                         spatial_dim=self.config.get('spatial_dim', 2),
                     )
-                except Exception:
-                    continue
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"OT loss failed during {stage_params['name']} "
+                        f"reverse interval {t0}->{t1}."
+                    ) from exc
                 if not torch.isfinite(loss_ot):
-                    continue
+                    raise FloatingPointError(
+                        f"Non-finite OT loss during {stage_params['name']} "
+                        f"reverse interval {t0}->{t1}."
+                    )
                 loss_mass = (
                     calc_mass_loss(
                         x1,
@@ -504,6 +598,11 @@ class TrainingPipeline:
                 )
                 loss_energy = e1.mean()
                 loss = (lambda_ot * loss_ot) + (lambda_mass * loss_mass) - (lambda_energy * loss_energy)
+                if not torch.isfinite(loss):
+                    raise FloatingPointError(
+                        f"Non-finite combined loss during {stage_params['name']} "
+                        f"reverse interval {t0}->{t1}."
+                    )
 
                 if use_density_loss:
                     density_loss = density_fn(x1, data_t1, top_k=top_k)
@@ -525,17 +624,33 @@ class TrainingPipeline:
                         device=self.device,
                     )
                     loss += lambda_pinn * loss_pinn
+                if not torch.isfinite(loss):
+                    raise FloatingPointError(
+                        f"Non-finite final loss during {stage_params['name']} "
+                        f"reverse interval {t0}->{t1}."
+                    )
 
                 loss.backward()
+                if max_grad_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(
+                        optimizer_parameters,
+                        max_norm=float(max_grad_norm),
+                        error_if_nonfinite=True,
+                    )
                 self.optimizer.step()
 
                 x0 = x1.clone().detach()
                 lnw0 = lnw1.clone().detach()
                 total_loss += loss.item()
+                valid_intervals += 1
 
         # Return average loss per time interval (account for reverse pass if used)
-        denom = (len(time_points) - 1) * (2 if self.config.get('reverse', False) else 1)
-        return total_loss / denom
+        if valid_intervals != expected_intervals:
+            raise RuntimeError(
+                f"{stage_params['name']} completed only {valid_intervals}/"
+                f"{expected_intervals} expected intervals."
+            )
+        return total_loss / expected_intervals
 
 
     def run_flow_matching_stage(self, stage_params, data, time_points):
@@ -758,6 +873,7 @@ class TrainingPipeline:
 
         best_loss = float('inf')
         best_state_dict = None
+        last_loss = None
 
         for epoch in tqdm(range(stage_params['epochs']), desc='Score matching'):
             self.optimizer.zero_grad()
@@ -775,9 +891,11 @@ class TrainingPipeline:
             xt = xt.requires_grad_(True)
             value_st, st = self.model.compute_score(t=t, x=xt, create_graph=True)
             score_loss = torch.mean((lambda_t[:, None] * st + eps) ** 2)
-            if torch.isnan(score_loss):
-                self.logger.info("Training stopped due to NaN score loss")
-                break
+            if not torch.isfinite(score_loss):
+                raise FloatingPointError(
+                    f"Non-finite score loss during {stage_params['name']} "
+                    f"at epoch {epoch + 1}."
+                )
 
             penalty = lambda_penalty * torch.max(torch.relu(value_st))
             loss = score_loss + penalty
@@ -787,11 +905,25 @@ class TrainingPipeline:
 
             loss.backward()
             self.optimizer.step()
+            last_loss = float(loss.detach().item())
 
-        if best_state_dict is not None:
-            self.model.score_net.load_state_dict(best_state_dict)
-            torch.save(best_state_dict, os.path.join(ckpt_dir, 'score_model.pth'))
-        print(f"  Best score model (loss={best_loss:.4f}) saved → {ckpt_dir}/score_model.pth")
+        save_strategy = stage_params.get('save_strategy', 'best')
+        if save_strategy == 'best':
+            save_state = best_state_dict
+            save_loss = best_loss
+        elif save_strategy == 'last':
+            save_state = copy.deepcopy(self.model.score_net.state_dict())
+            save_loss = last_loss
+        else:
+            raise ValueError("score-matching save_strategy must be 'best' or 'last'.")
+        if save_state is None or save_loss is None:
+            raise RuntimeError(f"{stage_params['name']} produced no finite score checkpoint.")
+        self.model.score_net.load_state_dict(save_state)
+        torch.save(save_state, os.path.join(ckpt_dir, 'score_model.pth'))
+        print(
+            f"  {save_strategy.capitalize()} score model (loss={save_loss:.4f}) "
+            f"saved → {ckpt_dir}/score_model.pth"
+        )
 
     def evaluate(self,adata, data, time_points):
         """Evaluate trained model using Wasserstein-1 distance and Total Mass Variation (TMV)

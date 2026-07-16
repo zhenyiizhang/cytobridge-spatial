@@ -25,9 +25,20 @@ from .growth import (
     gene_velocity_embeddings_from_adata,
     plot_gene_expression_trends,
     plot_cell_counts_over_time,
+    plot_growth_interaction_bubble,
+    plot_growth_timepoint_grid,
 )
 from .velocity import (
+    SpatialDirectionCorrelationResult,
+    embed_velocity_to_spatial,
     plot_velocity_component,
     plot_intrinsic_interaction_direction_correlation,
     plot_intrinsic_interaction_direction_correlation_from_adata,
+    plot_spatial_component_direction_correlation_roi_from_adata,
 )
+from .temporal import (
+    plot_temporal_gene_heatmap,
+    plot_temporal_pattern_prototypes,
+    plot_temporal_profile_small_multiples,
+)
+from .celltype import plot_celltype_composition

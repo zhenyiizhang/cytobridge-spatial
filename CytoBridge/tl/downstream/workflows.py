@@ -6,12 +6,16 @@ from dataclasses import dataclass
 import os
 import pickle
 import time
-from typing import Any, Callable, Dict, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, TYPE_CHECKING
 
 import numpy as np
 
 from .attention import analyze_attention_by_celltype, save_interpolated_attention
-from .classification import load_cached_mlp_classifier, predict_labels_for_trajectories
+from .classification import (
+    load_cached_mlp_classifier,
+    predict_labels_for_trajectories,
+    train_cached_mlp_classifier_from_adata,
+)
 from .pipeline_utils import downsample_xy, find_single_classifier_cache, select_evenly_spaced
 from .simulation import (
     apply_spatial_warp_to_segments,
@@ -73,6 +77,16 @@ def run_interpolation_workflow(
     use_real_for_observed: bool = True,
     classifier_cache_path: Optional[str] = None,
     classifier_cache_dir: Optional[str] = None,
+    classifier_adata=None,
+    classifier_time_key: Optional[str] = None,
+    classifier_obsm_key: str = "X_latent",
+    classifier_spatial_key: str = "spatial_aligned",
+    classifier_concat_spatial: Optional[bool] = None,
+    classifier_epochs: int = 500,
+    classifier_hidden_size: int = 128,
+    classifier_lr: float = 1e-3,
+    classifier_test_size: float = 0.1,
+    classifier_train_on_full_data: bool = False,
     classifier_best_metric: str = "accuracy",
     classifier_n_pcs: Optional[int] = None,
     classifier_knn_neighbors: int = 10,
@@ -172,12 +186,33 @@ def run_interpolation_workflow(
             observed_time_points,
         )
         t_train0 = time.perf_counter()
-        classifier_cache_resolved = find_single_classifier_cache(
-            explicit_path=classifier_cache_path,
-            cache_dir=classifier_cache_dir,
-            output_dir=output_dir,
-        )
-        cached_classifier = load_cached_mlp_classifier(classifier_cache_resolved, device=device)
+        if classifier_adata is not None:
+            cache_dir_resolved = classifier_cache_dir or os.path.join(output_dir, "classifier_cache")
+            cached_classifier, classifier_cache_resolved = train_cached_mlp_classifier_from_adata(
+                classifier_adata,
+                cache_path=classifier_cache_path,
+                cache_dir=None if classifier_cache_path is not None else cache_dir_resolved,
+                label_col=annotation_key,
+                time_key=classifier_time_key,
+                obsm_key=classifier_obsm_key,
+                spatial_key=classifier_spatial_key,
+                concat_spatial=classifier_concat_spatial,
+                hidden_size=int(classifier_hidden_size),
+                epochs=int(classifier_epochs),
+                lr=float(classifier_lr),
+                test_size=float(classifier_test_size),
+                seed=42 if random_seed is None else int(random_seed),
+                device=device,
+                best_epoch_metric=classifier_best_metric,
+                train_on_full_data=bool(classifier_train_on_full_data),
+            )
+        else:
+            classifier_cache_resolved = find_single_classifier_cache(
+                explicit_path=classifier_cache_path,
+                cache_dir=classifier_cache_dir,
+                output_dir=output_dir,
+            )
+            cached_classifier = load_cached_mlp_classifier(classifier_cache_resolved, device=device)
         classifier_model = cached_classifier.model
         label_encoder = cached_classifier.label_encoder
         classifier_feature_dim = int(cached_classifier.feature_dim)
@@ -468,16 +503,63 @@ def compute_timepoint_communications(
     remove_self_loop: bool = False,
     winsor_quantile: float = 0.995,
     save_pickle_path: Optional[str] = None,
+    max_cells_per_timepoint: Optional[int] = None,
+    random_seed: Optional[int] = 42,
+    cell_indices_by_time: Optional[Mapping[str, Sequence[int]]] = None,
 ) -> dict[str, dict]:
+    if max_cells_per_timepoint is not None and int(max_cells_per_timepoint) <= 0:
+        raise ValueError("max_cells_per_timepoint must be positive or None.")
     os.makedirs(out_dir, exist_ok=True)
     all_time_communications = {}
+    rng = np.random.default_rng(0 if random_seed is None else int(random_seed))
     for t in time_points:
         key = str(t)
         adata_t = adata_dict[key]
-        print("Time", key, "cells", adata_t.n_obs)
+        explicit_indices = None
+        if cell_indices_by_time is not None:
+            for candidate in (key, str(float(t))):
+                if candidate in cell_indices_by_time:
+                    explicit_indices = np.asarray(
+                        cell_indices_by_time[candidate], dtype=np.int64
+                    )
+                    break
+        if explicit_indices is not None:
+            if explicit_indices.ndim != 1:
+                raise ValueError(f"cell indices for time {key} must be one-dimensional.")
+            if len(np.unique(explicit_indices)) != explicit_indices.size:
+                raise ValueError(f"cell indices for time {key} contain duplicates.")
+            if explicit_indices.size and (
+                explicit_indices.min() < 0 or explicit_indices.max() >= adata_t.n_obs
+            ):
+                raise IndexError(
+                    f"cell indices for time {key} are outside [0, {adata_t.n_obs - 1}]."
+                )
+            attention_adata = adata_t[explicit_indices].copy()
+        elif (
+            max_cells_per_timepoint is not None
+            and adata_t.n_obs > int(max_cells_per_timepoint)
+        ):
+            indices = np.sort(
+                rng.choice(
+                    adata_t.n_obs,
+                    size=int(max_cells_per_timepoint),
+                    replace=False,
+                )
+            )
+            attention_adata = adata_t[indices].copy()
+        else:
+            attention_adata = adata_t
+        print(
+            "Time",
+            key,
+            "cells",
+            attention_adata.n_obs,
+            "of",
+            adata_t.n_obs,
+        )
 
         attn_out = save_interpolated_attention(
-            adata_t,
+            attention_adata,
             time_value=float(t),
             f_net=f_net,
             device=device,
@@ -488,8 +570,8 @@ def compute_timepoint_communications(
         comm = analyze_attention_by_celltype(
             edge_index=attn_out["edge_index"],
             attn=attn_out["attn_mean"],
-            labels=adata_t.obs[annotation_key].values,
-            spatial_coord=adata_t.obsm["spatial"],
+            labels=attention_adata.obs[annotation_key].values,
+            spatial_coord=attention_adata.obsm["spatial"],
             time_title=key,
             remove_self_loop=remove_self_loop,
             winsor_quantile=winsor_quantile,
@@ -509,7 +591,7 @@ def compute_timepoint_communications(
 
 def plot_lineage_sankey(
     *,
-    plot_fn: Callable[..., Any],
+    plot_fn: Optional[Callable[..., Any]] = None,
     predicted_labels_list: Sequence[np.ndarray],
     time_keys: Sequence[str],
     label_to_color: dict[str, str],
@@ -521,25 +603,41 @@ def plot_lineage_sankey(
     title: str = "Cell Fate Transitions",
     show_time_axis: bool = True,
 ):
-    fig = plot_fn(
-        predicted_labels_list=predicted_labels_list,
-        out_html=out_html,
-        time_keys=time_keys,
-        show_time_axis=show_time_axis,
-        min_flow=min_flow,
-        keep_source_cumfrac=keep_source_cumfrac,
-        normalize_mode=normalize_mode,
-        label_to_color=label_to_color,
-        style=style,
-        title=title,
-    )
+    if plot_fn is None:
+        from CytoBridge.pl import plot_sankey
+
+        fig = plot_sankey(
+            predicted_labels_list=predicted_labels_list,
+            out_html=out_html,
+            time_keys=time_keys,
+            show_time_axis=show_time_axis,
+            min_flow=min_flow,
+            keep_source_cumfrac=keep_source_cumfrac,
+            normalize_mode=normalize_mode,
+            label_to_color=label_to_color,
+            style=style,
+            title=title,
+        )
+    else:
+        fig = plot_fn(
+            predicted_labels_list=predicted_labels_list,
+            out_html=out_html,
+            time_keys=time_keys,
+            show_time_axis=show_time_axis,
+            min_flow=min_flow,
+            keep_source_cumfrac=keep_source_cumfrac,
+            normalize_mode=normalize_mode,
+            label_to_color=label_to_color,
+            style=style,
+            title=title,
+        )
     print("Saved:", out_html)
     return fig
 
 
 def plot_spatiotemporal_3d(
     *,
-    plot_fn: Callable[..., Any],
+    plot_fn: Optional[Callable[..., Any]] = None,
     adata_dict,
     all_time_communications,
     time_keys: Sequence[str],
@@ -568,6 +666,11 @@ def plot_spatiotemporal_3d(
     plot_time_point_set = set(float(t) for t in plot_time_points)
     observed_time_points_3d = [float(t) for t in observed_time_points if float(t) in plot_time_point_set]
     interp_points_3d = [float(t) for t in interp_points if float(t) in plot_time_point_set]
+
+    if plot_fn is None:
+        from CytoBridge.pl import plot_3d_spatial_sankey_style
+
+        plot_fn = plot_3d_spatial_sankey_style
 
     fig = plot_fn(
         adata_dict=adata_dict_3d,

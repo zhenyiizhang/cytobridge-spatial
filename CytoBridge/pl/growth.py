@@ -22,7 +22,169 @@ __all__ = [
     "gene_velocity_embeddings_from_adata",
     "plot_gene_expression_trends",
     "plot_cell_counts_over_time",
+    "plot_growth_interaction_bubble",
+    "plot_growth_timepoint_grid",
 ]
+
+
+def plot_growth_timepoint_grid(
+    adata_dict,
+    *,
+    time_points,
+    time_keys=None,
+    out_path: str,
+    value_key: str = "growth_rate",
+    spatial_key: str = "spatial",
+    source_by_time: dict | None = None,
+    n_cols: int = 3,
+    cmap: str = "viridis",
+    point_size: float = 2.0,
+    lower_quantile: float = 0.05,
+    upper_quantile: float = 0.95,
+    title: str | None = None,
+):
+    """Plot spatial growth maps on a shared observed/interpolated time grid."""
+    from pathlib import Path
+    import math
+
+    import matplotlib.pyplot as plt
+
+    times = list(time_points)
+    keys = [str(value) for value in times] if time_keys is None else list(time_keys)
+    if len(times) != len(keys):
+        raise ValueError("time_points and time_keys must have the same length.")
+    if int(n_cols) <= 0:
+        raise ValueError("n_cols must be positive.")
+    n_rows = int(math.ceil(len(times) / int(n_cols)))
+    with plt.rc_context(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "black",
+            "axes.labelcolor": "black",
+        }
+    ):
+        fig, axes = plt.subplots(
+            n_rows,
+            int(n_cols),
+            figsize=(4.2 * int(n_cols), 4.2 * n_rows),
+            squeeze=False,
+            dpi=300,
+        )
+        for ax in axes.flat:
+            ax.axis("off")
+        for ax, time_value, key in zip(axes.flat, times, keys):
+            if key not in adata_dict:
+                raise KeyError(f"Missing timepoint key in adata_dict: {key!r}.")
+            adata_t = adata_dict[key]
+            if value_key not in adata_t.obs:
+                raise KeyError(f"adata_dict[{key!r}].obs is missing {value_key!r}.")
+            values = np.asarray(adata_t.obs[value_key], dtype=float)
+            if spatial_key in adata_t.obsm:
+                coords = np.asarray(adata_t.obsm[spatial_key], dtype=float)
+            else:
+                matrix = adata_t.X.toarray() if hasattr(adata_t.X, "toarray") else np.asarray(adata_t.X)
+                coords = np.asarray(matrix, dtype=float)[:, :2]
+            vmin = float(np.quantile(values, float(lower_quantile)))
+            vmax = float(np.quantile(values, float(upper_quantile)))
+            if np.isclose(vmin, vmax):
+                vmax = vmin + 1e-8
+            scatter = ax.scatter(
+                coords[:, 0],
+                coords[:, 1],
+                c=values,
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                s=float(point_size),
+                linewidths=0,
+                alpha=0.85,
+            )
+            source = source_by_time.get(time_value) if source_by_time else None
+            suffix = f" ({source})" if source else ""
+            ax.set_title(f"t={float(time_value):g}{suffix}", fontsize=10)
+            ax.set_aspect("equal")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.axis("on")
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            colorbar = fig.colorbar(scatter, ax=ax, fraction=0.046, pad=0.02)
+            colorbar.ax.tick_params(labelsize=7)
+        if title:
+            fig.suptitle(title, fontsize=13)
+        fig.tight_layout()
+        path = Path(out_path).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+    return path
+
+
+def plot_growth_interaction_bubble(
+    grouped,
+    *,
+    out_path: str,
+    min_dot_size: float = 20.0,
+    max_dot_size: float = 400.0,
+    cmap: str = "plasma",
+):
+    """Plot one growth/interaction bubble per ``(time, celltype)`` group."""
+    from pathlib import Path
+
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    table = pd.DataFrame(grouped).copy()
+    required = {"time", "celltype", "growth_mean", "interaction_mean", "n"}
+    missing = sorted(required.difference(table.columns))
+    if missing:
+        raise KeyError(f"grouped table is missing columns: {missing}")
+    if table.empty:
+        raise ValueError("grouped table must be non-empty.")
+
+    time_values = sorted(table["time"].astype(float).unique())
+    time_to_index = {value: index for index, value in enumerate(time_values)}
+    colors = table["time"].astype(float).map(time_to_index)
+    sizes = np.clip(
+        table["n"].to_numpy(dtype=float),
+        float(min_dot_size),
+        float(max_dot_size),
+    )
+
+    with plt.rc_context(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "axes.edgecolor": "black",
+        }
+    ):
+        fig, ax = plt.subplots(figsize=(7.2, 4.8), dpi=300)
+        scatter = ax.scatter(
+            table["interaction_mean"],
+            table["growth_mean"],
+            s=sizes,
+            c=colors,
+            cmap=cmap,
+            alpha=0.82,
+            edgecolors="white",
+            linewidths=0.35,
+        )
+        ax.set_xlabel("Mean interaction magnitude")
+        ax.set_ylabel("Mean growth (g)")
+        ax.grid(False)
+        colorbar = fig.colorbar(scatter, ax=ax, pad=0.02)
+        colorbar.set_label("Time index")
+        fig.tight_layout()
+        path = Path(out_path).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+    return path
 
 
 def _coerce_feature_matrix_from_adata(
