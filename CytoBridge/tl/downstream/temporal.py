@@ -447,9 +447,11 @@ def summarize_temporal_gene_patterns(
     loadings_key: str = "PCs",
     reference_layer: Optional[str] = None,
     n_top_genes: int = 250,
+    n_cluster_genes: Optional[int] = None,
     n_clusters: int = 2,
     preferred_species_tag: Optional[str] = None,
     pca_reconstruction: Optional[PCAReconstructionSpec] = None,
+    profile_normalization: str = "zscore",
     profile_linkage_method: str = "average",
     profile_cluster_order: str = "peak_time",
 ) -> TemporalGenePatternResult:
@@ -462,6 +464,8 @@ def summarize_temporal_gene_patterns(
         raise ValueError("time_points must be non-empty.")
     if int(n_top_genes) <= 0:
         raise ValueError("n_top_genes must be positive.")
+    if n_cluster_genes is not None and int(n_cluster_genes) <= 0:
+        raise ValueError("n_cluster_genes must be positive when supplied.")
 
     center = (
         infer_pca_center(reference_adata, layer=reference_layer)
@@ -502,7 +506,12 @@ def summarize_temporal_gene_patterns(
     )
     variance = expression.var(axis=1, ddof=0).sort_values(ascending=False)
     top_n = min(int(n_top_genes), int(expression.shape[0]))
+    cluster_n = min(
+        int(n_cluster_genes) if n_cluster_genes is not None else top_n,
+        int(expression.shape[0]),
+    )
     selected = variance.head(top_n).index
+    selected_for_clustering = variance.head(cluster_n).index
     top_variable = pd.DataFrame(
         {
             "gene": selected,
@@ -510,9 +519,9 @@ def summarize_temporal_gene_patterns(
         }
     )
     clustering = cluster_temporal_profiles(
-        expression.loc[selected],
+        expression.loc[selected_for_clustering],
         n_clusters=int(n_clusters),
-        normalization="zscore",
+        normalization=profile_normalization,
         method=profile_linkage_method,
         cluster_order=profile_cluster_order,
     )
@@ -528,6 +537,7 @@ def summarize_temporal_gene_patterns(
         "loadings_key": loadings_key,
         "reference_layer": reference_layer,
         "n_top_genes": int(top_n),
+        "n_cluster_genes": int(cluster_n),
         "n_clusters": int(n_clusters),
         "preferred_species_tag": preferred_species_tag,
         "pca_reconstruction": (
@@ -535,6 +545,7 @@ def summarize_temporal_gene_patterns(
             if pca_reconstruction is None
             else dict(pca_reconstruction.metadata)
         ),
+        "profile_normalization": profile_normalization,
         "profile_linkage_method": profile_linkage_method,
         "profile_cluster_order": profile_cluster_order,
     }

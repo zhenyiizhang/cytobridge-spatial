@@ -147,8 +147,12 @@ The main package-level entry points are:
 - `CytoBridge.tl.train_cached_mlp_classifier_from_adata`
 - `CytoBridge.tl.run_interpolation_workflow`
 - `CytoBridge.tl.compute_timepoint_communications`
+- `CytoBridge.tl.load_gmt_gene_sets`
+- `CytoBridge.tl.overrepresentation_analysis`
 - `CytoBridge.tl.plot_lineage_sankey`
 - `CytoBridge.tl.plot_spatiotemporal_3d`
+- `CytoBridge.pl.plot_enrichment_bar`
+- `CytoBridge.pl.plot_enrichment_dot`
 
 A typical AnnData-first workflow is:
 
@@ -418,7 +422,30 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   parsing;
 - `plot_temporal_gene_heatmap`, `plot_temporal_pattern_prototypes`, and
   `plot_temporal_profile_small_multiples` render dataset-agnostic S15-S17-style
-  panels.
+  panels;
+- `load_gmt_gene_sets` and `overrepresentation_analysis` provide an offline,
+  dataset-independent gene-set contract with an explicit expression or
+  library-wide background, while `plot_enrichment_bar` and
+  `plot_enrichment_dot` render the standardized result table.
+
+The enrichment API does not download or silently select a database. Callers
+provide a versioned GMT file and record its hash in the run manifest:
+
+```python
+from CytoBridge.tl import load_gmt_gene_sets, overrepresentation_analysis
+from CytoBridge.pl import plot_enrichment_dot
+
+library = load_gmt_gene_sets("GO_Biological_Process_2023.gmt")
+result = overrepresentation_analysis(
+    pattern_genes,
+    library,
+    background_genes=all_measured_genes,  # omit for a library-wide background
+)
+plot_enrichment_dot(
+    result.loc[result["significant"]],
+    out_path="pattern_go.svg",
+)
+```
 
 The default, prospective workflow requires a package-processed reference H5AD
 that retains PCA loadings. An older H5AD containing only `X_pca` coordinates is

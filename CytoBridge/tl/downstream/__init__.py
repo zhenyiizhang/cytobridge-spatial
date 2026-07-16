@@ -50,6 +50,12 @@ from .evaluation import (
     save_distribution_evaluation,
     save_distribution_metric_comparison,
 )
+from .enrichment import (
+    GeneSetLibrary,
+    load_gmt_gene_sets,
+    make_gene_set_library,
+    overrepresentation_analysis,
+)
 from .pipeline_utils import (
     downsample_xy,
     find_single_classifier_cache,
@@ -121,6 +127,7 @@ __all__ = [
     "export_ablation_gifs",
     "export_ablation_panel_series",
     "GeneProgramPanelResult",
+    "GeneSetLibrary",
     "GrowthInteractionSummary",
     "evaluate_growth_by_timepoint",
     "collect_top_variable_heatmaps",
@@ -151,6 +158,7 @@ __all__ = [
     "find_single_classifier_cache",
     "infer_feature_columns",
     "infer_time_key",
+    "load_gmt_gene_sets",
     "load_cached_mlp_classifier",
     "load_dynamical_model_from_dir",
     "load_legacy_dynamical_model_from_dir",
@@ -161,6 +169,7 @@ __all__ = [
     "parse_csv_floats",
     "parse_csv_floats_or_all",
     "parse_time_value",
+    "overrepresentation_analysis",
     "predict_cached_mlp_classifier_from_adata",
     "predict_labels_for_points",
     "predict_labels_for_trajectories",
@@ -187,6 +196,7 @@ __all__ = [
     "inverse_pca_states",
     "load_pca_reconstruction_spec",
     "make_pca_reconstruction_spec",
+    "make_gene_set_library",
     "simplify_gene_names",
     "train_mlp_classifier",
     "train_mlp_classifier_from_adata",

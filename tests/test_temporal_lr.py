@@ -132,12 +132,15 @@ def test_temporal_gene_and_lr_projection() -> None:
     gene_result = summarize_temporal_gene_patterns(
         slices,
         reference,
-        n_top_genes=3,
+        n_top_genes=2,
+        n_cluster_genes=3,
         n_clusters=2,
         preferred_species_tag="hs",
     )
     assert gene_result.expression.shape == (3, 3)
-    assert gene_result.top_variable_genes.shape[0] == 3
+    assert gene_result.top_variable_genes.shape[0] == 2
+    assert gene_result.clustering.assignments.shape[0] == 3
+    assert gene_result.settings["n_cluster_genes"] == 3
     assert set(gene_result.clustering.assignments["cluster"]) == {1, 2}
 
     communications = {
