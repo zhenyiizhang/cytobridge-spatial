@@ -49,6 +49,15 @@ def plot_velocity_component(
         Optional mapping label -> hex/rgb.
     out_path
         If provided, saves the figure (pdf/svg/png based on suffix).
+
+    Notes
+    -----
+    scVelo cannot construct a meaningful streamline grid when the raw field is
+    nearly zero or fewer than 50 finite, non-zero embedded velocity vectors are
+    available. In those legitimate edge cases (for example, a small sample
+    with no predicted interaction edges), this function renders a labeled
+    scatter/quiver fallback and records the reason in
+    ``adata.uns["velocity_plot_fallback"]``.
     """
     import anndata as ad
     import matplotlib.pyplot as plt
@@ -99,9 +108,65 @@ def plot_velocity_component(
         palette_list = [label_to_color.get(cat, "#888888") for cat in categories]
         adata.uns["Annotation_colors"] = palette_list
 
+    def _render_velocity_fallback(reason: str, valid_vectors: np.ndarray):
+        from matplotlib.lines import Line2D
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        if labels is None:
+            point_colors = "#7f7f7f"
+        else:
+            point_colors = [label_to_color.get(label, "#888888") for label in labels_arr]
+        ax.scatter(coords[:, 0], coords[:, 1], c=point_colors, s=8, linewidths=0, alpha=0.9)
+        if feature_matrix is None and np.any(valid_vectors):
+            ax.quiver(
+                coords[valid_vectors, 0],
+                coords[valid_vectors, 1],
+                velocity[valid_vectors, 0],
+                velocity[valid_vectors, 1],
+                angles="xy",
+                scale_units="xy",
+                scale=1.0,
+                color="#222222",
+            )
+        if labels is not None and show_legend:
+            handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    linestyle="",
+                    markerfacecolor=label_to_color.get(category, "#888888"),
+                    markeredgecolor="none",
+                    label=category,
+                )
+                for category in categories
+            ]
+            ax.legend(handles=handles, loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+        ax.set_title(title)
+        ax.set_aspect("equal")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        adata.uns["velocity_plot_fallback"] = reason
+        if out_path:
+            fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        return adata
+
+    valid_vectors = np.isfinite(velocity).all(axis=1) & (
+        np.linalg.norm(velocity, axis=1) > 1e-12
+    )
+    if int(valid_vectors.sum()) < 2:
+        return _render_velocity_fallback("near_zero_velocity", valid_vectors)
+
     sc.pp.neighbors(adata, n_neighbors=30, use_rep="X")
     scv.tl.velocity_graph(adata, vkey="velocity")
     scv.tl.velocity_embedding(adata, basis=basis, vkey="velocity")
+    embedded_velocity = np.asarray(adata.obsm.get(f"velocity_{basis}"), dtype=float)
+    valid_embedded = np.isfinite(embedded_velocity).all(axis=1) & (
+        np.linalg.norm(embedded_velocity, axis=1) > 1e-12
+    )
+    if int(valid_embedded.sum()) < 50:
+        return _render_velocity_fallback("insufficient_embedded_velocity", valid_vectors)
     scv.settings.set_figure_params("scvelo")
 
     fig, ax = plt.subplots(figsize=(6, 6))

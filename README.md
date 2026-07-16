@@ -173,6 +173,42 @@ cb.tl.fit(
 )
 ```
 
+### Load an existing ST-1104 checkpoint
+
+The compatibility loader is part of the public package API, so downstream
+notebooks do not need a copied `DeepRUOT` source tree:
+
+```python
+import pandas as pd
+from CytoBridge.tl import (
+    build_dynamical_runtime,
+    compute_velocity_components,
+    infer_feature_columns,
+    load_legacy_dynamical_model_from_dir,
+)
+
+df = pd.read_csv("arista_1108_with_annotation.csv")
+features = list(infer_feature_columns(df))
+loaded = load_legacy_dynamical_model_from_dir(
+    "results/arista_1110",
+    edge_predictor_root="edge_classifier",
+    device="cuda",
+)
+runtime = build_dynamical_runtime(loaded)
+data_t1 = df.loc[df["samples"].eq(1), features].to_numpy()
+components = compute_velocity_components(
+    data=data_t1,
+    time_value=1.0,
+    model=loaded.model,
+    device="cuda",
+)
+```
+
+The feature table must match the checkpoint contract recorded in
+`params.yml`; the published ARISTA checkpoint expects 52 model dimensions
+(two aligned spatial coordinates followed by 50 expression PCs). The companion
+`cb_reproducibility` repository contains the canonical executable notebook.
+
 ## Key Scripts
 
 - `scripts/preprocess_pipeline.py`: end-to-end preprocessing, alignment, graph generation, and edge predictor training
