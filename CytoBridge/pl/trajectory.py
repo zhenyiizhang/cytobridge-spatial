@@ -292,11 +292,15 @@ def plot_trajectory_gif(
     alpha: float = 0.85,
     fps: int = 4,
 ):
-    """Render trajectory animation (GIF), optionally colored by predicted labels."""
+    """Render a GIF or MP4 trajectory animation colored by predicted labels.
+
+    The writer is selected from ``out_path``: ``.gif`` uses Pillow and ``.mp4``
+    uses Matplotlib's ffmpeg writer.
+    """
     import os
 
     import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation, PillowWriter
+    from matplotlib.animation import FFMpegWriter, FuncAnimation, PillowWriter
 
     d1, d2 = int(dim_pair[0]), int(dim_pair[1])
     frames = [np.asarray(sde_points[i], dtype=float) for i in range(len(time_values))]
@@ -376,7 +380,18 @@ def plot_trajectory_gif(
         out_dir = os.path.dirname(out_path)
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
-        anim.save(out_path, writer=PillowWriter(fps=max(1, int(fps))))
+        suffix = os.path.splitext(str(out_path))[1].lower()
+        if suffix == ".gif":
+            writer = PillowWriter(fps=max(1, int(fps)))
+        elif suffix == ".mp4":
+            writer = FFMpegWriter(
+                fps=max(1, int(fps)),
+                codec="libx264",
+                extra_args=["-pix_fmt", "yuv420p", "-movflags", "+faststart"],
+            )
+        else:
+            raise ValueError("Animation out_path must end in .gif or .mp4.")
+        anim.save(out_path, writer=writer)
         plt.close(fig)
         return out_path
     return anim

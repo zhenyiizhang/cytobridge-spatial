@@ -155,6 +155,7 @@ def run_preprocessing_pipeline(
         dim_reduction="pca",
         n_pcs=align_config.n_pcs,
         normalization_target_sum=align_config.normalization_target_sum,
+        expression_layer=align_config.expression_layer,
     )
     adata_aligned = align_spatial(
         adata_or_h5ad=adata_preprocessed,
@@ -325,6 +326,23 @@ def _build_parser() -> argparse.ArgumentParser:
         default="10000",
         help="Positive numeric target total, or 'median' to match Scanpy target_sum=None.",
     )
+    p.add_argument(
+        "--expression-layer",
+        default=None,
+        help=(
+            "Optional AnnData layer to copy into X before normalization/log1p. "
+            "Use 'counts' when X is already transformed but layers['counts'] "
+            "contains raw counts."
+        ),
+    )
+    p.add_argument(
+        "--allow-retransform-preprocessed-x",
+        action="store_true",
+        help=(
+            "Allow normalize/log1p on an X matrix detected as already transformed. "
+            "Use only for an explicitly labelled legacy replay."
+        ),
+    )
     p.add_argument("--phase1-epochs", type=int, default=10000)
     p.add_argument("--phase2-epochs", type=int, default=500)
     p.add_argument("--shared-scale", type=float, default=None)
@@ -358,12 +376,23 @@ def main() -> None:
         if target_sum_text in {"median", "none", "null"}
         else float(args.normalization_target_sum)
     )
+    expression_layer_text = (
+        None if args.expression_layer is None else str(args.expression_layer).strip()
+    )
+    expression_layer = (
+        None
+        if expression_layer_text is None
+        or expression_layer_text.lower() in {"x", "none", "null"}
+        else expression_layer_text
+    )
 
     cfg = AlignConfig(
         spatial_dim=int(args.spatial_dim),
         n_top_genes=int(args.n_top_genes),
         n_pcs=int(args.n_pcs),
         normalization_target_sum=normalization_target_sum,
+        expression_layer=expression_layer,
+        allow_retransform_preprocessed_x=bool(args.allow_retransform_preprocessed_x),
         phase1_epochs=int(args.phase1_epochs),
         phase2_epochs=int(args.phase2_epochs),
         shared_scale=args.shared_scale,

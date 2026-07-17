@@ -232,6 +232,7 @@ CUDA_VISIBLE_DEVICES=7 python scripts/run_arista_end_to_end.py \
   --profile full \
   --stage all \
   --threshold-policy preprocess \
+  --expression-layer counts \
   --h5ad-path /path/to/ARTISTA_after_pp_with_ae_and_center.h5ad \
   --database-path /path/to/CellChatDB.ligrec.human.csv \
   --output-dir /path/to/runs/arista-full \
@@ -256,9 +257,19 @@ but the original interaction-stage training driver and execution log are not
 part of the released assets. Therefore exact historical retraining should not
 be claimed from metadata alone; the formal comparison treats the saved model as
 the reference and the recovered package schedule as a separately labeled run.
-The ARISTA
-alignment recipe uses median-library-size normalization (`target_sum=None` in
-Scanpy), 2,000 HVGs, 50 PCs, two aligned spatial coordinates, and seed 42.
+The ARISTA source H5AD stores an already log-transformed matrix in `X` and
+integer raw values in `layers['counts']`. The canonical runner therefore
+copies `layers['counts']` into `X` before median-library-size normalization and
+`log1p`, preventing the historical double transformation. This source choice
+is recorded in `uns['preprocess_info']` and the run manifest. Passing
+`--expression-layer X --allow-retransform-preprocessed-x` is reserved for an
+explicitly labelled legacy replay; an already transformed `X` otherwise fails
+fast instead of being silently transformed again. Because the available
+ARISTA H5AD is already restricted to 2,000 genes, this run is described as a
+counts-source, fixed-2,000-gene clean rerun rather than full-gene raw-data
+preprocessing. The alignment recipe uses median-library-size normalization
+(`target_sum=None` in Scanpy), 2,000 HVGs, 50 PCs, two aligned spatial
+coordinates, and seed 42.
 The canonical runner sets `evaluate_after_training=False` because the trainer's
 historical in-memory evaluation is redundant and can retain a large autograd
 graph. It evaluates the saved checkpoint immediately afterward through the
@@ -472,7 +483,6 @@ CUDA_VISIBLE_DEVICES=7 python scripts/run_spatiotemporal_downstream.py \
   --model-dir /path/to/runs/arista-full/training \
   --model-format current \
   --output-dir /path/to/runs/arista-full/spatiotemporal \
-  --spatial-warp-to-observed-piecewise \
   --classifier-knn-neighbors 1 \
   --classifier-cache-dir /path/to/runs/arista-full/classifier_cache \
   --device cuda
@@ -484,6 +494,42 @@ The classifier cache is now created through
 metadata match. The downstream command produces observed/generated snapshots,
 lineage Sankey, per-timepoint attention-based interactions, and the focus-anchor
 3D plot as HTML plus static SVG/PDF/PNG when Plotly image export is available.
+
+The ARISTA formal-analysis config is no-warp: split-SDE coordinates are used
+directly for communication and the 3D rendering. Piecewise warp has two
+explicit compatibility contracts. When explicitly enabled, the default
+`--spatial-warp-visualization-only` keeps classifier labels, communication, and
+the next SDE segment on the prewarp state while using a boundary-continuous
+warped copy for display. The compatibility flag
+`--no-spatial-warp-visualization-only` reproduces the later legacy behavior in
+which each warped endpoint is carried into the next segment; use that mode for
+historical display variants, not for formal downstream measurements.
+
+For a dense display-only legacy-style mosaic/video, the same dataset-agnostic
+entry point can generate the interpolation grid without enumerating hundreds of
+times:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_spatiotemporal_downstream.py \
+  --config CytoBridge/configs/arista_downstream.yaml \
+  --aligned-h5ad /path/to/arista_aligned.h5ad \
+  --model-dir /path/to/training \
+  --output-dir /path/to/runs/arista/dense-piecewise-k10 \
+  --dense-time-min 0 --dense-time-max 4 --dense-time-step 0.01 \
+  --snapshot-time-points 0,0.5,1,1.5,2,2.5,3,3.5,4 \
+  --spatial-warp-to-observed-piecewise \
+  --no-spatial-warp-visualization-only \
+  --classifier-knn-neighbors 10 \
+  --render-video --video-formats gif --video-fps 8 \
+  --skip-nonsplit-sde --skip-lineage --skip-communication --skip-3d \
+  --device cuda
+```
+
+This dense mode renders a split-SDE birth/death population and explicitly opts
+into the legacy display warp. It is therefore not
+a lineage input: Sankey and 3D lineage ribbons require the non-split
+fixed-particle trajectory. The GIF format quantizes frame delays; transcode to
+MP4 with an explicit input rate when exact playback timing matters.
 
 To use the workflow with another dataset, create a small YAML analogous to
 `arista_downstream.yaml` and specify its AnnData time, annotation, latent, and

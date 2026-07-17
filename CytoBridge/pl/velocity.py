@@ -279,6 +279,7 @@ def plot_velocity_component(
     density: float = 2.0,
     basis: str = "spatial",
     show_legend: bool = False,
+    n_neighbors: int = 30,
 ):
     """Plot a single velocity field using scVelo streamlines.
 
@@ -317,6 +318,8 @@ def plot_velocity_component(
 
     coords = np.asarray(coords, dtype=float)
     velocity = np.asarray(velocity, dtype=float)
+    if int(n_neighbors) <= 0:
+        raise ValueError("n_neighbors must be > 0.")
     if coords.ndim != 2 or coords.shape[1] != 2:
         raise ValueError("coords must be of shape (N, 2)")
     if feature_matrix is None:
@@ -333,7 +336,7 @@ def plot_velocity_component(
             raise ValueError("velocity must have the same shape as feature_matrix when feature_matrix is provided")
 
     adata = ad.AnnData(X=graph_X)
-    adata.obsm["X_spatial"] = coords
+    adata.obsm[f"X_{basis}"] = coords
     adata.layers["Ms"] = graph_X
     adata.layers["velocity"] = velocity
 
@@ -409,7 +412,7 @@ def plot_velocity_component(
     if int(valid_vectors.sum()) < 2:
         return _render_velocity_fallback("near_zero_velocity", valid_vectors)
 
-    sc.pp.neighbors(adata, n_neighbors=30, use_rep="X")
+    sc.pp.neighbors(adata, n_neighbors=int(n_neighbors), use_rep="X")
     scv.tl.velocity_graph(adata, vkey="velocity")
     scv.tl.velocity_embedding(adata, basis=basis, vkey="velocity")
     embedded_velocity = np.asarray(adata.obsm.get(f"velocity_{basis}"), dtype=float)

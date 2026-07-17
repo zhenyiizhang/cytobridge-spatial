@@ -50,6 +50,9 @@ class AlignConfig:
     random_seed: int = 42
     max_cells_per_timepoint: Optional[int] = None
     output_chunk_size: int = 50000
+    # Appended to preserve positional compatibility with older AlignConfig calls.
+    expression_layer: Optional[str] = None
+    allow_retransform_preprocessed_x: bool = False
 
 
 class CoordTransformer(nn.Module):
@@ -534,6 +537,8 @@ def preprocess_and_align(
         normalization_target_sum=cfg.normalization_target_sum,
         log1p=True,
         select_hvg=True,
+        expression_layer=cfg.expression_layer,
+        allow_retransform_preprocessed_x=cfg.allow_retransform_preprocessed_x,
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,

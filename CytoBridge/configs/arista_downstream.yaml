@@ -18,6 +18,10 @@ simulation:
   split_sde_dt: 0.01
   split_sigma: 0.03
   split_growth_alpha: 1.0
+  # Formal lineage/communication analysis is no-warp. Enable piecewise warp
+  # explicitly only for the legacy-style mosaic/video display variant.
+  spatial_warp_to_observed_piecewise: false
+  spatial_warp_visualization_only: true
   spatial_warp_k: 8
   spatial_warp_eps: 1.0e-6
 
@@ -51,6 +55,9 @@ plot_3d:
   focus_anchor_frac: 0.2
   focus_anchor_k: null
   focus_anchor_min_count: null
+  highlight_endpoints: true
+  endpoint_size: 6
+  endpoint_opacity: 0.9
   edge_color: rgba(25,25,25,0.75)
   edge_show_arrows: true
   edge_arrow_position: 0.7
@@ -80,5 +87,17 @@ plot_3d:
   show_time_axis: false
   show_legend: false
   show_title: false
-  width: 1200
-  height: 900
+  # A4-landscape aspect ratio matching the historical publication canvas,
+  # while keeping the interactive/static export size manageable.
+  width: 1400
+  height: 990
+
+plot_3d_layout:
+  scene_camera:
+    eye: {x: 1.7, y: 1.0, z: 0.9}
+    projection: {type: orthographic}
+  margin: {l: 10, r: 10, t: 10, b: 10}
+  scene:
+    domain: {x: [0.0, 1.0], y: [0.0, 1.0]}
+    aspectratio: {x: 1.2, y: 1.0, z: 1.6}
+  font: {family: Helvetica, size: 16, color: "#1a1a1a"}

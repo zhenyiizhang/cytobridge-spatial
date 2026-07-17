@@ -16,7 +16,11 @@ from .classification import (
     predict_labels_for_trajectories,
     train_cached_mlp_classifier_from_adata,
 )
-from .pipeline_utils import downsample_xy, find_single_classifier_cache, select_evenly_spaced
+from .pipeline_utils import (
+    find_single_classifier_cache,
+    select_evenly_spaced,
+    set_global_random_seed,
+)
 from .simulation import (
     apply_spatial_warp_to_segments,
     sample_observed_x0,
@@ -42,6 +46,7 @@ __all__ = [
 @dataclass(frozen=True)
 class InterpolationResult:
     adata_dict: dict[str, "ad.AnnData"]
+    communication_adata_dict: dict[str, "ad.AnnData"]
     ts_points: list[float]
     time_keys: list[str]
     observed_time_points: list[float]
@@ -51,6 +56,7 @@ class InterpolationResult:
     predicted_labels_list: Optional[Sequence[np.ndarray]]
     predicted_labels_split: Optional[Sequence[np.ndarray]]
     predicted_labels_split_prewarp: Optional[Sequence[np.ndarray]]
+    slice_labels_split: Optional[Sequence[np.ndarray]]
     sde_points_split: Optional[np.ndarray]
     sde_points_split_prewarp: Optional[np.ndarray]
     piecewise_x0_by_observed: Optional[Dict[float, np.ndarray]]
@@ -59,6 +65,12 @@ class InterpolationResult:
     classifier_model: Optional[object]
     label_encoder: Optional[object]
     classifier_feature_dim: Optional[int]
+    classifier_cache_path: Optional[str]
+    classifier_accuracy: Optional[float]
+    classifier_balanced_accuracy: Optional[float]
+    classifier_metadata: Optional[dict]
+    classifier_evaluation: Optional[dict]
+    simulation_seeds: dict[str, Optional[int]]
 
 
 def run_interpolation_workflow(
@@ -102,6 +114,7 @@ def run_interpolation_workflow(
     piecewise_observed_sample_mode: str = "t0_fixed",
     spatial_warp_to_observed: bool = False,
     spatial_warp_to_observed_piecewise: bool = False,
+    spatial_warp_visualization_only: bool = False,
     spatial_warp_k: int = 8,
     spatial_warp_eps: float = 1e-6,
     slice_max_cells_per_timepoint: Optional[int] = None,
@@ -176,6 +189,13 @@ def run_interpolation_workflow(
     classifier_model = None
     label_encoder = None
     classifier_feature_dim = None
+    classifier_cache_resolved = None
+    classifier_accuracy = None
+    classifier_balanced_accuracy = None
+    classifier_metadata = None
+    classifier_evaluation = None
+    nonsplit_seed = None if random_seed is None else int(random_seed)
+    split_seed = None if random_seed is None else int(random_seed) + 1
 
     feature_cols_full = [f"x{i}" for i in range(1, dim + 1)]
     if need_interp:
@@ -216,6 +236,10 @@ def run_interpolation_workflow(
         classifier_model = cached_classifier.model
         label_encoder = cached_classifier.label_encoder
         classifier_feature_dim = int(cached_classifier.feature_dim)
+        classifier_accuracy = cached_classifier.accuracy
+        classifier_balanced_accuracy = cached_classifier.balanced_accuracy
+        classifier_metadata = dict(cached_classifier.metadata)
+        classifier_evaluation = dict(cached_classifier.evaluation)
         _ = (
             cached_classifier.balanced_accuracy
             if classifier_best_metric == "bacc"
@@ -242,6 +266,10 @@ def run_interpolation_workflow(
         if skip_nonsplit_sde:
             print("Skipping non-split SDE.")
         else:
+            # Classifier training consumes global NumPy/Torch RNG state while a
+            # cache hit does not. Reset a dedicated stream here so simulations
+            # are identical on cache miss and cache hit.
+            set_global_random_seed(nonsplit_seed)
             t_sde0 = time.perf_counter()
             print("Simulating non-split SDE...")
             sde_points, _ = simulate_sde_points(
@@ -260,6 +288,9 @@ def run_interpolation_workflow(
             print(f"Non-split SDE done in {time.perf_counter() - t_sde0:.1f}s")
 
         t_sde_split0 = time.perf_counter()
+        # Keep split population dynamics independent of whether the optional
+        # non-split identity trajectory was run.
+        set_global_random_seed(split_seed)
         print("Simulating split SDE...")
         if spatial_warp_to_observed_piecewise:
             if spatial_warp_k <= 0:
@@ -277,7 +308,7 @@ def run_interpolation_workflow(
                 n_samples_cap=n_samples,
                 rng=rng_warp_piecewise,
             )
-            sde_points_split = simulate_piecewise_spatially_warped_split(
+            sde_points_split, sde_points_split_prewarp = simulate_piecewise_spatially_warped_split(
                 x0=x0_warp,
                 f_net=f_net,
                 score_net=score_net,
@@ -295,6 +326,8 @@ def run_interpolation_workflow(
                 rng=rng_warp_piecewise,
                 k=int(spatial_warp_k),
                 eps=float(spatial_warp_eps),
+                return_prewarp=True,
+                warp_visualization_only=bool(spatial_warp_visualization_only),
             )
         elif split_sde_piecewise:
             rng_piecewise = np.random.default_rng(0 if random_seed is None else int(random_seed))
@@ -437,6 +470,13 @@ def run_interpolation_workflow(
             )
 
     adata_dict = {}
+    communication_adata_dict = {}
+    slice_labels_split = (
+        predicted_labels_split_prewarp
+        if spatial_warp_visualization_only
+        and predicted_labels_split_prewarp is not None
+        else predicted_labels_split
+    )
     rng = np.random.default_rng(0 if random_seed is None else int(random_seed))
     for t in ts_points:
         key = str(t)
@@ -444,33 +484,65 @@ def run_interpolation_workflow(
             subset = df[df["samples"] == float(t)]
             X = subset[feature_cols_full].values.astype(np.float32)
             labels = subset[annotation_key].astype(str).values
+            model_X = X
         elif (not use_real_for_observed) and split_sde_piecewise and (t in observed_time_points):
-            if sde_points_split is None or predicted_labels_split is None:
+            if sde_points_split is None or slice_labels_split is None:
                 raise ValueError("Piecewise split-SDE observed slice requested but split outputs are missing.")
             if spatial_warp_to_observed and float(t) != float(min(observed_time_points)):
                 idx = ts_points.index(t)
                 X = np.array(sde_points_split[idx], dtype=np.float32)
-                labels = np.asarray(predicted_labels_split[idx]).astype(str)
+                labels = np.asarray(slice_labels_split[idx]).astype(str)
+                model_X = (
+                    np.asarray(sde_points_split_prewarp[idx], dtype=np.float32)
+                    if spatial_warp_visualization_only
+                    and sde_points_split_prewarp is not None
+                    else X
+                )
             else:
                 if piecewise_x0_by_observed is None or piecewise_labels_by_observed is None:
                     raise ValueError("Piecewise split-SDE enabled but observed x0/labels cache is missing.")
                 X = np.asarray(piecewise_x0_by_observed[float(t)], dtype=np.float32)
                 labels = np.asarray(piecewise_labels_by_observed[float(t)]).astype(str)
+                model_X = X
         else:
-            if sde_points_split is None or predicted_labels_split is None:
+            if sde_points_split is None or slice_labels_split is None:
                 raise ValueError("Interpolation requested but split SDE outputs are missing.")
             idx = ts_points.index(t)
             X = np.array(sde_points_split[idx], dtype=np.float32)
-            labels = np.asarray(predicted_labels_split[idx]).astype(str)
+            labels = np.asarray(slice_labels_split[idx]).astype(str)
+            model_X = (
+                np.asarray(sde_points_split_prewarp[idx], dtype=np.float32)
+                if spatial_warp_visualization_only
+                and sde_points_split_prewarp is not None
+                else X
+            )
 
-        X, labels = downsample_xy(X, labels, slice_max_cells_per_timepoint, rng)
+        if (
+            slice_max_cells_per_timepoint is not None
+            and X.shape[0] > int(slice_max_cells_per_timepoint)
+        ):
+            indices = np.sort(
+                rng.choice(
+                    X.shape[0],
+                    size=int(slice_max_cells_per_timepoint),
+                    replace=False,
+                )
+            )
+            X = X[indices]
+            model_X = model_X[indices]
+            labels = labels[indices]
         adata_t = ad.AnnData(X=X)
         adata_t.obs[annotation_key] = labels
         adata_t.obsm["spatial"] = X[:, :2]
         adata_dict[key] = adata_t
+        communication_adata_t = ad.AnnData(X=model_X)
+        communication_adata_t.obs[annotation_key] = labels
+        communication_adata_t.obsm["spatial"] = model_X[:, :2]
+        communication_adata_dict[key] = communication_adata_t
 
     return InterpolationResult(
         adata_dict=adata_dict,
+        communication_adata_dict=communication_adata_dict,
         ts_points=list(ts_points),
         time_keys=time_keys,
         observed_time_points=list(observed_time_points),
@@ -480,6 +552,7 @@ def run_interpolation_workflow(
         predicted_labels_list=predicted_labels_list,
         predicted_labels_split=predicted_labels_split,
         predicted_labels_split_prewarp=predicted_labels_split_prewarp,
+        slice_labels_split=slice_labels_split,
         sde_points_split=sde_points_split,
         sde_points_split_prewarp=sde_points_split_prewarp,
         piecewise_x0_by_observed=piecewise_x0_by_observed,
@@ -488,6 +561,19 @@ def run_interpolation_workflow(
         classifier_model=classifier_model,
         label_encoder=label_encoder,
         classifier_feature_dim=classifier_feature_dim,
+        classifier_cache_path=(
+            str(classifier_cache_resolved)
+            if classifier_cache_resolved is not None
+            else None
+        ),
+        classifier_accuracy=classifier_accuracy,
+        classifier_balanced_accuracy=classifier_balanced_accuracy,
+        classifier_metadata=classifier_metadata,
+        classifier_evaluation=classifier_evaluation,
+        simulation_seeds={
+            "non_split_identity": nonsplit_seed,
+            "split_population": split_seed,
+        },
     )
 
 

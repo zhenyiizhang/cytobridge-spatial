@@ -40,6 +40,7 @@ from .downstream_data import (
     parse_time_value,
 )
 from .evaluation import (
+    compute_generated_vs_observed_plot_limits,
     DistributionEvaluationResult,
     DistributionMetricComparison,
     compare_distribution_metric_tables,
@@ -205,6 +206,7 @@ __all__ = [
     "DistributionMetricComparison",
     "compare_distribution_metric_tables",
     "compute_distribution_metrics",
+    "compute_generated_vs_observed_plot_limits",
     "compute_local_structure_metrics",
     "evaluate_model_distributions",
     "plot_generated_vs_observed",

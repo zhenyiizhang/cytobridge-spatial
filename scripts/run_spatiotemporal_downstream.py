@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -32,6 +33,14 @@ def _resolve(cli_value, config: dict, section: str, key: str, default=None):
     return cli_value if cli_value is not None else _nested(config, section, key, default)
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
@@ -53,6 +62,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--concat-spatial", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--time-points", default=None, help="Comma-separated observed time values.")
     parser.add_argument("--interp-time-points", default=None, help="Comma-separated generated time values.")
+    parser.add_argument(
+        "--dense-time-step",
+        type=float,
+        default=None,
+        help=(
+            "Generate a dense interpolation grid instead of listing every "
+            "--interp-time-points value."
+        ),
+    )
+    parser.add_argument("--dense-time-min", type=float, default=None)
+    parser.add_argument("--dense-time-max", type=float, default=None)
     parser.add_argument("--plot-3d-time-points", default=None, help="Comma-separated 3D subset.")
     parser.add_argument("--sde-n-samples", type=int, default=None)
     parser.add_argument("--sde-dt", type=float, default=None)
@@ -76,15 +96,48 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--spatial-warp-to-observed-piecewise",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=None,
+    )
+    parser.add_argument(
+        "--spatial-warp-visualization-only",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Use warped XY only for display while classification and "
+            "communication consume prewarp dynamical states."
+        ),
     )
     parser.add_argument("--spatial-warp-k", type=int, default=None)
     parser.add_argument("--spatial-warp-eps", type=float, default=None)
     parser.add_argument("--random-seed", type=int, default=42)
+    parser.add_argument(
+        "--snapshot-time-points",
+        default=None,
+        help=(
+            "Optional comma-separated subset used only for snapshot/mosaic "
+            "rendering. The simulation and video still use every requested time."
+        ),
+    )
+    parser.add_argument(
+        "--skip-nonsplit-sde",
+        action="store_true",
+        help=(
+            "Skip the fixed-particle non-split trajectory. Useful for a "
+            "display-only dense split-SDE mosaic/video run."
+        ),
+    )
     parser.add_argument("--skip-snapshots", action="store_true")
     parser.add_argument("--skip-communication", action="store_true")
     parser.add_argument("--skip-lineage", action="store_true")
     parser.add_argument("--skip-3d", action="store_true")
+    parser.add_argument(
+        "--render-video",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Render the split-population trajectory as GIF and/or MP4.",
+    )
+    parser.add_argument("--video-formats", default="gif,mp4")
+    parser.add_argument("--video-fps", type=int, default=4)
     return parser
 
 
@@ -174,14 +227,67 @@ def main() -> None:
     if observed is None:
         observed = [float(value) for value in _nested(config, "time", "observed", sorted(df["samples"].unique()))]
     interpolated = _parse_floats(args.interp_time_points)
-    if interpolated is None:
+    if args.dense_time_step is not None:
+        if interpolated is not None:
+            raise ValueError(
+                "Use either --dense-time-step or --interp-time-points, not both."
+            )
+        if float(args.dense_time_step) <= 0.0:
+            raise ValueError("--dense-time-step must be > 0.")
+        dense_min = (
+            float(args.dense_time_min)
+            if args.dense_time_min is not None
+            else float(min(observed))
+        )
+        dense_max = (
+            float(args.dense_time_max)
+            if args.dense_time_max is not None
+            else float(max(observed))
+        )
+        if dense_max <= dense_min:
+            raise ValueError("--dense-time-max must be greater than --dense-time-min.")
+        dense_values = np.arange(
+            dense_min,
+            dense_max + float(args.dense_time_step) * 0.5,
+            float(args.dense_time_step),
+            dtype=np.float64,
+        )
+        dense_values = np.round(dense_values, decimals=9)
+        interpolated = [
+            float(value)
+            for value in dense_values
+            if not any(
+                np.isclose(float(value), float(obs), rtol=0.0, atol=1e-9)
+                for obs in observed
+            )
+        ]
+    elif interpolated is None:
         interpolated = [float(value) for value in _nested(config, "time", "interpolated", [])]
     plot_3d_points = _parse_floats(args.plot_3d_time_points)
     if plot_3d_points is None:
         plot_3d_points = [float(value) for value in _nested(config, "time", "plot_3d", observed + interpolated)]
     requested_points = sorted(set(observed + interpolated))
+    snapshot_points = _parse_floats(args.snapshot_time_points)
 
     classifier_cache_dir = args.classifier_cache_dir or str(output_dir / "classifier_cache")
+    warp_piecewise = bool(
+        _resolve(
+            args.spatial_warp_to_observed_piecewise,
+            config,
+            "simulation",
+            "spatial_warp_to_observed_piecewise",
+            False,
+        )
+    )
+    warp_visualization_only = bool(
+        _resolve(
+            args.spatial_warp_visualization_only,
+            config,
+            "simulation",
+            "spatial_warp_visualization_only",
+            True,
+        )
+    )
     result = cb.tl.run_interpolation_workflow(
         df=df,
         dim=dim,
@@ -218,11 +324,13 @@ def main() -> None:
             _resolve(args.classifier_knn_neighbors, config, "classifier", "knn_neighbors", 10)
         ),
         sde_n_samples=int(_resolve(args.sde_n_samples, config, "simulation", "n_samples", 5000)),
+        skip_nonsplit_sde=bool(args.skip_nonsplit_sde),
         sde_dt=float(_resolve(args.sde_dt, config, "simulation", "sde_dt", 0.05)),
         split_sde_dt=float(_resolve(args.split_sde_dt, config, "simulation", "split_sde_dt", 0.01)),
         split_sigma_scalar=float(_resolve(args.split_sigma, config, "simulation", "split_sigma", 0.03)),
         split_growth_alpha=float(_nested(config, "simulation", "split_growth_alpha", 1.0)),
-        spatial_warp_to_observed_piecewise=bool(args.spatial_warp_to_observed_piecewise),
+        spatial_warp_to_observed_piecewise=warp_piecewise,
+        spatial_warp_visualization_only=warp_visualization_only,
         spatial_warp_k=int(_resolve(args.spatial_warp_k, config, "simulation", "spatial_warp_k", 8)),
         spatial_warp_eps=float(
             _resolve(args.spatial_warp_eps, config, "simulation", "spatial_warp_eps", 1e-6)
@@ -241,10 +349,73 @@ def main() -> None:
         encoding="utf-8",
     )
 
+    video_outputs = {}
+    if args.render_video:
+        if result.sde_points_split is None or result.slice_labels_split is None:
+            raise RuntimeError("Video rendering requires split-SDE points and labels.")
+        trajectory_path = output_dir / "split_population_trajectory.npy"
+        labels_path = output_dir / "split_population_labels.npy"
+        np.save(trajectory_path, result.sde_points_split, allow_pickle=True)
+        np.save(
+            labels_path,
+            np.asarray(result.slice_labels_split, dtype=object),
+            allow_pickle=True,
+        )
+        video_outputs["trajectory_array"] = str(trajectory_path)
+        video_outputs["label_array"] = str(labels_path)
+        formats = [
+            value.strip().lower()
+            for value in str(args.video_formats).split(",")
+            if value.strip()
+        ]
+        invalid_formats = sorted(set(formats) - {"gif", "mp4"})
+        if invalid_formats:
+            raise ValueError(f"Unsupported video formats: {invalid_formats}")
+        for video_format in formats:
+            video_path = output_dir / f"spatiotemporal_split_population.{video_format}"
+            try:
+                cb.pl.plot_trajectory_gif(
+                    sde_points=result.sde_points_split,
+                    time_values=result.ts_points,
+                    labels_list=result.slice_labels_split,
+                    label_to_color=label_to_color,
+                    out_path=str(video_path),
+                    dim_pair=(0, 1),
+                    point_size=3.5,
+                    alpha=0.75,
+                    fps=int(args.video_fps),
+                )
+                video_outputs[video_format] = str(video_path)
+            except (FileNotFoundError, RuntimeError) as exc:
+                video_outputs[f"{video_format}_error"] = str(exc)
+                print(f"[warn] {video_format} animation export failed: {exc}")
+
     if not args.skip_snapshots:
+        if snapshot_points is None:
+            snapshot_time_keys = list(result.time_keys)
+        else:
+            key_by_time = {float(key): key for key in result.time_keys}
+            missing_snapshot_points = [
+                float(value)
+                for value in snapshot_points
+                if float(value) not in key_by_time
+            ]
+            if missing_snapshot_points:
+                raise ValueError(
+                    "--snapshot-time-points contains values absent from the "
+                    f"simulation grid: {missing_snapshot_points}"
+                )
+            snapshot_time_keys = [key_by_time[float(value)] for value in snapshot_points]
+        snapshot_time_set = {float(key) for key in snapshot_time_keys}
+        snapshot_adata_dict = {
+            key: result.adata_dict[key]
+            for key in snapshot_time_keys
+        }
         observed_variants = {}
-        if result.sde_points_split is not None and result.predicted_labels_split is not None:
+        if result.sde_points_split is not None and result.slice_labels_split is not None:
             for time_value in observed:
+                if float(time_value) not in snapshot_time_set:
+                    continue
                 idx = result.ts_points.index(float(time_value))
                 observed_df = df[np.isclose(df["samples"], float(time_value))]
                 observed_variants[float(time_value)] = {
@@ -254,12 +425,12 @@ def main() -> None:
                     ),
                     "Generated": (
                         np.asarray(result.sde_points_split[idx], dtype=np.float32)[:, :2],
-                        np.asarray(result.predicted_labels_split[idx]).astype(str),
+                        np.asarray(result.slice_labels_split[idx]).astype(str),
                     ),
                 }
         cb.tl.save_timepoint_snapshots(
-            adata_dict=result.adata_dict,
-            time_keys=result.time_keys,
+            adata_dict=snapshot_adata_dict,
+            time_keys=snapshot_time_keys,
             annotation_key=annotation_key,
             label_to_color=label_to_color,
             observed_variants=observed_variants or None,
@@ -299,7 +470,7 @@ def main() -> None:
     if not args.skip_communication:
         communication_cfg = config.get("communication", {})
         all_communications = cb.tl.compute_timepoint_communications(
-            adata_dict=result.adata_dict,
+            adata_dict=result.communication_adata_dict,
             time_points=result.ts_points,
             annotation_key=annotation_key,
             f_net=runtime.f_net,
@@ -310,10 +481,11 @@ def main() -> None:
             save_pickle_path=str(output_dir / "all_time_communications.pkl"),
         )
 
+    plot_cfg = dict(config.get("plot_3d", {}))
+    layout_cfg = dict(config.get("plot_3d_layout", {}))
     if not args.skip_3d:
         if all_communications is None:
             raise ValueError("3D communication plot requires communication analysis; remove --skip-communication.")
-        plot_cfg = dict(config.get("plot_3d", {}))
         plot_path = output_dir / "spatiotemporal_3d.html"
         plot_fig = cb.tl.plot_spatiotemporal_3d(
             adata_dict=result.adata_dict,
@@ -329,6 +501,9 @@ def main() -> None:
             predicted_labels_list=lineage_labels,
             **plot_cfg,
         )
+        if layout_cfg:
+            plot_fig.update_layout(**layout_cfg)
+            plot_fig.write_html(str(plot_path))
         static_exports["spatiotemporal_3d"] = _export_plotly_static(
             plot_fig,
             output_dir / "spatiotemporal_3d",
@@ -352,7 +527,101 @@ def main() -> None:
         "classifier_knn_neighbors": int(
             _resolve(args.classifier_knn_neighbors, config, "classifier", "knn_neighbors", 10)
         ),
-        "spatial_warp_to_observed_piecewise": bool(args.spatial_warp_to_observed_piecewise),
+        "spatial_warp_to_observed_piecewise": warp_piecewise,
+        "spatial_warp_visualization_only": warp_visualization_only,
+        "skip_nonsplit_sde": bool(args.skip_nonsplit_sde),
+        "snapshot_time_points": (
+            [float(value) for value in snapshot_points]
+            if snapshot_points is not None
+            else [float(value) for value in result.ts_points]
+        ),
+        "dense_time_grid": (
+            {
+                "min": (
+                    float(args.dense_time_min)
+                    if args.dense_time_min is not None
+                    else float(min(observed))
+                ),
+                "max": (
+                    float(args.dense_time_max)
+                    if args.dense_time_max is not None
+                    else float(max(observed))
+                ),
+                "step": float(args.dense_time_step),
+            }
+            if args.dense_time_step is not None
+            else None
+        ),
+        "classifier": {
+            "cache_path": result.classifier_cache_path,
+            "cache_sha256": (
+                _sha256(Path(result.classifier_cache_path))
+                if result.classifier_cache_path is not None
+                and Path(result.classifier_cache_path).is_file()
+                else None
+            ),
+            "validation_accuracy": result.classifier_accuracy,
+            "validation_balanced_accuracy": result.classifier_balanced_accuracy,
+            "metadata": result.classifier_metadata,
+            "evaluation": result.classifier_evaluation,
+            "knn_neighbors": int(
+                _resolve(
+                    args.classifier_knn_neighbors,
+                    config,
+                    "classifier",
+                    "knn_neighbors",
+                    10,
+                )
+            ),
+        },
+        "trajectory_semantics": {
+            "lineage_identity_source": (
+                None if args.skip_nonsplit_sde else "non_split_fixed_particles"
+            ),
+            "slice_population_source": "split_sde_birth_death",
+            "slice_coordinate_source": (
+                "piecewise_warped_spatial"
+                if warp_piecewise
+                else "split_sde_state"
+            ),
+            "slice_label_source": (
+                "prewarp_split_state" if warp_visualization_only else "display_state"
+            ),
+            "communication_state_source": (
+                None
+                if args.skip_communication
+                else (
+                    "prewarp_split_state"
+                    if warp_visualization_only
+                    else "display_state"
+                )
+            ),
+            "piecewise_segment_continuation_source": (
+                "prewarp_split_state"
+                if warp_piecewise and warp_visualization_only
+                else "display_state"
+            ),
+            "display_boundary_contract": (
+                "shared piecewise boundaries are preserved exactly after warp"
+                if warp_piecewise
+                else None
+            ),
+        },
+        "simulation_seeds": result.simulation_seeds,
+        "video": {
+            "enabled": bool(args.render_video),
+            "fps": int(args.video_fps),
+            "frames": int(len(result.ts_points)),
+            "time_points": result.ts_points,
+            "population_source": "split_sde_birth_death",
+            "outputs": video_outputs,
+        },
+        "plot_3d": {
+            "enabled": not bool(args.skip_3d),
+            "time_points": plot_3d_points,
+            "settings": plot_cfg,
+            "layout": layout_cfg,
+        },
         "static_exports": static_exports,
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

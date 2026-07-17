@@ -680,8 +680,18 @@ def gene_velocity_embeddings_from_adata(
     spatial_key: str = "spatial_aligned",
     concat_spatial: Optional[bool] = None,
     annotation_column: str = "Annotation",
+    bases: Optional[Sequence[str]] = None,
+    color_keys: Optional[Sequence[str]] = None,
+    celltype_on_data: bool = False,
+    output_format: str = "pdf",
+    reuse_velocity_if_present: bool = False,
+    n_neighbors: int = 30,
 ) -> list[str]:
-    """AnnData-first gene-velocity embedding plotter."""
+    """AnnData-first gene-velocity embedding plotter.
+
+    The velocity graph is always built in the full expression-associated
+    latent space. ``bases`` only controls the final 2-D projection(s).
+    """
     import os
 
     import anndata as ad
@@ -693,6 +703,23 @@ def gene_velocity_embeddings_from_adata(
     from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
 
     os.makedirs(out_dir, exist_ok=True)
+    selected_bases = tuple(bases or ("umap", "pca"))
+    unknown_bases = sorted(set(selected_bases) - {"umap", "pca"})
+    if unknown_bases:
+        raise ValueError(f"Unsupported gene-velocity bases: {unknown_bases}")
+    selected_color_keys = tuple(
+        color_keys or ("timepoint", "time", "cell_type")
+    )
+    unknown_color_keys = sorted(
+        set(selected_color_keys) - {"timepoint", "time", "cell_type"}
+    )
+    if unknown_color_keys:
+        raise ValueError(f"Unsupported gene-velocity color keys: {unknown_color_keys}")
+    output_format = str(output_format).strip().lower().lstrip(".")
+    if output_format not in {"pdf", "svg", "png"}:
+        raise ValueError("output_format must be one of {'pdf', 'svg', 'png'}.")
+    if int(n_neighbors) <= 0:
+        raise ValueError("n_neighbors must be > 0.")
 
     X, _ = _coerce_feature_matrix_from_adata(
         adata,
@@ -716,26 +743,35 @@ def gene_velocity_embeddings_from_adata(
         spatial_key=spatial_key,
         concat_spatial=concat_spatial,
         write_to_adata=True,
-        reuse_if_present=True,
+        reuse_if_present=bool(reuse_velocity_if_present),
     )
     vel_full_all = comp["full"]
 
     gene_data = np.nan_to_num(X[:, 2:], nan=0.0, posinf=0.0, neginf=0.0)
     gene_vel_full = np.nan_to_num(vel_full_all[:, 2:], nan=0.0, posinf=0.0, neginf=0.0)
 
-    umap_coords, _ = compute_umap_embedding(gene_data, n_neighbors=30, min_dist=0.3, seed=0)
-    if not np.isfinite(umap_coords).all():
-        umap_coords = np.nan_to_num(umap_coords, nan=0.0, posinf=0.0, neginf=0.0)
-
     plot_adata = ad.AnnData(X=gene_data)
     plot_adata.layers["spliced"] = gene_data
     plot_adata.layers["Ms"] = gene_data
     plot_adata.layers["velocity"] = gene_vel_full
-    plot_adata.obsm["X_umap"] = umap_coords
+    if "umap" in selected_bases:
+        umap_coords, _ = compute_umap_embedding(
+            gene_data, n_neighbors=int(n_neighbors), min_dist=0.3, seed=0
+        )
+        if not np.isfinite(umap_coords).all():
+            umap_coords = np.nan_to_num(
+                umap_coords, nan=0.0, posinf=0.0, neginf=0.0
+            )
+        plot_adata.obsm["X_umap"] = umap_coords
 
-    sc.tl.pca(plot_adata, n_comps=2, svd_solver="arpack")
-    if "X_pca" in plot_adata.obsm and not np.isfinite(plot_adata.obsm["X_pca"]).all():
-        plot_adata.obsm["X_pca"] = np.nan_to_num(plot_adata.obsm["X_pca"], nan=0.0, posinf=0.0, neginf=0.0)
+    if "pca" in selected_bases:
+        sc.tl.pca(plot_adata, n_comps=2, svd_solver="arpack")
+        if "X_pca" in plot_adata.obsm and not np.isfinite(
+            plot_adata.obsm["X_pca"]
+        ).all():
+            plot_adata.obsm["X_pca"] = np.nan_to_num(
+                plot_adata.obsm["X_pca"], nan=0.0, posinf=0.0, neginf=0.0
+            )
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
     plot_adata.obs["timepoint"] = adata.obs[resolved_time_key].astype(str).values
@@ -751,14 +787,21 @@ def gene_velocity_embeddings_from_adata(
         palette = [label_to_color.get(c, "#888888") for c in cats]
         plot_adata.uns["cell_type_colors"] = palette
 
-    sc.pp.neighbors(plot_adata, n_neighbors=30, use_rep="X")
+    sc.pp.neighbors(plot_adata, n_neighbors=int(n_neighbors), use_rep="X")
     scv.tl.velocity_graph(plot_adata, vkey="velocity", xkey="Ms")
     scv.settings.set_figure_params("scvelo")
 
     plots: list[str] = []
-    color_items = [("timepoint", "timepoint", "timepoint"), ("time", "time", "time")]
-    if "cell_type" in plot_adata.obs:
-        color_items.append(("cell_type", "cell type", "celltype"))
+    color_item_map = {
+        "timepoint": ("timepoint", "timepoint", "timepoint"),
+        "time": ("time", "time", "time"),
+        "cell_type": ("cell_type", "cell type", "celltype"),
+    }
+    color_items = [
+        color_item_map[key]
+        for key in selected_color_keys
+        if key != "cell_type" or "cell_type" in plot_adata.obs
+    ]
 
     keep_set = {str(x) for x in keep_cell_types} if keep_cell_types else None
 
@@ -786,7 +829,9 @@ def gene_velocity_embeddings_from_adata(
         inner_adata.uns[f"{plot_key}_colors"] = palette
         return inner_adata, plot_key
 
-    for basis, basis_label in [("umap", "UMAP"), ("pca", "PCA")]:
+    basis_labels = {"umap": "UMAP", "pca": "PCA"}
+    for basis in selected_bases:
+        basis_label = basis_labels[basis]
         scv.tl.velocity_embedding(plot_adata, basis=basis, vkey="velocity")
         vel_key = f"velocity_{basis}"
         if vel_key in plot_adata.obsm:
@@ -798,7 +843,10 @@ def gene_velocity_embeddings_from_adata(
             if key == "cell_type":
                 cur_adata, color_key = _prepare_celltype_plot(plot_adata.copy())
 
-            fname = os.path.join(out_dir, f"velocity_gene_full_{basis}_{fname_label}.pdf")
+            fname = os.path.join(
+                out_dir,
+                f"velocity_gene_full_{basis}_{fname_label}.{output_format}",
+            )
             ax = scv.pl.velocity_embedding_stream(
                 cur_adata,
                 basis=basis,
@@ -822,6 +870,40 @@ def gene_velocity_embeddings_from_adata(
 
                 plt.close("all")
             plots.append(fname)
+
+            if key == "cell_type" and celltype_on_data:
+                ondata_fname = os.path.join(
+                    out_dir,
+                    f"velocity_gene_full_{basis}_{fname_label}_ondata.{output_format}",
+                )
+                ondata_ax = scv.pl.velocity_embedding_stream(
+                    cur_adata,
+                    basis=basis,
+                    color=color_key,
+                    density=2,
+                    figsize=(6, 6),
+                    title=(
+                        f"Gene velocity full ({basis_label}, {title_label}, "
+                        "on-data labels)"
+                    ),
+                    show=False,
+                    legend_loc="on data",
+                )
+                try:
+                    ondata_fig = (
+                        ondata_ax.figure if hasattr(ondata_ax, "figure") else None
+                    )
+                    if ondata_fig is not None:
+                        ondata_fig.savefig(ondata_fname, bbox_inches="tight")
+                    else:
+                        import matplotlib.pyplot as plt
+
+                        plt.savefig(ondata_fname, bbox_inches="tight")
+                finally:
+                    import matplotlib.pyplot as plt
+
+                    plt.close("all")
+                plots.append(ondata_fname)
 
     return plots
 

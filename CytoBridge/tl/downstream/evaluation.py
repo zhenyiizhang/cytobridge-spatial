@@ -13,6 +13,7 @@ from .downstream_data import infer_time_key, parse_time_value
 from .simulation import simulate_sde_points
 
 __all__ = [
+    "compute_generated_vs_observed_plot_limits",
     "DistributionMetricComparison",
     "DistributionEvaluationResult",
     "compare_distribution_metric_tables",
@@ -384,14 +385,41 @@ def plot_generated_vs_observed(
     out_path: str | Path,
     max_points: int = 5000,
     random_seed: int = 42,
+    axis_limits: Optional[
+        Mapping[float, tuple[tuple[float, float], tuple[float, float]]]
+    ] = None,
+    point_size: float = 2.0,
+    generated_point_size_mode: str = "fixed",
+    observed_color: str = "#4C4C4C",
+    generated_color: str = "#A33A3A",
+    alpha: float = 0.4,
 ) -> Path:
-    """Save paired observed/generated scatter maps for spatial or PCA space."""
+    """Save paired observed/generated scatter maps for spatial or PCA space.
+
+    ``axis_limits`` may be produced by
+    :func:`compute_generated_vs_observed_plot_limits` to give several model
+    runs the same per-time axes.  With ``generated_point_size_mode='fixed'``
+    (the default), marker area never encodes ``predicted_weights``.  With
+    ``'relative_weight'``, generated marker area is proportional to particle
+    mass relative to the mean mass; ``point_size`` is the marker area of a
+    mean-mass particle.  Observed markers always use the fixed ``point_size``.
+    """
     import matplotlib.pyplot as plt
 
     if space not in {"spatial", "pca"}:
         raise ValueError("space must be 'spatial' or 'pca'.")
     if space == "spatial" and result.spatial_dim < 2:
         raise ValueError("The result does not contain 2D spatial coordinates.")
+    if max_points <= 0:
+        raise ValueError("max_points must be positive.")
+    if not np.isfinite(point_size) or point_size <= 0:
+        raise ValueError("point_size must be finite and positive.")
+    if not np.isfinite(alpha) or not 0 < alpha <= 1:
+        raise ValueError("alpha must be finite and in (0, 1].")
+    if generated_point_size_mode not in {"fixed", "relative_weight"}:
+        raise ValueError(
+            "generated_point_size_mode must be 'fixed' or 'relative_weight'."
+        )
     start = 0 if space == "spatial" else result.spatial_dim
     rng = np.random.default_rng(int(random_seed))
     n_rows = len(result.time_points)
@@ -405,34 +433,64 @@ def plot_generated_vs_observed(
         predicted = np.asarray(result.predicted_points[time_value])[
             :, start : start + 2
         ]
+        original_predicted_count = predicted.shape[0]
+        predicted_weights = None
+        if generated_point_size_mode == "relative_weight":
+            predicted_weights = _normalized_weights(
+                result.predicted_weights.get(time_value), predicted.shape[0]
+            )
         if observed.shape[0] > max_points:
             observed = observed[
                 rng.choice(observed.shape[0], size=int(max_points), replace=False)
             ]
         if predicted.shape[0] > max_points:
-            predicted = predicted[
-                rng.choice(predicted.shape[0], size=int(max_points), replace=False)
-            ]
-        joined = np.vstack((observed, predicted))
-        x_pad = max(float(np.ptp(joined[:, 0])) * 0.03, 1e-6)
-        y_pad = max(float(np.ptp(joined[:, 1])) * 0.03, 1e-6)
-        xlim = (
-            float(joined[:, 0].min() - x_pad),
-            float(joined[:, 0].max() + x_pad),
-        )
-        ylim = (
-            float(joined[:, 1].min() - y_pad),
-            float(joined[:, 1].max() + y_pad),
-        )
+            predicted_indices = rng.choice(
+                predicted.shape[0], size=int(max_points), replace=False
+            )
+            predicted = predicted[predicted_indices]
+            if predicted_weights is not None:
+                predicted_weights = predicted_weights[predicted_indices]
+        if axis_limits is None:
+            joined = np.vstack((observed, predicted))
+            x_pad = max(float(np.ptp(joined[:, 0])) * 0.03, 1e-6)
+            y_pad = max(float(np.ptp(joined[:, 1])) * 0.03, 1e-6)
+            xlim = (
+                float(joined[:, 0].min() - x_pad),
+                float(joined[:, 0].max() + x_pad),
+            )
+            ylim = (
+                float(joined[:, 1].min() - y_pad),
+                float(joined[:, 1].max() + y_pad),
+            )
+        else:
+            try:
+                xlim, ylim = axis_limits[float(time_value)]
+            except KeyError as exc:
+                raise ValueError(
+                    f"axis_limits does not contain t={float(time_value):g}."
+                ) from exc
+        if generated_point_size_mode == "relative_weight":
+            assert predicted_weights is not None
+            # Matplotlib's ``s`` is marker area.  Scaling normalized weights by
+            # the original particle count therefore makes area directly
+            # proportional to relative particle mass with mean area
+            # ``point_size`` before any display-only subsampling.
+            generated_sizes: float | np.ndarray = (
+                float(point_size)
+                * predicted_weights
+                * original_predicted_count
+            )
+        else:
+            generated_sizes = float(point_size)
         panel_data = (
-            (observed, "Observed", "#4C4C4C"),
-            (predicted, "Generated", "#A33A3A"),
+            (observed, "Observed", observed_color, float(point_size)),
+            (predicted, "Generated", generated_color, generated_sizes),
         )
-        for column, (values, title, color) in enumerate(panel_data):
+        for column, (values, title, color, sizes) in enumerate(panel_data):
             ax = axes[row, column]
             ax.set_facecolor("white")
             ax.scatter(
-                values[:, 0], values[:, 1], s=2, alpha=0.4, c=color, linewidths=0
+                values[:, 0], values[:, 1], s=sizes, alpha=alpha, c=color, linewidths=0
             )
             ax.set_xlim(*xlim)
             ax.set_ylim(*ylim)
@@ -453,6 +511,78 @@ def plot_generated_vs_observed(
     fig.savefig(out_path, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return out_path
+
+
+def compute_generated_vs_observed_plot_limits(
+    results: Sequence[DistributionEvaluationResult],
+    *,
+    space: str,
+    scope: str = "per_time",
+    pad_fraction: float = 0.03,
+) -> dict[float, tuple[tuple[float, float], tuple[float, float]]]:
+    """Pool plot bounds across runs for directly comparable scatter panels.
+
+    ``scope='per_time'`` pools all supplied runs at each matching time point.
+    ``scope='global'`` uses one bound across every run and time point.  Both
+    observed and generated points contribute to the returned bounds.
+    """
+
+    if not results:
+        raise ValueError("results must contain at least one evaluation result.")
+    if space not in {"spatial", "pca"}:
+        raise ValueError("space must be 'spatial' or 'pca'.")
+    if scope not in {"per_time", "global"}:
+        raise ValueError("scope must be 'per_time' or 'global'.")
+    if not np.isfinite(pad_fraction) or pad_fraction < 0:
+        raise ValueError("pad_fraction must be finite and non-negative.")
+
+    ranges: dict[float, list[float]] = {}
+    for result in results:
+        if space == "spatial" and result.spatial_dim < 2:
+            raise ValueError("Every result must contain 2D spatial coordinates.")
+        start = 0 if space == "spatial" else int(result.spatial_dim)
+        for time_value in result.time_points:
+            time_value = float(time_value)
+            observed = np.asarray(result.observed_points[time_value])[
+                :, start : start + 2
+            ]
+            predicted = np.asarray(result.predicted_points[time_value])[
+                :, start : start + 2
+            ]
+            if observed.shape[1] != 2 or predicted.shape[1] != 2:
+                raise ValueError(f"Every result must contain two {space} dimensions.")
+            if not np.isfinite(observed).all() or not np.isfinite(predicted).all():
+                raise ValueError("Plot coordinates must be finite.")
+            values = np.vstack((observed, predicted))
+            current = ranges.setdefault(
+                time_value,
+                [np.inf, -np.inf, np.inf, -np.inf],
+            )
+            current[0] = min(current[0], float(values[:, 0].min()))
+            current[1] = max(current[1], float(values[:, 0].max()))
+            current[2] = min(current[2], float(values[:, 1].min()))
+            current[3] = max(current[3], float(values[:, 1].max()))
+
+    if scope == "global":
+        global_range = [
+            min(value[0] for value in ranges.values()),
+            max(value[1] for value in ranges.values()),
+            min(value[2] for value in ranges.values()),
+            max(value[3] for value in ranges.values()),
+        ]
+        ranges = {time_value: list(global_range) for time_value in ranges}
+
+    limits: dict[float, tuple[tuple[float, float], tuple[float, float]]] = {}
+    for time_value, (x_min, x_max, y_min, y_max) in sorted(ranges.items()):
+        x_span = x_max - x_min
+        y_span = y_max - y_min
+        x_pad = x_span * float(pad_fraction) if x_span > 0 else 1e-6
+        y_pad = y_span * float(pad_fraction) if y_span > 0 else 1e-6
+        limits[time_value] = (
+            (x_min - x_pad, x_max + x_pad),
+            (y_min - y_pad, y_max + y_pad),
+        )
+    return limits
 
 
 def save_distribution_evaluation(

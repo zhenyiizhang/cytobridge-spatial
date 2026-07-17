@@ -219,49 +219,72 @@ def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
 def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor, noise_std: float = 0.01):
     import math
 
+    if float(dt) <= 0:
+        raise ValueError("dt must be > 0.")
     device = initial_state[0].device
     t0 = float(ts[0].item())
-    tf = float(ts[-1].item())
     current_state = initial_state
     current_time = t0
 
-    output_states = []
     ts_list = [float(x) for x in ts.tolist()]
-    next_output_idx = 0
+    if not ts_list:
+        raise ValueError("ts must contain at least one output time.")
+    if any(b <= a for a, b in zip(ts_list[:-1], ts_list[1:])):
+        raise ValueError("ts must be strictly increasing.")
+
+    # The state at ts[0] is the supplied initial condition. Historical code
+    # integrated one dt step before recording it, shifting every nominal
+    # segment start and causing adjacent piecewise segments to overwrite a
+    # boundary with t_start + dt.
+    output_states = [current_state]
+    next_output_idx = 1
     w_prev = torch.exp(current_state[1])
 
-    while current_time <= tf + 1e-8:
-        t_tensor = torch.tensor([current_time], device=device, dtype=torch.float32)
-        f_z, f_lnw = sde.f(t_tensor, current_state)
-        noise_z = torch.randn_like(current_state[0]) * math.sqrt(dt)
-        g_z = sde.g(t_tensor, current_state[0])
-        new_z = current_state[0] + f_z * dt + g_z * noise_z
-        new_lnw = current_state[1] + f_lnw * dt
+    while next_output_idx < len(ts_list):
+        target_time = ts_list[next_output_idx]
+        while current_time < target_time - 1e-8:
+            if current_state[0].shape[0] == 0:
+                current_time = target_time
+                break
+            step_dt = min(float(dt), target_time - current_time)
+            t_tensor = torch.tensor([current_time], device=device, dtype=torch.float32)
+            f_z, f_lnw = sde.f(t_tensor, current_state)
+            noise_z = torch.randn_like(current_state[0]) * math.sqrt(step_dt)
+            g_z = sde.g(t_tensor, current_state[0])
+            new_z = current_state[0] + f_z * step_dt + g_z * noise_z
+            new_lnw = current_state[1] + f_lnw * step_dt
+            current_state = (new_z, new_lnw)
+            current_time += step_dt
 
-        current_time += dt
-        if current_time >= ts_list[next_output_idx] - 1e-8:
-            w_next = torch.exp(new_lnw)
-            r = w_next / w_prev
-
-            mask_split = (r >= 1).squeeze()
+        new_z, new_lnw = current_state
+        if new_z.shape[0] > 0:
+            r = (torch.exp(new_lnw) / w_prev).reshape(-1)
+            mask_split = r >= 1
             mask_extinct = ~mask_split
 
             if mask_split.any():
                 r_split = r[mask_split]
                 new_z_split = new_z[mask_split]
                 new_lnw_split = new_lnw[mask_split]
-
                 r_floor = torch.floor(r_split)
                 r_frac = r_split - r_floor
-                rand_frac = torch.rand_like(r_frac)
-                m_j = r_floor.int().squeeze() + (rand_frac < r_frac).int().squeeze()
-
+                m_j = r_floor.to(torch.int64) + (
+                    torch.rand_like(r_frac) < r_frac
+                ).to(torch.int64)
                 valid_mask = m_j > 0
-                m_j = m_j[valid_mask]
-                if m_j.numel() > 0:
-                    repeated_z = torch.repeat_interleave(new_z_split[valid_mask], m_j, dim=0)
-                    repeated_lnw = torch.repeat_interleave(new_lnw_split[valid_mask], m_j, dim=0)
-                    noise = torch.normal(0, noise_std, size=repeated_z.shape, device=device)
+                if valid_mask.any():
+                    repeated_z = torch.repeat_interleave(
+                        new_z_split[valid_mask], m_j[valid_mask], dim=0
+                    )
+                    repeated_lnw = torch.repeat_interleave(
+                        new_lnw_split[valid_mask], m_j[valid_mask], dim=0
+                    )
+                    noise = torch.normal(
+                        0,
+                        float(noise_std),
+                        size=repeated_z.shape,
+                        device=device,
+                    )
                     split_z = repeated_z + noise
                     split_lnw = repeated_lnw
                 else:
@@ -275,16 +298,9 @@ def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tens
                 r_extinct = r[mask_extinct]
                 new_z_extinct = new_z[mask_extinct]
                 new_lnw_extinct = new_lnw[mask_extinct]
-                rand_keep = torch.rand_like(r_extinct)
-                keep_mask = rand_keep < r_extinct
-                if keep_mask.dim() > 1 and keep_mask.shape[-1] == 1:
-                    keep_mask = keep_mask.squeeze(-1)
-                if keep_mask.any():
-                    extinct_z = new_z_extinct[keep_mask]
-                    extinct_lnw = new_lnw_extinct[keep_mask]
-                else:
-                    extinct_z = torch.empty(0, new_z.shape[1], device=device)
-                    extinct_lnw = torch.empty(0, 1, device=device)
+                keep_mask = torch.rand_like(r_extinct) < r_extinct
+                extinct_z = new_z_extinct[keep_mask]
+                extinct_lnw = new_lnw_extinct[keep_mask]
             else:
                 extinct_z = torch.empty(0, new_z.shape[1], device=device)
                 extinct_lnw = torch.empty(0, 1, device=device)
@@ -292,22 +308,18 @@ def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tens
             if split_z.shape[0] > 0 or extinct_z.shape[0] > 0:
                 new_z = torch.cat([split_z, extinct_z], dim=0)
                 new_lnw = torch.cat([split_lnw, extinct_lnw], dim=0)
-                new_lnw = torch.log(torch.ones(new_z.shape[0], 1, device=device) / initial_state[0].shape[0])
+                new_lnw = torch.log(
+                    torch.ones(new_z.shape[0], 1, device=device)
+                    / initial_state[0].shape[0]
+                )
             else:
                 new_z = torch.empty(0, current_state[0].shape[1], device=device)
                 new_lnw = torch.empty(0, 1, device=device)
 
-            current_state = (new_z, new_lnw)
-            output_states.append(current_state)
-            next_output_idx += 1
-            w_prev = torch.exp(new_lnw)
-            if next_output_idx >= len(ts_list):
-                break
-        else:
-            current_state = (new_z, new_lnw)
-
-    while len(output_states) < len(ts_list):
+        current_state = (new_z, new_lnw)
         output_states.append(current_state)
+        next_output_idx += 1
+        w_prev = torch.exp(new_lnw)
 
     traj_z = [state[0] for state in output_states]
     traj_lnw = [state[1] for state in output_states]
@@ -593,11 +605,13 @@ def simulate_piecewise_spatially_warped_split(
     rng: np.random.Generator,
     k: int,
     eps: float,
-) -> np.ndarray:
+    return_prewarp: bool = False,
+    warp_visualization_only: bool = False,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     ts_sorted = [float(t) for t in ts_points]
     observed_sorted = [float(t) for t in observed_time_points if ts_sorted[0] <= float(t) <= ts_sorted[-1]]
     if len(observed_sorted) < 2:
-        return simulate_sde_points_split_from_x0(
+        fallback = simulate_sde_points_split_from_x0(
             x0=x0,
             f_net=f_net,
             score_net=score_net,
@@ -610,9 +624,16 @@ def simulate_piecewise_spatially_warped_split(
             device=device,
             verbose=True,
         )
+        if return_prewarp:
+            return fallback, np.array(
+                [np.asarray(points, dtype=np.float32).copy() for points in fallback],
+                dtype=object,
+            )
+        return fallback
 
     current_x0 = np.asarray(x0, dtype=np.float32)
     points_by_time: Dict[float, np.ndarray] = {}
+    prewarp_points_by_time: Dict[float, np.ndarray] = {}
 
     for t_start, t_end in zip(observed_sorted[:-1], observed_sorted[1:]):
         seg_ts = [float(t) for t in ts_sorted if float(t_start) <= float(t) <= float(t_end)]
@@ -620,6 +641,9 @@ def simulate_piecewise_spatially_warped_split(
             continue
         if len(seg_ts) == 1:
             points_by_time[float(seg_ts[0])] = np.asarray(current_x0, dtype=np.float32).copy()
+            prewarp_points_by_time[float(seg_ts[0])] = np.asarray(
+                current_x0, dtype=np.float32
+            ).copy()
             continue
 
         print(f"[spatial-warp piecewise] segment {t_start}->{t_end} | targets={seg_ts}")
@@ -648,27 +672,88 @@ def simulate_piecewise_spatially_warped_split(
         )
         target_endpoint_xy = np.asarray(X_target, dtype=np.float32)[:, :2]
 
+        # When the warp is display-only, the model state remains on the raw
+        # piecewise trajectory.  The displayed segment still needs to meet the
+        # preceding displayed endpoint exactly, so interpolate between a
+        # start-boundary display displacement and the new endpoint warp.
+        raw_start_xy = np.asarray(seg_points[0], dtype=np.float32)[:, :2]
+        previous_display_boundary = points_by_time.get(float(t_start))
+        start_display_xy = (
+            np.asarray(previous_display_boundary, dtype=np.float32)[:, :2]
+            if warp_visualization_only and previous_display_boundary is not None
+            else None
+        )
+
         for t_val, pts_raw in zip(seg_ts, seg_points):
             pts = np.asarray(pts_raw, dtype=np.float32).copy()
+            # Preserve the dynamical state before this segment's display warp.
+            # At a shared endpoint, keep the preceding segment's unwarped
+            # endpoint rather than overwriting it with the next segment start.
+            prewarp_points_by_time.setdefault(
+                float(t_val), np.asarray(pts_raw, dtype=np.float32).copy()
+            )
             alpha = (float(t_val) - float(t_start)) / max(float(t_end - t_start), float(eps))
-            if alpha > 0.0:
-                disp = _compute_spatial_warp_displacements(
+            if warp_visualization_only and start_display_xy is not None:
+                start_disp = _compute_spatial_warp_displacements(
+                    pts[:, :2],
+                    raw_start_xy,
+                    start_display_xy,
+                    k=k,
+                    eps=eps,
+                )
+                end_disp = _compute_spatial_warp_displacements(
                     pts[:, :2],
                     source_endpoint_xy,
                     target_endpoint_xy,
                     k=k,
                     eps=eps,
                 )
-                pts[:, :2] = pts[:, :2] + float(alpha) * disp
+                pts[:, :2] = (
+                    pts[:, :2]
+                    + (1.0 - float(alpha)) * start_disp
+                    + float(alpha) * end_disp
+                )
+                if float(t_val) == float(t_start):
+                    # The shared boundary has the same particle ordering as
+                    # the next model start, so preserve it bit-for-bit.
+                    pts = np.asarray(previous_display_boundary, dtype=np.float32).copy()
+            elif alpha > 0.0:
+                end_disp = _compute_spatial_warp_displacements(
+                    pts[:, :2],
+                    source_endpoint_xy,
+                    target_endpoint_xy,
+                    k=k,
+                    eps=eps,
+                )
+                pts[:, :2] = pts[:, :2] + float(alpha) * end_disp
             points_by_time[float(t_val)] = pts
 
-        current_x0 = np.asarray(points_by_time[float(t_end)], dtype=np.float32).copy()
+        current_x0 = np.asarray(
+            seg_points[-1]
+            if warp_visualization_only
+            else points_by_time[float(t_end)],
+            dtype=np.float32,
+        ).copy()
 
     missing = [float(t) for t in ts_sorted if float(t) not in points_by_time]
     if missing:
         raise ValueError(f"Piecewise spatial-warp split-SDE missing timepoints: {missing}")
 
-    return np.array([points_by_time[float(t)] for t in ts_sorted], dtype=object)
+    warped = np.array([points_by_time[float(t)] for t in ts_sorted], dtype=object)
+    if not return_prewarp:
+        return warped
+    missing_prewarp = [
+        float(t) for t in ts_sorted if float(t) not in prewarp_points_by_time
+    ]
+    if missing_prewarp:
+        raise ValueError(
+            "Piecewise spatial-warp split-SDE missing prewarp timepoints: "
+            f"{missing_prewarp}"
+        )
+    prewarp = np.array(
+        [prewarp_points_by_time[float(t)] for t in ts_sorted], dtype=object
+    )
+    return warped, prewarp
 
 
 def simulate_sde_points(

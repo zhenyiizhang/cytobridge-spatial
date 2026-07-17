@@ -140,6 +140,12 @@ def _run_preprocess(args, paths: dict[str, Path], defaults: dict) -> dict:
         if published_thresholds
         else None
     )
+    expression_layer_text = str(args.expression_layer).strip()
+    expression_layer = (
+        None
+        if expression_layer_text.lower() in {"x", "none", "null"}
+        else expression_layer_text
+    )
     config = AlignConfig(
         n_top_genes=2000,
         n_pcs=50,
@@ -158,6 +164,8 @@ def _run_preprocess(args, paths: dict[str, Path], defaults: dict) -> dict:
         distance_pairs=10000,
         learning_rate=1e-3,
         random_seed=int(args.random_seed),
+        expression_layer=expression_layer,
+        allow_retransform_preprocessed_x=bool(args.allow_retransform_preprocessed_x),
     )
     return run_preprocessing_pipeline(
         data_name="arista",
@@ -431,6 +439,12 @@ def _run_downstream(args, paths: dict[str, Path]) -> dict:
         "components": list(loaded.model.components),
         "n_cells": int(adata.n_obs),
         "dim": int(dim),
+        "preprocess_expression_source": adata.uns.get("preprocess_info", {}).get(
+            "expression_source"
+        ),
+        "preprocess_input_x_state_detected": adata.uns.get("preprocess_info", {}).get(
+            "input_x_state_detected"
+        ),
         "time_counts": {
             str(key): int(value)
             for key, value in pd.Series(components["times"])
@@ -486,6 +500,21 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--phase1-epochs", type=int, default=None)
     parser.add_argument("--phase2-epochs", type=int, default=None)
     parser.add_argument("--edge-epochs", type=int, default=None)
+    parser.add_argument(
+        "--expression-layer",
+        default="counts",
+        help=(
+            "AnnData layer copied into X before normalize/log1p. ARISTA defaults "
+            "to layers['counts'] because the source H5AD X is already log1p. "
+            "Pass 'X' together with --allow-retransform-preprocessed-x only for "
+            "the historical double-transform replay."
+        ),
+    )
+    parser.add_argument(
+        "--allow-retransform-preprocessed-x",
+        action="store_true",
+        help="Permit a labelled legacy replay that normalizes/log1p-transforms an already transformed X.",
+    )
     parser.add_argument(
         "--threshold-policy",
         choices=["preprocess", "published"],
@@ -554,6 +583,8 @@ def main() -> int:
         "profile": args.profile,
         "stage": args.stage,
         "threshold_policy": args.threshold_policy,
+        "expression_layer": args.expression_layer,
+        "allow_retransform_preprocessed_x": bool(args.allow_retransform_preprocessed_x),
         "paths": {key: str(value) for key, value in paths.items()},
         "downstream_manifest": manifest,
     }

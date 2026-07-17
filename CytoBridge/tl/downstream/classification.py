@@ -44,14 +44,19 @@ class ResidualBlock(nn.Module):
 class ResidualMLP(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, num_classes: int):
         super().__init__()
+        hidden_size = int(hidden_size)
+        if hidden_size <= 0:
+            raise ValueError("hidden_size must be > 0.")
+        wide_size = 4 * hidden_size
+        middle_size = 2 * hidden_size
         self.input_proj = nn.Sequential(
-            nn.Linear(input_size, 512),
+            nn.Linear(input_size, wide_size),
             nn.LeakyReLU(0.2),
         )
-        self.res1 = ResidualBlock(512, 512)
-        self.res2 = ResidualBlock(512, 256)
-        self.res3 = ResidualBlock(256, 128)
-        self.fc_out = nn.Linear(128, num_classes)
+        self.res1 = ResidualBlock(wide_size, wide_size)
+        self.res2 = ResidualBlock(wide_size, middle_size)
+        self.res3 = ResidualBlock(middle_size, hidden_size)
+        self.fc_out = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.input_proj(x)
@@ -73,6 +78,7 @@ class LoadedClassifierCache:
     accuracy: Optional[float]
     balanced_accuracy: Optional[float]
     metadata: dict
+    evaluation: dict
 
     @property
     def include_time_feature(self) -> bool:
@@ -142,6 +148,7 @@ def load_cached_mlp_classifier(
         accuracy=float(payload["acc"]) if payload.get("acc") is not None else None,
         balanced_accuracy=float(payload["bacc"]) if payload.get("bacc") is not None else None,
         metadata=dict(meta),
+        evaluation=dict(payload.get("evaluation", {})),
     )
 
 
@@ -358,7 +365,7 @@ def _train_mlp_classifier_arrays(
     seed: int = 42,
     device: str = "cuda",
 ) -> Tuple[MLP, object, float]:
-    model, label_encoder, accuracy, _ = _train_mlp_classifier_arrays_detailed(
+    model, label_encoder, accuracy, _, _ = _train_mlp_classifier_arrays_detailed(
         X=X,
         y=y,
         hidden_size=hidden_size,
@@ -384,10 +391,16 @@ def _train_mlp_classifier_arrays_detailed(
     device: str = "cuda",
     best_epoch_metric: str = "accuracy",
     train_on_full_data: bool = False,
-) -> Tuple[MLP, object, float, float]:
+    stratify_split: bool = True,
+) -> Tuple[MLP, object, float, float, dict]:
     import copy
 
-    from sklearn.metrics import accuracy_score, balanced_accuracy_score
+    from sklearn.metrics import (
+        accuracy_score,
+        balanced_accuracy_score,
+        classification_report,
+        confusion_matrix,
+    )
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import LabelEncoder
 
@@ -406,16 +419,32 @@ def _train_mlp_classifier_arrays_detailed(
 
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
+    all_indices = np.arange(len(y_encoded), dtype=np.int64)
+    stratify_used = False
     if train_on_full_data:
+        train_indices = all_indices
+        test_indices = all_indices
         X_train, y_train = X, y_encoded
         X_test, y_test = X, y_encoded
     else:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y_encoded,
+        class_counts = np.bincount(y_encoded, minlength=len(label_encoder.classes_))
+        n_test = int(np.ceil(float(test_size) * len(y_encoded)))
+        n_train = len(y_encoded) - n_test
+        can_stratify = (
+            bool(stratify_split)
+            and bool(np.all(class_counts >= 2))
+            and n_test >= len(label_encoder.classes_)
+            and n_train >= len(label_encoder.classes_)
+        )
+        train_indices, test_indices = train_test_split(
+            all_indices,
             test_size=test_size,
             random_state=seed,
+            stratify=y_encoded if can_stratify else None,
         )
+        stratify_used = bool(can_stratify)
+        X_train, X_test = X[train_indices], X[test_indices]
+        y_train, y_test = y_encoded[train_indices], y_encoded[test_indices]
 
     dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=dev)
@@ -430,8 +459,9 @@ def _train_mlp_classifier_arrays_detailed(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(epochs), eta_min=1e-5)
 
     best_score = float("-inf")
+    best_epoch = 0
     best_model_wts = copy.deepcopy(model.state_dict())
-    for _ in range(int(epochs)):
+    for epoch in range(int(epochs)):
         model.train()
         optimizer.zero_grad()
         outputs = model(X_train_t)
@@ -449,19 +479,59 @@ def _train_mlp_classifier_arrays_detailed(
             score = float(val_acc if metric == "accuracy" else val_bacc)
             if score > best_score:
                 best_score = score
+                best_epoch = int(epoch + 1)
                 best_model_wts = copy.deepcopy(model.state_dict())
 
     model.load_state_dict(best_model_wts)
     model.eval()
     with torch.no_grad():
-        preds = torch.argmax(model(X_test_t), dim=1)
-    accuracy = accuracy_score(y_test, preds.detach().cpu().numpy())
-    balanced_accuracy = balanced_accuracy_score(y_test, preds.detach().cpu().numpy())
-    return model, label_encoder, float(accuracy), float(balanced_accuracy)
+        test_preds = torch.argmax(model(X_test_t), dim=1).detach().cpu().numpy()
+        train_preds = torch.argmax(model(X_train_t), dim=1).detach().cpu().numpy()
+    accuracy = accuracy_score(y_test, test_preds)
+    balanced_accuracy = balanced_accuracy_score(y_test, test_preds)
+    train_accuracy = accuracy_score(y_train, train_preds)
+    train_balanced_accuracy = balanced_accuracy_score(y_train, train_preds)
+    labels = np.arange(len(label_encoder.classes_), dtype=int)
+    per_class = classification_report(
+        y_test,
+        test_preds,
+        labels=labels,
+        target_names=label_encoder.classes_.astype(str),
+        output_dict=True,
+        zero_division=0,
+    )
+    split_digest = sha1()
+    split_digest.update(np.asarray(train_indices, dtype=np.int64).tobytes())
+    split_digest.update(np.asarray(test_indices, dtype=np.int64).tobytes())
+    evaluation = {
+        "metric_scope": "training data" if train_on_full_data else "held-out validation split",
+        "validation_is_independent_test": False,
+        "best_epoch": int(best_epoch),
+        "best_epoch_metric": metric,
+        "best_epoch_score": float(best_score),
+        "train_accuracy": float(train_accuracy),
+        "train_balanced_accuracy": float(train_balanced_accuracy),
+        "validation_accuracy": float(accuracy),
+        "validation_balanced_accuracy": float(balanced_accuracy),
+        "stratify_requested": bool(stratify_split),
+        "stratify_used": bool(stratify_used),
+        "split_indices_sha1": split_digest.hexdigest(),
+        "n_train": int(len(train_indices)),
+        "n_validation": int(len(test_indices)),
+        "per_class": per_class,
+        "confusion_matrix": confusion_matrix(y_test, test_preds, labels=labels).tolist(),
+    }
+    return model, label_encoder, float(accuracy), float(balanced_accuracy), evaluation
 
 
-def _classifier_cache_fingerprint(adata, *, label_col: str, time_key: Optional[str]) -> str:
-    """Build a stable, content-aware fingerprint without hashing the expression matrix."""
+def _classifier_cache_fingerprint(
+    adata,
+    *,
+    label_col: str,
+    time_key: Optional[str],
+    classifier_inputs: Optional[np.ndarray] = None,
+) -> str:
+    """Build a stable fingerprint over identities, labels, times, and classifier inputs."""
     from CytoBridge.tl.downstream.downstream_data import infer_time_key
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
@@ -473,6 +543,10 @@ def _classifier_cache_fingerprint(adata, *, label_col: str, time_key: Optional[s
         adata.obs[resolved_time_key].astype(str).values,
     ):
         digest.update("\x1f".join(map(str, values)).encode("utf-8"))
+    if classifier_inputs is not None:
+        inputs = np.ascontiguousarray(classifier_inputs, dtype=np.float32)
+        digest.update(str(inputs.shape).encode("utf-8"))
+        digest.update(inputs.tobytes())
     return digest.hexdigest()
 
 
@@ -498,6 +572,7 @@ def train_cached_mlp_classifier_from_adata(
     include_time_feature: bool = True,
     best_epoch_metric: str = "bacc",
     train_on_full_data: bool = False,
+    stratify_split: bool = True,
 ) -> tuple[LoadedClassifierCache, Path]:
     """Train, persist, and reload a trajectory-label classifier from AnnData.
 
@@ -526,7 +601,7 @@ def train_cached_mlp_classifier_from_adata(
     ]
     classes = sorted({str(v) for v in y})
     metadata = {
-        "version": 2,
+        "version": 3,
         "feature_cols": feature_cols,
         "label_col": str(label_col),
         "hidden_size": int(hidden_size),
@@ -538,6 +613,7 @@ def train_cached_mlp_classifier_from_adata(
         "classes": classes,
         "best_epoch_metric": str(best_epoch_metric).strip().lower(),
         "train_on_full_data": bool(train_on_full_data),
+        "stratify_split": bool(stratify_split),
         "include_time_feature": bool(include_time_feature),
         "source": {
             "kind": "AnnData",
@@ -547,6 +623,7 @@ def train_cached_mlp_classifier_from_adata(
                 adata,
                 label_col=label_col,
                 time_key=time_key,
+                classifier_inputs=X,
             ),
             "obsm_key": str(obsm_key),
             "spatial_key": str(spatial_key),
@@ -572,7 +649,7 @@ def train_cached_mlp_classifier_from_adata(
         if cached.metadata == metadata:
             return cached, resolved_path
 
-    model, label_encoder, accuracy, balanced_accuracy = _train_mlp_classifier_arrays_detailed(
+    model, label_encoder, accuracy, balanced_accuracy, evaluation = _train_mlp_classifier_arrays_detailed(
         X=X,
         y=y,
         hidden_size=hidden_size,
@@ -583,12 +660,14 @@ def train_cached_mlp_classifier_from_adata(
         device=device,
         best_epoch_metric=best_epoch_metric,
         train_on_full_data=train_on_full_data,
+        stratify_split=stratify_split,
     )
     payload = {
         "meta": metadata,
         "state_dict": {key: value.detach().cpu() for key, value in model.state_dict().items()},
         "acc": float(accuracy),
         "bacc": float(balanced_accuracy),
+        "evaluation": evaluation,
         "num_classes": int(len(label_encoder.classes_)),
         "saved_at": float(time.time()),
     }
