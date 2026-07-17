@@ -156,6 +156,7 @@ def run_preprocessing_pipeline(
         n_pcs=align_config.n_pcs,
         normalization_target_sum=align_config.normalization_target_sum,
         expression_layer=align_config.expression_layer,
+        allow_retransform_preprocessed_x=align_config.allow_retransform_preprocessed_x,
     )
     adata_aligned = align_spatial(
         adata_or_h5ad=adata_preprocessed,

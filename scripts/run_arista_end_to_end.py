@@ -42,6 +42,21 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _json_ready(value):
+    """Recursively convert NumPy/H5AD scalars and arrays into JSON values."""
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return [_json_ready(item) for item in value.tolist()]
+    if isinstance(value, dict):
+        return {str(key): _json_ready(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, Path):
+        return str(value)
+    return value
+
+
 def _git_revision() -> dict[str, object]:
     try:
         revision = subprocess.run(
@@ -476,6 +491,7 @@ def _run_downstream(args, paths: dict[str, Path]) -> dict:
             "mean_by_space": evaluation_summary,
         },
     }
+    manifest = _json_ready(manifest)
     (output_dir / "run_manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True),
         encoding="utf-8",
@@ -588,6 +604,7 @@ def main() -> int:
         "paths": {key: str(value) for key, value in paths.items()},
         "downstream_manifest": manifest,
     }
+    payload = _json_ready(payload)
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
 
