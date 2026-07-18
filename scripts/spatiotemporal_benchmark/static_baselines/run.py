@@ -418,7 +418,11 @@ def _base_manifest(
         "output_scope": {
             "scope": scope,
             "state_dimensions": 0 if scope == "N/A" else int(state_dim),
-            "spatial_dimensions": 0 if scope in {"N/A", "native_state"} else int(spatial_dim),
+            "spatial_dimensions": (
+                0
+                if scope in {"N/A", "native_state", "hybrid_state"}
+                else int(spatial_dim)
+            ),
             "hybrid_adapter": bool(rep_spec.get("hybrid", False)),
             "native_output": rep_spec.get("native_output"),
             "benchmark_output": rep_spec.get("benchmark_output"),
@@ -743,12 +747,9 @@ def _write_outputs(
             "source_roster_sha256": provenance.get("source_roster_sha256"),
             "train_h5ad_sha256": data.input_sha256,
             "output_scope": output_scope,
-            "native_vs_adapter": (
-                "hybrid_coupling_adapter"
-                if hybrid_adapter
-                else "native_state"
-                if state_only
-                else "explicit_control"
+            "native_vs_adapter": _native_vs_adapter(
+                output_scope=output_scope,
+                hybrid_adapter=hybrid_adapter,
             ),
             "native_mass": False,
             "native_growth": False,
@@ -801,11 +802,23 @@ def _write_outputs(
     }
 
 
+def _native_vs_adapter(*, output_scope: str, hybrid_adapter: bool) -> str:
+    if hybrid_adapter:
+        return "hybrid_coupling_adapter"
+    if output_scope in {"state", "state_only", "native_state", "native-state"}:
+        return "native_state"
+    return "explicit_control"
+
+
 def _write_summary(args: argparse.Namespace, manifest: dict[str, Any]) -> None:
     outputs = manifest.get("outputs", {})
     prediction_by_time = outputs.get("prediction_by_time", {})
     target_values = sorted(float(value) for value in prediction_by_time)
     source_time = manifest.get("anchors", {}).get("source_stage")
+    output_scope = str(manifest.get("output_scope", {}).get("scope", ""))
+    hybrid_adapter = bool(
+        manifest.get("output_scope", {}).get("hybrid_adapter", False)
+    )
     payload = {
         "schema_version": "2.0.0",
         "status": manifest["status"],
@@ -820,7 +833,15 @@ def _write_summary(args: argparse.Namespace, manifest: dict[str, Any]) -> None:
         "source_roster_row_ids_sha256": manifest.get("anchors", {}).get(
             "source_roster_row_ids_sha256"
         ),
-        "output_scope": manifest.get("output_scope", {}).get("scope"),
+        "output_scope": output_scope,
+        "native_vs_adapter": (
+            "not_applicable"
+            if manifest["status"] == "not_applicable"
+            else _native_vs_adapter(
+                output_scope=output_scope,
+                hybrid_adapter=hybrid_adapter,
+            )
+        ),
         "primary_benchmark_eligible": manifest.get("primary_benchmark_eligible", False),
         "input_manifest_sha256": manifest.get("input", {}).get("input_manifest_sha256"),
         "training_reference_sha256": manifest.get("input", {}).get("training_reference_sha256"),

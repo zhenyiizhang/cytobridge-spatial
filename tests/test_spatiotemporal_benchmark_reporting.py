@@ -43,8 +43,16 @@ def _metrics() -> pd.DataFrame:
                             "tmv_absolute": 0.01 if method == "joint_method" else float("nan"),
                             "predicted_mass": 1.0 if method == "joint_method" else float("nan"),
                             "observed_mass_relative": 1.0 if method == "joint_method" else float("nan"),
-                            "output_scope": "native_joint" if method == "joint_method" else "native_state",
-                            "native_vs_adapter": "native",
+                            "output_scope": (
+                                "native_joint"
+                                if method == "joint_method"
+                                else "hybrid_state"
+                            ),
+                            "native_vs_adapter": (
+                                "native_joint"
+                                if method == "joint_method"
+                                else "hybrid_coupling_adapter"
+                            ),
                             "n_predicted": 10,
                             "n_observed": 8,
                         }
@@ -70,7 +78,7 @@ def _registry(path: Path) -> None:
                         "display_name": "State",
                         "aliases": ["state_method"],
                         "spaces": ["state"],
-                        "scope": "native_state",
+                        "scope": "state_coupling_barycenter_adapter",
                         "status": "evaluated",
                     },
                     {
@@ -125,6 +133,8 @@ def test_summary_preserves_na_and_never_creates_cross_space_score(tmp_path: Path
     state_spatial = method[(method["method"] == "State") & (method["space"] == "spatial")]
     assert state_spatial.iloc[0]["status"] != "evaluated"
     assert pd.isna(state_spatial.iloc[0]["sliced_w2_mean"])
+    state_state = method[(method["method"] == "State") & (method["space"] == "state")]
+    assert set(state_state["scope"]) == {"state_coupling_barycenter_adapter"}
     assert "overall" not in " ".join(method.columns).lower()
     assert manifest["rank_policy"].startswith("within each feature space")
     assert (output / "loto_sliced_w2_barplot.png").is_file()

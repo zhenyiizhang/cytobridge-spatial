@@ -592,3 +592,11 @@ def test_production_registry_grid_has_72_target_and_24_method_space_rows(
     }
     assert set(target["raw_method"]) == set(raw_by_canonical.values())
     assert set(target["canonical_method"]) == set(raw_by_canonical)
+    wot_target = target[target["canonical_method"] == "Waddington-OT"]
+    assert set(wot_target["scope"]) == {"state_coupling_barycenter_adapter"}
+    wot_method_space = method_space[
+        method_space["canonical_method"] == "Waddington-OT"
+    ]
+    assert set(wot_method_space["scope"]) == {
+        "state_coupling_barycenter_adapter"
+    }

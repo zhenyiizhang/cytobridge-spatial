@@ -51,6 +51,8 @@ _ARRAY_FIELDS = ("state", "spatial", "time", "row_id")
 _CONCATENATED_HASH_FIELDS = ("row_id", "state", "spatial", "time")
 _RUN_CONTRACT_SCHEMA_VERSION = "1.0.0"
 _EVALUATION_SPACES = ("joint", "state", "spatial")
+_SCOPE_COMPATIBILITY_EXACT = "registry_declared_scope"
+_SCOPE_COMPATIBILITY_LEGACY_WOT = "legacy_wot_native_state_label_normalized"
 
 
 def _load_method_registry(path: Path) -> dict[str, Any]:
@@ -230,17 +232,23 @@ def _registry_binding_for_raw(
     return entry
 
 
-def _scope_matches_registry(
+def _scope_compatibility(
     *,
+    canonical_method: str,
+    raw_method: str,
     registry_scope: str,
     output_scope: str,
     native_vs_adapter: str,
-) -> bool:
-    """Match registry categories to the producer's two scope declarations."""
+    actual_spaces: Iterable[str],
+) -> str | None:
+    """Return the exact audited label policy used for one prediction."""
 
+    canonical_value = str(canonical_method).strip()
+    raw_value = str(raw_method).strip()
     registry_value = str(registry_scope).strip().casefold()
     output_value = str(output_scope).strip().casefold()
     adapter_value = str(native_vs_adapter).strip().casefold()
+    spaces = {str(space).strip().casefold() for space in actual_spaces}
     signatures = {
         "native_joint": ({"native_joint"}, {"native_joint"}),
         "native_state": ({"native_state"}, {"native_state"}),
@@ -249,12 +257,35 @@ def _scope_matches_registry(
             {"hybrid_joint"},
             {"hybrid_coupling_adapter", "coupling_barycenter_adapter"},
         ),
+        "state_coupling_barycenter_adapter": (
+            {"hybrid_state"},
+            {
+                "hybrid_coupling_adapter",
+                "state_coupling_barycenter_adapter",
+            },
+        ),
     }
     expected = signatures.get(registry_value)
-    if expected is None:
-        return False
-    expected_output, expected_adapter = expected
-    return output_value in expected_output and adapter_value in expected_adapter
+    if expected is not None:
+        expected_output, expected_adapter = expected
+        if output_value in expected_output and adapter_value in expected_adapter:
+            return _SCOPE_COMPATIBILITY_EXACT
+
+    # The already-computed benchmark contains WOT predictions made before its
+    # coupling output was relabelled from native_state to hybrid_state.  The
+    # registry binding above has already proved that this exact raw identifier
+    # resolves to Waddington-OT.  This metadata-only bridge is deliberately
+    # limited to state-only arrays and cannot authorize spatial/joint scores.
+    if (
+        canonical_value == "Waddington-OT"
+        and bool(raw_value)
+        and registry_value == "state_coupling_barycenter_adapter"
+        and output_value == "native_state"
+        and adapter_value == "native_state"
+        and spaces == {"state"}
+    ):
+        return _SCOPE_COMPATIBILITY_LEGACY_WOT
+    return None
 
 
 def _array_signature(values: np.ndarray) -> dict[str, Any]:
@@ -1159,11 +1190,15 @@ def _scan_predictions(
         actual_spaces = (
             ["joint", "state", "spatial"] if spatial is not None else ["state"]
         )
-        if not _scope_matches_registry(
+        scope_compatibility = _scope_compatibility(
+            canonical_method=canonical_method,
+            raw_method=raw_method,
             registry_scope=str(method_binding["scope"]),
             output_scope=scope,
             native_vs_adapter=native_vs_adapter,
-        ):
+            actual_spaces=actual_spaces,
+        )
+        if scope_compatibility is None:
             raise ContractError(
                 f"{summary_path}: actual output scope {scope!r} and "
                 f"native_vs_adapter {native_vs_adapter!r} differ from registry scope "
@@ -1194,6 +1229,7 @@ def _scan_predictions(
             "registry_spaces": list(method_binding["declared_spaces"]),
             "actual_spaces": actual_spaces,
             "native_vs_adapter": native_vs_adapter,
+            "scope_compatibility": scope_compatibility,
             "primary_benchmark_eligible": primary._primary_eligible(summary),
         }
     return found
@@ -1266,6 +1302,9 @@ def _prediction_inventory(
                         "registry_declared_spaces": prediction["registry_spaces"],
                         "actual_output_spaces": prediction["actual_spaces"],
                         "native_vs_adapter": prediction["native_vs_adapter"],
+                        "scope_compatibility": prediction[
+                            "scope_compatibility"
+                        ],
                         "primary_benchmark_eligible": bool(
                             prediction["primary_benchmark_eligible"]
                         ),
@@ -1308,6 +1347,51 @@ def _prediction_inventory(
         "n_records": int(len(records)),
         "method_registry": registry_binding,
         "records": records,
+    }
+
+
+def _scope_compatibility_audit(inventory: dict[str, Any]) -> dict[str, Any]:
+    records = inventory.get("records")
+    if not isinstance(records, list) or not records:
+        raise ContractError("cannot build scope compatibility audit without inventory")
+    audit_records: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict):
+            raise ContractError("scope compatibility inventory record must be an object")
+        audit_records.append(
+            {
+                "raw_method": record.get("raw_method"),
+                "canonical_method": record.get("canonical_method"),
+                "track": record.get("track"),
+                "target": record.get("target"),
+                "registry_scope": record.get("registry_scope"),
+                "output_scope": record.get("output_scope"),
+                "native_vs_adapter": record.get("native_vs_adapter"),
+                "actual_output_spaces": record.get("actual_output_spaces"),
+                "scope_compatibility": record.get("scope_compatibility"),
+                "prediction_summary_sha256": record.get(
+                    "prediction_summary_sha256"
+                ),
+            }
+        )
+    legacy = [
+        record
+        for record in audit_records
+        if record["scope_compatibility"] == _SCOPE_COMPATIBILITY_LEGACY_WOT
+    ]
+    return {
+        "schema_version": "1.0.0",
+        "status": "complete",
+        "compatibility_is_metadata_only": True,
+        "numeric_prediction_arrays_unchanged": True,
+        "legacy_policy": (
+            "Only registry-bound canonical Waddington-OT predictions with the old "
+            "native_state/native_state labels and state-only arrays are normalized "
+            "to the state coupling barycenter adapter scope."
+        ),
+        "n_records": int(len(audit_records)),
+        "n_legacy_wot_native_state_records": int(len(legacy)),
+        "records": audit_records,
     }
 
 
@@ -1357,13 +1441,22 @@ def _verify_prediction_inventory_files(inventory: dict[str, Any]) -> None:
                 f"prediction inventory actual spaces differ from registry for "
                 f"{raw_method!r}"
             )
-        if not _scope_matches_registry(
+        scope_compatibility = _scope_compatibility(
+            canonical_method=str(entry.get("canonical_method", "")),
+            raw_method=raw_method,
             registry_scope=str(entry.get("scope", "")),
             output_scope=str(record.get("output_scope", "")),
             native_vs_adapter=str(record.get("native_vs_adapter", "")),
-        ):
+            actual_spaces=record.get("actual_output_spaces", []),
+        )
+        if scope_compatibility is None:
             raise ContractError(
                 f"prediction inventory output scope/adapter differs from registry for "
+                f"{raw_method!r}"
+            )
+        if record.get("scope_compatibility") != scope_compatibility:
+            raise ContractError(
+                f"prediction inventory scope compatibility is not audited for "
                 f"{raw_method!r}"
             )
         for path_key, sha_key in (
@@ -1469,6 +1562,11 @@ def _verify_bound_inventory_from_manifest(manifest: dict[str, Any]) -> None:
             raise ContractError(
                 f"{label} method-registry binding differs from final manifest"
             )
+    expected_scope_audit = _scope_compatibility_audit(inventory)
+    if manifest.get("scope_compatibility_audit") != expected_scope_audit:
+        raise ContractError(
+            "final manifest scope compatibility audit differs from prediction inventory"
+        )
     _verify_prediction_inventory_files(inventory)
 
 
@@ -1743,6 +1841,9 @@ def _evaluate_predictions(
                 metrics["seed_pairing_split"] = seed_split
                 metrics["output_scope"] = prediction["scope"]
                 metrics["native_vs_adapter"] = prediction["native_vs_adapter"]
+                metrics["scope_compatibility"] = prediction[
+                    "scope_compatibility"
+                ]
                 metrics["source_time"] = primary._source_time(
                     summary, track, target, case["train_time"]
                 )
@@ -1913,6 +2014,7 @@ def _collapse_track(metrics: pd.DataFrame) -> pd.DataFrame:
         "observed_mass_relative",
         "output_scope",
         "native_vs_adapter",
+        "scope_compatibility",
     )
     for (track, method, target, space), frame in metrics.groupby(
         ["track", "method", "target", "space"], sort=True, dropna=False
@@ -2118,6 +2220,7 @@ def evaluate_matched(
         targets=targets,
         registry_binding=registry_binding,
     )
+    scope_compatibility_audit = _scope_compatibility_audit(prediction_inventory)
     (
         prediction_inventory_path,
         prediction_inventory_sha,
@@ -2170,6 +2273,7 @@ def evaluate_matched(
         "bound_run_contract": str(bound_run_contract_path),
         "bound_run_contract_sha256": bound_run_contract_sha,
         "method_registry": registry_binding,
+        "scope_compatibility_audit": scope_compatibility_audit,
         "dataset": _dataset_label(root),
         "targets": targets,
         "target_policy": "intersection of configured LOTO and full-data targets",

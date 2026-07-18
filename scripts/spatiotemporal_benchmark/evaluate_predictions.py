@@ -246,7 +246,13 @@ def _summary_scope(summary: dict[str, Any], has_spatial: bool) -> str:
     scope = str(summary.get("output_scope", "")).strip().lower()
     if not scope:
         return "joint_unspecified" if has_spatial else "native_state"
-    state_only = {"state", "state_only", "native_state", "native-state"}
+    state_only = {
+        "state",
+        "state_only",
+        "native_state",
+        "native-state",
+        "hybrid_state",
+    }
     if scope in state_only and has_spatial:
         raise ContractError("state-only summary must not export spatial predictions")
     if scope not in state_only and not has_spatial:

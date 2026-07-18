@@ -98,7 +98,7 @@ def _build_contract(
                         "method": "state_method",
                         "display_name": "State method",
                         "aliases": ["state_alias"],
-                        "scope": "native_state",
+                        "scope": "state_coupling_barycenter_adapter",
                         "spaces": ["state"],
                         "status": "evaluated",
                     },
@@ -209,10 +209,12 @@ def _build_contract(
                             "source_time": 0,
                             "method": method,
                             "output_scope": (
-                                "native_state" if state_only else "native_joint"
+                                "hybrid_state" if state_only else "native_joint"
                             ),
                             "native_vs_adapter": (
-                                "native_state" if state_only else "native_joint"
+                                "hybrid_coupling_adapter"
+                                if state_only
+                                else "native_joint"
                             ),
                             "input_manifest_sha256": manifest_sha,
                             "training_reference_sha256": training_record["sha256"],  # type: ignore[index]
@@ -251,6 +253,47 @@ def _replace_prediction(
     summary_path.write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+def _convert_state_fixture_to_wot(
+    manifest: Path,
+    summaries: dict[str, Path],
+    *,
+    legacy_labels: bool,
+) -> None:
+    def replace_state_method(payload: dict[str, object]) -> None:
+        methods = payload["methods"]
+        assert isinstance(methods, list)
+        state = next(
+            record
+            for record in methods
+            if isinstance(record, dict) and record.get("method") == "state_method"
+        )
+        state.update(
+            {
+                "method": "Waddington-OT",
+                "display_name": "Waddington-OT",
+                "aliases": ["wot", "WOT", "waddington_ot"],
+                "scope": "state_coupling_barycenter_adapter",
+                "spaces": ["state"],
+                "status": "evaluated",
+            }
+        )
+
+    _rewrite_registry(manifest, replace_state_method)
+    for key, summary_path in summaries.items():
+        if "/state_method/" not in f"/{key}/":
+            continue
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["method"] = "wot"
+        summary["output_scope"] = "native_state" if legacy_labels else "hybrid_state"
+        summary["native_vs_adapter"] = (
+            "native_state" if legacy_labels else "hybrid_coupling_adapter"
+        )
+        summary_path.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
 
 def _prediction_arrays(summary_path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -310,6 +353,9 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert metrics["transform_sha256"].nunique() == 1
     assert (metrics["method"] == metrics["canonical_method"]).all()
     assert (metrics["raw_method"] == metrics["method"]).all()
+    assert set(metrics["scope_compatibility"]) == {
+        matched._SCOPE_COMPATIBILITY_EXACT
+    }
     assert len(metrics) == 32
     assert evaluation["n_metrics_rows"] == 32
     assert evaluation["n_paired_rows"] == 8
@@ -338,6 +384,12 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert set(paired["comparison"]) == {"loto_held_out_minus_full_data_in_sample"}
     assert (paired["method"] == paired["canonical_method"]).all()
     assert (paired["raw_method"] == paired["method"]).all()
+    assert set(paired["scope_compatibility_loto"]) == {
+        matched._SCOPE_COMPATIBILITY_EXACT
+    }
+    assert set(paired["scope_compatibility_full_data"]) == {
+        matched._SCOPE_COMPATIBILITY_EXACT
+    }
     assert set(paired["comparison_type"]) == {"descriptive_paired_gap"}
     assert paired["full_data_is_in_sample"].all()
     assert set(paired.loc[paired["method"] == "state_method", "space"]) == {"state"}
@@ -381,6 +433,15 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert len(exact_audit["records"]) == 6
     inventory = json.loads((output / "prediction_inventory.json").read_text())
     assert inventory["method_registry"] == evaluation["method_registry"]
+    assert {
+        record["scope_compatibility"] for record in inventory["records"]
+    } == {matched._SCOPE_COMPATIBILITY_EXACT}
+    assert evaluation["scope_compatibility_audit"][
+        "n_legacy_wot_native_state_records"
+    ] == 0
+    assert evaluation["scope_compatibility_audit"][
+        "numeric_prediction_arrays_unchanged"
+    ] is True
     assert inventory["n_records"] == 8
     inventory_keys = [
         (
@@ -692,6 +753,11 @@ def test_method_registry_is_a_required_cli_contract() -> None:
             "hybrid_joint",
             "hybrid_coupling_adapter",
         ),
+        (
+            "state_coupling_barycenter_adapter",
+            "hybrid_state",
+            "hybrid_coupling_adapter",
+        ),
     ],
 )
 def test_registry_scope_matches_production_summary_semantics(
@@ -699,16 +765,132 @@ def test_registry_scope_matches_production_summary_semantics(
     output_scope: str,
     native_vs_adapter: str,
 ) -> None:
-    assert matched._scope_matches_registry(
+    assert matched._scope_compatibility(
+        canonical_method="Synthetic method",
+        raw_method="synthetic_raw",
         registry_scope=registry_scope,
         output_scope=output_scope,
         native_vs_adapter=native_vs_adapter,
-    )
-    assert not matched._scope_matches_registry(
+        actual_spaces=["state"],
+    ) == matched._SCOPE_COMPATIBILITY_EXACT
+    assert matched._scope_compatibility(
+        canonical_method="Synthetic method",
+        raw_method="synthetic_raw",
         registry_scope=registry_scope,
         output_scope=output_scope,
         native_vs_adapter="wrong-category",
+        actual_spaces=["state"],
+    ) is None
+
+
+def test_legacy_wot_scope_compatibility_is_identity_and_state_only() -> None:
+    compatible = matched._scope_compatibility(
+        canonical_method="Waddington-OT",
+        raw_method="wot",
+        registry_scope="state_coupling_barycenter_adapter",
+        output_scope="native_state",
+        native_vs_adapter="native_state",
+        actual_spaces=["state"],
     )
+    assert compatible == matched._SCOPE_COMPATIBILITY_LEGACY_WOT
+    for overrides in (
+        {"canonical_method": "Not WOT"},
+        {"registry_scope": "explicit_control"},
+        {"actual_spaces": ["state", "spatial", "joint"]},
+        {"raw_method": ""},
+    ):
+        arguments = {
+            "canonical_method": "Waddington-OT",
+            "raw_method": "wot",
+            "registry_scope": "state_coupling_barycenter_adapter",
+            "output_scope": "native_state",
+            "native_vs_adapter": "native_state",
+            "actual_spaces": ["state"],
+            **overrides,
+        }
+        assert matched._scope_compatibility(**arguments) is None
+
+
+def test_legacy_wot_labels_are_accepted_audited_and_numerically_unchanged(
+    tmp_path: Path,
+) -> None:
+    evaluations: dict[str, tuple[pd.DataFrame, dict[str, object], Path]] = {}
+    for label, legacy_labels in (("new", False), ("legacy", True)):
+        root = tmp_path / label
+        root.mkdir()
+        manifest, loto_root, full_root, summaries = _build_contract(root)
+        _convert_state_fixture_to_wot(
+            manifest,
+            summaries,
+            legacy_labels=legacy_labels,
+        )
+        output = root / "reports"
+        args = _args(manifest, loto_root, full_root, output)
+        args.methods = ["joint_method", "wot"]
+        metrics, _, evaluation = matched.evaluate_matched(args)
+        evaluations[label] = (metrics, evaluation, output)
+
+    new_metrics, new_evaluation, _ = evaluations["new"]
+    legacy_metrics, legacy_evaluation, legacy_output = evaluations["legacy"]
+    assert new_evaluation["scope_compatibility_audit"][
+        "n_legacy_wot_native_state_records"
+    ] == 0
+    legacy_audit = legacy_evaluation["scope_compatibility_audit"]
+    assert legacy_audit["compatibility_is_metadata_only"] is True
+    assert legacy_audit["numeric_prediction_arrays_unchanged"] is True
+    assert legacy_audit["n_legacy_wot_native_state_records"] == 4
+    legacy_records = [
+        record
+        for record in legacy_audit["records"]
+        if record["scope_compatibility"]
+        == matched._SCOPE_COMPATIBILITY_LEGACY_WOT
+    ]
+    assert {
+        (
+            record["raw_method"],
+            record["canonical_method"],
+            record["output_scope"],
+            record["native_vs_adapter"],
+            tuple(record["actual_output_spaces"]),
+        )
+        for record in legacy_records
+    } == {("wot", "Waddington-OT", "native_state", "native_state", ("state",))}
+    inventory = json.loads(
+        (legacy_output / "prediction_inventory.json").read_text(encoding="utf-8")
+    )
+    inventory_wot = [
+        record
+        for record in inventory["records"]
+        if record["canonical_method"] == "Waddington-OT"
+    ]
+    assert len(inventory_wot) == 4
+    assert {record["scope_compatibility"] for record in inventory_wot} == {
+        matched._SCOPE_COMPATIBILITY_LEGACY_WOT
+    }
+
+    sort_columns = ["method", "track", "target", "space", "projection_repeat"]
+    metric_columns = ["sliced_w2", "exact_w1", "exact_w2"]
+    new_values = new_metrics.sort_values(sort_columns)[metric_columns].to_numpy()
+    legacy_values = legacy_metrics.sort_values(sort_columns)[metric_columns].to_numpy()
+    np.testing.assert_allclose(new_values, legacy_values, rtol=0.0, atol=0.0)
+
+
+def test_legacy_native_state_pair_is_rejected_for_non_wot(tmp_path: Path) -> None:
+    manifest, loto_root, full_root, summaries = _build_contract(tmp_path)
+    for key, summary_path in summaries.items():
+        if "/state_method/" not in f"/{key}/":
+            continue
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["output_scope"] = "native_state"
+        summary["native_vs_adapter"] = "native_state"
+        summary_path.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    with pytest.raises(matched.ContractError, match="differ from registry scope"):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
 
 
 def test_registry_binding_is_hash_bound_in_every_manifest_layer(
@@ -821,6 +1003,25 @@ def test_registry_rejects_prediction_scope_or_space_mismatch(
 
     _rewrite_registry(manifest, mutate)
     with pytest.raises(matched.ContractError, match=message):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
+
+
+def test_state_coupling_adapter_cannot_emit_spatial_or_joint_scores(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, summaries = _build_contract(tmp_path)
+    summary_path = summaries["loto/state_method/t1"]
+    prediction_path = summary_path.parent / "prediction.npz"
+    with np.load(prediction_path, allow_pickle=False) as archive:
+        state = np.array(archive["state"], copy=True)
+    _replace_prediction(
+        summary_path,
+        state=state,
+        spatial=np.zeros((state.shape[0], 2), dtype=np.float64),
+    )
+    with pytest.raises(matched.ContractError, match="state-only summary"):
         matched.evaluate_matched(
             _args(manifest, loto_root, full_root, tmp_path / "reports")
         )

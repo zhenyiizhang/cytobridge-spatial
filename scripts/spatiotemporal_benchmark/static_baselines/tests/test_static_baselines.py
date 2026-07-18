@@ -180,7 +180,12 @@ def test_registry_exact_methods_and_scopes() -> None:
         "linear_centroid_shift",
         "random_independent_pairs",
     }
-    assert specs["wot"]["representations"]["matched_state_spatial"]["output_scope"] == "native_state"
+    assert "coupling adapter" in specs["wot"]["display_name"]
+    wot = specs["wot"]["representations"]["matched_state_spatial"]
+    assert wot["output_scope"] == "hybrid_state"
+    assert wot["hybrid"] is True
+    assert "coupling" in wot["native_output"]
+    assert "barycentric" in wot["benchmark_output"]
     assert specs["paste"]["representations"]["matched_state_spatial"]["hybrid"] is True
     assert specs["spateo"]["representations"]["matched_state_spatial"]["hybrid"] is True
     assert specs["spatrack"]["representations"]["matched_state_spatial"]["applicable"] is False
@@ -405,8 +410,37 @@ def test_mocked_wot_emits_state_only_and_no_spatial(tmp_path: Path, monkeypatch)
         assert "points" not in values
         assert values["state"].shape == (5, 3)
     manifest = json.loads((output / "run_manifest.json").read_text())
-    assert manifest["output_scope"]["scope"] == "native_state"
+    assert manifest["output_scope"]["scope"] == "hybrid_state"
+    assert manifest["output_scope"]["hybrid_adapter"] is True
     assert manifest["output_scope"]["spatial_dimensions"] == 0
+    summary = json.loads((output / "summary.json").read_text())
+    assert summary["output_scope"] == "hybrid_state"
+    assert summary["native_vs_adapter"] == "hybrid_coupling_adapter"
+    run_summary = json.loads((output / "run_summary.json").read_text())
+    assert run_summary["output_scope"] == "hybrid_state"
+    assert run_summary["native_vs_adapter"] == "hybrid_coupling_adapter"
+
+
+def test_mocked_wot_full_data_keeps_every_target_state_only(
+    tmp_path: Path, monkeypatch
+) -> None:
+    path = write_fixture(tmp_path / "full.h5ad", prediction_n=5)
+    output = tmp_path / "wot_full"
+    monkeypatch.setattr(run_module, "run_official_coupling", _mock_coupling)
+    code = run_module.main(
+        [*common_args(path, output, "no-holdout"), "--method", "wot"]
+    )
+    assert code == 0
+    run_summary = json.loads((output / "summary.json").read_text())
+    assert run_summary["output_scope"] == "hybrid_state"
+    assert run_summary["native_vs_adapter"] == "hybrid_coupling_adapter"
+    for target in (1, 2, 3, 4):
+        target_dir = output / f"t{target}"
+        summary = json.loads((target_dir / "summary.json").read_text())
+        assert summary["output_scope"] == "hybrid_state"
+        assert summary["native_vs_adapter"] == "hybrid_coupling_adapter"
+        with np.load(target_dir / "prediction.npz", allow_pickle=False) as values:
+            assert set(values.files).isdisjoint({"spatial", "points"})
 
 
 def test_matched_spatrack_is_na_without_dependency_or_prediction(tmp_path: Path, monkeypatch) -> None:

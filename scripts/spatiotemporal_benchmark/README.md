@@ -169,6 +169,25 @@ contract and final manifest. Unknown or ambiguous aliases, duplicate canonical
 methods, and predictions emitted in undeclared spaces are rejected before
 publication.
 
+Waddington-OT is registered as a **state-only coupling barycenter adapter**,
+not as a native state generator. Its official API returns transport couplings;
+the benchmark applies those couplings barycentrically to the frozen shared-PC
+state and composes them across stages. Accordingly its producer summary records
+`output_scope=hybrid_state` and
+`native_vs_adapter=hybrid_coupling_adapter`. It remains eligible only for the
+state space: exporting or scoring fabricated spatial/joint output is a contract
+error.
+
+Previously completed WOT predictions used the older
+`native_state`/`native_state` labels even though their arrays were already the
+same state-only barycentric coupling projection. They remain reusable without
+rerunning: the matched evaluator accepts that label pair only when the hashed
+registry resolves the exact raw method to canonical Waddington-OT, the registry
+declares `state_coupling_barycenter_adapter`, and the prediction contains state
+but no spatial output. Each such metadata-only normalization is recorded as
+`legacy_wot_native_state_label_normalized` in the prediction inventory and the
+final scope-compatibility audit; numerical arrays and scores are unchanged.
+
 The two tracks use the same projection seed for each target/space/repeat. Exact
 OT uses separate predicted and observed RNG streams: one observed index set is
 fixed, recorded and shared across every method and track for a target/space, so

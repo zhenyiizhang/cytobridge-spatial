@@ -69,7 +69,7 @@
       "method": "Waddington-OT",
       "display_name": "Waddington-OT",
       "aliases": ["wot", "WOT", "waddington_ot"],
-      "scope": "native_state",
+      "scope": "state_coupling_barycenter_adapter",
       "spaces": ["state"],
       "status": "evaluated",
       "color": "#7f7f7f"

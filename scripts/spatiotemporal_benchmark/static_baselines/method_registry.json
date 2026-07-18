@@ -47,7 +47,7 @@
       }
     },
     "wot": {
-      "display_name": "Waddington-OT state transport",
+      "display_name": "Waddington-OT state coupling adapter",
       "category": "state_only_coupling",
       "official_api": "wot.ot.OTModel.compute_transport_map",
       "module": "wot",
@@ -61,10 +61,10 @@
           "primary_ranking": true,
           "fit_inputs": ["shared_signed_state_pca"],
           "fit_representation": "state only; spatial is neither fit nor emitted",
-          "native_output": "state transport map",
-          "benchmark_output": "state-only coupling composition/interpolation in shared PCA coordinates",
-          "output_scope": "native_state",
-          "hybrid": false,
+          "native_output": "official temporal transport coupling",
+          "benchmark_output": "state-only barycentric projection and composition of official WOT transport couplings in shared PCA coordinates",
+          "output_scope": "hybrid_state",
+          "hybrid": true,
           "default_parameters": {
             "local_pca": 0,
             "growth_iters": 1,
