@@ -549,6 +549,16 @@ policies and every per-timepoint YSL count are recorded separately; a full run
 still fails rather than fabricating cells if the direct classifier predicts no
 target cells.
 
+Communication/LR does not inherit the labels stored in the S22/S25 trajectory
+bundle. It explicitly applies the same cached classifier to every generated
+pre-warp frame and defaults to direct prediction (`k=1`); the corresponding CLI
+setting is `--communication-classifier-knn-neighbors 1`. Observed times keep
+their actual annotations. Pass `10` only to create a separate legacy
+manuscript-parity sensitivity result. The stage records the classifier cache
+hash and fingerprint, per-cell inherited versus analysis labels, per-time label
+counts, and the fraction changed, so display smoothing cannot silently alter
+biological communication scores.
+
 For a downstream-only audit that must reuse an already published S22
 trajectory byte-for-byte, pass its `canonical_prewarp_states` directory with
 `--s25-canonical-state-bundle`. The runner validates the bundle index, every
@@ -565,15 +575,27 @@ tolerance. Rank-truncated inverse-PCA values are signed reconstruction estimates
 the temporal heatmap compares their gene-wise profiles and does not treat them
 as raw counts.
 
-The manuscript LR projection uses one reconstructable feature universe across
-the complete hybrid trajectory. Integer times use real observed log1p
-expression, half-times use inverse-PCA generated log1p expression, and both are
-converted per cell with `expm1` before the arithmetic cell-type mean. Negative
-generated count-like estimates are clipped to zero. These are library-size
+The default LR dynamics uses one reconstructable feature universe and one
+measurement operator across the complete trajectory: every time point,
+including observed integer-state PCA coordinates, is decoded with the same
+retained-PCA inverse map. Per-cell log1p estimates are clipped at zero, converted
+with `expm1`, and only then averaged by cell type. These are library-size
 normalized count-like abundances, not raw counts. LR complexes require every
-subunit, and any center-only subunit is excluded at every time point rather than
-being scored at observed times and silently filled with zero at generated times.
-All communication inputs remain unwarped model states.
+subunit, and any center-only subunit is excluded globally. All communication
+inputs remain unwarped model states.
+
+The runner also exports a hybrid exact-observed projection as an anchor
+validation and legacy manuscript-parity result. That projection uses real
+observed log1p expression at integer times and inverse-PCA expression at
+half-times; it is not the default continuous LR dynamics because switching
+measurement operators can create artificial temporal kinks. Pair- and
+cell-type-level comparisons, per-time scale/rank metrics, and an anchor
+source-switch diagnostic quantify that effect. Half-time scores must agree
+exactly between the two computations. Pass
+`--lr-expression-time-policy hybrid_exact_observed` only when explicitly
+reproducing the legacy figure. The neighbor-continuity table remains a
+measurement-source diagnostic, not proof that the biological dynamics or
+communication matrix should be linear in time.
 
 Virtual-ablation branches reset to the same branch-level seed for manuscript
 parity, but removing cells changes tensor shape and row order. The random

@@ -504,7 +504,6 @@ def _main_classifier_settings(ctx: RunContext) -> dict[str, object]:
         "test_size": 0.1,
         "best_epoch_metric": "accuracy",
         "train_on_full_data": False,
-        "knn_neighbors": 10,
         "seed": int(ctx.args.random_seed),
         "cache_dir": str(ctx.shared_cache_dir / "trajectory_classifier"),
         "cache_tag": MAIN_CLASSIFIER_CACHE_TAG,
@@ -826,6 +825,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             "eps": 1e-6,
         },
         "classifier": _main_classifier_settings(ctx),
+        "generated_display_label_knn_neighbors": 10,
+        "generated_display_label_policy": (
+            "legacy spatial kNN smoothing used by S22 display outputs only"
+        ),
         "video_fps": int(ctx.args.video_fps),
         "video_formats": formats,
         "point_size": float(ctx.args.point_size),
@@ -926,7 +929,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                     (
                         "observed_actual_annotation"
                         if float(value) in OBSERVED_TIMES
-                        else "generated_prewarp"
+                        else "generated_prewarp_reclassified_by_communication_stage"
                     )
                     for value in HALF_TIMES
                 ],
@@ -1938,6 +1941,486 @@ def _observed_state_dict(ctx: RunContext) -> dict[float, ad.AnnData]:
     return result
 
 
+def _build_explicitly_labeled_hybrid_states(
+    generated_states: Mapping[str, ad.AnnData],
+    observed_states: Mapping[float, ad.AnnData],
+    *,
+    time_points: Sequence[float],
+    annotation_key: str,
+    cached_classifier: object,
+    classifier_feature_dim: int,
+    device: str,
+    knn_neighbors: int,
+) -> tuple[
+    dict[str, ad.AnnData],
+    dict[float, str],
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
+    """Build an observed/generated series with an explicit label policy.
+
+    Generated-state annotations stored in an upstream trajectory bundle are
+    provenance, not an analysis contract: they may have been produced for a
+    display-only workflow with a different spatial-smoothing value.  This
+    helper therefore re-predicts every generated frame with the classifier and
+    ``knn_neighbors`` requested by the consuming analysis.  Observed frames
+    retain their experimental annotations.
+    """
+
+    knn_neighbors = int(knn_neighbors)
+    if knn_neighbors <= 0:
+        raise ValueError("knn_neighbors must be > 0")
+    hybrid: dict[str, ad.AnnData] = {}
+    source_by_time: dict[float, str] = {}
+    assignment_rows: list[dict[str, object]] = []
+    summary_rows: list[dict[str, object]] = []
+    count_rows: list[dict[str, object]] = []
+    for raw_time in time_points:
+        time_value = float(raw_time)
+        key = str(time_value)
+        if time_value in observed_states:
+            state = observed_states[time_value]
+            labels = state.obs[annotation_key].astype(str).to_numpy()
+            hybrid[key] = state
+            source_by_time[time_value] = "observed_actual_annotation"
+            summary_rows.append(
+                {
+                    "time": time_value,
+                    "state_source": "observed",
+                    "n_cells": int(state.n_obs),
+                    "n_labels_changed": 0,
+                    "fraction_labels_changed": 0.0,
+                    "knn_neighbors": np.nan,
+                    "points_preserved_exactly": True,
+                }
+            )
+            for label, count in pd.Series(labels).value_counts().sort_index().items():
+                count_rows.append(
+                    {
+                        "time": time_value,
+                        "state_source": "observed",
+                        "label_policy": "actual_annotation",
+                        "label": str(label),
+                        "n_cells": int(count),
+                    }
+                )
+            continue
+        if key not in generated_states:
+            raise KeyError(f"Generated state dictionary is missing time key {key!r}")
+        inherited_state = generated_states[key]
+        if annotation_key not in inherited_state.obs:
+            raise KeyError(
+                f"Generated state {key!r} is missing annotation {annotation_key!r}"
+            )
+        points = np.asarray(inherited_state.X, dtype=np.float32)
+        inherited_labels = inherited_state.obs[annotation_key].astype(str).to_numpy()
+        analysis_labels = np.asarray(
+            cb.tl.predict_labels_for_points(
+                points=points,
+                time_value=time_value,
+                model=cached_classifier.model,
+                label_encoder=cached_classifier.label_encoder,
+                feature_dim=int(classifier_feature_dim),
+                device=device,
+                knn_neighbors=knn_neighbors,
+                include_time_feature=cached_classifier.include_time_feature,
+            )
+        ).astype(str)
+        if analysis_labels.shape != inherited_labels.shape:
+            raise RuntimeError(
+                "Classifier returned a different number of generated labels: "
+                f"time={time_value}, expected={len(inherited_labels)}, "
+                f"actual={len(analysis_labels)}"
+            )
+        changed = analysis_labels != inherited_labels
+        hybrid[key] = _minimal_state_adata(
+            points, analysis_labels, annotation_key=annotation_key
+        )
+        if not np.array_equal(np.asarray(hybrid[key].X), points):
+            raise RuntimeError(
+                f"Generated points changed while relabeling time {time_value}."
+            )
+        source_by_time[time_value] = f"generated_prewarp_classifier_knn_{knn_neighbors}"
+        summary_rows.append(
+            {
+                "time": time_value,
+                "state_source": "generated_prewarp",
+                "n_cells": int(len(analysis_labels)),
+                "n_labels_changed": int(changed.sum()),
+                "fraction_labels_changed": float(changed.mean()),
+                "knn_neighbors": knn_neighbors,
+                "points_preserved_exactly": True,
+            }
+        )
+        assignment_rows.extend(
+            {
+                "time": time_value,
+                "row_index": int(row_index),
+                "inherited_label": str(inherited),
+                "analysis_label": str(analysis),
+                "changed": bool(is_changed),
+                "knn_neighbors": knn_neighbors,
+            }
+            for row_index, (inherited, analysis, is_changed) in enumerate(
+                zip(inherited_labels, analysis_labels, changed)
+            )
+        )
+        for policy, labels in (
+            ("inherited_bundle", inherited_labels),
+            (f"classifier_knn_{knn_neighbors}", analysis_labels),
+        ):
+            for label, count in pd.Series(labels).value_counts().sort_index().items():
+                count_rows.append(
+                    {
+                        "time": time_value,
+                        "state_source": "generated_prewarp",
+                        "label_policy": policy,
+                        "label": str(label),
+                        "n_cells": int(count),
+                    }
+                )
+    return (
+        hybrid,
+        source_by_time,
+        pd.DataFrame(assignment_rows),
+        pd.DataFrame(summary_rows),
+        pd.DataFrame(count_rows),
+    )
+
+
+def _compare_lr_measurement_contracts(
+    hybrid_result: object,
+    all_inverse_result: object,
+    *,
+    observed_times: Sequence[float],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,]:
+    """Compare exact-observed and all-inverse-PCA LR measurements.
+
+    The primary hybrid trajectory intentionally uses exact expression at
+    observed integer times and inverse-PCA expression at generated half-times.
+    This diagnostic holds states, labels, and communication matrices fixed and
+    changes only that expression measurement operator.
+    """
+
+    observed = {float(value) for value in observed_times}
+    hybrid_settings = getattr(hybrid_result, "settings", None)
+    inverse_settings = getattr(all_inverse_result, "settings", None)
+    if isinstance(hybrid_settings, Mapping) and isinstance(inverse_settings, Mapping):
+        for contract_key in (
+            "feature_universe",
+            "pca_feature_coverage",
+            "global_lr_coverage",
+            "pca_center_source",
+        ):
+            if hybrid_settings.get(contract_key) != inverse_settings.get(contract_key):
+                raise RuntimeError(
+                    "Hybrid and all-inverse LR projections used different "
+                    f"{contract_key!r} contracts."
+                )
+    pair = hybrid_result.pair_timecourse.merge(
+        all_inverse_result.pair_timecourse,
+        on=["pair", "time"],
+        how="outer",
+        suffixes=("_hybrid", "_all_inverse_pca"),
+        indicator="pair_presence",
+        validate="one_to_one",
+    )
+    pair["measurement_source_hybrid"] = np.where(
+        pair["time"].astype(float).isin(observed),
+        "exact_observed_expression",
+        "inverse_pca_expression",
+    )
+    pair["score_delta_all_inverse_minus_hybrid"] = (
+        pair["score_all_inverse_pca"] - pair["score_hybrid"]
+    )
+    pair["score_abs_delta"] = pair["score_delta_all_inverse_minus_hybrid"].abs()
+    pair["score_ratio_all_inverse_over_hybrid"] = np.where(
+        pair["score_hybrid"] > 0,
+        pair["score_all_inverse_pca"] / pair["score_hybrid"],
+        np.nan,
+    )
+    pair["score_log2_ratio_all_inverse_over_hybrid"] = np.where(
+        (pair["score_hybrid"] > 0) & (pair["score_all_inverse_pca"] > 0),
+        np.log2(pair["score_all_inverse_pca"] / pair["score_hybrid"]),
+        np.nan,
+    )
+    symmetric_denominator = (
+        pair["score_hybrid"].abs() + pair["score_all_inverse_pca"].abs()
+    )
+    pair["score_symmetric_relative_error"] = np.where(
+        symmetric_denominator > 0,
+        2.0 * pair["score_abs_delta"] / symmetric_denominator,
+        0.0,
+    )
+    pair["zero_status"] = np.select(
+        (
+            pair["score_hybrid"].eq(0) & pair["score_all_inverse_pca"].eq(0),
+            pair["score_hybrid"].eq(0) & pair["score_all_inverse_pca"].gt(0),
+            pair["score_hybrid"].gt(0) & pair["score_all_inverse_pca"].eq(0),
+        ),
+        ("both_zero", "hybrid_only_zero", "all_inverse_only_zero"),
+        default="both_nonzero",
+    )
+
+    celltype = hybrid_result.celltype_timecourse.merge(
+        all_inverse_result.celltype_timecourse,
+        on=["pair", "time", "cell_type"],
+        how="outer",
+        suffixes=("_hybrid", "_all_inverse_pca"),
+        indicator="celltype_presence",
+        validate="one_to_one",
+    )
+    celltype["measurement_source_hybrid"] = np.where(
+        celltype["time"].astype(float).isin(observed),
+        "exact_observed_expression",
+        "inverse_pca_expression",
+    )
+    for column in ("incoming", "outgoing", "total"):
+        celltype[f"{column}_delta_all_inverse_minus_hybrid"] = (
+            celltype[f"{column}_all_inverse_pca"] - celltype[f"{column}_hybrid"]
+        )
+    common_celltypes = celltype["celltype_presence"].eq("both")
+    if not np.array_equal(
+        celltype.loc[common_celltypes, "n_cells_hybrid"].to_numpy(),
+        celltype.loc[common_celltypes, "n_cells_all_inverse_pca"].to_numpy(),
+    ):
+        raise RuntimeError(
+            "LR measurement comparison changed cell counts even though states and "
+            "labels were held fixed."
+        )
+
+    metric_rows: list[dict[str, object]] = []
+    for time_value, subset in pair.groupby("time", sort=True):
+        common = subset["pair_presence"].eq("both")
+        hybrid_values = subset.loc[common, "score_hybrid"].to_numpy(dtype=float)
+        inverse_values = subset.loc[common, "score_all_inverse_pca"].to_numpy(
+            dtype=float
+        )
+        delta = inverse_values - hybrid_values
+        hybrid_sum = float(np.sum(hybrid_values))
+        inverse_sum = float(np.sum(inverse_values))
+        rmse = float(np.sqrt(np.mean(delta**2))) if len(delta) else np.nan
+        hybrid_rms = (
+            float(np.sqrt(np.mean(hybrid_values**2))) if len(delta) else np.nan
+        )
+        if len(delta) > 1 and np.std(hybrid_values) > 0 and np.std(inverse_values) > 0:
+            pearson_r = float(np.corrcoef(hybrid_values, inverse_values)[0, 1])
+            spearman_r = float(
+                pd.Series(hybrid_values).corr(
+                    pd.Series(inverse_values), method="spearman"
+                )
+            )
+        else:
+            pearson_r = np.nan
+            spearman_r = np.nan
+        metric_rows.append(
+            {
+                "time": float(time_value),
+                "measurement_source_hybrid": (
+                    "exact_observed_expression"
+                    if float(time_value) in observed
+                    else "inverse_pca_expression"
+                ),
+                "n_pairs_common": int(common.sum()),
+                "n_pairs_hybrid_only": int(
+                    subset["pair_presence"].eq("left_only").sum()
+                ),
+                "n_pairs_all_inverse_only": int(
+                    subset["pair_presence"].eq("right_only").sum()
+                ),
+                "rmse": (rmse),
+                "relative_rmse": (
+                    float(rmse / hybrid_rms)
+                    if len(delta) and hybrid_rms > 0
+                    else np.nan
+                ),
+                "mae": float(np.mean(np.abs(delta))) if len(delta) else np.nan,
+                "mean_bias_all_inverse_minus_hybrid": (
+                    float(np.mean(delta)) if len(delta) else np.nan
+                ),
+                "max_abs_delta": (
+                    float(np.max(np.abs(delta))) if len(delta) else np.nan
+                ),
+                "relative_l1": (
+                    float(np.sum(np.abs(delta)) / np.sum(np.abs(hybrid_values)))
+                    if len(delta) and np.sum(np.abs(hybrid_values)) > 0
+                    else np.nan
+                ),
+                "hybrid_score_sum": hybrid_sum,
+                "all_inverse_pca_score_sum": inverse_sum,
+                "score_sum_ratio_all_inverse_over_hybrid": (
+                    float(inverse_sum / hybrid_sum) if hybrid_sum > 0 else np.nan
+                ),
+                "n_zero_mismatches": int(
+                    (np.equal(hybrid_values, 0) != np.equal(inverse_values, 0)).sum()
+                ),
+                "median_abs_log2_ratio": (
+                    float(
+                        np.median(
+                            np.abs(
+                                np.log2(
+                                    inverse_values[
+                                        (hybrid_values > 0) & (inverse_values > 0)
+                                    ]
+                                    / hybrid_values[
+                                        (hybrid_values > 0) & (inverse_values > 0)
+                                    ]
+                                )
+                            )
+                        )
+                    )
+                    if np.any((hybrid_values > 0) & (inverse_values > 0))
+                    else np.nan
+                ),
+                "top10_pair_overlap": (
+                    int(
+                        len(
+                            set(
+                                subset.loc[common].nlargest(
+                                    min(10, int(common.sum())), "score_hybrid"
+                                )["pair"]
+                            )
+                            & set(
+                                subset.loc[common].nlargest(
+                                    min(10, int(common.sum())),
+                                    "score_all_inverse_pca",
+                                )["pair"]
+                            )
+                        )
+                    )
+                    if common.any()
+                    else 0
+                ),
+                "pearson_r": pearson_r,
+                "spearman_r": spearman_r,
+            }
+        )
+    metrics = pd.DataFrame(metric_rows)
+    generated_metrics = metrics.loc[
+        metrics["measurement_source_hybrid"].eq("inverse_pca_expression")
+    ]
+    if (generated_metrics["max_abs_delta"].fillna(0.0) > 1e-12).any():
+        raise RuntimeError(
+            "Common hybrid/all-inverse LR pairs disagree at generated times, where "
+            "their expression contracts must be identical."
+        )
+
+    continuity_rows: list[dict[str, object]] = []
+    available_times = sorted(pair["time"].dropna().astype(float).unique())
+    generated_times = [value for value in available_times if value not in observed]
+    for anchor_time in sorted(observed):
+        left_candidates = [value for value in generated_times if value < anchor_time]
+        right_candidates = [value for value in generated_times if value > anchor_time]
+        left_time = max(left_candidates) if left_candidates else None
+        right_time = min(right_candidates) if right_candidates else None
+        if left_time is not None and right_time is not None:
+            neighbor_mode = "two_sided_linear"
+        elif left_time is not None:
+            neighbor_mode = "one_sided_left"
+        elif right_time is not None:
+            neighbor_mode = "one_sided_right"
+        else:
+            continue
+        anchor_rows = pair.loc[
+            np.isclose(pair["time"].astype(float), anchor_time)
+            & pair["pair_presence"].eq("both")
+        ]
+        for anchor in anchor_rows.itertuples(index=False):
+            neighbor_scores: dict[str, float] = {}
+            for side, neighbor_time in (("left", left_time), ("right", right_time)):
+                if neighbor_time is None:
+                    continue
+                match = pair.loc[
+                    pair["pair"].eq(anchor.pair)
+                    & np.isclose(pair["time"].astype(float), neighbor_time)
+                    & pair["pair_presence"].eq("both")
+                ]
+                if len(match) == 1:
+                    neighbor_scores[side] = float(match.iloc[0]["score_hybrid"])
+            if left_time is not None and right_time is not None:
+                if set(neighbor_scores) != {"left", "right"}:
+                    continue
+                right_weight = (anchor_time - left_time) / (right_time - left_time)
+                reference_score = (1.0 - right_weight) * neighbor_scores[
+                    "left"
+                ] + right_weight * neighbor_scores["right"]
+            elif "left" in neighbor_scores:
+                reference_score = neighbor_scores["left"]
+            elif "right" in neighbor_scores:
+                reference_score = neighbor_scores["right"]
+            else:
+                continue
+            exact_score = float(anchor.score_hybrid)
+            decoded_score = float(anchor.score_all_inverse_pca)
+            exact_residual = exact_score - reference_score
+            decoded_residual = decoded_score - reference_score
+            exact_slope_jump = np.nan
+            decoded_slope_jump = np.nan
+            if set(neighbor_scores) == {"left", "right"}:
+                exact_slope_jump = (neighbor_scores["right"] - exact_score) / (
+                    right_time - anchor_time
+                ) - (exact_score - neighbor_scores["left"]) / (anchor_time - left_time)
+                decoded_slope_jump = (neighbor_scores["right"] - decoded_score) / (
+                    right_time - anchor_time
+                ) - (decoded_score - neighbor_scores["left"]) / (
+                    anchor_time - left_time
+                )
+            continuity_rows.append(
+                {
+                    "pair": str(anchor.pair),
+                    "anchor_time": anchor_time,
+                    "neighbor_mode": neighbor_mode,
+                    "left_generated_time": left_time,
+                    "right_generated_time": right_time,
+                    "neighbor_reference_score": reference_score,
+                    "exact_observed_anchor_score": exact_score,
+                    "inverse_pca_anchor_score": decoded_score,
+                    "exact_anchor_residual": exact_residual,
+                    "inverse_pca_anchor_residual": decoded_residual,
+                    "abs_residual_exact_minus_inverse": (
+                        abs(exact_residual) - abs(decoded_residual)
+                    ),
+                    "exact_anchor_slope_jump": exact_slope_jump,
+                    "inverse_pca_anchor_slope_jump": decoded_slope_jump,
+                }
+            )
+    continuity = pd.DataFrame(continuity_rows)
+    continuity_metric_rows: list[dict[str, object]] = []
+    if not continuity.empty:
+        for anchor_time, subset in continuity.groupby("anchor_time", sort=True):
+            continuity_metric_rows.append(
+                {
+                    "anchor_time": float(anchor_time),
+                    "neighbor_mode": str(subset["neighbor_mode"].iloc[0]),
+                    "n_pairs": int(len(subset)),
+                    "mean_abs_residual_exact": float(
+                        subset["exact_anchor_residual"].abs().mean()
+                    ),
+                    "mean_abs_residual_inverse_pca": float(
+                        subset["inverse_pca_anchor_residual"].abs().mean()
+                    ),
+                    "median_abs_residual_exact": float(
+                        subset["exact_anchor_residual"].abs().median()
+                    ),
+                    "median_abs_residual_inverse_pca": float(
+                        subset["inverse_pca_anchor_residual"].abs().median()
+                    ),
+                    "fraction_inverse_pca_closer_to_generated_neighbors": float(
+                        (subset["abs_residual_exact_minus_inverse"] > 0).mean()
+                    ),
+                    "mean_abs_slope_jump_exact": float(
+                        subset["exact_anchor_slope_jump"].abs().mean()
+                    ),
+                    "mean_abs_slope_jump_inverse_pca": float(
+                        subset["inverse_pca_anchor_slope_jump"].abs().mean()
+                    ),
+                }
+            )
+    continuity_metrics = pd.DataFrame(continuity_metric_rows)
+    return pair, celltype, metrics, continuity, continuity_metrics
+
+
 def _plot_communication_heatmaps(
     communications: Mapping[str, Mapping[str, object]],
     output_dir: Path,
@@ -2060,6 +2543,19 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
         "S25 no-warp generated-state index",
     )
     upstream_s25_manifest = _require_current_stage_manifest(ctx, "s25")
+    classifier_cache_value = upstream_s25_manifest.get("details", {}).get(
+        "classifier_cache_path"
+    )
+    if classifier_cache_value is None:
+        raise RuntimeError(
+            "The current S25 manifest does not record classifier_cache_path; "
+            "rerun --stage s25,communication with the current runner."
+        )
+    classifier_cache = _require_file(
+        classifier_cache_value, "S25 trajectory classifier cache"
+    )
+    communication_knn = int(ctx.args.communication_classifier_knn_neighbors)
+    lr_expression_policy = str(ctx.args.lr_expression_time_policy)
     settings = {
         "time_points": list(HALF_TIMES),
         "states": "observed integer frames + generated no-warp half-time frames",
@@ -2074,13 +2570,35 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
         "s25_state_index": str(s25_state_index),
         "s25_state_index_sha256": _sha256(s25_state_index),
         "s25_stage_signature": upstream_s25_manifest.get("signature"),
+        "generated_label_classifier": {
+            "policy": (
+                "explicitly re-predict every generated pre-warp frame; never "
+                "inherit display labels from the state bundle"
+            ),
+            "knn_neighbors": communication_knn,
+            "default_semantics": (
+                "k=1 is direct MLP prediction; k=10 is available only as an "
+                "explicit legacy manuscript-parity sensitivity"
+            ),
+            "cache_path": str(classifier_cache),
+            "cache_sha256": _sha256(classifier_cache),
+            "observed_label_policy": "actual annotation",
+        },
         "expression_space": (
             "arithmetic cell-type mean after per-cell conversion to normalized "
             "count-like abundance; not raw counts"
         ),
-        "observed_expression": (
-            "per-cell expm1(real aligned_adata.X log1p) at integer times; "
-            "per-cell clipped expm1(inverse-PCA log1p) at half times"
+        "primary_lr_expression_time_policy": lr_expression_policy,
+        "primary_lr_expression_contract": (
+            "all times use per-cell clipped expm1(inverse-PCA log1p), including "
+            "observed integer-state PCA coordinates"
+            if lr_expression_policy == "all_inverse_pca"
+            else "legacy hybrid: exact observed expression at integer times and "
+            "inverse-PCA expression at generated half-times"
+        ),
+        "lr_expression_validation": (
+            "both all-inverse-PCA and hybrid exact-observed projections are always "
+            "exported; their difference isolates the measurement operator"
         ),
         "lr_feature_policy": (
             "one active-loading PCA feature universe across all observed/generated "
@@ -2104,15 +2622,40 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
                 "rerun --stage s25,communication"
             )
         observed = _observed_state_dict(ctx)
-        hybrid: dict[str, ad.AnnData] = {}
-        source_by_time: dict[float, str] = {}
-        for time_value in HALF_TIMES:
-            if time_value in observed:
-                hybrid[str(float(time_value))] = observed[time_value]
-                source_by_time[float(time_value)] = "observed"
-            else:
-                hybrid[str(float(time_value))] = generated[str(float(time_value))]
-                source_by_time[float(time_value)] = "generated_prewarp"
+        cached_classifier = cb.tl.load_cached_mlp_classifier(
+            str(classifier_cache), device=ctx.args.device
+        )
+        expected_feature_dim = int(_main_classifier_settings(ctx)["n_joint_features"])
+        if int(cached_classifier.feature_dim) != expected_feature_dim:
+            raise RuntimeError(
+                "Classifier feature contract differs from the zebrafish joint-state "
+                f"contract: cache={cached_classifier.feature_dim}, "
+                f"expected={expected_feature_dim}."
+            )
+        if not bool(cached_classifier.include_time_feature):
+            raise RuntimeError("Communication classifier cache must include time.")
+        if str(cached_classifier.label_col) != str(ctx.args.annotation_key):
+            raise RuntimeError(
+                "Communication classifier annotation mismatch: "
+                f"cache={cached_classifier.label_col!r}, "
+                f"requested={ctx.args.annotation_key!r}."
+            )
+        (
+            hybrid,
+            source_by_time,
+            label_assignments,
+            label_summary,
+            label_counts,
+        ) = _build_explicitly_labeled_hybrid_states(
+            generated,
+            observed,
+            time_points=HALF_TIMES,
+            annotation_key=ctx.args.annotation_key,
+            cached_classifier=cached_classifier,
+            classifier_feature_dim=int(cached_classifier.feature_dim),
+            device=ctx.args.device,
+            knn_neighbors=communication_knn,
+        )
         outputs = _write_state_bundle(
             hybrid,
             HALF_TIMES,
@@ -2120,6 +2663,14 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             annotation_key=ctx.args.annotation_key,
             source_by_time=source_by_time,
         )
+        for filename, table in (
+            ("generated_label_assignments.csv", label_assignments),
+            ("generated_label_reclassification_summary.csv", label_summary),
+            ("communication_label_counts.csv", label_counts),
+        ):
+            path = stage_dir / filename
+            table.to_csv(path, index=False)
+            outputs.append(path)
         attention_dir = stage_dir / "attention"
         communication_pickle = stage_dir / "communications.pkl"
         communications = cb.tl.compute_timepoint_communications(
@@ -2146,25 +2697,28 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             )
         )
 
-        lr = cb.tl.project_communication_to_lr_timecourses(
+        lr_common = {
+            "time_points": HALF_TIMES,
+            "annotation_key": ctx.args.annotation_key,
+            "matrix_key": "M_per_source",
+            "spatial_dim": 2,
+            "loadings_key": "PCs",
+            "reference_layer": None,
+            "expression_space": "count",
+            "complex_mode": "min",
+            "require_all_subunits": True,
+            "duplicate_policy": "first",
+            "preferred_species_tag": ctx.args.preferred_species_tag,
+            "n_clusters": int(ctx.args.lr_n_clusters),
+            "profile_linkage_method": "average",
+            "profile_cluster_order": "dendrogram",
+        }
+        hybrid_lr = cb.tl.project_communication_to_lr_timecourses(
             hybrid,
             ctx.adata,
             communications,
             lr_database,
-            time_points=HALF_TIMES,
-            annotation_key=ctx.args.annotation_key,
-            matrix_key="M_per_source",
-            spatial_dim=2,
-            loadings_key="PCs",
-            reference_layer=None,
-            expression_space="count",
-            complex_mode="min",
-            require_all_subunits=True,
-            duplicate_policy="first",
-            preferred_species_tag=ctx.args.preferred_species_tag,
-            n_clusters=int(ctx.args.lr_n_clusters),
-            profile_linkage_method="average",
-            profile_cluster_order="dendrogram",
+            **lr_common,
             observed_adata=ctx.adata,
             observed_time_key=ctx.args.time_key,
             observed_time_points=OBSERVED_TIMES,
@@ -2173,15 +2727,57 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             observed_expression_space="log1p",
             observed_missing_time_policy="error",
         )
+        all_inverse_lr = cb.tl.project_communication_to_lr_timecourses(
+            hybrid,
+            ctx.adata,
+            communications,
+            lr_database,
+            **lr_common,
+        )
+        primary_lr = (
+            all_inverse_lr if lr_expression_policy == "all_inverse_pca" else hybrid_lr
+        )
+        (
+            lr_measurement_pair,
+            lr_measurement_celltype,
+            lr_measurement_metrics,
+            lr_anchor_continuity,
+            lr_anchor_continuity_metrics,
+        ) = _compare_lr_measurement_contracts(
+            hybrid_lr,
+            all_inverse_lr,
+            observed_times=OBSERVED_TIMES,
+        )
         tables = {
-            "lr_pair_timecourse.csv": lr.pair_timecourse,
-            "lr_celltype_timecourse.csv": lr.celltype_timecourse,
-            "lr_pattern_summary.csv": lr.pattern_summary,
-            "lr_coverage.csv": lr.coverage,
-            "lr_normalized_profiles.csv": lr.clustering.normalized_profiles,
-            "lr_cluster_assignments.csv": lr.clustering.assignments,
-            "lr_cluster_prototypes.csv": lr.clustering.prototypes,
-            "lr_cluster_diagnostics.csv": lr.clustering.diagnostics,
+            "lr_pair_timecourse.csv": primary_lr.pair_timecourse,
+            "lr_celltype_timecourse.csv": primary_lr.celltype_timecourse,
+            "lr_pattern_summary.csv": primary_lr.pattern_summary,
+            "lr_coverage.csv": primary_lr.coverage,
+            "lr_normalized_profiles.csv": primary_lr.clustering.normalized_profiles,
+            "lr_cluster_assignments.csv": primary_lr.clustering.assignments,
+            "lr_cluster_prototypes.csv": primary_lr.clustering.prototypes,
+            "lr_cluster_diagnostics.csv": primary_lr.clustering.diagnostics,
+            "lr_all_inverse_pca_pair_timecourse.csv": (all_inverse_lr.pair_timecourse),
+            "lr_all_inverse_pca_celltype_timecourse.csv": (
+                all_inverse_lr.celltype_timecourse
+            ),
+            "lr_all_inverse_pca_pattern_summary.csv": all_inverse_lr.pattern_summary,
+            "lr_all_inverse_pca_cluster_assignments.csv": (
+                all_inverse_lr.clustering.assignments
+            ),
+            "lr_hybrid_exact_observed_pair_timecourse.csv": (hybrid_lr.pair_timecourse),
+            "lr_hybrid_exact_observed_celltype_timecourse.csv": (
+                hybrid_lr.celltype_timecourse
+            ),
+            "lr_hybrid_exact_observed_pattern_summary.csv": hybrid_lr.pattern_summary,
+            "lr_hybrid_exact_observed_cluster_assignments.csv": (
+                hybrid_lr.clustering.assignments
+            ),
+            "lr_hybrid_vs_all_inverse_pair_scores.csv": lr_measurement_pair,
+            "lr_hybrid_vs_all_inverse_celltype_scores.csv": (lr_measurement_celltype),
+            "lr_observed_vs_inverse_pca_metrics.csv": lr_measurement_metrics,
+            "lr_anchor_source_switch_diagnostics.csv": lr_anchor_continuity,
+            "lr_anchor_source_switch_metrics.csv": lr_anchor_continuity_metrics,
         }
         for filename, table in tables.items():
             path = stage_dir / filename
@@ -2190,26 +2786,56 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
                 index=filename in {"lr_normalized_profiles.csv"},
             )
             outputs.append(path)
-        target_pair = _select_lr_pair(lr.pair_timecourse, ctx.args.lr_pair)
+        target_pair = _select_lr_pair(primary_lr.pair_timecourse, ctx.args.lr_pair)
         outputs.extend(
             _plot_target_lr(
-                lr.pair_timecourse,
-                lr.celltype_timecourse,
+                primary_lr.pair_timecourse,
+                primary_lr.celltype_timecourse,
                 pair=target_pair,
                 output_dir=stage_dir,
             )
         )
         settings_path = stage_dir / "lr_settings.json"
         settings_path.write_text(
-            json.dumps(_json_ready(lr.settings), indent=2, sort_keys=True),
+            json.dumps(_json_ready(primary_lr.settings), indent=2, sort_keys=True),
             encoding="utf-8",
         )
         outputs.append(settings_path)
+        all_inverse_settings_path = stage_dir / "lr_all_inverse_pca_settings.json"
+        all_inverse_settings_path.write_text(
+            json.dumps(_json_ready(all_inverse_lr.settings), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        outputs.append(all_inverse_settings_path)
+        hybrid_settings_path = stage_dir / "lr_hybrid_exact_observed_settings.json"
+        hybrid_settings_path.write_text(
+            json.dumps(_json_ready(hybrid_lr.settings), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        outputs.append(hybrid_settings_path)
         return outputs, {
             "target_pair_resolved": target_pair,
-            "n_lr_pairs_scored": int(lr.pair_timecourse["pair"].nunique()),
+            "primary_lr_expression_time_policy": lr_expression_policy,
+            "n_lr_pairs_scored": int(primary_lr.pair_timecourse["pair"].nunique()),
             "state_sources": source_by_time,
-            "coverage": lr.coverage.to_dict(orient="records"),
+            "coverage": primary_lr.coverage.to_dict(orient="records"),
+            "generated_label_classifier": {
+                "knn_neighbors": communication_knn,
+                "cache_path": str(classifier_cache),
+                "cache_sha256": _sha256(classifier_cache),
+                "feature_dim": int(cached_classifier.feature_dim),
+                "feature_cols": list(cached_classifier.feature_cols),
+                "label_col": str(cached_classifier.label_col),
+                "include_time_feature": bool(cached_classifier.include_time_feature),
+                "source_fingerprint": cached_classifier.metadata.get("source", {}).get(
+                    "fingerprint"
+                ),
+            },
+            "generated_label_reclassification": label_summary.to_dict(orient="records"),
+            "communication_label_counts": label_counts.to_dict(orient="records"),
+            "lr_measurement_contract_validation": (
+                lr_measurement_metrics.to_dict(orient="records")
+            ),
         }
 
     return _execute_stage(ctx, "communication", settings, action)
@@ -2520,6 +3146,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--preferred-species-tag", default=None)
 
     parser.add_argument("--communication-max-cells", type=int, default=None)
+    parser.add_argument(
+        "--communication-classifier-knn-neighbors",
+        type=int,
+        default=1,
+        help=(
+            "Generated-frame label policy for communication/LR. Default 1 is "
+            "direct MLP prediction; pass 10 explicitly for legacy manuscript "
+            "label-smoothing sensitivity. Observed annotations are unchanged."
+        ),
+    )
     parser.add_argument("--communication-winsor-quantile", type=float, default=0.995)
     parser.add_argument(
         "--communication-display-min",
@@ -2529,6 +3165,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--lr-pair", default="cxcl12a_cxcr4a")
     parser.add_argument("--lr-n-clusters", type=int, default=4)
+    parser.add_argument(
+        "--lr-expression-time-policy",
+        choices=("all_inverse_pca", "hybrid_exact_observed"),
+        default="all_inverse_pca",
+        help=(
+            "Expression measurement used by the primary LR time course. The "
+            "default all_inverse_pca applies one comparable decoder at every time; "
+            "hybrid_exact_observed is retained only for legacy manuscript parity. "
+            "Both projections are exported regardless of this selection."
+        ),
+    )
     return parser
 
 
@@ -2538,6 +3185,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise ValueError("--sde-max-particles must be > 0")
     if int(args.s25_classifier_knn_neighbors) <= 0:
         raise ValueError("--s25-classifier-knn-neighbors must be > 0")
+    if int(args.communication_classifier_knn_neighbors) <= 0:
+        raise ValueError("--communication-classifier-knn-neighbors must be > 0")
     selected_stages = _parse_stages(args.stage)
     if "communication" in selected_stages and "s25" not in selected_stages:
         state_index = (

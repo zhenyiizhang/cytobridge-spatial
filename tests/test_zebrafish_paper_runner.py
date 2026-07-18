@@ -11,7 +11,11 @@ import numpy as np
 import pytest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "run_zebrafish_paper_downstream.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "run_zebrafish_paper_downstream.py"
+)
 SPEC = importlib.util.spec_from_file_location("zebrafish_paper_runner", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 runner = importlib.util.module_from_spec(SPEC)
@@ -23,6 +27,39 @@ def test_time_grid_and_stage_parser_are_strict():
     assert runner._time_grid(0.0, 1.0, 0.25) == [0.0, 0.25, 0.5, 0.75, 1.0]
     assert runner._parse_stages("s25,communication,s25") == ["s25", "communication"]
     assert runner._parse_stages("all") == list(runner.ALL_STAGES)
+
+
+def test_communication_classifier_default_is_direct_prediction():
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            "aligned.h5ad",
+            "--model-dir",
+            "model",
+            "--output-dir",
+            "output",
+        ]
+    )
+    assert args.communication_classifier_knn_neighbors == 1
+    assert args.lr_expression_time_policy == "all_inverse_pca"
+
+
+def test_communication_classifier_knn_must_be_positive(tmp_path):
+    with pytest.raises(
+        ValueError, match="--communication-classifier-knn-neighbors must be > 0"
+    ):
+        runner.main(
+            [
+                "--aligned-h5ad",
+                str(tmp_path / "missing.h5ad"),
+                "--model-dir",
+                str(tmp_path / "missing-model"),
+                "--output-dir",
+                str(tmp_path / "output"),
+                "--communication-classifier-knn-neighbors",
+                "0",
+            ]
+        )
 
 
 def test_manuscript_layout_and_plot_provenance_contracts():
@@ -78,11 +115,11 @@ def test_current_stage_manifest_rejects_changed_common_or_output(tmp_path):
         "profile": "full",
         "data_contract": {"annotation_key": "Annotation"},
     }
-    _, output = _write_current_stage_manifest(
-        tmp_path, stage="s22", common=common
-    )
+    _, output = _write_current_stage_manifest(tmp_path, stage="s22", common=common)
     context = SimpleNamespace(output_dir=tmp_path, common_signature=common)
-    assert runner._require_current_stage_manifest(context, "s22")["status"] == "complete"
+    assert (
+        runner._require_current_stage_manifest(context, "s22")["status"] == "complete"
+    )
 
     changed_context = SimpleNamespace(
         output_dir=tmp_path,
@@ -160,7 +197,173 @@ def test_generated_state_bundle_round_trip(tmp_path):
     assert restored["0.5"].obs["Annotation"].tolist() == ["type_0", "type_1"]
 
 
-def test_velocity_stage_emits_direct_and_latent_projection_contracts(tmp_path, monkeypatch):
+def test_communication_relabels_generated_states_without_changing_points(monkeypatch):
+    observed_points = np.asarray([[0, 1, 2], [3, 4, 5]], dtype=np.float32)
+    generated_points = np.asarray([[6, 7, 8], [9, 10, 11]], dtype=np.float32)
+    observed = {
+        0.0: runner._minimal_state_adata(
+            observed_points, ["actual_a", "actual_b"], annotation_key="Annotation"
+        )
+    }
+    generated = {
+        "0.0": runner._minimal_state_adata(
+            observed_points, ["legacy", "legacy"], annotation_key="Annotation"
+        ),
+        "0.5": runner._minimal_state_adata(
+            generated_points, ["legacy", "legacy"], annotation_key="Annotation"
+        ),
+    }
+    calls = []
+
+    def fake_predict(**kwargs):
+        calls.append(kwargs)
+        label = "direct" if kwargs["knn_neighbors"] == 1 else "legacy"
+        return np.asarray([label] * len(kwargs["points"]))
+
+    monkeypatch.setattr(runner.cb.tl, "predict_labels_for_points", fake_predict)
+    cached = SimpleNamespace(
+        model=object(), label_encoder=object(), include_time_feature=True
+    )
+    (
+        hybrid,
+        sources,
+        assignments,
+        summary,
+        counts,
+    ) = runner._build_explicitly_labeled_hybrid_states(
+        generated,
+        observed,
+        time_points=(0.0, 0.5),
+        annotation_key="Annotation",
+        cached_classifier=cached,
+        classifier_feature_dim=3,
+        device="cpu",
+        knn_neighbors=1,
+    )
+    assert len(calls) == 1
+    assert calls[0]["time_value"] == 0.5
+    assert calls[0]["knn_neighbors"] == 1
+    np.testing.assert_array_equal(hybrid["0.0"].X, observed_points)
+    np.testing.assert_array_equal(hybrid["0.5"].X, generated_points)
+    assert hybrid["0.0"].obs["Annotation"].tolist() == ["actual_a", "actual_b"]
+    assert hybrid["0.5"].obs["Annotation"].tolist() == ["direct", "direct"]
+    assert sources == {
+        0.0: "observed_actual_annotation",
+        0.5: "generated_prewarp_classifier_knn_1",
+    }
+    generated_summary = summary.loc[summary["time"].eq(0.5)].iloc[0]
+    assert generated_summary["n_labels_changed"] == 2
+    assert generated_summary["fraction_labels_changed"] == 1.0
+    assert bool(generated_summary["points_preserved_exactly"])
+    assert assignments["changed"].all()
+    assert set(counts["label_policy"]) == {
+        "actual_annotation",
+        "inherited_bundle",
+        "classifier_knn_1",
+    }
+
+    (
+        legacy_hybrid,
+        _,
+        legacy_assignments,
+        _,
+        _,
+    ) = runner._build_explicitly_labeled_hybrid_states(
+        generated,
+        observed,
+        time_points=(0.0, 0.5),
+        annotation_key="Annotation",
+        cached_classifier=cached,
+        classifier_feature_dim=3,
+        device="cpu",
+        knn_neighbors=10,
+    )
+    assert legacy_hybrid["0.5"].obs["Annotation"].tolist() == ["legacy", "legacy"]
+    assert not legacy_assignments["changed"].any()
+
+
+def test_lr_measurement_diagnostic_isolates_observed_expression_operator():
+    def result(pair_scores):
+        pair_rows = []
+        cell_rows = []
+        for pair, values in pair_scores.items():
+            for time_value, score in zip((0.0, 0.5, 1.0), values):
+                pair_rows.append({"pair": pair, "time": time_value, "score": score})
+                cell_rows.append(
+                    {
+                        "pair": pair,
+                        "time": time_value,
+                        "cell_type": "A",
+                        "incoming": score * 0.4,
+                        "outgoing": score * 0.6,
+                        "total": score,
+                        "n_cells": 5,
+                    }
+                )
+        import pandas as pd
+
+        return SimpleNamespace(
+            pair_timecourse=pd.DataFrame(pair_rows),
+            celltype_timecourse=pd.DataFrame(cell_rows),
+        )
+
+    hybrid = result({"l1_r1": (2.0, 3.0, 4.0), "l2_r2": (4.0, 2.0, 1.0)})
+    inverse = result({"l1_r1": (1.0, 3.0, 5.0), "l2_r2": (3.0, 2.0, 2.0)})
+    (
+        pair,
+        celltype,
+        metrics,
+        continuity,
+        continuity_metrics,
+    ) = runner._compare_lr_measurement_contracts(
+        hybrid, inverse, observed_times=(0.0, 1.0)
+    )
+    generated = metrics.loc[metrics["time"].eq(0.5)].iloc[0]
+    assert generated["max_abs_delta"] == 0.0
+    assert generated["n_zero_mismatches"] == 0
+    observed = metrics.loc[metrics["time"].eq(0.0)].iloc[0]
+    assert observed["rmse"] == 1.0
+    assert observed["measurement_source_hybrid"] == "exact_observed_expression"
+    assert pair.loc[pair["time"].eq(0.0), "score_abs_delta"].eq(1.0).all()
+    assert celltype["n_cells_hybrid"].equals(celltype["n_cells_all_inverse_pca"])
+    assert set(continuity["neighbor_mode"]) == {
+        "one_sided_right",
+        "one_sided_left",
+    }
+    assert set(continuity_metrics["anchor_time"]) == {0.0, 1.0}
+
+
+def test_lr_measurement_diagnostic_rejects_generated_common_pair_drift():
+    import pandas as pd
+
+    def result(scores):
+        pair = pd.DataFrame(
+            {
+                "pair": ["l_r"] * 3,
+                "time": [0.0, 0.5, 1.0],
+                "score": scores,
+            }
+        )
+        cell = pair.assign(
+            cell_type="A",
+            incoming=pair["score"] / 2,
+            outgoing=pair["score"] / 2,
+            total=pair["score"],
+            n_cells=2,
+        )
+        return SimpleNamespace(pair_timecourse=pair, celltype_timecourse=cell)
+
+    with pytest.raises(RuntimeError, match="disagree at generated times"):
+        runner._compare_lr_measurement_contracts(
+            result([1.0, 2.0, 3.0]),
+            result([1.0, 2.1, 3.0]),
+            observed_times=(0.0, 1.0),
+        )
+
+
+def test_velocity_stage_emits_direct_and_latent_projection_contracts(
+    tmp_path, monkeypatch
+):
     data = ad.AnnData(X=np.zeros((6, 1), dtype=np.float32))
     data.obs["Annotation"] = ["A", "B"] * 3
     data.obs["time_point_processed"] = np.repeat([0.0, 2.0, 4.0], 2)
