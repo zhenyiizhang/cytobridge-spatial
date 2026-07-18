@@ -136,6 +136,56 @@ Repeat with `--track full_data` and the corresponding paths. Full-data scores
 are in-sample reconstruction references; they must not be pooled with or used
 to rank LOTO generalization results.
 
+### Optional matched LOTO-versus-full-data diagnostic
+
+`evaluate_matched_tracks.py` is a separate, opt-in diagnostic; it does not
+change the primary per-track evaluator above. It restricts evaluation to the
+targets shared by both tracks and fits one normalization transform only after
+proving that `row_id`, state, spatial, and time arrays at the explicitly named
+anchor times are byte-identical in every participating training split. For the
+zebrafish comparison, the common anchors are `t0` and `t4`:
+
+```bash
+python scripts/spatiotemporal_benchmark/evaluate_matched_tracks.py \
+  --input-manifest "$OUT/inputs/manifest.json" \
+  --loto-predictions-root "$OUT/predictions/loto" \
+  --full-data-predictions-root "$OUT/predictions/full_data" \
+  --anchor-times 0 4 \
+  --output-dir "$OUT/reports/evaluation/matched" \
+  --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
+            linear_centroid_shift random_independent_pairs
+```
+
+Before evaluating predictions, the script also proves directly from NPZ arrays
+that each LOTO training reference is the byte-exact non-target subset of the
+full-data reference, that train/truth row IDs are disjoint complements, and
+that both track-specific truth files equal the full-data target subset.
+
+The two tracks use the same projection seed for each target/space/repeat. Exact
+OT uses separate predicted and observed RNG streams: one observed index set is
+fixed, recorded and shared across every method and track for a target/space, so
+different prediction counts or weights cannot change the observed subsample.
+Outputs comprise a repeat-level long CSV, a semantic split audit, an exact-OT
+index audit, the common transform and anchor-byte audit, and a paired
+method/space/target summary. Code hashes for this evaluator, the primary
+evaluator, `benchmark.py` and `evaluation.py`, plus Python and numerical-library
+versions, are embedded in the final manifest.
+
+The output directory is immutable and bound by `run_contract.json`. An
+immutable, canonically sorted `prediction_inventory.json` binds the exact NPZ
+and summary byte snapshots selected for evaluation, and
+`bound_run_contract.json` binds its SHA to the base run contract. Metric
+calculation uses only the parsed in-memory snapshots. External prediction files
+are rehashed both before metrics and immediately before final publication. An
+interrupted run may resume only with byte-identical contracts, inventory and
+outputs; changed parameters, predictions or partial outputs are rejected. Once
+`matched_evaluation_manifest.json` exists, use a new output directory for any
+rerun. Reported LOTO-minus-full gaps are descriptive: full-data is explicitly
+marked in-sample, each fitted prediction represents one model-training seed,
+and no cross-space score or ranking is produced. TMV is included only for
+declared native unnormalised mass; its delta is withheld when the two tracks use
+different source-time denominators.
+
 ## Adapting another dataset
 
 Copy the YAML and change the source path/hash, time key and explicit mapping,
