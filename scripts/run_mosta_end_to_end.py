@@ -60,6 +60,8 @@ TRAINING_TIMES = ("E12.5", "E13.5", "E14.5", "E15.5")
 DEFAULT_CONFIG = (
     REPO_ROOT / "CytoBridge" / "configs" / "mosta_spatial_full_alpha_express_0015.yaml"
 )
+DEFAULT_ALPHA_SPATIAL = 10.0
+DEFAULT_ALPHA_EXPRESS = 0.015
 
 
 def _json_ready(value):
@@ -413,8 +415,8 @@ def _resolved_training_config(args, paths: dict[str, Path]) -> dict:
     config["ckpt_dir"] = str(paths["training_dir"])
     config["model"]["spatial_dim"] = 2
     defaults = config["training"]["defaults"]
-    defaults["alpha_spatial"] = 10.0
-    defaults["alpha_express"] = 0.015
+    defaults["alpha_spatial"] = float(args.alpha_spatial)
+    defaults["alpha_express"] = float(args.alpha_express)
     if args.profile == "smoke":
         for stage in config["training"]["plan"]:
             stage["epochs"] = 1
@@ -430,8 +432,17 @@ def _run_train(args, paths: dict[str, Path]) -> None:
     launch = {
         "workflow": "mosta_corrected_counts_six_stage",
         "profile": args.profile,
-        "alpha_spatial": 10.0,
-        "alpha_express": 0.015,
+        "random_seed": int(args.random_seed),
+        "alpha_spatial": float(config["training"]["defaults"]["alpha_spatial"]),
+        "alpha_express": float(config["training"]["defaults"]["alpha_express"]),
+        "training_plan": [
+            {
+                "name": str(stage.get("name")),
+                "mode": str(stage.get("mode")),
+                "epochs": int(stage.get("epochs", 0)),
+            }
+            for stage in config["training"]["plan"]
+        ],
         "requested_device": str(args.device),
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "hostname": socket.gethostname(),
@@ -504,8 +515,12 @@ def _run_evaluate(args, paths: dict[str, Path], defaults: dict[str, object]):
     )
     manifest = {
         "workflow": "mosta_corrected_counts_core_evaluation",
-        "alpha_spatial": 10.0,
-        "alpha_express": 0.015,
+        "alpha_spatial": float(
+            loaded.config["training"]["defaults"]["alpha_spatial"]
+        ),
+        "alpha_express": float(
+            loaded.config["training"]["defaults"]["alpha_express"]
+        ),
         "weight_stage": loaded.weight_stage,
         "score_stage": loaded.score_stage,
         "interaction_cutoff": float(interaction["cutoff"]),
@@ -543,6 +558,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--training-config", type=Path, default=None)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--random-seed", type=int, default=42)
+    parser.add_argument(
+        "--alpha-spatial",
+        type=float,
+        default=DEFAULT_ALPHA_SPATIAL,
+        help=(
+            "Spatial contribution to the training ground cost "
+            f"(default: {DEFAULT_ALPHA_SPATIAL:g})."
+        ),
+    )
+    parser.add_argument(
+        "--alpha-express",
+        type=float,
+        default=DEFAULT_ALPHA_EXPRESS,
+        help=(
+            "Expression contribution to the training ground cost "
+            f"(default: {DEFAULT_ALPHA_EXPRESS:g})."
+        ),
+    )
     parser.add_argument("--alignment-max-cells-per-timepoint", type=int, default=None)
     parser.add_argument("--interaction-m", type=int, default=1024)
     parser.add_argument("--evaluation-max-ot-points", type=int, default=1024)
@@ -552,6 +585,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    for name in ("alpha_spatial", "alpha_express"):
+        value = float(getattr(args, name))
+        if not np.isfinite(value) or value < 0.0:
+            raise ValueError(f"--{name.replace('_', '-')} must be finite and non-negative.")
     args.h5ad_path = _require_file(args.h5ad_path, "MOSTA source H5AD")
     args.database_path = _require_file(args.database_path, "mouse LR database")
     if args.training_config is not None:

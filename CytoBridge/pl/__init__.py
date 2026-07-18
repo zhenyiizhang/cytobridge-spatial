@@ -38,6 +38,7 @@ from .velocity import (
     plot_spatial_component_direction_correlation_roi_from_adata,
 )
 from .temporal import (
+    plot_developmental_wave_heatmap,
     plot_temporal_gene_heatmap,
     plot_temporal_pattern_prototypes,
     plot_temporal_profile_small_multiples,

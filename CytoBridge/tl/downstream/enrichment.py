@@ -161,12 +161,20 @@ def overrepresentation_analysis(
     min_overlap: int = 1,
     alpha: float = 0.05,
     uppercase: bool = True,
+    multiple_testing_scope: str = "reported",
 ) -> pd.DataFrame:
     """Run one-sided hypergeometric ORA with Benjamini-Hochberg correction.
 
     The tested universe is explicit. If ``background_genes`` is omitted, the
     union of the supplied library is used. Query genes outside that universe
     are excluded and their counts are reported through the returned columns.
+
+    ``multiple_testing_scope='reported'`` preserves the historical contract:
+    terms below ``min_overlap`` are omitted and BH correction covers only the
+    returned terms. ``multiple_testing_scope='all_eligible'`` instead returns
+    and corrects across every term passing the explicit set-size gates. Terms
+    with zero overlap then have p-value 1, fold enrichment 0, and remain in the
+    output so a library-wide multiple-testing family is fully auditable.
     """
     from scipy.stats import hypergeom
 
@@ -178,6 +186,11 @@ def overrepresentation_analysis(
         raise ValueError("min_overlap must be positive.")
     if not 0.0 < float(alpha) <= 1.0:
         raise ValueError("alpha must be in (0, 1].")
+    multiple_testing_scope = str(multiple_testing_scope).strip().lower()
+    if multiple_testing_scope not in {"reported", "all_eligible"}:
+        raise ValueError(
+            "multiple_testing_scope must be 'reported' or 'all_eligible'."
+        )
     library = (
         gene_sets
         if isinstance(gene_sets, GeneSetLibrary)
@@ -221,8 +234,6 @@ def overrepresentation_analysis(
             continue
         overlap = sorted(query & tested_members)
         overlap_count = int(len(overlap))
-        if overlap_count < int(min_overlap):
-            continue
         expected = float(query_size * set_size / background_size)
         p_value = float(
             hypergeom.sf(
@@ -237,7 +248,12 @@ def overrepresentation_analysis(
         c = float(set_size - overlap_count)
         d = float(background_size - query_size - set_size + overlap_count)
         denominator = b * c
-        odds_ratio = float((a * d) / denominator) if denominator > 0.0 else np.inf
+        if overlap_count == 0:
+            odds_ratio = 0.0
+        else:
+            odds_ratio = (
+                float((a * d) / denominator) if denominator > 0.0 else np.inf
+            )
         term_name, term_id = _term_parts(term)
         rows.append(
             {
@@ -256,6 +272,7 @@ def overrepresentation_analysis(
                 "fold_enrichment": float(overlap_count / expected),
                 "odds_ratio": odds_ratio,
                 "p_value": p_value,
+                "passes_min_overlap": bool(overlap_count >= int(min_overlap)),
                 "overlap_genes": ";".join(overlap),
             }
         )
@@ -277,18 +294,57 @@ def overrepresentation_analysis(
         "p_value",
         "adjusted_p_value",
         "significant",
+        "passes_min_overlap",
+        "eligible_test_count",
+        "multiple_testing_test_count",
+        "multiple_testing_scope",
         "overlap_genes",
     ]
     if not rows:
-        return pd.DataFrame(columns=columns)
-    result = pd.DataFrame(rows)
+        result = pd.DataFrame(columns=columns)
+        result.attrs.update(
+            {
+                "eligible_test_count": 0,
+                "multiple_testing_test_count": 0,
+                "multiple_testing_scope": multiple_testing_scope,
+            }
+        )
+        return result
+    eligible = pd.DataFrame(rows)
+    eligible_test_count = int(len(eligible))
+    if multiple_testing_scope == "reported":
+        result = eligible.loc[eligible["passes_min_overlap"]].copy()
+    else:
+        result = eligible.copy()
+    multiple_testing_test_count = int(len(result))
+    if result.empty:
+        result = pd.DataFrame(columns=columns)
+        result.attrs.update(
+            {
+                "eligible_test_count": eligible_test_count,
+                "multiple_testing_test_count": 0,
+                "multiple_testing_scope": multiple_testing_scope,
+            }
+        )
+        return result
     result["adjusted_p_value"] = _benjamini_hochberg(
         result["p_value"].to_numpy(dtype=float)
     )
     result["significant"] = result["adjusted_p_value"] <= float(alpha)
+    result["eligible_test_count"] = eligible_test_count
+    result["multiple_testing_test_count"] = multiple_testing_test_count
+    result["multiple_testing_scope"] = multiple_testing_scope
     result = result.sort_values(
         ["adjusted_p_value", "p_value", "fold_enrichment", "term"],
         ascending=[True, True, False, True],
         kind="mergesort",
     ).reset_index(drop=True)
-    return result.loc[:, columns]
+    result = result.loc[:, columns]
+    result.attrs.update(
+        {
+            "eligible_test_count": eligible_test_count,
+            "multiple_testing_test_count": multiple_testing_test_count,
+            "multiple_testing_scope": multiple_testing_scope,
+        }
+    )
+    return result

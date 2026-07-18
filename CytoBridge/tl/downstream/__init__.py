@@ -5,11 +5,13 @@ from .ablation import (
     AblationGifResult,
     AblationPanelSeriesResult,
     VirtualAblationResult,
+    VirtualInteractionAblationResult,
     compute_virtual_ablation_metrics,
     crop_ablation_panel,
     export_ablation_gifs,
     export_ablation_panel_series,
     run_virtual_cell_type_ablation,
+    run_virtual_interaction_ablation,
 )
 from .checkpoint import (
     LoadedModel,
@@ -87,7 +89,9 @@ from .lr_panels import (
     render_top_receivers_barplot,
 )
 from .lr_projection import (
+    FocalLRTypeHotspotResult,
     LRTemporalProjectionResult,
+    compute_focal_lr_type_hotspots,
     load_ligand_receptor_database,
     project_communication_to_lr_timecourses,
 )
@@ -106,10 +110,14 @@ from .simulation import (
 )
 from .runtime import DynamicalRuntime, build_dynamical_runtime
 from .temporal import (
+    DevelopmentalWaveResult,
+    PCAAnchorReconstructionQCResult,
     PCAReconstructionSpec,
     TemporalGenePatternResult,
     TemporalProfileClusteringResult,
+    analyze_developmental_wave,
     cluster_temporal_profiles,
+    evaluate_pca_anchor_reconstruction,
     infer_pca_center,
     inverse_pca_states,
     load_pca_reconstruction_spec,
@@ -117,6 +125,10 @@ from .temporal import (
     pca_reconstruction_feature_coverage,
     simplify_gene_names,
     summarize_temporal_gene_patterns,
+)
+from .velocity_projection import (
+    VelocityEmbeddingProjectionResult,
+    project_velocity_to_embedding,
 )
 from .visualization import load_label_to_color, save_timepoint_snapshots
 from .workflows import (
@@ -135,11 +147,13 @@ __all__ = [
     "AblationPanelSeriesResult",
     "AblationGifResult",
     "VirtualAblationResult",
+    "VirtualInteractionAblationResult",
     "compute_virtual_ablation_metrics",
     "crop_ablation_panel",
     "export_ablation_gifs",
     "export_ablation_panel_series",
     "run_virtual_cell_type_ablation",
+    "run_virtual_interaction_ablation",
     "GeneProgramPanelResult",
     "GeneSetLibrary",
     "GrowthInteractionSummary",
@@ -151,10 +165,14 @@ __all__ = [
     "collect_top_variable_heatmaps",
     "LRMultipanelSpec",
     "LRPanelResult",
+    "FocalLRTypeHotspotResult",
     "LRTemporalProjectionResult",
+    "DevelopmentalWaveResult",
+    "PCAAnchorReconstructionQCResult",
     "PCAReconstructionSpec",
     "TemporalGenePatternResult",
     "TemporalProfileClusteringResult",
+    "VelocityEmbeddingProjectionResult",
     "render_lr_expression_panels",
     "render_lr_incoming_multipanel",
     "render_top_receivers_barplot",
@@ -172,6 +190,7 @@ __all__ = [
     "compute_umap_embedding",
     "compute_velocity_components",
     "compute_velocity_components_from_adata",
+    "project_velocity_to_embedding",
     "downsample_xy",
     "find_single_classifier_cache",
     "infer_feature_columns",
@@ -193,6 +212,7 @@ __all__ = [
     "predict_labels_for_trajectories",
     "plot_lineage_sankey",
     "plot_spatiotemporal_3d",
+    "compute_focal_lr_type_hotspots",
     "project_communication_to_lr_timecourses",
     "require_columns",
     "resolve_split_sigma",
@@ -209,7 +229,9 @@ __all__ = [
     "summarize_growth_interaction_by_celltype",
     "summarize_label_composition",
     "summarize_temporal_gene_patterns",
+    "analyze_developmental_wave",
     "cluster_temporal_profiles",
+    "evaluate_pca_anchor_reconstruction",
     "infer_pca_center",
     "inverse_pca_states",
     "load_pca_reconstruction_spec",

@@ -124,6 +124,8 @@ CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
   --output-dir ./results/mosta_corrected_counts_alpha0015 \
   --profile full \
   --stage all \
+  --alpha-spatial 10 \
+  --alpha-express 0.015 \
   --device cuda
 ```
 
@@ -131,6 +133,11 @@ CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
 UMI matrix is the singular `layers['count']`; omitting the explicit layer would
 reproduce the historical double transformation. The corrected adapter uses
 `raw count -> normalize_total(target_sum=10000) -> log1p` exactly once.
+`--alpha-spatial` and `--alpha-express` are explicit run parameters and are
+recorded in both the training and evaluation manifests. For a paired
+expression-weight sensitivity run, keep every other argument and the random
+seed fixed, change only `--alpha-express 0.05`, and use a fresh output
+directory.
 
 This step produces:
 
@@ -463,9 +470,34 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
 
 - `summarize_temporal_gene_patterns` uses either the PCA contract retained in
   processed AnnData or an explicit `PCAReconstructionSpec`, inverse-projects
-  simulated PCA states, and clusters the resulting gene trajectories;
+  simulated PCA states, and clusters the resulting gene trajectories. Its
+  optional `candidate_features` argument freezes the exact original PCA-feature
+  universe eligible for temporal-variance ranking; missing, duplicate, or
+  center-only candidates are strict errors, and the requested/used sets and
+  hashes are recorded in the result settings;
+- `evaluate_pca_anchor_reconstruction` checks observed log1p anchors against
+  their exact-center inverse-PCA reconstruction in bounded cell chunks. It
+  expects a caller-supplied view restricted to the intended biological cells
+  and active PCA candidates (for MOSTA, Brain cells and the original 2,000
+  HVGs), rejects center-only features by default, and strictly validates
+  feature order. It returns per-time aggregate errors plus per-feature
+  RMSE/MAE, mean, population standard deviation, bias, correlation, and scale
+  ratio together with effective observation/feature and PCA-contract hashes,
+  without constructing the full cells-by-features reconstruction;
 - `project_communication_to_lr_timecourses` combines those reconstructed
-  expression values with per-timepoint `M_per_source` communication matrices;
+  expression values with per-timepoint `M_per_source` communication matrices.
+  Hybrid observed/generated runs use one all-times universe of LR subunits with
+  active retained-PC loadings, require every retained pair and pair-by-cell-type
+  trajectory to cover the full requested time grid, and return explicit
+  `trajectory_coverage` and `dropped_trajectories` audits instead of silently
+  zero-filling missing times;
+- `compute_focal_lr_type_hotspots` implements the article-style focal-panel
+  estimand `mean_sender(ligand) * mean_receiver(receptor_complex) *
+  M_per_source(sender, receiver)`. It exports the sender-by-receiver type
+  matrix, type-level incoming/outgoing/total scores, a cell mapping with one
+  identical value per time/type, and a formula/subunit/cohort audit. A capped
+  compute cohort and full display cohort may be supplied separately, with both
+  sizes and ordered cell-ID hashes recorded;
 - `load_pca_reconstruction_spec` loads historical loading/center tables through
   a generic, validated feature-alignment contract rather than dataset-local
   parsing;
@@ -476,6 +508,93 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   dataset-independent gene-set contract with an explicit expression or
   library-wide background, while `plot_enrichment_bar` and
   `plot_enrichment_dot` render the standardized result table.
+
+Two additional public APIs cover the numerical steps that were previously
+embedded in figure notebooks. `analyze_developmental_wave` takes any
+feature-by-time table, selects rows by temporal variance, performs row-wise
+standardization and deterministic peak-time ordering, and uses exact dynamic
+programming to divide the ordered cascade into contiguous phases subject to a
+hard minimum phase size. `plot_developmental_wave_heatmap` displays that stored
+ordering and those phase boundaries without recomputing them.
+
+`cluster_temporal_profiles` uses an exact merge-count tree cut, so duplicate or
+zero-distance profiles still yield the requested number of clusters (bounded by
+the number of input profiles). Diagnostics record the chosen cluster count,
+cut strategy, and number of zero-distance merges.
+
+```python
+from CytoBridge.tl import analyze_developmental_wave
+from CytoBridge.pl import plot_developmental_wave_heatmap
+
+wave = analyze_developmental_wave(
+    gene_by_time,
+    n_top_profiles=250,
+    n_phases=3,
+    min_phase_size=5,
+)
+wave.assignments.to_csv("wave_assignments.csv", index=False)
+wave.prototypes.to_csv("wave_phase_prototypes.csv", index=False)
+plot_developmental_wave_heatmap(wave, out_path="developmental_wave.pdf")
+```
+
+`project_velocity_to_embedding` provides a dependency-light, auditable
+alternative to constructing a temporary scVelo object. It builds (or accepts)
+a k-nearest-neighbor graph in the complete latent feature space, converts the
+cosines between latent velocities and latent neighbor displacements to
+softmax transition probabilities, and applies the centered probabilities to
+2D target-embedding displacements. The embedding is only the projection
+target; it is never substituted for the high-dimensional neighborhood state.
+
+```python
+from CytoBridge.tl import project_velocity_to_embedding
+
+projection = project_velocity_to_embedding(
+    latent_coordinates,
+    latent_velocity,
+    embedding_2d,
+    n_neighbors=30,
+    temperature=1.0,
+)
+velocity_2d = projection.projected_velocity
+```
+
+Virtual perturbations are also exposed as dataset-independent APIs.
+`run_virtual_cell_type_ablation` takes caller-defined annotation keys and label
+sets; it never embeds MOSTA label names.  Its default uses one shared initial
+cohort, while `mass_control=True` independently samples the baseline and one
+post-removal pool without replacement to the same initial size.  The latter is
+the audited contract used for the historical MOSTA equal-mass experiments.
+`run_virtual_interaction_ablation` instead accepts one explicit `x0` array and
+runs an exact-input, common-seed interaction-on versus interaction-off pair.
+Both workflows save numerical trajectories, comparison metrics, cohort or
+input provenance, and a machine-readable manifest; plotting remains a separate
+package call.
+
+```python
+from CytoBridge.tl import (
+    run_virtual_cell_type_ablation,
+    run_virtual_interaction_ablation,
+)
+
+celltype_result = run_virtual_cell_type_ablation(
+    adata,
+    runtime,
+    ablations={"remove_target": ["Target cell type"]},
+    time_points=time_grid,
+    annotation_key="cell_type",
+    time_key="model_time",
+    mass_control=True,
+    n_samples=40_000,
+    output_dir="results/remove_target",
+)
+
+interaction_result = run_virtual_interaction_ablation(
+    initial_states,
+    runtime,
+    time_points=time_grid,
+    output_dir="results/interaction_off",
+)
+```
 
 The enrichment API does not download or silently select a database. Callers
 provide a versioned GMT file and record its hash in the run manifest:
@@ -495,6 +614,13 @@ plot_enrichment_dot(
     out_path="pattern_go.svg",
 )
 ```
+
+The backward-compatible multiple-testing scope is `"reported"`, where terms
+below `min_overlap` are removed before BH correction. For a preregistered
+library-wide family, use `multiple_testing_scope="all_eligible"`: every term
+passing the explicit set-size gates is retained in one BH family, including
+zero-overlap terms with p-value 1. The result records both the eligible and
+actually corrected test counts in columns and `DataFrame.attrs`.
 
 The default, prospective workflow requires a package-processed reference H5AD
 that retains PCA loadings. An older H5AD containing only `X_pca` coordinates is

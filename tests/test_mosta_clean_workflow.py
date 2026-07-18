@@ -10,8 +10,10 @@ from CytoBridge.pp.preprocess import preprocess
 from CytoBridge.pp.spatial_align import AlignConfig, _align_preprocessed_adata
 from CytoBridge.utils.config import load_config
 from scripts.run_mosta_end_to_end import (
+    _build_parser,
     _lr_feature_contract,
     _profile_defaults,
+    _resolved_training_config,
     _write_pca_contract,
 )
 from scripts.run_spatial_training import MOSTA_TIME_MAPPING, _preset_config
@@ -185,3 +187,33 @@ def test_mosta_alpha0015_config_has_recovered_six_stage_schedule():
     assert [stage["epochs"] for stage in plan] == [100, 100, 50, 2001, 1000, 2001]
     assert [stage["batch_size"] for stage in plan] == [1024, 1024, 1024, 512, 1024, 512]
     assert _profile_defaults("full")["edge_max_train_edges"] == 2_000_000
+
+
+def test_mosta_training_alpha_cli_defaults_and_override(tmp_path):
+    parser = _build_parser()
+    required = [
+        "--h5ad-path",
+        str(tmp_path / "source.h5ad"),
+        "--database-path",
+        str(tmp_path / "lr.csv"),
+        "--output-dir",
+        str(tmp_path / "run"),
+        "--profile",
+        "full",
+    ]
+
+    default_args = parser.parse_args(required)
+    default_config = _resolved_training_config(
+        default_args, {"training_dir": tmp_path / "default_training"}
+    )
+    assert default_config["training"]["defaults"]["alpha_spatial"] == 10.0
+    assert default_config["training"]["defaults"]["alpha_express"] == 0.015
+
+    override_args = parser.parse_args(
+        required + ["--alpha-spatial", "7.5", "--alpha-express", "0.05"]
+    )
+    override_config = _resolved_training_config(
+        override_args, {"training_dir": tmp_path / "override_training"}
+    )
+    assert override_config["training"]["defaults"]["alpha_spatial"] == 7.5
+    assert override_config["training"]["defaults"]["alpha_express"] == 0.05

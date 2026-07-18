@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from CytoBridge.tl.downstream.lr_projection import (
+    compute_focal_lr_type_hotspots,
     project_communication_to_lr_timecourses,
 )
 from CytoBridge.tl.downstream.temporal import (
@@ -110,10 +111,16 @@ def test_persisted_pca_center_survives_reference_population_subsetting() -> None
     fit_center = np.asarray([10.0, 20.0, 30.0], dtype=np.float32)
     reference.var["pca_center"] = fit_center
     subset = reference[[0, 1]].copy()
+    subset.layers["different_population"] = np.full(
+        subset.shape,
+        999.0,
+        dtype=np.float32,
+    )
 
     reconstructed = inverse_pca_states(
         subset,
         np.asarray([[0.0, 0.0, 0.2, 0.4]], dtype=np.float32),
+        layer="different_population",
     )
     np.testing.assert_allclose(reconstructed[0], [10.2, 20.4, 29.9], atol=1e-6)
 
@@ -168,6 +175,37 @@ def test_ward_dendrogram_cluster_order_is_recorded() -> None:
     assert result.diagnostics.loc[0, "linkage_method"] == "ward"
     assert result.diagnostics.loc[0, "cluster_order"] == "dendrogram"
     assert sorted(result.assignments["dendrogram_rank"].tolist()) == [0, 1, 2, 3]
+
+
+def test_temporal_clustering_zero_distance_ties_still_cut_to_exact_k() -> None:
+    profiles = pd.DataFrame(
+        np.zeros((6, 4), dtype=np.float64),
+        index=[f"p{index}" for index in range(6)],
+        columns=[0.0, 0.5, 1.0, 1.5],
+    )
+    first = cluster_temporal_profiles(
+        profiles,
+        n_clusters=3,
+        normalization="minmax",
+        method="average",
+        cluster_order="peak_time",
+    )
+    second = cluster_temporal_profiles(
+        profiles,
+        n_clusters=3,
+        normalization="minmax",
+        method="average",
+        cluster_order="peak_time",
+    )
+
+    assert sorted(first.assignments["cluster"].unique().tolist()) == [1, 2, 3]
+    assert first.assignments.equals(second.assignments)
+    assert sorted(first.prototypes["cluster"].unique().tolist()) == [1, 2, 3]
+    diagnostics = first.diagnostics.iloc[0]
+    assert diagnostics["chosen_clusters"] == 3
+    assert diagnostics["clusters_found"] == 3
+    assert diagnostics["cut_strategy"] == "scipy_cut_tree_exact_n_clusters"
+    assert diagnostics["n_zero_distance_merges"] == 5
 
 
 def test_temporal_gene_and_lr_projection() -> None:
@@ -320,6 +358,67 @@ def test_hybrid_lr_projection_missing_observed_time_policy() -> None:
     coverage = result.coverage.set_index("time")
     assert coverage["expression_source"].tolist() == ["observed", "inverse_pca"]
     assert coverage["observed_missing_fallback"].tolist() == [False, True]
+
+
+def test_hybrid_lr_missing_observed_celltype_is_unavailable_not_zero_filled() -> None:
+    reference = _reference_adata()
+    slices = _trajectory_slices()
+    communications = {
+        key: {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.5, 0.0]]),
+        }
+        for key in slices
+    }
+    observed = _observed_expression()
+    keep = ~(
+        np.isclose(observed.obs["stage"].to_numpy(dtype=float), 1.0)
+        & (observed.obs["cell_type"].astype(str).to_numpy() == "B")
+    )
+    observed = observed[keep].copy()
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame({"ligand": ["L1"], "receptor": ["R1"]}),
+        preferred_species_tag="hs",
+        n_clusters=1,
+        observed_adata=observed,
+        observed_time_key="stage",
+        observed_time_points=[0.0, 1.0],
+        observed_annotation_key="cell_type",
+        observed_layer="counts",
+        observed_expression_space="count",
+        return_type_matrices=True,
+    )
+
+    # Pair-level aggregation remains defined on supported sender/receiver
+    # populations at all three times; the absent B population is not treated
+    # as observed zero expression.
+    assert result.pair_timecourse["time"].tolist() == [0.0, 0.5, 1.0]
+    t1_pair = result.pair_timecourse.set_index("time").loc[1.0]
+    assert t1_pair["n_expression_supported_cell_types"] == 1
+    assert t1_pair["n_expression_unsupported_cell_types"] == 1
+    coverage = result.coverage.set_index("time")
+    assert coverage.loc[1.0, "n_expression_supported_cell_types"] == 1
+    assert coverage.loc[1.0, "expression_unsupported_cell_types"] == "B"
+
+    audit = result.trajectory_coverage.loc[
+        result.trajectory_coverage["trajectory_kind"] == "pair_celltype"
+    ].set_index(["pair", "cell_type"])
+    assert bool(audit.loc[("L1_R1", "A"), "retained"])
+    assert not bool(audit.loc[("L1_R1", "B"), "retained"])
+    assert audit.loc[("L1_R1", "B"), "expression_unavailable_times"] == "[1.0]"
+    assert audit.loc[("L1_R1", "B"), "drop_reason"] == "missing_expression_support"
+    assert set(result.celltype_timecourse["cell_type"]) == {"A"}
+    t1_matrix = result.type_matrix.loc[result.type_matrix["time"] == 1.0]
+    unsupported = t1_matrix.loc[~t1_matrix["expression_supported_edge"].astype(bool)]
+    assert not unsupported.empty
+    assert unsupported["lr_score"].isna().all()
+    support_contract = result.settings["expression_support_contract"]
+    assert support_contract["unsupported_type_value"] == (
+        "unavailable_not_observed_zero"
+    )
 
 
 def test_hybrid_lr_projection_rejects_missing_reconstruction_genes() -> None:
@@ -490,3 +589,221 @@ def test_strict_lr_complex_reports_missing_and_center_only_subunits() -> None:
     assert result.coverage["n_lr_pairs_with_missing_subunit"].tolist() == [1, 1]
     assert result.coverage["missing_subunits"].tolist() == ["Lrp6", "Lrp6"]
     assert result.coverage["n_pca_features_inactive"].tolist() == [1, 1]
+
+
+def test_hybrid_lr_uses_one_active_pca_subunit_universe_at_all_times() -> None:
+    reference = ad.AnnData(X=np.zeros((2, 3), dtype=np.float32))
+    reference.var_names = ["L1", "R1", "CenterOnly"]
+    reference.varm["PCs"] = np.asarray(
+        [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+        dtype=np.float32,
+    )
+    reference.var["pca_center"] = [1.0, 1.0, 10.0]
+    slices = {}
+    communications = {}
+    for time in (0.0, 0.5, 1.0):
+        current = ad.AnnData(
+            X=np.asarray(
+                [
+                    [0.0, 0.0, 0.1, 0.1],
+                    [0.0, 0.0, 0.2, 0.2],
+                    [0.0, 0.0, 0.1, 0.1],
+                    [0.0, 0.0, 0.2, 0.2],
+                ],
+                dtype=np.float32,
+            )
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+
+    observed = ad.AnnData(
+        X=np.asarray(
+            [
+                [2.0, 1.0, 100.0],
+                [1.0, 2.0, 100.0],
+                [2.0, 1.0, 100.0],
+                [1.0, 2.0, 100.0],
+            ],
+            dtype=np.float32,
+        )
+    )
+    observed.var_names = reference.var_names.copy()
+    observed.obs["time"] = [0.0, 0.0, 1.0, 1.0]
+    observed.obs["Annotation"] = ["A", "B", "A", "B"]
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame(
+            {
+                "ligand": ["L1", "L1"],
+                "receptor": ["R1", "CenterOnly"],
+            }
+        ),
+        n_clusters=1,
+        require_all_subunits=True,
+        observed_adata=observed,
+        observed_time_key="time",
+        observed_time_points=[0.0, 1.0],
+        observed_expression_space="count",
+    )
+
+    assert result.pair_timecourse["pair"].unique().tolist() == ["L1_R1"]
+    assert result.pair_timecourse["time"].tolist() == [0.0, 0.5, 1.0]
+    pair_audit = result.trajectory_coverage.loc[
+        result.trajectory_coverage["trajectory_kind"] == "pair"
+    ].set_index("pair")
+    assert bool(pair_audit.loc["L1_R1", "retained"])
+    assert not bool(pair_audit.loc["L1_CenterOnly", "retained"])
+    assert (
+        pair_audit.loc["L1_CenterOnly", "drop_reason"]
+        == "not_scoreable_in_uniform_active_pca_universe"
+    )
+    assert pair_audit.loc["L1_CenterOnly", "inactive_pca_subunits"] == "CenterOnly"
+    assert set(result.clustering.assignments["profile"]) == {"L1_R1"}
+    assert set(result.dropped_trajectories["pair"]) == {"L1_CenterOnly"}
+    contract = result.settings["temporal_eligibility_contract"]
+    assert contract["observed_and_generated_feature_universe_identical"] is True
+    assert contract["missing_time_policy"] == "drop_and_audit_never_zero_fill"
+    assert result.coverage["n_observed_lr_features"].tolist() == [2, 2, 2]
+
+
+def test_pair_celltype_outputs_drop_incomplete_requested_time_grids() -> None:
+    reference = _reference_adata()
+    slices = _trajectory_slices()
+    communications = {
+        "0.0": {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.5, 0.0]]),
+        },
+        "0.5": {
+            "types": np.asarray(["A"], dtype=object),
+            "M_per_source": np.asarray([[1.0]]),
+        },
+        "1.0": {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.5, 0.0]]),
+        },
+    }
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame({"ligand": ["L1"], "receptor": ["R1"]}),
+        preferred_species_tag="hs",
+        n_clusters=1,
+    )
+
+    assert result.pair_timecourse.groupby("pair")["time"].nunique().tolist() == [3]
+    celltype_audit = result.trajectory_coverage.loc[
+        result.trajectory_coverage["trajectory_kind"] == "pair_celltype"
+    ].set_index(["pair", "cell_type"])
+    assert bool(celltype_audit.loc[("L1_R1", "A"), "retained"])
+    assert not bool(celltype_audit.loc[("L1_R1", "B"), "retained"])
+    assert celltype_audit.loc[("L1_R1", "B"), "missing_times"] == "[0.5]"
+    assert set(result.celltype_timecourse["cell_type"]) == {"A"}
+    assert result.celltype_timecourse.groupby(["pair", "cell_type"])[
+        "time"
+    ].nunique().tolist() == [3]
+
+
+def test_focal_lr_type_hotspot_uses_article_estimand_and_constant_type_mapping() -> (
+    None
+):
+    reference = _reference_adata()
+    slices = _trajectory_slices()
+    communications = {
+        key: {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.5, 0.0]]),
+        }
+        for key in slices
+    }
+    display_slices = {}
+    for key, state in slices.items():
+        display = ad.AnnData(X=np.vstack([state.X, state.X]))
+        display.obs["Annotation"] = state.obs["Annotation"].astype(str).tolist() * 2
+        display.obs_names = [f"{key}_display_{index}" for index in range(display.n_obs)]
+        display_slices[key] = display
+    result = compute_focal_lr_type_hotspots(
+        slices,
+        reference,
+        communications,
+        ligand="L1",
+        receptor="R1",
+        preferred_species_tag="hs",
+        observed_adata=_observed_expression(),
+        observed_time_key="stage",
+        observed_time_points=[0.0, 1.0],
+        observed_annotation_key="cell_type",
+        observed_layer="counts",
+        observed_expression_space="count",
+        cell_mapping_adata_dict=display_slices,
+    )
+
+    t0 = result.type_matrix.loc[result.type_matrix["time"] == 0.0].set_index(
+        ["sender_type", "receiver_type"]
+    )
+    assert t0.loc[("A", "B"), "ligand_mean"] == pytest.approx(11.0)
+    assert t0.loc[("A", "B"), "receptor_mean"] == pytest.approx(21.0)
+    assert t0.loc[("A", "B"), "communication_weight"] == pytest.approx(1.0)
+    assert t0.loc[("A", "B"), "lr_score"] == pytest.approx(231.0)
+    assert t0.loc[("B", "A"), "lr_score"] == pytest.approx(3.0)
+    np.testing.assert_allclose(
+        result.type_matrix["lr_score"],
+        result.type_matrix["ligand_mean"]
+        * result.type_matrix["receptor_mean"]
+        * result.type_matrix["communication_weight"],
+    )
+    assert len(result.type_matrix) == 3 * 2 * 2
+    assert len(result.cell_mapping) == 3 * 8
+    assert result.type_scores.groupby("time")["cell_type"].nunique().tolist() == [
+        2,
+        2,
+        2,
+    ]
+    for (_, cell_type), subset in result.cell_mapping.groupby(["time", "cell_type"]):
+        assert subset["incoming"].nunique() == 1
+        assert subset["outgoing"].nunique() == 1
+        assert subset["total_raw"].nunique() == 1
+        expected = result.type_scores.loc[
+            (result.type_scores["time"] == subset["time"].iloc[0])
+            & (result.type_scores["cell_type"] == cell_type),
+            "total",
+        ].iloc[0]
+        assert subset["total_raw"].iloc[0] == pytest.approx(expected)
+    assert result.audit["max_formula_abs_error"].max() == pytest.approx(0.0)
+    assert result.audit["within_type_cell_scores_constant"].all()
+    assert result.audit["n_compute_cells"].tolist() == [4, 4, 4]
+    assert result.audit["n_display_cells"].tolist() == [8, 8, 8]
+    assert result.audit["compute_cell_id_order_sha256"].str.len().eq(64).all()
+    assert result.audit["display_cell_id_order_sha256"].str.len().eq(64).all()
+    assert result.settings["aggregation_level"] == "cell_type"
+    assert result.settings["per_edge_attention_hotspot"] is False
+    assert result.settings["strict_all_subunit_corrected_reanalysis"] is True
+
+
+def test_focal_lr_type_hotspot_strict_complex_never_omits_requested_subunit() -> None:
+    reference = _reference_adata()
+    slices = _trajectory_slices()
+    communications = {
+        key: {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.5, 0.0]]),
+        }
+        for key in slices
+    }
+    with pytest.raises(ValueError, match="No ligand-receptor pairs could be scored"):
+        compute_focal_lr_type_hotspots(
+            slices,
+            reference,
+            communications,
+            ligand="L1",
+            receptor="R1_MissingSubunit",
+            preferred_species_tag="hs",
+            require_all_subunits=True,
+        )
