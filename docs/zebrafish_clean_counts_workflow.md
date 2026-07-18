@@ -571,9 +571,10 @@ map and its persisted fit-time center. Only features with a nonzero retained
 loading are eligible: a zero-loading non-HVG would otherwise be the same global
 center value at every generated state and is not evidence for gene dynamics.
 The exported settings record the active/inactive feature counts and loading
-tolerance. Rank-truncated inverse-PCA values are signed reconstruction estimates;
-the temporal heatmap compares their gene-wise profiles and does not treat them
-as raw counts.
+tolerance. Rank-truncated inverse-PCA values are signed reconstruction estimates.
+The temporal heatmap uses the per-cell zero-clipped reconstruction, compares its
+gene-wise profiles, and does not treat those values as raw counts; the signed
+means remain available in a separate diagnostic table.
 
 The default LR dynamics uses one reconstructable feature universe and one
 measurement operator across the complete trajectory: every time point,

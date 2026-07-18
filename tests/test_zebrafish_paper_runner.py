@@ -361,6 +361,37 @@ def test_lr_measurement_diagnostic_rejects_generated_common_pair_drift():
         )
 
 
+def test_lr_measurement_diagnostic_labels_one_sided_pairs_as_missing():
+    import pandas as pd
+
+    def result(extra_pair, extra_score):
+        pair = pd.DataFrame(
+            {
+                "pair": ["common", "common", "common", extra_pair],
+                "time": [0.0, 0.5, 1.0, 0.0],
+                "score": [1.0, 2.0, 3.0, extra_score],
+            }
+        )
+        cell = pair.assign(
+            cell_type="A",
+            incoming=pair["score"] / 2,
+            outgoing=pair["score"] / 2,
+            total=pair["score"],
+            n_cells=2,
+        )
+        return SimpleNamespace(pair_timecourse=pair, celltype_timecourse=cell)
+
+    pair, *_ = runner._compare_lr_measurement_contracts(
+        result("hybrid_only", 4.0),
+        result("inverse_only", 5.0),
+        observed_times=(0.0, 1.0),
+    )
+    status = pair.loc[pair["time"].eq(0.0)].set_index("pair")["zero_status"]
+    assert status["hybrid_only"] == "all_inverse_missing"
+    assert status["inverse_only"] == "hybrid_missing"
+    assert status["common"] == "both_nonzero"
+
+
 def test_velocity_stage_emits_direct_and_latent_projection_contracts(
     tmp_path, monkeypatch
 ):

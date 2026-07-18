@@ -14,8 +14,9 @@ analyses:
   frames are selected from that same trajectory; integer frames are observed
   cells and half-time frames are generated cells.
 * S24 virtual ablation and S25/communication use unwarped trajectories.
-* Communication uses a hybrid no-warp series: observed cells at integer times
-  and generated cells at intermediate times.
+* Communication uses a hybrid no-warp state population: observed cells at
+  integer times and generated cells at intermediate times. This state-source
+  choice is separate from the LR expression measurement policy.
 
 Stages are resumable.  A completed stage is skipped when its input/settings
 signature and every recorded output still match; pass ``--force`` to rerun it.
@@ -2097,10 +2098,11 @@ def _compare_lr_measurement_contracts(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,]:
     """Compare exact-observed and all-inverse-PCA LR measurements.
 
-    The primary hybrid trajectory intentionally uses exact expression at
-    observed integer times and inverse-PCA expression at generated half-times.
-    This diagnostic holds states, labels, and communication matrices fixed and
-    changes only that expression measurement operator.
+    The legacy hybrid trajectory uses exact expression at observed integer
+    times and inverse-PCA expression at generated half-times. The corrected
+    default uses inverse-PCA expression throughout. This diagnostic holds
+    states, labels, and communication matrices fixed and changes only that
+    expression measurement operator.
     """
 
     observed = {float(value) for value in observed_times}
@@ -2155,11 +2157,19 @@ def _compare_lr_measurement_contracts(
     )
     pair["zero_status"] = np.select(
         (
+            pair["pair_presence"].eq("left_only"),
+            pair["pair_presence"].eq("right_only"),
             pair["score_hybrid"].eq(0) & pair["score_all_inverse_pca"].eq(0),
             pair["score_hybrid"].eq(0) & pair["score_all_inverse_pca"].gt(0),
             pair["score_hybrid"].gt(0) & pair["score_all_inverse_pca"].eq(0),
         ),
-        ("both_zero", "hybrid_only_zero", "all_inverse_only_zero"),
+        (
+            "all_inverse_missing",
+            "hybrid_missing",
+            "both_zero",
+            "hybrid_only_zero",
+            "all_inverse_only_zero",
+        ),
         default="both_nonzero",
     )
 
