@@ -50,6 +50,211 @@ TRACK_SCOPES = {
 _ARRAY_FIELDS = ("state", "spatial", "time", "row_id")
 _CONCATENATED_HASH_FIELDS = ("row_id", "state", "spatial", "time")
 _RUN_CONTRACT_SCHEMA_VERSION = "1.0.0"
+_EVALUATION_SPACES = ("joint", "state", "spatial")
+
+
+def _load_method_registry(path: Path) -> dict[str, Any]:
+    """Parse and hash one immutable in-memory registry byte snapshot."""
+
+    registry_path = path.expanduser().resolve()
+    try:
+        registry_bytes = registry_path.read_bytes()
+    except OSError as exc:
+        raise ContractError(f"cannot capture method registry snapshot {registry_path}: {exc}") from exc
+    registry_sha = hashlib.sha256(registry_bytes).hexdigest()
+    try:
+        payload = json.loads(registry_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContractError(
+            f"cannot parse method registry byte snapshot {registry_path}: {exc}"
+        ) from exc
+    raw_records = payload.get("methods") if isinstance(payload, dict) else None
+    if not isinstance(raw_records, list) or not raw_records:
+        raise ContractError("method registry must contain a non-empty methods list")
+
+    records: dict[str, dict[str, Any]] = {}
+    aliases: dict[str, str] = {}
+    for raw_record in raw_records:
+        if not isinstance(raw_record, dict):
+            raise ContractError("each method registry entry must be an object")
+        canonical = str(raw_record.get("method", "")).strip()
+        display_name = str(raw_record.get("display_name", "")).strip()
+        status = str(raw_record.get("status", "")).strip().casefold()
+        scope = str(raw_record.get("scope", "")).strip().casefold()
+        raw_spaces = raw_record.get("spaces")
+        raw_aliases = raw_record.get("aliases", [])
+        if not canonical:
+            raise ContractError("method registry entry has no canonical method")
+        if canonical in records:
+            raise ContractError(f"duplicate registry canonical method {canonical!r}")
+        if not display_name:
+            raise ContractError(f"{canonical}: registry display_name must be non-empty")
+        if not status or not scope:
+            raise ContractError(f"{canonical}: registry status/scope must be non-empty")
+        if not isinstance(raw_spaces, list):
+            raise ContractError(f"{canonical}: registry spaces must be a list")
+        spaces = [str(value).strip().casefold() for value in raw_spaces]
+        if (
+            len(set(spaces)) != len(spaces)
+            or any(space not in _EVALUATION_SPACES for space in spaces)
+        ):
+            raise ContractError(f"{canonical}: invalid or duplicate registry spaces {spaces}")
+        if not isinstance(raw_aliases, list):
+            raise ContractError(f"{canonical}: registry aliases must be a list")
+        alias_values = [canonical, display_name, *raw_aliases]
+        for alias in alias_values:
+            value = str(alias).strip()
+            if not value:
+                raise ContractError(f"{canonical}: registry aliases must be non-empty")
+            key = value.casefold()
+            previous = aliases.get(key)
+            if previous is not None and previous != canonical:
+                raise ContractError(
+                    f"method registry alias {value!r} is ambiguous between "
+                    f"{previous!r} and {canonical!r}"
+                )
+            aliases[key] = canonical
+        records[canonical] = {
+            "canonical_method": canonical,
+            "display_name": display_name,
+            "status": status,
+            "scope": scope,
+            "declared_spaces": spaces,
+        }
+    return {
+        "path": registry_path,
+        "sha256": registry_sha,
+        "records": records,
+        "aliases": aliases,
+    }
+
+
+def _registry_record_for_raw(
+    raw_method: str,
+    registry: dict[str, Any],
+    *,
+    label: str,
+) -> dict[str, Any]:
+    raw = str(raw_method).strip()
+    canonical = registry["aliases"].get(raw.casefold())
+    if canonical is None:
+        raise ContractError(f"{label}: raw method {raw!r} is absent from method registry")
+    record = registry["records"][canonical]
+    if record["status"] != "evaluated" or not record["declared_spaces"]:
+        raise ContractError(
+            f"{label}: raw method {raw!r} maps to non-applicable registry method "
+            f"{canonical!r} (status={record['status']!r}, "
+            f"spaces={record['declared_spaces']!r})"
+        )
+    return record
+
+
+def _method_registry_binding(
+    *,
+    registry: dict[str, Any],
+    raw_methods: Iterable[str],
+) -> dict[str, Any]:
+    """Bind exact raw CLI identifiers to a one-to-one canonical registry view."""
+
+    raw_to_canonical: dict[str, dict[str, Any]] = {}
+    canonical_methods: list[str] = []
+    canonical_to_raw: dict[str, str] = {}
+    for supplied in raw_methods:
+        supplied_value = str(supplied)
+        raw_method = supplied_value.strip()
+        if not raw_method:
+            raise ContractError("--methods must contain non-empty names")
+        if supplied_value != raw_method:
+            raise ContractError(
+                "--methods entries must be exact raw identifiers without surrounding "
+                "whitespace"
+            )
+        if raw_method in raw_to_canonical:
+            raise ContractError(f"duplicate exact raw method {raw_method!r}")
+        record = _registry_record_for_raw(
+            raw_method,
+            registry,
+            label="requested method",
+        )
+        canonical = str(record["canonical_method"])
+        previous_raw = canonical_to_raw.get(canonical)
+        if previous_raw is not None and previous_raw != raw_method:
+            raise ContractError(
+                "two raw method aliases map to the same canonical registry method: "
+                f"{previous_raw!r}, {raw_method!r} -> {canonical!r}"
+            )
+        canonical_to_raw[canonical] = raw_method
+        canonical_methods.append(canonical)
+        raw_to_canonical[raw_method] = {
+            "raw_method": raw_method,
+            "canonical_method": canonical,
+            "display_name": str(record["display_name"]),
+            "status": str(record["status"]),
+            "scope": str(record["scope"]),
+            "declared_spaces": list(record["declared_spaces"]),
+        }
+    if not raw_to_canonical:
+        raise ContractError("no applicable methods were bound to the method registry")
+    return {
+        "path": str(registry["path"]),
+        "sha256": str(registry["sha256"]),
+        "raw_to_canonical": raw_to_canonical,
+        "canonical_methods": canonical_methods,
+    }
+
+
+def _verify_method_registry_file(binding: dict[str, Any]) -> None:
+    path = Path(str(binding.get("path", "")))
+    expected = str(binding.get("sha256", ""))
+    if not path.is_file():
+        raise ContractError(f"bound method registry is missing: {path}")
+    observed = primary.sha256_file(path)
+    if observed != expected:
+        raise ContractError(f"bound method registry changed after byte snapshot: {path}")
+
+
+def _registry_binding_for_raw(
+    raw_method: str,
+    binding: dict[str, Any],
+    *,
+    label: str,
+) -> dict[str, Any]:
+    entries = binding.get("raw_to_canonical")
+    if not isinstance(entries, dict) or raw_method not in entries:
+        raise ContractError(
+            f"{label}: exact raw method {raw_method!r} is not bound by --methods"
+        )
+    entry = entries[raw_method]
+    if not isinstance(entry, dict) or entry.get("raw_method") != raw_method:
+        raise ContractError(f"{label}: malformed method-registry binding for {raw_method!r}")
+    return entry
+
+
+def _scope_matches_registry(
+    *,
+    registry_scope: str,
+    output_scope: str,
+    native_vs_adapter: str,
+) -> bool:
+    """Match registry categories to the producer's two scope declarations."""
+
+    registry_value = str(registry_scope).strip().casefold()
+    output_value = str(output_scope).strip().casefold()
+    adapter_value = str(native_vs_adapter).strip().casefold()
+    signatures = {
+        "native_joint": ({"native_joint"}, {"native_joint"}),
+        "native_state": ({"native_state"}, {"native_state"}),
+        "explicit_control": ({"native_joint"}, {"explicit_control"}),
+        "coupling_barycenter_adapter": (
+            {"hybrid_joint"},
+            {"hybrid_coupling_adapter", "coupling_barycenter_adapter"},
+        ),
+    }
+    expected = signatures.get(registry_value)
+    if expected is None:
+        return False
+    expected_output, expected_adapter = expected
+    return output_value in expected_output and adapter_value in expected_adapter
 
 
 def _array_signature(values: np.ndarray) -> dict[str, Any]:
@@ -317,6 +522,7 @@ def _run_contract_payload(
     manifest_sha: str,
     targets: list[int],
     anchors: tuple[float, ...],
+    registry_binding: dict[str, Any],
     code_dependencies: dict[str, dict[str, str]],
     software_versions: dict[str, str],
 ) -> dict[str, Any]:
@@ -331,7 +537,11 @@ def _run_contract_payload(
         ),
         "targets": targets,
         "anchor_times": list(anchors),
-        "methods": None if args.methods is None else list(args.methods),
+        "requested_raw_methods": (
+            None if args.methods is None else [str(value) for value in args.methods]
+        ),
+        "methods": list(registry_binding["canonical_methods"]),
+        "method_registry": registry_binding,
         "include_nonprimary": bool(args.include_nonprimary),
         "n_projections": int(args.n_projections),
         "projection_repeats": int(args.projection_repeats),
@@ -347,6 +557,11 @@ def _validate_requested_config(args: argparse.Namespace) -> None:
         methods = [str(value) for value in args.methods]
         if not methods or any(not value.strip() for value in methods):
             raise ContractError("--methods must contain non-empty names")
+        if any(value != value.strip() for value in methods):
+            raise ContractError(
+                "--methods entries must be exact raw identifiers without surrounding "
+                "whitespace"
+            )
         if len(set(methods)) != len(methods):
             raise ContractError("--methods must be unique")
     for name in ("n_projections", "projection_repeats", "max_ot_points"):
@@ -704,6 +919,122 @@ def _load_cases(
     return cases, transform, transform_path, audit
 
 
+def _summary_path_for_prediction(prediction_path: Path) -> Path:
+    summary_candidates = (
+        prediction_path.with_suffix(".summary.json"),
+        prediction_path.parent / "summary.json",
+        prediction_path.parent / "run_manifest.json",
+    )
+    summary_path = next((path for path in summary_candidates if path.is_file()), None)
+    if summary_path is None:
+        raise ContractError(f"prediction has no summary JSON: {prediction_path}")
+    return summary_path
+
+
+def _parse_summary_snapshot(summary_path: Path) -> tuple[bytes, dict[str, Any]]:
+    try:
+        summary_bytes = summary_path.read_bytes()
+    except OSError as exc:
+        raise ContractError(
+            f"cannot capture prediction summary byte snapshot {summary_path}: {exc}"
+        ) from exc
+    try:
+        summary = json.loads(summary_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContractError(
+            f"cannot parse summary snapshot {summary_path}: {exc}"
+        ) from exc
+    if not isinstance(summary, dict):
+        raise ContractError(f"{summary_path} must contain a JSON object")
+    return summary_bytes, summary
+
+
+def _discover_prediction_methods(
+    *,
+    predictions_root: Path,
+    track: str,
+    targets: list[int],
+    registry: dict[str, Any],
+    requested_binding: dict[str, Any] | None,
+    include_nonprimary: bool,
+) -> dict[tuple[str, int], dict[str, str]]:
+    """Preflight the exact raw identifiers before binding the base contract."""
+
+    candidates = sorted(predictions_root.resolve().rglob("prediction.npz"))
+    if not candidates:
+        raise ContractError(f"no prediction.npz found below {predictions_root}")
+    expected_raw_by_canonical: dict[str, str] | None = None
+    requested_canonical: set[str] | None = None
+    if requested_binding is not None:
+        entries = requested_binding["raw_to_canonical"]
+        expected_raw_by_canonical = {
+            str(entry["canonical_method"]): str(raw)
+            for raw, entry in entries.items()
+        }
+        requested_canonical = set(expected_raw_by_canonical)
+
+    found: dict[tuple[str, int], dict[str, str]] = {}
+    for prediction_path in candidates:
+        summary_path = _summary_path_for_prediction(prediction_path)
+        _, summary = _parse_summary_snapshot(summary_path)
+        if primary._summary_track(summary) != track:
+            continue
+        target = primary._summary_target(summary)
+        if target not in targets:
+            continue
+        if not include_nonprimary and not primary._primary_eligible(summary):
+            continue
+        raw_method = primary._summary_method(summary)
+        record = _registry_record_for_raw(
+            raw_method,
+            registry,
+            label=str(summary_path),
+        )
+        canonical = str(record["canonical_method"])
+        if requested_canonical is not None and canonical not in requested_canonical:
+            continue
+        if expected_raw_by_canonical is not None:
+            expected_raw = expected_raw_by_canonical[canonical]
+            if raw_method != expected_raw:
+                raise ContractError(
+                    f"{summary_path}: raw method alias swap for {canonical!r}; "
+                    f"expected exact CLI raw {expected_raw!r}, found {raw_method!r}"
+                )
+        key = (canonical, target)
+        if key in found:
+            raise ContractError(
+                f"duplicate prediction for canonical method {canonical}/{track}/t{target}"
+            )
+        found[key] = {
+            "raw_method": raw_method,
+            "canonical_method": canonical,
+        }
+    return found
+
+
+def _binding_from_discovery(
+    *,
+    registry: dict[str, Any],
+    discovered: dict[str, dict[tuple[str, int], dict[str, str]]],
+    methods: list[str],
+    targets: list[int],
+) -> dict[str, Any]:
+    raw_methods: list[str] = []
+    for canonical in methods:
+        observed_raw = {
+            discovered[track][(canonical, target)]["raw_method"]
+            for track in TRACKS
+            for target in targets
+        }
+        if len(observed_raw) != 1:
+            raise ContractError(
+                f"canonical method {canonical!r} uses multiple raw aliases across the "
+                f"matched grid: {sorted(observed_raw)}"
+            )
+        raw_methods.append(next(iter(observed_raw)))
+    return _method_registry_binding(registry=registry, raw_methods=raw_methods)
+
+
 def _scan_predictions(
     *,
     predictions_root: Path,
@@ -711,24 +1042,17 @@ def _scan_predictions(
     targets: list[int],
     cases: dict[tuple[str, int], dict[str, Any]],
     manifest_sha: str,
-    methods: set[str] | None,
+    registry: dict[str, Any],
+    registry_binding: dict[str, Any],
     include_nonprimary: bool,
 ) -> dict[tuple[str, int], dict[str, Any]]:
     candidates = sorted(predictions_root.resolve().rglob("prediction.npz"))
     if not candidates:
         raise ContractError(f"no prediction.npz found below {predictions_root}")
     found: dict[tuple[str, int], dict[str, Any]] = {}
+    selected_canonical = set(registry_binding["canonical_methods"])
     for prediction_path in candidates:
-        summary_candidates = (
-            prediction_path.with_suffix(".summary.json"),
-            prediction_path.parent / "summary.json",
-            prediction_path.parent / "run_manifest.json",
-        )
-        summary_path = next(
-            (path for path in summary_candidates if path.is_file()), None
-        )
-        if summary_path is None:
-            raise ContractError(f"prediction has no summary JSON: {prediction_path}")
+        summary_path = _summary_path_for_prediction(prediction_path)
         try:
             prediction_bytes = prediction_path.read_bytes()
             summary_bytes = summary_path.read_bytes()
@@ -751,14 +1075,31 @@ def _scan_predictions(
         target = primary._summary_target(summary)
         if target not in targets:
             continue
-        method = primary._summary_method(summary)
-        if methods is not None and method not in methods:
-            continue
         if not include_nonprimary and not primary._primary_eligible(summary):
             continue
-        key = (method, target)
+        raw_method = primary._summary_method(summary)
+        registry_record = _registry_record_for_raw(
+            raw_method,
+            registry,
+            label=str(summary_path),
+        )
+        canonical_method = str(registry_record["canonical_method"])
+        if canonical_method not in selected_canonical:
+            continue
+        method_binding = _registry_binding_for_raw(
+            raw_method,
+            registry_binding,
+            label=str(summary_path),
+        )
+        if method_binding["canonical_method"] != canonical_method:
+            raise ContractError(
+                f"{summary_path}: canonical registry binding changed for {raw_method!r}"
+            )
+        key = (canonical_method, target)
         if key in found:
-            raise ContractError(f"duplicate prediction for {method}/{track}/t{target}")
+            raise ContractError(
+                f"duplicate prediction for {canonical_method}/{track}/t{target}"
+            )
         case = cases[(track, target)]
         primary._verify_prediction_provenance(
             summary,
@@ -812,8 +1153,33 @@ def _scan_predictions(
                 f"cannot parse prediction byte snapshot {prediction_path}: {exc}"
             ) from exc
         scope = primary._summary_scope(summary, spatial is not None)
+        native_vs_adapter = str(
+            summary.get("native_vs_adapter", summary.get("adapter_type", scope))
+        )
+        actual_spaces = (
+            ["joint", "state", "spatial"] if spatial is not None else ["state"]
+        )
+        if not _scope_matches_registry(
+            registry_scope=str(method_binding["scope"]),
+            output_scope=scope,
+            native_vs_adapter=native_vs_adapter,
+        ):
+            raise ContractError(
+                f"{summary_path}: actual output scope {scope!r} and "
+                f"native_vs_adapter {native_vs_adapter!r} differ from registry scope "
+                f"{method_binding['scope']!r} for {canonical_method!r}"
+            )
+        if set(actual_spaces) != set(method_binding["declared_spaces"]):
+            raise ContractError(
+                f"{prediction_path}: actual output spaces {actual_spaces!r} differ "
+                f"from registry spaces {method_binding['declared_spaces']!r} for "
+                f"{canonical_method!r}"
+            )
         found[key] = {
-            "method": method,
+            "method": canonical_method,
+            "canonical_method": canonical_method,
+            "raw_method": raw_method,
+            "method_display_name": str(method_binding["display_name"]),
             "target": target,
             "path": prediction_path,
             "sha": prediction_sha,
@@ -824,9 +1190,10 @@ def _scan_predictions(
             "spatial": spatial,
             "weights": weights,
             "scope": scope,
-            "native_vs_adapter": str(
-                summary.get("native_vs_adapter", summary.get("adapter_type", scope))
-            ),
+            "registry_scope": str(method_binding["scope"]),
+            "registry_spaces": list(method_binding["declared_spaces"]),
+            "actual_spaces": actual_spaces,
+            "native_vs_adapter": native_vs_adapter,
             "primary_benchmark_eligible": primary._primary_eligible(summary),
         }
     return found
@@ -874,6 +1241,7 @@ def _prediction_inventory(
     predictions: dict[str, dict[tuple[str, int], dict[str, Any]]],
     methods: list[str],
     targets: list[int],
+    registry_binding: dict[str, Any],
 ) -> dict[str, Any]:
     records: list[dict[str, Any]] = []
     for method in methods:
@@ -884,6 +1252,9 @@ def _prediction_inventory(
                 records.append(
                     {
                         "method": method,
+                        "canonical_method": prediction["canonical_method"],
+                        "raw_method": prediction["raw_method"],
+                        "method_display_name": prediction["method_display_name"],
                         "track": track,
                         "target": int(target),
                         "prediction_path": str(prediction["path"]),
@@ -891,6 +1262,9 @@ def _prediction_inventory(
                         "prediction_summary": str(prediction["summary_path"]),
                         "prediction_summary_sha256": prediction["summary_sha"],
                         "output_scope": prediction["scope"],
+                        "registry_scope": prediction["registry_scope"],
+                        "registry_declared_spaces": prediction["registry_spaces"],
+                        "actual_output_spaces": prediction["actual_spaces"],
                         "native_vs_adapter": prediction["native_vs_adapter"],
                         "primary_benchmark_eligible": bool(
                             prediction["primary_benchmark_eligible"]
@@ -932,17 +1306,66 @@ def _prediction_inventory(
         ),
         "sort_key": ["method", "track", "target", "prediction_path"],
         "n_records": int(len(records)),
+        "method_registry": registry_binding,
         "records": records,
     }
 
 
 def _verify_prediction_inventory_files(inventory: dict[str, Any]) -> None:
+    registry_binding = inventory.get("method_registry")
+    if not isinstance(registry_binding, dict):
+        raise ContractError("prediction inventory has no method-registry binding")
+    _verify_method_registry_file(registry_binding)
+    registry_entries = registry_binding.get("raw_to_canonical")
+    if not isinstance(registry_entries, dict) or not registry_entries:
+        raise ContractError("prediction inventory has no raw-to-canonical mapping")
     records = inventory.get("records")
     if not isinstance(records, list) or not records:
         raise ContractError("prediction inventory has no records")
+    observed_raw_methods: set[str] = set()
     for record in records:
         if not isinstance(record, dict):
             raise ContractError("prediction inventory record must be an object")
+        raw_method = str(record.get("raw_method", ""))
+        entry = registry_entries.get(raw_method)
+        if not isinstance(entry, dict):
+            raise ContractError(
+                f"prediction inventory raw method is not registry-bound: {raw_method!r}"
+            )
+        observed_raw_methods.add(raw_method)
+        expected_fields = {
+            "canonical_method": "canonical_method",
+            "method": "canonical_method",
+            "method_display_name": "display_name",
+            "registry_scope": "scope",
+        }
+        for record_key, entry_key in expected_fields.items():
+            if str(record.get(record_key, "")) != str(entry.get(entry_key, "")):
+                raise ContractError(
+                    f"prediction inventory {record_key} does not match registry "
+                    f"binding for {raw_method!r}"
+                )
+        if record.get("registry_declared_spaces") != entry.get("declared_spaces"):
+            raise ContractError(
+                f"prediction inventory spaces do not match registry binding for "
+                f"{raw_method!r}"
+            )
+        if set(record.get("actual_output_spaces", [])) != set(
+            entry.get("declared_spaces", [])
+        ):
+            raise ContractError(
+                f"prediction inventory actual spaces differ from registry for "
+                f"{raw_method!r}"
+            )
+        if not _scope_matches_registry(
+            registry_scope=str(entry.get("scope", "")),
+            output_scope=str(record.get("output_scope", "")),
+            native_vs_adapter=str(record.get("native_vs_adapter", "")),
+        ):
+            raise ContractError(
+                f"prediction inventory output scope/adapter differs from registry for "
+                f"{raw_method!r}"
+            )
         for path_key, sha_key in (
             ("prediction_path", "prediction_sha256"),
             ("prediction_summary", "prediction_summary_sha256"),
@@ -958,6 +1381,10 @@ def _verify_prediction_inventory_files(inventory: dict[str, Any]) -> None:
                 raise ContractError(
                     f"bound external prediction artifact changed after snapshot: {path}"
                 )
+    if observed_raw_methods != set(registry_entries):
+        raise ContractError(
+            "prediction inventory records do not exactly cover the bound raw methods"
+        )
 
 
 def _bind_prediction_inventory(
@@ -966,6 +1393,7 @@ def _bind_prediction_inventory(
     inventory: dict[str, Any],
     base_run_contract_path: Path,
     base_run_contract_sha: str,
+    registry_binding: dict[str, Any],
 ) -> tuple[Path, str, Path, str]:
     inventory_path = output_dir / "prediction_inventory.json"
     _write_immutable_json(inventory_path, inventory)
@@ -977,6 +1405,7 @@ def _bind_prediction_inventory(
         "base_run_contract_sha256": base_run_contract_sha,
         "prediction_inventory": str(inventory_path),
         "prediction_inventory_sha256": inventory_sha,
+        "method_registry": registry_binding,
     }
     bound_path = output_dir / "bound_run_contract.json"
     _write_immutable_json(bound_path, bound_payload)
@@ -985,17 +1414,61 @@ def _bind_prediction_inventory(
 
 
 def _verify_bound_inventory_from_manifest(manifest: dict[str, Any]) -> None:
+    registry_binding = manifest.get("method_registry")
+    if not isinstance(registry_binding, dict):
+        raise ContractError("matched manifest has no method-registry binding")
+    _verify_method_registry_file(registry_binding)
+    snapshots: dict[str, dict[str, Any]] = {}
     for path_key, sha_key in (
         ("run_contract", "run_contract_sha256"),
         ("prediction_inventory", "prediction_inventory_sha256"),
         ("bound_run_contract", "bound_run_contract_sha256"),
     ):
         path = Path(str(manifest[path_key]))
-        if not path.is_file() or primary.sha256_file(path) != str(manifest[sha_key]):
+        try:
+            artifact_bytes = path.read_bytes()
+        except OSError as exc:
+            raise ContractError(
+                f"cannot capture bound matched-run artifact snapshot {path}: {exc}"
+            ) from exc
+        if hashlib.sha256(artifact_bytes).hexdigest() != str(manifest[sha_key]):
             raise ContractError(
                 f"bound matched-run artifact changed before publish: {path}"
             )
-    inventory = primary._load_json(Path(str(manifest["prediction_inventory"])))
+        try:
+            payload = json.loads(artifact_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ContractError(
+                f"cannot parse bound matched-run artifact snapshot {path}: {exc}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise ContractError(f"bound matched-run artifact must be an object: {path}")
+        snapshots[path_key] = payload
+    base_contract = snapshots["run_contract"]
+    bound_contract = snapshots["bound_run_contract"]
+    inventory = snapshots["prediction_inventory"]
+    expected_bound_links = {
+        "base_run_contract": str(manifest["run_contract"]),
+        "base_run_contract_sha256": str(manifest["run_contract_sha256"]),
+        "prediction_inventory": str(manifest["prediction_inventory"]),
+        "prediction_inventory_sha256": str(
+            manifest["prediction_inventory_sha256"]
+        ),
+    }
+    for key, expected in expected_bound_links.items():
+        if str(bound_contract.get(key, "")) != expected:
+            raise ContractError(
+                f"bound run contract {key} does not match the final manifest"
+            )
+    for label, payload in (
+        ("base run contract", base_contract),
+        ("bound run contract", bound_contract),
+        ("prediction inventory", inventory),
+    ):
+        if payload.get("method_registry") != registry_binding:
+            raise ContractError(
+                f"{label} method-registry binding differs from final manifest"
+            )
     _verify_prediction_inventory_files(inventory)
 
 
@@ -1259,6 +1732,13 @@ def _evaluate_predictions(
                 metrics.insert(1, "evaluation_scope", TRACK_SCOPES[track])
                 metrics.insert(2, "is_in_sample", track == "full_data")
                 metrics.insert(3, "target", target)
+                metrics["raw_method"] = prediction["raw_method"]
+                metrics["canonical_method"] = prediction["canonical_method"]
+                metrics["method_display_name"] = prediction["method_display_name"]
+                if not (metrics["method"] == metrics["canonical_method"]).all():
+                    raise ContractError(
+                        "metric method must equal the registry canonical method"
+                    )
                 metrics["training_split"] = case["split_id"]
                 metrics["seed_pairing_split"] = seed_split
                 metrics["output_scope"] = prediction["scope"]
@@ -1411,6 +1891,9 @@ def _validate_pairs(metrics: pd.DataFrame, *, projection_repeats: int) -> None:
 def _collapse_track(metrics: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     columns_constant = (
+        "raw_method",
+        "canonical_method",
+        "method_display_name",
         "source_time",
         "exact_w1",
         "exact_w2",
@@ -1457,7 +1940,14 @@ def _paired_summary(metrics: pd.DataFrame) -> pd.DataFrame:
     full = collapsed[collapsed["track"] == "full_data"].drop(columns="track")
     paired = loto.merge(
         full,
-        on=["method", "target", "space"],
+        on=[
+            "method",
+            "raw_method",
+            "canonical_method",
+            "method_display_name",
+            "target",
+            "space",
+        ],
         how="outer",
         validate="one_to_one",
         suffixes=("_loto", "_full_data"),
@@ -1515,6 +2005,62 @@ def evaluate_matched(
     targets = _common_targets(root, args.targets)
     anchors = _anchor_times(args.anchor_times)
     _validate_requested_config(args)
+    registry = _load_method_registry(args.method_registry)
+    requested_binding = (
+        None
+        if args.methods is None
+        else _method_registry_binding(registry=registry, raw_methods=args.methods)
+    )
+    discovered = {
+        "loto": _discover_prediction_methods(
+            predictions_root=args.loto_predictions_root.expanduser().resolve(),
+            track="loto",
+            targets=targets,
+            registry=registry,
+            requested_binding=requested_binding,
+            include_nonprimary=args.include_nonprimary,
+        ),
+        "full_data": _discover_prediction_methods(
+            predictions_root=args.full_data_predictions_root.expanduser().resolve(),
+            track="full_data",
+            targets=targets,
+            registry=registry,
+            requested_binding=requested_binding,
+            include_nonprimary=args.include_nonprimary,
+        ),
+    }
+    if requested_binding is None:
+        discovered_methods = sorted(
+            {
+                canonical
+                for track_predictions in discovered.values()
+                for canonical, _ in track_predictions
+            }
+        )
+        missing_discovered = [
+            (method, track, target)
+            for track in TRACKS
+            for method in discovered_methods
+            for target in targets
+            if (method, target) not in discovered[track]
+        ]
+        if missing_discovered:
+            rendered = ", ".join(
+                f"{method}/{track}/t{target}"
+                for method, track, target in missing_discovered
+            )
+            raise ContractError(
+                f"incomplete matched method-by-track-by-target grid: {rendered}"
+            )
+        registry_binding = _binding_from_discovery(
+            registry=registry,
+            discovered=discovered,
+            methods=discovered_methods,
+            targets=targets,
+        )
+    else:
+        registry_binding = requested_binding
+    _verify_method_registry_file(registry_binding)
     output_dir = args.output_dir.expanduser().resolve()
     code_dependencies = _code_dependencies()
     software_versions = _software_versions()
@@ -1524,6 +2070,7 @@ def evaluate_matched(
         manifest_sha=manifest_sha,
         targets=targets,
         anchors=anchors,
+        registry_binding=registry_binding,
         code_dependencies=code_dependencies,
         software_versions=software_versions,
     )
@@ -1538,7 +2085,6 @@ def evaluate_matched(
         output_dir=output_dir,
     )
 
-    requested_methods = None if args.methods is None else set(args.methods)
     predictions = {
         "loto": _scan_predictions(
             predictions_root=args.loto_predictions_root.expanduser().resolve(),
@@ -1546,7 +2092,8 @@ def evaluate_matched(
             targets=targets,
             cases=cases,
             manifest_sha=manifest_sha,
-            methods=requested_methods,
+            registry=registry,
+            registry_binding=registry_binding,
             include_nonprimary=args.include_nonprimary,
         ),
         "full_data": _scan_predictions(
@@ -1555,15 +2102,21 @@ def evaluate_matched(
             targets=targets,
             cases=cases,
             manifest_sha=manifest_sha,
-            methods=requested_methods,
+            registry=registry,
+            registry_binding=registry_binding,
             include_nonprimary=args.include_nonprimary,
         ),
     }
-    methods = _method_grid(predictions, targets, args.methods)
+    methods = _method_grid(
+        predictions,
+        targets,
+        list(registry_binding["canonical_methods"]),
+    )
     prediction_inventory = _prediction_inventory(
         predictions=predictions,
         methods=methods,
         targets=targets,
+        registry_binding=registry_binding,
     )
     (
         prediction_inventory_path,
@@ -1575,6 +2128,7 @@ def evaluate_matched(
         inventory=prediction_inventory,
         base_run_contract_path=run_contract_path,
         base_run_contract_sha=run_contract_sha,
+        registry_binding=registry_binding,
     )
     # Catch any external mutation that raced the byte snapshot/inventory bind
     # before spending time on metrics. Formal calculations below use only the
@@ -1615,6 +2169,7 @@ def evaluate_matched(
         "prediction_inventory_sha256": prediction_inventory_sha,
         "bound_run_contract": str(bound_run_contract_path),
         "bound_run_contract_sha256": bound_run_contract_sha,
+        "method_registry": registry_binding,
         "dataset": _dataset_label(root),
         "targets": targets,
         "target_policy": "intersection of configured LOTO and full-data targets",
@@ -1735,6 +2290,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--loto-predictions-root", type=Path, required=True)
     parser.add_argument("--full-data-predictions-root", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--method-registry",
+        type=Path,
+        required=True,
+        help=(
+            "Audited method registry whose exact raw aliases, canonical names, "
+            "scopes, and spaces are bound into this evaluation."
+        ),
+    )
     parser.add_argument("--targets", type=int, nargs="+")
     parser.add_argument(
         "--anchor-times",

@@ -150,6 +150,7 @@ python scripts/spatiotemporal_benchmark/evaluate_matched_tracks.py \
   --input-manifest "$OUT/inputs/manifest.json" \
   --loto-predictions-root "$OUT/predictions/loto" \
   --full-data-predictions-root "$OUT/predictions/full_data" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
   --anchor-times 0 4 \
   --output-dir "$OUT/reports/evaluation/matched" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
@@ -160,6 +161,13 @@ Before evaluating predictions, the script also proves directly from NPZ arrays
 that each LOTO training reference is the byte-exact non-target subset of the
 full-data reference, that train/truth row IDs are disjoint complements, and
 that both track-specific truth files equal the full-data target subset.
+
+The method registry is a required part of the evaluation contract. Its exact
+bytes and SHA-256, together with the exact CLI raw-name to canonical-name
+mapping, declared scope and applicable feature spaces, are bound into the run
+contract and final manifest. Unknown or ambiguous aliases, duplicate canonical
+methods, and predictions emitted in undeclared spaces are rejected before
+publication.
 
 The two tracks use the same projection seed for each target/space/repeat. Exact
 OT uses separate predicted and observed RNG streams: one observed index set is
@@ -185,6 +193,25 @@ marked in-sample, each fitted prediction represents one model-training seed,
 and no cross-space score or ranking is produced. TMV is included only for
 declared native unnormalised mass; its delta is withheld when the two tracks use
 different source-time denominators.
+
+Create the audited tables and per-space paired plots only after the matched
+evaluator has published its final manifest:
+
+```bash
+python scripts/spatiotemporal_benchmark/report_matched_tracks.py \
+  --matched-manifest \
+    "$OUT/reports/evaluation/matched/matched_evaluation_manifest.json" \
+  --paired-summary \
+    "$OUT/reports/evaluation/matched/matched_paired_summary.csv" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
+  --output-dir "$OUT/reports/summary/matched"
+```
+
+The reporter verifies the evaluator-bound registry mapping and input hashes,
+recomputes TMV applicability, and emits primary sliced-W2 dumbbell plots plus
+supplemental bounded exact W1/W2 plots separately for state, spatial and joint
+spaces. It never constructs a cross-space overall score or rank. Its output
+directory is immutable; use a new directory for a changed input or rerun.
 
 ## Adapting another dataset
 

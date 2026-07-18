@@ -30,6 +30,20 @@ def _artifact(path: Path) -> dict[str, str]:
     return {"path": str(path), "sha256": _sha(path)}
 
 
+def _registry_path(manifest: Path) -> Path:
+    return manifest.parent.parent / "method_registry.json"
+
+
+def _rewrite_registry(manifest: Path, mutate) -> Path:
+    path = _registry_path(manifest)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    mutate(payload)
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return path
+
+
 def _write_npz(path: Path, arrays: dict[str, np.ndarray]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(path, **arrays)
@@ -66,6 +80,44 @@ def _build_contract(
     mutate_anchor_split: str | None = None,
     semantic_violation: str | None = None,
 ) -> tuple[Path, Path, Path, dict[str, Path]]:
+    registry_path = tmp_path / "method_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "test",
+                "methods": [
+                    {
+                        "method": "joint_method",
+                        "display_name": "Joint method",
+                        "aliases": ["joint_alias"],
+                        "scope": "native_joint",
+                        "spaces": ["joint", "state", "spatial"],
+                        "status": "evaluated",
+                    },
+                    {
+                        "method": "state_method",
+                        "display_name": "State method",
+                        "aliases": ["state_alias"],
+                        "scope": "native_state",
+                        "spaces": ["state"],
+                        "status": "evaluated",
+                    },
+                    {
+                        "method": "sensitivity_method",
+                        "display_name": "Sensitivity method",
+                        "aliases": ["sensitivity_alias"],
+                        "scope": "native_gene_sensitivity_only",
+                        "spaces": [],
+                        "status": "sensitivity_only",
+                    },
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     inputs = tmp_path / "inputs"
     inputs.mkdir()
     reference = _reference_arrays()
@@ -159,7 +211,9 @@ def _build_contract(
                             "output_scope": (
                                 "native_state" if state_only else "native_joint"
                             ),
-                            "native_vs_adapter": "native",
+                            "native_vs_adapter": (
+                                "native_state" if state_only else "native_joint"
+                            ),
                             "input_manifest_sha256": manifest_sha,
                             "training_reference_sha256": training_record["sha256"],  # type: ignore[index]
                             "source_roster_sha256": roster_record["sha256"],  # type: ignore[index]
@@ -215,6 +269,7 @@ def _args(
         loto_predictions_root=loto_root,
         full_data_predictions_root=full_root,
         output_dir=output,
+        method_registry=_registry_path(manifest),
         targets=None,
         anchor_times=[0.0, 4.0],
         methods=["joint_method", "state_method"],
@@ -235,12 +290,26 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     )
 
     assert evaluation["targets"] == [1, 2]
+    assert evaluation["methods"] == ["joint_method", "state_method"]
+    assert evaluation["method_registry"]["sha256"] == _sha(
+        _registry_path(manifest)
+    )
+    assert evaluation["method_registry"]["canonical_methods"] == [
+        "joint_method",
+        "state_method",
+    ]
+    assert set(evaluation["method_registry"]["raw_to_canonical"]) == {
+        "joint_method",
+        "state_method",
+    }
     assert evaluation["tracks"]["full_data"]["evaluation_scope"] == "in_sample"
     assert evaluation["reporting_policy"]["cross_space_aggregation"] is False
     assert evaluation["reporting_policy"]["ranking"] is False
     assert metrics.loc[metrics["track"] == "full_data", "is_in_sample"].all()
     assert not metrics.loc[metrics["track"] == "loto", "is_in_sample"].any()
     assert metrics["transform_sha256"].nunique() == 1
+    assert (metrics["method"] == metrics["canonical_method"]).all()
+    assert (metrics["raw_method"] == metrics["method"]).all()
     assert len(metrics) == 32
     assert evaluation["n_metrics_rows"] == 32
     assert evaluation["n_paired_rows"] == 8
@@ -267,6 +336,8 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
         assert frame["exact_ot_observed_indices_sha256"].nunique() == 1
 
     assert set(paired["comparison"]) == {"loto_held_out_minus_full_data_in_sample"}
+    assert (paired["method"] == paired["canonical_method"]).all()
+    assert (paired["raw_method"] == paired["method"]).all()
     assert set(paired["comparison_type"]) == {"descriptive_paired_gap"}
     assert paired["full_data_is_in_sample"].all()
     assert set(paired.loc[paired["method"] == "state_method", "space"]) == {"state"}
@@ -309,6 +380,7 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert exact_audit["observed_indices_shared_across_methods_and_tracks"] is True
     assert len(exact_audit["records"]) == 6
     inventory = json.loads((output / "prediction_inventory.json").read_text())
+    assert inventory["method_registry"] == evaluation["method_registry"]
     assert inventory["n_records"] == 8
     inventory_keys = [
         (
@@ -602,6 +674,250 @@ def test_tmv_delta_requires_native_mass_and_matching_source_denominator(
     assert not state_only["tmv_available_full_data"].any()
 
 
+def test_method_registry_is_a_required_cli_contract() -> None:
+    required = {
+        action.dest: action.required for action in matched.build_parser()._actions
+    }
+    assert required["method_registry"] is True
+
+
+@pytest.mark.parametrize(
+    ("registry_scope", "output_scope", "native_vs_adapter"),
+    [
+        ("native_joint", "native_joint", "native_joint"),
+        ("native_state", "native_state", "native_state"),
+        ("explicit_control", "native_joint", "explicit_control"),
+        (
+            "coupling_barycenter_adapter",
+            "hybrid_joint",
+            "hybrid_coupling_adapter",
+        ),
+    ],
+)
+def test_registry_scope_matches_production_summary_semantics(
+    registry_scope: str,
+    output_scope: str,
+    native_vs_adapter: str,
+) -> None:
+    assert matched._scope_matches_registry(
+        registry_scope=registry_scope,
+        output_scope=output_scope,
+        native_vs_adapter=native_vs_adapter,
+    )
+    assert not matched._scope_matches_registry(
+        registry_scope=registry_scope,
+        output_scope=output_scope,
+        native_vs_adapter="wrong-category",
+    )
+
+
+def test_registry_binding_is_hash_bound_in_every_manifest_layer(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+    output = tmp_path / "reports"
+    metrics, paired, evaluation = matched.evaluate_matched(
+        _args(manifest, loto_root, full_root, output)
+    )
+    expected = evaluation["method_registry"]
+    assert expected["sha256"] == _sha(_registry_path(manifest))
+    assert expected["canonical_methods"] == ["joint_method", "state_method"]
+    assert expected["raw_to_canonical"]["joint_method"] == {
+        "raw_method": "joint_method",
+        "canonical_method": "joint_method",
+        "display_name": "Joint method",
+        "status": "evaluated",
+        "scope": "native_joint",
+        "declared_spaces": ["joint", "state", "spatial"],
+    }
+    for artifact in (
+        "run_contract.json",
+        "prediction_inventory.json",
+        "bound_run_contract.json",
+    ):
+        payload = json.loads((output / artifact).read_text(encoding="utf-8"))
+        assert payload["method_registry"] == expected
+    bound = json.loads((output / "bound_run_contract.json").read_text())
+    assert bound["base_run_contract_sha256"] == evaluation["run_contract_sha256"]
+    assert (
+        bound["prediction_inventory_sha256"]
+        == evaluation["prediction_inventory_sha256"]
+    )
+    assert set(metrics["raw_method"]) == {"joint_method", "state_method"}
+    assert (metrics["method"] == metrics["canonical_method"]).all()
+    assert (paired["method"] == paired["canonical_method"]).all()
+
+
+def test_registry_rejects_alias_swap_even_with_same_canonical_method(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, summaries = _build_contract(tmp_path)
+    summary_path = summaries["loto/joint_method/t1"]
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["method"] = "joint_alias"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    with pytest.raises(matched.ContractError, match="raw method alias swap"):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
+
+
+def test_registry_rejects_two_requested_aliases_for_one_canonical_method(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+    args = _args(manifest, loto_root, full_root, tmp_path / "reports")
+    args.methods = ["joint_method", "joint_alias"]
+    with pytest.raises(matched.ContractError, match="same canonical registry method"):
+        matched.evaluate_matched(args)
+
+
+def test_registry_does_not_normalize_the_exact_cli_raw_identifier(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+    args = _args(manifest, loto_root, full_root, tmp_path / "reports")
+    args.methods = [" joint_method", "state_method"]
+    with pytest.raises(matched.ContractError, match="exact raw identifiers"):
+        matched.evaluate_matched(args)
+
+
+def test_registry_rejects_duplicate_canonical_entries(tmp_path: Path) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+
+    def duplicate(payload: dict[str, object]) -> None:
+        methods = payload["methods"]
+        assert isinstance(methods, list)
+        methods.append(dict(methods[0]))
+
+    _rewrite_registry(manifest, duplicate)
+    with pytest.raises(matched.ContractError, match="duplicate registry canonical"):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    [
+        ("scope", "explicit_control", "actual output scope"),
+        ("spaces", ["joint", "state"], "actual output spaces"),
+    ],
+)
+def test_registry_rejects_prediction_scope_or_space_mismatch(
+    tmp_path: Path,
+    field: str,
+    replacement: object,
+    message: str,
+) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+
+    def mutate(payload: dict[str, object]) -> None:
+        methods = payload["methods"]
+        assert isinstance(methods, list) and isinstance(methods[0], dict)
+        methods[0][field] = replacement
+
+    _rewrite_registry(manifest, mutate)
+    with pytest.raises(matched.ContractError, match=message):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
+
+
+def test_registry_mutation_after_binding_stops_metrics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+    registry_path = _registry_path(manifest)
+    original_write = matched._write_immutable_json
+    mutated = False
+
+    def write_then_mutate(path: Path, payload: dict[str, object]) -> None:
+        nonlocal mutated
+        original_write(path, payload)
+        if path.name == "bound_run_contract.json" and not mutated:
+            with registry_path.open("ab") as handle:
+                handle.write(b"registry-mutation")
+            mutated = True
+
+    def metrics_must_not_run(**kwargs):
+        raise AssertionError("metrics ran after the bound registry changed")
+
+    monkeypatch.setattr(matched, "_write_immutable_json", write_then_mutate)
+    monkeypatch.setattr(matched, "_evaluate_predictions", metrics_must_not_run)
+    with pytest.raises(matched.ContractError, match="registry changed after byte snapshot"):
+        matched.evaluate_matched(
+            _args(manifest, loto_root, full_root, tmp_path / "reports")
+        )
+    assert mutated is True
+
+
+def test_final_publish_guard_rehashes_method_registry(tmp_path: Path) -> None:
+    manifest, loto_root, full_root, _ = _build_contract(tmp_path)
+    output = tmp_path / "reports"
+    _, _, evaluation = matched.evaluate_matched(
+        _args(manifest, loto_root, full_root, output)
+    )
+    with _registry_path(manifest).open("ab") as handle:
+        handle.write(b"changed-before-final-publish")
+    with pytest.raises(matched.ContractError, match="registry changed after byte snapshot"):
+        matched._verify_bound_inventory_from_manifest(evaluation)
+    assert not (output / "matched_evaluation_manifest.json").exists()
+
+
+def test_registry_uses_one_byte_snapshot_for_parse_and_hash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "registry.json"
+    first = {
+        "methods": [
+            {
+                "method": "First",
+                "display_name": "First",
+                "aliases": ["first"],
+                "scope": "native_state",
+                "spaces": ["state"],
+                "status": "evaluated",
+            }
+        ]
+    }
+    second = {
+        "methods": [
+            {
+                "method": "Second",
+                "display_name": "Second",
+                "aliases": ["second"],
+                "scope": "native_state",
+                "spaces": ["state"],
+                "status": "evaluated",
+            }
+        ]
+    }
+    first_bytes = (json.dumps(first) + "\n").encode()
+    second_bytes = (json.dumps(second) + "\n").encode()
+    path.write_bytes(first_bytes)
+    calls = 0
+    original = Path.read_bytes
+
+    def changing_read_bytes(self: Path) -> bytes:
+        nonlocal calls
+        if self.resolve() == path.resolve():
+            calls += 1
+            path.write_bytes(second_bytes)
+            return first_bytes
+        return original(self)
+
+    monkeypatch.setattr(Path, "read_bytes", changing_read_bytes)
+    registry = matched._load_method_registry(path)
+    assert calls == 1
+    assert registry["sha256"] == matched.hashlib.sha256(first_bytes).hexdigest()
+    assert set(registry["records"]) == {"First"}
+
+
 def test_matched_cli_writes_hash_bound_manifest(tmp_path: Path, capsys) -> None:
     manifest, loto_root, full_root, _ = _build_contract(tmp_path)
     output = tmp_path / "reports"
@@ -615,6 +931,8 @@ def test_matched_cli_writes_hash_bound_manifest(tmp_path: Path, capsys) -> None:
             str(full_root),
             "--output-dir",
             str(output),
+            "--method-registry",
+            str(manifest.parent.parent / "method_registry.json"),
             "--anchor-times",
             "0",
             "4",
@@ -652,6 +970,8 @@ def test_matched_cli_writes_hash_bound_manifest(tmp_path: Path, capsys) -> None:
             str(full_root),
             "--output-dir",
             str(output),
+            "--method-registry",
+            str(manifest.parent.parent / "method_registry.json"),
             "--anchor-times",
             "0",
             "4",
