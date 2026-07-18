@@ -279,11 +279,6 @@ def _write_pca_contract(aligned_h5ad: Path, output_dir: Path) -> dict[str, objec
     inactive_required = sorted(
         required.difference(set(adata.var_names[active].astype(str)))
     )
-    if inactive_required:
-        raise RuntimeError(
-            "Required latent features have zero PCA loading: "
-            f"{inactive_required[:10]}."
-        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     component_columns = [f"PC{i + 1}" for i in range(loadings.shape[1])]
@@ -291,6 +286,7 @@ def _write_pca_contract(aligned_h5ad: Path, output_dir: Path) -> dict[str, objec
     loadings_table.insert(0, "gene", adata.var_names.astype(str))
     loadings_table["loading_norm"] = loading_norm
     loadings_table["active_pca_feature"] = active
+    loadings_table["required_latent_feature"] = loadings_table["gene"].isin(required)
     loadings_table.to_csv(output_dir / "pca_loadings.csv", index=False)
     pd.DataFrame(
         {
@@ -318,6 +314,8 @@ def _write_pca_contract(aligned_h5ad: Path, output_dir: Path) -> dict[str, objec
         "n_active_pca_features": int(active.sum()),
         "n_inactive_features": int((~active).sum()),
         "n_required_latent_features": int(len(required)),
+        "n_inactive_required_latent_features": int(len(inactive_required)),
+        "inactive_required_latent_features": inactive_required,
         "sample_n_cells": int(len(rows)),
         "observed_expression_to_latent_max_abs_error": float(
             np.max(np.abs(latent_error))

@@ -9,7 +9,7 @@ import pandas as pd
 from CytoBridge.pp.preprocess import preprocess
 from CytoBridge.pp.spatial_align import AlignConfig, _align_preprocessed_adata
 from CytoBridge.utils.config import load_config
-from scripts.run_mosta_end_to_end import _lr_feature_contract
+from scripts.run_mosta_end_to_end import _lr_feature_contract, _write_pca_contract
 from scripts.run_spatial_training import MOSTA_TIME_MAPPING, _preset_config
 
 
@@ -140,6 +140,27 @@ def test_mosta_lr_adapter_forces_present_subunits_and_records_missing(tmp_path):
         (tmp_path / "contract" / "lr_feature_contract.json").read_text(encoding="utf-8")
     )
     assert written["required_focal_panel_subunits"] == ["Fzd7", "Lrp6", "Wnt3a"]
+
+
+def test_pca_contract_records_required_but_inactive_smoke_features(tmp_path):
+    adata = ad.AnnData(
+        X=np.asarray([[1.0, 5.0], [2.0, 5.0]], dtype=np.float32),
+        var=pd.DataFrame(index=["active", "rare_zero_variance"]),
+    )
+    adata.varm["PCs"] = np.asarray([[1.0], [0.0]], dtype=np.float32)
+    adata.var["pca_center"] = np.asarray([1.5, 5.0], dtype=np.float32)
+    adata.obsm["X_latent"] = np.asarray([[-0.5], [0.5]], dtype=np.float32)
+    adata.uns["preprocess_info"] = {
+        "required_latent_features_requested": ["active", "rare_zero_variance"]
+    }
+    path = tmp_path / "aligned.h5ad"
+    adata.write_h5ad(path)
+
+    report = _write_pca_contract(path, tmp_path / "pca_contract")
+
+    assert report["n_required_latent_features"] == 2
+    assert report["n_inactive_required_latent_features"] == 1
+    assert report["inactive_required_latent_features"] == ["rare_zero_variance"]
 
 
 def test_mosta_alpha0015_config_has_recovered_six_stage_schedule():
