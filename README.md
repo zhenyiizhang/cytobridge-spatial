@@ -137,7 +137,25 @@ reproduce the historical double transformation. The corrected adapter uses
 recorded in both the training and evaluation manifests. For a paired
 expression-weight sensitivity run, keep every other argument and the random
 seed fixed, change only `--alpha-express 0.05`, and use a fresh output
-directory.
+directory. Reuse the audited preprocessing without copying or recomputing it:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
+  --h5ad-path /path/to/Mouse_embryo_all_stage.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.mouse.csv \
+  --output-dir ./results/mosta_corrected_counts_alpha005 \
+  --reuse-preprocess-dir ./results/mosta_corrected_counts_alpha0015/preprocess \
+  --profile full \
+  --stage train-evaluate \
+  --alpha-spatial 10 \
+  --alpha-express 0.05 \
+  --random-seed 42 \
+  --device cuda
+```
+
+This mode treats the shared aligned H5AD, PCA contract, graph, and edge
+predictor as read-only inputs and records their path/identity in the new run
+manifest.
 
 This step produces:
 

@@ -116,8 +116,14 @@ def _git_revision() -> dict[str, object]:
         return {"commit": None, "dirty": None}
 
 
-def _paths(root: Path) -> dict[str, Path]:
-    preprocess_dir = root / "preprocess"
+def _paths(
+    root: Path, *, reuse_preprocess_dir: Path | None = None
+) -> dict[str, Path]:
+    preprocess_dir = (
+        root / "preprocess"
+        if reuse_preprocess_dir is None
+        else reuse_preprocess_dir.expanduser().resolve()
+    )
     return {
         "root": root,
         "input_contract": root / "input_contract",
@@ -443,6 +449,9 @@ def _run_train(args, paths: dict[str, Path]) -> None:
             }
             for stage in config["training"]["plan"]
         ],
+        "preprocess_dir": str(paths["preprocess_dir"]),
+        "aligned_h5ad": str(paths["aligned_h5ad"]),
+        "edge_predictor_sha256": _sha256(paths["edge_path"]),
         "requested_device": str(args.device),
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "hostname": socket.gethostname(),
@@ -526,6 +535,8 @@ def _run_evaluate(args, paths: dict[str, Path], defaults: dict[str, object]):
         "interaction_cutoff": float(interaction["cutoff"]),
         "edge_predictor_path": str(interaction["edge_predictor_path"]),
         "edge_predictor_threshold": float(interaction["edge_predictor_thre"]),
+        "preprocess_dir": str(paths["preprocess_dir"]),
+        "aligned_h5ad": str(paths["aligned_h5ad"]),
         "velocity_component_identity_max_error": identity_error,
         "distribution_evaluation_paths": evaluation_paths,
         "distribution_mean_by_space": (
@@ -552,8 +563,19 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", choices=["smoke", "full"], default="smoke")
     parser.add_argument(
         "--stage",
-        choices=["preprocess", "train", "evaluate", "all"],
+        choices=["preprocess", "train", "evaluate", "train-evaluate", "all"],
         default="all",
+    )
+    parser.add_argument(
+        "--reuse-preprocess-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Read an existing corrected preprocess directory for train/evaluate "
+            "stages while writing checkpoints and evaluation to --output-dir. "
+            "This is intended for paired hyperparameter runs that must share "
+            "exactly the same aligned cells, PCA, graph, and edge predictor."
+        ),
     )
     parser.add_argument("--training-config", type=Path, default=None)
     parser.add_argument("--device", default="cuda")
@@ -596,7 +618,23 @@ def main() -> int:
             args.training_config, "MOSTA training config"
         )
     args.output_dir = args.output_dir.expanduser().resolve()
-    paths = _paths(args.output_dir)
+    if args.reuse_preprocess_dir is not None:
+        if args.stage in {"preprocess", "all"}:
+            raise ValueError(
+                "--reuse-preprocess-dir cannot be combined with a stage that "
+                "runs preprocessing. Use --stage train, evaluate, or train-evaluate."
+            )
+        args.reuse_preprocess_dir = args.reuse_preprocess_dir.expanduser().resolve()
+        if not args.reuse_preprocess_dir.is_dir():
+            raise FileNotFoundError(
+                f"Missing reused preprocess directory: {args.reuse_preprocess_dir}"
+            )
+    paths = _paths(
+        args.output_dir, reuse_preprocess_dir=args.reuse_preprocess_dir
+    )
+    if args.reuse_preprocess_dir is not None:
+        _require_file(paths["aligned_h5ad"], "reused corrected MOSTA aligned H5AD")
+        _require_file(paths["edge_path"], "reused corrected MOSTA edge predictor")
     for key in ("root", "logs_dir", "status_dir", "downstream_dir"):
         paths[key].mkdir(parents=True, exist_ok=True)
     defaults = _profile_defaults(args.profile)
@@ -606,12 +644,22 @@ def main() -> int:
         "profile": args.profile,
         "stage": args.stage,
         "paths": paths,
+        "preprocess_reuse": (
+            None
+            if args.reuse_preprocess_dir is None
+            else {
+                "mode": "read_only_shared_preprocess",
+                "path": args.reuse_preprocess_dir,
+                "aligned_h5ad_size_bytes": int(paths["aligned_h5ad"].stat().st_size),
+                "edge_predictor_sha256": _sha256(paths["edge_path"]),
+            }
+        ),
     }
     if args.stage in {"preprocess", "all"}:
         result["preprocess"] = _run_preprocess(args, paths, defaults)
-    if args.stage in {"train", "all"}:
+    if args.stage in {"train", "train-evaluate", "all"}:
         _run_train(args, paths)
-    if args.stage in {"evaluate", "all"}:
+    if args.stage in {"evaluate", "train-evaluate", "all"}:
         result["evaluation"] = _run_evaluate(args, paths, defaults)
     result["git"] = _git_revision()
     manifest = _json_ready(result)

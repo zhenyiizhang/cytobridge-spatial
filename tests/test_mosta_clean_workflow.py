@@ -12,6 +12,7 @@ from CytoBridge.utils.config import load_config
 from scripts.run_mosta_end_to_end import (
     _build_parser,
     _lr_feature_contract,
+    _paths,
     _profile_defaults,
     _resolved_training_config,
     _write_pca_contract,
@@ -217,3 +218,38 @@ def test_mosta_training_alpha_cli_defaults_and_override(tmp_path):
     )
     assert override_config["training"]["defaults"]["alpha_spatial"] == 7.5
     assert override_config["training"]["defaults"]["alpha_express"] == 0.05
+
+
+def test_mosta_train_evaluate_can_share_read_only_preprocess(tmp_path):
+    output_dir = tmp_path / "alpha005"
+    shared_preprocess = tmp_path / "alpha0015" / "preprocess"
+    paths = _paths(output_dir, reuse_preprocess_dir=shared_preprocess)
+
+    assert paths["root"] == output_dir
+    assert paths["training_dir"] == output_dir / "training"
+    assert paths["evaluation_dir"] == output_dir / "evaluation"
+    assert paths["preprocess_dir"] == shared_preprocess.resolve()
+    assert paths["aligned_h5ad"] == shared_preprocess.resolve() / "mosta_aligned.h5ad"
+    assert paths["edge_path"] == (
+        shared_preprocess.resolve() / "edge_classifier" / "mosta_edge_model.pt"
+    )
+
+    args = _build_parser().parse_args(
+        [
+            "--h5ad-path",
+            str(tmp_path / "source.h5ad"),
+            "--database-path",
+            str(tmp_path / "lr.csv"),
+            "--output-dir",
+            str(output_dir),
+            "--stage",
+            "train-evaluate",
+            "--reuse-preprocess-dir",
+            str(shared_preprocess),
+            "--alpha-express",
+            "0.05",
+        ]
+    )
+    assert args.stage == "train-evaluate"
+    assert args.reuse_preprocess_dir == shared_preprocess
+    assert args.alpha_express == 0.05
