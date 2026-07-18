@@ -85,9 +85,9 @@ DEFAULT_PARAMS: dict[str, dict[str, Any]] = {
         "weights_return_index": None,
     },
     "stories": {
-        "max_iter": 2000,
-        "batch_size": 1000,
-        "restore": True,
+        "max_iter": 100,
+        "batch_size": 128,
+        "restore": False,
         "keep_checkpoints": True,
     },
     "mioflow": {

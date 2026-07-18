@@ -30,54 +30,156 @@ SEED = 42
 ALPHA_EXPRESS = 0.015
 ALPHA_SPATIAL = 10.0
 SIGMA = 0.03
+LEGACY_FULL_EDGE_MODEL_SHA256 = (
+    "ee3a4ef216ca8b268bcd6a57ed388fcca6abe88bb5652d16b8d69415e05cd4c1"
+)
 
 STAGE_PROFILE: tuple[dict[str, Any], ...] = (
     {
         "name": "Pretrain",
         "mode": "neural_ode",
         "epochs": 100,
+        "batch_size": 512,
+        "OT_loss": "weighted_emd_detach",
         "train_strategy": "v+g",
+        "lambda_ot": 1.0,
+        "lambda_mass": 0.01,
+        "lambda_energy": 0.0,
         "global_mass": False,
+        "reverse_mass_norm": True,
+        "reverse_mass_offset": False,
+        "checkpoint_metric": "legacy_forward_last_ot",
     },
     {
         "name": "Refine",
         "mode": "neural_ode",
         "epochs": 100,
+        "batch_size": 512,
+        "OT_loss": "weighted_emd",
         "train_strategy": "v+g",
+        "lambda_ot": 1.0,
+        "lambda_mass": 0.01,
+        "lambda_energy": 0.0,
         "global_mass": True,
+        "reverse_mass_norm": True,
+        "reverse_mass_offset": False,
+        "checkpoint_metric": "legacy_forward_last_ot",
     },
     {
         "name": "Init_interaction",
         "mode": "neural_ode",
         "epochs": 50,
+        "batch_size": 512,
+        "OT_loss": "weighted_emd",
         "train_strategy": "v+g+i",
+        "lambda_ot": 10.0,
+        "lambda_mass": 10.0,
+        "lambda_energy": 0.01,
         "global_mass": True,
+        "reverse_mass_norm": False,
+        "reverse_mass_offset": True,
+        "checkpoint_metric": "legacy_forward_last_ot",
     },
     {
         "name": "Train_Score",
         "mode": "score_matching",
         "epochs": 2001,
+        "batch_size": 128,
         "train_strategy": "s",
         "sigma": SIGMA,
+        "optimizer_type": "adamw",
+        "lr": 0.0001,
+        "lambda_penalty": 0,
         "save_strategy": "last",
     },
     {
         "name": "Finetune",
         "mode": "neural_ode",
         "epochs": 1000,
+        "batch_size": 512,
+        "OT_loss": "weighted_emd",
         "train_strategy": "v+g+i",
+        "lr": 0.0001,
+        "lambda_ot": 10.0,
+        "lambda_mass": 10.0,
+        "lambda_energy": 0.01,
         "global_mass": True,
         "score_use": True,
+        "reverse_mass_norm": False,
+        "reverse_mass_offset": True,
+        "scheduler_type": "plateau",
+        "scheduler_metric": "forward_last_ot",
+        "scheduler_step_before_reverse": True,
+        "max_grad_norm": 10.0,
+        "checkpoint_metric": "legacy_forward_last_ot",
         "save_strategy": "best",
     },
     {
         "name": "Score_Refine",
         "mode": "score_matching",
         "epochs": 2001,
+        "batch_size": 128,
         "train_strategy": "s",
         "sigma": SIGMA,
+        "optimizer_type": "adamw",
+        "lr": 0.0001,
+        "lambda_penalty": 0,
         "save_strategy": "last",
     },
+)
+
+DEFAULT_PROFILE: dict[str, Any] = {
+    "lr": 0.0001,
+    "lambda_ot": 10.0,
+    "lambda_mass": 10.0,
+    "lambda_energy": 0.01,
+    "sigma": SIGMA,
+    "batch_size": 512,
+    "alpha_spatial": ALPHA_SPATIAL,
+    "alpha_express": ALPHA_EXPRESS,
+    "global_mass": True,
+}
+
+MODEL_PROFILE: dict[str, Any] = {
+    "components": ("velocity", "growth", "score", "interaction"),
+    "interaction_type": "gnn",
+    "interaction_group_size": 1024,
+    "velocity_net": {
+        "hidden_dim": 256,
+        "n_layers": 5,
+        "residual": False,
+        "activation": "leaky_relu",
+        "use_spatial": True,
+    },
+    "growth_net": {
+        "hidden_dim": 256,
+        "n_layers": 3,
+        "residual": False,
+        "activation": "leaky_relu",
+    },
+    "score_net": {
+        "hidden_dim": 400,
+        "n_layers": 3,
+        "activation": "leaky_relu",
+    },
+    "interaction_net": {
+        "hidden_dim": 256,
+        "num_heads": 8,
+        "num_layers": 1,
+        "activation": "leakyrelu",
+        "num_rbf": 8,
+        "cutoff": 0.12,
+        "use_spatial": True,
+        "rbf_trainable": False,
+        "edge_predictor_path": "edge_classifier/zebrafish.pt",
+        "edge_predictor_thre": 0.63,
+    },
+}
+
+CANONICAL_CKPT_DIR = "results/zebrafish_spatial_full_alpha_express_0015"
+RUNTIME_MODEL_FIELDS = frozenset({"spatial_dim"})
+RUNTIME_INTERACTION_FIELDS = frozenset(
+    {"cutoff", "edge_predictor_path", "edge_predictor_thre"}
 )
 
 
@@ -116,6 +218,8 @@ class TrainingData:
     spatial_key: str
     time_key: str
     row_id_key: str
+    benchmark_original_obs_name: np.ndarray | None
+    interaction_graph: Mapping[str, Any]
     h5ad_contract: Mapping[str, Any]
 
     @property
@@ -414,6 +518,17 @@ def load_training_data(split: SplitInput) -> TrainingData:
         )
         time = np.asarray(adata.obs[time_key], dtype=np.float64)
         row_id = adata.obs[row_id_key].astype(str).to_numpy(dtype=str)
+        benchmark_original_obs_name = (
+            adata.obs["benchmark_original_obs_name"].astype(str).to_numpy(dtype=str)
+            if "benchmark_original_obs_name" in adata.obs
+            else None
+        )
+        raw_interaction_graph = adata.uns.get("interaction_graph", {})
+        interaction_graph = (
+            plain(raw_interaction_graph)
+            if isinstance(raw_interaction_graph, Mapping)
+            else {}
+        )
     finally:
         if adata.file is not None:
             adata.file.close()
@@ -422,6 +537,13 @@ def load_training_data(split: SplitInput) -> TrainingData:
         raise ContractError("training time vector is invalid")
     if row_id.shape != (rows,) or len(set(row_id)) != rows:
         raise ContractError("training row_id values must be unique")
+    if benchmark_original_obs_name is not None and (
+        benchmark_original_obs_name.shape != (rows,)
+        or len(set(benchmark_original_obs_name)) != rows
+    ):
+        raise ContractError(
+            "training benchmark_original_obs_name values must be unique and row-aligned"
+        )
     actual_times = tuple(sorted({canonical_time(value) for value in time}))
     if len(actual_times) != len(split.observed_times) or any(
         not same_time(left, right)
@@ -465,6 +587,8 @@ def load_training_data(split: SplitInput) -> TrainingData:
         spatial_key=spatial_key,
         time_key=time_key,
         row_id_key=row_id_key,
+        benchmark_original_obs_name=benchmark_original_obs_name,
+        interaction_graph=interaction_graph,
         h5ad_contract=contract,
     )
 
@@ -501,6 +625,8 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def _require_close(value: Any, expected: float, label: str) -> float:
+    if isinstance(value, (bool, np.bool_)):
+        raise ContractError(f"{label} is missing or non-numeric")
     try:
         observed = float(value)
     except (TypeError, ValueError) as exc:
@@ -510,65 +636,155 @@ def _require_close(value: Any, expected: float, label: str) -> float:
     return observed
 
 
-def validate_training_config(config: Mapping[str, Any]) -> dict[str, Any]:
-    """Enforce the exact published six-stage alpha_express=.015 profile."""
+def _require_keys(
+    value: Mapping[str, Any],
+    expected: set[str],
+    label: str,
+    *,
+    optional: set[str] | frozenset[str] = frozenset(),
+) -> None:
+    observed = set(value)
+    missing = expected - observed
+    extra = observed - expected - set(optional)
+    if missing:
+        raise ContractError(f"{label} lacks required fields {sorted(missing)}")
+    if extra:
+        rendered = sorted(repr(item) for item in extra)
+        raise ContractError(f"{label} contains unsupported fields {rendered}")
+
+
+def _require_exact(value: Any, expected: Any, label: str) -> None:
+    if isinstance(expected, bool):
+        matches = value is expected
+    elif isinstance(expected, int):
+        matches = isinstance(value, (int, np.integer)) and not isinstance(
+            value, (bool, np.bool_)
+        ) and int(value) == expected
+    elif isinstance(expected, float):
+        _require_close(value, expected, label)
+        return
+    elif isinstance(expected, tuple):
+        matches = (
+            isinstance(value, Sequence)
+            and not isinstance(value, (str, bytes))
+            and tuple(value) == expected
+        )
+    else:
+        matches = value == expected
+    if not matches:
+        raise ContractError(f"{label} must be {expected!r}, found {value!r}")
+
+
+def _validate_exact_mapping(
+    value: Mapping[str, Any], expected: Mapping[str, Any], label: str
+) -> None:
+    _require_keys(value, set(expected), label)
+    for key, expected_value in expected.items():
+        _require_exact(value[key], expected_value, f"{label}.{key}")
+
+
+def validate_training_config(
+    config: Mapping[str, Any],
+    *,
+    runtime_resolved: bool = False,
+    runtime_sigma: float = SIGMA,
+) -> dict[str, Any]:
+    """Enforce the complete published six-stage alpha_express=.015 profile.
+
+    ``runtime_resolved=False`` is for the immutable canonical input YAML and
+    requires every field and value exactly as published.  Saved models and the
+    adapter's post-graph LOTO config use ``runtime_resolved=True``; that mode
+    permits only the values the adapter explicitly resolves at runtime:
+    checkpoint directory, spatial dimension, interaction cutoff/classifier,
+    and the deterministic CLI sigma injected into every stage.
+    """
+    if not isinstance(config, Mapping):
+        raise ContractError("training config must be a mapping")
+    _require_keys(
+        config,
+        {"model", "ckpt_dir", "reverse", "seed", "training"},
+        "config",
+    )
+    _require_exact(config["seed"], SEED, "config.seed")
+    _require_exact(config["reverse"], True, "config.reverse")
+    if runtime_resolved:
+        _require_close(runtime_sigma, SIGMA, "runtime CLI sigma")
+        if not isinstance(config["ckpt_dir"], str) or not config["ckpt_dir"].strip():
+            raise ContractError("runtime-resolved config.ckpt_dir must be a non-empty string")
+    else:
+        _require_exact(config["ckpt_dir"], CANONICAL_CKPT_DIR, "config.ckpt_dir")
+
     training = config.get("training")
     if not isinstance(training, Mapping):
         raise ContractError("config lacks training mapping")
+    _require_keys(training, {"defaults", "plan"}, "config.training")
     defaults = training.get("defaults")
     plan = training.get("plan")
-    if not isinstance(defaults, Mapping) or not isinstance(plan, Sequence):
+    if (
+        not isinstance(defaults, Mapping)
+        or not isinstance(plan, Sequence)
+        or isinstance(plan, (str, bytes))
+    ):
         raise ContractError("config requires training.defaults and training.plan")
-    if int(config.get("seed", -1)) != SEED:
-        raise ContractError(f"config seed must be {SEED}")
-    if config.get("reverse") is not True:
-        raise ContractError("config reverse must be true for the locked profile")
-    _require_close(defaults.get("alpha_express"), ALPHA_EXPRESS, "alpha_express")
-    _require_close(defaults.get("alpha_spatial"), ALPHA_SPATIAL, "alpha_spatial")
-    _require_close(defaults.get("sigma"), SIGMA, "sigma")
-    if defaults.get("global_mass") is not True:
-        raise ContractError("training.defaults.global_mass must be true")
+    _validate_exact_mapping(defaults, DEFAULT_PROFILE, "config.training.defaults")
+
     model = config.get("model")
     if not isinstance(model, Mapping):
         raise ContractError("config lacks model mapping")
-    components = tuple(str(value) for value in model.get("components", ()))
-    if components != ("velocity", "growth", "score", "interaction"):
-        raise ContractError(
-            "model.components must be velocity/growth/score/interaction in locked order"
+    expected_model_fields = set(MODEL_PROFILE)
+    if runtime_resolved:
+        expected_model_fields.update(RUNTIME_MODEL_FIELDS)
+    _require_keys(model, expected_model_fields, "config.model")
+    _require_exact(model["components"], MODEL_PROFILE["components"], "config.model.components")
+    _require_exact(
+        model["interaction_type"],
+        MODEL_PROFILE["interaction_type"],
+        "config.model.interaction_type",
+    )
+    _require_exact(
+        model["interaction_group_size"],
+        MODEL_PROFILE["interaction_group_size"],
+        "config.model.interaction_group_size",
+    )
+    for network in ("velocity_net", "growth_net", "score_net"):
+        observed_network = model.get(network)
+        if not isinstance(observed_network, Mapping):
+            raise ContractError(f"config.model.{network} must be a mapping")
+        _validate_exact_mapping(
+            observed_network,
+            MODEL_PROFILE[network],
+            f"config.model.{network}",
         )
-    architecture = {
-        "interaction_type": "gnn",
-        "interaction_group_size": 1024,
-        "velocity_net.hidden_dim": 256,
-        "velocity_net.n_layers": 5,
-        "velocity_net.residual": False,
-        "velocity_net.activation": "leaky_relu",
-        "velocity_net.use_spatial": True,
-        "growth_net.hidden_dim": 256,
-        "growth_net.n_layers": 3,
-        "growth_net.residual": False,
-        "growth_net.activation": "leaky_relu",
-        "score_net.hidden_dim": 400,
-        "score_net.n_layers": 3,
-        "score_net.activation": "leaky_relu",
-        "interaction_net.hidden_dim": 256,
-        "interaction_net.num_heads": 8,
-        "interaction_net.num_layers": 1,
-        "interaction_net.activation": "leakyrelu",
-        "interaction_net.num_rbf": 8,
-        "interaction_net.use_spatial": True,
-        "interaction_net.rbf_trainable": False,
-    }
-    for dotted, expected in architecture.items():
-        value: Any = model
-        for key in dotted.split("."):
-            if not isinstance(value, Mapping) or key not in value:
-                raise ContractError(f"locked model architecture lacks {dotted}")
-            value = value[key]
-        if value != expected:
-            raise ContractError(
-                f"locked model architecture {dotted} must be {expected!r}, found {value!r}"
-            )
+    interaction = model.get("interaction_net")
+    if not isinstance(interaction, Mapping):
+        raise ContractError("config.model.interaction_net must be a mapping")
+    expected_interaction = MODEL_PROFILE["interaction_net"]
+    _require_keys(interaction, set(expected_interaction), "config.model.interaction_net")
+    for key, expected in expected_interaction.items():
+        label = f"config.model.interaction_net.{key}"
+        if runtime_resolved and key in RUNTIME_INTERACTION_FIELDS:
+            if key == "cutoff":
+                try:
+                    cutoff = float(interaction[key])
+                except (TypeError, ValueError) as exc:
+                    raise ContractError(f"{label} must be finite and positive") from exc
+                if not np.isfinite(cutoff) or cutoff <= 0:
+                    raise ContractError(f"{label} must be finite and positive")
+            elif key == "edge_predictor_path":
+                if not isinstance(interaction[key], str) or not interaction[key].strip():
+                    raise ContractError(f"{label} must be a non-empty string")
+            else:
+                try:
+                    threshold = float(interaction[key])
+                except (TypeError, ValueError) as exc:
+                    raise ContractError(f"{label} must lie strictly between zero and one") from exc
+                if not np.isfinite(threshold) or not 0 < threshold < 1:
+                    raise ContractError(f"{label} must lie strictly between zero and one")
+        else:
+            _require_exact(interaction[key], expected, label)
+    if runtime_resolved:
+        _require_exact(model["spatial_dim"], 2, "config.model.spatial_dim")
+
     if len(plan) != len(STAGE_PROFILE):
         raise ContractError(f"training plan must contain exactly {len(STAGE_PROFILE)} stages")
 
@@ -576,52 +792,45 @@ def validate_training_config(config: Mapping[str, Any]) -> dict[str, Any]:
     for index, (stage, expected) in enumerate(zip(plan, STAGE_PROFILE)):
         if not isinstance(stage, Mapping):
             raise ContractError(f"training stage {index} is not a mapping")
-        observed = {
-            "name": str(stage.get("name", "")),
-            "mode": str(stage.get("mode", "")),
-            "epochs": int(stage.get("epochs", -1)),
-            "train_strategy": str(stage.get("train_strategy", "")),
+        optional = (
+            {"sigma"}
+            if runtime_resolved and "sigma" not in expected
+            else frozenset()
+        )
+        label = f"config.training.plan[{index}] ({expected['name']})"
+        _require_keys(stage, set(expected), label, optional=optional)
+        for key, expected_value in expected.items():
+            _require_exact(stage[key], expected_value, f"{label}.{key}")
+        if "sigma" in optional and "sigma" in stage:
+            _require_close(stage["sigma"], runtime_sigma, f"{label}.sigma")
+        observed_profile.append(plain(stage))
+
+    runtime_fields: dict[str, Any] | None = None
+    if runtime_resolved:
+        runtime_fields = {
+            "ckpt_dir": config["ckpt_dir"],
+            "model.spatial_dim": model.get("spatial_dim"),
+            "model.interaction_net.cutoff": interaction["cutoff"],
+            "model.interaction_net.edge_predictor_path": interaction[
+                "edge_predictor_path"
+            ],
+            "model.interaction_net.edge_predictor_thre": interaction[
+                "edge_predictor_thre"
+            ],
+            "stage_sigma": runtime_sigma,
         }
-        for key in ("name", "mode", "epochs", "train_strategy"):
-            if observed[key] != expected[key]:
-                raise ContractError(
-                    f"stage {index} {key} must be {expected[key]!r}, found {observed[key]!r}"
-                )
-        if "global_mass" in expected and stage.get("global_mass") is not expected["global_mass"]:
-            raise ContractError(
-                f"stage {expected['name']} global_mass must be {expected['global_mass']}"
-            )
-        if "score_use" in expected and stage.get("score_use") is not True:
-            raise ContractError(f"stage {expected['name']} score_use must be true")
-        if "sigma" in expected:
-            _require_close(stage.get("sigma"), SIGMA, f"stage {expected['name']} sigma")
-        for parameter, locked in (
-            ("alpha_express", ALPHA_EXPRESS),
-            ("alpha_spatial", ALPHA_SPATIAL),
-            ("sigma", SIGMA),
-        ):
-            if parameter in stage:
-                _require_close(
-                    stage[parameter], locked, f"stage {expected['name']} {parameter}"
-                )
-        if "save_strategy" in expected:
-            actual_save = str(stage.get("save_strategy", "best")).lower()
-            if actual_save != expected["save_strategy"]:
-                raise ContractError(
-                    f"stage {expected['name']} save_strategy must be "
-                    f"{expected['save_strategy']!r}, found {actual_save!r}"
-                )
-        observed["save_strategy"] = str(stage.get("save_strategy", "best")).lower()
-        observed_profile.append(observed)
     return {
         "seed": SEED,
         "reverse": True,
         "alpha_express": ALPHA_EXPRESS,
         "alpha_spatial": ALPHA_SPATIAL,
         "sigma": SIGMA,
-        "components": list(components),
-        "architecture": architecture,
+        "components": list(MODEL_PROFILE["components"]),
+        "defaults_profile": plain(defaults),
+        "model_profile": plain(model),
         "stage_profile": observed_profile,
+        "runtime_resolved": runtime_resolved,
+        "runtime_resolved_fields": runtime_fields,
     }
 
 
@@ -632,7 +841,7 @@ def checkpoint_inventory(model_dir: Path) -> dict[str, Any]:
     if not config_path.is_file():
         raise FileNotFoundError(config_path)
     config = load_yaml(config_path)
-    profile = validate_training_config(config)
+    profile = validate_training_config(config, runtime_resolved=True)
     plan = config["training"]["plan"]
     checkpoints: dict[str, dict[str, Any]] = {}
     for stage in plan:
@@ -665,17 +874,99 @@ def checkpoint_inventory(model_dir: Path) -> dict[str, Any]:
     }
 
 
+def _checkpoint_runtime_binding(
+    model_dir: Path,
+    data: TrainingData,
+    inventory: Mapping[str, Any],
+    expected: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind a saved runtime config and external edge model to audited values."""
+    profile = inventory.get("training_profile")
+    fields = (
+        profile.get("runtime_resolved_fields")
+        if isinstance(profile, Mapping)
+        else None
+    )
+    if not isinstance(fields, Mapping):
+        raise ContractError("checkpoint inventory lacks resolved runtime fields")
+    configured_dir = Path(str(fields.get("ckpt_dir", ""))).expanduser().resolve()
+    if configured_dir != model_dir:
+        raise ContractError("saved config.ckpt_dir does not resolve to the model directory")
+    _require_exact(
+        fields.get("model.spatial_dim"),
+        data.spatial_dim,
+        "saved config.model.spatial_dim",
+    )
+    cutoff = _require_close(
+        fields.get("model.interaction_net.cutoff"),
+        float(expected["interaction_cutoff"]),
+        "saved interaction cutoff",
+    )
+    threshold = _require_close(
+        fields.get("model.interaction_net.edge_predictor_thre"),
+        float(expected["edge_threshold"]),
+        "saved edge predictor threshold",
+    )
+    raw_edge_path = fields.get("model.interaction_net.edge_predictor_path")
+    if not isinstance(raw_edge_path, str) or not raw_edge_path.strip():
+        raise ContractError("saved edge predictor path must be a non-empty string")
+    configured_edge = Path(raw_edge_path).expanduser()
+    if not configured_edge.is_absolute():
+        raise ContractError("saved edge predictor path must be absolute")
+    configured_edge = configured_edge.resolve()
+    expected_edge = Path(str(expected["edge_model"])).expanduser().resolve()
+    if configured_edge != expected_edge:
+        raise ContractError("saved edge predictor path differs from audited provenance")
+    if not configured_edge.is_file():
+        raise ContractError("saved edge predictor artifact is missing")
+    observed_edge_sha = sha256_file(configured_edge)
+    expected_edge_sha = str(expected.get("edge_model_sha256", "")).lower()
+    if observed_edge_sha != expected_edge_sha:
+        raise ContractError("saved edge predictor artifact hash differs from provenance")
+    return {
+        "ckpt_dir": str(configured_dir),
+        "spatial_dim": data.spatial_dim,
+        "interaction_cutoff": cutoff,
+        "edge_threshold": threshold,
+        "edge_model": str(configured_edge),
+        "edge_model_sha256": observed_edge_sha,
+    }
+
+
+def _legacy_full_runtime_expectation(data: TrainingData) -> dict[str, Any]:
+    graph = data.interaction_graph
+    required = {
+        "neighborhood_threshold",
+        "edge_predictor_threshold",
+        "edge_predictor_path",
+    }
+    missing = required - set(graph)
+    if missing:
+        raise ContractError(
+            "full-data input lacks frozen interaction provenance fields "
+            f"{sorted(missing)}"
+        )
+    return {
+        "interaction_cutoff": graph["neighborhood_threshold"],
+        "edge_threshold": graph["edge_predictor_threshold"],
+        "edge_model": graph["edge_predictor_path"],
+        "edge_model_sha256": LEGACY_FULL_EDGE_MODEL_SHA256,
+    }
+
+
 def checkpoint_training_match(
     model_dir: Path,
     split: SplitInput,
     data: TrainingData,
     inventory: Mapping[str, Any] | None = None,
+    runtime_binding: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Prove that a reusable checkpoint was fitted to this training reference.
 
     New adapter fits have a benchmark_fit_summary.json linkage.  Older locked
     full-data fits are accepted only when their saved adata.h5ad has the exact
-    frozen state, spatial, time, and row order of the training reference.
+    frozen state, spatial, time, row identity, and row order of the training
+    reference.
     """
     model_dir = Path(model_dir).expanduser().resolve()
     fit_summary = model_dir / "benchmark_fit_summary.json"
@@ -710,20 +1001,84 @@ def checkpoint_training_match(
             str(name): str(digest) for name, digest in declared_checkpoints.items()
         } != current_checkpoints:
             raise ContractError("model stage checkpoint hashes changed after benchmark fit")
+        if split.regime == "full_data":
+            expected_runtime = _legacy_full_runtime_expectation(data)
+        else:
+            prepare_summary = Path(
+                str(payload.get("prepare_graph_summary", ""))
+            ).expanduser().resolve()
+            expected_prepare_sha = str(
+                payload.get("prepare_graph_summary_sha256", "")
+            ).lower()
+            if (
+                not prepare_summary.is_file()
+                or sha256_file(prepare_summary) != expected_prepare_sha
+            ):
+                raise ContractError("prepared LOTO graph summary changed or disappeared")
+            expected_runtime = {
+                "interaction_cutoff": payload.get("interaction_cutoff"),
+                "edge_threshold": payload.get("edge_threshold"),
+                "edge_model": payload.get("edge_model"),
+                "edge_model_sha256": payload.get("edge_model_sha256"),
+            }
+        runtime_report = _checkpoint_runtime_binding(
+            model_dir, data, current, expected_runtime
+        )
         original_match = payload.get("training_reference_match")
-        if isinstance(original_match, Mapping) and original_match.get("proof") == (
+        if not isinstance(original_match, Mapping) or original_match.get("proof") != (
             "saved_adata_exact_frozen_arrays"
         ):
-            saved = model_dir / "adata.h5ad"
-            expected_saved_sha = str(original_match.get("sha256", "")).lower()
-            if not saved.is_file() or sha256_file(saved) != expected_saved_sha:
-                raise ContractError("model saved adata changed after training-reference proof")
+            raise ContractError(
+                "model fit summary lacks a direct saved-adata training-reference proof"
+            )
+        row_proof = str(original_match.get("row_identity_proof", ""))
+        if row_proof == "contracted_row_id_exact_order":
+            expected_row_identity = data.row_id
+        elif row_proof == "legacy_obs_names_vs_benchmark_original_obs_name":
+            if data.benchmark_original_obs_name is None:
+                raise ContractError(
+                    "model fit summary declares a legacy row proof but the benchmark "
+                    "input lacks benchmark_original_obs_name"
+                )
+            expected_row_identity = data.benchmark_original_obs_name
+        else:
+            raise ContractError("model fit summary lacks a supported row-identity proof")
+        array_sha256 = original_match.get("array_sha256")
+        declared_row_sha = (
+            str(array_sha256.get("row_identity", "")).lower()
+            if isinstance(array_sha256, Mapping)
+            else ""
+        )
+        expected_row_sha = sha256_array(expected_row_identity.astype("U"))
+        if declared_row_sha != expected_row_sha:
+            raise ContractError(
+                "model fit summary row-identity hash differs from the training reference"
+            )
+        saved = model_dir / "adata.h5ad"
+        expected_saved_sha = str(original_match.get("sha256", "")).lower()
+        if not saved.is_file() or sha256_file(saved) != expected_saved_sha:
+            raise ContractError("model saved adata changed after training-reference proof")
         return {
             "proof": "benchmark_fit_summary",
             "path": str(fit_summary),
             "sha256": sha256_file(fit_summary),
             "training_reference_sha256": declared,
+            "runtime_binding": runtime_report,
         }
+
+    runtime_report: dict[str, Any] | None = None
+    if inventory is not None:
+        if runtime_binding is not None:
+            expected_runtime = runtime_binding
+        elif split.regime == "full_data":
+            expected_runtime = _legacy_full_runtime_expectation(data)
+        else:
+            raise ContractError(
+                "new LOTO checkpoint validation requires prepared graph runtime binding"
+            )
+        runtime_report = _checkpoint_runtime_binding(
+            model_dir, data, inventory, expected_runtime
+        )
 
     import anndata as ad
 
@@ -754,6 +1109,23 @@ def checkpoint_training_match(
         observed_state = np.asarray(adata.obsm[state_key], dtype=np.float32)
         observed_spatial = np.asarray(adata.obsm[spatial_key], dtype=np.float32)
         observed_time = np.asarray(adata.obs[time_key], dtype=np.float64)
+        if data.row_id_key in adata.obs:
+            observed_row_identity = (
+                adata.obs[data.row_id_key].astype(str).to_numpy(dtype=str)
+            )
+            expected_row_identity = data.row_id
+            row_identity_proof = "contracted_row_id_exact_order"
+            row_identity_key = f"obs/{data.row_id_key}"
+        elif data.benchmark_original_obs_name is not None:
+            observed_row_identity = np.asarray(adata.obs_names.astype(str), dtype=str)
+            expected_row_identity = data.benchmark_original_obs_name
+            row_identity_proof = "legacy_obs_names_vs_benchmark_original_obs_name"
+            row_identity_key = "obs_names"
+        else:
+            raise ContractError(
+                "saved checkpoint adata lacks contracted row_id and benchmark input "
+                "lacks benchmark_original_obs_name for legacy row-identity proof"
+            )
     finally:
         if adata.file is not None:
             adata.file.close()
@@ -763,23 +1135,33 @@ def checkpoint_training_match(
         "time": (observed_time, data.time),
     }
     for label, (observed, expected) in checks.items():
-        if observed.shape != expected.shape or not np.allclose(
-            observed, expected, rtol=1e-6, atol=1e-6
-        ):
+        if observed.shape != expected.shape or not np.array_equal(observed, expected):
             raise ContractError(f"saved checkpoint adata {label} differs from training reference")
-    return {
+    if observed_row_identity.shape != expected_row_identity.shape or not np.array_equal(
+        observed_row_identity, expected_row_identity
+    ):
+        raise ContractError(
+            "saved checkpoint adata row identity/order differs from training reference"
+        )
+    report = {
         "proof": "saved_adata_exact_frozen_arrays",
         "path": str(saved),
         "sha256": sha256_file(saved),
         "state_key": state_key,
         "spatial_key": spatial_key,
         "time_key": time_key,
+        "row_identity_proof": row_identity_proof,
+        "row_identity_key": row_identity_key,
         "array_sha256": {
             "state": sha256_array(observed_state),
             "spatial": sha256_array(observed_spatial),
             "time": sha256_array(observed_time),
+            "row_identity": sha256_array(observed_row_identity.astype("U")),
         },
     }
+    if runtime_report is not None:
+        report["runtime_binding"] = runtime_report
+    return report
 
 
 def repo_identity(repo: Path) -> dict[str, Any]:

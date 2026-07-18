@@ -258,6 +258,17 @@ class FixtureMixin:
 
 
 class ContractTests(FixtureMixin, unittest.TestCase):
+    def test_stories_benchmark_compute_profile_is_fixed_and_from_scratch(self):
+        self.assertEqual(
+            DEFAULT_PARAMS["stories"],
+            {
+                "max_iter": 100,
+                "batch_size": 128,
+                "restore": False,
+                "keep_checkpoints": True,
+            },
+        )
+
     def test_official_commits_are_full_and_fixed(self):
         methods = load_method_pins()["methods"]
         self.assertEqual(

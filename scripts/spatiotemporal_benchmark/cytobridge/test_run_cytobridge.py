@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import tempfile
@@ -21,8 +22,10 @@ from common import (  # noqa: E402
     ContractError,
     bootstrap_indices,
     checkpoint_inventory,
+    checkpoint_training_match,
     load_training_data,
     read_split_input,
+    sha256_array,
     sha256_file,
     source_time,
     validate_training_config,
@@ -35,99 +38,26 @@ from run_cytobridge import (  # noqa: E402
 
 
 def locked_config() -> dict:
-    stages = [
-        {
-            "name": "Pretrain",
-            "mode": "neural_ode",
-            "epochs": 100,
-            "train_strategy": "v+g",
-            "global_mass": False,
-        },
-        {
-            "name": "Refine",
-            "mode": "neural_ode",
-            "epochs": 100,
-            "train_strategy": "v+g",
-            "global_mass": True,
-        },
-        {
-            "name": "Init_interaction",
-            "mode": "neural_ode",
-            "epochs": 50,
-            "train_strategy": "v+g+i",
-            "global_mass": True,
-        },
-        {
-            "name": "Train_Score",
-            "mode": "score_matching",
-            "epochs": 2001,
-            "train_strategy": "s",
-            "sigma": 0.03,
-            "save_strategy": "last",
-        },
-        {
-            "name": "Finetune",
-            "mode": "neural_ode",
-            "epochs": 1000,
-            "train_strategy": "v+g+i",
-            "global_mass": True,
-            "score_use": True,
-            "save_strategy": "best",
-        },
-        {
-            "name": "Score_Refine",
-            "mode": "score_matching",
-            "epochs": 2001,
-            "train_strategy": "s",
-            "sigma": 0.03,
-            "save_strategy": "last",
-        },
-    ]
-    return {
-        "seed": 42,
-        "reverse": True,
-        "model": {
-            "components": ["velocity", "growth", "score", "interaction"],
-            "interaction_type": "gnn",
-            "interaction_group_size": 1024,
-            "velocity_net": {
-                "hidden_dim": 256,
-                "n_layers": 5,
-                "residual": False,
-                "activation": "leaky_relu",
-                "use_spatial": True,
-            },
-            "growth_net": {
-                "hidden_dim": 256,
-                "n_layers": 3,
-                "residual": False,
-                "activation": "leaky_relu",
-            },
-            "score_net": {
-                "hidden_dim": 400,
-                "n_layers": 3,
-                "activation": "leaky_relu",
-            },
-            "interaction_net": {
-                "hidden_dim": 256,
-                "num_heads": 8,
-                "num_layers": 1,
-                "activation": "leakyrelu",
-                "num_rbf": 8,
-                "use_spatial": True,
-                "rbf_trainable": False,
-            },
-        },
-        "training": {
-            "defaults": {
-                "alpha_express": 0.015,
-                "alpha_spatial": 10.0,
-                "sigma": 0.03,
-                "global_mass": True,
-            },
-            "plan": stages,
-        },
-    }
+    path = (
+        HERE.parents[2]
+        / "CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml"
+    )
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
+def runtime_config() -> dict:
+    config = copy.deepcopy(locked_config())
+    config["ckpt_dir"] = "/audited/runtime/model"
+    config["model"]["spatial_dim"] = 2
+    interaction = config["model"]["interaction_net"]
+    interaction["cutoff"] = 0.08
+    interaction["edge_predictor_path"] = "/audited/runtime/edge.pt"
+    interaction["edge_predictor_thre"] = 0.57
+    for stage in config["training"]["plan"]:
+        stage["sigma"] = 0.03
+    return config
 
 
 def write_mock_inputs(
@@ -150,10 +80,14 @@ def write_mock_inputs(
     state = rng.normal(size=(times.size, 3)).astype(np.float32)
     spatial = rng.normal(size=(times.size, 2)).astype(np.float32)
     row_id = np.asarray([f"r{index}" for index in range(times.size)], dtype=str)
+    original_obs_name = np.asarray(
+        [f"legacy_{index}" for index in range(times.size)], dtype=str
+    )
     obs = pd.DataFrame(
         {
             "benchmark_time": times,
             "row_id": row_id,
+            "benchmark_original_obs_name": original_obs_name,
         },
         index=pd.Index(row_id, name="row_id"),
     )
@@ -276,6 +210,92 @@ class ConfigContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "epochs"):
             validate_training_config(config)
 
+    def test_training_critical_mutations_are_rejected(self) -> None:
+        mutations = (
+            ("default learning rate", ("training", "defaults", "lr"), 0.0002),
+            ("default OT weight", ("training", "defaults", "lambda_ot"), 9.0),
+            ("model cutoff", ("model", "interaction_net", "cutoff"), 0.13),
+            ("model heads", ("model", "interaction_net", "num_heads"), 4),
+            ("stage OT loss", ("training", "plan", 0, "OT_loss"), "weighted_emd"),
+            ("stage numeric bool", ("training", "plan", 0, "lambda_ot"), True),
+            ("stage batch size", ("training", "plan", 3, "batch_size"), 256),
+            (
+                "stage scheduler metric",
+                ("training", "plan", 4, "scheduler_metric"),
+                "average_loss",
+            ),
+        )
+        for label, path, replacement in mutations:
+            with self.subTest(label=label):
+                config = locked_config()
+                target = config
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = replacement
+                with self.assertRaises(ContractError):
+                    validate_training_config(config)
+
+    def test_missing_and_extra_fields_are_rejected(self) -> None:
+        mutations = (
+            ("missing default", lambda value: value["training"]["defaults"].pop("lr")),
+            (
+                "extra default",
+                lambda value: value["training"]["defaults"].update({"dropout": 0.1}),
+            ),
+            (
+                "missing model field",
+                lambda value: value["model"]["velocity_net"].pop("n_layers"),
+            ),
+            (
+                "extra model field",
+                lambda value: value["model"]["velocity_net"].update({"dropout": 0.1}),
+            ),
+            (
+                "missing stage field",
+                lambda value: value["training"]["plan"][0].pop("OT_loss"),
+            ),
+            (
+                "extra stage field",
+                lambda value: value["training"]["plan"][0].update(
+                    {"use_density_loss": False}
+                ),
+            ),
+            ("extra top-level field", lambda value: value.update({"device": "cuda"})),
+        )
+        for label, mutation in mutations:
+            with self.subTest(label=label):
+                config = locked_config()
+                mutation(config)
+                with self.assertRaisesRegex(ContractError, "(lacks|required|unsupported)"):
+                    validate_training_config(config)
+
+    def test_only_audited_runtime_fields_are_allowed(self) -> None:
+        config = runtime_config()
+        with self.assertRaisesRegex(ContractError, "(ckpt_dir|unsupported)"):
+            validate_training_config(config)
+        report = validate_training_config(
+            config, runtime_resolved=True, runtime_sigma=0.03
+        )
+        self.assertTrue(report["runtime_resolved"])
+        self.assertEqual(report["runtime_resolved_fields"]["model.spatial_dim"], 2)
+
+        wrong_sigma = runtime_config()
+        wrong_sigma["training"]["plan"][0]["sigma"] = 0.05
+        with self.assertRaisesRegex(ContractError, "sigma"):
+            validate_training_config(
+                wrong_sigma, runtime_resolved=True, runtime_sigma=0.03
+            )
+
+        extra = runtime_config()
+        extra["model"]["interaction_net"]["runtime_guess"] = 1
+        with self.assertRaisesRegex(ContractError, "unsupported"):
+            validate_training_config(extra, runtime_resolved=True, runtime_sigma=0.03)
+
+        with self.assertRaisesRegex(ContractError, "runtime CLI sigma"):
+            validate_training_config(
+                runtime_config(), runtime_resolved=True, runtime_sigma=0.05
+            )
+
 
 class InputContractTests(unittest.TestCase):
     def test_loto_train_only_relative_artifacts_and_physical_holdout(self) -> None:
@@ -345,13 +365,76 @@ class PopulationAndOutputTests(unittest.TestCase):
 
 
 class CheckpointTests(unittest.TestCase):
+    def test_fit_summary_must_carry_matching_row_identity_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs")
+            split = read_split_input(manifest, "loto_t1")
+            data = load_training_data(split)
+            model = root / "model"
+            model.mkdir()
+            saved = ad.read_h5ad(split.train_h5ad)
+            saved.write_h5ad(model / "adata.h5ad")
+            edge = root / "edge.pt"
+            edge.write_bytes(b"audited edge")
+            prepare = root / "prepare_graph_summary.json"
+            prepare.write_text("{}", encoding="utf-8")
+            inventory = {
+                "config_sha256": "a" * 64,
+                "checkpoints": {"Finetune": {"sha256": "b" * 64}},
+                "training_profile": {
+                    "runtime_resolved_fields": {
+                        "ckpt_dir": str(model),
+                        "model.spatial_dim": 2,
+                        "model.interaction_net.cutoff": 0.08,
+                        "model.interaction_net.edge_predictor_path": str(edge),
+                        "model.interaction_net.edge_predictor_thre": 0.57,
+                    }
+                },
+            }
+            payload = {
+                "status": "complete",
+                "training_reference_sha256": split.training_reference_sha256,
+                "input_manifest_sha256": split.root_manifest_sha256,
+                "split_id": split.split_id,
+                "regime": split.regime,
+                "saved_config_sha256": inventory["config_sha256"],
+                "checkpoint_sha256": {"Finetune": "b" * 64},
+                "interaction_cutoff": 0.08,
+                "edge_threshold": 0.57,
+                "edge_model": str(edge),
+                "edge_model_sha256": sha256_file(edge),
+                "prepare_graph_summary": str(prepare),
+                "prepare_graph_summary_sha256": sha256_file(prepare),
+                "training_reference_match": {
+                    "proof": "saved_adata_exact_frozen_arrays",
+                    "sha256": sha256_file(model / "adata.h5ad"),
+                },
+            }
+            summary = model / "benchmark_fit_summary.json"
+            summary.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "row-identity proof"):
+                checkpoint_training_match(model, split, data, inventory=inventory)
+
+            payload["training_reference_match"].update(
+                {
+                    "row_identity_proof": "contracted_row_id_exact_order",
+                    "array_sha256": {
+                        "row_identity": sha256_array(data.row_id.astype("U"))
+                    },
+                }
+            )
+            summary.write_text(json.dumps(payload), encoding="utf-8")
+            report = checkpoint_training_match(model, split, data, inventory=inventory)
+            self.assertEqual(report["proof"], "benchmark_fit_summary")
+
     def test_all_six_stage_files_are_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             model = Path(temporary)
             (model / "config.yaml").write_text(
-                yaml.safe_dump(locked_config()), encoding="utf-8"
+                yaml.safe_dump(runtime_config()), encoding="utf-8"
             )
-            config = locked_config()
+            config = runtime_config()
             for stage in config["training"]["plan"]:
                 folder = model / stage["name"]
                 folder.mkdir()
@@ -364,9 +447,62 @@ class CheckpointTests(unittest.TestCase):
             report = checkpoint_inventory(model)
             self.assertTrue(report["stage_complete"])
             self.assertEqual(report["stage_count"], 6)
+            self.assertTrue(report["training_profile"]["runtime_resolved"])
             (model / "Score_Refine" / "score_model.pth").unlink()
             with self.assertRaisesRegex(ContractError, "incomplete six-stage"):
                 checkpoint_inventory(model)
+
+    def test_contracted_row_id_proves_exact_identity_and_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs", split_id="full_data")
+            split = read_split_input(manifest, "full_data")
+            data = load_training_data(split)
+            model = root / "model"
+            model.mkdir()
+            saved = ad.read_h5ad(split.train_h5ad)
+            saved.write_h5ad(model / "adata.h5ad")
+
+            report = checkpoint_training_match(model, split, data)
+            self.assertEqual(
+                report["row_identity_proof"], "contracted_row_id_exact_order"
+            )
+
+            saved.obs[data.row_id_key] = np.roll(
+                saved.obs[data.row_id_key].astype(str).to_numpy(), 1
+            )
+            saved.obs_names.name = None
+            saved.write_h5ad(model / "adata.h5ad")
+            with self.assertRaisesRegex(ContractError, "row identity/order"):
+                checkpoint_training_match(model, split, data)
+
+    def test_legacy_obs_names_prove_exact_identity_and_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs", split_id="full_data")
+            split = read_split_input(manifest, "full_data")
+            data = load_training_data(split)
+            self.assertIsNotNone(data.benchmark_original_obs_name)
+            model = root / "model"
+            model.mkdir()
+            saved = ad.read_h5ad(split.train_h5ad)
+            del saved.obs[data.row_id_key]
+            saved.obs_names = pd.Index(
+                saved.obs["benchmark_original_obs_name"].astype(str),
+                name=None,
+            )
+            saved.write_h5ad(model / "adata.h5ad")
+
+            report = checkpoint_training_match(model, split, data)
+            self.assertEqual(
+                report["row_identity_proof"],
+                "legacy_obs_names_vs_benchmark_original_obs_name",
+            )
+
+            saved.obs_names = pd.Index(np.roll(saved.obs_names.astype(str), 1))
+            saved.write_h5ad(model / "adata.h5ad")
+            with self.assertRaisesRegex(ContractError, "row identity/order"):
+                checkpoint_training_match(model, split, data)
 
 
 if __name__ == "__main__":

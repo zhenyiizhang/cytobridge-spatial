@@ -114,6 +114,16 @@ done
 Method defaults are in `DEFAULT_PARAMS` in `run_dynamic.py`. Audited overrides
 can be supplied as inline JSON or a JSON file with `--params-json`.
 
+The matched STORIES profile fixes `max_iter=100`, `batch_size=128`, and
+`restore=false`. A real-data calibration on this benchmark measured the
+upstream 2,000-iteration, batch-1,000 setting at roughly 135 seconds per
+iteration after compilation (about 300 hours for four independent fits), while
+10 iterations at batch 128 completed in 45 seconds. The fixed profile therefore
+uses a declared, feasible from-scratch budget rather than silently restoring a
+checkpoint or leaving a multi-week default run incomplete. These parameters
+are recorded in every fit manifest and should be treated as the benchmark
+compute profile, not as a claim that the upstream package defaults changed.
+
 ## Outputs
 
 Fit directory:

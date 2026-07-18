@@ -145,7 +145,7 @@
           "output_scope": "hybrid_joint",
           "hybrid": true,
           "default_parameters": {
-            "max_iter": 200,
+            "max_iter": 50,
             "dissimilarity": "euclidean",
             "mode": "SN-S",
             "device": "cpu",

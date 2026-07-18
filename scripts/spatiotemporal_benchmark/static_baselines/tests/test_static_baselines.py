@@ -236,6 +236,7 @@ def test_spateo_signed_pc_profile_disables_nn_initializer() -> None:
     spec = list_method_specs()["spateo"]
     params = spec["representations"]["matched_state_spatial"]["default_parameters"]
     assert params["nn_init"] is False
+    assert params["max_iter"] == 50
 
 
 def test_static_anchor_ranking_matches_builder_for_integral_float_time() -> None:

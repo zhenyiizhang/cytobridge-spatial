@@ -189,7 +189,7 @@ def _probe_model_load(
         loaded = load_dynamical_model_from_dir(
             model_dir, dim=data.joint_dim, device=str(device)
         )
-    validate_training_config(loaded.config)
+    validate_training_config(loaded.config, runtime_resolved=True)
     if loaded.weight_stage != "Finetune" or loaded.score_stage != "Score_Refine":
         raise ContractError(
             "checkpoint loader must resolve Finetune weights and Score_Refine score; "
@@ -478,7 +478,14 @@ def command_fit_loto(args: argparse.Namespace) -> None:
     config["model"]["interaction_net"]["cutoff"] = cutoff
     config["model"]["interaction_net"]["edge_predictor_path"] = str(edge_path)
     config["model"]["interaction_net"]["edge_predictor_thre"] = threshold
-    validate_training_config(config)
+    runtime_sigma = float(args.sigma)
+    for stage in config["training"]["plan"]:
+        stage["sigma"] = runtime_sigma
+    resolved_config_profile = validate_training_config(
+        config,
+        runtime_resolved=True,
+        runtime_sigma=runtime_sigma,
+    )
     if str(args.repo.resolve()) not in sys.path:
         sys.path.insert(0, str(args.repo.resolve()))
     import CytoBridge as cb
@@ -495,13 +502,24 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         interaction_cutoff=cutoff,
         edge_predictor_path=str(edge_path),
         edge_predictor_threshold=threshold,
-        sigma=SIGMA,
+        sigma=runtime_sigma,
         evaluate_after_training=False,
     )
     inventory = checkpoint_inventory(output)
     # At this point the fit summary does not yet exist; verification therefore
     # uses the saved adata's exact frozen arrays.
-    match = checkpoint_training_match(output, split, data, inventory=inventory)
+    match = checkpoint_training_match(
+        output,
+        split,
+        data,
+        inventory=inventory,
+        runtime_binding={
+            "interaction_cutoff": cutoff,
+            "edge_threshold": threshold,
+            "edge_model": str(edge_path),
+            "edge_model_sha256": sha256_file(edge_path),
+        },
+    )
     report = {
         "status": "complete",
         "phase": "fit_loto",
@@ -517,6 +535,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         "seed": SEED,
         "device": str(args.device),
         "training_profile": config_profile,
+        "resolved_training_profile": resolved_config_profile,
         "training_config_source": str(config_source),
         "training_config_source_sha256": sha256_file(config_source),
         "saved_config_sha256": inventory["config_sha256"],
@@ -710,7 +729,7 @@ def _simulate(
         loaded = load_dynamical_model_from_dir(
             model_dir, dim=data.joint_dim, device=str(device)
         )
-    validate_training_config(loaded.config)
+    validate_training_config(loaded.config, runtime_resolved=True)
     if loaded.weight_stage != "Finetune":
         raise ContractError(
             f"inference must load Finetune weights, found {loaded.weight_stage!r}"

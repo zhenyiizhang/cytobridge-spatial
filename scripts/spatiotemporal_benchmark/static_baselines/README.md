@@ -52,7 +52,11 @@ For the matched signed-PC Spateo profile, `nn_init=false` is fixed in the
 registry. Exact-API preflight showed that the official nearest-neighbor
 initializer is numerically unstable on signed PCs, while the same official
 `morpho_align` optimizer with that initializer disabled returns a complete
-800-by-800 mapping. The choice is recorded in every run manifest.
+800-by-800 mapping. `max_iter=50` is also fixed: real-support sensitivity
+checks over every LOTO bracket and all four full-data transitions showed that
+50 iterations produce complete couplings, whereas longer runs can underflow
+source rows to zero mass (first observed at 100 iterations for LOTO t3 and at
+150 iterations for LOTO t1). Both choices are recorded in every run manifest.
 
 ## CLI
 
