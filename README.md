@@ -99,9 +99,38 @@ python scripts/preprocess_pipeline.py \
   --h5ad-path /path/to/input.h5ad \
   --time-key timepoint \
   --output-dir ./results/mosta_preprocess \
-  --database-path /path/to/database/CellNEST_database.csv \
+  --database-path /path/to/database/CellChatDB.ligrec.mouse.csv \
+  --batch-indices 3,4,5,6 \
+  --time-mapping '{"E9.5":-3,"E10.5":-2,"E11.5":-1,"E12.5":0,"E13.5":1,"E14.5":2,"E15.5":3,"E16.5":4}' \
+  --expression-layer count \
+  --counts-layer count \
+  --raw-count-validation strict \
+  --normalization-target-sum 10000 \
+  --auto-scale-from-centered-x-max 0 \
+  --center-x 1 --center-y 0 \
+  --scale-x 0.01 --scale-y 0.01 --flip-y 1 \
   --device cuda
 ```
+
+For the published MOSTA schema, prefer the audited dataset adapter. It also
+forces mouse CellChat ligand/receptor subunits that are present in the source
+data into the PCA feature mask, writes PCA/loadings/center contracts, trains a
+fresh edge predictor, and records the canonical E12.5--E15.5 model-time axis:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
+  --h5ad-path /path/to/Mouse_embryo_all_stage.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.mouse.csv \
+  --output-dir ./results/mosta_corrected_counts_alpha0015 \
+  --profile full \
+  --stage all \
+  --device cuda
+```
+
+`Mouse_embryo_all_stage.h5ad.X` is already transformed. Its authoritative raw
+UMI matrix is the singular `layers['count']`; omitting the explicit layer would
+reproduce the historical double transformation. The corrected adapter uses
+`raw count -> normalize_total(target_sum=10000) -> log1p` exactly once.
 
 This step produces:
 
@@ -118,7 +147,7 @@ python scripts/run_spatial_training.py \
   --h5ad_path /path/to/input.h5ad \
   --output_csv ./results/mosta/aligned.csv \
   --output_h5ad ./results/mosta/aligned.h5ad \
-  --train_config CytoBridge/configs/st_spatial.yaml \
+  --train_config CytoBridge/configs/mosta_spatial_full_alpha_express_0015.yaml \
   --device cuda
 ```
 

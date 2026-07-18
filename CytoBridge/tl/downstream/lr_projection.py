@@ -14,7 +14,7 @@ from .temporal import (
     PCAReconstructionSpec,
     TemporalProfileClusteringResult,
     infer_pca_center,
-    inverse_pca_states,
+    pca_reconstruction_feature_coverage,
     simplify_gene_names,
     cluster_temporal_profiles,
 )
@@ -42,23 +42,29 @@ def load_ligand_receptor_database(
     source: str | Path | pd.DataFrame,
 ) -> pd.DataFrame:
     """Read a ligand-receptor table while tolerating common column conventions."""
-    table = pd.read_csv(source) if not isinstance(source, pd.DataFrame) else source.copy()
+    table = (
+        pd.read_csv(source) if not isinstance(source, pd.DataFrame) else source.copy()
+    )
     if table.empty:
         raise ValueError("Ligand-receptor database is empty.")
     columns = list(map(str, table.columns))
     lower = {column.lower(): column for column in columns}
     ligand_candidates = ("ligand", "ligand_symbol", "source", "gene_a", "0")
     receptor_candidates = ("receptor", "receptor_symbol", "target", "gene_b", "1")
-    ligand_col = next((lower[name] for name in ligand_candidates if name in lower), None)
-    receptor_col = next((lower[name] for name in receptor_candidates if name in lower), None)
+    ligand_col = next(
+        (lower[name] for name in ligand_candidates if name in lower), None
+    )
+    receptor_col = next(
+        (lower[name] for name in receptor_candidates if name in lower), None
+    )
     if ligand_col is None or receptor_col is None:
-        usable = [column for column in columns if not column.lower().startswith("unnamed")]
+        usable = [
+            column for column in columns if not column.lower().startswith("unnamed")
+        ]
         if len(usable) >= 2:
             ligand_col, receptor_col = usable[:2]
     if ligand_col is None or receptor_col is None:
-        raise ValueError(
-            f"Could not identify ligand/receptor columns from {columns}."
-        )
+        raise ValueError(f"Could not identify ligand/receptor columns from {columns}.")
     result = table[[ligand_col, receptor_col]].rename(
         columns={ligand_col: "ligand", receptor_col: "receptor"}
     )
@@ -171,6 +177,9 @@ def _mean_expression_by_type(
     expression,
     labels: np.ndarray,
     cell_types: Sequence[str],
+    *,
+    source_space: str,
+    target_space: str,
 ) -> tuple[np.ndarray, dict[str, int]]:
     from scipy import sparse
 
@@ -182,6 +191,11 @@ def _mean_expression_by_type(
         if not mask.any():
             continue
         subset = expression[mask]
+        subset = _convert_expression_matrix_space(
+            subset,
+            source=source_space,
+            target=target_space,
+        )
         if sparse.issparse(subset):
             mean = np.asarray(subset.mean(axis=0)).reshape(-1)
         else:
@@ -190,6 +204,33 @@ def _mean_expression_by_type(
     if not np.isfinite(means).all():
         raise ValueError("Observed mean expression contains non-finite values.")
     return means, counts
+
+
+def _convert_expression_matrix_space(expression, *, source: str, target: str):
+    """Convert each cell before aggregation, preserving sparse zero entries."""
+    from scipy import sparse
+
+    if source not in {"log1p", "count"}:
+        raise ValueError("Expression source space must be 'log1p' or 'count'.")
+    if target not in {"log1p", "count"}:
+        raise ValueError("Expression target space must be 'log1p' or 'count'.")
+    if sparse.issparse(expression):
+        values = expression.astype(np.float64, copy=True)
+        if source == "count":
+            values.data = np.clip(values.data, 0.0, None)
+            if target == "log1p":
+                values.data = np.log1p(values.data)
+        elif target == "count":
+            values.data = np.clip(np.expm1(values.data), 0.0, None)
+        values.eliminate_zeros()
+        if not np.isfinite(values.data).all():
+            raise ValueError("Expression-space conversion produced non-finite values.")
+        return values
+    return _convert_expression_space(
+        np.asarray(expression),
+        source=source,
+        target=target,
+    )
 
 
 def _convert_expression_space(
@@ -212,6 +253,60 @@ def _convert_expression_space(
     if not np.isfinite(values).all():
         raise ValueError("Expression-space conversion produced non-finite values.")
     return values
+
+
+def _mean_inverse_pca_expression_by_type(
+    states: np.ndarray,
+    labels: np.ndarray,
+    cell_types: Sequence[str],
+    *,
+    spatial_dim: int,
+    loadings: np.ndarray,
+    center: np.ndarray,
+    target_space: str,
+    batch_size: int = 4096,
+) -> tuple[np.ndarray, dict[str, int]]:
+    """Inverse PCA and convert each generated cell before cell-type averaging."""
+    values = np.asarray(states, dtype=np.float32)
+    loading_values = np.asarray(loadings, dtype=np.float32)
+    center_values = np.asarray(center, dtype=np.float32).reshape(-1)
+    n_pcs = int(loading_values.shape[1])
+    if values.ndim != 2:
+        raise ValueError("states must be a two-dimensional array.")
+    if values.shape[1] < int(spatial_dim) + n_pcs:
+        raise ValueError(
+            f"states has {values.shape[1]} columns, but spatial_dim={spatial_dim} "
+            f"and {n_pcs} PCA columns are required."
+        )
+    if center_values.shape[0] != loading_values.shape[0]:
+        raise ValueError(
+            "PCA center and active loadings have different feature counts."
+        )
+    if target_space not in {"log1p", "count"}:
+        raise ValueError("target_space must be 'log1p' or 'count'.")
+
+    pcs = values[:, int(spatial_dim) : int(spatial_dim) + n_pcs]
+    means = np.zeros((len(cell_types), loading_values.shape[0]), dtype=np.float32)
+    counts: dict[str, int] = {}
+    for type_idx, cell_type in enumerate(cell_types):
+        matching = np.flatnonzero(labels == str(cell_type))
+        counts[str(cell_type)] = int(matching.size)
+        if matching.size == 0:
+            continue
+        accumulator = np.zeros(loading_values.shape[0], dtype=np.float64)
+        for start in range(0, int(matching.size), int(batch_size)):
+            indices = matching[start : start + int(batch_size)]
+            reconstructed = pcs[indices] @ loading_values.T
+            reconstructed += center_values[None, :]
+            if target_space == "count":
+                reconstructed = np.clip(np.expm1(reconstructed), 0.0, None)
+            if not np.isfinite(reconstructed).all():
+                raise ValueError(
+                    "Inverse-PCA expression conversion produced non-finite values."
+                )
+            accumulator += reconstructed.sum(axis=0)
+        means[type_idx] = (accumulator / matching.size).astype(np.float32)
+    return means, counts
 
 
 def _match_time(
@@ -304,6 +399,8 @@ def project_communication_to_lr_timecourses(
     observed_expression_space: str = "log1p",
     observed_missing_time_policy: str = "error",
     observed_time_atol: float = 1e-8,
+    pca_active_absolute_tolerance: float = 1e-12,
+    pca_active_relative_tolerance: float = 1e-7,
 ) -> LRTemporalProjectionResult:
     """Project cell-type communication into LR-pair trajectories.
 
@@ -330,9 +427,7 @@ def project_communication_to_lr_timecourses(
     if observed_expression_space not in {"log1p", "count"}:
         raise ValueError("observed_expression_space must be 'log1p' or 'count'.")
     if observed_missing_time_policy not in {"error", "generated"}:
-        raise ValueError(
-            "observed_missing_time_policy must be 'error' or 'generated'."
-        )
+        raise ValueError("observed_missing_time_policy must be 'error' or 'generated'.")
     observed_time_atol = float(observed_time_atol)
     if not np.isfinite(observed_time_atol) or observed_time_atol < 0:
         raise ValueError("observed_time_atol must be finite and non-negative.")
@@ -347,7 +442,7 @@ def project_communication_to_lr_timecourses(
     center = (
         infer_pca_center(reference_adata, layer=reference_layer)
         if pca_reconstruction is None
-        else None
+        else np.asarray(pca_reconstruction.center, dtype=np.float32)
     )
     feature_names = tuple(
         map(
@@ -359,10 +454,58 @@ def project_communication_to_lr_timecourses(
             ),
         )
     )
-    gene_name_map = simplify_gene_names(
+    full_gene_name_map = simplify_gene_names(
         feature_names,
         preferred_species_tag=preferred_species_tag,
     )
+    loadings = np.asarray(
+        (
+            reference_adata.varm[loadings_key]
+            if pca_reconstruction is None
+            else pca_reconstruction.loadings
+        ),
+        dtype=np.float32,
+    )
+    feature_coverage = pca_reconstruction_feature_coverage(
+        feature_names,
+        loadings,
+        absolute_tolerance=pca_active_absolute_tolerance,
+        relative_tolerance=pca_active_relative_tolerance,
+    )
+    active_mask = feature_coverage["active"].to_numpy(dtype=bool)
+    if not active_mask.any():
+        raise ValueError(
+            "No active PCA features remain at the requested loading tolerance; "
+            "inverse-generated LR expression cannot be scored."
+        )
+    all_feature_symbols = set(full_gene_name_map["gene_symbol"].astype(str))
+    active_feature_symbols = set(
+        full_gene_name_map.loc[active_mask, "gene_symbol"].astype(str)
+    )
+    requested_lr_symbols = {
+        token
+        for row in lr_table.itertuples(index=False)
+        for token in _complex_tokens(str(row.ligand))
+        + _complex_tokens(str(row.receptor))
+    }
+    lr_feature_mask = active_mask & full_gene_name_map["gene_symbol"].isin(
+        requested_lr_symbols
+    ).to_numpy(dtype=bool)
+    active_indices = np.flatnonzero(lr_feature_mask)
+    if not len(active_indices):
+        raise ValueError("No active PCA features overlap the ligand-receptor database.")
+    active_gene_name_map = full_gene_name_map.loc[lr_feature_mask].reset_index(
+        drop=True
+    )
+    observed_lr_feature_mask = (
+        full_gene_name_map["gene_symbol"]
+        .isin(requested_lr_symbols)
+        .to_numpy(dtype=bool)
+    )
+    observed_lr_indices = np.flatnonzero(observed_lr_feature_mask)
+    observed_gene_name_map = full_gene_name_map.loc[
+        observed_lr_feature_mask
+    ].reset_index(drop=True)
 
     resolved_observed_time_key = None
     resolved_observed_annotation_key = observed_annotation_key or annotation_key
@@ -408,6 +551,7 @@ def project_communication_to_lr_timecourses(
             _expression_matrix(observed_adata, observed_layer),
             feature_names,
         )
+        observed_expression = observed_expression[:, observed_lr_indices]
     elif observed_time_points is not None:
         raise ValueError("observed_time_points requires observed_adata.")
 
@@ -469,41 +613,56 @@ def project_communication_to_lr_timecourses(
                     observed_expression[observed_mask],
                     observed_labels,
                     cell_types,
-                )
-                expression = _convert_expression_space(
-                    expression,
-                    source=observed_expression_space,
-                    target=expression_space,
+                    source_space=observed_expression_space,
+                    target_space=expression_space,
                 )
                 expression_source = "observed"
                 n_expression_cells = int(observed_mask.sum())
 
         if expression_source == "inverse_pca":
             labels = adata_t.obs[annotation_key].astype(str).to_numpy()
-            mean_states, counts = _mean_states_by_type(states, labels, cell_types)
-            expression = inverse_pca_states(
-                reference_adata,
-                mean_states,
+            expression, counts = _mean_inverse_pca_expression_by_type(
+                states,
+                labels,
+                cell_types,
                 spatial_dim=spatial_dim,
-                loadings_key=loadings_key,
-                center=center,
-                layer=reference_layer,
-                reconstruction=pca_reconstruction,
+                loadings=loadings[active_indices],
+                center=np.asarray(center, dtype=np.float32)[active_indices],
+                target_space=expression_space,
             )
-            expression = _convert_expression_space(
-                expression,
-                source="log1p",
-                target=expression_space,
-            )
-        symbol_to_vector = _symbol_vectors(expression, gene_name_map)
+            current_gene_name_map = active_gene_name_map
+            available_symbols = active_feature_symbols
+        else:
+            current_gene_name_map = observed_gene_name_map
+            available_symbols = set(observed_gene_name_map["gene_symbol"].astype(str))
+        symbol_to_vector = _symbol_vectors(expression, current_gene_name_map)
 
         scored: dict[str, np.ndarray] = {}
         skipped_missing = 0
         partial_complexes = 0
         duplicates = 0
+        pairs_with_missing_subunit = 0
+        pairs_with_unreconstructable_subunit = 0
+        missing_subunits_seen: set[str] = set()
+        unreconstructable_subunits_seen: set[str] = set()
         for row in lr_table.itertuples(index=False):
             ligand = str(row.ligand)
             receptor = str(row.receptor)
+            requested_subunits = _complex_tokens(ligand) + _complex_tokens(receptor)
+            missing_subunits = {
+                name for name in requested_subunits if name not in all_feature_symbols
+            }
+            unreconstructable_subunits = {
+                name
+                for name in requested_subunits
+                if name in all_feature_symbols and name not in available_symbols
+            }
+            if missing_subunits:
+                pairs_with_missing_subunit += 1
+                missing_subunits_seen.update(missing_subunits)
+            if unreconstructable_subunits:
+                pairs_with_unreconstructable_subunit += 1
+                unreconstructable_subunits_seen.update(unreconstructable_subunits)
             ligand_values, ligand_missing = _combine_complex(
                 ligand,
                 symbol_to_vector,
@@ -576,6 +735,18 @@ def project_communication_to_lr_timecourses(
                 "n_lr_pairs_scored": int(len(scored)),
                 "n_skipped_missing_gene": int(skipped_missing),
                 "n_partial_complexes": int(partial_complexes),
+                "n_lr_pairs_with_missing_subunit": int(pairs_with_missing_subunit),
+                "n_lr_pairs_with_unreconstructable_subunit": int(
+                    pairs_with_unreconstructable_subunit
+                ),
+                "n_missing_subunits": int(len(missing_subunits_seen)),
+                "n_unreconstructable_subunits": int(
+                    len(unreconstructable_subunits_seen)
+                ),
+                "missing_subunits": ";".join(sorted(missing_subunits_seen)),
+                "unreconstructable_subunits": ";".join(
+                    sorted(unreconstructable_subunits_seen)
+                ),
                 "n_duplicate_pairs": int(duplicates),
                 "n_cell_types": int(len(cell_types)),
                 "n_cells": int(states.shape[0]),
@@ -583,6 +754,11 @@ def project_communication_to_lr_timecourses(
                 "expression_source": expression_source,
                 "observed_time_expected": matched_observed_time is not None,
                 "observed_missing_fallback": bool(observed_missing_fallback),
+                "n_pca_features_total": int(len(feature_coverage)),
+                "n_pca_features_active": int(active_mask.sum()),
+                "n_pca_features_inactive": int((~active_mask).sum()),
+                "n_active_lr_features": int(lr_feature_mask.sum()),
+                "n_observed_lr_features": int(observed_lr_feature_mask.sum()),
             }
         )
 
@@ -639,15 +815,29 @@ def project_communication_to_lr_timecourses(
         "profile_cluster_order": profile_cluster_order,
         "generated_expression_source_space": "log1p",
         "celltype_expression_aggregation": (
-            "expm1(cell-type mean log1p normalized expression)"
-            if expression_space == "count"
-            else "cell-type mean in source space followed by requested conversion"
+            "per-cell source-to-target conversion followed by arithmetic "
+            "cell-type mean"
         ),
         "count_space_caveat": (
-            "This is a log-space pseudobulk and is not mean raw counts."
+            "Generated values are arithmetic means of per-cell "
+            "expm1(inverse-PCA log1p estimates); they are model-derived "
+            "pseudocounts, not observed raw-count means."
             if expression_space == "count"
             else None
         ),
+        "generated_expression_feature_policy": (
+            "active retained-PCA loadings only; center-only features excluded"
+        ),
+        "pca_feature_coverage": {
+            "n_total": int(len(feature_coverage)),
+            "n_active": int(active_mask.sum()),
+            "n_inactive": int((~active_mask).sum()),
+            "n_active_lr_features": int(lr_feature_mask.sum()),
+            "n_observed_lr_features": int(observed_lr_feature_mask.sum()),
+            "loading_tolerance": float(feature_coverage["loading_tolerance"].iloc[0]),
+            "absolute_tolerance": float(pca_active_absolute_tolerance),
+            "relative_tolerance": float(pca_active_relative_tolerance),
+        },
         "pca_center_source": (
             "explicit_reconstruction"
             if pca_reconstruction is not None

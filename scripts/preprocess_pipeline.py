@@ -96,6 +96,26 @@ def _parse_spatial_obs_keys(value: Optional[str]) -> Optional[tuple[str, ...]]:
     return keys
 
 
+def _parse_required_latent_features(value: Optional[str]) -> Optional[tuple[str, ...]]:
+    """Parse a comma/newline list, JSON list, or @file feature specification."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.startswith("@"):
+        text = Path(text[1:]).expanduser().read_text(encoding="utf-8")
+    if text.lstrip().startswith("["):
+        payload = json.loads(text)
+        if not isinstance(payload, list):
+            raise ValueError("--required-latent-features JSON must be a list.")
+        values = [str(item).strip() for item in payload]
+    else:
+        values = [part.strip() for part in text.replace("\n", ",").split(",")]
+    features = tuple(dict.fromkeys(item for item in values if item))
+    return features or None
+
+
 def _interaction_expression_layer(adata) -> str:
     """Resolve the exact pre-transform source selected by pp.preprocess."""
     info = adata.uns.get("preprocess_info", {})
@@ -150,6 +170,8 @@ def run_preprocessing_pipeline(
     database_path: str = "database/CellNEST_database.csv",
     split: int = 0,
     edge_epochs: int = 100,
+    edge_train_sample_ratio_per_epoch: float = 1.0,
+    edge_max_train_edges_per_epoch: Optional[int] = None,
     batch_indices: Optional[Sequence[int]] = None,
     max_input_cells_per_timepoint: Optional[int] = None,
     strip_uns_arrays_larger_than_mb: Optional[float] = None,
@@ -232,6 +254,7 @@ def run_preprocessing_pipeline(
         counts_layer=align_config.counts_layer,
         raw_count_validation=align_config.raw_count_validation,
         raw_count_integer_tolerance=align_config.raw_count_integer_tolerance,
+        required_latent_features=align_config.required_latent_features,
     )
     adata_aligned = align_spatial(
         adata_or_h5ad=adata_preprocessed,
@@ -328,6 +351,8 @@ def run_preprocessing_pipeline(
         graph_input_dir=str(graph_input_dir),
         output_model_path=str(edge_model_path),
         epochs=edge_epochs,
+        train_sample_ratio_per_epoch=float(edge_train_sample_ratio_per_epoch),
+        max_train_edges_per_epoch=edge_max_train_edges_per_epoch,
         spatial_dim=align_config.spatial_dim,
         device=device,
         random_seed=align_config.random_seed,
@@ -376,6 +401,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--database-path", default="database/CellNEST_database.csv")
     p.add_argument("--split", type=int, default=0)
     p.add_argument("--edge-epochs", type=int, default=100)
+    p.add_argument("--edge-train-sample-ratio-per-epoch", type=float, default=1.0)
+    p.add_argument("--edge-max-train-edges-per-epoch", type=int, default=None)
     p.add_argument(
         "--edge-predictor-threshold",
         type=float,
@@ -463,6 +490,24 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--phase2-epochs", type=int, default=500)
     p.add_argument("--shared-scale", type=float, default=None)
     p.add_argument(
+        "--auto-scale-from-centered-x-max",
+        type=int,
+        choices=[0, 1],
+        default=1,
+        help="Disable (0) when scale-x/scale-y already encode the published coordinate scale.",
+    )
+    p.add_argument(
+        "--max-alignment-cells-per-timepoint",
+        type=int,
+        default=None,
+        help="Optional fit-only alignment subsample; the learned transform is still applied to all cells.",
+    )
+    p.add_argument(
+        "--required-latent-features",
+        default=None,
+        help="Comma-separated names, JSON list, or @file forced into the PCA feature mask.",
+    )
+    p.add_argument(
         "--input-spatial-key",
         default="spatial",
         help="Input AnnData obsm key containing exactly spatial-dim coordinates.",
@@ -495,6 +540,9 @@ def main() -> None:
     args = _build_parser().parse_args()
     time_mapping = _parse_time_mapping_arg(args.time_mapping)
     spatial_obs_keys = _parse_spatial_obs_keys(args.spatial_obs_keys)
+    required_latent_features = _parse_required_latent_features(
+        args.required_latent_features
+    )
     batch_indices = None
     if args.batch_indices:
         batch_indices = [
@@ -533,6 +581,7 @@ def main() -> None:
         phase1_epochs=int(args.phase1_epochs),
         phase2_epochs=int(args.phase2_epochs),
         shared_scale=args.shared_scale,
+        auto_scale_from_centered_x_max=bool(args.auto_scale_from_centered_x_max),
         center_x=bool(args.center_x),
         center_y=bool(args.center_y),
         flip_y=bool(args.flip_y),
@@ -546,6 +595,8 @@ def main() -> None:
         distance_pairs=int(args.distance_pairs),
         learning_rate=float(args.learning_rate),
         random_seed=int(args.random_seed),
+        max_cells_per_timepoint=args.max_alignment_cells_per_timepoint,
+        required_latent_features=required_latent_features,
     )
 
     run_preprocessing_pipeline(
@@ -557,6 +608,8 @@ def main() -> None:
         database_path=args.database_path,
         split=int(args.split),
         edge_epochs=int(args.edge_epochs),
+        edge_train_sample_ratio_per_epoch=float(args.edge_train_sample_ratio_per_epoch),
+        edge_max_train_edges_per_epoch=args.edge_max_train_edges_per_epoch,
         edge_predictor_threshold=args.edge_predictor_threshold,
         batch_indices=batch_indices,
         max_input_cells_per_timepoint=args.max_input_cells_per_timepoint,

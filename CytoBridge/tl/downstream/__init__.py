@@ -114,6 +114,7 @@ from .temporal import (
     inverse_pca_states,
     load_pca_reconstruction_spec,
     make_pca_reconstruction_spec,
+    pca_reconstruction_feature_coverage,
     simplify_gene_names,
     summarize_temporal_gene_patterns,
 )
@@ -213,6 +214,7 @@ __all__ = [
     "inverse_pca_states",
     "load_pca_reconstruction_spec",
     "make_pca_reconstruction_spec",
+    "pca_reconstruction_feature_coverage",
     "make_gene_set_library",
     "simplify_gene_names",
     "train_mlp_classifier",

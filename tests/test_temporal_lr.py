@@ -12,6 +12,7 @@ from CytoBridge.tl.downstream.temporal import (
     cluster_temporal_profiles,
     inverse_pca_states,
     load_pca_reconstruction_spec,
+    pca_reconstruction_feature_coverage,
     simplify_gene_names,
     summarize_temporal_gene_patterns,
 )
@@ -209,9 +210,8 @@ def test_temporal_gene_and_lr_projection() -> None:
         "inverse_pca",
         "inverse_pca",
     ]
-    expected_t0 = np.expm1(1.05) * (
-        np.expm1(2.1) + 0.5 * np.expm1(2.0)
-    )
+    mean_ligand = np.mean(np.expm1([1.0, 1.1]))
+    expected_t0 = mean_ligand * (np.expm1(2.1) + 0.5 * np.expm1(2.0))
     score_t0 = lr_result.pair_timecourse.set_index("time").loc[0.0, "score"]
     assert score_t0 == pytest.approx(expected_t0)
     assert lr_result.settings["observed_expression"] is None
@@ -341,3 +341,152 @@ def test_hybrid_lr_projection_rejects_missing_reconstruction_genes() -> None:
             observed_annotation_key="cell_type",
             observed_layer="counts",
         )
+
+
+def test_pca_feature_coverage_and_temporal_summary_exclude_center_only_genes() -> None:
+    reference = _reference_adata()
+    reference.varm["PCs"][2] = [0.0, 1e-10]
+    coverage = pca_reconstruction_feature_coverage(
+        reference.var_names,
+        reference.varm["PCs"],
+    )
+    assert coverage["active"].tolist() == [True, True, False]
+    assert coverage.loc[2, "max_abs_loading"] == pytest.approx(1e-10)
+
+    result = summarize_temporal_gene_patterns(
+        _trajectory_slices(),
+        reference,
+        n_top_genes=2,
+        n_clusters=1,
+    )
+    assert result.expression.shape == (2, 3)
+    assert "G3" not in result.expression.index
+    assert result.gene_name_map["pca_active"].all()
+    assert result.settings["pca_features_inactive"] == 1
+
+
+def _count_aggregation_fixture():
+    reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
+    reference.var_names = ["Lig", "Rec"]
+    reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+
+    log_states = np.asarray(
+        [
+            [0.0, 0.0],
+            [np.log1p(8.0), 0.0],
+            [0.0, 0.0],
+            [0.0, np.log1p(6.0)],
+        ],
+        dtype=np.float32,
+    )
+    slices = {}
+    communications = {}
+    for time in (0.0, 1.0):
+        current = ad.AnnData(
+            X=np.column_stack((np.zeros((4, 2), dtype=np.float32), log_states))
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+
+    observed = ad.AnnData(X=np.vstack([log_states, log_states]))
+    observed.var_names = reference.var_names.copy()
+    observed.obs["time"] = [0.0] * 4 + [1.0] * 4
+    observed.obs["Annotation"] = ["A", "A", "B", "B"] * 2
+    return reference, slices, communications, observed
+
+
+def test_count_space_converts_each_cell_before_arithmetic_celltype_mean() -> None:
+    reference, slices, communications, observed = _count_aggregation_fixture()
+    database = pd.DataFrame({"ligand": ["Lig"], "receptor": ["Rec"]})
+    generated = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        expression_space="count",
+    )
+    observed_result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        expression_space="count",
+        observed_adata=observed,
+        observed_time_key="time",
+        observed_expression_space="log1p",
+    )
+
+    # mean([0, 8]) * mean([0, 6]) = 4 * 3, not
+    # expm1(mean(log1p(.))) * expm1(mean(log1p(.))).
+    np.testing.assert_allclose(generated.pair_timecourse["score"], [12.0, 12.0])
+    np.testing.assert_allclose(
+        observed_result.pair_timecourse["score"],
+        generated.pair_timecourse["score"],
+    )
+    assert (
+        generated.settings["celltype_expression_aggregation"]
+        == "per-cell source-to-target conversion followed by arithmetic cell-type mean"
+    )
+
+
+def test_strict_lr_complex_reports_missing_and_center_only_subunits() -> None:
+    reference = ad.AnnData(X=np.ones((2, 3), dtype=np.float32))
+    reference.var_names = ["Wnt3a", "Fzd7", "CenterOnly"]
+    reference.varm["PCs"] = np.asarray(
+        [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+        dtype=np.float32,
+    )
+    reference.var["pca_center"] = [1.0, 1.0, 10.0]
+    slices = {}
+    communications = {}
+    for time in (0.0, 1.0):
+        current = ad.AnnData(
+            X=np.asarray(
+                [
+                    [0.0, 0.0, 0.1, 0.0],
+                    [0.0, 0.0, 0.2, 0.0],
+                    [0.0, 0.0, 0.0, 0.1],
+                    [0.0, 0.0, 0.0, 0.2],
+                ],
+                dtype=np.float32,
+            )
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame(
+            {
+                "ligand": ["Wnt3a", "Wnt3a", "Wnt3a"],
+                "receptor": ["Fzd7", "Fzd7_Lrp6", "Fzd7_CenterOnly"],
+            }
+        ),
+        n_clusters=1,
+        require_all_subunits=True,
+    )
+    assert result.pair_timecourse["pair"].unique().tolist() == ["Wnt3a_Fzd7"]
+    assert result.coverage["n_lr_pairs_scored"].tolist() == [1, 1]
+    assert result.coverage["n_lr_pairs_with_unreconstructable_subunit"].tolist() == [
+        1,
+        1,
+    ]
+    assert result.coverage["unreconstructable_subunits"].tolist() == [
+        "CenterOnly",
+        "CenterOnly",
+    ]
+    assert result.coverage["n_lr_pairs_with_missing_subunit"].tolist() == [1, 1]
+    assert result.coverage["missing_subunits"].tolist() == ["Lrp6", "Lrp6"]
+    assert result.coverage["n_pca_features_inactive"].tolist() == [1, 1]

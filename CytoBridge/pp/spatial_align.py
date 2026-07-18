@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from scipy.spatial import distance
 
 from .preprocess import preprocess
+
 try:
     from tqdm.auto import tqdm
 except ImportError:  # pragma: no cover
@@ -69,6 +70,11 @@ class AlignConfig:
     # obsm entry or obs coordinate columns explicitly.
     input_spatial_key: str = "spatial"
     spatial_obs_keys: Optional[Tuple[str, ...]] = None
+    # Dataset adapters may force biologically required features (for example,
+    # ligand/receptor complex subunits) into the PCA feature mask in addition
+    # to the statistically selected HVGs.  Keeping this in the generic config
+    # avoids hard-coding dataset gene names in package internals.
+    required_latent_features: Optional[Tuple[str, ...]] = None
 
 
 def _h5ad_uns_safe(value, *, path: str = "config"):
@@ -138,7 +144,9 @@ def _scale_spatial_coords(
 
     # Validation: check dimension matches config
     if spatial_coords.shape[1] != cfg.spatial_dim:
-        print(f"Warning: Data has {spatial_coords.shape[1]} spatial dimensions, but config expects {cfg.spatial_dim}.")
+        print(
+            f"Warning: Data has {spatial_coords.shape[1]} spatial dimensions, but config expects {cfg.spatial_dim}."
+        )
 
     # Apply X scaling
     if cfg.spatial_dim >= 1:
@@ -150,7 +158,7 @@ def _scale_spatial_coords(
         spatial_coords[:, 0] = spatial_coords[:, 0] * cfg.scale_x
         if shared_scale_base is not None and shared_scale_base > 0:
             spatial_coords[:, 0] = spatial_coords[:, 0] / shared_scale_base
-        
+
     # Apply Y scaling
     if cfg.spatial_dim >= 2:
         if cfg.center_y:
@@ -163,7 +171,7 @@ def _scale_spatial_coords(
             spatial_coords[:, 1] = spatial_coords[:, 1] / shared_scale_base
         if cfg.flip_y:
             spatial_coords[:, 1] = -spatial_coords[:, 1]
-            
+
     # Apply Z scaling
     if cfg.spatial_dim >= 3:
         if cfg.center_z:
@@ -224,19 +232,27 @@ def _distance_preservation_loss(spatial_original, spatial_transformed, n_pairs: 
     i = torch.randint(0, num_points, (n_pairs,), device=spatial_original.device)
     j = torch.randint(0, num_points, (n_pairs,), device=spatial_original.device)
     d_ij_original = torch.norm(spatial_original[i] - spatial_original[j], dim=1)
-    d_ij_transformed = torch.norm(spatial_transformed[i] - spatial_transformed[j], dim=1)
+    d_ij_transformed = torch.norm(
+        spatial_transformed[i] - spatial_transformed[j], dim=1
+    )
     return F.mse_loss(d_ij_transformed, d_ij_original)
 
 
-def _compute_cost_matrix(spatial0, feature0, spatial1, feature1, alpha: float, beta: float):
+def _compute_cost_matrix(
+    spatial0, feature0, spatial1, feature1, alpha: float, beta: float
+):
     spatial_dist = torch.cdist(spatial0, spatial1, p=2)
     feature_dist = torch.cdist(feature0, feature1, p=2)
     return alpha * spatial_dist + beta * feature_dist
 
 
-def _ot_loss_mini_batch(spatial0, feature0, spatial1, feature1, batch_size, alpha, beta, device):
+def _ot_loss_mini_batch(
+    spatial0, feature0, spatial1, feature1, batch_size, alpha, beta, device
+):
     if ot is None:
-        raise ImportError("POT (ot) is required for spatial alignment.") from _OT_IMPORT_ERROR
+        raise ImportError(
+            "POT (ot) is required for spatial alignment."
+        ) from _OT_IMPORT_ERROR
     n0 = spatial0.shape[0]
     n1 = spatial1.shape[0]
     indices0 = np.random.choice(n0, min(batch_size, n0), replace=False)
@@ -245,10 +261,16 @@ def _ot_loss_mini_batch(spatial0, feature0, spatial1, feature1, batch_size, alph
     feature0_batch = feature0[indices0]
     spatial1_batch = spatial1[indices1]
     feature1_batch = feature1[indices1]
-    cost_matrix = _compute_cost_matrix(spatial0_batch, feature0_batch, spatial1_batch, feature1_batch, alpha, beta)
+    cost_matrix = _compute_cost_matrix(
+        spatial0_batch, feature0_batch, spatial1_batch, feature1_batch, alpha, beta
+    )
     a = torch.ones(len(spatial0_batch), device=device) / len(spatial0_batch)
     b = torch.ones(len(spatial1_batch), device=device) / len(spatial1_batch)
-    pi = ot.emd(a.detach().cpu().numpy(), b.detach().cpu().numpy(), cost_matrix.detach().cpu().numpy())
+    pi = ot.emd(
+        a.detach().cpu().numpy(),
+        b.detach().cpu().numpy(),
+        cost_matrix.detach().cpu().numpy(),
+    )
     pi = torch.tensor(pi, dtype=torch.float32, device=device)
     return torch.sum(pi * cost_matrix)
 
@@ -375,7 +397,9 @@ def _align_preprocessed_adata(
     )
     if verbose and shared_scale_base is not None:
         if cfg.shared_scale is not None:
-            print(f"[align_spatial] shared_scale override: shared_base={shared_scale_base:.6f}")
+            print(
+                f"[align_spatial] shared_scale override: shared_base={shared_scale_base:.6f}"
+            )
         else:
             print(
                 "[align_spatial] auto-scale: "
@@ -401,26 +425,44 @@ def _align_preprocessed_adata(
     latent_all = np.asarray(adata.obsm["X_latent"])
     latent_dim = int(latent_all.shape[1])
     for batch in batch_names:
-        idx = np.flatnonzero(batch_masks[batch])
-        if idx.size == 0:
+        full_idx = np.flatnonzero(batch_masks[batch])
+        if full_idx.size == 0:
             continue
-        spatial_t = np.asarray(spatial_all[idx])
-        features_t = np.asarray(latent_all[idx])
-        if cfg.max_cells_per_timepoint is not None and spatial_t.shape[0] > cfg.max_cells_per_timepoint:
-            sampled = np.random.choice(idx.shape[0], cfg.max_cells_per_timepoint, replace=False)
-            idx = idx[sampled]
-            spatial_t = spatial_t[sampled]
-            features_t = features_t[sampled]
-        time_value = float(pd.to_numeric(adata.obs["time_point_processed"].iloc[idx], errors="raise").iloc[0])
-        input_t = torch.empty((spatial_t.shape[0], cfg.spatial_dim + latent_dim + 1), dtype=torch.float32, device=device)
-        input_t[:, :cfg.spatial_dim] = torch.from_numpy(spatial_t).to(device=device, dtype=torch.float32)
-        input_t[:, cfg.spatial_dim:cfg.spatial_dim + latent_dim] = torch.from_numpy(features_t).to(
+        train_idx = full_idx
+        if (
+            cfg.max_cells_per_timepoint is not None
+            and full_idx.shape[0] > cfg.max_cells_per_timepoint
+        ):
+            sampled = np.random.choice(
+                full_idx.shape[0], cfg.max_cells_per_timepoint, replace=False
+            )
+            train_idx = full_idx[sampled]
+        spatial_t = np.asarray(spatial_all[train_idx])
+        features_t = np.asarray(latent_all[train_idx])
+        time_value = float(
+            pd.to_numeric(
+                adata.obs["time_point_processed"].iloc[full_idx], errors="raise"
+            ).iloc[0]
+        )
+        input_t = torch.empty(
+            (spatial_t.shape[0], cfg.spatial_dim + latent_dim + 1),
+            dtype=torch.float32,
+            device=device,
+        )
+        input_t[:, : cfg.spatial_dim] = torch.from_numpy(spatial_t).to(
+            device=device, dtype=torch.float32
+        )
+        input_t[:, cfg.spatial_dim : cfg.spatial_dim + latent_dim] = torch.from_numpy(
+            features_t
+        ).to(
             device=device,
             dtype=torch.float32,
         )
         input_t[:, cfg.spatial_dim + latent_dim] = float(time_value)
         input_list.append(input_t)
-        batch_rows.append((batch, idx, time_value))
+        # Alignment parameters may be fitted on a bounded deterministic subset,
+        # but the learned transform is always applied to every selected cell.
+        batch_rows.append((batch, full_idx, time_value))
 
     if not input_list:
         raise ValueError("No cells available for alignment after batch filtering.")
@@ -428,8 +470,12 @@ def _align_preprocessed_adata(
     input_dim = input_list[0].shape[1]
     net = CoordTransformer(input_dim, output_dim=cfg.spatial_dim).to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=cfg.learning_rate)
-    phase1_log_every = log_every if log_every is not None else max(1, cfg.phase1_epochs // 20)
-    phase2_log_every = log_every if log_every is not None else max(1, cfg.phase2_epochs // 20)
+    phase1_log_every = (
+        log_every if log_every is not None else max(1, cfg.phase1_epochs // 20)
+    )
+    phase2_log_every = (
+        log_every if log_every is not None else max(1, cfg.phase2_epochs // 20)
+    )
     if verbose:
         print(
             f"[align_spatial] phase1 (reconstruction): epochs={cfg.phase1_epochs}, "
@@ -447,14 +493,16 @@ def _align_preprocessed_adata(
         )
         phase1_iter = phase1_bar
     elif verbose and tqdm is None:
-        print("[align_spatial] tqdm not installed; falling back to periodic print logs.")
+        print(
+            "[align_spatial] tqdm not installed; falling back to periodic print logs."
+        )
 
     for epoch in phase1_iter:
         optimizer.zero_grad()
         total_mse = 0
         for t in range(len(input_list)):
             x_prime_t = net(input_list[t])
-            spatial_target = input_list[t][:, :cfg.spatial_dim]
+            spatial_target = input_list[t][:, : cfg.spatial_dim]
             mse_t = nn.MSELoss()(x_prime_t, spatial_target)
             total_mse += mse_t
         loss = total_mse
@@ -497,7 +545,9 @@ def _align_preprocessed_adata(
         optimizer.zero_grad()
         x_prime_list = [net(input_t) for input_t in input_list]
         local_losses = [
-            _distance_preservation_loss(input_list[t][:, :cfg.spatial_dim], x_prime_list[t], cfg.distance_pairs)
+            _distance_preservation_loss(
+                input_list[t][:, : cfg.spatial_dim], x_prime_list[t], cfg.distance_pairs
+            )
             for t in range(len(input_list))
         ]
         total_local_loss = sum(local_losses)
@@ -505,9 +555,9 @@ def _align_preprocessed_adata(
         for t in range(len(input_list) - 1):
             ot_loss_t = _ot_loss_mini_batch(
                 x_prime_list[t],
-                input_list[t][:, cfg.spatial_dim:cfg.spatial_dim + latent_dim],
+                input_list[t][:, cfg.spatial_dim : cfg.spatial_dim + latent_dim],
                 x_prime_list[t + 1],
-                input_list[t + 1][:, cfg.spatial_dim:cfg.spatial_dim + latent_dim],
+                input_list[t + 1][:, cfg.spatial_dim : cfg.spatial_dim + latent_dim],
                 cfg.batch_size,
                 cfg.alpha,
                 cfg.beta,
@@ -546,25 +596,37 @@ def _align_preprocessed_adata(
         phase2_bar.close()
 
     total_rows = int(sum(len(rows) for _, rows, _ in batch_rows))
-    combined_data = np.empty((total_rows, 1 + cfg.spatial_dim + latent_dim), dtype=np.float32)
+    combined_data = np.empty(
+        (total_rows, 1 + cfg.spatial_dim + latent_dim), dtype=np.float32
+    )
     aligned_full = np.zeros((adata.shape[0], cfg.spatial_dim), dtype=np.float32)
     cursor = 0
     for _batch, rows, time_value in batch_rows:
         spatial_full = np.asarray(spatial_all[rows], dtype=np.float32)
         features_full = np.asarray(latent_all[rows], dtype=np.float32)
-        x_prime_full = np.empty((spatial_full.shape[0], cfg.spatial_dim), dtype=np.float32)
+        x_prime_full = np.empty(
+            (spatial_full.shape[0], cfg.spatial_dim), dtype=np.float32
+        )
         with torch.no_grad():
             for start in range(0, spatial_full.shape[0], cfg.output_chunk_size):
                 end = min(start + cfg.output_chunk_size, spatial_full.shape[0])
-                spatial_chunk = torch.from_numpy(spatial_full[start:end]).float().to(device)
-                feature_chunk = torch.from_numpy(features_full[start:end]).float().to(device)
-                time_chunk = time_value * torch.ones((spatial_chunk.shape[0], 1), device=device)
-                input_chunk = torch.cat((spatial_chunk, feature_chunk, time_chunk), dim=1)
+                spatial_chunk = (
+                    torch.from_numpy(spatial_full[start:end]).float().to(device)
+                )
+                feature_chunk = (
+                    torch.from_numpy(features_full[start:end]).float().to(device)
+                )
+                time_chunk = time_value * torch.ones(
+                    (spatial_chunk.shape[0], 1), device=device
+                )
+                input_chunk = torch.cat(
+                    (spatial_chunk, feature_chunk, time_chunk), dim=1
+                )
                 x_prime_full[start:end] = net(input_chunk).cpu().numpy()
         n_rows = x_prime_full.shape[0]
-        combined_data[cursor:cursor + n_rows, 0] = float(time_value)
-        combined_data[cursor:cursor + n_rows, 1:1 + cfg.spatial_dim] = x_prime_full
-        combined_data[cursor:cursor + n_rows, 1 + cfg.spatial_dim:] = features_full
+        combined_data[cursor : cursor + n_rows, 0] = float(time_value)
+        combined_data[cursor : cursor + n_rows, 1 : 1 + cfg.spatial_dim] = x_prime_full
+        combined_data[cursor : cursor + n_rows, 1 + cfg.spatial_dim :] = features_full
         cursor += n_rows
         aligned_full[rows] = x_prime_full
 
@@ -626,6 +688,7 @@ def preprocess_and_align(
         counts_layer=cfg.counts_layer,
         raw_count_validation=cfg.raw_count_validation,
         raw_count_integer_tolerance=cfg.raw_count_integer_tolerance,
+        required_latent_features=cfg.required_latent_features,
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,

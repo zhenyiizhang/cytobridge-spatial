@@ -6,7 +6,7 @@ import logging
 import json
 import re
 from collections.abc import Mapping
-from typing import Optional, Dict
+from typing import Optional, Dict, Sequence
 from scipy import sparse
 
 _TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
@@ -53,7 +53,9 @@ def _detect_x_state_against_counts(
         "comparison": "unavailable",
     }
     if counts_layer not in adata.layers:
-        if "log1p" in adata.uns or bool(adata.uns.get("preprocess_info", {}).get("log1p", False)):
+        if "log1p" in adata.uns or bool(
+            adata.uns.get("preprocess_info", {}).get("log1p", False)
+        ):
             result["state"] = "transformed_from_metadata"
         return result
 
@@ -100,11 +102,19 @@ def _detect_x_state_against_counts(
         }
     )
     relation_threshold = 0.9999
-    if support_match_fraction >= relation_threshold and raw_stats["fraction_close"] >= relation_threshold:
+    if (
+        support_match_fraction >= relation_threshold
+        and raw_stats["fraction_close"] >= relation_threshold
+    ):
         result["state"] = "near_raw_counts"
-    elif support_match_fraction >= relation_threshold and log_stats["fraction_close"] >= relation_threshold:
+    elif (
+        support_match_fraction >= relation_threshold
+        and log_stats["fraction_close"] >= relation_threshold
+    ):
         result["state"] = "near_log1p_of_counts"
-    elif "log1p" in adata.uns or bool(adata.uns.get("preprocess_info", {}).get("log1p", False)):
+    elif "log1p" in adata.uns or bool(
+        adata.uns.get("preprocess_info", {}).get("log1p", False)
+    ):
         result["state"] = "transformed_from_metadata"
     return result
 
@@ -264,7 +274,9 @@ def _resolved_time_mapping(
         if observed in time_mapping:
             target = time_mapping[observed]
         else:
-            string_matches = [value for key, value in mapping_items if str(key) == str(observed)]
+            string_matches = [
+                value for key, value in mapping_items if str(key) == str(observed)
+            ]
             if len(string_matches) == 1:
                 target = string_matches[0]
             elif len(string_matches) > 1:
@@ -335,7 +347,7 @@ def preprocess(
     adata: AnnData,
     time_key: str,
     n_top_genes: int = 2000,
-    dim_reduction: str = 'pca',
+    dim_reduction: str = "pca",
     n_pcs: int = 50,
     time_mapping: Optional[Dict[object, float]] = None,
     normalization: bool = True,
@@ -347,6 +359,7 @@ def preprocess(
     counts_layer: str = "counts",
     raw_count_validation: str = "auto",
     raw_count_integer_tolerance: float = 1e-6,
+    required_latent_features: Optional[Sequence[str]] = None,
 ) -> AnnData:
     """
     Preprocess step for dynamical optimal transport analysis.
@@ -411,6 +424,11 @@ def preprocess(
         non-negative checks.
     raw_count_integer_tolerance
         Absolute tolerance used by strict integer-like validation.
+    required_latent_features
+        Optional feature names that must participate in the PCA fit in
+        addition to the statistically selected HVGs.  This is intended for
+        dataset adapters that need reconstructable marker or ligand/receptor
+        genes. Missing names raise instead of being silently ignored.
     Returns
     -------
     AnnData
@@ -446,7 +464,7 @@ def preprocess(
     unique_times = adata.obs[time_key].unique()
 
     # The processed time key is current hard-coded for convenience
-    time_key_added = 'time_point_processed'
+    time_key_added = "time_point_processed"
     if time_mapping is not None:
         print(f"Using user-provided time mapping.")
         if not isinstance(time_mapping, Mapping):
@@ -466,7 +484,9 @@ def preprocess(
         print(f"Automatically generated time mapping: {auto_mapping}")
         # Apply the automatic mapping
         adata.obs[time_key_added] = adata.obs[time_key].map(auto_mapping).astype(float)
-        resolved_time_mapping = {key: float(value) for key, value in auto_mapping.items()}
+        resolved_time_mapping = {
+            key: float(value) for key, value in auto_mapping.items()
+        }
         time_mapping_source = "automatic"
 
     print(f"Numerical time points stored in `adata.obs['{time_key_added}']`.")
@@ -475,7 +495,9 @@ def preprocess(
     input_x_state = _detect_x_state_against_counts(adata, counts_layer=counts_layer)
     preexisting_log1p_marker = "log1p" in adata.uns
     counts_layer_origin = (
-        "existing" if counts_layer in adata.layers else "synthesized_from_selected_expression"
+        "existing"
+        if counts_layer in adata.layers
+        else "synthesized_from_selected_expression"
     )
     expression_source = "X"
     if expression_layer is not None:
@@ -495,7 +517,8 @@ def preprocess(
         print(f"Using {expression_source} as the expression input for preprocessing.")
     elif (
         (normalization or log1p)
-        and input_x_state["state"] in {"near_log1p_of_counts", "transformed_from_metadata"}
+        and input_x_state["state"]
+        in {"near_log1p_of_counts", "transformed_from_metadata"}
         and not allow_retransform_preprocessed_x
     ):
         raise ValueError(
@@ -513,7 +536,9 @@ def preprocess(
     # The explicitly selected layer is authoritative for both preprocessing and
     # interaction-graph construction. This prevents a stale layers['counts']
     # from silently feeding the graph while another layer feeds the model.
-    resolved_counts_layer = expression_layer if expression_layer is not None else counts_layer
+    resolved_counts_layer = (
+        expression_layer if expression_layer is not None else counts_layer
+    )
 
     strict_raw_count_check = raw_count_validation == "strict" or (
         raw_count_validation == "auto"
@@ -530,22 +555,47 @@ def preprocess(
 
     selected_expression_stats = _matrix_value_stats(adata.X)
     if not selected_expression_stats["all_finite"]:
-        raise ValueError(f"Expression source {expression_source} contains non-finite values.")
+        raise ValueError(
+            f"Expression source {expression_source} contains non-finite values."
+        )
     if normalization and not selected_expression_stats["nonnegative"]:
         raise ValueError(
             f"Expression source {expression_source} contains negative values and cannot be "
             "used with normalize_total."
         )
 
+    resolved_normalization_target_sum = None
     if normalization:
         if normalization_target_sum is not None:
             normalization_target_sum = float(normalization_target_sum)
-            if not np.isfinite(normalization_target_sum) or normalization_target_sum <= 0:
+            if (
+                not np.isfinite(normalization_target_sum)
+                or normalization_target_sum <= 0
+            ):
                 raise ValueError(
                     "normalization_target_sum must be a positive finite value or None, "
                     f"got {normalization_target_sum}."
                 )
-        target_label = "median library size" if normalization_target_sum is None else normalization_target_sum
+        if normalization_target_sum is None:
+            if sparse.issparse(adata.X):
+                library_sizes = np.asarray(adata.X.sum(axis=1)).reshape(-1)
+            else:
+                library_sizes = np.asarray(adata.X, dtype=np.float64).sum(axis=1)
+            positive_library_sizes = library_sizes[
+                np.isfinite(library_sizes) & (library_sizes > 0)
+            ]
+            if positive_library_sizes.size == 0:
+                raise ValueError(
+                    "Cannot resolve median normalization target because all library sizes are zero."
+                )
+            resolved_normalization_target_sum = float(np.median(positive_library_sizes))
+        else:
+            resolved_normalization_target_sum = float(normalization_target_sum)
+        target_label = (
+            "median library size"
+            if normalization_target_sum is None
+            else normalization_target_sum
+        )
         print(f"Normalizing total counts to {target_label}.")
         sc.pp.normalize_total(adata, target_sum=normalization_target_sum)
 
@@ -554,6 +604,10 @@ def preprocess(
 
     # Record the HVG mask (for later storage in original_gene_info)
     hvg_mask = None
+    required_latent_features_requested = tuple(
+        dict.fromkeys(str(name) for name in (required_latent_features or ()))
+    )
+    required_latent_features_added: list[str] = []
     if select_hvg:
         print(f"Selecting top {n_top_genes} highly variable genes.")
         sc.pp.highly_variable_genes(
@@ -561,7 +615,42 @@ def preprocess(
             n_top_genes=n_top_genes,
         )
         hvg_mask = adata.var.highly_variable.copy()
-        print(f"HVG marked: {int(np.sum(hvg_mask.values))} genes (no subsetting of adata.X).")
+        if required_latent_features_requested:
+            feature_index = pd.Index(adata.var_names.astype(str))
+            missing_required = [
+                name
+                for name in required_latent_features_requested
+                if name not in feature_index
+            ]
+            if missing_required:
+                raise KeyError(
+                    "required_latent_features contains names absent from adata.var_names; "
+                    f"missing_count={len(missing_required)}, examples={missing_required[:10]}."
+                )
+            required_positions = feature_index.get_indexer(
+                required_latent_features_requested
+            )
+            previous_mask = hvg_mask.to_numpy(dtype=bool, copy=True)
+            final_mask = previous_mask.copy()
+            final_mask[required_positions] = True
+            adata.var["highly_variable"] = final_mask
+            hvg_mask = adata.var["highly_variable"].copy()
+            required_latent_features_added = [
+                name
+                for name, position in zip(
+                    required_latent_features_requested, required_positions
+                )
+                if not previous_mask[int(position)]
+            ]
+        print(
+            f"PCA feature mask: {int(np.sum(hvg_mask.values))} genes "
+            f"({len(required_latent_features_added)} required features added; "
+            "no subsetting of adata.X)."
+        )
+    elif required_latent_features_requested:
+        raise ValueError(
+            "required_latent_features is only meaningful when select_hvg=True."
+        )
 
     # Persist the exact feature-wise center of the matrix used to fit PCA.
     # Spatial alignment may subsequently retain only a subset of time points;
@@ -573,7 +662,9 @@ def preprocess(
         else:
             pca_center = np.asarray(adata.X, dtype=np.float64).mean(axis=0)
         if pca_center.shape[0] != adata.n_vars or not np.isfinite(pca_center).all():
-            raise ValueError("Could not persist a finite PCA fit center for every feature.")
+            raise ValueError(
+                "Could not persist a finite PCA fit center for every feature."
+            )
         adata.var["pca_center"] = pca_center.astype(np.float32, copy=False)
         adata.uns["pca_center_info"] = {
             "var_key": "pca_center",
@@ -584,82 +675,100 @@ def preprocess(
 
     # --- Dimension Reduction ---
     # ---------- : PCA | UMAP | none ----------
-    if dim_reduction_name == 'pca':
+    if dim_reduction_name == "pca":
         sc.pp.pca(
             adata,
             n_comps=n_pcs,
-            svd_solver='arpack',
+            svd_solver="arpack",
             use_highly_variable=bool(select_hvg),
         )
-        adata.obsm['X_latent'] = np.asarray(adata.obsm['X_pca'], dtype=np.float32)
+        adata.obsm["X_latent"] = np.asarray(adata.obsm["X_pca"], dtype=np.float32)
 
-    elif dim_reduction_name == 'umap':
+    elif dim_reduction_name == "umap":
         sc.pp.pca(
             adata,
             n_comps=n_pcs,
-            svd_solver='arpack',
+            svd_solver="arpack",
             use_highly_variable=bool(select_hvg),
         )
         sc.pp.neighbors(adata, n_pcs=n_pcs)
         sc.tl.umap(adata)
-        adata.obsm['X_latent'] = np.asarray(adata.obsm['X_umap'], dtype=np.float32)
+        adata.obsm["X_latent"] = np.asarray(adata.obsm["X_umap"], dtype=np.float32)
 
-    elif dim_reduction_name == 'none':
+    elif dim_reduction_name == "none":
         # Convert to dense float array so downstream torch.tensor(...) is safe.
         if hasattr(adata.X, "toarray"):
-            adata.obsm['X_latent'] = adata.X.toarray().astype(np.float32)
+            adata.obsm["X_latent"] = adata.X.toarray().astype(np.float32)
         else:
-            adata.obsm['X_latent'] = np.asarray(adata.X, dtype=np.float32)
+            adata.obsm["X_latent"] = np.asarray(adata.X, dtype=np.float32)
         print("Dimension reduction set to 'none'.")
 
     # Store preprocessing provenance in-place.
     preprocess_info = {
-        'time_key': time_key,
-        'time_key_added': time_key_added,
-        'normalization': bool(normalization),
-        'normalization_target_sum': (
-            float(normalization_target_sum) if normalization_target_sum is not None else 'median'
+        "time_key": time_key,
+        "time_key_added": time_key_added,
+        "normalization": bool(normalization),
+        "normalization_target_sum": (
+            float(normalization_target_sum)
+            if normalization_target_sum is not None
+            else "median"
         ),
-        'log1p': bool(log1p),
-        'select_hvg': bool(select_hvg),
-        'n_top_genes': int(n_top_genes),
-        'dim_reduction': dim_reduction_name,
-        'n_pcs': int(n_pcs),
-        'hvg_for_latent_only': bool(select_hvg),
-        'x_representation': 'gene_expression',
-        'expression_source': expression_source,
-        'expression_layer': expression_layer if expression_layer is not None else 'none',
-        'input_x_state_detected': input_x_state,
-        'counts_layer_origin': counts_layer_origin,
-        'raw_counts_layer': resolved_counts_layer,
-        'counts_compatibility_layer': counts_layer,
-        'raw_count_validation_requested': raw_count_validation,
-        'raw_count_validation_effective': 'strict' if strict_raw_count_check else 'basic',
-        'raw_count_integer_tolerance': float(raw_count_integer_tolerance),
-        'raw_count_validation_stats': raw_count_stats if raw_count_stats is not None else 'not_run',
-        'preexisting_log1p_marker': bool(preexisting_log1p_marker),
-        'allow_retransform_preprocessed_x': bool(allow_retransform_preprocessed_x),
-        'selected_expression_stats': selected_expression_stats,
-        'transformation_sequence': [
+        "normalization_target_sum_resolved": (
+            float(resolved_normalization_target_sum)
+            if resolved_normalization_target_sum is not None
+            else "not_applied"
+        ),
+        "log1p": bool(log1p),
+        "select_hvg": bool(select_hvg),
+        "n_top_genes": int(n_top_genes),
+        "dim_reduction": dim_reduction_name,
+        "n_pcs": int(n_pcs),
+        "hvg_for_latent_only": bool(select_hvg),
+        "required_latent_features_requested": list(required_latent_features_requested),
+        "required_latent_features_added": list(required_latent_features_added),
+        "n_latent_fit_features": (
+            int(np.sum(hvg_mask.values)) if hvg_mask is not None else int(adata.n_vars)
+        ),
+        "x_representation": "gene_expression",
+        "expression_source": expression_source,
+        "expression_layer": expression_layer
+        if expression_layer is not None
+        else "none",
+        "input_x_state_detected": input_x_state,
+        "counts_layer_origin": counts_layer_origin,
+        "raw_counts_layer": resolved_counts_layer,
+        "counts_compatibility_layer": counts_layer,
+        "raw_count_validation_requested": raw_count_validation,
+        "raw_count_validation_effective": "strict"
+        if strict_raw_count_check
+        else "basic",
+        "raw_count_integer_tolerance": float(raw_count_integer_tolerance),
+        "raw_count_validation_stats": raw_count_stats
+        if raw_count_stats is not None
+        else "not_run",
+        "preexisting_log1p_marker": bool(preexisting_log1p_marker),
+        "allow_retransform_preprocessed_x": bool(allow_retransform_preprocessed_x),
+        "selected_expression_stats": selected_expression_stats,
+        "transformation_sequence": [
             step
             for step, enabled in (("normalize_total", normalization), ("log1p", log1p))
             if enabled
         ],
-        'latent_key': 'X_latent',
-        'counts_layer': resolved_counts_layer,
-        'time_mapping_source': time_mapping_source,
-        'time_mapping_json': _time_mapping_json(resolved_time_mapping),
+        "latent_key": "X_latent",
+        "counts_layer": resolved_counts_layer,
+        "time_mapping_source": time_mapping_source,
+        "time_mapping_json": _time_mapping_json(resolved_time_mapping),
     }
-    adata.uns['preprocess_info'] = preprocess_info
+    adata.uns["preprocess_info"] = preprocess_info
     original_gene_info = {
-        'var': adata.var.copy(deep=True),
-        'var_names': adata.var_names.tolist(),
-        'X_shape': np.array(adata.X.shape),
-        'select_hvg': select_hvg,
+        "var": adata.var.copy(deep=True),
+        "var_names": adata.var_names.tolist(),
+        "X_shape": np.array(adata.X.shape),
+        "select_hvg": select_hvg,
     }
     if hvg_mask is not None:
-        original_gene_info['hvg_mask'] = hvg_mask.values.astype(bool)
-    adata.uns['original_gene_info'] = original_gene_info
+        original_gene_info["hvg_mask"] = hvg_mask.values.astype(bool)
+    adata.uns["original_gene_info"] = original_gene_info
 
     print(
         "Preprocess output: "
