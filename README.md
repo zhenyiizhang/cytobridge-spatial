@@ -157,6 +157,18 @@ This mode treats the shared aligned H5AD, PCA contract, graph, and edge
 predictor as read-only inputs and records their path/identity in the new run
 manifest.
 
+On a shared GPU server, the repository also provides a guarded launcher that
+uses a per-GPU file lock, refuses an occupied GPU or non-clean code snapshot,
+and keeps the paired run's logs, caches, status, training, and evaluation in a
+fresh output directory:
+
+```bash
+scripts/launch_mosta_paired_alpha.sh \
+  7 0.05 \
+  ./results/mosta_corrected_counts_alpha0015 \
+  ./results/mosta_corrected_counts_alpha005
+```
+
 This step produces:
 
 - aligned outputs (`*_aligned.csv`, `*_aligned.h5ad`)
