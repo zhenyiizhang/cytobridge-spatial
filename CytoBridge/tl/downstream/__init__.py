@@ -34,6 +34,12 @@ from .celltype import (
     summarize_label_composition,
     summarize_growth_interaction_by_celltype,
 )
+from .benchmark import (
+    FrozenBenchmarkTransform,
+    benchmark_projection_seed,
+    evaluate_spatiotemporal_prediction,
+    fit_frozen_benchmark_transform,
+)
 from .downstream_data import (
     adata_to_aligned_dataframe,
     build_time_grid,
@@ -136,6 +142,10 @@ __all__ = [
     "GeneProgramPanelResult",
     "GeneSetLibrary",
     "GrowthInteractionSummary",
+    "FrozenBenchmarkTransform",
+    "benchmark_projection_seed",
+    "evaluate_spatiotemporal_prediction",
+    "fit_frozen_benchmark_transform",
     "evaluate_growth_by_timepoint",
     "collect_top_variable_heatmaps",
     "LRMultipanelSpec",

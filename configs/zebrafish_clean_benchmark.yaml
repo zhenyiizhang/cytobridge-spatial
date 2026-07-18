@@ -1,0 +1,60 @@
+# Canonical corrected clean-counts zebrafish benchmark input contract.
+dataset_id: zebrafish_clean_counts
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/zebrafish-api/clean-counts-alpha-comparison-20260718/preprocess/zebrafish_aligned.h5ad
+expected_source_sha256: 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd
+
+# The corrected aligned H5AD already contains canonical model times 0..4.
+# Pair-list syntax keeps source scalar types unambiguous and also supports
+# non-numeric labels in configurations for other datasets.
+time_key: time_point_processed
+time_map:
+  - [0.0, 0]
+  - [1.0, 1]
+  - [2.0, 2]
+  - [3.0, 3]
+  - [4.0, 4]
+
+state_key: X_latent
+state_dim: 50
+spatial_key: spatial_aligned
+spatial_dim: 2
+annotation_key: Annotation
+
+benchmark_state_key: benchmark_state
+benchmark_spatial_key: benchmark_spatial
+benchmark_time_key: benchmark_time
+benchmark_annotation_key: benchmark_annotation
+row_id_key: row_id
+contract_uns_key: cytobridge_benchmark_contract
+
+loto_targets: [1, 2, 3]
+full_data_targets: [1, 2, 3, 4]
+prediction_n: 5000
+source_roster_support_n: 800
+source_roster_seed: 20260718
+
+# This contract rejects the legacy double-log route. It proves that the shared
+# state/spatial hand-off came from raw counts followed by one normalize_total
+# and one log1p, with 50 frozen PCA coordinates.
+preprocess_contract:
+  uns_key: preprocess_info
+  required_layers: [counts]
+  counts_layer: counts
+  required_exact:
+    expression_layer: counts
+    counts_layer: counts
+    transformation_sequence: [normalize_total, log1p]
+    normalization: true
+    log1p: true
+    allow_retransform_preprocessed_x: false
+    raw_count_validation_effective: strict
+    dim_reduction: pca
+    n_pcs: 50
+  required_contains:
+    expression_source: counts
+  matrix_checks:
+    x_finite: true
+    x_nonnegative: true
+    counts_finite: true
+    counts_nonnegative: true
+    counts_integer_like_min_fraction: 0.9999

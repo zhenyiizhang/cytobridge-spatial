@@ -1,0 +1,158 @@
+# Reusable spatiotemporal benchmark inputs
+
+`build_inputs.py` creates the immutable input boundary shared by CytoBridge and
+external temporal/spatial baselines. Dataset choices live in YAML; the Python
+code contains no zebrafish or ARISTA time labels, paths, dimensions, or target
+sets.
+
+The checked-in zebrafish configuration is
+`configs/zebrafish_clean_benchmark.yaml`. It freezes:
+
+- corrected `obsm['X_latent']` (50-dimensional state) and
+  `obsm['spatial_aligned']` (two-dimensional space);
+- model times `0..4`;
+- LOTO targets `t1,t2,t3`;
+- full-data evaluation targets `t1,t2,t3,t4`;
+- `prediction_n=5000`, selected before any held-out truth is opened;
+- a method-independent 800-row source support and deterministic 5,000-particle
+  bootstrap roster for every split;
+- the corrected source H5AD SHA-256 and clean-count preprocessing provenance.
+
+## Protocol boundary
+
+Each `loto_tN/train.h5ad` physically excludes every row at `tN`. Its truth
+H5AD/CSV/NPZ contains only `tN`. The PCA and spatial coordinates are copied
+from the common corrected preprocessing and are not refit per fold. LOTO is
+therefore a **transductive frozen-representation** benchmark, not an inductive
+raw-gene holdout.
+
+`full_data/train.h5ad` contains all stages. Full-data truth is an identical
+hard link (or byte copy when hard links are unavailable), while only configured
+evaluation stages `truth_t1.npz` through `truth_t4.npz` are exported. This is
+in-sample reconstruction and must be reported separately from LOTO.
+
+## Validate, build, and verify
+
+Run from the repository root on the server:
+
+```bash
+CONFIG=configs/zebrafish_clean_benchmark.yaml
+OUT=/data/cytobridge/projects/CytoBridge-ST-1104/runs/zebrafish-api/benchmarks/zebrafish-clean-20260718
+
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config "$CONFIG" \
+  --validate-only
+
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config "$CONFIG" \
+  --output-dir "$OUT"
+
+python scripts/spatiotemporal_benchmark/verify_inputs.py \
+  --output-dir "$OUT" \
+  --verify-source
+```
+
+`--validate-only` is read-only: it rehashes and inspects the configured source,
+checks dimensions/times/annotations/layers, and enforces the preprocessing
+contract without creating an output directory. The normal build refuses a
+non-empty `OUT/inputs`. `--overwrite` explicitly replaces only that `inputs`
+subdirectory.
+
+The verifier is independent of the source by default and rehashes every output
+artifact, both manifest SHA sidecars, row membership/order, CSV aliases, NPZ
+shapes, and H5AD contracts. Add `--verify-source` while the source H5AD is
+available to rehash it too.
+
+## Output layout
+
+```text
+OUT/inputs/
+├── manifest.json
+├── manifest.json.sha256
+├── resolved_config.yaml
+├── column_definitions.json
+├── full_data/
+│   ├── manifest.json[.sha256]
+│   ├── train.{h5ad,csv}
+│   ├── truth.{h5ad,csv}
+│   ├── training_reference.npz
+│   ├── source_roster.npz
+│   ├── truth.npz
+│   └── truth_t{1,2,3,4}.npz
+└── loto_t{1,2,3}/
+    ├── manifest.json[.sha256]
+    ├── train.{h5ad,csv}
+    ├── truth.{h5ad,csv}
+    ├── training_reference.npz
+    ├── source_roster.npz
+    ├── truth.npz
+    └── truth_tN.npz
+```
+
+Every H5AD retains source `X`, all layers (including `layers['counts']`), all
+cell/gene metadata, source representations, and adds canonical benchmark fields.
+The machine-readable contract is stored in
+`uns['cytobridge_benchmark_contract']` (the key is YAML-configurable).
+
+CSV files contain canonical metadata, all source `obs` columns, named spatial
+and state columns, and legacy joint aliases `x1..x52`. Compact NPZ files contain
+`spatial`, `state`, `time`, `row_id`, and `annotation`. The combined
+`truth.npz` mirrors `truth.h5ad`; evaluators should use the single-stage
+`truth_tN.npz` files.
+
+`source_roster.npz` is frozen by the input builder, not by an individual
+method. It first selects a deterministic source-stage support of
+`source_roster_support_n` rows and then bootstraps exactly `prediction_n`
+particles from that support. CytoBridge, dynamic methods, and static coupling
+adapters verify and reuse the same row IDs and values for a split.
+
+## Evaluation and reporting
+
+Run LOTO and full-data evaluation into separate directories. Always pass the
+complete primary method list so an entirely missing method fails during
+evaluation. The summarizer verifies the generated evaluation manifest, metrics
+CSV hash, complete grid, and reporting registry:
+
+```bash
+python scripts/spatiotemporal_benchmark/evaluate_predictions.py \
+  --input-manifest "$OUT/inputs/manifest.json" \
+  --predictions-root "$OUT/predictions/loto" \
+  --track loto \
+  --output-dir "$OUT/reports/evaluation/loto" \
+  --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
+            linear_centroid_shift random_independent_pairs
+
+python scripts/spatiotemporal_benchmark/summarize_results.py \
+  --metrics-long "$OUT/reports/evaluation/loto/loto_metrics_long.csv" \
+  --evaluation-manifest \
+    "$OUT/reports/evaluation/loto/loto_evaluation_manifest.json" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
+  --output-dir "$OUT/reports/summary/loto"
+```
+
+Repeat with `--track full_data` and the corresponding paths. Full-data scores
+are in-sample reconstruction references; they must not be pooled with or used
+to rank LOTO generalization results.
+
+## Adapting another dataset
+
+Copy the YAML and change the source path/hash, time key and explicit mapping,
+representation keys/dimensions, annotation key, target lists, fixed population
+size, and provenance assertions. All can also be overridden from the CLI:
+
+```bash
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config configs/my_dataset.yaml \
+  --h5ad /path/to/aligned.h5ad \
+  --time-key model_time \
+  --time-map '[["day0",0],["day2",1],["day5",2]]' \
+  --loto-targets 1 \
+  --full-data-targets 1,2 \
+  --prediction-n 5000 \
+  --output-dir /new/run/root
+```
+
+Use `--preprocess-contract-json @contract.json` to replace the YAML provenance
+contract for a dataset with a different legitimate preprocessing recipe. Do not
+weaken that contract merely to make an incompatible or double-transformed input
+pass.
