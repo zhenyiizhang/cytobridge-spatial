@@ -168,10 +168,10 @@ def _time_grid(start: float, end: float, step: float) -> list[float]:
     span = float(end) - float(start)
     n_steps = int(round(span / float(step)))
     if not np.isclose(n_steps * float(step), span, rtol=0.0, atol=1e-8):
-        raise ValueError(
-            f"step={step} does not exactly tile interval [{start}, {end}]"
-        )
-    return [float(round(float(start) + i * float(step), 10)) for i in range(n_steps + 1)]
+        raise ValueError(f"step={step} does not exactly tile interval [{start}, {end}]")
+    return [
+        float(round(float(start) + i * float(step), 10)) for i in range(n_steps + 1)
+    ]
 
 
 def _parse_stages(raw: str) -> list[str]:
@@ -180,7 +180,9 @@ def _parse_stages(raw: str) -> list[str]:
         raise ValueError("--stage must not be empty")
     if "all" in values:
         if len(values) != 1:
-            raise ValueError("Use --stage all by itself, or provide a comma-separated subset")
+            raise ValueError(
+                "Use --stage all by itself, or provide a comma-separated subset"
+            )
         return list(ALL_STAGES)
     unknown = sorted(set(values).difference(ALL_STAGES))
     if unknown:
@@ -236,7 +238,9 @@ def _label_colors(
         mapping: dict[str, str] = {}
         for label, subset in table.groupby("label", sort=False):
             colors = subset["color"].dropna().astype(str)
-            colors = colors.loc[colors.str.strip().ne("") & colors.str.lower().ne("nan")]
+            colors = colors.loc[
+                colors.str.strip().ne("") & colors.str.lower().ne("nan")
+            ]
             if not colors.empty:
                 mapping[str(label)] = str(colors.mode().iloc[0])
         if set(np.unique(labels)).issubset(mapping):
@@ -282,9 +286,7 @@ def _write_state_bundle(
         points = np.asarray(state.X, dtype=np.float32)
         # Store fixed-width Unicode, not an object array, so bundles remain
         # loadable with NumPy's safe ``allow_pickle=False`` default.
-        labels = np.asarray(
-            state.obs[annotation_key].astype(str).tolist(), dtype=str
-        )
+        labels = np.asarray(state.obs[annotation_key].astype(str).tolist(), dtype=str)
         filename = f"frame_{index:03d}.npz"
         path = output / filename
         np.savez_compressed(path, points=points, labels=labels)
@@ -449,7 +451,9 @@ def _execute_stage(
         ):
             print(f"[resume] {stage}: signature matches; keeping existing outputs")
             return prior
-        print(f"[resume] {stage}: inputs/settings changed or outputs missing; rerunning")
+        print(
+            f"[resume] {stage}: inputs/settings changed or outputs missing; rerunning"
+        )
 
     started = time.time()
     print(f"[stage] {stage}: start")
@@ -617,8 +621,7 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
             labels = labels_all[mask]
             for name, panel_label in settings["components"].items():
                 direct_path = (
-                    stage_dir
-                    / f"spatial_direct_{panel_label}_t{time_value:g}.pdf"
+                    stage_dir / f"spatial_direct_{panel_label}_t{time_value:g}.pdf"
                 )
                 direct_plot = cb.pl.plot_velocity_component(
                     coords=coords,
@@ -644,8 +647,7 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                 outputs.append(direct_path)
 
                 latent_path = (
-                    stage_dir
-                    / f"latent_to_spatial_{panel_label}_t{time_value:g}.pdf"
+                    stage_dir / f"latent_to_spatial_{panel_label}_t{time_value:g}.pdf"
                 )
                 latent_plot = cb.pl.plot_velocity_component(
                     coords=coords,
@@ -708,7 +710,9 @@ def _run_interpolation(
     interp = [
         float(value)
         for value in time_points
-        if not any(np.isclose(value, obs, rtol=0.0, atol=1e-9) for obs in OBSERVED_TIMES)
+        if not any(
+            np.isclose(value, obs, rtol=0.0, atol=1e-9) for obs in OBSERVED_TIMES
+        )
     ]
     classifier_settings = _main_classifier_settings(ctx)
     return cb.tl.run_interpolation_workflow(
@@ -765,9 +769,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         video_times = list(HALF_TIMES)
         simulation_times = list(HALF_TIMES)
     else:
-        simulation_times = _time_grid(
-            0.0, 4.0, float(ctx.args.s22_simulation_step)
-        )
+        simulation_times = _time_grid(0.0, 4.0, float(ctx.args.s22_simulation_step))
         missing_render_times = [
             value
             for value in [*HALF_TIMES, *video_times]
@@ -797,9 +799,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         ),
         "simulation_grid": list(simulation_times),
         "simulation_step": (
-            None
-            if ctx.args.profile == "smoke"
-            else float(ctx.args.s22_simulation_step)
+            None if ctx.args.profile == "smoke" else float(ctx.args.s22_simulation_step)
         ),
         "mosaic_is_subsample_of_dense_trajectory": True,
         "mosaic_layout": {
@@ -844,7 +844,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         source_by_time = {
             float(value): (
                 "observed"
-                if any(np.isclose(value, obs, rtol=0.0, atol=1e-9) for obs in OBSERVED_TIMES)
+                if any(
+                    np.isclose(value, obs, rtol=0.0, atol=1e-9)
+                    for obs in OBSERVED_TIMES
+                )
                 else "generated_display_warp"
             )
             for value in HALF_TIMES
@@ -881,9 +884,9 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 np.asarray(
                     dense_result.sde_points_split_prewarp[index], dtype=np.float32
                 ),
-                np.asarray(
-                    dense_result.predicted_labels_split_prewarp[index]
-                ).astype(str),
+                np.asarray(dense_result.predicted_labels_split_prewarp[index]).astype(
+                    str
+                ),
                 annotation_key=ctx.args.annotation_key,
             )
         prewarp_source_by_time = {
@@ -1138,7 +1141,9 @@ def _ablation_classifier(ctx: RunContext, stage_dir: Path):
         obs=ctx.adata.obs[[ctx.args.annotation_key, ctx.args.time_key]].copy(),
     )
     classifier_adata.obsm["X_ablation_classifier"] = classifier_features
-    epochs = 2 if ctx.args.profile == "smoke" else int(ctx.args.ablation_classifier_epochs)
+    epochs = (
+        2 if ctx.args.profile == "smoke" else int(ctx.args.ablation_classifier_epochs)
+    )
     cached, cache_path = cb.tl.train_cached_mlp_classifier_from_adata(
         classifier_adata,
         cache_dir=ctx.shared_cache_dir / "ablation_classifier",
@@ -1204,9 +1209,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
         "growth_alpha": float(ctx.args.growth_alpha),
         "interaction_m": int(ctx.args.interaction_m),
         "n_samples": (
-            int(ctx.args.smoke_n_samples)
-            if ctx.args.profile == "smoke"
-            else None
+            int(ctx.args.smoke_n_samples) if ctx.args.profile == "smoke" else None
         ),
         "snapshot_point_size": float(ctx.args.point_size),
         "composite_layout": {
@@ -1258,12 +1261,8 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             }
             actual = {
                 "total": int(t0_mask.sum()),
-                str(ctx.args.ysl_label): int(
-                    t0_counts.get(str(ctx.args.ysl_label), 0)
-                ),
-                str(ctx.args.evl_label): int(
-                    t0_counts.get(str(ctx.args.evl_label), 0)
-                ),
+                str(ctx.args.ysl_label): int(t0_counts.get(str(ctx.args.ysl_label), 0)),
+                str(ctx.args.evl_label): int(t0_counts.get(str(ctx.args.evl_label), 0)),
             }
             if actual != expected:
                 raise ValueError(
@@ -1279,9 +1278,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             output_dir=stage_dir / "experiment",
             time_index=0,
             n_samples=(
-                int(ctx.args.smoke_n_samples)
-                if ctx.args.profile == "smoke"
-                else None
+                int(ctx.args.smoke_n_samples) if ctx.args.profile == "smoke" else None
             ),
             dt=float(ctx.args.sde_dt),
             resample_dt=float(ctx.args.sde_dt),
@@ -1358,7 +1355,10 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             outputs.append(path)
         animation_dir = stage_dir / "animations"
         animation_dir.mkdir(parents=True, exist_ok=True)
-        animation_points = {"baseline": result.baseline_points, **result.ablation_points}
+        animation_points = {
+            "baseline": result.baseline_points,
+            **result.ablation_points,
+        }
         animation_labels = {
             "baseline": result.baseline_labels,
             **result.ablation_labels,
@@ -1391,14 +1391,59 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
 
 def _stage_s25(ctx: RunContext) -> dict[str, object]:
     top_n = 25 if ctx.args.profile == "smoke" else int(ctx.args.s25_top_genes)
+    external_bundle_arg = getattr(ctx.args, "s25_canonical_state_bundle", None)
+    external_bundle = (
+        None
+        if external_bundle_arg is None
+        else _require_dir(
+            external_bundle_arg,
+            "external S25 canonical pre-warp state bundle",
+        )
+    )
     canonical_index = (
-        ctx.output_dir / "s22" / "canonical_prewarp_states" / "index.json"
+        external_bundle / "index.json"
+        if external_bundle is not None
+        else ctx.output_dir / "s22" / "canonical_prewarp_states" / "index.json"
     )
-    upstream_s22_manifest = (
-        _require_current_stage_manifest(ctx, "s22")
-        if canonical_index.exists()
-        else None
-    )
+    if external_bundle is not None:
+        canonical_index = _require_file(
+            canonical_index, "external S25 canonical state index"
+        )
+        upstream_s22_manifest = None
+        external_manifest_path = external_bundle.parent / "stage_manifest.json"
+        external_s22_manifest = (
+            json.loads(external_manifest_path.read_text(encoding="utf-8"))
+            if external_manifest_path.is_file()
+            else None
+        )
+        if external_s22_manifest is not None:
+            if external_s22_manifest.get("status") != "complete":
+                raise RuntimeError(
+                    "External S22 state bundle belongs to an incomplete stage: "
+                    f"{external_manifest_path}"
+                )
+            if not _recorded_outputs_exist(external_s22_manifest):
+                raise RuntimeError(
+                    "External S22 outputs no longer match its stage manifest: "
+                    f"{external_manifest_path}"
+                )
+            recorded_outputs = {
+                str(Path(path).expanduser().resolve())
+                for path in external_s22_manifest.get("outputs", [])
+            }
+            if str(canonical_index.resolve()) not in recorded_outputs:
+                raise RuntimeError(
+                    "External canonical state index is not recorded by its adjacent "
+                    f"S22 manifest: {canonical_index}"
+                )
+    else:
+        upstream_s22_manifest = (
+            _require_current_stage_manifest(ctx, "s22")
+            if canonical_index.exists()
+            else None
+        )
+        external_s22_manifest = None
+        external_manifest_path = None
     settings = {
         "time_points": list(HALF_TIMES),
         "trajectory": (
@@ -1417,14 +1462,27 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         ),
         "max_particles": int(ctx.args.sde_max_particles),
         "cell_type_filter": ctx.args.ysl_label,
-        "target_classifier_knn_neighbors": int(
-            ctx.args.s25_classifier_knn_neighbors
-        ),
+        "target_classifier_knn_neighbors": int(ctx.args.s25_classifier_knn_neighbors),
         "target_classifier_policy": (
             "direct classifier labels at generated half-times; spatial kNN smoothing "
             "is configurable separately from the S22 display-label policy"
         ),
         "top_variable_genes": top_n,
+        "gene_expression_space": (
+            "per-cell rank-retained inverse-PCA processed log1p, clipped at zero "
+            "before the mean for both observed and generated states"
+        ),
+        "signed_gene_diagnostic": (
+            "unclipped inverse-PCA means and per-time negative-value diagnostics"
+        ),
+        "observed_gene_validation": (
+            "exact observed integer-time YSL log1p means are exported separately; "
+            "they are not mixed into the rank-50 temporal trajectory"
+        ),
+        "pca_center": "persisted fit-time adata.var['pca_center']",
+        "pca_feature_policy": (
+            "active retained-component loadings only; center-only genes excluded"
+        ),
         "heatmap_panel_columns": S25_HEATMAP_COLUMNS,
         "preferred_species_tag": ctx.args.preferred_species_tag,
         "normalization": "gene-wise zscore",
@@ -1436,10 +1494,34 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             {
                 "path": str(canonical_index.resolve()),
                 "sha256": _sha256(canonical_index),
-                "source_stage": "s22",
-                "source_stage_signature": upstream_s22_manifest.get("signature"),
+                "source_stage": (
+                    "external_validated_s22_bundle"
+                    if external_bundle is not None
+                    else "s22"
+                ),
+                "source_stage_signature": (
+                    external_s22_manifest.get("signature")
+                    if external_s22_manifest is not None
+                    else (
+                        upstream_s22_manifest.get("signature")
+                        if upstream_s22_manifest is not None
+                        else None
+                    )
+                ),
+                "source_stage_manifest": (
+                    str(external_manifest_path.resolve())
+                    if external_manifest_path is not None
+                    and external_manifest_path.is_file()
+                    else None
+                ),
+                "source_stage_manifest_sha256": (
+                    _sha256(external_manifest_path)
+                    if external_manifest_path is not None
+                    and external_manifest_path.is_file()
+                    else None
+                ),
             }
-            if upstream_s22_manifest is not None
+            if canonical_index.exists()
             else None
         ),
         "missing_target_policy": (
@@ -1462,22 +1544,36 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             invalid_sources = {
                 time_value: source
                 for time_value, source in canonical_sources.items()
-                if source
-                not in {"observed_seed_predicted_labels", "generated_prewarp"}
+                if source not in {"observed_seed_predicted_labels", "generated_prewarp"}
             }
             if invalid_sources:
                 raise RuntimeError(
                     f"Unexpected canonical trajectory sources: {invalid_sources}"
                 )
-            assert upstream_s22_manifest is not None
-            s22_details = upstream_s22_manifest.get("details", {})
+            source_manifest = (
+                external_s22_manifest
+                if external_s22_manifest is not None
+                else upstream_s22_manifest
+            )
+            s22_details = (
+                {} if source_manifest is None else source_manifest.get("details", {})
+            )
             classifier_cache_path = s22_details.get("classifier_cache_path")
             classifier_accuracy = s22_details.get("classifier_accuracy")
             classifier_balanced_accuracy = s22_details.get(
                 "classifier_balanced_accuracy"
             )
             simulation_seeds = s22_details.get("simulation_seeds", {})
-            trajectory_source = "s22_canonical_prewarp"
+            trajectory_source = (
+                "external_validated_s22_canonical_prewarp"
+                if external_bundle is not None
+                else "s22_canonical_prewarp"
+            )
+            if classifier_cache_path is None:
+                cached, cache_path = _train_main_classifier(ctx)
+                classifier_cache_path = str(cache_path)
+                classifier_accuracy = cached.accuracy
+                classifier_balanced_accuracy = cached.balanced_accuracy
         else:
             result = _run_interpolation(
                 ctx,
@@ -1516,9 +1612,9 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             key = str(float(time_value))
             if float(time_value) in observed_states:
                 analysis_states[key] = observed_states[float(time_value)]
-                analysis_source_by_time[float(time_value)] = (
-                    "observed_actual_annotation"
-                )
+                analysis_source_by_time[
+                    float(time_value)
+                ] = "observed_actual_annotation"
                 continue
             points = np.asarray(states[key].X, dtype=np.float32)
             labels = cb.tl.predict_labels_for_points(
@@ -1553,9 +1649,8 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         for time_value in HALF_TIMES:
             key = str(float(time_value))
             state = analysis_states[key]
-            mask = (
-                state.obs[ctx.args.annotation_key].astype(str).to_numpy()
-                == str(ctx.args.ysl_label)
+            mask = state.obs[ctx.args.annotation_key].astype(str).to_numpy() == str(
+                ctx.args.ysl_label
             )
             if not np.any(mask):
                 if ctx.args.profile != "smoke":
@@ -1599,9 +1694,104 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             profile_normalization="zscore",
             profile_linkage_method="average",
             profile_cluster_order="dendrogram",
+            active_features_only=True,
+            clip_min=0.0,
         )
+        reference_var_names = pd.Index(ctx.adata.var_names.astype(str))
+        active_var_names = pd.Index(temporal.gene_name_map["var_name"].astype(str))
+        if not reference_var_names.is_unique or not active_var_names.is_unique:
+            raise ValueError(
+                "S25 exact-observed validation requires unique reference feature names."
+            )
+        active_indexer = reference_var_names.get_indexer(active_var_names)
+        if np.any(active_indexer < 0):
+            missing = active_var_names[active_indexer < 0][:5].tolist()
+            raise ValueError(
+                "S25 active inverse-PCA features are missing from aligned expression; "
+                f"examples={missing}."
+            )
+        observed_times = np.asarray(
+            [
+                cb.tl.parse_time_value(value)
+                for value in ctx.adata.obs[ctx.args.time_key]
+            ],
+            dtype=np.float64,
+        )
+        observed_labels = ctx.adata.obs[ctx.args.annotation_key].astype(str).to_numpy()
+        exact_columns: dict[float, np.ndarray] = {}
+        validation_rows: list[dict[str, object]] = []
+        top_gene_names = set(temporal.top_variable_genes["gene"].astype(str).tolist())
+        top_mask = temporal.expression.index.astype(str).isin(top_gene_names)
+        from scipy import sparse
+
+        for time_value in OBSERVED_TIMES:
+            observed_mask = np.isclose(
+                observed_times, float(time_value), rtol=0.0, atol=1e-9
+            ) & (observed_labels == str(ctx.args.ysl_label))
+            if not observed_mask.any():
+                raise ValueError(
+                    f"No exact observed {ctx.args.ysl_label!r} cells at "
+                    f"t={time_value} for S25 validation."
+                )
+            observed_matrix = ctx.adata.X[observed_mask][:, active_indexer]
+            if sparse.issparse(observed_matrix):
+                exact_mean = np.asarray(observed_matrix.mean(axis=0)).reshape(-1)
+            else:
+                exact_mean = np.asarray(observed_matrix, dtype=np.float64).mean(axis=0)
+            exact_columns[float(time_value)] = exact_mean
+            for decoder_name, decoded in (
+                (
+                    "signed_inverse_pca",
+                    temporal.signed_expression[float(time_value)].to_numpy(
+                        dtype=np.float64
+                    ),
+                ),
+                (
+                    "clipped_inverse_pca",
+                    temporal.expression[float(time_value)].to_numpy(dtype=np.float64),
+                ),
+            ):
+                for scope, scope_mask in (
+                    ("all_active_features", np.ones(len(exact_mean), dtype=bool)),
+                    ("top_temporal_variance", np.asarray(top_mask, dtype=bool)),
+                ):
+                    exact_values = exact_mean[scope_mask]
+                    decoded_values = decoded[scope_mask]
+                    delta = decoded_values - exact_values
+                    correlation = (
+                        float(np.corrcoef(exact_values, decoded_values)[0, 1])
+                        if exact_values.size > 1
+                        and np.std(exact_values) > 0
+                        and np.std(decoded_values) > 0
+                        else np.nan
+                    )
+                    validation_rows.append(
+                        {
+                            "time": float(time_value),
+                            "decoder": decoder_name,
+                            "scope": scope,
+                            "n_cells": int(observed_mask.sum()),
+                            "n_features": int(exact_values.size),
+                            "rmse": float(np.sqrt(np.mean(delta**2))),
+                            "mae": float(np.mean(np.abs(delta))),
+                            "mean_bias": float(np.mean(delta)),
+                            "pearson_r": correlation,
+                        }
+                    )
+        exact_observed_expression = pd.DataFrame(
+            exact_columns,
+            index=temporal.expression.index.copy(),
+        )
+        observed_validation = pd.DataFrame(validation_rows)
         tables = {
             "mean_expression.csv": temporal.expression,
+            "mean_inverse_pca_log1p_clipped.csv": temporal.expression,
+            "mean_inverse_pca_log1p_signed.csv": temporal.signed_expression,
+            "inverse_pca_reconstruction_diagnostics.csv": (
+                temporal.reconstruction_diagnostics
+            ),
+            "observed_exact_log1p_anchors.csv": exact_observed_expression,
+            "observed_vs_inverse_pca_metrics.csv": observed_validation,
             "top_variable_genes.csv": temporal.top_variable_genes,
             "normalized_profiles.csv": temporal.clustering.normalized_profiles,
             "cluster_assignments.csv": temporal.clustering.assignments,
@@ -1611,9 +1801,69 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         }
         for filename, table in tables.items():
             path = stage_dir / filename
-            index = filename in {"mean_expression.csv", "normalized_profiles.csv"}
+            index = filename in {
+                "mean_expression.csv",
+                "mean_inverse_pca_log1p_clipped.csv",
+                "mean_inverse_pca_log1p_signed.csv",
+                "observed_exact_log1p_anchors.csv",
+                "normalized_profiles.csv",
+            }
             table.to_csv(path, index=index)
             outputs.append(path)
+        import matplotlib.pyplot as plt
+
+        figure, axes = plt.subplots(2, 3, figsize=(12.0, 7.6), facecolor="white")
+        for axis, time_value in zip(axes.ravel(), OBSERVED_TIMES):
+            exact_values = exact_observed_expression[float(time_value)].to_numpy(
+                dtype=np.float64
+            )
+            decoded_values = temporal.expression[float(time_value)].to_numpy(
+                dtype=np.float64
+            )
+            axis.scatter(
+                exact_values,
+                decoded_values,
+                s=5,
+                alpha=0.35,
+                color="#4C78A8",
+                linewidths=0,
+            )
+            axis.scatter(
+                exact_values[np.asarray(top_mask, dtype=bool)],
+                decoded_values[np.asarray(top_mask, dtype=bool)],
+                s=7,
+                alpha=0.55,
+                color="#E45756",
+                linewidths=0,
+                label=f"top {top_n}",
+            )
+            lo = float(min(exact_values.min(), decoded_values.min()))
+            hi = float(max(exact_values.max(), decoded_values.max()))
+            axis.plot([lo, hi], [lo, hi], color="black", linewidth=0.8, alpha=0.7)
+            metric_row = observed_validation.loc[
+                (observed_validation["time"] == float(time_value))
+                & (observed_validation["decoder"] == "clipped_inverse_pca")
+                & (observed_validation["scope"] == "all_active_features")
+            ].iloc[0]
+            axis.set_title(
+                f"t={time_value:g}: r={metric_row['pearson_r']:.3f}, "
+                f"RMSE={metric_row['rmse']:.3f}"
+            )
+            axis.set_xlabel("exact observed mean log1p")
+            axis.set_ylabel("clipped inverse-PCA mean")
+        axes.ravel()[-1].axis("off")
+        axes.ravel()[0].legend(frameon=False, loc="lower right")
+        figure.suptitle(
+            f"{ctx.args.ysl_label}: observed anchors vs rank-50 reconstruction"
+        )
+        figure.tight_layout()
+        for suffix in ("pdf", "png"):
+            validation_path = (
+                stage_dir / f"S25_observed_vs_inverse_pca_validation.{suffix}"
+            )
+            figure.savefig(validation_path, dpi=300, bbox_inches="tight")
+            outputs.append(validation_path)
+        plt.close(figure)
         heatmap_pdf = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.pdf"
         heatmap_png = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.png"
         cb.pl.plot_temporal_gene_heatmap(
@@ -1645,8 +1895,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             "classifier_balanced_accuracy": classifier_balanced_accuracy,
             "trajectory_source": trajectory_source,
             "generated_cell_counts": {
-                str(float(t)): int(states[str(float(t))].n_obs)
-                for t in HALF_TIMES
+                str(float(t)): int(states[str(float(t))].n_obs) for t in HALF_TIMES
             },
             "analysis_cell_counts": {
                 str(float(t)): int(analysis_states[str(float(t))].n_obs)
@@ -1654,6 +1903,8 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             },
             "analysis_state_sources": analysis_source_by_time,
             "ysl_cell_counts": ysl_counts,
+            "gene_expression_contract": temporal.settings,
+            "observed_inverse_pca_validation": validation_rows,
             "simulation_seeds": simulation_seeds,
             "smoke_only_target_fallbacks": smoke_fallbacks,
             "scientific_use_warning": (
@@ -1772,7 +2023,11 @@ def _plot_target_lr(
     axes[0].grid(axis="y", alpha=0.2)
 
     incoming = cell_table.pivot_table(
-        index="cell_type", columns="time", values="incoming", aggfunc="sum", fill_value=0.0
+        index="cell_type",
+        columns="time",
+        values="incoming",
+        aggfunc="sum",
+        fill_value=0.0,
     )
     incoming = incoming.loc[incoming.max(axis=1).sort_values(ascending=False).index]
     sns.heatmap(
@@ -1820,14 +2075,19 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
         "s25_state_index_sha256": _sha256(s25_state_index),
         "s25_stage_signature": upstream_s25_manifest.get("signature"),
         "expression_space": (
-            "log-space pseudobulk: expm1(cell-type mean log1p normalized "
-            "expression); not mean raw counts"
+            "arithmetic cell-type mean after per-cell conversion to normalized "
+            "count-like abundance; not raw counts"
         ),
         "observed_expression": (
-            "real aligned_adata.X (log1p) at integer times; generated inverse-PCA "
-            "log1p state at half times"
+            "per-cell expm1(real aligned_adata.X log1p) at integer times; "
+            "per-cell clipped expm1(inverse-PCA log1p) at half times"
+        ),
+        "lr_feature_policy": (
+            "one active-loading PCA feature universe across all observed/generated "
+            "times; center-only subunits excluded globally"
         ),
         "complex_mode": "min",
+        "complex_require_all_subunits": True,
         "preferred_species_tag": ctx.args.preferred_species_tag,
         "lr_n_clusters": int(ctx.args.lr_n_clusters),
         "random_seed": int(ctx.args.random_seed),
@@ -1899,7 +2159,7 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             reference_layer=None,
             expression_space="count",
             complex_mode="min",
-            require_all_subunits=False,
+            require_all_subunits=True,
             duplicate_policy="first",
             preferred_species_tag=ctx.args.preferred_species_tag,
             n_clusters=int(ctx.args.lr_n_clusters),
@@ -1998,8 +2258,8 @@ def _build_context(args: argparse.Namespace) -> RunContext:
     model_config_path = _require_file(
         args.model_dir / "config.yaml", "resolved model config"
     )
-    resolved_interaction_config = (
-        loaded.config.get("model", {}).get("interaction_net", {})
+    resolved_interaction_config = loaded.config.get("model", {}).get(
+        "interaction_net", {}
     )
     raw_edge_predictor = resolved_interaction_config.get("edge_predictor_path")
     edge_predictor_path = None
@@ -2170,9 +2430,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--stage",
         default="all",
-        help=(
-            "'all' or a comma-separated subset of: " + ", ".join(ALL_STAGES)
-        ),
+        help=("'all' or a comma-separated subset of: " + ", ".join(ALL_STAGES)),
     )
     parser.add_argument("--profile", choices=("full", "smoke"), default="full")
     parser.add_argument("--device", default="cuda")
@@ -2239,6 +2497,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--s25-top-genes", type=int, default=250)
     parser.add_argument("--s25-n-clusters", type=int, default=4)
     parser.add_argument(
+        "--s25-canonical-state-bundle",
+        type=Path,
+        default=None,
+        help=(
+            "Optional existing canonical_prewarp_states directory. The index and "
+            "frame hashes are validated, and an adjacent complete S22 manifest is "
+            "validated when present. Use this for downstream-only recomputation "
+            "without silently simulating a different trajectory."
+        ),
+    )
+    parser.add_argument(
         "--s25-classifier-knn-neighbors",
         type=int,
         default=1,
@@ -2271,7 +2540,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise ValueError("--s25-classifier-knn-neighbors must be > 0")
     selected_stages = _parse_stages(args.stage)
     if "communication" in selected_stages and "s25" not in selected_stages:
-        state_index = Path(args.output_dir).expanduser().resolve() / "s25" / "generated_states" / "index.json"
+        state_index = (
+            Path(args.output_dir).expanduser().resolve()
+            / "s25"
+            / "generated_states"
+            / "index.json"
+        )
         if not state_index.exists():
             raise FileNotFoundError(
                 "The communication stage requires S25 no-warp generated states. "

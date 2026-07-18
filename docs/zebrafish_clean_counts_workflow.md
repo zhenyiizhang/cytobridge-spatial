@@ -549,10 +549,31 @@ policies and every per-timepoint YSL count are recorded separately; a full run
 still fails rather than fabricating cells if the direct classifier predicts no
 target cells.
 
-The manuscript LR projection preserves the historical log-space pseudobulk
-definition: cell-type expression is `expm1(mean(log1p normalized expression))`.
-It is not mean raw counts. Integer times use observed expression and half-times
-use inverse-PCA generated expression, always from unwarped model states.
+For a downstream-only audit that must reuse an already published S22
+trajectory byte-for-byte, pass its `canonical_prewarp_states` directory with
+`--s25-canonical-state-bundle`. The runner validates the bundle index, every
+frame SHA-256, and the adjacent S22 stage manifest before S25 or communication
+opens it. This option is deliberately an adapter-level provenance hook; it does
+not change the generic simulation or temporal-analysis APIs.
+
+Gene dynamics at observed and generated times use the same retained-PCA inverse
+map and its persisted fit-time center. Only features with a nonzero retained
+loading are eligible: a zero-loading non-HVG would otherwise be the same global
+center value at every generated state and is not evidence for gene dynamics.
+The exported settings record the active/inactive feature counts and loading
+tolerance. Rank-truncated inverse-PCA values are signed reconstruction estimates;
+the temporal heatmap compares their gene-wise profiles and does not treat them
+as raw counts.
+
+The manuscript LR projection uses one reconstructable feature universe across
+the complete hybrid trajectory. Integer times use real observed log1p
+expression, half-times use inverse-PCA generated log1p expression, and both are
+converted per cell with `expm1` before the arithmetic cell-type mean. Negative
+generated count-like estimates are clipped to zero. These are library-size
+normalized count-like abundances, not raw counts. LR complexes require every
+subunit, and any center-only subunit is excluded at every time point rather than
+being scored at observed times and silently filled with zero at generated times.
+All communication inputs remain unwarped model states.
 
 Virtual-ablation branches reset to the same branch-level seed for manuscript
 parity, but removing cells changes tensor shape and row order. The random

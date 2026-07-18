@@ -19,6 +19,7 @@ __all__ = [
     "inverse_pca_states",
     "load_pca_reconstruction_spec",
     "make_pca_reconstruction_spec",
+    "pca_reconstruction_feature_coverage",
     "simplify_gene_names",
     "summarize_temporal_gene_patterns",
 ]
@@ -54,6 +55,8 @@ class TemporalGenePatternResult:
     """Mean reconstructed expression and clustered temporal gene programs."""
 
     expression: pd.DataFrame
+    signed_expression: pd.DataFrame
+    reconstruction_diagnostics: pd.DataFrame
     top_variable_genes: pd.DataFrame
     clustering: TemporalProfileClusteringResult
     gene_name_map: pd.DataFrame
@@ -174,16 +177,16 @@ def load_pca_reconstruction_spec(
     if feature_column not in loadings_table:
         raise KeyError(f"Loadings table is missing feature column '{feature_column}'.")
     center_feature_column = center_feature_column or (
-        feature_column if feature_column in center_table else str(center_table.columns[0])
+        feature_column
+        if feature_column in center_table
+        else str(center_table.columns[0])
     )
     if center_feature_column not in center_table:
         raise KeyError(
             f"Center table is missing feature column '{center_feature_column}'."
         )
     if center_value_column not in center_table:
-        raise KeyError(
-            f"Center table is missing value column '{center_value_column}'."
-        )
+        raise KeyError(f"Center table is missing value column '{center_value_column}'.")
     if component_columns is None:
         component_columns = [
             str(column)
@@ -242,6 +245,59 @@ def load_pca_reconstruction_spec(
     )
 
 
+def pca_reconstruction_feature_coverage(
+    feature_names: Sequence[str],
+    loadings: np.ndarray,
+    *,
+    absolute_tolerance: float = 1e-12,
+    relative_tolerance: float = 1e-7,
+) -> pd.DataFrame:
+    """Report which features can vary under retained-component PCA inversion.
+
+    A feature with numerically zero loadings is reconstructed as the fit-time
+    center for every simulated state.  It therefore cannot support an inferred
+    gene trajectory or ligand-receptor trajectory.  The returned table makes
+    that distinction explicit instead of silently treating center-only values
+    as generated expression.
+
+    The activity threshold is ``max(absolute_tolerance,
+    relative_tolerance * max(abs(loadings)))``.
+    """
+    names = tuple(map(str, feature_names))
+    values = np.asarray(loadings)
+    if values.ndim != 2:
+        raise ValueError("loadings must be a two-dimensional array.")
+    if not names or values.shape[1] == 0:
+        raise ValueError("loadings must contain at least one feature and component.")
+    if len(names) != values.shape[0]:
+        raise ValueError(
+            f"feature_names has {len(names)} entries, expected {values.shape[0]} "
+            "from loadings."
+        )
+    if not np.isfinite(values).all():
+        raise ValueError("PCA loadings contain non-finite values.")
+    absolute_tolerance = float(absolute_tolerance)
+    relative_tolerance = float(relative_tolerance)
+    if not np.isfinite(absolute_tolerance) or absolute_tolerance < 0:
+        raise ValueError("absolute_tolerance must be finite and non-negative.")
+    if not np.isfinite(relative_tolerance) or relative_tolerance < 0:
+        raise ValueError("relative_tolerance must be finite and non-negative.")
+
+    max_abs_loading = np.max(np.abs(values.astype(np.float64, copy=False)), axis=1)
+    loading_tolerance = max(
+        absolute_tolerance,
+        relative_tolerance * float(max_abs_loading.max()),
+    )
+    return pd.DataFrame(
+        {
+            "feature_name": names,
+            "max_abs_loading": max_abs_loading,
+            "active": max_abs_loading > loading_tolerance,
+            "loading_tolerance": np.full(len(names), loading_tolerance),
+        }
+    )
+
+
 def inverse_pca_states(
     adata,
     states: np.ndarray,
@@ -253,7 +309,13 @@ def inverse_pca_states(
     clip_min: Optional[float] = None,
     reconstruction: Optional[PCAReconstructionSpec] = None,
 ) -> np.ndarray:
-    """Map joint spatial/PCA states back to the processed gene feature space."""
+    """Map joint spatial/PCA states back to the processed gene feature space.
+
+    All features are retained for positional compatibility.  Call
+    :func:`pca_reconstruction_feature_coverage` before biological
+    interpretation: rows with zero retained-component loadings are merely the
+    fixed PCA center and are not generated gene expression.
+    """
     values = np.asarray(states, dtype=np.float32)
     if values.ndim != 2:
         raise ValueError("states must be a two-dimensional array.")
@@ -377,9 +439,7 @@ def cluster_temporal_profiles(
     if requested_k <= 0:
         raise ValueError("n_clusters must be positive.")
     if cluster_order not in {"peak_time", "dendrogram", "raw"}:
-        raise ValueError(
-            "cluster_order must be 'peak_time', 'dendrogram', or 'raw'."
-        )
+        raise ValueError("cluster_order must be 'peak_time', 'dendrogram', or 'raw'.")
     chosen_k = min(requested_k, int(table.shape[0]))
     hierarchy = None
     if chosen_k == 1:
@@ -479,8 +539,21 @@ def summarize_temporal_gene_patterns(
     profile_normalization: str = "zscore",
     profile_linkage_method: str = "average",
     profile_cluster_order: str = "peak_time",
+    active_features_only: bool = True,
+    pca_active_absolute_tolerance: float = 1e-12,
+    pca_active_relative_tolerance: float = 1e-7,
+    clip_min: Optional[float] = 0.0,
+    reconstruction_batch_size: int = 4096,
 ) -> TemporalGenePatternResult:
-    """Reconstruct mean gene profiles from simulated PCA states and cluster them."""
+    """Reconstruct mean gene profiles from simulated PCA states and cluster them.
+
+    Observed and generated states are compared in the same retained-PCA
+    reconstruction space.  By default, center-only features are excluded
+    because their zero loadings make them invariant to every simulated state.
+    Reconstructed values are clipped per cell before the temporal mean when
+    ``clip_min`` is not ``None``; the signed pre-clip means and diagnostics are
+    returned separately so truncation artifacts remain auditable.
+    """
     if time_points is None:
         time_points = sorted(float(key) for key in adata_dict)
     else:
@@ -491,41 +564,149 @@ def summarize_temporal_gene_patterns(
         raise ValueError("n_top_genes must be positive.")
     if n_cluster_genes is not None and int(n_cluster_genes) <= 0:
         raise ValueError("n_cluster_genes must be positive when supplied.")
+    if clip_min is not None and not np.isfinite(float(clip_min)):
+        raise ValueError("clip_min must be finite when supplied.")
+    reconstruction_batch_size = int(reconstruction_batch_size)
+    if reconstruction_batch_size <= 0:
+        raise ValueError("reconstruction_batch_size must be positive.")
 
     center = (
         infer_pca_center(reference_adata, layer=reference_layer)
         if pca_reconstruction is None
         else None
     )
+    feature_names = tuple(
+        map(
+            str,
+            (
+                reference_adata.var_names
+                if pca_reconstruction is None
+                else pca_reconstruction.feature_names
+            ),
+        )
+    )
+    loadings = np.asarray(
+        (
+            reference_adata.varm[loadings_key]
+            if pca_reconstruction is None
+            else pca_reconstruction.loadings
+        )
+    )
+    feature_coverage = pca_reconstruction_feature_coverage(
+        feature_names,
+        loadings,
+        absolute_tolerance=pca_active_absolute_tolerance,
+        relative_tolerance=pca_active_relative_tolerance,
+    )
+    active_mask = feature_coverage["active"].to_numpy(dtype=bool)
+    if bool(active_features_only) and not active_mask.any():
+        raise ValueError(
+            "No active PCA features remain at the requested loading tolerance."
+        )
+    selected_feature_mask = (
+        active_mask
+        if bool(active_features_only)
+        else np.ones(len(feature_names), dtype=bool)
+    )
+    selected_loadings = np.asarray(loadings[selected_feature_mask], dtype=np.float32)
+    full_center = np.asarray(
+        (center if center is not None else pca_reconstruction.center),
+        dtype=np.float32,
+    ).reshape(-1)
+    selected_center = full_center[selected_feature_mask]
+    n_pcs = int(selected_loadings.shape[1])
     means = []
+    signed_means = []
+    diagnostic_rows = []
     for time_value in time_points:
         key = str(float(time_value))
         if key not in adata_dict:
             raise KeyError(f"adata_dict is missing time key '{key}'.")
-        states = np.asarray(adata_dict[key].X, dtype=np.float32)
-        # PCA inversion is linear, so invert only the per-time mean state. This
-        # avoids materializing a cells-by-genes matrix for every dense slice.
-        reconstructed_mean = inverse_pca_states(
-            reference_adata,
-            states.mean(axis=0, keepdims=True),
-            spatial_dim=spatial_dim,
-            loadings_key=loadings_key,
-            center=center,
-            layer=reference_layer,
-            reconstruction=pca_reconstruction,
-        )[0]
-        means.append(reconstructed_mean)
+        state_matrix = adata_dict[key].X
+        from scipy import sparse
 
+        states = (
+            state_matrix.toarray().astype(np.float32, copy=False)
+            if sparse.issparse(state_matrix)
+            else np.asarray(state_matrix, dtype=np.float32)
+        )
+        if states.ndim != 2 or states.shape[0] == 0:
+            raise ValueError(f"adata_dict['{key}'] must contain at least one cell.")
+        if states.shape[1] < int(spatial_dim) + n_pcs:
+            raise ValueError(
+                f"adata_dict['{key}'] has {states.shape[1]} state columns, but "
+                f"spatial_dim={spatial_dim} and {n_pcs} PCA columns are required."
+            )
+        pcs = states[:, int(spatial_dim) : int(spatial_dim) + n_pcs]
+        signed_sum = np.zeros(selected_loadings.shape[0], dtype=np.float64)
+        output_sum = np.zeros(selected_loadings.shape[0], dtype=np.float64)
+        preclip_min = np.inf
+        preclip_max = -np.inf
+        postclip_min = np.inf
+        postclip_max = -np.inf
+        clipped_count = 0
+        value_count = 0
+        for start in range(0, int(states.shape[0]), reconstruction_batch_size):
+            reconstructed = (
+                pcs[start : start + reconstruction_batch_size] @ selected_loadings.T
+            )
+            reconstructed += selected_center[None, :]
+            if not np.isfinite(reconstructed).all():
+                raise ValueError(
+                    f"Inverse-PCA reconstruction at time {time_value} contains "
+                    "non-finite values."
+                )
+            signed_sum += reconstructed.sum(axis=0, dtype=np.float64)
+            preclip_min = min(preclip_min, float(reconstructed.min()))
+            preclip_max = max(preclip_max, float(reconstructed.max()))
+            if clip_min is None:
+                output = reconstructed
+            else:
+                threshold = float(clip_min)
+                clipped_count += int(np.count_nonzero(reconstructed < threshold))
+                output = np.maximum(reconstructed, threshold)
+            output_sum += output.sum(axis=0, dtype=np.float64)
+            postclip_min = min(postclip_min, float(output.min()))
+            postclip_max = max(postclip_max, float(output.max()))
+            value_count += int(reconstructed.size)
+        signed_means.append((signed_sum / states.shape[0]).astype(np.float32))
+        means.append((output_sum / states.shape[0]).astype(np.float32))
+        diagnostic_rows.append(
+            {
+                "time": float(time_value),
+                "n_cells": int(states.shape[0]),
+                "n_features": int(selected_loadings.shape[0]),
+                "n_values": int(value_count),
+                "preclip_min": float(preclip_min),
+                "preclip_max": float(preclip_max),
+                "n_values_below_clip_min": int(clipped_count),
+                "fraction_below_clip_min": (
+                    float(clipped_count / value_count) if clip_min is not None else 0.0
+                ),
+                "clip_min": None if clip_min is None else float(clip_min),
+                "postclip_min": float(postclip_min),
+                "postclip_max": float(postclip_max),
+            }
+        )
+
+    selected_coverage = feature_coverage.loc[selected_feature_mask].reset_index(
+        drop=True
+    )
     name_map = simplify_gene_names(
-        (
-            reference_adata.var_names
-            if pca_reconstruction is None
-            else pca_reconstruction.feature_names
-        ),
+        selected_coverage["feature_name"].tolist(),
         preferred_species_tag=preferred_species_tag,
     )
+    name_map["pca_max_abs_loading"] = selected_coverage["max_abs_loading"].to_numpy(
+        dtype=float
+    )
+    name_map["pca_active"] = selected_coverage["active"].to_numpy(dtype=bool)
     expression = pd.DataFrame(
         np.stack(means, axis=1),
+        index=name_map["gene"].to_numpy(),
+        columns=[float(value) for value in time_points],
+    )
+    signed_expression = pd.DataFrame(
+        np.stack(signed_means, axis=1),
         index=name_map["gene"].to_numpy(),
         columns=[float(value) for value in time_points],
     )
@@ -573,9 +754,34 @@ def summarize_temporal_gene_patterns(
         "profile_normalization": profile_normalization,
         "profile_linkage_method": profile_linkage_method,
         "profile_cluster_order": profile_cluster_order,
+        "expression_space": (
+            "per-cell clipped rank-retained inverse-PCA processed log1p"
+            if clip_min is not None
+            else "signed rank-retained inverse-PCA processed log1p score"
+        ),
+        "signed_expression_space": (
+            "signed rank-retained inverse-PCA processed log1p score"
+        ),
+        "observed_generated_comparability": (
+            "all time points use the same inverse-PCA map and persisted fit center"
+        ),
+        "aggregation": "per-cell inverse-PCA, optional clipping, arithmetic mean",
+        "clip_min": None if clip_min is None else float(clip_min),
+        "reconstruction_batch_size": int(reconstruction_batch_size),
+        "active_features_only": bool(active_features_only),
+        "pca_features_total": int(len(feature_coverage)),
+        "pca_features_active": int(active_mask.sum()),
+        "pca_features_inactive": int((~active_mask).sum()),
+        "pca_active_loading_tolerance": float(
+            feature_coverage["loading_tolerance"].iloc[0]
+        ),
+        "pca_active_absolute_tolerance": float(pca_active_absolute_tolerance),
+        "pca_active_relative_tolerance": float(pca_active_relative_tolerance),
     }
     return TemporalGenePatternResult(
         expression=expression,
+        signed_expression=signed_expression,
+        reconstruction_diagnostics=pd.DataFrame(diagnostic_rows),
         top_variable_genes=top_variable,
         clustering=clustering,
         gene_name_map=name_map,

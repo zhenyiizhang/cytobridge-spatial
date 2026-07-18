@@ -209,9 +209,8 @@ def test_temporal_gene_and_lr_projection() -> None:
         "inverse_pca",
         "inverse_pca",
     ]
-    expected_t0 = np.expm1(1.05) * (
-        np.expm1(2.1) + 0.5 * np.expm1(2.0)
-    )
+    expected_l1 = np.mean(np.expm1([1.0, 1.1]))
+    expected_t0 = expected_l1 * (np.expm1(2.1) + 0.5 * np.expm1(2.0))
     score_t0 = lr_result.pair_timecourse.set_index("time").loc[0.0, "score"]
     assert score_t0 == pytest.approx(expected_t0)
     assert lr_result.settings["observed_expression"] is None
@@ -341,3 +340,262 @@ def test_hybrid_lr_projection_rejects_missing_reconstruction_genes() -> None:
             observed_annotation_key="cell_type",
             observed_layer="counts",
         )
+
+
+def _count_aggregation_fixture():
+    reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
+    reference.var_names = ["Lig", "Rec"]
+    reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+
+    log_states = np.asarray(
+        [
+            [0.0, 0.0],
+            [np.log1p(8.0), 0.0],
+            [0.0, 0.0],
+            [0.0, np.log1p(6.0)],
+        ],
+        dtype=np.float32,
+    )
+    slices = {}
+    communications = {}
+    for time in (0.0, 1.0):
+        current = ad.AnnData(
+            X=np.column_stack((np.zeros((4, 2), dtype=np.float32), log_states))
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+
+    observed = ad.AnnData(X=np.vstack([log_states, log_states]))
+    observed.var_names = reference.var_names.copy()
+    observed.obs["time"] = [0.0] * 4 + [1.0] * 4
+    observed.obs["Annotation"] = ["A", "A", "B", "B"] * 2
+    return reference, slices, communications, observed
+
+
+def test_count_space_converts_each_cell_before_arithmetic_celltype_mean() -> None:
+    reference, slices, communications, observed = _count_aggregation_fixture()
+    database = pd.DataFrame({"ligand": ["Lig"], "receptor": ["Rec"]})
+    generated = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        expression_space="count",
+    )
+    # The all-observed path must not require or apply a PCA-loading contract.
+    del reference.varm["PCs"]
+    from scipy import sparse
+
+    for current in slices.values():
+        current.X = sparse.csr_matrix(current.X)
+    observed_result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        expression_space="count",
+        observed_adata=observed,
+        observed_time_key="time",
+        observed_expression_space="log1p",
+    )
+
+    # mean([0, 8]) * mean([0, 6]) = 4 * 3, not the product of
+    # expm1(mean(log1p(.))) geometric pseudobulks.
+    np.testing.assert_allclose(generated.pair_timecourse["score"], [12.0, 12.0])
+    np.testing.assert_allclose(
+        observed_result.pair_timecourse["score"],
+        generated.pair_timecourse["score"],
+    )
+    assert (
+        generated.settings["celltype_expression_aggregation"]
+        == "per-cell source-to-target conversion followed by arithmetic cell-type mean"
+    )
+    assert observed_result.settings["uses_inverse_pca"] is False
+    assert (
+        observed_result.settings["feature_universe"]["pca_active_filter_applied"]
+        is False
+    )
+
+
+def _complex_coverage_fixture():
+    reference = ad.AnnData(X=np.ones((2, 3), dtype=np.float32))
+    reference.var_names = ["Wnt3a", "Fzd7", "CenterOnly"]
+    reference.varm["PCs"] = np.asarray(
+        [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+        dtype=np.float32,
+    )
+    reference.var["pca_center"] = [1.0, 1.0, 10.0]
+    slices = {}
+    communications = {}
+    for time in (0.0, 1.0):
+        current = ad.AnnData(
+            X=np.asarray(
+                [
+                    [0.0, 0.0, 0.1, 0.0],
+                    [0.0, 0.0, 0.2, 0.0],
+                    [0.0, 0.0, 0.0, 0.1],
+                    [0.0, 0.0, 0.0, 0.2],
+                ],
+                dtype=np.float32,
+            )
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+    database = pd.DataFrame(
+        {
+            "ligand": ["Wnt3a", "Wnt3a", "Wnt3a"],
+            "receptor": ["Fzd7", "Fzd7_Lrp6", "Fzd7_CenterOnly"],
+        }
+    )
+    return reference, slices, communications, database
+
+
+def test_strict_complex_and_unreconstructable_subunit_coverage() -> None:
+    reference, slices, communications, database = _complex_coverage_fixture()
+    strict = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        require_all_subunits=True,
+    )
+    assert strict.pair_timecourse["pair"].unique().tolist() == ["Wnt3a_Fzd7"]
+    coverage = strict.coverage
+    assert coverage["n_lr_pairs_scored"].tolist() == [1, 1]
+    assert coverage["n_lr_pairs_globally_eligible"].tolist() == [1, 1]
+    assert coverage["n_lr_pairs_with_missing_subunit"].tolist() == [1, 1]
+    assert coverage["n_lr_pairs_skipped_missing_subunit"].tolist() == [1, 1]
+    assert coverage["missing_subunits"].tolist() == ["Lrp6", "Lrp6"]
+    assert coverage["n_lr_pairs_with_unreconstructable_subunit"].tolist() == [1, 1]
+    assert coverage["n_lr_pairs_with_inactive_pca_subunit"].tolist() == [1, 1]
+    assert coverage["n_lr_pairs_skipped_unreconstructable_subunit"].tolist() == [1, 1]
+    assert coverage["unreconstructable_subunits"].tolist() == [
+        "CenterOnly",
+        "CenterOnly",
+    ]
+    assert coverage["n_partial_complexes"].tolist() == [0, 0]
+    assert strict.settings["global_lr_coverage"]["n_lr_pairs_globally_eligible"] == 1
+    assert strict.settings["global_lr_coverage"]["n_inactive_pca_subunits"] == 1
+    assert strict.settings["pca_feature_coverage"]["n_inactive"] == 1
+    assert strict.settings["complex_subunit_policy"].startswith("strict:")
+
+    permissive = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        database,
+        n_clusters=1,
+        require_all_subunits=False,
+    )
+    assert permissive.pair_timecourse["pair"].unique().tolist() == [
+        "Wnt3a_Fzd7",
+        "Wnt3a_Fzd7_Lrp6",
+    ]
+    permissive_coverage = permissive.coverage
+    assert permissive_coverage["n_lr_pairs_scored"].tolist() == [2, 2]
+    assert permissive_coverage["n_partial_complexes"].tolist() == [1, 1]
+    assert permissive_coverage[
+        "n_lr_pairs_skipped_unreconstructable_subunit"
+    ].tolist() == [1, 1]
+
+
+def test_hybrid_uses_one_active_feature_universe_at_every_time() -> None:
+    reference = ad.AnnData(X=np.ones((2, 3), dtype=np.float32))
+    reference.var_names = ["Lig", "Rec", "CenterOnly"]
+    reference.varm["PCs"] = np.asarray(
+        [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+        dtype=np.float32,
+    )
+    reference.var["pca_center"] = [1.0, 1.0, 5.0]
+
+    slices = {}
+    communications = {}
+    for time in (0.0, 0.5, 1.0):
+        current = ad.AnnData(
+            X=np.asarray(
+                [
+                    [0.0, 0.0, 0.1, 0.0],
+                    [0.0, 0.0, 0.2, 0.0],
+                    [0.0, 0.0, 0.0, 0.1],
+                    [0.0, 0.0, 0.0, 0.2],
+                ],
+                dtype=np.float32,
+            )
+        )
+        current.obs["Annotation"] = ["A", "A", "B", "B"]
+        slices[str(time)] = current
+        communications[str(time)] = {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+
+    observed_rows = np.asarray(
+        [
+            [np.log1p(2.0), 0.0, np.log1p(100.0)],
+            [np.log1p(4.0), 0.0, np.log1p(100.0)],
+            [0.0, np.log1p(3.0), 0.0],
+            [0.0, np.log1p(5.0), 0.0],
+        ],
+        dtype=np.float32,
+    )
+    observed = ad.AnnData(X=np.vstack([observed_rows, observed_rows]))
+    observed.var_names = reference.var_names.copy()
+    observed.obs["time"] = [0.0] * 4 + [1.0] * 4
+    observed.obs["Annotation"] = ["A", "A", "B", "B"] * 2
+
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame(
+            {
+                "ligand": ["Lig", "CenterOnly"],
+                "receptor": ["Rec", "Rec"],
+            }
+        ),
+        n_clusters=1,
+        require_all_subunits=False,
+        observed_adata=observed,
+        observed_time_key="time",
+        observed_time_points=[0.0, 0.5, 1.0],
+        observed_expression_space="log1p",
+        observed_missing_time_policy="generated",
+    )
+
+    # CenterOnly is measured at observed times, but cannot vary under inverse
+    # PCA. It must be excluded from the entire trajectory, not filled with an
+    # artificial zero only at the generated time.
+    assert result.pair_timecourse["pair"].unique().tolist() == ["Lig_Rec"]
+    assert result.pair_timecourse["time"].tolist() == [0.0, 0.5, 1.0]
+    coverage = result.coverage
+    assert coverage["expression_source"].tolist() == [
+        "observed",
+        "inverse_pca",
+        "observed",
+    ]
+    assert coverage["observed_missing_fallback"].tolist() == [False, True, False]
+    assert coverage["n_lr_pairs_scored"].tolist() == [1, 1, 1]
+    assert coverage["n_lr_pairs_skipped_unreconstructable_subunit"].tolist() == [
+        1,
+        1,
+        1,
+    ]
+    assert coverage["feature_universe_shared_across_time"].all()
+    assert coverage["generated_expression_time_points"].tolist() == [
+        "0.5",
+        "0.5",
+        "0.5",
+    ]
+    assert result.settings["generated_expression_time_points"] == [0.5]
+    assert result.settings["feature_universe"]["shared_across_all_time_points"]
