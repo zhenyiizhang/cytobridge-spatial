@@ -54,7 +54,9 @@ python scripts/spatiotemporal_benchmark/verify_inputs.py \
 
 `--validate-only` is read-only: it rehashes and inspects the configured source,
 checks dimensions/times/annotations/layers, and enforces the preprocessing
-contract without creating an output directory. The normal build refuses a
+contract without creating an output directory. Hash-bound JSON sidecar audits
+listed in `preprocess_contract.external_audits` are also verified, including
+their configured nested assertions. The normal build refuses a
 non-empty `OUT/inputs`. `--overwrite` explicitly replaces only that `inputs`
 subdirectory.
 
@@ -155,4 +157,6 @@ python scripts/spatiotemporal_benchmark/build_inputs.py \
 Use `--preprocess-contract-json @contract.json` to replace the YAML provenance
 contract for a dataset with a different legitimate preprocessing recipe. Do not
 weaken that contract merely to make an incompatible or double-transformed input
-pass.
+pass. If a legacy H5AD lacks a provenance field that was verified later, bind
+the immutable audit JSON by path, SHA-256, and `required_exact` assertions under
+`external_audits` instead of editing the H5AD or pretending the field existed.

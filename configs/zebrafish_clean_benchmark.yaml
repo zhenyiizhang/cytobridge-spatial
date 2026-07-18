@@ -47,7 +47,6 @@ preprocess_contract:
     normalization: true
     log1p: true
     allow_retransform_preprocessed_x: false
-    raw_count_validation_effective: strict
     dim_reduction: pca
     n_pcs: 50
   required_contains:
@@ -58,3 +57,21 @@ preprocess_contract:
     counts_finite: true
     counts_nonnegative: true
     counts_integer_like_min_fraction: 0.9999
+  external_audits:
+    - name: corrected_clean_counts_full_sidecar
+      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/zebrafish-api/clean-counts-alpha-comparison-20260718/preprocess/preprocess_audit_final_v3_20260718.json
+      sha256: dbee6aae4abd23fe3865e3b6cbfb2927e7956e0485e3f9e78d83681e082eb2ae
+      required_exact:
+        status: pass
+        all_checks_passed: true
+        output_h5ad:
+          sha256: 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd
+          expression_source: layers['counts']
+          raw_counts_layer: counts
+        raw_count_validation:
+          effective_mode: strict
+        checks:
+          aligned_counts_all_integer_like: true
+          aligned_counts_exactly_match_source_subset: true
+          single_log1p_formula_within_tolerance: true
+          x_support_matches_expected_single_log1p: true

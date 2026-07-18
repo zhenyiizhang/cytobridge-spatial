@@ -306,7 +306,35 @@ def resolve_config(args: argparse.Namespace) -> dict[str, Any]:
     contract = config["preprocess_contract"]
     if not isinstance(contract, Mapping):
         raise ContractError("preprocess_contract must be a mapping")
-    config["preprocess_contract"] = deepcopy(dict(contract))
+    contract = deepcopy(dict(contract))
+    audits = contract.get("external_audits", [])
+    if not isinstance(audits, Sequence) or isinstance(audits, (str, bytes)):
+        raise ContractError("preprocess_contract.external_audits must be a sequence")
+    normalized_audits: list[dict[str, Any]] = []
+    config_dir = args.config.expanduser().resolve().parent
+    for index, raw_audit in enumerate(audits):
+        if not isinstance(raw_audit, Mapping):
+            raise ContractError(f"external_audits[{index}] must be a mapping")
+        audit = deepcopy(dict(raw_audit))
+        if "path" not in audit or "sha256" not in audit:
+            raise ContractError(f"external_audits[{index}] requires path and sha256")
+        path = Path(str(audit["path"])).expanduser()
+        audit["path"] = str(
+            (path if path.is_absolute() else config_dir / path).resolve()
+        )
+        audit["sha256"] = _normalise_digest(audit["sha256"])
+        if audit["sha256"] is None:
+            raise ContractError(f"external_audits[{index}].sha256 is required")
+        required_exact = audit.get("required_exact", {})
+        if not isinstance(required_exact, Mapping):
+            raise ContractError(
+                f"external_audits[{index}].required_exact must be a mapping"
+            )
+        audit["required_exact"] = deepcopy(dict(required_exact))
+        audit["name"] = str(audit.get("name", f"external_audit_{index}"))
+        normalized_audits.append(audit)
+    contract["external_audits"] = normalized_audits
+    config["preprocess_contract"] = contract
     return config
 
 
@@ -411,6 +439,47 @@ def _validate_preprocess_provenance(adata: ad.AnnData, contract: Mapping[str, An
     }
 
 
+def _validate_external_audits(contract: Mapping[str, Any]) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for index, audit in enumerate(contract.get("external_audits", [])):
+        path = Path(str(audit["path"])).expanduser().resolve()
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        observed_sha = sha256(path)
+        expected_sha = str(audit["sha256"]).lower()
+        if observed_sha != expected_sha:
+            raise ContractError(
+                f"external audit {path} SHA-256 mismatch: expected {expected_sha}, "
+                f"observed {observed_sha}"
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ContractError(f"cannot read external audit JSON {path}: {exc}") from exc
+        if not isinstance(payload, Mapping):
+            raise ContractError(f"external audit {path} must contain a JSON object")
+        required_exact = audit.get("required_exact", {})
+        failures = [
+            f"{key!r}: expected {expected!r}, found {payload.get(key)!r}"
+            for key, expected in required_exact.items()
+            if key not in payload or not _values_equal(payload[key], expected)
+        ]
+        if failures:
+            raise ContractError(
+                f"external audit {path} violates required_exact: " + "; ".join(failures)
+            )
+        results.append(
+            {
+                "name": str(audit.get("name", f"external_audit_{index}")),
+                "path": str(path),
+                "sha256": observed_sha,
+                "status": "passed",
+                "required_exact": deepcopy(dict(required_exact)),
+            }
+        )
+    return results
+
+
 def inspect_input(config: Mapping[str, Any]) -> tuple[ad.AnnData, np.ndarray, dict[str, Any]]:
     h5ad_path = Path(config["input_h5ad"])
     if not h5ad_path.is_file():
@@ -447,6 +516,7 @@ def inspect_input(config: Mapping[str, Any]) -> tuple[ad.AnnData, np.ndarray, di
             (source.n_obs, int(config["spatial_dim"])),
         )
         provenance = _validate_preprocess_provenance(source, preprocess)
+        provenance["external_audits"] = _validate_external_audits(preprocess)
         matrix_checks = dict(preprocess.get("matrix_checks", {}))
         x_stats = _matrix_stats(source.X, source.n_obs, integer_like=False)
         if bool(matrix_checks.get("x_finite", True)) and not x_stats["all_finite"]:

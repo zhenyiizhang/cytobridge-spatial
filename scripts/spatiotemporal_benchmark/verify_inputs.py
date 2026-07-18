@@ -632,6 +632,22 @@ def verify(output_dir: Path, *, verify_source: bool = False) -> dict[str, Any]:
         raise AssertionError(
             f"Root split set is invalid: expected {sorted(expected_splits)}, found {sorted(root['splits'])}"
         )
+    configured_audits = resolved_config["preprocess_contract"].get("external_audits", [])
+    observed_audits = (
+        root.get("source", {})
+        .get("inspection", {})
+        .get("preprocess_provenance", {})
+        .get("external_audits", [])
+    )
+    if len(configured_audits) != len(observed_audits):
+        raise AssertionError("Configured and recorded external audit counts differ")
+    for index, (configured, observed) in enumerate(zip(configured_audits, observed_audits)):
+        for key in ("name", "path", "sha256", "required_exact"):
+            if configured.get(key) != observed.get(key):
+                raise AssertionError(f"External audit {index} differs at {key}")
+        if observed.get("status") != "passed":
+            raise AssertionError(f"External audit {index} was not recorded as passed")
+    external_audits_rehashed = 0
     if verify_source:
         source_path = Path(root["source"]["h5ad"])
         if not source_path.is_file():
@@ -639,6 +655,13 @@ def verify(output_dir: Path, *, verify_source: bool = False) -> dict[str, Any]:
         observed = sha256(source_path)
         if observed != root["source"]["h5ad_sha256"]:
             raise AssertionError("Source H5AD SHA differs from root manifest")
+        for audit in configured_audits:
+            audit_path = Path(str(audit["path"]))
+            if not audit_path.is_file():
+                raise FileNotFoundError(audit_path)
+            if sha256(audit_path) != str(audit["sha256"]):
+                raise AssertionError(f"External audit SHA differs: {audit_path}")
+            external_audits_rehashed += 1
 
     split_results = {
         name: verify_split(
@@ -657,6 +680,7 @@ def verify(output_dir: Path, *, verify_source: bool = False) -> dict[str, Any]:
         "manifest_sha256": sha256(manifest_path),
         "artifacts_hashed": counter[0],
         "source_rehashed": bool(verify_source),
+        "external_audits_rehashed": external_audits_rehashed,
         "loto_targets": root["loto_targets"],
         "full_data_targets": root["full_data_targets"],
         "splits": split_results,
