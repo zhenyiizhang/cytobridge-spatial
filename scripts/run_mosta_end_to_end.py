@@ -150,7 +150,10 @@ def _profile_defaults(profile: str) -> dict[str, object]:
         "phase1_epochs": 10000,
         "phase2_epochs": 500,
         "edge_epochs": 100,
-        "edge_max_train_edges": None,
+        # The full graph remains the source population. Each epoch draws a new
+        # deterministic random subset so 100 epochs can cover a multi-million
+        # edge graph without materializing every edge in every optimizer pass.
+        "edge_max_train_edges": 2_000_000,
         "evaluation_n_samples": 5000,
     }
 

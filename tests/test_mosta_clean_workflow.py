@@ -9,7 +9,11 @@ import pandas as pd
 from CytoBridge.pp.preprocess import preprocess
 from CytoBridge.pp.spatial_align import AlignConfig, _align_preprocessed_adata
 from CytoBridge.utils.config import load_config
-from scripts.run_mosta_end_to_end import _lr_feature_contract, _write_pca_contract
+from scripts.run_mosta_end_to_end import (
+    _lr_feature_contract,
+    _profile_defaults,
+    _write_pca_contract,
+)
 from scripts.run_spatial_training import MOSTA_TIME_MAPPING, _preset_config
 
 
@@ -180,3 +184,4 @@ def test_mosta_alpha0015_config_has_recovered_six_stage_schedule():
     ]
     assert [stage["epochs"] for stage in plan] == [100, 100, 50, 2001, 1000, 2001]
     assert [stage["batch_size"] for stage in plan] == [1024, 1024, 1024, 512, 1024, 512]
+    assert _profile_defaults("full")["edge_max_train_edges"] == 2_000_000
