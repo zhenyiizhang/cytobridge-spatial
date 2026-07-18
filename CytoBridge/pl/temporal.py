@@ -127,18 +127,34 @@ def plot_temporal_gene_heatmap(
     out_path: str | Path,
     top_n: int = 60,
     title: str = "Temporal gene programs",
+    panel_columns: int = 1,
 ) -> Path:
-    """Plot a gene-wise z-scored heatmap ordered by pattern and variance."""
+    """Plot gene-wise z-scored profiles in one or more contiguous panels.
+
+    ``panel_columns`` only changes the page layout.  Genes are globally ordered
+    once (preferentially by ``dendrogram_rank``) and then split into contiguous,
+    near-equal blocks that share the same color scale.  The default single-panel
+    layout is backward compatible.
+    """
     import matplotlib.pyplot as plt
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
     import seaborn as sns
 
+    panel_columns = int(panel_columns)
+    if panel_columns <= 0:
+        raise ValueError("panel_columns must be positive.")
     required = {"gene", "variance", "cluster"}
     missing = sorted(required.difference(top_variable_genes.columns))
     if missing:
         raise KeyError(f"top_variable_genes is missing columns: {missing}")
-    ordered = top_variable_genes.sort_values(
-        ["cluster", "variance"], ascending=[True, False]
-    )["gene"].astype(str)
+    if "dendrogram_rank" in top_variable_genes.columns:
+        ordered_table = top_variable_genes.sort_values("dendrogram_rank")
+    else:
+        ordered_table = top_variable_genes.sort_values(
+            ["cluster", "variance"], ascending=[True, False]
+        )
+    ordered = ordered_table["gene"].astype(str)
     genes = [gene for gene in ordered if gene in expression.index][: int(top_n)]
     if not genes:
         raise ValueError("No selected genes are present in expression.")
@@ -146,22 +162,46 @@ def plot_temporal_gene_heatmap(
     zscore = values.sub(values.mean(axis=1), axis=0).div(
         values.std(axis=1, ddof=0).replace(0.0, np.nan), axis=0
     ).fillna(0.0)
-    fig, ax = plt.subplots(
-        figsize=(7.6, max(4.5, 0.15 * len(genes))), facecolor="white"
+    n_panels = min(panel_columns, len(genes))
+    blocks = [
+        zscore.iloc[index]
+        for index in np.array_split(np.arange(len(zscore)), n_panels)
+        if len(index)
+    ]
+    block_height = max(len(block) for block in blocks)
+    figure_width = 7.6 if n_panels == 1 else 3.8 * n_panels + 0.8
+    figure_height = max(4.5, 0.15 * block_height)
+    fig, axes = plt.subplots(
+        1,
+        n_panels,
+        figsize=(figure_width, figure_height),
+        facecolor="white",
+        squeeze=False,
+        constrained_layout=True,
     )
-    sns.heatmap(
-        zscore,
-        cmap="RdBu_r",
-        center=0.0,
-        vmin=-2.0,
-        vmax=2.0,
-        ax=ax,
-        cbar_kws={"label": "Gene-wise z-score", "shrink": 0.5},
+    for panel_index, (ax, block) in enumerate(zip(axes.flat, blocks)):
+        sns.heatmap(
+            block,
+            cmap="RdBu_r",
+            center=0.0,
+            vmin=-2.0,
+            vmax=2.0,
+            ax=ax,
+            cbar=False,
+            yticklabels=True,
+        )
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Gene" if panel_index == 0 else "")
+        if n_panels > 1:
+            ax.tick_params(axis="y", labelsize=4.5)
+    colorbar = fig.colorbar(
+        ScalarMappable(norm=Normalize(vmin=-2.0, vmax=2.0), cmap="RdBu_r"),
+        ax=list(axes.flat),
+        fraction=0.025,
+        pad=0.02,
     )
-    ax.set_title(title)
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Gene")
-    fig.tight_layout()
+    colorbar.set_label("Gene-wise z-score")
+    fig.suptitle(title)
     path = _output_path(out_path)
     fig.savefig(path, bbox_inches="tight", facecolor="white")
     plt.close(fig)

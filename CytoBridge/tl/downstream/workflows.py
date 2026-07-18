@@ -89,6 +89,7 @@ def run_interpolation_workflow(
     use_real_for_observed: bool = True,
     classifier_cache_path: Optional[str] = None,
     classifier_cache_dir: Optional[str] = None,
+    classifier_cache_tag: Optional[str] = None,
     classifier_adata=None,
     classifier_time_key: Optional[str] = None,
     classifier_obsm_key: str = "X_latent",
@@ -109,6 +110,9 @@ def run_interpolation_workflow(
     split_sigma_scalar: float = 0.03,
     split_sigma_vector: Optional[Sequence[float]] = None,
     split_growth_alpha: float = 1.0,
+    split_interaction_m: int = 1024,
+    split_resample_dt: Optional[float] = None,
+    split_max_particles: Optional[int] = None,
     split_sde_piecewise: bool = False,
     split_sde_piecewise_include_end: bool = False,
     piecewise_observed_sample_mode: str = "t0_fixed",
@@ -212,6 +216,7 @@ def run_interpolation_workflow(
                 classifier_adata,
                 cache_path=classifier_cache_path,
                 cache_dir=None if classifier_cache_path is not None else cache_dir_resolved,
+                cache_tag=classifier_cache_tag,
                 label_col=annotation_key,
                 time_key=classifier_time_key,
                 obsm_key=classifier_obsm_key,
@@ -225,6 +230,9 @@ def run_interpolation_workflow(
                 device=device,
                 best_epoch_metric=classifier_best_metric,
                 train_on_full_data=bool(classifier_train_on_full_data),
+                n_features=(
+                    None if classifier_n_pcs is None else int(classifier_n_pcs)
+                ),
             )
         else:
             classifier_cache_resolved = find_single_classifier_cache(
@@ -321,13 +329,16 @@ def run_interpolation_workflow(
                 sigma=split_sigma_scalar,
                 sigma_by_dim=split_sigma_vector,
                 growth_alpha=split_growth_alpha,
-                interaction_m=1024,
+                interaction_m=int(split_interaction_m),
                 device=device,
                 rng=rng_warp_piecewise,
                 k=int(spatial_warp_k),
                 eps=float(spatial_warp_eps),
                 return_prewarp=True,
                 warp_visualization_only=bool(spatial_warp_visualization_only),
+                use_real_for_observed=bool(use_real_for_observed),
+                resample_dt=split_resample_dt,
+                max_particles=split_max_particles,
             )
         elif split_sde_piecewise:
             rng_piecewise = np.random.default_rng(0 if random_seed is None else int(random_seed))
@@ -374,9 +385,11 @@ def run_interpolation_workflow(
                     sigma=split_sigma_scalar,
                     sigma_by_dim=split_sigma_vector,
                     growth_alpha=split_growth_alpha,
-                    interaction_m=1024,
+                    interaction_m=int(split_interaction_m),
                     device=device,
                     verbose=True,
+                    resample_dt=split_resample_dt,
+                    max_particles=split_max_particles,
                 )
                 for t_val, pts in zip(seg_ts, seg_points):
                     if float(t_val) in observed_set:
@@ -405,8 +418,11 @@ def run_interpolation_workflow(
                 sigma=split_sigma_scalar,
                 sigma_by_dim=split_sigma_vector,
                 growth_alpha=split_growth_alpha,
+                interaction_m=int(split_interaction_m),
                 device=device,
                 verbose=True,
+                resample_dt=split_resample_dt,
+                max_particles=split_max_particles,
             )
 
         if spatial_warp_to_observed:
@@ -447,6 +463,7 @@ def run_interpolation_workflow(
                 feature_dim=classifier_feature_dim,
                 device=device,
                 knn_neighbors=int(classifier_knn_neighbors),
+                include_time_feature=cached_classifier.include_time_feature,
             )
 
         predicted_labels_split = predict_labels_for_trajectories(
@@ -457,6 +474,7 @@ def run_interpolation_workflow(
             feature_dim=classifier_feature_dim,
             device=device,
             knn_neighbors=int(classifier_knn_neighbors),
+            include_time_feature=cached_classifier.include_time_feature,
         )
         if sde_points_split_prewarp is not None:
             predicted_labels_split_prewarp = predict_labels_for_trajectories(
@@ -467,6 +485,7 @@ def run_interpolation_workflow(
                 feature_dim=classifier_feature_dim,
                 device=device,
                 knn_neighbors=int(classifier_knn_neighbors),
+                include_time_feature=cached_classifier.include_time_feature,
             )
 
     adata_dict = {}

@@ -37,6 +37,77 @@ from CytoBridge.pp.preprocess import preprocess
 from CytoBridge.pp.spatial_align import AlignConfig, align_spatial
 
 
+def _parse_time_mapping_arg(value: Optional[str]) -> Optional[dict]:
+    """Parse a JSON object/pair-list supplied inline or from a JSON file."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        raise ValueError("--time-mapping must not be empty.")
+    if text.startswith("@"):
+        mapping_path = Path(text[1:]).expanduser()
+        text = mapping_path.read_text(encoding="utf-8")
+    elif not text.startswith(("{", "[")):
+        mapping_path = Path(text).expanduser()
+        if not mapping_path.is_file():
+            raise ValueError(
+                "--time-mapping must be inline JSON, an existing JSON path, "
+                "or @/path/to/mapping.json."
+            )
+        text = mapping_path.read_text(encoding="utf-8")
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid --time-mapping JSON: {exc}") from exc
+
+    if isinstance(payload, dict):
+        mapping = payload
+    elif isinstance(payload, list):
+        mapping = {}
+        for index, pair in enumerate(payload):
+            if not isinstance(pair, list) or len(pair) != 2:
+                raise ValueError(
+                    "A list-form --time-mapping must contain [source, target] "
+                    f"pairs; entry {index} is {pair!r}."
+                )
+            source, target = pair
+            try:
+                duplicate = source in mapping
+            except TypeError as exc:
+                raise ValueError(
+                    f"time-mapping source at entry {index} is not a scalar: {source!r}."
+                ) from exc
+            if duplicate:
+                raise ValueError(f"Duplicate time-mapping source: {source!r}.")
+            mapping[source] = target
+    else:
+        raise ValueError("--time-mapping JSON must be an object or a list of pairs.")
+    if not mapping:
+        raise ValueError("--time-mapping must contain at least one mapping entry.")
+    return mapping
+
+
+def _parse_spatial_obs_keys(value: Optional[str]) -> Optional[tuple[str, ...]]:
+    if value is None:
+        return None
+    keys = tuple(part.strip() for part in str(value).split(",") if part.strip())
+    if not keys:
+        raise ValueError("--spatial-obs-keys must contain at least one column name.")
+    return keys
+
+
+def _interaction_expression_layer(adata) -> str:
+    """Resolve the exact pre-transform source selected by pp.preprocess."""
+    info = adata.uns.get("preprocess_info", {})
+    layer = str(info.get("raw_counts_layer", info.get("counts_layer", "counts")))
+    if layer not in adata.layers:
+        raise KeyError(
+            "The canonical raw-expression layer recorded by preprocessing is "
+            f"{layer!r}, but available layers are {list(adata.layers.keys())}."
+        )
+    return layer
+
+
 def _prune_large_uns_arrays(adata, max_bytes: int) -> list[dict]:
     """Remove oversized ndarray payloads from ``adata.uns`` and record them."""
     removed: list[dict] = []
@@ -154,9 +225,13 @@ def run_preprocessing_pipeline(
         n_top_genes=align_config.n_top_genes,
         dim_reduction="pca",
         n_pcs=align_config.n_pcs,
+        time_mapping=align_config.time_mapping,
         normalization_target_sum=align_config.normalization_target_sum,
         expression_layer=align_config.expression_layer,
         allow_retransform_preprocessed_x=align_config.allow_retransform_preprocessed_x,
+        counts_layer=align_config.counts_layer,
+        raw_count_validation=align_config.raw_count_validation,
+        raw_count_integer_tolerance=align_config.raw_count_integer_tolerance,
     )
     adata_aligned = align_spatial(
         adata_or_h5ad=adata_preprocessed,
@@ -221,6 +296,11 @@ def run_preprocessing_pipeline(
     processed_times = sorted(
         pd.to_numeric(adata_aligned.obs[processed_time_key], errors="raise").unique()
     )
+    interaction_expression_layer = _interaction_expression_layer(adata_aligned)
+    print(
+        "[2/3] Interaction-expression source: "
+        f"layers['{interaction_expression_layer}']"
+    )
 
     for slice_idx, t_processed in enumerate(processed_times):
         slice_name = f"{data_name}_t{slice_idx}"
@@ -237,7 +317,7 @@ def run_preprocessing_pipeline(
             neighborhood_threshold=neighborhood_threshold,
             spot_diameter=recommended_spot_diameter,
             spatial_key=spatial_key_used,
-            expression_layer="counts",
+            expression_layer=interaction_expression_layer,
             auto_neighborhood_threshold=False,
         )
 
@@ -274,6 +354,7 @@ def run_preprocessing_pipeline(
         "neighborhood_threshold": float(neighborhood_threshold),
         "recommended_spot_diameter": float(recommended_spot_diameter),
         "spatial_key": spatial_key_used,
+        "raw_counts_layer": interaction_expression_layer,
     }
 
 
@@ -282,6 +363,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--data-name", required=True)
     p.add_argument("--h5ad-path", required=True)
     p.add_argument("--time-key", required=True)
+    p.add_argument(
+        "--time-mapping",
+        default=None,
+        help=(
+            "Optional JSON mapping from observed time labels to numeric model times. "
+            "Accepts inline JSON, a JSON file path, or @path. A list of "
+            "[source, target] pairs preserves numeric source-key types."
+        ),
+    )
     p.add_argument("--output-dir", default="results/")
     p.add_argument("--database-path", default="database/CellNEST_database.csv")
     p.add_argument("--split", type=int, default=0)
@@ -337,6 +427,31 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--counts-layer",
+        default="counts",
+        help=(
+            "Compatibility raw-count layer name used when --expression-layer is "
+            "not supplied. An explicit expression layer remains authoritative "
+            "for both model preprocessing and interaction graphs."
+        ),
+    )
+    p.add_argument(
+        "--raw-count-validation",
+        choices=["auto", "strict", "off"],
+        default="auto",
+        help=(
+            "Raw-count contract. 'auto' strictly validates an explicit expression "
+            "layer before normalization/log1p; 'strict' always validates the "
+            "selected source; 'off' is for documented non-count workflows only."
+        ),
+    )
+    p.add_argument(
+        "--raw-count-integer-tolerance",
+        type=float,
+        default=1e-6,
+        help="Absolute tolerance for strict integer-like raw-count validation.",
+    )
+    p.add_argument(
         "--allow-retransform-preprocessed-x",
         action="store_true",
         help=(
@@ -347,6 +462,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--phase1-epochs", type=int, default=10000)
     p.add_argument("--phase2-epochs", type=int, default=500)
     p.add_argument("--shared-scale", type=float, default=None)
+    p.add_argument(
+        "--input-spatial-key",
+        default="spatial",
+        help="Input AnnData obsm key containing exactly spatial-dim coordinates.",
+    )
+    p.add_argument(
+        "--spatial-obs-keys",
+        default=None,
+        help=(
+            "Comma-separated fallback obs coordinate columns when the input obsm "
+            "key is absent, e.g. x_coord,y_coord or x,y,z."
+        ),
+    )
     p.add_argument("--center-x", type=int, choices=[0, 1], default=1)
     p.add_argument("--center-y", type=int, choices=[0, 1], default=0)
     p.add_argument("--flip-y", type=int, choices=[0, 1], default=0)
@@ -365,6 +493,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _build_parser().parse_args()
+    time_mapping = _parse_time_mapping_arg(args.time_mapping)
+    spatial_obs_keys = _parse_spatial_obs_keys(args.spatial_obs_keys)
     batch_indices = None
     if args.batch_indices:
         batch_indices = [
@@ -394,6 +524,12 @@ def main() -> None:
         normalization_target_sum=normalization_target_sum,
         expression_layer=expression_layer,
         allow_retransform_preprocessed_x=bool(args.allow_retransform_preprocessed_x),
+        counts_layer=str(args.counts_layer),
+        raw_count_validation=str(args.raw_count_validation),
+        raw_count_integer_tolerance=float(args.raw_count_integer_tolerance),
+        time_mapping=time_mapping,
+        input_spatial_key=str(args.input_spatial_key),
+        spatial_obs_keys=spatial_obs_keys,
         phase1_epochs=int(args.phase1_epochs),
         phase2_epochs=int(args.phase2_epochs),
         shared_scale=args.shared_scale,

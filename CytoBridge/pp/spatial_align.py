@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -53,6 +54,59 @@ class AlignConfig:
     # Appended to preserve positional compatibility with older AlignConfig calls.
     expression_layer: Optional[str] = None
     allow_retransform_preprocessed_x: bool = False
+    # Optional explicit mapping applied during expression preprocessing.  This
+    # is useful when PCA/HVG fitting should include reference time points that
+    # are later excluded from alignment/training, while the retained times must
+    # still use a canonical model-time axis (for example 0..4).
+    time_mapping: Optional[Dict[object, float]] = None
+    # Raw-expression contract forwarded to pp.preprocess. Appended fields keep
+    # positional compatibility with older AlignConfig construction.
+    counts_layer: str = "counts"
+    raw_count_validation: str = "auto"
+    raw_count_integer_tolerance: float = 1e-6
+    # Input coordinate schema. Alignment continues to use canonical
+    # obsm['spatial'] internally, but a dataset adapter may name its source
+    # obsm entry or obs coordinate columns explicitly.
+    input_spatial_key: str = "spatial"
+    spatial_obs_keys: Optional[Tuple[str, ...]] = None
+
+
+def _h5ad_uns_safe(value, *, path: str = "config"):
+    """Convert dataclass values into H5AD-safe provenance values.
+
+    AnnData requires mapping keys in ``uns`` to be strings. In particular, a
+    numeric-key ``time_mapping`` inside ``asdict(AlignConfig)`` otherwise makes
+    ``write_h5ad`` fail. String-key collisions are rejected rather than
+    silently dropping provenance.
+    """
+    if isinstance(value, Mapping):
+        safe = {}
+        source_keys = {}
+        for key, item in value.items():
+            safe_key = str(key)
+            if safe_key in safe:
+                raise ValueError(
+                    f"Cannot serialize {path}: keys {source_keys[safe_key]!r} and "
+                    f"{key!r} both become {safe_key!r}."
+                )
+            source_keys[safe_key] = key
+            safe[safe_key] = _h5ad_uns_safe(item, path=f"{path}.{safe_key}")
+        return safe
+    if isinstance(value, (list, tuple)):
+        return [_h5ad_uns_safe(item, path=path) for item in value]
+    if isinstance(value, np.generic):
+        return value.item()
+    if value is None:
+        return "none"
+    return value
+
+
+def _align_config_for_uns(cfg: AlignConfig) -> dict:
+    """Return a complete, H5AD-writable alignment configuration."""
+    values = asdict(cfg)
+    if values["normalization_target_sum"] is None:
+        values["normalization_target_sum"] = "median"
+    return _h5ad_uns_safe(values)
 
 
 class CoordTransformer(nn.Module):
@@ -202,6 +256,7 @@ def _ot_loss_mini_batch(spatial0, feature0, spatial1, feature1, batch_size, alph
 def _prepare_adata_for_alignment(
     adata: sc.AnnData,
     time_key: str,
+    cfg: AlignConfig,
     batch_indices: Optional[Sequence[int]] = None,
 ) -> Tuple[sc.AnnData, List]:
     """Validate and subset a preprocessed adata for spatial alignment."""
@@ -217,11 +272,47 @@ def _prepare_adata_for_alignment(
             "align_spatial expects preprocessed AnnData with `obs['time_point_processed']`. "
             "Run `pp.preprocess(...)` first."
         )
-    if "spatial" not in adata.obsm:
-        if "spatial_x" in adata.obs and "spatial_y" in adata.obs:
-            adata.obsm["spatial"] = np.column_stack((adata.obs["spatial_x"], adata.obs["spatial_y"]))
-        else:
-            raise ValueError("Spatial coordinates not found in obsm['spatial'] or obs['spatial_x/y'].")
+    input_spatial_key = str(cfg.input_spatial_key).strip()
+    if not input_spatial_key:
+        raise ValueError("AlignConfig.input_spatial_key must be non-empty.")
+    if input_spatial_key in adata.obsm:
+        spatial_input = np.asarray(adata.obsm[input_spatial_key])
+        spatial_source = f"obsm['{input_spatial_key}']"
+    else:
+        obs_keys = cfg.spatial_obs_keys
+        if obs_keys is None:
+            default_keys = ("spatial_x", "spatial_y", "spatial_z")
+            obs_keys = default_keys[: int(cfg.spatial_dim)]
+        obs_keys = tuple(str(key).strip() for key in obs_keys)
+        if len(obs_keys) != int(cfg.spatial_dim) or any(not key for key in obs_keys):
+            raise ValueError(
+                "AlignConfig.spatial_obs_keys must contain exactly spatial_dim "
+                f"non-empty column names, got {obs_keys}."
+            )
+        missing_spatial_keys = [key for key in obs_keys if key not in adata.obs]
+        if missing_spatial_keys:
+            raise ValueError(
+                f"Spatial coordinates not found in obsm['{input_spatial_key}']; "
+                f"missing obs coordinate columns: {missing_spatial_keys}."
+            )
+        spatial_input = adata.obs.loc[:, list(obs_keys)].to_numpy()
+        spatial_source = f"obs[{list(obs_keys)!r}]"
+
+    if spatial_input.ndim != 2 or spatial_input.shape != (
+        adata.n_obs,
+        int(cfg.spatial_dim),
+    ):
+        raise ValueError(
+            f"Spatial source {spatial_source} must have shape "
+            f"({adata.n_obs}, {cfg.spatial_dim}), got {spatial_input.shape}."
+        )
+    try:
+        spatial_input = np.asarray(spatial_input, dtype=np.float32)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Spatial source {spatial_source} must be numeric.") from exc
+    if not np.isfinite(spatial_input).all():
+        raise ValueError(f"Spatial source {spatial_source} contains non-finite values.")
+    adata.obsm["spatial"] = spatial_input.copy()
 
     if isinstance(adata.obs[time_key].dtype, pd.CategoricalDtype):
         all_batch_names = list(adata.obs[time_key].cat.categories)
@@ -263,6 +354,7 @@ def _align_preprocessed_adata(
     adata, batch_names = _prepare_adata_for_alignment(
         adata=adata,
         time_key=time_key,
+        cfg=cfg,
         batch_indices=batch_indices,
     )
     present = set(pd.unique(adata.obs[time_key]))
@@ -487,16 +579,7 @@ def _align_preprocessed_adata(
         "shared_scale_base": (
             float(shared_scale_base) if shared_scale_base is not None else "disabled"
         ),
-        "config": {
-            key: (
-                value
-                if value is not None
-                else "median"
-                if key == "normalization_target_sum"
-                else "none"
-            )
-            for key, value in asdict(cfg).items()
-        },
+        "config": _align_config_for_uns(cfg),
     }
     if verbose:
         print(
@@ -537,8 +620,12 @@ def preprocess_and_align(
         normalization_target_sum=cfg.normalization_target_sum,
         log1p=True,
         select_hvg=True,
+        time_mapping=cfg.time_mapping,
         expression_layer=cfg.expression_layer,
         allow_retransform_preprocessed_x=cfg.allow_retransform_preprocessed_x,
+        counts_layer=cfg.counts_layer,
+        raw_count_validation=cfg.raw_count_validation,
+        raw_count_integer_tolerance=cfg.raw_count_integer_tolerance,
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,

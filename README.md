@@ -421,6 +421,15 @@ the S13 per-cell table and dense observed/generated spatial grid. Their inputs a
 generic AnnData keys and model components; the companion notebooks contain only
 the ARISTA timepoint, annotation, and reaEGC ROI choices.
 
+For manuscript-style layouts, `plot_trajectory_grid` can wrap time points into
+multiple rows with one shared legend, while `plot_trajectory_comparison_grid`
+renders any matched control/perturbation trajectories as time-by-condition
+panels. `plot_growth_timepoint_grid` supports per-time robust 0--1 display
+scaling or one global raw-value scale, and `plot_temporal_gene_heatmap` can split
+one globally ordered gene list into contiguous columns with a shared colorbar.
+All layout options are dataset-agnostic and leave the underlying model states
+and numerical tables unchanged.
+
 Temporal gene and ligand-receptor panels use the same separation of concerns:
 
 - `summarize_temporal_gene_patterns` uses either the PCA contract retained in

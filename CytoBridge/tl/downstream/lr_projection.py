@@ -9,6 +9,7 @@ from typing import Mapping, Optional, Sequence
 import numpy as np
 import pandas as pd
 
+from .downstream_data import infer_time_key, parse_time_value
 from .temporal import (
     PCAReconstructionSpec,
     TemporalProfileClusteringResult,
@@ -128,6 +129,110 @@ def _mean_states_by_type(
     return means, counts
 
 
+def _expression_matrix(adata, layer: Optional[str]):
+    if layer is None:
+        return adata.X
+    if layer not in adata.layers:
+        raise KeyError(f"observed_adata.layers is missing '{layer}'.")
+    return adata.layers[layer]
+
+
+def _align_expression_features(
+    adata,
+    matrix,
+    feature_names: Sequence[str],
+):
+    """Align an observed expression matrix to the PCA feature contract."""
+    observed_names = pd.Index(map(str, adata.var_names))
+    target_names = pd.Index(map(str, feature_names))
+    if observed_names.equals(target_names):
+        return matrix, "exact"
+    if not observed_names.is_unique:
+        raise ValueError(
+            "observed_adata.var_names must be unique when their order differs "
+            "from the PCA reconstruction feature order."
+        )
+    if not target_names.is_unique:
+        raise ValueError(
+            "PCA reconstruction feature names must be unique when observed "
+            "genes require name-based reordering."
+        )
+    missing = target_names.difference(observed_names)
+    if len(missing):
+        raise ValueError(
+            f"observed_adata is missing {len(missing)} PCA reconstruction "
+            f"features; examples={missing[:5].tolist()}."
+        )
+    indexer = observed_names.get_indexer(target_names)
+    return matrix[:, indexer], "var_name"
+
+
+def _mean_expression_by_type(
+    expression,
+    labels: np.ndarray,
+    cell_types: Sequence[str],
+) -> tuple[np.ndarray, dict[str, int]]:
+    from scipy import sparse
+
+    means = np.zeros((len(cell_types), expression.shape[1]), dtype=np.float32)
+    counts = {}
+    for idx, cell_type in enumerate(cell_types):
+        mask = labels == str(cell_type)
+        counts[str(cell_type)] = int(mask.sum())
+        if not mask.any():
+            continue
+        subset = expression[mask]
+        if sparse.issparse(subset):
+            mean = np.asarray(subset.mean(axis=0)).reshape(-1)
+        else:
+            mean = np.asarray(subset, dtype=np.float64).mean(axis=0)
+        means[idx] = mean
+    if not np.isfinite(means).all():
+        raise ValueError("Observed mean expression contains non-finite values.")
+    return means, counts
+
+
+def _convert_expression_space(
+    expression: np.ndarray,
+    *,
+    source: str,
+    target: str,
+) -> np.ndarray:
+    if source not in {"log1p", "count"}:
+        raise ValueError("Expression source space must be 'log1p' or 'count'.")
+    if target not in {"log1p", "count"}:
+        raise ValueError("Expression target space must be 'log1p' or 'count'.")
+    values = np.asarray(expression, dtype=np.float64)
+    if source == "count":
+        values = np.clip(values, 0.0, None)
+        if target == "log1p":
+            values = np.log1p(values)
+    elif target == "count":
+        values = np.clip(np.expm1(values), 0.0, None)
+    if not np.isfinite(values).all():
+        raise ValueError("Expression-space conversion produced non-finite values.")
+    return values
+
+
+def _match_time(
+    time_value: float,
+    candidates: Sequence[float],
+    *,
+    atol: float,
+) -> Optional[float]:
+    matches = [
+        float(candidate)
+        for candidate in candidates
+        if np.isclose(float(time_value), float(candidate), rtol=0.0, atol=atol)
+    ]
+    if len(matches) > 1:
+        raise ValueError(
+            f"Time {time_value} ambiguously matches observed times {matches} "
+            f"within atol={atol}."
+        )
+    return matches[0] if matches else None
+
+
 def _symbol_vectors(
     expression_by_type: np.ndarray,
     gene_name_map: pd.DataFrame,
@@ -191,6 +296,14 @@ def project_communication_to_lr_timecourses(
     pca_reconstruction: Optional[PCAReconstructionSpec] = None,
     profile_linkage_method: str = "average",
     profile_cluster_order: str = "peak_time",
+    observed_adata=None,
+    observed_time_key: Optional[str] = None,
+    observed_time_points: Optional[Sequence[float]] = None,
+    observed_annotation_key: Optional[str] = None,
+    observed_layer: Optional[str] = None,
+    observed_expression_space: str = "log1p",
+    observed_missing_time_policy: str = "error",
+    observed_time_atol: float = 1e-8,
 ) -> LRTemporalProjectionResult:
     """Project cell-type communication into LR-pair trajectories.
 
@@ -198,11 +311,31 @@ def project_communication_to_lr_timecourses(
     ``mean_A(ligand) * mean_B(receptor) * communication(A, B)``. Simulated
     PCA states are inverted with loadings and the center recovered from the
     reference AnnData, making the computation reusable across datasets.
+
+    ``observed_adata`` enables a hybrid expression contract used by the
+    historical zebrafish analysis: requested times listed in
+    ``observed_time_points`` use real expression from the matching rows of
+    that AnnData; all other times use inverse-PCA expression from
+    ``adata_dict``. If ``observed_time_points`` is omitted, all times present
+    in ``observed_adata.obs[observed_time_key]`` are considered observed.
+    Observed cells carry their own annotation labels, so no positional row
+    alignment with trajectory slices is assumed. Genes are aligned exactly by
+    ``var_names`` to the PCA reconstruction feature order. The default
+    ``observed_adata=None`` preserves the original all-inverse-PCA behavior.
     """
     if expression_space not in {"log1p", "count"}:
         raise ValueError("expression_space must be 'log1p' or 'count'.")
     if duplicate_policy not in {"first", "last", "sum", "max"}:
         raise ValueError("duplicate_policy must be first, last, sum, or max.")
+    if observed_expression_space not in {"log1p", "count"}:
+        raise ValueError("observed_expression_space must be 'log1p' or 'count'.")
+    if observed_missing_time_policy not in {"error", "generated"}:
+        raise ValueError(
+            "observed_missing_time_policy must be 'error' or 'generated'."
+        )
+    observed_time_atol = float(observed_time_atol)
+    if not np.isfinite(observed_time_atol) or observed_time_atol < 0:
+        raise ValueError("observed_time_atol must be finite and non-negative.")
     if time_points is None:
         time_points = sorted(float(key) for key in adata_dict)
     else:
@@ -216,14 +349,68 @@ def project_communication_to_lr_timecourses(
         if pca_reconstruction is None
         else None
     )
+    feature_names = tuple(
+        map(
+            str,
+            (
+                reference_adata.var_names
+                if pca_reconstruction is None
+                else pca_reconstruction.feature_names
+            ),
+        )
+    )
     gene_name_map = simplify_gene_names(
-        (
-            reference_adata.var_names
-            if pca_reconstruction is None
-            else pca_reconstruction.feature_names
-        ),
+        feature_names,
         preferred_species_tag=preferred_species_tag,
     )
+
+    resolved_observed_time_key = None
+    resolved_observed_annotation_key = observed_annotation_key or annotation_key
+    observed_time_values = None
+    expected_observed_times: list[float] = []
+    observed_expression = None
+    observed_gene_alignment = None
+    if observed_adata is not None:
+        resolved_observed_time_key = infer_time_key(
+            observed_adata.obs,
+            preferred=observed_time_key,
+        )
+        if resolved_observed_annotation_key not in observed_adata.obs:
+            raise KeyError(
+                "observed_adata.obs is missing annotation key "
+                f"'{resolved_observed_annotation_key}'."
+            )
+        if observed_adata.obs[resolved_observed_annotation_key].isna().any():
+            raise ValueError("observed_adata contains missing annotation labels.")
+        observed_time_values = np.asarray(
+            [
+                parse_time_value(value)
+                for value in observed_adata.obs[resolved_observed_time_key].to_numpy()
+            ],
+            dtype=np.float64,
+        )
+        if not np.isfinite(observed_time_values).all():
+            raise ValueError("observed_adata contains non-finite time values.")
+        expected_observed_times = (
+            sorted(np.unique(observed_time_values).astype(float).tolist())
+            if observed_time_points is None
+            else [parse_time_value(value) for value in observed_time_points]
+        )
+        for idx, first in enumerate(expected_observed_times):
+            for second in expected_observed_times[idx + 1 :]:
+                if np.isclose(first, second, rtol=0.0, atol=observed_time_atol):
+                    raise ValueError(
+                        "observed_time_points contains duplicate/ambiguous values "
+                        f"{first} and {second} within atol={observed_time_atol}."
+                    )
+        observed_expression, observed_gene_alignment = _align_expression_features(
+            observed_adata,
+            _expression_matrix(observed_adata, observed_layer),
+            feature_names,
+        )
+    elif observed_time_points is not None:
+        raise ValueError("observed_time_points requires observed_adata.")
+
     pair_rows = []
     celltype_rows = []
     coverage_rows = []
@@ -248,19 +435,66 @@ def project_communication_to_lr_timecourses(
                 f"expected {(len(cell_types), len(cell_types))}."
             )
         states = np.asarray(adata_t.X, dtype=np.float32)
-        labels = adata_t.obs[annotation_key].astype(str).to_numpy()
-        mean_states, counts = _mean_states_by_type(states, labels, cell_types)
-        expression = inverse_pca_states(
-            reference_adata,
-            mean_states,
-            spatial_dim=spatial_dim,
-            loadings_key=loadings_key,
-            center=center,
-            layer=reference_layer,
-            reconstruction=pca_reconstruction,
-        ).astype(np.float64)
-        if expression_space == "count":
-            expression = np.clip(np.expm1(expression), 0.0, None)
+        matched_observed_time = _match_time(
+            time_value,
+            expected_observed_times,
+            atol=observed_time_atol,
+        )
+        expression_source = "inverse_pca"
+        observed_missing_fallback = False
+        n_expression_cells = int(states.shape[0])
+        if matched_observed_time is not None:
+            observed_mask = np.isclose(
+                observed_time_values,
+                matched_observed_time,
+                rtol=0.0,
+                atol=observed_time_atol,
+            )
+            if not observed_mask.any():
+                if observed_missing_time_policy == "error":
+                    raise ValueError(
+                        f"No observed_adata rows matched expected observed time "
+                        f"{matched_observed_time} within atol={observed_time_atol}."
+                    )
+                observed_missing_fallback = True
+            else:
+                observed_labels = (
+                    observed_adata.obs.loc[
+                        observed_mask, resolved_observed_annotation_key
+                    ]
+                    .astype(str)
+                    .to_numpy()
+                )
+                expression, counts = _mean_expression_by_type(
+                    observed_expression[observed_mask],
+                    observed_labels,
+                    cell_types,
+                )
+                expression = _convert_expression_space(
+                    expression,
+                    source=observed_expression_space,
+                    target=expression_space,
+                )
+                expression_source = "observed"
+                n_expression_cells = int(observed_mask.sum())
+
+        if expression_source == "inverse_pca":
+            labels = adata_t.obs[annotation_key].astype(str).to_numpy()
+            mean_states, counts = _mean_states_by_type(states, labels, cell_types)
+            expression = inverse_pca_states(
+                reference_adata,
+                mean_states,
+                spatial_dim=spatial_dim,
+                loadings_key=loadings_key,
+                center=center,
+                layer=reference_layer,
+                reconstruction=pca_reconstruction,
+            )
+            expression = _convert_expression_space(
+                expression,
+                source="log1p",
+                target=expression_space,
+            )
         symbol_to_vector = _symbol_vectors(expression, gene_name_map)
 
         scored: dict[str, np.ndarray] = {}
@@ -345,6 +579,10 @@ def project_communication_to_lr_timecourses(
                 "n_duplicate_pairs": int(duplicates),
                 "n_cell_types": int(len(cell_types)),
                 "n_cells": int(states.shape[0]),
+                "n_expression_cells": int(n_expression_cells),
+                "expression_source": expression_source,
+                "observed_time_expected": matched_observed_time is not None,
+                "observed_missing_fallback": bool(observed_missing_fallback),
             }
         )
 
@@ -399,6 +637,41 @@ def project_communication_to_lr_timecourses(
         ),
         "profile_linkage_method": profile_linkage_method,
         "profile_cluster_order": profile_cluster_order,
+        "generated_expression_source_space": "log1p",
+        "celltype_expression_aggregation": (
+            "expm1(cell-type mean log1p normalized expression)"
+            if expression_space == "count"
+            else "cell-type mean in source space followed by requested conversion"
+        ),
+        "count_space_caveat": (
+            "This is a log-space pseudobulk and is not mean raw counts."
+            if expression_space == "count"
+            else None
+        ),
+        "pca_center_source": (
+            "explicit_reconstruction"
+            if pca_reconstruction is not None
+            else (
+                "reference_adata.var['pca_center']"
+                if reference_layer is None and "pca_center" in reference_adata.var
+                else "reference_matrix_mean"
+            )
+        ),
+        "observed_expression": (
+            None
+            if observed_adata is None
+            else {
+                "time_key": resolved_observed_time_key,
+                "time_points": [float(value) for value in expected_observed_times],
+                "time_atol": observed_time_atol,
+                "annotation_key": resolved_observed_annotation_key,
+                "layer": observed_layer,
+                "source_space": observed_expression_space,
+                "missing_time_policy": observed_missing_time_policy,
+                "gene_alignment": observed_gene_alignment,
+                "cell_alignment": "within_observed_adata_by_time_and_annotation",
+            }
+        ),
     }
     return LRTemporalProjectionResult(
         pair_timecourse=pair_timecourse,

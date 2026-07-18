@@ -4,9 +4,12 @@ from .attention import analyze_attention_by_celltype, save_interpolated_attentio
 from .ablation import (
     AblationGifResult,
     AblationPanelSeriesResult,
+    VirtualAblationResult,
+    compute_virtual_ablation_metrics,
     crop_ablation_panel,
     export_ablation_gifs,
     export_ablation_panel_series,
+    run_virtual_cell_type_ablation,
 )
 from .checkpoint import (
     LoadedModel,
@@ -124,9 +127,12 @@ __all__ = [
     "LoadedModel",
     "AblationPanelSeriesResult",
     "AblationGifResult",
+    "VirtualAblationResult",
+    "compute_virtual_ablation_metrics",
     "crop_ablation_panel",
     "export_ablation_gifs",
     "export_ablation_panel_series",
+    "run_virtual_cell_type_ablation",
     "GeneProgramPanelResult",
     "GeneSetLibrary",
     "GrowthInteractionSummary",

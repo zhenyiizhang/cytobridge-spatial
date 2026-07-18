@@ -216,21 +216,187 @@ def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
     return traj_z, traj_lnw
 
 
-def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor, noise_std: float = 0.01):
+def _apply_split_event(
+    current_state,
+    *,
+    previous_weights: torch.Tensor,
+    initial_count: int,
+    noise_std: float,
+    max_particles: Optional[int] = None,
+):
+    new_z, new_lnw = current_state
+    device = new_z.device
+    if new_z.shape[0] == 0:
+        return current_state, torch.exp(new_lnw)
+
+    r = (torch.exp(new_lnw) / previous_weights).reshape(-1)
+    mask_split = r >= 1
+    mask_extinct = ~mask_split
+
+    repeated_source_z = None
+    repeated_source_lnw = None
+    repeat_counts = None
+    if mask_split.any():
+        r_split = r[mask_split]
+        r_floor = torch.floor(r_split)
+        r_frac = r_split - r_floor
+        m_j = r_floor.to(torch.int64) + (
+            torch.rand_like(r_frac) < r_frac
+        ).to(torch.int64)
+        valid_mask = m_j > 0
+        if valid_mask.any():
+            repeated_source_z = new_z[mask_split][valid_mask]
+            repeated_source_lnw = new_lnw[mask_split][valid_mask]
+            repeat_counts = m_j[valid_mask]
+
+    keep_mask = None
+    if mask_extinct.any():
+        r_extinct = r[mask_extinct]
+        keep_mask = torch.rand_like(r_extinct) < r_extinct
+
+    n_split = 0 if repeat_counts is None else int(repeat_counts.sum().item())
+    n_extinct = 0 if keep_mask is None else int(keep_mask.sum().item())
+    n_after = n_split + n_extinct
+    if max_particles is not None and n_after > int(max_particles):
+        raise RuntimeError(
+            "Split-SDE particle limit exceeded before allocation: "
+            f"requested={n_after}, max_particles={int(max_particles)}. "
+            "Reduce the time horizon/growth multiplier or raise the explicit limit."
+        )
+
+    if repeat_counts is not None:
+        repeated_z = torch.repeat_interleave(
+            repeated_source_z, repeat_counts, dim=0
+        )
+        repeated_lnw = torch.repeat_interleave(
+            repeated_source_lnw, repeat_counts, dim=0
+        )
+        noise = torch.normal(
+            0,
+            float(noise_std),
+            size=repeated_z.shape,
+            device=device,
+        )
+        split_z = repeated_z + noise
+        split_lnw = repeated_lnw
+    else:
+        split_z = torch.empty(0, new_z.shape[1], device=device)
+        split_lnw = torch.empty(0, 1, device=device)
+
+    if keep_mask is not None:
+        extinct_z = new_z[mask_extinct][keep_mask]
+        extinct_lnw = new_lnw[mask_extinct][keep_mask]
+    else:
+        extinct_z = torch.empty(0, new_z.shape[1], device=device)
+        extinct_lnw = torch.empty(0, 1, device=device)
+
+    if split_z.shape[0] > 0 or extinct_z.shape[0] > 0:
+        new_z = torch.cat([split_z, extinct_z], dim=0)
+        new_lnw = torch.cat([split_lnw, extinct_lnw], dim=0)
+        new_lnw = torch.log(
+            torch.ones(new_z.shape[0], 1, device=device) / int(initial_count)
+        )
+    else:
+        new_z = torch.empty(0, current_state[0].shape[1], device=device)
+        new_lnw = torch.empty(0, 1, device=device)
+    return (new_z, new_lnw), torch.exp(new_lnw)
+
+
+def _euler_sdeint_split(
+    sde: nn.Module,
+    initial_state,
+    dt: float,
+    ts: torch.Tensor,
+    noise_std: float = 0.01,
+    resample_dt: Optional[float] = None,
+    max_particles: Optional[int] = None,
+):
     import math
 
-    if float(dt) <= 0:
-        raise ValueError("dt must be > 0.")
+    dt_value = float(dt)
+    if not math.isfinite(dt_value) or dt_value <= 0:
+        raise ValueError("dt must be finite and > 0.")
+    if int(ts.numel()) == 0:
+        raise ValueError("ts must contain at least one output time.")
+    if max_particles is not None and int(max_particles) <= 0:
+        raise ValueError("max_particles must be > 0 when provided.")
     device = initial_state[0].device
-    t0 = float(ts[0].item())
+    ts_list = [float(x) for x in ts.tolist()]
+    if not all(math.isfinite(value) for value in ts_list):
+        raise ValueError("ts values must all be finite.")
+    if any(b <= a for a, b in zip(ts_list[:-1], ts_list[1:])):
+        raise ValueError("ts must be strictly increasing.")
+    t0 = ts_list[0]
     current_state = initial_state
     current_time = t0
 
-    ts_list = [float(x) for x in ts.tolist()]
-    if not ts_list:
-        raise ValueError("ts must contain at least one output time.")
-    if any(b <= a for a, b in zip(ts_list[:-1], ts_list[1:])):
-        raise ValueError("ts must be strictly increasing.")
+    if resample_dt is not None:
+        event_dt = float(resample_dt)
+        if not math.isfinite(event_dt) or event_dt <= 0:
+            raise ValueError("resample_dt must be finite and > 0 when provided.")
+        t0 = ts_list[0]
+        aligned_steps = [round((value - t0) / event_dt) for value in ts_list]
+        misaligned = [
+            value
+            for value, step in zip(ts_list, aligned_steps)
+            if not math.isclose(
+                value,
+                t0 + step * event_dt,
+                rel_tol=0.0,
+                abs_tol=1e-6,
+            )
+        ]
+        if misaligned:
+            raise ValueError(
+                "Every requested output time must lie on the fixed split-event "
+                f"grid resample_dt={event_dt}; misaligned={misaligned}."
+            )
+
+        output_states = [initial_state]
+        current_state = initial_state
+        current_time = t0
+        initial_count = int(initial_state[0].shape[0])
+        previous_weights = torch.exp(initial_state[1])
+        output_by_step = {
+            int(step): index for index, step in enumerate(aligned_steps)
+        }
+        final_step = int(aligned_steps[-1])
+        for event_step in range(1, final_step + 1):
+            event_time = t0 + event_step * event_dt
+            while current_time < event_time - 1e-8:
+                if current_state[0].shape[0] == 0:
+                    current_time = event_time
+                    break
+                step_dt = min(float(dt), event_time - current_time)
+                t_tensor = torch.tensor(
+                    [current_time], device=device, dtype=torch.float32
+                )
+                f_z, f_lnw = sde.f(t_tensor, current_state)
+                noise_z = torch.randn_like(current_state[0]) * math.sqrt(step_dt)
+                g_z = sde.g(t_tensor, current_state[0])
+                current_state = (
+                    current_state[0] + f_z * step_dt + g_z * noise_z,
+                    current_state[1] + f_lnw * step_dt,
+                )
+                current_time += step_dt
+            current_state, previous_weights = _apply_split_event(
+                current_state,
+                previous_weights=previous_weights,
+                initial_count=initial_count,
+                noise_std=noise_std,
+                max_particles=max_particles,
+            )
+            if event_step in output_by_step:
+                output_states.append(current_state)
+
+        if len(output_states) != len(ts_list):
+            raise RuntimeError(
+                "Fixed split-event integrator recorded "
+                f"{len(output_states)} states for {len(ts_list)} outputs."
+            )
+        return [state[0] for state in output_states], [
+            state[1] for state in output_states
+        ]
 
     # The state at ts[0] is the supplied initial condition. Historical code
     # integrated one dt step before recording it, shifting every nominal
@@ -256,70 +422,15 @@ def _euler_sdeint_split(sde: nn.Module, initial_state, dt: float, ts: torch.Tens
             current_state = (new_z, new_lnw)
             current_time += step_dt
 
-        new_z, new_lnw = current_state
-        if new_z.shape[0] > 0:
-            r = (torch.exp(new_lnw) / w_prev).reshape(-1)
-            mask_split = r >= 1
-            mask_extinct = ~mask_split
-
-            if mask_split.any():
-                r_split = r[mask_split]
-                new_z_split = new_z[mask_split]
-                new_lnw_split = new_lnw[mask_split]
-                r_floor = torch.floor(r_split)
-                r_frac = r_split - r_floor
-                m_j = r_floor.to(torch.int64) + (
-                    torch.rand_like(r_frac) < r_frac
-                ).to(torch.int64)
-                valid_mask = m_j > 0
-                if valid_mask.any():
-                    repeated_z = torch.repeat_interleave(
-                        new_z_split[valid_mask], m_j[valid_mask], dim=0
-                    )
-                    repeated_lnw = torch.repeat_interleave(
-                        new_lnw_split[valid_mask], m_j[valid_mask], dim=0
-                    )
-                    noise = torch.normal(
-                        0,
-                        float(noise_std),
-                        size=repeated_z.shape,
-                        device=device,
-                    )
-                    split_z = repeated_z + noise
-                    split_lnw = repeated_lnw
-                else:
-                    split_z = torch.empty(0, new_z.shape[1], device=device)
-                    split_lnw = torch.empty(0, 1, device=device)
-            else:
-                split_z = torch.empty(0, new_z.shape[1], device=device)
-                split_lnw = torch.empty(0, 1, device=device)
-
-            if mask_extinct.any():
-                r_extinct = r[mask_extinct]
-                new_z_extinct = new_z[mask_extinct]
-                new_lnw_extinct = new_lnw[mask_extinct]
-                keep_mask = torch.rand_like(r_extinct) < r_extinct
-                extinct_z = new_z_extinct[keep_mask]
-                extinct_lnw = new_lnw_extinct[keep_mask]
-            else:
-                extinct_z = torch.empty(0, new_z.shape[1], device=device)
-                extinct_lnw = torch.empty(0, 1, device=device)
-
-            if split_z.shape[0] > 0 or extinct_z.shape[0] > 0:
-                new_z = torch.cat([split_z, extinct_z], dim=0)
-                new_lnw = torch.cat([split_lnw, extinct_lnw], dim=0)
-                new_lnw = torch.log(
-                    torch.ones(new_z.shape[0], 1, device=device)
-                    / initial_state[0].shape[0]
-                )
-            else:
-                new_z = torch.empty(0, current_state[0].shape[1], device=device)
-                new_lnw = torch.empty(0, 1, device=device)
-
-        current_state = (new_z, new_lnw)
+        current_state, w_prev = _apply_split_event(
+            current_state,
+            previous_weights=w_prev,
+            initial_count=int(initial_state[0].shape[0]),
+            noise_std=noise_std,
+            max_particles=max_particles,
+        )
         output_states.append(current_state)
         next_output_idx += 1
-        w_prev = torch.exp(new_lnw)
 
     traj_z = [state[0] for state in output_states]
     traj_lnw = [state[1] for state in output_states]
@@ -401,13 +512,20 @@ def simulate_sde_points_split_from_x0(
     interaction_m: int,
     device: str,
     verbose: bool = True,
+    resample_dt: Optional[float] = None,
+    max_particles: Optional[int] = None,
 ) -> np.ndarray:
     from CytoBridge.tl.core.interaction import cal_interaction
 
     if len(ts_points) < 1:
         raise ValueError("ts_points must be non-empty")
+    x0_array = np.asarray(x0, dtype=np.float32)
+    if x0_array.ndim != 2 or x0_array.shape[0] == 0:
+        raise ValueError("x0 must be a non-empty two-dimensional array")
+    if not np.isfinite(x0_array).all():
+        raise ValueError("x0 must contain only finite values")
 
-    x0_t = torch.tensor(np.asarray(x0, dtype=np.float32), device=device)
+    x0_t = torch.tensor(x0_array, device=device)
     lnw0 = torch.log(torch.ones(x0_t.shape[0], 1, device=device) / x0_t.shape[0])
     initial_state = (x0_t, lnw0)
 
@@ -465,7 +583,7 @@ def simulate_sde_points_split_from_x0(
             "[piecewise split-SDE] start | "
             f"n_init={x0_t.shape[0]}, ts_points={len(ts_points)}, "
             f"dt={dt}, sigma={'vector' if sigma_by_dim is not None else sigma}, "
-            f"growth_alpha={growth_alpha}, "
+            f"growth_alpha={growth_alpha}, resample_dt={resample_dt}, "
             f"t_range=({t_min},{t_max}), est_steps={est_steps}"
         )
 
@@ -478,7 +596,15 @@ def simulate_sde_points_split_from_x0(
         sigma_by_dim=sigma_by_dim,
     )
     ts_tensor = torch.tensor(list(ts_points), dtype=torch.float32, device=device)
-    sde_points, _ = _euler_sdeint_split(sde, initial_state, dt=dt, ts=ts_tensor, noise_std=0.0)
+    sde_points, _ = _euler_sdeint_split(
+        sde,
+        initial_state,
+        dt=dt,
+        ts=ts_tensor,
+        noise_std=0.0,
+        resample_dt=resample_dt,
+        max_particles=max_particles,
+    )
     sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
 
     if verbose:
@@ -505,6 +631,7 @@ def apply_spatial_warp_to_segments(
     use_real_for_observed: bool,
     k: int,
     eps: float,
+    blend_observed_boundary_displacements: bool = False,
 ) -> np.ndarray:
     if len(ts_points) == 0 or len(observed_time_points) < 2:
         return sde_points_split
@@ -514,6 +641,74 @@ def apply_spatial_warp_to_segments(
         dtype=object,
     )
     ts_index = {float(t): i for i, t in enumerate(ts_points)}
+
+    if blend_observed_boundary_displacements:
+        boundary_anchors: Dict[float, tuple[np.ndarray, np.ndarray]] = {}
+        for time_value in observed_time_points:
+            time_value = float(time_value)
+            index = ts_index.get(time_value)
+            if index is None:
+                continue
+            source_xy = np.asarray(
+                sde_points_split[index], dtype=np.float32
+            )[:, :2]
+            if source_xy.shape[0] == 0:
+                continue
+            target, _ = sample_observed_x0(
+                df,
+                time_value=time_value,
+                feature_cols=feature_cols_full,
+                label_col=label_col,
+                n_samples_cap=int(source_xy.shape[0]),
+                rng=rng,
+            )
+            target_xy = np.asarray(target, dtype=np.float32)[:, :2]
+            if target_xy.shape[0] > 0:
+                boundary_anchors[time_value] = (source_xy, target_xy)
+
+        for t_start, t_end in zip(
+            observed_time_points[:-1], observed_time_points[1:]
+        ):
+            t_start = float(t_start)
+            t_end = float(t_end)
+            if t_start not in boundary_anchors or t_end not in boundary_anchors:
+                continue
+            source_start, target_start = boundary_anchors[t_start]
+            source_end, target_end = boundary_anchors[t_end]
+            segment_times = [
+                float(value)
+                for value in ts_points
+                if t_start < float(value) < t_end
+            ]
+            if not use_real_for_observed:
+                segment_times.extend([t_start, t_end])
+            segment_times = sorted(set(segment_times))
+            for time_value in segment_times:
+                index = ts_index.get(time_value)
+                if index is None:
+                    continue
+                raw = np.asarray(sde_points_split[index], dtype=np.float32)
+                if raw.shape[0] == 0:
+                    continue
+                alpha = (time_value - t_start) / max(t_end - t_start, float(eps))
+                start_disp = _compute_spatial_warp_displacements(
+                    raw[:, :2], source_start, target_start, k=k, eps=eps
+                )
+                end_disp = _compute_spatial_warp_displacements(
+                    raw[:, :2], source_end, target_end, k=k, eps=eps
+                )
+                displayed = raw.copy()
+                displayed[:, :2] = (
+                    raw[:, :2]
+                    + (1.0 - float(alpha)) * start_disp
+                    + float(alpha) * end_disp
+                )
+                sde_points_out[index] = displayed
+            print(
+                f"[spatial-warp continuous-display] segment {t_start}->{t_end} | "
+                f"targets={segment_times}"
+            )
+        return sde_points_out
 
     for t_start, t_end in zip(observed_time_points[:-1], observed_time_points[1:]):
         t_start = float(t_start)
@@ -607,6 +802,9 @@ def simulate_piecewise_spatially_warped_split(
     eps: float,
     return_prewarp: bool = False,
     warp_visualization_only: bool = False,
+    use_real_for_observed: bool = True,
+    resample_dt: Optional[float] = None,
+    max_particles: Optional[int] = None,
 ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     ts_sorted = [float(t) for t in ts_points]
     observed_sorted = [float(t) for t in observed_time_points if ts_sorted[0] <= float(t) <= ts_sorted[-1]]
@@ -623,6 +821,8 @@ def simulate_piecewise_spatially_warped_split(
             interaction_m=interaction_m,
             device=device,
             verbose=True,
+            resample_dt=resample_dt,
+            max_particles=max_particles,
         )
         if return_prewarp:
             return fallback, np.array(
@@ -630,6 +830,49 @@ def simulate_piecewise_spatially_warped_split(
                 dtype=object,
             )
         return fallback
+
+    if warp_visualization_only:
+        # The warp is a rendering transform, so it must not segment or restart
+        # the model trajectory.  Simulate x *and* log-mass once over the full
+        # time grid, retain that state for labels/downstream analysis, then
+        # bend only a display copy toward each observed endpoint.
+        prewarp = simulate_sde_points_split_from_x0(
+            x0=x0,
+            f_net=f_net,
+            score_net=score_net,
+            ts_points=ts_sorted,
+            dt=dt,
+            sigma=sigma,
+            sigma_by_dim=sigma_by_dim,
+            growth_alpha=growth_alpha,
+            interaction_m=interaction_m,
+            device=device,
+            verbose=True,
+            resample_dt=resample_dt,
+            max_particles=max_particles,
+        )
+        warped = apply_spatial_warp_to_segments(
+            sde_points_split=prewarp,
+            ts_points=ts_sorted,
+            observed_time_points=observed_sorted,
+            df=df,
+            feature_cols_full=feature_cols_full,
+            label_col=label_col,
+            rng=rng,
+            piecewise=False,
+            piecewise_include_end=False,
+            piecewise_endpoint_by_observed=None,
+            use_real_for_observed=bool(use_real_for_observed),
+            k=k,
+            eps=eps,
+            blend_observed_boundary_displacements=True,
+        )
+        if not return_prewarp:
+            return warped
+        return warped, np.array(
+            [np.asarray(points, dtype=np.float32).copy() for points in prewarp],
+            dtype=object,
+        )
 
     current_x0 = np.asarray(x0, dtype=np.float32)
     points_by_time: Dict[float, np.ndarray] = {}
@@ -659,6 +902,8 @@ def simulate_piecewise_spatially_warped_split(
             interaction_m=interaction_m,
             device=device,
             verbose=True,
+            resample_dt=resample_dt,
+            max_particles=max_particles,
         )
 
         source_endpoint_xy = np.asarray(seg_points[-1], dtype=np.float32)[:, :2]
@@ -672,10 +917,6 @@ def simulate_piecewise_spatially_warped_split(
         )
         target_endpoint_xy = np.asarray(X_target, dtype=np.float32)[:, :2]
 
-        # When the warp is display-only, the model state remains on the raw
-        # piecewise trajectory.  The displayed segment still needs to meet the
-        # preceding displayed endpoint exactly, so interpolate between a
-        # start-boundary display displacement and the new endpoint warp.
         raw_start_xy = np.asarray(seg_points[0], dtype=np.float32)[:, :2]
         previous_display_boundary = points_by_time.get(float(t_start))
         start_display_xy = (
@@ -728,12 +969,7 @@ def simulate_piecewise_spatially_warped_split(
                 pts[:, :2] = pts[:, :2] + float(alpha) * end_disp
             points_by_time[float(t_val)] = pts
 
-        current_x0 = np.asarray(
-            seg_points[-1]
-            if warp_visualization_only
-            else points_by_time[float(t_end)],
-            dtype=np.float32,
-        ).copy()
+        current_x0 = np.asarray(points_by_time[float(t_end)], dtype=np.float32).copy()
 
     missing = [float(t) for t in ts_sorted if float(t) not in points_by_time]
     if missing:
@@ -998,6 +1234,8 @@ def simulate_sde_points_split(
     sigma_by_dim: Optional[Sequence[float]] = None,
     growth_alpha: float = 0.5,
     verbose: bool = True,
+    resample_dt: Optional[float] = None,
+    max_particles: Optional[int] = None,
 ) -> np.ndarray:
     from CytoBridge.tl.core.interaction import cal_interaction
 
@@ -1034,6 +1272,8 @@ def simulate_sde_points_split(
             interaction_m=interaction_m,
             device=device,
             verbose=verbose,
+            resample_dt=resample_dt,
+            max_particles=max_particles,
         )
 
     X, times, time_points, dim = _prepare_adata_arrays(
@@ -1134,7 +1374,15 @@ def simulate_sde_points_split(
     try:
         sde = SDE(sigma_val=sigma)
         ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
-        sde_points, _ = _euler_sdeint_split(sde, initial_state, dt=dt, ts=ts_tensor, noise_std=0.0)
+        sde_points, _ = _euler_sdeint_split(
+            sde,
+            initial_state,
+            dt=dt,
+            ts=ts_tensor,
+            noise_std=0.0,
+            resample_dt=resample_dt,
+            max_particles=max_particles,
+        )
         sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
         return np.array(sde_point_np, dtype=object)
     finally:

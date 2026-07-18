@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import contextmanager
 from hashlib import sha1
 import json
+import os
 from pathlib import Path
 import re
 import time
@@ -67,6 +69,38 @@ class ResidualMLP(nn.Module):
 
 
 MLP = ResidualMLP
+
+
+@contextmanager
+def _classifier_cache_lock(path: Path):
+    """Serialize writers of one classifier cache on POSIX filesystems."""
+
+    lock_path = path.with_name(f".{path.name}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+b")
+    try:
+        try:
+            import fcntl
+        except ImportError:  # pragma: no cover - non-POSIX fallback
+            fcntl = None
+        if fcntl is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if fcntl is not None:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        handle.close()
+
+
+def _atomic_torch_save(payload: dict, path: Path) -> None:
+    temporary = path.with_name(
+        f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+    )
+    try:
+        torch.save(payload, str(temporary))
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 @dataclass(frozen=True)
@@ -312,6 +346,7 @@ def _prepare_classifier_arrays(
     concat_spatial: Optional[bool],
     samples_column: str,
     include_time_feature: bool,
+    n_features: Optional[int] = None,
 ):
     if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
         raise TypeError(
@@ -349,6 +384,17 @@ def _prepare_classifier_arrays(
         features = np.hstack((spatial, latent)).astype(np.float32)
     else:
         features = latent.astype(np.float32)
+
+    if n_features is not None:
+        n_features = int(n_features)
+        if n_features <= 0:
+            raise ValueError("n_features must be positive when supplied.")
+        if n_features > features.shape[1]:
+            raise ValueError(
+                f"n_features={n_features} exceeds the available joint feature "
+                f"dimension {features.shape[1]}."
+            )
+        features = features[:, :n_features]
 
     X = np.hstack((samples, features)).astype(np.float32) if include_time_feature else features.astype(np.float32)
     y = adata.obs[label_col].astype(str).values
@@ -570,6 +616,7 @@ def train_cached_mlp_classifier_from_adata(
     seed: int = 42,
     device: str = "cuda",
     include_time_feature: bool = True,
+    n_features: Optional[int] = None,
     best_epoch_metric: str = "bacc",
     train_on_full_data: bool = False,
     stratify_split: bool = True,
@@ -580,7 +627,9 @@ def train_cached_mlp_classifier_from_adata(
     ``classifier_resmlp_*.pt`` files, so current workflows can either reuse an old
     cache or create one through this public API. Feature names describe the joint
     aligned state (``samples``, then ``x1..xD``), independent of dataset-specific
-    AnnData key names.
+    AnnData key names. ``n_features`` selects the leading joint dimensions after
+    optional spatial concatenation; it exists for compatibility with historical
+    classifiers whose caches used ``x1..xN``.
     """
     if cache_path is None and cache_dir is None:
         raise ValueError("Provide cache_path or cache_dir.")
@@ -594,6 +643,7 @@ def train_cached_mlp_classifier_from_adata(
         concat_spatial=concat_spatial,
         samples_column=samples_column,
         include_time_feature=include_time_feature,
+        n_features=n_features,
     )
     feature_dim = int(X.shape[1] - (1 if include_time_feature else 0))
     feature_cols = ([samples_column] if include_time_feature else []) + [
@@ -601,7 +651,8 @@ def train_cached_mlp_classifier_from_adata(
     ]
     classes = sorted({str(v) for v in y})
     metadata = {
-        "version": 3,
+        "version": 5,
+        "cache_tag": str(cache_tag or ""),
         "feature_cols": feature_cols,
         "label_col": str(label_col),
         "hidden_size": int(hidden_size),
@@ -615,6 +666,13 @@ def train_cached_mlp_classifier_from_adata(
         "train_on_full_data": bool(train_on_full_data),
         "stratify_split": bool(stratify_split),
         "include_time_feature": bool(include_time_feature),
+        "feature_selection": {
+            "kind": "leading_joint_dimensions",
+            "n_features": int(feature_dim),
+            "requested_n_features": (
+                None if n_features is None else int(n_features)
+            ),
+        },
         "source": {
             "kind": "AnnData",
             "n_obs": int(adata.n_obs),
@@ -634,45 +692,59 @@ def train_cached_mlp_classifier_from_adata(
     if cache_path is None:
         cache_root = Path(cache_dir).expanduser().resolve()
         cache_root.mkdir(parents=True, exist_ok=True)
-        key_payload = dict(metadata)
-        key_payload["cache_tag"] = str(cache_tag or "")
         key = sha1(
-            json.dumps(key_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:16]
         resolved_path = cache_root / f"classifier_resmlp_{key}.pt"
     else:
         resolved_path = Path(cache_path).expanduser().resolve()
         resolved_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if reuse_if_compatible and resolved_path.exists():
-        cached = load_cached_mlp_classifier(str(resolved_path), device=device)
-        if cached.metadata == metadata:
-            return cached, resolved_path
+    with _classifier_cache_lock(resolved_path):
+        # Recheck after acquiring the lock: another process may have completed
+        # the same deterministic cache while this process was waiting.
+        if reuse_if_compatible and resolved_path.exists():
+            try:
+                cached = load_cached_mlp_classifier(
+                    str(resolved_path), device=device
+                )
+            except Exception:
+                cached = None
+            if cached is not None and cached.metadata == metadata:
+                return cached, resolved_path
 
-    model, label_encoder, accuracy, balanced_accuracy, evaluation = _train_mlp_classifier_arrays_detailed(
-        X=X,
-        y=y,
-        hidden_size=hidden_size,
-        epochs=epochs,
-        lr=lr,
-        test_size=test_size,
-        seed=seed,
-        device=device,
-        best_epoch_metric=best_epoch_metric,
-        train_on_full_data=train_on_full_data,
-        stratify_split=stratify_split,
-    )
-    payload = {
-        "meta": metadata,
-        "state_dict": {key: value.detach().cpu() for key, value in model.state_dict().items()},
-        "acc": float(accuracy),
-        "bacc": float(balanced_accuracy),
-        "evaluation": evaluation,
-        "num_classes": int(len(label_encoder.classes_)),
-        "saved_at": float(time.time()),
-    }
-    torch.save(payload, str(resolved_path))
-    return load_cached_mlp_classifier(str(resolved_path), device=device), resolved_path
+        model, label_encoder, accuracy, balanced_accuracy, evaluation = (
+            _train_mlp_classifier_arrays_detailed(
+                X=X,
+                y=y,
+                hidden_size=hidden_size,
+                epochs=epochs,
+                lr=lr,
+                test_size=test_size,
+                seed=seed,
+                device=device,
+                best_epoch_metric=best_epoch_metric,
+                train_on_full_data=train_on_full_data,
+                stratify_split=stratify_split,
+            )
+        )
+        payload = {
+            "meta": metadata,
+            "state_dict": {
+                key: value.detach().cpu()
+                for key, value in model.state_dict().items()
+            },
+            "acc": float(accuracy),
+            "bacc": float(balanced_accuracy),
+            "evaluation": evaluation,
+            "num_classes": int(len(label_encoder.classes_)),
+            "saved_at": float(time.time()),
+        }
+        _atomic_torch_save(payload, resolved_path)
+        return (
+            load_cached_mlp_classifier(str(resolved_path), device=device),
+            resolved_path,
+        )
 
 
 def train_mlp_classifier(
@@ -691,6 +763,7 @@ def train_mlp_classifier(
     seed: int = 42,
     device: str = "cuda",
     include_time_feature: bool = True,
+    n_features: Optional[int] = None,
 ) -> Tuple[MLP, object, float]:
     """Train downstream MLP classifier from AnnData."""
     X, y = _prepare_classifier_arrays(
@@ -702,6 +775,7 @@ def train_mlp_classifier(
         concat_spatial=concat_spatial,
         samples_column=samples_column,
         include_time_feature=include_time_feature,
+        n_features=n_features,
     )
     return _train_mlp_classifier_arrays(
         X=X,
@@ -731,6 +805,7 @@ def train_mlp_classifier_from_adata(
     seed: int = 42,
     device: str = "cuda",
     include_time_feature: bool = True,
+    n_features: Optional[int] = None,
 ) -> Tuple[MLP, object, float]:
     return train_mlp_classifier(
         adata,
@@ -747,6 +822,7 @@ def train_mlp_classifier_from_adata(
         seed=seed,
         device=device,
         include_time_feature=include_time_feature,
+        n_features=n_features,
     )
 
 

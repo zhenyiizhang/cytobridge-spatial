@@ -362,7 +362,11 @@ def plot_velocity_component(
         palette_list = [label_to_color.get(cat, "#888888") for cat in categories]
         adata.uns["Annotation_colors"] = palette_list
 
-    def _render_velocity_fallback(reason: str, valid_vectors: np.ndarray):
+    def _render_velocity_fallback(
+        reason: str,
+        valid_vectors: np.ndarray,
+        projected_velocity: Optional[np.ndarray] = None,
+    ):
         from matplotlib.lines import Line2D
 
         fig, ax = plt.subplots(figsize=(6, 6))
@@ -371,12 +375,23 @@ def plot_velocity_component(
         else:
             point_colors = [label_to_color.get(label, "#888888") for label in labels_arr]
         ax.scatter(coords[:, 0], coords[:, 1], c=point_colors, s=8, linewidths=0, alpha=0.9)
-        if feature_matrix is None and np.any(valid_vectors):
+        quiver_velocity = (
+            np.asarray(projected_velocity, dtype=float)
+            if projected_velocity is not None
+            else (velocity if feature_matrix is None else None)
+        )
+        if quiver_velocity is not None:
+            quiver_mask = np.isfinite(quiver_velocity).all(axis=1) & (
+                np.linalg.norm(quiver_velocity, axis=1) > 1e-12
+            )
+        else:
+            quiver_mask = np.asarray(valid_vectors, dtype=bool)
+        if quiver_velocity is not None and np.any(quiver_mask):
             ax.quiver(
-                coords[valid_vectors, 0],
-                coords[valid_vectors, 1],
-                velocity[valid_vectors, 0],
-                velocity[valid_vectors, 1],
+                coords[quiver_mask, 0],
+                coords[quiver_mask, 1],
+                quiver_velocity[quiver_mask, 0],
+                quiver_velocity[quiver_mask, 1],
                 angles="xy",
                 scale_units="xy",
                 scale=1.0,
@@ -420,7 +435,11 @@ def plot_velocity_component(
         np.linalg.norm(embedded_velocity, axis=1) > 1e-12
     )
     if int(valid_embedded.sum()) < 50:
-        return _render_velocity_fallback("insufficient_embedded_velocity", valid_vectors)
+        return _render_velocity_fallback(
+            "insufficient_embedded_velocity",
+            valid_embedded,
+            projected_velocity=embedded_velocity,
+        )
     scv.settings.set_figure_params("scvelo")
 
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -437,7 +456,22 @@ def plot_velocity_component(
         legend_loc=legend_loc,
     )
     if out_path:
-        fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        try:
+            fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        except ValueError as exc:
+            # scVelo's streamline interpolator can leave a non-finite path in
+            # an otherwise finite embedded field.  The PDF backend rejects
+            # that path at render time.  Preserve the scientifically useful
+            # embedded directions with a finite quiver fallback instead of
+            # emitting a corrupt/missing panel.
+            if "finite" not in str(exc).lower():
+                raise
+            plt.close(fig)
+            return _render_velocity_fallback(
+                "nonfinite_streamline_render",
+                valid_embedded,
+                projected_velocity=embedded_velocity,
+            )
     plt.close(fig)
     return adata
 

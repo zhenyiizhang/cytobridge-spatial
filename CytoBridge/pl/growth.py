@@ -41,13 +41,25 @@ def plot_growth_timepoint_grid(
     point_size: float = 2.0,
     lower_quantile: float = 0.05,
     upper_quantile: float = 0.95,
+    scale_mode: str = "panel_limits",
+    shared_colorbar: bool = False,
+    colorbar_label: str | None = None,
     title: str | None = None,
 ):
-    """Plot spatial growth maps on a shared observed/interpolated time grid."""
+    """Plot spatial growth maps on an observed/interpolated time grid.
+
+    ``scale_mode='panel_limits'`` preserves the historical behavior: raw values
+    are shown with independent robust limits in each panel.  ``'per_time_0_1'``
+    robust-scales every time point to 0--1 before plotting, while
+    ``'global_limits'`` uses one pair of robust raw-value limits across all
+    panels.  The latter two modes can use one genuinely shared colorbar.
+    """
     from pathlib import Path
     import math
 
     import matplotlib.pyplot as plt
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
 
     times = list(time_points)
     keys = [str(value) for value in times] if time_keys is None else list(time_keys)
@@ -55,6 +67,71 @@ def plot_growth_timepoint_grid(
         raise ValueError("time_points and time_keys must have the same length.")
     if int(n_cols) <= 0:
         raise ValueError("n_cols must be positive.")
+    scale_mode = str(scale_mode).strip().lower()
+    allowed_scale_modes = {"panel_limits", "per_time_0_1", "global_limits"}
+    if scale_mode not in allowed_scale_modes:
+        raise ValueError(
+            f"scale_mode must be one of {sorted(allowed_scale_modes)}, "
+            f"got {scale_mode!r}."
+        )
+    if not (0.0 <= float(lower_quantile) < float(upper_quantile) <= 1.0):
+        raise ValueError(
+            "lower_quantile and upper_quantile must satisfy "
+            "0 <= lower < upper <= 1."
+        )
+    if bool(shared_colorbar) and scale_mode == "panel_limits" and len(times) > 1:
+        raise ValueError(
+            "shared_colorbar=True is incompatible with per-panel raw limits; "
+            "use scale_mode='per_time_0_1' or 'global_limits'."
+        )
+
+    records = []
+    for time_value, key in zip(times, keys):
+        if key not in adata_dict:
+            raise KeyError(f"Missing timepoint key in adata_dict: {key!r}.")
+        adata_t = adata_dict[key]
+        if value_key not in adata_t.obs:
+            raise KeyError(f"adata_dict[{key!r}].obs is missing {value_key!r}.")
+        values = np.asarray(adata_t.obs[value_key], dtype=float).reshape(-1)
+        if values.size == 0 or not np.isfinite(values).all():
+            raise ValueError(
+                f"adata_dict[{key!r}].obs[{value_key!r}] must be non-empty and finite."
+            )
+        if spatial_key in adata_t.obsm:
+            coords = np.asarray(adata_t.obsm[spatial_key], dtype=float)
+        else:
+            matrix = (
+                adata_t.X.toarray()
+                if hasattr(adata_t.X, "toarray")
+                else np.asarray(adata_t.X)
+            )
+            coords = np.asarray(matrix, dtype=float)[:, :2]
+        if (
+            coords.ndim != 2
+            or coords.shape[0] != values.shape[0]
+            or coords.shape[1] < 2
+        ):
+            raise ValueError(
+                f"Spatial coordinates for {key!r} must have shape "
+                f"({values.shape[0]}, D) with D>=2, got {coords.shape}."
+            )
+        plot_coords = coords[:, :2]
+        if not np.isfinite(plot_coords).all():
+            raise ValueError(f"Spatial coordinates for {key!r} contain non-finite values.")
+        records.append((time_value, key, plot_coords, values))
+
+    global_limits = None
+    if scale_mode == "global_limits":
+        all_values = np.concatenate([record[3] for record in records])
+        global_limits = tuple(
+            float(value)
+            for value in np.quantile(
+                all_values, [float(lower_quantile), float(upper_quantile)]
+            )
+        )
+        if np.isclose(global_limits[0], global_limits[1]):
+            global_limits = (global_limits[0], global_limits[0] + 1e-8)
+
     n_rows = int(math.ceil(len(times) / int(n_cols)))
     with plt.rc_context(
         {
@@ -74,22 +151,33 @@ def plot_growth_timepoint_grid(
         )
         for ax in axes.flat:
             ax.axis("off")
-        for ax, time_value, key in zip(axes.flat, times, keys):
-            if key not in adata_dict:
-                raise KeyError(f"Missing timepoint key in adata_dict: {key!r}.")
-            adata_t = adata_dict[key]
-            if value_key not in adata_t.obs:
-                raise KeyError(f"adata_dict[{key!r}].obs is missing {value_key!r}.")
-            values = np.asarray(adata_t.obs[value_key], dtype=float)
-            if spatial_key in adata_t.obsm:
-                coords = np.asarray(adata_t.obsm[spatial_key], dtype=float)
+        scatter = None
+        for ax, (time_value, key, coords, raw_values) in zip(axes.flat, records):
+            if scale_mode == "per_time_0_1":
+                low, high = np.quantile(
+                    raw_values, [float(lower_quantile), float(upper_quantile)]
+                )
+                values = np.clip(
+                    (raw_values - float(low)) / max(float(high - low), 1e-8),
+                    0.0,
+                    1.0,
+                )
+                vmin, vmax = 0.0, 1.0
+            elif scale_mode == "global_limits":
+                values = raw_values
+                assert global_limits is not None
+                vmin, vmax = global_limits
             else:
-                matrix = adata_t.X.toarray() if hasattr(adata_t.X, "toarray") else np.asarray(adata_t.X)
-                coords = np.asarray(matrix, dtype=float)[:, :2]
-            vmin = float(np.quantile(values, float(lower_quantile)))
-            vmax = float(np.quantile(values, float(upper_quantile)))
-            if np.isclose(vmin, vmax):
-                vmax = vmin + 1e-8
+                values = raw_values
+                vmin, vmax = (
+                    float(value)
+                    for value in np.quantile(
+                        raw_values,
+                        [float(lower_quantile), float(upper_quantile)],
+                    )
+                )
+                if np.isclose(vmin, vmax):
+                    vmax = vmin + 1e-8
             scatter = ax.scatter(
                 coords[:, 0],
                 coords[:, 1],
@@ -110,11 +198,44 @@ def plot_growth_timepoint_grid(
             ax.axis("on")
             for spine in ax.spines.values():
                 spine.set_visible(False)
-            colorbar = fig.colorbar(scatter, ax=ax, fraction=0.046, pad=0.02)
+            if not shared_colorbar:
+                colorbar = fig.colorbar(scatter, ax=ax, fraction=0.046, pad=0.02)
+                colorbar.ax.tick_params(labelsize=7)
+                if colorbar_label:
+                    colorbar.set_label(str(colorbar_label), fontsize=8)
+        if shared_colorbar and scatter is not None:
+            if scale_mode == "per_time_0_1":
+                shared_limits = (0.0, 1.0)
+            else:
+                assert global_limits is not None
+                shared_limits = global_limits
+            colorbar = fig.colorbar(
+                ScalarMappable(
+                    norm=Normalize(vmin=shared_limits[0], vmax=shared_limits[1]),
+                    cmap=cmap,
+                ),
+                ax=list(axes.flat[: len(records)]),
+                fraction=0.025,
+                pad=0.02,
+            )
             colorbar.ax.tick_params(labelsize=7)
+            colorbar.set_label(
+                str(colorbar_label or value_key),
+                fontsize=8,
+            )
         if title:
             fig.suptitle(title, fontsize=13)
-        fig.tight_layout()
+        if shared_colorbar:
+            fig.subplots_adjust(
+                left=0.04,
+                right=0.9,
+                bottom=0.04,
+                top=0.94 if title else 0.98,
+                wspace=0.08,
+                hspace=0.16,
+            )
+        else:
+            fig.tight_layout()
         path = Path(out_path).expanduser().resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(path, bbox_inches="tight", facecolor="white")

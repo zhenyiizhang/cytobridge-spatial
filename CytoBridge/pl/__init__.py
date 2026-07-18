@@ -14,6 +14,7 @@ from .sankey import (
 from .trajectory import (
     plot_sde_vs_real,
     plot_sde_vs_real_from_adata,
+    plot_trajectory_comparison_grid,
     plot_trajectory_gif,
     plot_trajectory_grid,
 )

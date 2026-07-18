@@ -68,15 +68,32 @@ def _matrix(adata, layer: Optional[str]):
     return adata.layers[layer]
 
 
-def infer_pca_center(adata, *, layer: Optional[str] = None) -> np.ndarray:
+def infer_pca_center(
+    adata,
+    *,
+    layer: Optional[str] = None,
+    center_var_key: str = "pca_center",
+) -> np.ndarray:
     """Return the feature mean used by a zero-centered PCA fit.
 
-    Scanpy does not persist the PCA center in ``adata.uns['pca']``. For the
-    standard zero-centered workflow it is exactly the column mean of the
-    matrix on which PCA was fitted, so it can be recovered from the processed
-    AnnData without a dataset-specific sidecar CSV.
+    Clean CytoBridge preprocessing persists the fit-time center in
+    ``adata.var[center_var_key]``.  This is important when PCA is fitted on a
+    reference population and the AnnData is later subset to training time
+    points.  Historical objects without that field fall back to the column
+    mean of the requested matrix.
     """
     from scipy import sparse
+
+    if layer is None and center_var_key in adata.var:
+        center = np.asarray(adata.var[center_var_key], dtype=np.float64).reshape(-1)
+        if center.shape[0] != adata.n_vars:
+            raise ValueError(
+                f"adata.var['{center_var_key}'] has {center.shape[0]} values, "
+                f"expected {adata.n_vars}."
+            )
+        if not np.isfinite(center).all():
+            raise ValueError("The persisted PCA center contains non-finite values.")
+        return center.astype(np.float32, copy=False)
 
     matrix = _matrix(adata, layer)
     if sparse.issparse(matrix):
@@ -399,12 +416,20 @@ def cluster_temporal_profiles(
         remap = {raw: idx + 1 for idx, (_, raw) in enumerate(sorted(order))}
         labels = np.asarray([remap[int(raw)] for raw in raw_labels], dtype=int)
 
-    assignments = pd.DataFrame(
-        {
-            "profile": table.index.astype(str),
-            "cluster": labels,
-        }
-    )
+    assignment_data = {
+        "profile": table.index.astype(str),
+        "cluster": labels,
+    }
+    if cluster_order == "dendrogram":
+        leaf_order = (
+            np.arange(table.shape[0], dtype=int)
+            if hierarchy is None
+            else leaves_list(hierarchy).astype(int)
+        )
+        dendrogram_rank = np.empty(table.shape[0], dtype=int)
+        dendrogram_rank[leaf_order] = np.arange(table.shape[0], dtype=int)
+        assignment_data["dendrogram_rank"] = dendrogram_rank
+    assignments = pd.DataFrame(assignment_data)
     prototype_rows = []
     for cluster in sorted(np.unique(labels)):
         subset = normalized[labels == cluster]

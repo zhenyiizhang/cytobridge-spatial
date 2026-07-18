@@ -298,6 +298,11 @@ def _load_adjacency_with_compatibility(
         with gzip.open(path, "rb") as f:
             adjacency_records = pickle.load(f)
         edges = np.asarray(adjacency_records[0], dtype=np.int32)
+        # ``np.asarray([])`` has shape ``(0,)`` whereas non-empty edge lists
+        # have shape ``(E, 2)``.  Keep an empty slice in the canonical edge
+        # shape so it can be safely stacked with non-empty time slices.
+        if edges.size == 0:
+            edges = np.empty((0, 2), dtype=np.int32)
         ok, reason = _validate_edges_with_features(edges, num_nodes_features)
         if ok:
             return edges, path

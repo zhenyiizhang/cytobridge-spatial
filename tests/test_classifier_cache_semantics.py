@@ -5,9 +5,12 @@ import pandas as pd
 
 from CytoBridge.tl.downstream.classification import (
     ResidualMLP,
+    _prepare_classifier_arrays,
     _classifier_cache_fingerprint,
     _train_mlp_classifier_arrays_detailed,
 )
+
+import anndata as ad
 
 
 def test_residual_mlp_hidden_size_controls_width_and_keeps_legacy_128_shape():
@@ -73,3 +76,32 @@ def test_classifier_training_records_stratified_validation_provenance():
     assert evaluation["n_validation"] == 12
     assert evaluation["validation_is_independent_test"] is False
     assert set(evaluation["per_class"]) >= {"A", "B", "C"}
+
+
+def test_classifier_can_select_leading_joint_dimensions() -> None:
+    adata = ad.AnnData(X=np.zeros((3, 1), dtype=np.float32))
+    adata.obs["time"] = [0.0, 1.0, 2.0]
+    adata.obs["Annotation"] = ["A", "B", "A"]
+    adata.obsm["spatial_aligned"] = np.asarray(
+        [[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]], dtype=np.float32
+    )
+    adata.obsm["X_latent"] = np.asarray(
+        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+        dtype=np.float32,
+    )
+
+    X, labels = _prepare_classifier_arrays(
+        adata,
+        label_col="Annotation",
+        time_key="time",
+        obsm_key="X_latent",
+        spatial_key="spatial_aligned",
+        concat_spatial=True,
+        samples_column="samples",
+        include_time_feature=True,
+        n_features=4,
+    )
+
+    assert X.shape == (3, 5)
+    np.testing.assert_array_equal(X[0], [0.0, 10.0, 11.0, 1.0, 2.0])
+    np.testing.assert_array_equal(labels, ["A", "B", "A"])
