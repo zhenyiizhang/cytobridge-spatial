@@ -150,7 +150,7 @@
             "mode": "SN-S",
             "device": "cpu",
             "normalize_g": false,
-            "nn_init": true
+            "nn_init": false
           }
         },
         "native_gene_sensitivity": {

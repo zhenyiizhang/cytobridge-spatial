@@ -302,6 +302,12 @@ def _run_spateo(
         "feature_input": "shared signed state PCs in rep_layer='X' with Euclidean dissimilarity",
         "spatial_input": "shared aligned coordinates",
         "nn_init": bool(params["nn_init"]),
+        "nn_init_policy": (
+            "disabled by the matched signed-PC profile after exact-API preflight; "
+            "official morpho_align optimizer retained"
+            if not bool(params["nn_init"])
+            else "explicitly enabled"
+        ),
         "SVI_mode_policy": "argument omitted; official default retained",
         "benchmark_projection": "hybrid adapter: official coupling barycentrically projects shared state/spatial",
     }

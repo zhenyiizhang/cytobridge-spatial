@@ -232,6 +232,12 @@ def test_source_roster_is_train_only_method_independent_and_fixed_size(tmp_path:
     assert set(first_ids).issubset(set(data.stage(0).row_ids))
 
 
+def test_spateo_signed_pc_profile_disables_nn_initializer() -> None:
+    spec = list_method_specs()["spateo"]
+    params = spec["representations"]["matched_state_spatial"]["default_parameters"]
+    assert params["nn_init"] is False
+
+
 def test_static_anchor_ranking_matches_builder_for_integral_float_time() -> None:
     row_ids = np.asarray([f"row-{index:04d}" for index in range(1000)], dtype=str)
     builder = _ranked_support_indices(row_ids, 800, 20260718, 2)

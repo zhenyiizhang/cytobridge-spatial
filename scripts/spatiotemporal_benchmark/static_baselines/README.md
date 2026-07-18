@@ -48,6 +48,12 @@ Every external adapter is official-API-or-fail. Missing dependencies, invalid
 coupling orientation, negative/non-finite mass, or zero rows produce a failure
 manifest; no surrogate is substituted.
 
+For the matched signed-PC Spateo profile, `nn_init=false` is fixed in the
+registry. Exact-API preflight showed that the official nearest-neighbor
+initializer is numerically unstable on signed PCs, while the same official
+`morpho_align` optimizer with that initializer disabled returns a complete
+800-by-800 mapping. The choice is recorded in every run manifest.
+
 ## CLI
 
 ```bash
