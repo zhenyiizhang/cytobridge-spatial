@@ -520,3 +520,16 @@ def test_rejects_legacy_positive_only_comparison_without_zero_audit(
     with pytest.raises(ValueError, match="score_view_zero_completion"):
         bundle.build_bundle(args)
     assert not args.output_dir.exists()
+
+
+def test_rejects_comparison_without_primary_artifact_hash_readiness(
+    tmp_path: Path,
+) -> None:
+    args = _fixture(tmp_path)
+    manifest_path = args.comparison_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["formal_readiness_checks"].pop("all_primary_score_artifacts_hash_verified")
+    _json(manifest_path, manifest)
+    with pytest.raises(ValueError, match="all_primary_score_artifacts_hash_verified"):
+        bundle.build_bundle(args)
+    assert not args.output_dir.exists()

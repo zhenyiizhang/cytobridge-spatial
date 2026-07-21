@@ -59,6 +59,7 @@ EXPECTED_FORMAL_READINESS_CHECKS = {
     "nichenet_condition_pair_contract_verified",
     "cellagentchat_condition_pair_contract_verified",
     "cytobridge_controls_contract_verified",
+    "all_primary_score_artifacts_hash_verified",
     "six_condition_execution_complete",
 }
 
@@ -1242,6 +1243,11 @@ def _build_readme(
         "",
         "Status: **formal comparison complete; reporting bundle validated**.",
         "",
+        (
+            "All primary score artifacts were re-hashed and matched their source "
+            "manifest records before this report was accepted."
+        ),
+        "",
         "## Bottom line",
         "",
         (
@@ -1691,6 +1697,8 @@ def _build_readme_cn(
         "# 斑马鱼 CCC reviewer bundle（中文速查）",
         "",
         "状态：**正式 comparison 与 provenance 检查通过**。这里的“正式”指文件、运行条件和统计契约完整，不代表所有跨物种结果都能作为 primary biological claim。",
+        "",
+        "所有 primary score artifacts 均已重新计算 hash，并与各自 source manifest 的记录一致。",
         "",
         "## 六个外部条件",
         "",

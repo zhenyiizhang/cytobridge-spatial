@@ -12,7 +12,7 @@ CytoBridge.
 
 - a formal `compare_multimethod_ccc.py` output with
   `formal_reviewer_ready=true`, all eight score views, and no partial-mode
-  issues;
+  issues, including a passing primary-score-artifact hash check;
 - a completed `validate_reviewer_axes.py` output;
 - the exact COMMOT, CellChat, NicheNet default/custom, and CellAgentChat
   official/custom directories recorded by the comparison manifest.
