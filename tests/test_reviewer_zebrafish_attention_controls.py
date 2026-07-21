@@ -74,3 +74,40 @@ def test_conditional_permutation_uses_plus_one_correction():
     )
     assert 1 / 20 <= result["empirical_p_greater"] <= 1
     assert result["n_edges_retained"] == 8
+
+
+def test_reciprocal_direction_test_aligns_forward_and_reverse_pairs():
+    rows = []
+    for left, right, learned_forward, learned_reverse in (
+        (0, 1, 2.0, 1.0),
+        (2, 3, 4.0, 1.0),
+        (4, 5, 6.0, 1.0),
+    ):
+        rows.extend(
+            [
+                {
+                    "stage": 0,
+                    "source_index": left,
+                    "target_index": right,
+                    "attention_abs_mean": learned_forward,
+                    "edge_message_norm_joint": learned_forward,
+                    "lr_compatibility_forward": learned_forward,
+                    "lr_compatibility_reverse": learned_reverse,
+                },
+                {
+                    "stage": 0,
+                    "source_index": right,
+                    "target_index": left,
+                    "attention_abs_mean": learned_reverse,
+                    "edge_message_norm_joint": learned_reverse,
+                    "lr_compatibility_forward": learned_reverse,
+                    "lr_compatibility_reverse": learned_forward,
+                },
+            ]
+        )
+    table, diagnostics = MODULE._reciprocal_direction_tests(
+        pd.DataFrame(rows), n_permutations=19, random_state=7
+    )
+    overall = table[table["stage"] == "all"]
+    assert np.allclose(overall["spearman_with_lr_direction_delta"], 1.0)
+    assert diagnostics["max_lr_cross_orientation_error"] == 0.0

@@ -339,6 +339,9 @@ def _add_edge_covariates(
         source, target, database, activities
     ).items():
         result[name] = values
+    result["lr_directional_contrast"] = (
+        result["lr_compatibility_forward"] - result["lr_compatibility_reverse"]
+    )
     counts = data.layers[counts_layer]
     library = np.asarray(counts.sum(axis=1)).reshape(-1).astype(float)
     result["log1p_source_library"] = np.log1p(library[source])
@@ -579,6 +582,102 @@ def _matched_top_low(
     }
 
 
+def _reciprocal_direction_tests(
+    edges: pd.DataFrame,
+    *,
+    n_permutations: int,
+    random_state: int,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Compare learned and LR directionality on reciprocal model edges."""
+    from scipy.stats import spearmanr
+
+    keys = ["stage", "source_index", "target_index"]
+    columns = keys + [
+        "attention_abs_mean",
+        "edge_message_norm_joint",
+        "lr_compatibility_forward",
+        "lr_compatibility_reverse",
+    ]
+    forward = edges.loc[
+        edges["source_index"] < edges["target_index"], columns
+    ].copy()
+    reverse = edges.loc[
+        edges["source_index"] > edges["target_index"], columns
+    ].copy()
+    reverse = reverse.rename(
+        columns={"source_index": "target_index", "target_index": "source_index"}
+    )
+    pairs = forward.merge(
+        reverse,
+        on=keys,
+        how="inner",
+        suffixes=("_forward_edge", "_reverse_edge"),
+        validate="one_to_one",
+    )
+    if pairs.empty:
+        raise ValueError("No reciprocal directed edge pairs were available.")
+    pairs["attention_direction_delta"] = (
+        pairs["attention_abs_mean_forward_edge"]
+        - pairs["attention_abs_mean_reverse_edge"]
+    )
+    pairs["message_direction_delta"] = (
+        pairs["edge_message_norm_joint_forward_edge"]
+        - pairs["edge_message_norm_joint_reverse_edge"]
+    )
+    pairs["lr_direction_delta"] = (
+        pairs["lr_compatibility_forward_forward_edge"]
+        - pairs["lr_compatibility_reverse_forward_edge"]
+    )
+    cross_orientation_error = np.maximum(
+        np.abs(
+            pairs["lr_compatibility_forward_forward_edge"]
+            - pairs["lr_compatibility_reverse_reverse_edge"]
+        ),
+        np.abs(
+            pairs["lr_compatibility_reverse_forward_edge"]
+            - pairs["lr_compatibility_forward_reverse_edge"]
+        ),
+    )
+    rng = np.random.default_rng(int(random_state))
+    rows: list[dict[str, Any]] = []
+    for stage_value in ["all", *sorted(pairs["stage"].unique())]:
+        frame = pairs if stage_value == "all" else pairs.loc[pairs["stage"] == stage_value]
+        lr_delta = frame["lr_direction_delta"].to_numpy(float)
+        for learned in ("attention_direction_delta", "message_direction_delta"):
+            learned_delta = frame[learned].to_numpy(float)
+            observed = float(spearmanr(learned_delta, lr_delta).statistic)
+            null = np.empty(int(n_permutations), dtype=float)
+            for permutation in range(int(n_permutations)):
+                signs = rng.choice(
+                    np.array([-1.0, 1.0]), size=len(frame), replace=True
+                )
+                null[permutation] = float(
+                    spearmanr(learned_delta, lr_delta * signs).statistic
+                )
+            rows.append(
+                {
+                    "stage": stage_value,
+                    "learned_direction_delta": learned,
+                    "n_reciprocal_pairs": int(len(frame)),
+                    "spearman_with_lr_direction_delta": observed,
+                    "sign_flip_null_mean": float(np.nanmean(null)),
+                    "sign_flip_null_sd": float(np.nanstd(null, ddof=1)),
+                    "empirical_p_greater": float(
+                        (1 + np.sum(null >= observed)) / (len(null) + 1)
+                    ),
+                    "n_permutations": int(n_permutations),
+                }
+            )
+    diagnostics = {
+        "n_reciprocal_pairs": int(len(pairs)),
+        "max_lr_cross_orientation_error": float(np.max(cross_orientation_error)),
+        "median_abs_lr_direction_delta": float(
+            np.median(np.abs(pairs["lr_direction_delta"]))
+        ),
+    }
+    return pd.DataFrame(rows), diagnostics
+
+
 def run(args: argparse.Namespace) -> Mapping[str, Any]:
     import anndata as ad
     from scipy.stats import spearmanr
@@ -658,6 +757,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         "edge_predictor_probability",
         "lr_compatibility_forward",
         "lr_compatibility_reverse",
+        "lr_directional_contrast",
         "active_lr_count",
     ]
     for stage_value in ["all", *sorted(edges["stage"].unique())]:
@@ -744,6 +844,13 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     matched = pd.DataFrame(matched_rows)
     matched_path = output / "matched_top_vs_low_enrichment.csv"
     matched.to_csv(matched_path, index=False)
+    reciprocal, reciprocal_diagnostics = _reciprocal_direction_tests(
+        edges,
+        n_permutations=int(args.permutations),
+        random_state=int(args.random_state),
+    )
+    reciprocal_path = output / "reciprocal_edge_direction_tests.csv"
+    reciprocal.to_csv(reciprocal_path, index=False)
     # Rewrite with OOF residual columns included for downstream diagnostics.
     edges.to_csv(edge_path, index=False, compression="gzip")
 
@@ -773,6 +880,10 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "activity_scale": "global positive q95 then clip to [0,1]",
             "row_weights": "equal pathways; equal rows within pathway",
             "reverse_control": "same LR rows with sender and receiver cells swapped",
+            "directional_test": (
+                "on reciprocal model edges, correlate learned i-to-j minus j-to-i "
+                "with curated LR forward minus reverse compatibility"
+            ),
             "circularity_warning": (
                 "the frozen edge classifier was itself trained from an LR-informed "
                 "graph, so curated LR enrichment is a consistency test, not an "
@@ -797,7 +908,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "nested_grouped_cv": _artifact(nested_path),
             "conditional_permutations": _artifact(permutation_path),
             "matched_top_vs_low": _artifact(matched_path),
+            "reciprocal_edge_direction_tests": _artifact(reciprocal_path),
         },
+        "reciprocal_edge_diagnostics": reciprocal_diagnostics,
     }
     manifest_path = output / "run_manifest.json"
     _write_json(manifest_path, manifest)
