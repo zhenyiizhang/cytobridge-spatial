@@ -1152,7 +1152,9 @@ def _plot_validation(
     figure, axes = plt.subplots(2, 2, figsize=(12.0, 8.8), constrained_layout=True)
     layout_engine = figure.get_layout_engine()
     if layout_engine is not None:
-        layout_engine.set(rect=(0.0, 0.055, 1.0, 0.96))
+        # Reserve a real title band.  A top bound of 0.96 let the suptitle
+        # touch the two upper subplot titles in the vector/PDF rendering.
+        layout_engine.set(rect=(0.0, 0.055, 1.0, 0.925))
     target_order = [
         "attention_mean",
         "exact_message_mean",
@@ -1247,6 +1249,7 @@ def _plot_validation(
     figure.suptitle(
         "CytoBridge reviewer checks: internal consistency, not CCC probabilities",
         fontsize=13,
+        y=0.995,
     )
     if observed_ablation is not None and not observed_ablation.empty:
         figure.text(
