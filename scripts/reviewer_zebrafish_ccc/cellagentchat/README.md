@@ -155,3 +155,24 @@ directed sender/receiver cell-type pair. Raw score sums are exported only as
 secondary sensitivity views. Absolute significant-pair counts across the two
 different LR universes are not directly comparable; use ranks, significant
 fractions, or their common mapped-LR universe.
+
+### Assemble two parallel formal runs
+
+When the two `run_spatial.py` conditions are run independently on separate
+GPUs, assemble them into the same directory layout as `run_dual.py` with:
+
+```bash
+python scripts/reviewer_zebrafish_ccc/cellagentchat/assemble_dual.py \
+  --official-run-dir /path/to/parallel/official_mouse_default_celltalkdb \
+  --custom-run-dir /path/to/parallel/cytobridge_zebrafish_lr_projected_singletons \
+  --output-dir /path/to/cellagentchat/formal_dual
+```
+
+The assembler fails closed unless both manifests and all declared artifacts
+are intact, use the pinned source, contain exactly stages `0,1,2,3,4` crossed
+with seeds `101,202,303`, and use 50 epochs plus 10,000 permutation scores. It
+also verifies identical mapped expression, sample plan, preparation claims,
+formal design, stage labels, and per-run dimensions, while requiring distinct
+LR-database hashes. The fresh output contains condition-directory symlinks,
+`dual_condition_run_summary.csv`, and a parent `manifest.json`; an existing
+nonempty output is rejected unless `--overwrite` is explicitly supplied.
