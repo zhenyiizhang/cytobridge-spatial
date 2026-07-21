@@ -13,8 +13,6 @@
 suppressPackageStartupMessages({
   library(dplyr)
   library(jsonlite)
-  library(nichenetr)
-  library(readr)
   library(tibble)
 })
 
@@ -35,8 +33,12 @@ custom_lr_path <- arg_value(
   "--custom-lr",
   if (!is.null(shared_dir)) file.path(shared_dir, "custom_lr_strict_one2one_mapped.csv") else NULL
 )
-expected_version <- arg_value("--expected-nichenetr-version", "2.2.0")
+nichenetr_source <- arg_value("--nichenetr-source")
+expected_version <- arg_value("--expected-nichenetr-version", "2.2.1.1")
 allow_version_mismatch <- as_flag(arg_value("--allow-version-mismatch", "false"))
+allow_installed_nichenetr <- as_flag(
+  arg_value("--allow-installed-nichenetr", "false")
+)
 verify_official_md5 <- as_flag(arg_value("--verify-official-md5", "true"))
 allow_nonformal_shared <- as_flag(arg_value("--allow-nonformal-shared-input", "false"))
 min_expression_fraction <- as.numeric(arg_value("--min-expression-fraction", "0.05"))
@@ -56,12 +58,224 @@ if (dir.exists(out_dir) && length(list.files(out_dir, all.files = TRUE, no.. = T
 }
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-package_version <- as.character(packageVersion("nichenetr"))
-if (!allow_version_mismatch && package_version != expected_version) {
-  stop(
-    "nichenetr version is ", package_version,
-    "; expected exactly ", expected_version,
-    ". Use the pinned isolated library or explicitly pass --allow-version-mismatch true."
+csv_backend <- if (requireNamespace("readr", quietly = TRUE)) "readr" else "base_r"
+read_csv_table <- function(path) {
+  if (csv_backend == "readr") {
+    return(readr::read_csv(path, show_col_types = FALSE))
+  }
+  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
+    connection <- gzfile(path, open = "rt")
+    on.exit(close(connection), add = TRUE)
+    frame <- utils::read.csv(
+      connection,
+      check.names = FALSE,
+      stringsAsFactors = FALSE,
+      comment.char = ""
+    )
+  } else {
+    frame <- utils::read.csv(
+      path,
+      check.names = FALSE,
+      stringsAsFactors = FALSE,
+      comment.char = ""
+    )
+  }
+  as_tibble(frame)
+}
+write_csv_table <- function(frame, path) {
+  if (csv_backend == "readr") {
+    readr::write_csv(frame, path)
+  } else {
+    utils::write.csv(
+      as.data.frame(frame),
+      path,
+      row.names = FALSE,
+      na = ""
+    )
+  }
+}
+
+frozen_source_commit <- "66f90d5eeafef280b2b2f339b3fd70ffec1781dd"
+frozen_core_md5 <- c(
+  "supporting_functions.R" = "7c74d88d20545d568cea038c35ab393c",
+  "evaluate_model_target_prediction.R" = "59dc49100d2a0f9ccb7f74acb1459ae9",
+  "evaluate_model_ligand_prediction.R" = "e4b42986954dc2c73ef5adc356e4a6ee",
+  "application_prediction.R" = "2cf8b23dc3535c1626fa7d590aab6d86"
+)
+
+if (is.null(nichenetr_source)) {
+  if (!allow_installed_nichenetr) {
+    stop(
+      "Formal execution requires --nichenetr-source so commit and core-file hashes ",
+      "can be verified. Use --allow-installed-nichenetr true only for an explicitly ",
+      "documented non-formal installed-package run."
+    )
+  }
+  if (!requireNamespace("nichenetr", quietly = TRUE)) {
+    stop(
+      "nichenetr is not installed; provide --nichenetr-source pointing to the ",
+      "frozen official checkout"
+    )
+  }
+  package_version <- as.character(packageVersion("nichenetr"))
+  if (!allow_version_mismatch && package_version != expected_version) {
+    stop(
+      "nichenetr version is ", package_version,
+      "; expected exactly ", expected_version,
+      ". Use the pinned source/package or explicitly pass --allow-version-mismatch true."
+    )
+  }
+  predict_ligand_activities_impl <- getExportedValue(
+    "nichenetr", "predict_ligand_activities"
+  )
+  get_weighted_ligand_target_links_impl <- getExportedValue(
+    "nichenetr", "get_weighted_ligand_target_links"
+  )
+  nichenetr_engine <- list(
+    mode = "installed_package",
+    version = package_version,
+    expected_version = expected_version,
+    version_verified = package_version == expected_version,
+    installed_package_explicitly_allowed = allow_installed_nichenetr,
+    package_path = normalizePath(find.package("nichenetr"))
+  )
+} else {
+  if (!dir.exists(nichenetr_source)) {
+    stop("--nichenetr-source does not exist: ", nichenetr_source)
+  }
+  source_root <- normalizePath(nichenetr_source, mustWork = TRUE)
+  description_path <- file.path(source_root, "DESCRIPTION")
+  if (!file.exists(description_path)) {
+    stop("NicheNet source checkout lacks DESCRIPTION: ", source_root)
+  }
+  description <- read.dcf(description_path)
+  description_md5 <- unname(tools::md5sum(description_path))
+  package_version <- unname(description[1, "Version"])
+  if (!allow_version_mismatch && package_version != expected_version) {
+    stop(
+      "NicheNet source version is ", package_version,
+      "; expected exactly ", expected_version
+    )
+  }
+  source_commit <- tryCatch(
+    system2(
+      "git",
+      c("-C", shQuote(source_root), "rev-parse", "HEAD"),
+      stdout = TRUE,
+      stderr = TRUE
+    ),
+    error = function(error) character()
+  )
+  source_status <- attr(source_commit, "status")
+  if (
+    length(source_commit) != 1 ||
+      (!is.null(source_status) && source_status != 0) ||
+      tolower(source_commit) != frozen_source_commit
+  ) {
+    stop(
+      "NicheNet source commit mismatch: expected ", frozen_source_commit,
+      "; observed ", paste(source_commit, collapse = " ")
+    )
+  }
+  source_dirty <- tryCatch(
+    system2(
+      "git",
+      c(
+        "-C", shQuote(source_root), "status", "--porcelain",
+        "--untracked-files=no"
+      ),
+      stdout = TRUE,
+      stderr = TRUE
+    ),
+    error = function(error) "git-status-error"
+  )
+  core_paths <- file.path(source_root, "R", names(frozen_core_md5))
+  missing_core <- names(frozen_core_md5)[!file.exists(core_paths)]
+  if (length(missing_core) > 0) {
+    stop("NicheNet source lacks core files: ", paste(missing_core, collapse = ", "))
+  }
+  observed_core_md5 <- unname(tools::md5sum(core_paths))
+  names(observed_core_md5) <- names(frozen_core_md5)
+  if (any(tolower(observed_core_md5) != frozen_core_md5)) {
+    mismatch <- names(frozen_core_md5)[
+      tolower(observed_core_md5) != frozen_core_md5
+    ]
+    stop("NicheNet core source MD5 mismatch: ", paste(mismatch, collapse = ", "))
+  }
+
+  source_dependencies <- c(
+    "dplyr", "tibble", "tidyr", "ROCR", "caTools", "data.table"
+  )
+  missing_dependencies <- source_dependencies[
+    !vapply(source_dependencies, requireNamespace, logical(1), quietly = TRUE)
+  ]
+  if (length(missing_dependencies) > 0) {
+    stop(
+      "Pinned NicheNet core source lacks runtime dependencies: ",
+      paste(missing_dependencies, collapse = ", ")
+    )
+  }
+  source_environment <- new.env(parent = globalenv())
+  for (package in c("dplyr", "tibble", "tidyr")) {
+    for (symbol in getNamespaceExports(package)) {
+      assign(
+        symbol,
+        getExportedValue(package, symbol),
+        envir = source_environment
+      )
+    }
+  }
+  source_environment$prediction <- ROCR::prediction
+  source_environment$performance <- ROCR::performance
+  source_environment$trapz <- caTools::trapz
+  source_environment$data.table <- data.table::data.table
+  for (path in core_paths) sys.source(path, envir = source_environment)
+  required_core_functions <- c(
+    "predict_ligand_activities", "get_weighted_ligand_target_links"
+  )
+  missing_functions <- required_core_functions[
+    !vapply(
+      required_core_functions,
+      exists,
+      logical(1),
+      envir = source_environment,
+      mode = "function",
+      inherits = FALSE
+    )
+  ]
+  if (length(missing_functions) > 0) {
+    stop(
+      "Pinned NicheNet source did not define: ",
+      paste(missing_functions, collapse = ", ")
+    )
+  }
+  predict_ligand_activities_impl <- source_environment$predict_ligand_activities
+  get_weighted_ligand_target_links_impl <-
+    source_environment$get_weighted_ligand_target_links
+  nichenetr_engine <- list(
+    mode = "pinned_core_source",
+    version = package_version,
+    expected_version = expected_version,
+    version_verified = package_version == expected_version,
+    source_root = source_root,
+    git_commit = unname(source_commit),
+    expected_git_commit = frozen_source_commit,
+    commit_verified = TRUE,
+    tracked_worktree_dirty = length(source_dirty) > 0,
+    tracked_worktree_status = as.list(unname(source_dirty)),
+    description_md5 = description_md5,
+    core_files = as.list(setNames(core_paths, names(frozen_core_md5))),
+    expected_core_md5 = as.list(frozen_core_md5),
+    observed_core_md5 = as.list(observed_core_md5),
+    core_md5_verified = TRUE,
+    runtime_dependencies = as.list(setNames(
+      vapply(
+        source_dependencies,
+        function(package) as.character(packageVersion(package)),
+        character(1)
+      ),
+      source_dependencies
+    ))
   )
 }
 
@@ -201,16 +415,13 @@ shared_file_integrity <- list(
   files_checked = nrow(shared_file_records)
 )
 
-units <- read_csv(
-  units_path,
-  show_col_types = FALSE,
-  col_types = cols(source_stage_id = col_character(), target_stage_id = col_character())
-)
-expression <- read_csv(
-  expression_path,
-  show_col_types = FALSE,
-  col_types = cols(stage_id = col_character(), cell_type = col_character(), gene_mouse = col_character())
-)
+units <- read_csv_table(units_path)
+expression <- read_csv_table(expression_path)
+units$source_stage_id <- as.character(units$source_stage_id)
+units$target_stage_id <- as.character(units$target_stage_id)
+expression$stage_id <- as.character(expression$stage_id)
+expression$cell_type <- as.character(expression$cell_type)
+expression$gene_mouse <- as.character(expression$gene_mouse)
 required_expression <- c(
   "stage_id", "stage_label", "cell_type", "n_cells", "gene_mouse",
   "pct_detected", "mean_normalized_linear", "mean_log1p"
@@ -230,7 +441,7 @@ if (mode == "custom") {
   ) {
     stop("Formal custom mode must use the integrity-checked mapped LR table from shared-dir")
   }
-  custom_lr <- read_csv(custom_lr_path, show_col_types = FALSE)
+  custom_lr <- read_csv_table(custom_lr_path)
   required_custom <- c(
     "ligand_mouse", "receptor_mouse_components", "ligand_zebrafish",
     "receptor_zebrafish", "pathways", "categories"
@@ -333,8 +544,8 @@ for (unit_index in seq_len(nrow(units))) {
     unit_status_rows[[length(unit_status_rows) + 1]] <- as_tibble(c(base_status, list(status = "error", detail = "missing unit gene files")))
     next
   }
-  geneset_input <- read_csv(geneset_path, show_col_types = FALSE)$gene_mouse %>% unique()
-  background_input <- read_csv(background_path, show_col_types = FALSE)$gene_mouse %>% unique()
+  geneset_input <- read_csv_table(geneset_path)$gene_mouse %>% unique()
+  background_input <- read_csv_table(background_path)$gene_mouse %>% unique()
   geneset <- intersect(geneset_input, rownames(ligand_target_matrix))
   background <- intersect(background_input, rownames(ligand_target_matrix))
   geneset <- intersect(geneset, background)
@@ -420,7 +631,7 @@ for (unit_index in seq_len(nrow(units))) {
   }
 
   activity_result <- tryCatch(
-    nichenetr::predict_ligand_activities(
+    predict_ligand_activities_impl(
       geneset = geneset,
       background_expressed_genes = background,
       ligand_target_matrix = ligand_target_matrix,
@@ -521,7 +732,7 @@ for (unit_index in seq_len(nrow(units))) {
     tryCatch(
       list(
         ligand = ligand,
-        data = nichenetr::get_weighted_ligand_target_links(
+        data = get_weighted_ligand_target_links_impl(
           ligand = ligand,
           geneset = geneset,
           ligand_target_matrix = ligand_target_matrix,
@@ -614,13 +825,13 @@ output_paths <- c(
   coverage = file.path(out_dir, "coverage.csv"),
   unit_status = file.path(out_dir, "unit_status.csv")
 )
-write_csv(ligand_activity_all, output_paths[["ligand_activity"]])
-write_csv(sender_activity_all, output_paths[["sender_ligand_activity"]])
-write_csv(lr_activity_all, output_paths[["lr_activity"]])
-write_csv(target_links_all, output_paths[["ligand_target_links"]])
-write_csv(target_link_errors_all, output_paths[["target_link_errors"]])
-write_csv(coverage_all, output_paths[["coverage"]])
-write_csv(unit_status_all, output_paths[["unit_status"]])
+write_csv_table(ligand_activity_all, output_paths[["ligand_activity"]])
+write_csv_table(sender_activity_all, output_paths[["sender_ligand_activity"]])
+write_csv_table(lr_activity_all, output_paths[["lr_activity"]])
+write_csv_table(target_links_all, output_paths[["ligand_target_links"]])
+write_csv_table(target_link_errors_all, output_paths[["target_link_errors"]])
+write_csv_table(coverage_all, output_paths[["coverage"]])
+write_csv_table(unit_status_all, output_paths[["unit_status"]])
 
 output_md5 <- unname(tools::md5sum(output_paths))
 names(output_md5) <- names(output_paths)
@@ -674,7 +885,11 @@ manifest <- list(
   ),
   output_md5 = as.list(output_md5),
   output_files = as.list(output_paths),
-  software = list(R = R.version.string, nichenetr = package_version),
+  software = list(
+    R = R.version.string,
+    csv_backend = csv_backend,
+    nichenetr = nichenetr_engine
+  ),
   activity_semantics = paste(
     "aupr_corrected is native NicheNet ligand activity for a transition/receiver/ligand.",
     "Sender and receptor columns are expression/LR candidate assignments and do not make",

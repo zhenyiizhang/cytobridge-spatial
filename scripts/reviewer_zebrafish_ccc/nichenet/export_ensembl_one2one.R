@@ -3,15 +3,58 @@
 # Export a provenance-complete zebrafish -> mouse Ensembl Compara mapping.
 #
 # No packages are installed by this script.  For an online export, biomaRt,
-# readr, dplyr, and jsonlite must already be present in the isolated R library.
+# dplyr, and jsonlite must already be present in the isolated R library.
+# readr is optional; base R handles CSV/gzip when it is unavailable.
 # Passing --raw-input makes the filtering step fully offline and is useful for
 # replaying a previously frozen BioMart response.
 
 suppressPackageStartupMessages({
   library(dplyr)
   library(jsonlite)
-  library(readr)
 })
+
+csv_backend <- if (requireNamespace("readr", quietly = TRUE)) "readr" else "base_r"
+read_csv_table <- function(path) {
+  if (csv_backend == "readr") {
+    return(readr::read_csv(path, show_col_types = FALSE))
+  }
+  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
+    connection <- gzfile(path, open = "rt")
+    on.exit(close(connection), add = TRUE)
+    frame <- utils::read.csv(
+      connection,
+      check.names = FALSE,
+      stringsAsFactors = FALSE,
+      comment.char = ""
+    )
+  } else {
+    frame <- utils::read.csv(
+      path,
+      check.names = FALSE,
+      stringsAsFactors = FALSE,
+      comment.char = ""
+    )
+  }
+  frame
+}
+write_csv_table <- function(frame, path) {
+  if (csv_backend == "readr") {
+    readr::write_csv(frame, path)
+    return(invisible(NULL))
+  }
+  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
+    connection <- gzfile(path, open = "wt")
+    on.exit(close(connection), add = TRUE)
+    utils::write.csv(
+      as.data.frame(frame), connection, row.names = FALSE, na = ""
+    )
+  } else {
+    utils::write.csv(
+      as.data.frame(frame), path, row.names = FALSE, na = ""
+    )
+  }
+  invisible(NULL)
+}
 
 args <- commandArgs(trailingOnly = TRUE)
 arg_value <- function(flag, default = NULL) {
@@ -39,6 +82,45 @@ attributes_requested <- c(
   "mmusculus_homolog_orthology_confidence",
   "mmusculus_homolog_perc_id"
 )
+attribute_display_headers <- c(
+  ensembl_gene_id = "Gene stable ID",
+  external_gene_name = "Gene name",
+  mmusculus_homolog_ensembl_gene = "Mouse gene stable ID",
+  mmusculus_homolog_associated_gene_name = "Mouse gene name",
+  mmusculus_homolog_orthology_type = "Mouse homology type",
+  mmusculus_homolog_orthology_confidence = "Mouse orthology confidence [0 low, 1 high]",
+  mmusculus_homolog_perc_id = "%id. target Mouse gene identical to query gene"
+)
+
+standardize_attribute_headers <- function(frame) {
+  resolved <- vapply(attributes_requested, function(attribute) {
+    candidates <- c(attribute, unname(attribute_display_headers[[attribute]]))
+    found <- candidates[candidates %in% colnames(frame)]
+    if (length(found) == 0) return(NA_character_)
+    found[[1]]
+  }, character(1))
+  missing <- names(resolved)[is.na(resolved)]
+  if (length(missing) > 0) {
+    accepted <- vapply(missing, function(attribute) {
+      paste0(
+        attribute,
+        " or ",
+        dQuote(unname(attribute_display_headers[[attribute]]))
+      )
+    }, character(1))
+    stop(
+      "BioMart input lacks required attributes: ",
+      paste(accepted, collapse = "; ")
+    )
+  }
+  standardized <- frame[, unname(resolved), drop = FALSE]
+  colnames(standardized) <- attributes_requested
+  list(
+    data = standardized,
+    resolved_header_map = as.list(resolved),
+    original_headers = as.list(colnames(frame))
+  )
+}
 
 if (is.null(raw_input)) {
   if (!requireNamespace("biomaRt", quietly = TRUE)) {
@@ -57,28 +139,34 @@ if (is.null(raw_input)) {
   raw <- biomaRt::getBM(attributes = attributes_requested, mart = mart)
   source_mode <- "biomaRt_query"
   source_path <- NA_character_
+  source_input_record <- NULL
 } else {
   if (!file.exists(raw_input)) stop("--raw-input does not exist: ", raw_input)
-  raw <- read_csv(raw_input, show_col_types = FALSE)
-  missing_attributes <- setdiff(attributes_requested, colnames(raw))
-  if (length(missing_attributes) > 0) {
-    stop("Frozen raw input lacks columns: ", paste(missing_attributes, collapse = ", "))
-  }
-  raw <- raw[, attributes_requested]
+  raw <- read_csv_table(raw_input)
   source_mode <- "frozen_raw_input"
   source_path <- normalizePath(raw_input)
+  source_input_record <- list(
+    path = source_path,
+    size_bytes = unname(file.info(raw_input)$size),
+    md5 = unname(tools::md5sum(raw_input))
+  )
 }
 
+header_audit <- standardize_attribute_headers(raw)
+raw <- header_audit$data
+
 raw_path <- file.path(out_dir, "ensembl_compara_drerio_to_mouse_raw.csv.gz")
-write_csv(raw, raw_path)
+write_csv_table(raw, raw_path)
 
 standardized <- raw %>%
   transmute(
-    zebrafish_ensembl_gene = as.character(ensembl_gene_id),
-    zebrafish_symbol = trimws(as.character(external_gene_name)),
-    mouse_ensembl_gene = as.character(mmusculus_homolog_ensembl_gene),
-    mouse_symbol = trimws(as.character(mmusculus_homolog_associated_gene_name)),
-    orthology_type = as.character(mmusculus_homolog_orthology_type),
+    zebrafish_ensembl_gene = coalesce(as.character(ensembl_gene_id), ""),
+    zebrafish_symbol = coalesce(trimws(as.character(external_gene_name)), ""),
+    mouse_ensembl_gene = coalesce(as.character(mmusculus_homolog_ensembl_gene), ""),
+    mouse_symbol = coalesce(
+      trimws(as.character(mmusculus_homolog_associated_gene_name)), ""
+    ),
+    orthology_type = coalesce(as.character(mmusculus_homolog_orthology_type), ""),
     orthology_confidence = suppressWarnings(as.numeric(mmusculus_homolog_orthology_confidence)),
     mouse_percent_identity = suppressWarnings(as.numeric(mmusculus_homolog_perc_id))
   )
@@ -115,7 +203,7 @@ strict <- confident %>%
   )
 
 strict_path <- file.path(out_dir, "ensembl_compara_drerio_to_mouse_strict_one2one.csv")
-write_csv(strict, strict_path)
+write_csv_table(strict, strict_path)
 
 manifest <- list(
   schema_version = 1,
@@ -127,7 +215,11 @@ manifest <- list(
   dataset = "drerio_gene_ensembl",
   source_mode = source_mode,
   source_path = source_path,
+  source_input = source_input_record,
   attributes = attributes_requested,
+  accepted_display_headers = as.list(attribute_display_headers),
+  resolved_header_map = header_audit$resolved_header_map,
+  original_input_headers = header_audit$original_headers,
   filter = list(
     orthology_type = "ortholog_one2one",
     orthology_confidence = 1,
@@ -145,9 +237,10 @@ manifest <- list(
   ),
   packages = list(
     R = R.version.string,
+    csv_backend = csv_backend,
     biomaRt = if (requireNamespace("biomaRt", quietly = TRUE)) as.character(packageVersion("biomaRt")) else NA_character_,
     dplyr = as.character(packageVersion("dplyr")),
-    readr = as.character(packageVersion("readr"))
+    readr = if (requireNamespace("readr", quietly = TRUE)) as.character(packageVersion("readr")) else NA_character_
   )
 )
 write_json(manifest, file.path(out_dir, "orthology_manifest.json"), pretty = TRUE, auto_unbox = TRUE)

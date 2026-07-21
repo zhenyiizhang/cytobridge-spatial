@@ -49,8 +49,8 @@ and makes no zebrafish provenance claim.
 
 ## 1. Freeze Ensembl orthology
 
-Use an isolated R library containing `biomaRt`, `dplyr`, `readr`, and
-`jsonlite`. The exporter installs nothing.
+Use an isolated R library containing `biomaRt`, `dplyr`, and `jsonlite`.
+`readr` is optional; the exporter falls back to base R. It installs nothing.
 
 ```bash
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/export_ensembl_one2one.R \
@@ -66,6 +66,13 @@ Rscript scripts/reviewer_zebrafish_ccc/nichenet/export_ensembl_one2one.R \
   --raw-input "$RUN/00_provenance/ensembl_116/ensembl_compara_drerio_to_mouse_raw.csv.gz" \
   --out-dir "$RUN/00_provenance/ensembl_116_replay"
 ```
+
+Offline input may use either the seven requested technical attribute names or
+the exact official Ensembl download display headers (for example,
+`Gene stable ID`, `Mouse homology type`, and
+`Mouse orthology confidence [0 low, 1 high]`). The exporter resolves and records
+the header map, then writes the frozen raw output with canonical technical
+names; manual header editing is neither required nor allowed.
 
 Primary mappings require `ortholog_one2one`, confidence `1`, non-empty symbols,
 and a symbol-level bijection after case-folding. One-to-many mappings are not
@@ -119,8 +126,34 @@ Place the following Zenodo 7074291 files in a read-only prior directory:
 | `ligand_target_matrix_nsga2r_final_mouse.rds` | `ac80d846fe0bfc4879a5b52ca85ffeb9` |
 | `lr_network_mouse_21122021.rds` | `cf33ee8b6bf84bdf2d11cab9c8f94b9e` |
 
-Use a dedicated R library pinned to `nichenetr` v2.2.0. The runner installs and
-downloads nothing and rejects version or asset-hash drift by default.
+The formal server run uses the official source checkout at commit
+`66f90d5eeafef280b2b2f339b3fd70ffec1781dd` (`DESCRIPTION` version 2.2.1.1).
+The runner sources only the four core prediction files and independently
+verifies the full commit plus every frozen file MD5. It installs and downloads
+nothing. An installed `nichenetr` package is available only through the
+explicit non-formal override `--allow-installed-nichenetr true`; its exact
+expected version remains configurable with `--expected-nichenetr-version`.
+Formal commands fail if `--nichenetr-source` is omitted.
+
+To create the same read-only source snapshot in a new environment:
+
+```bash
+NICHE_SOURCE=/data/cytobridge/projects/CytoBridge-ST-1104/external/nichenetr-official
+git clone https://github.com/saeyslab/nichenetr.git "$NICHE_SOURCE"
+git -C "$NICHE_SOURCE" checkout --detach 66f90d5eeafef280b2b2f339b3fd70ffec1781dd
+test "$(git -C "$NICHE_SOURCE" rev-parse HEAD)" = 66f90d5eeafef280b2b2f339b3fd70ffec1781dd
+
+cd "$NICHE_SOURCE/R"
+printf '%s  %s\n' \
+  7c74d88d20545d568cea038c35ab393c supporting_functions.R \
+  59dc49100d2a0f9ccb7f74acb1459ae9 evaluate_model_target_prediction.R \
+  e4b42986954dc2c73ef5adc356e4a6ee evaluate_model_ligand_prediction.R \
+  2cf8b23dc3535c1626fa7d590aab6d86 application_prediction.R \
+  | md5sum -c -
+```
+
+`readr` is optional. If unavailable, the runner uses a base-R CSV/gzip reader
+and writer and records that backend in `run_manifest.json`.
 
 The following Linux commands download the two files from the immutable Zenodo
 record, verify them, retain the record metadata, and make the data files
@@ -156,12 +189,16 @@ Rscript scripts/reviewer_zebrafish_ccc/nichenet/run_nichenet_v2.R \
   --mode default \
   --shared-dir "$RUN/01_shared_inputs" \
   --prior-dir "$RUN/00_provenance/nichenet_v2" \
+  --nichenetr-source "$NICHE_SOURCE" \
+  --expected-nichenetr-version 2.2.1.1 \
   --out-dir "$RUN/02_default_mouse_v2"
 
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/run_nichenet_v2.R \
   --mode custom \
   --shared-dir "$RUN/01_shared_inputs" \
   --prior-dir "$RUN/00_provenance/nichenet_v2" \
+  --nichenetr-source "$NICHE_SOURCE" \
+  --expected-nichenetr-version 2.2.1.1 \
   --out-dir "$RUN/03_custom_zebrafish_lr"
 ```
 

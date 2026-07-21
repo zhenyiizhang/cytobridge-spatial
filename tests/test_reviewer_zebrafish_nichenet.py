@@ -343,7 +343,7 @@ def test_r_runner_uses_official_nichenetr_activity_and_fixed_prior():
         encoding="utf-8"
     )
 
-    assert "nichenetr::predict_ligand_activities" in runner
+    assert "predict_ligand_activities_impl" in runner
     assert "aupr_corrected" in runner
     assert "ligand_target_matrix_nsga2r_final_mouse.rds" in runner
     assert 'mode %in% c("default", "custom")' in runner
@@ -351,9 +351,21 @@ def test_r_runner_uses_official_nichenetr_activity_and_fixed_prior():
     assert "shared_file_integrity" in runner
     assert "prepare_manifest$orthology_source$ensembl_release" in runner
     assert "valid_sha256" in runner
+    assert 'arg_value("--nichenetr-source")' in runner
+    assert 'arg_value("--allow-installed-nichenetr", "false")' in runner
+    assert "66f90d5eeafef280b2b2f339b3fd70ffec1781dd" in runner
+    assert "7c74d88d20545d568cea038c35ab393c" in runner
+    assert 'expected-nichenetr-version", "2.2.1.1"' in runner
+    assert 'mode = "pinned_core_source"' in runner
+    assert "library(nichenetr)" not in runner
+    assert "library(readr)" not in runner
+    assert "read_csv_table" in runner
     assert "status = run_status" in runner
     assert "target_link_errors.csv" in runner
     assert "if (nrow(custom_lr) == 0)" in runner
     assert "all(matched$pct_detected >= min_expression_fraction)" in runner
     assert "ortholog_one2one" in orthology_exporter
     assert "version = ensembl_version" in orthology_exporter
+    assert "Mouse orthology confidence [0 low, 1 high]" in orthology_exporter
+    assert "standardize_attribute_headers" in orthology_exporter
+    assert "library(readr)" not in orthology_exporter
