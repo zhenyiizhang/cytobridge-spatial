@@ -90,8 +90,7 @@ def validate_paired_manifests(manifests: Sequence[Mapping[str, Any]]) -> dict[st
     shared: dict[str, str] = {}
     for field in fields:
         hashes = {
-            str(manifest["shared_input"][field]["sha256"])
-            for manifest in manifests
+            str(manifest["shared_input"][field]["sha256"]) for manifest in manifests
         }
         if len(hashes) != 1:
             raise RuntimeError(
@@ -99,11 +98,19 @@ def validate_paired_manifests(manifests: Sequence[Mapping[str, Any]]) -> dict[st
             )
         shared[field] = hashes.pop()
     database_hashes = {
-        str(manifest["shared_input"]["database"]["sha256"])
-        for manifest in manifests
+        str(manifest["shared_input"]["database"]["sha256"]) for manifest in manifests
     }
     if len(database_hashes) != 2:
-        raise RuntimeError("The two CellAgentChat conditions unexpectedly use the same LR database.")
+        raise RuntimeError(
+            "The two CellAgentChat conditions unexpectedly use the same LR database."
+        )
+    claims = [
+        manifest["shared_input"].get("preparation_claims") for manifest in manifests
+    ]
+    if claims[0] != claims[1]:
+        raise RuntimeError(
+            "The two CellAgentChat conditions do not share identical preparation claims."
+        )
     return shared
 
 
@@ -153,22 +160,33 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                 "raw_lr_rows": counts["raw_lr_rows"],
                 "significant_lr_rows": counts["significant_lr_rows"],
                 "sample_plan_sha256": manifest["shared_input"]["sample_plan"]["sha256"],
-                "mapped_expression_sha256": manifest["shared_input"]["mapped_expression"]["sha256"],
+                "mapped_expression_sha256": manifest["shared_input"][
+                    "mapped_expression"
+                ]["sha256"],
                 "database_sha256": manifest["shared_input"]["database"]["sha256"],
+                "orthology_policy": manifest["shared_input"]["preparation_claims"][
+                    "orthology_policy"
+                ],
+                "orthology_analysis_tier": manifest["shared_input"][
+                    "preparation_claims"
+                ]["orthology_analysis_tier"],
+                "primary_claim_allowed": manifest["shared_input"]["preparation_claims"][
+                    "primary_claim_allowed"
+                ],
             }
         )
     readiness_path = output / "dual_condition_run_summary.csv"
     pd.DataFrame(rows).to_csv(readiness_path, index=False)
-    manifest_paths = [
-        output / label / "manifest.json" for label in CONDITION_LABELS
-    ]
+    manifest_paths = [output / label / "manifest.json" for label in CONDITION_LABELS]
     dual_manifest = {
         "schema_version": 1,
         "created_at_utc": utc_now(),
         "workflow": "official_cellagentchat_spatial_dual_lr_database",
         "conditions": list(CONDITION_LABELS),
         "same_mapped_expression_and_sample_plan_verified": True,
+        "same_preparation_manifest_and_orthology_claims_verified": True,
         "shared_sha256": shared_hashes,
+        "preparation_claims": manifests[0]["shared_input"]["preparation_claims"],
         "database_sha256_are_distinct": True,
         "condition_manifests": {
             label: artifact(path)

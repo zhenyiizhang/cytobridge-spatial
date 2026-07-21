@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -10,13 +11,12 @@ from scipy import sparse
 
 
 PACKAGE_PARENT = (
-    Path(__file__).resolve().parents[1]
-    / "scripts"
-    / "reviewer_zebrafish_ccc"
+    Path(__file__).resolve().parents[1] / "scripts" / "reviewer_zebrafish_ccc"
 )
 sys.path.insert(0, str(PACKAGE_PARENT))
 
 from cellagentchat import common  # noqa: E402
+from cellagentchat import prepare_inputs  # noqa: E402
 from cellagentchat import run_dual  # noqa: E402
 from cellagentchat import run_spatial  # noqa: E402
 
@@ -62,26 +62,171 @@ def test_orthology_policy_is_explicit_and_auditable() -> None:
     assert many_counts["selected_target_genes"] == 2
 
 
+def _write_ensembl_sensitivity_mapping(
+    tmp_path: Path,
+) -> tuple[Path, Path, pd.DataFrame]:
+    mapping = pd.DataFrame(
+        {
+            "zebrafish_symbol": ["a", "b"],
+            "mouse_symbol": ["A", "B"],
+            "orthology_type": ["ortholog_one2one", "ortholog_one2one"],
+            "orthology_confidence": [1, 0],
+        }
+    )
+    mapping_path = (
+        tmp_path
+        / "ensembl_compara_drerio_to_mouse_one2one_bijective_all_confidence.csv"
+    )
+    mapping.to_csv(mapping_path, index=False)
+    manifest_path = tmp_path / "orthology_manifest.json"
+    manifest = {
+        "schema_version": 2,
+        "workflow": prepare_inputs.ORTHOLOGY_MANIFEST_WORKFLOW,
+        "status": "complete",
+        "ensembl_release": 116,
+        "mapping_policy": "one2one_bijective_all_confidence",
+        "analysis_tier": "sensitivity",
+        "primary_claim_allowed": False,
+        "mapping_file": mapping_path.name,
+        "mapping_label": "sensitivity only",
+        "source_mode": "frozen_raw_input",
+        "source_input": {"md5": "1" * 32, "size_bytes": 123},
+        "filter": {
+            "orthology_type": "ortholog_one2one",
+            "orthology_confidence_policy": "not_filtered",
+            "nonempty_symbols": True,
+            "symbol_level_bijection_after_casefold": True,
+        },
+        "counts": {"selected_bijective_symbol_pairs": len(mapping)},
+        "output_md5": {
+            "raw": "2" * 32,
+            "mapping": prepare_inputs._md5_file(mapping_path),
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return mapping_path, manifest_path, mapping
+
+
+def test_all_confidence_manifest_is_verified_and_cannot_be_primary(
+    tmp_path: Path,
+) -> None:
+    mapping_path, manifest_path, mapping = _write_ensembl_sensitivity_mapping(tmp_path)
+    provenance = prepare_inputs.resolve_orthology_provenance(
+        orthology_path=mapping_path,
+        orthology_frame=mapping,
+        selected_mapping=mapping.rename(
+            columns={"zebrafish_symbol": "source_gene", "mouse_symbol": "target_gene"}
+        ),
+        mapping_counts={"selected_rows": len(mapping)},
+        mapping_policy="strict_one_to_one",
+        orthology_type_column="orthology_type",
+        allowed_orthology_types=("ortholog_one2one",),
+        confidence_column="orthology_confidence",
+        minimum_confidence=0.0,
+        requested_analysis_tier="sensitivity",
+        manifest_path=manifest_path,
+    )
+    assert provenance["orthology_policy"] == "one2one_bijective_all_confidence"
+    assert provenance["analysis_tier"] == "sensitivity"
+    assert provenance["policy_primary_claim_allowed"] is False
+    assert provenance["mapping_source_manifest"]["verified"] is True
+    assert provenance["mapping_source_manifest"]["ensembl_release"] == 116
+    assert not prepare_inputs.primary_claim_is_allowed(
+        expression_projection_mode="strict_log1p_rename",
+        mapping_policy="strict_one_to_one",
+        confidence_column="orthology_confidence",
+        minimum_confidence=0.0,
+        orthology_provenance=provenance,
+        pinned_source_verified=True,
+    )
+
+    with pytest.raises(ValueError, match="requires --minimum-confidence 0"):
+        prepare_inputs.resolve_orthology_provenance(
+            orthology_path=mapping_path,
+            orthology_frame=mapping,
+            selected_mapping=mapping,
+            mapping_counts={"selected_rows": len(mapping)},
+            mapping_policy="strict_one_to_one",
+            orthology_type_column="orthology_type",
+            allowed_orthology_types=("ortholog_one2one",),
+            confidence_column="orthology_confidence",
+            minimum_confidence=1.0,
+            requested_analysis_tier="auto",
+            manifest_path=manifest_path,
+        )
+
+
+def test_unverified_minimum_confidence_zero_is_automatically_sensitivity(
+    tmp_path: Path,
+) -> None:
+    mapping_path = tmp_path / "mapping.csv"
+    mapping_path.write_text("zebrafish_symbol,mouse_symbol\na,A\n", encoding="utf-8")
+    mapping = pd.DataFrame({"source_gene": ["a"], "target_gene": ["A"]})
+    kwargs = dict(
+        orthology_path=mapping_path,
+        orthology_frame=mapping,
+        selected_mapping=mapping,
+        mapping_counts={"selected_rows": 1},
+        mapping_policy="strict_one_to_one",
+        orthology_type_column="orthology_type",
+        allowed_orthology_types=("ortholog_one2one",),
+        confidence_column="orthology_confidence",
+        minimum_confidence=0.0,
+        manifest_path=None,
+    )
+    provenance = prepare_inputs.resolve_orthology_provenance(
+        **kwargs, requested_analysis_tier="auto"
+    )
+    assert provenance["analysis_tier"] == "sensitivity"
+    assert provenance["policy_primary_claim_allowed"] is False
+    with pytest.raises(ValueError, match="conflicts with the CLI-derived policy"):
+        prepare_inputs.resolve_orthology_provenance(
+            **kwargs, requested_analysis_tier="primary"
+        )
+
+
+def test_spatial_runner_requires_explicit_allowance_for_sensitivity() -> None:
+    preparation = {
+        "formal_primary": False,
+        "orthology_policy": "one2one_bijective_all_confidence",
+        "orthology_analysis_tier": "sensitivity",
+        "primary_claim_allowed": False,
+    }
+    with pytest.raises(RuntimeError, match="--allow-nonprimary-preparation"):
+        run_spatial.validate_preparation_claims(preparation, allow_nonprimary=False)
+    record = run_spatial.validate_preparation_claims(preparation, allow_nonprimary=True)
+    assert record["nonprimary_preparation_explicitly_allowed"] is True
+    contradictory = {**preparation, "primary_claim_allowed": True}
+    with pytest.raises(RuntimeError, match="Sensitivity orthology"):
+        run_spatial.validate_preparation_claims(contradictory, allow_nonprimary=True)
+
+
 def test_strict_projection_preserves_selected_single_log_values() -> None:
     expression = sparse.csr_matrix(
         np.array([[0.0, 1.2, 2.3], [3.4, 0.0, 4.5]], dtype=np.float32)
     )
     counts = sparse.csr_matrix(np.array([[0, 2, 3], [4, 0, 7]], dtype=np.int32))
-    mapping = pd.DataFrame(
-        {"source_gene": ["b", "a"], "target_gene": ["B", "A"]}
-    )
-    projected_x, projected_counts, var, used, record = (
-        common.project_expression_matrices(
-            expression,
-            counts,
-            ["a", "b", "c"],
-            mapping,
-            mode="strict_log1p_rename",
-        )
+    mapping = pd.DataFrame({"source_gene": ["b", "a"], "target_gene": ["B", "A"]})
+    (
+        projected_x,
+        projected_counts,
+        var,
+        used,
+        record,
+    ) = common.project_expression_matrices(
+        expression,
+        counts,
+        ["a", "b", "c"],
+        mapping,
+        mode="strict_log1p_rename",
     )
     assert list(var.index) == ["A", "B"]
-    np.testing.assert_array_equal(projected_x.toarray(), expression[:, [0, 1]].toarray())
-    np.testing.assert_array_equal(projected_counts.toarray(), counts[:, [0, 1]].toarray())
+    np.testing.assert_array_equal(
+        projected_x.toarray(), expression[:, [0, 1]].toarray()
+    )
+    np.testing.assert_array_equal(
+        projected_counts.toarray(), counts[:, [0, 1]].toarray()
+    )
     assert record["normalization_target_sum"] is None
     assert record["selected_space_identity_max_abs_error"] == 0.0
     assert record["full_matrix_elementwise_comparison_applicable"] is False
@@ -308,9 +453,7 @@ def test_spatial_adapter_preserves_sender_receiver_direction_and_zeros() -> None
 
 
 def test_lr_output_keys_are_decoded_from_loaded_universe() -> None:
-    key_map = run_spatial._lr_key_map(
-        {"H2-Aa": ["Cd4"], "Lig": ["H2-Ab1"]}
-    )
+    key_map = run_spatial._lr_key_map({"H2-Aa": ["Cd4"], "Lig": ["H2-Ab1"]})
     raw = run_spatial._flatten_raw_results(
         {
             "CT000_CT001": {
@@ -336,6 +479,11 @@ def _condition_manifest(label: str, database_hash: str) -> dict:
         "sample_plan": {"sha256": "samples"},
         "preparation_manifest": {"sha256": "prepare"},
         "database": {"sha256": database_hash},
+        "preparation_claims": {
+            "orthology_policy": "one2one_bijective_all_confidence",
+            "orthology_analysis_tier": "sensitivity",
+            "primary_claim_allowed": False,
+        },
     }
     return {"database_condition": label, "shared_input": shared}
 
@@ -352,4 +500,14 @@ def test_dual_contract_requires_identical_expression_and_sample_plan() -> None:
     }
     manifests[1]["shared_input"]["sample_plan"]["sha256"] = "different"
     with pytest.raises(RuntimeError, match="same sample_plan"):
+        run_dual.validate_paired_manifests(manifests)
+
+    manifests = [
+        _condition_manifest(common.CONDITION_LABELS[0], "db1"),
+        _condition_manifest(common.CONDITION_LABELS[1], "db2"),
+    ]
+    manifests[1]["shared_input"]["preparation_claims"][
+        "orthology_analysis_tier"
+    ] = "primary"
+    with pytest.raises(RuntimeError, match="identical preparation claims"):
         run_dual.validate_paired_manifests(manifests)

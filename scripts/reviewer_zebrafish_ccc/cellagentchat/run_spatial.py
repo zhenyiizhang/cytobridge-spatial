@@ -94,13 +94,67 @@ def _read_preparation(
         raise FileNotFoundError(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("workflow") != "zebrafish_cellagentchat_dual_database_shared_input":
-        raise RuntimeError("Preparation manifest has an unexpected workflow identifier.")
+        raise RuntimeError(
+            "Preparation manifest has an unexpected workflow identifier."
+        )
     if database_label not in manifest.get("lr_databases", {}):
         raise KeyError(f"Preparation manifest lacks database {database_label!r}.")
     mapped_h5ad = verify_artifact(manifest["artifacts"]["mapped_expression"])
     sample_plan = verify_artifact(manifest["artifacts"]["shared_sampled_cells"])
+    source_manifest = manifest.get("orthology", {}).get("mapping_source_manifest", {})
+    if source_manifest.get("provided") is True:
+        if source_manifest.get("verified") is not True:
+            raise RuntimeError(
+                "Preparation declares an orthology source manifest that was not verified."
+            )
+        verify_artifact(source_manifest["artifact"])
     database = verify_artifact(manifest["lr_databases"][database_label])
     return manifest, mapped_h5ad, sample_plan, database
+
+
+def validate_preparation_claims(
+    preparation: Mapping[str, Any], *, allow_nonprimary: bool
+) -> dict[str, Any]:
+    """Fail closed on contradictory or silently upgraded preparation claims."""
+
+    orthology_policy = str(preparation.get("orthology_policy", "")).strip()
+    analysis_tier = str(
+        preparation.get("orthology_analysis_tier", preparation.get("analysis_tier", ""))
+    ).strip()
+    primary_claim_allowed = preparation.get("primary_claim_allowed") is True
+    formal_primary = preparation.get("formal_primary") is True
+    if not orthology_policy:
+        raise RuntimeError("Preparation manifest lacks orthology_policy.")
+    if analysis_tier not in {"primary", "sensitivity"}:
+        raise RuntimeError(
+            "Preparation manifest must label orthology_analysis_tier as primary "
+            "or sensitivity."
+        )
+    if analysis_tier == "sensitivity" and primary_claim_allowed:
+        raise RuntimeError(
+            "Sensitivity orthology preparation cannot allow a primary claim."
+        )
+    if formal_primary != primary_claim_allowed:
+        raise RuntimeError(
+            "Preparation formal_primary and primary_claim_allowed disagree."
+        )
+    requires_explicit_allowance = not formal_primary or analysis_tier == "sensitivity"
+    if requires_explicit_allowance and not allow_nonprimary:
+        raise RuntimeError(
+            "Preparation is not an allowed formal primary. Pass "
+            "--allow-nonprimary-preparation only for this explicitly labelled "
+            "sensitivity/nonprimary run."
+        )
+    return {
+        "orthology_policy": orthology_policy,
+        "orthology_analysis_tier": analysis_tier,
+        "primary_claim_allowed": primary_claim_allowed,
+        "formal_primary": formal_primary,
+        "allow_nonprimary_preparation": bool(allow_nonprimary),
+        "nonprimary_preparation_explicitly_allowed": bool(
+            requires_explicit_allowance and allow_nonprimary
+        ),
+    }
 
 
 @contextmanager
@@ -188,7 +242,9 @@ def _ensure_torch_sparse_backend() -> str:
         op: str = "add",
     ) -> tuple["torch.Tensor", "torch.Tensor"]:
         if op != "add":
-            raise ValueError("The compatibility backend supports only coalesce(op='add').")
+            raise ValueError(
+                "The compatibility backend supports only coalesce(op='add')."
+            )
         sparse_matrix = torch.sparse_coo_tensor(
             index,
             value,
@@ -406,7 +462,9 @@ def _complete_type_pairs(
                     "n_lr_pairs_tested": int(n_lr_pairs_tested),
                     "cellagentchat_significant_lr_count": significant_count,
                     "cellagentchat_significant_lr_fraction": (
-                        significant_count / n_lr_pairs_tested if n_lr_pairs_tested else np.nan
+                        significant_count / n_lr_pairs_tested
+                        if n_lr_pairs_tested
+                        else np.nan
                     ),
                     "cellagentchat_significant_score_sum": (
                         0.0
@@ -462,12 +520,16 @@ def _run_one(
 
     selected_names = plan["obs_name"].astype(str).tolist()
     subset = data[selected_names].copy()
-    observed_stage = pd.to_numeric(subset.obs[keys["time"]], errors="raise").to_numpy(float)
+    observed_stage = pd.to_numeric(subset.obs[keys["time"]], errors="raise").to_numpy(
+        float
+    )
     if not np.allclose(observed_stage, stage, rtol=0.0, atol=1e-12):
         raise RuntimeError("Frozen sample plan does not match the mapped H5AD stage.")
     observed_labels = subset.obs[keys["cell_type"]].astype(str).to_numpy()
     if observed_labels.tolist() != plan["cell_type"].astype(str).tolist():
-        raise RuntimeError("Frozen sample plan cell types do not match the mapped H5AD.")
+        raise RuntimeError(
+            "Frozen sample plan cell types do not match the mapped H5AD."
+        )
     values = subset.X.data if sp.issparse(subset.X) else np.asarray(subset.X)
     values = np.asarray(values)
     if values.size and (not np.isfinite(values).all() or float(values.min()) < 0):
@@ -521,9 +583,7 @@ def _run_one(
         raise RuntimeError(
             "The loaded CellAgentChat LR universe contains duplicate or ambiguous pairs."
         )
-    unsafe_lr_genes = sorted(
-        gene for gene in {*lig_uni, *rec_uni} if "_" in str(gene)
-    )
+    unsafe_lr_genes = sorted(gene for gene in {*lig_uni, *rec_uni} if "_" in str(gene))
     if unsafe_lr_genes:
         raise ValueError(
             "CellAgentChat v0.2.0 cannot parse underscores in LR gene symbols: "
@@ -648,10 +708,10 @@ def _run_one(
         sampling_seed=sampling_seed,
         n_lr_pairs_tested=len(lr_pairs),
     )
-    raw.to_csv(run_dir / "cellagentchat_lr_scores_raw.csv.gz", index=False, compression="gzip")
-    significant.to_csv(
-        run_dir / "cellagentchat_lr_scores_significant.csv", index=False
+    raw.to_csv(
+        run_dir / "cellagentchat_lr_scores_raw.csv.gz", index=False, compression="gzip"
     )
+    significant.to_csv(run_dir / "cellagentchat_lr_scores_significant.csv", index=False)
     type_pairs.to_csv(run_dir / "cellagentchat_type_pair_scores.csv", index=False)
 
     receiving = pd.DataFrame(
@@ -720,14 +780,10 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     preparation, mapped_h5ad, plan_path, database = _read_preparation(
         args.preparation_dir, args.database_label
     )
-    if (
-        preparation.get("formal_primary") is not True
-        and not bool(args.allow_nonprimary_preparation)
-    ):
-        raise RuntimeError(
-            "Preparation is not labelled formal_primary=true. Pass "
-            "--allow-nonprimary-preparation only for an explicitly labelled sensitivity run."
-        )
+    preparation_claims = validate_preparation_claims(
+        preparation,
+        allow_nonprimary=bool(args.allow_nonprimary_preparation),
+    )
     source = args.cellagentchat_source.expanduser().resolve()
     source_record = validate_official_source(
         source, allow_unpinned=bool(args.allow_unpinned_source)
@@ -752,17 +808,24 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     missing_plan = sorted(required_plan.difference(plan.columns))
     if missing_plan:
         raise ValueError(f"Sample plan lacks columns: {missing_plan}")
-    available_seeds = tuple(sorted(pd.to_numeric(plan["sampling_seed"]).astype(int).unique()))
+    available_seeds = tuple(
+        sorted(pd.to_numeric(plan["sampling_seed"]).astype(int).unique())
+    )
     seeds = tuple(args.sampling_seeds) if args.sampling_seeds else available_seeds
     unknown_seeds = sorted(set(seeds).difference(available_seeds))
     if unknown_seeds:
         raise ValueError(f"Sampling seeds absent from frozen plan: {unknown_seeds}")
-    available_stages = tuple(sorted(pd.to_numeric(plan["stage"]).astype(float).unique()))
+    available_stages = tuple(
+        sorted(pd.to_numeric(plan["stage"]).astype(float).unique())
+    )
     stages = tuple(args.stages) if args.stages else available_stages
     unknown_stages = [
         stage
         for stage in stages
-        if not any(np.isclose(stage, observed, rtol=0.0, atol=1e-12) for observed in available_stages)
+        if not any(
+            np.isclose(stage, observed, rtol=0.0, atol=1e-12)
+            for observed in available_stages
+        )
     ]
     if unknown_stages:
         raise ValueError(f"Stages absent from frozen plan: {unknown_stages}")
@@ -776,7 +839,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             ]
             stage_labels = sorted(stage_rows["stage_label"].astype(str).unique())
             if len(stage_labels) != 1:
-                raise ValueError(f"Stage {stage:g} has ambiguous labels: {stage_labels}")
+                raise ValueError(
+                    f"Stage {stage:g} has ambiguous labels: {stage_labels}"
+                )
             stage_label = stage_labels[0]
             for seed in seeds:
                 run_plan = stage_rows.loc[
@@ -786,7 +851,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                     ["cell_type", "original_index"], kind="mergesort"
                 ).reset_index(drop=True)
                 if run_plan.empty:
-                    raise ValueError(f"Frozen sample plan is empty for stage={stage}, seed={seed}.")
+                    raise ValueError(
+                        f"Frozen sample plan is empty for stage={stage}, seed={seed}."
+                    )
                 run_dir = output / f"stage_{stage:g}_{stage_label}" / f"seed_{seed}"
                 run_records.append(
                     _run_one(
@@ -803,7 +870,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                     )
                 )
 
-    type_paths = sorted(output.glob("stage_*/seed_*/cellagentchat_type_pair_scores.csv"))
+    type_paths = sorted(
+        output.glob("stage_*/seed_*/cellagentchat_type_pair_scores.csv")
+    )
     raw_paths = sorted(output.glob("stage_*/seed_*/cellagentchat_lr_scores_raw.csv.gz"))
     significant_paths = sorted(
         output.glob("stage_*/seed_*/cellagentchat_lr_scores_significant.csv")
@@ -811,7 +880,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     receiving_paths = sorted(
         output.glob("stage_*/seed_*/cellagentchat_cell_receiving_scores.csv")
     )
-    type_pairs = pd.concat((pd.read_csv(path) for path in type_paths), ignore_index=True)
+    type_pairs = pd.concat(
+        (pd.read_csv(path) for path in type_paths), ignore_index=True
+    )
     raw = pd.concat((pd.read_csv(path) for path in raw_paths), ignore_index=True)
     significant_frames = [
         pd.read_csv(path) for path in significant_paths if path.stat().st_size > 1
@@ -860,6 +931,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "database": artifact(database),
             "same_sample_plan_required_for_both_database_conditions": True,
             "preparation_formal_primary": bool(preparation.get("formal_primary")),
+            "preparation_claims": preparation_claims,
+            "orthology": preparation.get("orthology", {}),
             "projection": preparation.get("projection", {}),
         },
         "design": {
@@ -905,7 +978,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     manifest = run(args)
-    print(json.dumps(json_value({"status": "ok", "counts": manifest["counts"]}), indent=2))
+    print(
+        json.dumps(json_value({"status": "ok", "counts": manifest["counts"]}), indent=2)
+    )
     return 0
 
 
