@@ -105,6 +105,14 @@ from .simulation import (
     simulate_piecewise_spatially_warped_split,
 )
 from .runtime import DynamicalRuntime, build_dynamical_runtime
+from .spatial_interaction_attribution import (
+    SpatialExactDecomposition,
+    SpatialGroupedAttribution,
+    analyze_spatial_gnn_by_celltype,
+    decompose_spatial_gnn_group,
+    make_interaction_groups,
+    validate_spatial_exact_decomposition_model,
+)
 from .temporal import (
     PCAReconstructionSpec,
     TemporalGenePatternResult,
@@ -135,6 +143,8 @@ __all__ = [
     "AblationPanelSeriesResult",
     "AblationGifResult",
     "VirtualAblationResult",
+    "SpatialExactDecomposition",
+    "SpatialGroupedAttribution",
     "compute_virtual_ablation_metrics",
     "crop_ablation_panel",
     "export_ablation_gifs",
@@ -162,6 +172,7 @@ __all__ = [
     "MLP",
     "adata_to_aligned_dataframe",
     "analyze_attention_by_celltype",
+    "analyze_spatial_gnn_by_celltype",
     "apply_spatial_warp_to_segments",
     "build_dynamical_runtime",
     "build_cached_classifier_inputs_from_adata",
@@ -172,6 +183,7 @@ __all__ = [
     "compute_umap_embedding",
     "compute_velocity_components",
     "compute_velocity_components_from_adata",
+    "decompose_spatial_gnn_group",
     "downsample_xy",
     "find_single_classifier_cache",
     "infer_feature_columns",
@@ -216,10 +228,12 @@ __all__ = [
     "make_pca_reconstruction_spec",
     "pca_reconstruction_feature_coverage",
     "make_gene_set_library",
+    "make_interaction_groups",
     "simplify_gene_names",
     "train_mlp_classifier",
     "train_mlp_classifier_from_adata",
     "train_cached_mlp_classifier_from_adata",
+    "validate_spatial_exact_decomposition_model",
     "DistributionEvaluationResult",
     "DistributionMetricComparison",
     "compare_distribution_metric_tables",
