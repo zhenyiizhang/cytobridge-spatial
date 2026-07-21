@@ -17,7 +17,8 @@ from reviewer_zebrafish_ccc import compare_multimethod_ccc as comparison  # noqa
 
 
 PAIRS = [("A", "A"), ("A", "B"), ("B", "A"), ("B", "B")]
-STAGES = [(0.0, "t0"), (1.0, "t1")]
+STAGES = [(0.0, "5.25hpf"), (1.0, "10hpf")]
+STAGE_TIMES = {0.0: 5.25, 1.0: 10.0}
 
 
 def _json(path: Path, value: dict) -> None:
@@ -136,25 +137,35 @@ def _build_formal_tree(root: Path) -> None:
     )
 
     external = root / "03_external_ccc"
+    shared = external / "shared_inputs"
+    shared.mkdir(parents=True)
+    shared_manifest_path = shared / "input_manifest.json"
+    _json(
+        shared_manifest_path,
+        {
+            "schema_version": 1,
+            "stages": [
+                {
+                    "stage": str(stage),
+                    "stage_time": STAGE_TIMES[stage],
+                    "token": f"stage_{int(stage)}",
+                }
+                for stage, _ in STAGES
+            ],
+        },
+    )
     for method, display in (("commot", "COMMOT"), ("cellchat", "CellChat")):
-        directory = external / method
+        directory = external / f"{method}_current_lr"
         directory.mkdir(parents=True)
-        _json(
-            directory / "manifest.json",
-            {
-                "method": display,
-                "database_variant": "current_zebrafish_lr_database",
-            },
-        )
         rows = []
-        for stage_index, (stage_time, stage_label) in enumerate(STAGES):
+        for stage_index, (stage, _) in enumerate(STAGES):
             for pair_index, (sender, receiver) in enumerate(PAIRS):
                 rows.append(
                     {
                         "method": display,
                         "database_variant": "current_zebrafish_lr_database",
-                        "stage": stage_label,
-                        "stage_time": stage_time,
+                        "stage": str(stage),
+                        "stage_time": STAGE_TIMES[stage],
                         "sender_type": sender,
                         "receiver_type": receiver,
                         "abundance_controlled_score": float(
@@ -167,6 +178,55 @@ def _build_formal_tree(root: Path) -> None:
             index=False,
             compression="gzip",
         )
+        manifest = {
+            "method": display,
+            "database_variant": "current_zebrafish_lr_database",
+            "input_manifest": comparison._file_record(shared_manifest_path),
+        }
+        if method == "cellchat":
+            exclusion_path = directory / "excluded_lr_rows.csv"
+            pd.DataFrame(
+                [
+                    {
+                        "database_row": 2281,
+                        "interaction_id": "il10->il10ra_il10rb",
+                        "current_ligand": "il10",
+                        "current_receptor": "il10ra_il10rb",
+                        "cellchat_ligand_token": "IL10",
+                        "cellchat_receptor_token": "IL10RA_IL10RB",
+                        "eligible": False,
+                        "exclusion_reason": (
+                            "receptor:token_not_geneinfo_or_declared_complex"
+                        ),
+                    },
+                    {
+                        "database_row": 2292,
+                        "interaction_id": "ifng1->ifngr1_ifngr2",
+                        "current_ligand": "ifng1",
+                        "current_receptor": "ifngr1_ifngr2",
+                        "cellchat_ligand_token": "IFNG1",
+                        "cellchat_receptor_token": "IFNGR1_IFNGR2",
+                        "eligible": False,
+                        "exclusion_reason": (
+                            "receptor:token_not_geneinfo_or_declared_complex"
+                        ),
+                    },
+                ]
+            ).to_csv(exclusion_path, index=False)
+            manifest["database_validation"] = {
+                "rows_requested": 2268,
+                "rows_eligible": 2266,
+                "rows_excluded": 2,
+                "excluded_rows_are_method_unavailable_not_biological_zero": True,
+                "exclusion_table": comparison._file_record(exclusion_path),
+            }
+            manifest["design"] = {
+                "method_unavailable_policy": (
+                    "database rows listed in excluded_lr_rows.csv must be excluded "
+                    "from CellChat cross-method universes, never zero-filled"
+                )
+            }
+        _json(directory / "manifest.json", manifest)
 
     nichenet = root / "04_nichenet"
     for directory_name, mode in (
@@ -182,6 +242,13 @@ def _build_formal_tree(root: Path) -> None:
                 "status": "complete",
                 "mode": mode,
                 "activity_semantics": "not a direct sender-specific strength",
+                "orthology_policy": "one2one_bijective_all_confidence",
+                "analysis_tier": "sensitivity",
+                "primary_claim_allowed": False,
+                "method_label": (
+                    "cross-species NicheNet-v2 "
+                    "[orthology sensitivity: confidence unfiltered]"
+                ),
             },
         )
         rows = []
@@ -270,6 +337,10 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
     summary = pd.read_csv(output / "pairwise_consistency_summary.csv")
     assert not summary.empty
     assert summary["mean_stage_spearman"].between(-1, 1).all()
+    compared_pairs = set(
+        zip(summary["view_id_left"], summary["view_id_right"])
+    ) | set(zip(summary["view_id_right"], summary["view_id_left"]))
+    assert ("cytobridge__trained__attention", "commot__project_lr") in compared_pairs
     controls = pd.read_csv(output / "cytobridge_control_metrics.csv")
     trained = controls.loc[
         (controls["control"] == "trained")
@@ -279,6 +350,20 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
     assert trained["estimate"].item() == pytest.approx(0.0284)
     assert manifest["contract"]["raw_cross_method_units_compared"] is False
     assert manifest["contract"]["cytobridge_attention_is_ccc_probability"] is False
+    assert manifest["contract"]["cellchat_method_unavailable_lr_rows_zero_filled"] is False
+    assert manifest["cellchat_method_unavailable_lr_rows"]["count"] == 2
+    assert manifest["cellchat_method_unavailable_lr_rows"]["zero_filled"] is False
+    unavailable = pd.read_csv(output / "method_unavailable_lr_rows.csv")
+    assert unavailable["database_row"].tolist() == [2281, 2292]
+    assert not unavailable["zero_filled"].any()
+    nichenet = canonical.loc[canonical["method"] == "NicheNet-v2 (cross-species)"]
+    assert set(nichenet["orthology_policy"]) == {
+        "one2one_bijective_all_confidence"
+    }
+    assert set(nichenet["analysis_tier"]) == {"sensitivity"}
+    assert nichenet["display_label"].str.contains(
+        "all-confidence orthology sensitivity", regex=False
+    ).all()
     for stem in (
         "rank_concordance",
         "top_edge_overlap",
@@ -294,7 +379,12 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
 def test_formal_missing_condition_fails_but_partial_records_it(tmp_path: Path) -> None:
     root = tmp_path / "run"
     _build_formal_tree(root)
-    missing = root / "03_external_ccc" / "cellchat" / "cellchat_type_pair_scores.csv.gz"
+    missing = (
+        root
+        / "03_external_ccc"
+        / "cellchat_current_lr"
+        / "cellchat_type_pair_scores.csv.gz"
+    )
     missing.unlink()
     with pytest.raises(FileNotFoundError):
         comparison.run(_args(root, tmp_path / "formal_failure"))
@@ -309,6 +399,46 @@ def test_formal_missing_condition_fails_but_partial_records_it(tmp_path: Path) -
     coverage = pd.read_csv(output / "condition_coverage.csv")
     row = coverage.loc[coverage["view_id"] == "cellchat__project_lr"]
     assert set(row["status"]) == {"missing_or_invalid_method"}
+
+
+def test_nichenet_manifest_policy_must_be_explicit_and_paired(tmp_path: Path) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    custom_manifest_path = (
+        root / "04_nichenet" / "03_custom_zebrafish_lr" / "run_manifest.json"
+    )
+    custom_manifest = json.loads(custom_manifest_path.read_text())
+    custom_manifest.update(
+        {
+            "orthology_policy": "strict_confidence1",
+            "analysis_tier": "primary",
+            "primary_claim_allowed": True,
+            "method_label": "custom-LR-constrained cross-species mapped NicheNet-v2",
+        }
+    )
+    _json(custom_manifest_path, custom_manifest)
+    with pytest.raises(ValueError, match="do not share the same orthology_policy"):
+        comparison.run(_args(root, tmp_path / "mismatched"))
+
+
+def test_external_stage_id_and_hpf_time_must_match_shared_manifest(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    commot_path = (
+        root
+        / "03_external_ccc"
+        / "commot_current_lr"
+        / "commot_type_pair_scores.csv.gz"
+    )
+    commot = pd.read_csv(commot_path)
+    assert set(commot["stage"].astype(str)) == {"0.0", "1.0"}
+    assert set(commot["stage_time"]) == {5.25, 10.0}
+    commot.loc[commot["stage"].astype(str) == "0.0", "stage_time"] = 5.5
+    commot.to_csv(commot_path, index=False, compression="gzip")
+    with pytest.raises(ValueError, match="disagree with the verified shared input manifest"):
+        comparison.run(_args(root, tmp_path / "bad_stage_mapping"))
 
 
 def test_pairwise_top_k_is_computed_on_exact_shared_key_universe() -> None:

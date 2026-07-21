@@ -154,6 +154,107 @@ def _validate_manifest_identity(
     return manifest
 
 
+def _verify_manifest_artifact(
+    directory: Path,
+    record: Mapping[str, Any],
+    *,
+    expected_name: str,
+) -> Path:
+    """Resolve a colocated manifest artifact and verify its recorded identity."""
+
+    if not isinstance(record, Mapping):
+        raise ValueError(f"Manifest artifact {expected_name!r} is not an object")
+    recorded_path = Path(str(record.get("path", "")))
+    if recorded_path.name != expected_name:
+        raise ValueError(
+            f"Manifest artifact names {recorded_path.name!r}; expected {expected_name!r}"
+        )
+    path = directory / expected_name
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    recorded_bytes = record.get("bytes", record.get("size_bytes"))
+    if recorded_bytes is None or int(recorded_bytes) != path.stat().st_size:
+        raise ValueError(f"Manifest byte count does not match {path}")
+    recorded_sha256 = str(record.get("sha256", "")).casefold()
+    if not recorded_sha256 or recorded_sha256 != _sha256(path).casefold():
+        raise ValueError(f"Manifest SHA256 does not match {path}")
+    return path
+
+
+def _verify_recorded_artifact(
+    record: Mapping[str, Any], *, expected_name: str | None = None
+) -> Path:
+    if not isinstance(record, Mapping):
+        raise ValueError("Manifest artifact record is not an object")
+    path = Path(str(record.get("path", ""))).expanduser().resolve()
+    if expected_name is not None and path.name != expected_name:
+        raise ValueError(
+            f"Manifest artifact names {path.name!r}; expected {expected_name!r}"
+        )
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    recorded_bytes = record.get("bytes", record.get("size_bytes"))
+    if recorded_bytes is None or int(recorded_bytes) != path.stat().st_size:
+        raise ValueError(f"Manifest byte count does not match {path}")
+    recorded_sha256 = str(record.get("sha256", "")).casefold()
+    if not recorded_sha256 or recorded_sha256 != _sha256(path).casefold():
+        raise ValueError(f"Manifest SHA256 does not match {path}")
+    return path
+
+
+def _format_hpf(value: float) -> str:
+    if not np.isfinite(value):
+        raise ValueError("Developmental time must be finite")
+    return f"{value:g}hpf"
+
+
+def _external_stage_contract(
+    manifest: Mapping[str, Any], frame: pd.DataFrame, *, score_path: Path
+) -> tuple[pd.Series, pd.Series]:
+    """Map runner stage IDs to manuscript hpf labels through shared inputs."""
+
+    input_manifest_path = _verify_recorded_artifact(
+        manifest.get("input_manifest", {}), expected_name="input_manifest.json"
+    )
+    shared = _read_json(input_manifest_path)
+    stages = shared.get("stages")
+    if not isinstance(stages, list) or not stages:
+        raise ValueError(f"{input_manifest_path} has no stage records")
+    mapping: dict[float, float] = {}
+    for record in stages:
+        if not isinstance(record, Mapping):
+            raise ValueError(f"{input_manifest_path} contains a non-object stage record")
+        stage_id = float(record.get("stage"))
+        stage_time = float(record.get("stage_time"))
+        if not np.isfinite(stage_id) or not np.isfinite(stage_time):
+            raise ValueError(f"{input_manifest_path} has a non-finite stage mapping")
+        stage_id = float(np.round(stage_id, 12))
+        previous = mapping.get(stage_id)
+        if previous is not None and not np.isclose(
+            previous, stage_time, rtol=0.0, atol=1e-12
+        ):
+            raise ValueError(f"{input_manifest_path} maps one stage ID to two times")
+        mapping[stage_id] = stage_time
+
+    stage = _stage_values(frame["stage"], path=score_path)
+    observed_time = _numeric(frame["stage_time"], name="stage_time", path=score_path)
+    expected_time = stage.map(mapping)
+    if expected_time.isna().any():
+        unknown = sorted(set(stage.loc[expected_time.isna()]))
+        raise ValueError(f"{score_path} contains stages absent from shared inputs: {unknown}")
+    if not np.allclose(
+        observed_time.to_numpy(float),
+        expected_time.to_numpy(float),
+        rtol=0.0,
+        atol=1e-12,
+    ):
+        raise ValueError(
+            f"{score_path} stage_time values disagree with the verified shared input manifest"
+        )
+    stage_label = expected_time.map(lambda value: _format_hpf(float(value)))
+    return stage, stage_label
+
+
 def _canonical(
     frame: pd.DataFrame,
     *,
@@ -241,7 +342,7 @@ def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]
 
 
 def _load_commot(directory: Path) -> pd.DataFrame:
-    _validate_manifest_identity(
+    manifest = _validate_manifest_identity(
         directory,
         filename="manifest.json",
         expected={
@@ -267,6 +368,7 @@ def _load_commot(directory: Path) -> pd.DataFrame:
         "current_zebrafish_lr_database"
     }:
         raise ValueError(f"{path} contains an unexpected database variant")
+    stage, stage_label = _external_stage_contract(manifest, frame, score_path=path)
     return _canonical(
         frame,
         path=path,
@@ -276,13 +378,13 @@ def _load_commot(directory: Path) -> pd.DataFrame:
         display_label="COMMOT | project LR",
         view_id="commot__project_lr",
         score=frame["abundance_controlled_score"],
-        stage=frame["stage_time"],
-        stage_label=frame["stage"],
+        stage=stage,
+        stage_label=stage_label,
     )
 
 
 def _load_cellchat(directory: Path) -> pd.DataFrame:
-    _validate_manifest_identity(
+    manifest = _validate_manifest_identity(
         directory,
         filename="manifest.json",
         expected={
@@ -290,6 +392,47 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
             "database_variant": "current_zebrafish_lr_database",
         },
     )
+    validation = manifest.get("database_validation")
+    if not isinstance(validation, Mapping):
+        raise ValueError("CellChat manifest lacks database_validation")
+    requested = int(validation.get("rows_requested", -1))
+    eligible = int(validation.get("rows_eligible", -1))
+    excluded = int(validation.get("rows_excluded", -1))
+    if min(requested, eligible, excluded) < 0 or requested != eligible + excluded:
+        raise ValueError("CellChat manifest has inconsistent requested/eligible/excluded counts")
+    if validation.get("excluded_rows_are_method_unavailable_not_biological_zero") is not True:
+        raise ValueError(
+            "CellChat manifest must mark excluded rows as method-unavailable, not zero"
+        )
+    policy = str(manifest.get("design", {}).get("method_unavailable_policy", ""))
+    if "never zero-filled" not in policy:
+        raise ValueError("CellChat manifest lost the method-unavailable no-zero-fill policy")
+    exclusion_path = _verify_manifest_artifact(
+        directory,
+        validation.get("exclusion_table", {}),
+        expected_name="excluded_lr_rows.csv",
+    )
+    exclusion = pd.read_csv(exclusion_path)
+    exclusion_columns = {
+        "database_row",
+        "interaction_id",
+        "current_ligand",
+        "current_receptor",
+        "cellchat_ligand_token",
+        "cellchat_receptor_token",
+        "eligible",
+        "exclusion_reason",
+    }
+    _require_columns(exclusion, exclusion_columns, exclusion_path)
+    if len(exclusion) != excluded:
+        raise ValueError(
+            f"{exclusion_path} has {len(exclusion)} rows but manifest records {excluded}"
+        )
+    if exclusion["database_row"].duplicated().any():
+        raise ValueError(f"{exclusion_path} has duplicate database_row values")
+    eligible_text = exclusion["eligible"].astype(str).str.casefold()
+    if len(exclusion) and not eligible_text.isin({"false", "0"}).all():
+        raise ValueError(f"{exclusion_path} contains an eligible row")
     path = directory / "cellchat_type_pair_scores.csv.gz"
     frame = pd.read_csv(path)
     required = {
@@ -308,7 +451,8 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
         "current_zebrafish_lr_database"
     }:
         raise ValueError(f"{path} contains an unexpected database variant")
-    return _canonical(
+    stage, stage_label = _external_stage_contract(manifest, frame, score_path=path)
+    result = _canonical(
         frame,
         path=path,
         method="CellChat",
@@ -317,9 +461,42 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
         display_label="CellChat | project LR",
         view_id="cellchat__project_lr",
         score=frame["abundance_controlled_score"],
-        stage=frame["stage_time"],
-        stage_label=frame["stage"],
+        stage=stage,
+        stage_label=stage_label,
     )
+
+    unavailable = exclusion.rename(
+        columns={
+            "current_ligand": "ligand",
+            "current_receptor": "receptor",
+            "cellchat_ligand_token": "method_ligand_token",
+            "cellchat_receptor_token": "method_receptor_token",
+            "exclusion_reason": "reason",
+        }
+    )[
+        [
+            "database_row",
+            "interaction_id",
+            "ligand",
+            "receptor",
+            "method_ligand_token",
+            "method_receptor_token",
+            "reason",
+        ]
+    ].copy()
+    unavailable.insert(0, "database_condition", "current_zebrafish_lr_database")
+    unavailable.insert(0, "method", "CellChat")
+    unavailable.insert(0, "view_id", "cellchat__project_lr")
+    unavailable["status"] = "method_unavailable_excluded_not_biological_zero"
+    unavailable["zero_filled"] = False
+    result.attrs["method_unavailable_lr_rows"] = unavailable
+    result.attrs["cellchat_lr_universe"] = {
+        "rows_requested": requested,
+        "rows_eligible": eligible,
+        "rows_method_unavailable": excluded,
+        "method_unavailable_rows_zero_filled": False,
+    }
+    return result
 
 
 def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
@@ -334,6 +511,37 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
     )
     if "sender-specific" not in str(manifest.get("activity_semantics", "")):
         raise ValueError("NicheNet manifest must retain its sender-specificity caveat")
+    orthology_policy = str(manifest.get("orthology_policy", ""))
+    policy_contract = {
+        "strict_confidence1": {
+            "analysis_tier": "primary",
+            "primary_claim_allowed": True,
+            "condition_suffix": "strict_confidence1_orthology",
+            "label_suffix": "strict confidence=1 orthology",
+        },
+        "one2one_bijective_all_confidence": {
+            "analysis_tier": "sensitivity",
+            "primary_claim_allowed": False,
+            "condition_suffix": "one2one_all_confidence_sensitivity",
+            "label_suffix": "all-confidence orthology sensitivity",
+        },
+    }
+    if orthology_policy not in policy_contract:
+        raise ValueError(
+            f"NicheNet manifest has unsupported orthology_policy={orthology_policy!r}"
+        )
+    policy = policy_contract[orthology_policy]
+    if manifest.get("analysis_tier") != policy["analysis_tier"]:
+        raise ValueError("NicheNet analysis_tier disagrees with orthology_policy")
+    if manifest.get("primary_claim_allowed") is not policy["primary_claim_allowed"]:
+        raise ValueError("NicheNet primary_claim_allowed disagrees with orthology_policy")
+    method_label = str(manifest.get("method_label", ""))
+    if orthology_policy == "one2one_bijective_all_confidence" and (
+        "orthology sensitivity: confidence unfiltered" not in method_label
+    ):
+        raise ValueError(
+            "All-confidence NicheNet output must explicitly label its orthology sensitivity"
+        )
     path = directory / "sender_ligand_activity.csv"
     frame = pd.read_csv(path)
     required = {
@@ -373,22 +581,22 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         .sum()
         .reset_index()
     )
-    condition = (
-        "official_mouse_lr_prior"
-        if mode == "default"
-        else "project_lr_strict_one2one_mouse_gate"
+    condition_prefix = (
+        "official_mouse_lr_prior" if mode == "default" else "project_lr_mouse_gate"
     )
-    label = (
+    condition = f"{condition_prefix}__{policy['condition_suffix']}"
+    label_prefix = (
         "NicheNet-v2 | official mouse LR"
         if mode == "default"
         else "NicheNet-v2 | project LR gate"
     )
+    label = f"{label_prefix} | {policy['label_suffix']}"
     view_id = (
         "nichenet_v2__official_mouse_lr"
         if mode == "default"
         else "nichenet_v2__project_lr_gate"
     )
-    return _canonical(
+    result = _canonical(
         aggregated,
         path=path,
         method="NicheNet-v2 (cross-species)",
@@ -400,6 +608,16 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         stage=aggregated["source_stage_id"],
         stage_label=aggregated["source_stage_label"],
     )
+    result["orthology_policy"] = orthology_policy
+    result["analysis_tier"] = str(policy["analysis_tier"])
+    result["primary_claim_allowed"] = bool(policy["primary_claim_allowed"])
+    result.attrs["nichenet_orthology"] = {
+        "orthology_policy": orthology_policy,
+        "analysis_tier": policy["analysis_tier"],
+        "primary_claim_allowed": policy["primary_claim_allowed"],
+        "method_label": method_label,
+    }
+    return result
 
 
 def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
@@ -1243,8 +1461,11 @@ CytoBridge message norms are not treated as a shared numerical unit.
 {condition_lines}
 
 The two NicheNet and two CellAgentChat database conditions are deliberately
-separate. NicheNet uses a mouse prior after strict one-to-one orthology mapping;
-its type-pair score here is a derived sum of positive sender-associated ligand
+separate. NicheNet uses a mouse prior after the manifest-declared bijective
+one-to-one orthology mapping;
+the exact NicheNet orthology policy and primary/sensitivity tier are read from
+and validated against each run manifest. Its type-pair score here is a derived
+sum of positive sender-associated ligand
 activities and is not native sender-specific, receptor-specific, spatial, or a
 biochemical strength. CytoBridge attention is an internal gate magnitude, not
 a calibrated CCC probability. The exact message contribution is shown as a
@@ -1268,6 +1489,8 @@ separate model-internal view.
 - `pairwise_consistency_by_stage.csv` and `pairwise_consistency_summary.csv`.
 - `reciprocal_rank_asymmetry.csv.gz` and directionality concordance summaries.
 - `stage_stability.csv` and `condition_coverage.csv`.
+- `method_unavailable_lr_rows.csv`: CellChat-incompatible requested LR rows;
+  these are excluded from its method universe and are never zero-filled.
 - `cytobridge_control_metrics.csv`: trained, Init_interaction, and randomized
   interaction controls.
 - PNG/PDF panels for rank concordance, top-edge overlap, condition coverage,
@@ -1299,10 +1522,10 @@ def _resolve_paths(args: argparse.Namespace) -> dict[str, Path]:
             args.controls_random_dir or root / "02_attention_controls_random_seed17"
         ).expanduser().resolve(),
         "commot": (
-            args.commot_dir or root / "03_external_ccc" / "commot"
+            args.commot_dir or root / "03_external_ccc" / "commot_current_lr"
         ).expanduser().resolve(),
         "cellchat": (
-            args.cellchat_dir or root / "03_external_ccc" / "cellchat"
+            args.cellchat_dir or root / "03_external_ccc" / "cellchat_current_lr"
         ).expanduser().resolve(),
         "nichenet_default": (
             args.nichenet_default_dir
@@ -1355,16 +1578,16 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         },
         {
             "view_id": "nichenet_v2__official_mouse_lr",
-            "display_label": "NicheNet-v2 | official mouse LR",
+            "display_label": "NicheNet-v2 | official mouse LR | manifest policy",
             "method": "NicheNet-v2 (cross-species)",
-            "database_condition": "official_mouse_lr_prior",
+            "database_condition": "from_run_manifest",
             "score_view": "sum_positive_sender_associated_aupr_corrected",
         },
         {
             "view_id": "nichenet_v2__project_lr_gate",
-            "display_label": "NicheNet-v2 | project LR gate",
+            "display_label": "NicheNet-v2 | project LR gate | manifest policy",
             "method": "NicheNet-v2 (cross-species)",
-            "database_condition": "project_lr_strict_one2one_mouse_gate",
+            "database_condition": "from_run_manifest",
             "score_view": "sum_positive_sender_associated_aupr_corrected",
         },
         {
@@ -1384,6 +1607,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     ]
     loaded: list[pd.DataFrame] = []
     issues: list[dict[str, str]] = []
+    method_unavailable_frames: list[pd.DataFrame] = []
+    nichenet_orthology_records: dict[str, Mapping[str, Any]] = {}
+    cellchat_lr_universe: Mapping[str, Any] | None = None
 
     loaders: list[tuple[list[str], Callable[[], Sequence[pd.DataFrame]]]] = [
         (
@@ -1424,7 +1650,17 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             result = tuple(loader())
             if len(result) != len(view_ids):
                 raise RuntimeError("Loader returned an unexpected number of score views")
-            loaded.extend(result)
+            for view_id, frame in zip(view_ids, result):
+                unavailable = frame.attrs.get("method_unavailable_lr_rows")
+                if isinstance(unavailable, pd.DataFrame):
+                    method_unavailable_frames.append(unavailable.copy())
+                universe = frame.attrs.get("cellchat_lr_universe")
+                if isinstance(universe, Mapping):
+                    cellchat_lr_universe = dict(universe)
+                orthology = frame.attrs.get("nichenet_orthology")
+                if isinstance(orthology, Mapping):
+                    nichenet_orthology_records[view_id] = dict(orthology)
+                loaded.append(frame)
         except Exception as error:
             if not args.allow_partial:
                 raise
@@ -1438,7 +1674,44 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                 )
     if not loaded:
         raise RuntimeError("No valid score view is available, even for partial diagnostics")
-    scores = _add_stage_ranks(pd.concat(loaded, ignore_index=True))
+    combined_scores = pd.concat(loaded, ignore_index=True)
+    for spec in expected:
+        observed = combined_scores.loc[combined_scores["view_id"] == spec["view_id"]]
+        if observed.empty:
+            continue
+        metadata = observed[
+            ["display_label", "method", "database_condition", "score_view"]
+        ].drop_duplicates()
+        if len(metadata) != 1:
+            raise ValueError(f"Score view {spec['view_id']} has inconsistent metadata")
+        for column in ("display_label", "method", "database_condition", "score_view"):
+            spec[column] = str(metadata[column].iloc[0])
+
+    nichenet_policies = {
+        str(record["orthology_policy"])
+        for record in nichenet_orthology_records.values()
+    }
+    nichenet_tiers = {
+        str(record["analysis_tier"])
+        for record in nichenet_orthology_records.values()
+    }
+    if len(nichenet_orthology_records) == 2 and (
+        len(nichenet_policies) != 1 or len(nichenet_tiers) != 1
+    ):
+        error = ValueError(
+            "The official/default and project-LR NicheNet conditions do not share "
+            "the same orthology_policy and analysis_tier"
+        )
+        if not args.allow_partial:
+            raise error
+        issues.append(
+            {
+                "component": "nichenet_condition_pair",
+                "view_id": "nichenet_v2__official_and_project_lr",
+                "error": f"{type(error).__name__}: {error}",
+            }
+        )
+    scores = _add_stage_ranks(combined_scores)
     if scores["view_id"].nunique() < 2 and not args.allow_partial:
         raise RuntimeError("At least two complete score views are required")
 
@@ -1525,8 +1798,76 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     write_csv(stability, "stage_stability.csv")
     write_csv(coverage, "condition_coverage.csv")
     write_csv(controls, "cytobridge_control_metrics.csv")
+    method_unavailable = (
+        pd.concat(method_unavailable_frames, ignore_index=True)
+        if method_unavailable_frames
+        else pd.DataFrame(
+            columns=[
+                "view_id",
+                "method",
+                "database_condition",
+                "database_row",
+                "interaction_id",
+                "ligand",
+                "receptor",
+                "method_ligand_token",
+                "method_receptor_token",
+                "reason",
+                "status",
+                "zero_filled",
+            ]
+        )
+    )
+    unavailable_path = write_csv(
+        method_unavailable,
+        "method_unavailable_lr_rows.csv",
+    )
+    diagnostic_rows: list[dict[str, Any]] = [
+        {
+            "component": item["component"],
+            "view_id": item["view_id"],
+            "severity": "error",
+            "status": "missing_or_invalid",
+            "database_row": np.nan,
+            "interaction_id": "",
+            "ligand": "",
+            "receptor": "",
+            "error": item["error"],
+            "zero_filled": np.nan,
+        }
+        for item in issues
+    ]
+    for row in method_unavailable.itertuples(index=False):
+        diagnostic_rows.append(
+            {
+                "component": "cellchat_lr_method_unavailable",
+                "view_id": row.view_id,
+                "severity": "warning",
+                "status": row.status,
+                "database_row": int(row.database_row),
+                "interaction_id": row.interaction_id,
+                "ligand": row.ligand,
+                "receptor": row.receptor,
+                "error": row.reason,
+                "zero_filled": False,
+            }
+        )
     issues_path = write_csv(
-        pd.DataFrame(issues, columns=["component", "view_id", "error"]),
+        pd.DataFrame(
+            diagnostic_rows,
+            columns=[
+                "component",
+                "view_id",
+                "severity",
+                "status",
+                "database_row",
+                "interaction_id",
+                "ligand",
+                "receptor",
+                "error",
+                "zero_filled",
+            ],
+        ),
         "input_diagnostics.csv",
     )
 
@@ -1646,6 +1987,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "stage_stability": "adjacent global observed stages",
             "cytobridge_attention_is_ccc_probability": False,
             "nichenet_type_pair_score_is_native": False,
+            "cellchat_method_unavailable_lr_rows_zero_filled": False,
         },
         "expected_score_views": expected,
         "loaded_score_views": scores["view_id"].drop_duplicates().tolist(),
@@ -1655,12 +1997,23 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         ],
         "inputs": input_records,
         "issues": issues,
+        "cellchat_lr_universe": (
+            dict(cellchat_lr_universe) if cellchat_lr_universe is not None else None
+        ),
+        "cellchat_method_unavailable_lr_rows": {
+            "count": int(len(method_unavailable)),
+            "status": "excluded_from_method_universe_not_biological_zero",
+            "zero_filled": False,
+            "rows": method_unavailable.to_dict("records"),
+        },
+        "nichenet_orthology_conditions": nichenet_orthology_records,
         "artifacts": {
             path.name: _file_record(path)
             for path in artifacts
             if path.is_file() and path != issues_path
         },
     }
+    manifest["artifacts"][unavailable_path.name] = _file_record(unavailable_path)
     manifest["artifacts"][issues_path.name] = _file_record(issues_path)
     manifest_path = output / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")

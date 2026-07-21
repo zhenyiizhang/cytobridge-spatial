@@ -10,21 +10,26 @@ these eight separately labelled score views:
 - CellChat with the current project zebrafish LR database;
 - NicheNet-v2 with its official mouse LR prior;
 - NicheNet-v2 with the project LR database used as a strict one-to-one
-  orthology candidate gate;
+  orthology candidate gate or an explicitly labelled all-confidence
+  one-to-one sensitivity gate;
 - CellAgentChat with its official mouse CellTalkDB default;
 - CellAgentChat with the project LR database projected to supported mouse
   singleton pairs.
 
 The two NicheNet conditions and two CellAgentChat conditions must remain
-separate. They are not pooled under a generic method label.
+separate. They are not pooled under a generic method label. NicheNet's
+`orthology_policy`, `analysis_tier`, and `primary_claim_allowed` fields are read
+from each completed run manifest. The two NicheNet conditions must carry the
+same policy/tier. `one2one_bijective_all_confidence` is always displayed as an
+orthology sensitivity and can never acquire a primary label in this report.
 
 ## Formal command
 
 ```bash
 python scripts/reviewer_zebrafish_ccc/compare_multimethod_ccc.py \
   --run-root "$RUN" \
-  --commot-dir "$RUN/03_external_ccc/commot" \
-  --cellchat-dir "$RUN/03_external_ccc/cellchat" \
+  --commot-dir "$RUN/03_external_ccc/commot_current_lr" \
+  --cellchat-dir "$RUN/03_external_ccc/cellchat_current_lr" \
   --nichenet-default-dir "$RUN/04_nichenet/02_default_mouse_v2" \
   --nichenet-custom-dir "$RUN/04_nichenet/03_custom_zebrafish_lr" \
   --cellagentchat-dir "$RUN/05_cellagentchat" \
@@ -63,6 +68,12 @@ only within-stage ranks are compared across methods.
 - Coverage is reported before pairwise joins; absent keys are not silently
   converted to zero communication.
 
+The CellChat manifest's executable-database audit is mandatory. Requested LR
+rows that the pinned CellChat database cannot represent are copied to
+`method_unavailable_lr_rows.csv` and `input_diagnostics.csv`, recorded in the
+comparison manifest, and excluded from the CellChat method universe. They are
+method-unavailable rows, not biological zeroes, and are never zero-filled.
+
 CytoBridge attention must be described as an internal gate magnitude, not a
 CCC probability. Its exact message contribution is a separate model-internal
 view. The NicheNet type-pair view is a derived sum of positive
@@ -81,6 +92,10 @@ standalone interpretation README, and PNG/PDF panels:
 - `directionality_concordance.*`
 - `stage_stability.*`
 - `cytobridge_control_panel.*`
+
+The audit tables also include `method_unavailable_lr_rows.csv`; the current
+formal zebrafish run is expected to preserve the two CellChat-unexecutable
+complex-token rows without treating them as zero communication.
 
 The control panel reads the trained, `Init_interaction`, and randomized
 interaction directories. It shows the strict conditional-permutation residual
