@@ -61,6 +61,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--custom-lr-database", required=True, type=Path)
     parser.add_argument("--cellagentchat-source", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--expected-expression-sha256")
+    parser.add_argument("--expected-custom-lr-sha256")
     parser.add_argument("--counts-layer", default="counts")
     parser.add_argument("--cell-type-key", default="Annotation")
     parser.add_argument("--time-key", default="time_point_processed")
@@ -131,6 +133,17 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     for path in (expression_path, orthology_path, custom_lr_path):
         if not path.is_file():
             raise FileNotFoundError(path)
+    expression_sha256 = sha256_file(expression_path)
+    custom_lr_sha256 = sha256_file(custom_lr_path)
+    expected_hashes = (
+        ("expression H5AD", args.expected_expression_sha256, expression_sha256),
+        ("custom LR database", args.expected_custom_lr_sha256, custom_lr_sha256),
+    )
+    for label, expected, observed in expected_hashes:
+        if expected and str(expected).lower() != observed:
+            raise ValueError(
+                f"{label} SHA256 mismatch: expected {expected}, observed {observed}."
+            )
     if args.mapping_policy == "many_to_one_sum" and args.expression_projection_mode != "counts_sum_then_log1p":
         raise ValueError(
             "many_to_one_sum requires --expression-projection-mode counts_sum_then_log1p."
@@ -305,7 +318,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         "input": {
             "expression_h5ad": {
                 "path": str(expression_path),
-                "sha256": sha256_file(expression_path),
+                "sha256": expression_sha256,
+                "expected_sha256": args.expected_expression_sha256,
                 "shape": [int(data.n_obs), int(data.n_vars)],
                 "counts_layer": args.counts_layer,
                 "source_normalization_target_sum": str(
@@ -320,7 +334,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             },
             "custom_lr_database": {
                 "path": str(custom_lr_path),
-                "sha256": sha256_file(custom_lr_path),
+                "sha256": custom_lr_sha256,
+                "expected_sha256": args.expected_custom_lr_sha256,
             },
         },
         "cellagentchat_source": source_record,

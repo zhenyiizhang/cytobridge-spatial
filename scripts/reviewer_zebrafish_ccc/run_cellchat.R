@@ -156,9 +156,57 @@ if (is.na(seed_use)) stop("--seed must be an integer")
 
 suppressPackageStartupMessages({
   library(Matrix)
-  library(CellChat)
   library(jsonlite)
 })
+
+cellchat_source <- args[["cellchat-source"]]
+if (!is.null(cellchat_source)) {
+  cellchat_source <- normalizePath(cellchat_source, mustWork = TRUE)
+  description_path <- file.path(cellchat_source, "DESCRIPTION")
+  database_rda_path <- file.path(cellchat_source, "data", "CellChatDB.zebrafish.rda")
+  core_files <- file.path(
+    cellchat_source,
+    "R",
+    c("CellChat_class.R", "utilities.R", "database.R", "modeling.R")
+  )
+  required_source_files <- c(description_path, database_rda_path, core_files)
+  if (!all(file.exists(required_source_files))) {
+    stop("--cellchat-source is missing DESCRIPTION, zebrafish database, or core R files")
+  }
+  suppressPackageStartupMessages({
+    library(dplyr)
+    library(igraph)
+    library(ggplot2)
+    library(magrittr)
+    library(future)
+    library(future.apply)
+    library(pbapply)
+  })
+  for (source_file in core_files) sys.source(source_file, envir = environment())
+  load(database_rda_path, envir = environment())
+  description <- read.dcf(description_path)
+  cellchat_version <- unname(description[1L, "Version"])
+  git_executable <- Sys.which("git")
+  cellchat_commit <- if (nzchar(git_executable) && dir.exists(file.path(cellchat_source, ".git"))) {
+    output <- system2(
+      git_executable,
+      c("-C", shQuote(cellchat_source), "rev-parse", "HEAD"),
+      stdout = TRUE,
+      stderr = FALSE
+    )
+    if (length(output)) output[[1L]] else NA_character_
+  } else {
+    NA_character_
+  }
+  cellchat_load_mode <- "pinned official core R source"
+} else {
+  suppressPackageStartupMessages(library(CellChat))
+  data("CellChatDB.zebrafish", package = "CellChat", envir = environment())
+  database_rda_path <- NA_character_
+  cellchat_version <- as.character(packageVersion("CellChat"))
+  cellchat_commit <- NA_character_
+  cellchat_load_mode <- "installed R package"
+}
 
 input_manifest_path <- file.path(input_dir, "input_manifest.json")
 database_path <- file.path(input_dir, "filtered_lr_database.csv")
@@ -172,7 +220,6 @@ if (!all(required_database_columns %in% colnames(flat_database))) {
 }
 if (anyDuplicated(flat_database$database_row)) stop("database_row values must be unique")
 
-data("CellChatDB.zebrafish", package = "CellChat", envir = environment())
 if (!exists("CellChatDB.zebrafish")) {
   stop("The installed official CellChat package does not provide CellChatDB.zebrafish")
 }
@@ -438,7 +485,11 @@ manifest <- list(
   software = list(
     R = R.version.string,
     platform = R.version$platform,
-    CellChat = as.character(packageVersion("CellChat")),
+    CellChat = cellchat_version,
+    CellChat_load_mode = cellchat_load_mode,
+    CellChat_source = if (is.null(cellchat_source)) NULL else cellchat_source,
+    CellChat_source_commit = cellchat_commit,
+    CellChat_zebrafish_database = if (is.na(database_rda_path)) NULL else file_record(database_rda_path),
     Matrix = as.character(packageVersion("Matrix")),
     jsonlite = as.character(packageVersion("jsonlite"))
   ),

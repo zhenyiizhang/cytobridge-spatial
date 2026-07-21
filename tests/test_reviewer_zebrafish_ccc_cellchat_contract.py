@@ -15,3 +15,6 @@ def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use(
     assert "spatial_coordinates_used_by_cellchat = FALSE" in script
     assert "expression_retransformed_in_runner = FALSE" in script
     assert "abundance_controlled_score" in script
+    assert 'args[["cellchat-source"]]' in script
+    assert '"CellChatDB.zebrafish.rda"' in script
+    assert 'CellChat_source_commit = cellchat_commit' in script

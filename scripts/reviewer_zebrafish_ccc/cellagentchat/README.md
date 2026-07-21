@@ -41,6 +41,8 @@ python scripts/reviewer_zebrafish_ccc/cellagentchat/prepare_inputs.py \
   --orthology-map /path/to/frozen_zebrafish_mouse_orthology.tsv \
   --custom-lr-database /path/to/CellChatDB.ligrec.zebrafish.csv \
   --cellagentchat-source /path/to/CellAgentChat-v0.2.0 \
+  --expected-expression-sha256 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd \
+  --expected-custom-lr-sha256 27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37 \
   --output-dir /path/to/cellagentchat/inputs
 ```
 

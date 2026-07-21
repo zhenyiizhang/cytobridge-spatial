@@ -289,7 +289,26 @@ def _ordered_stages(
         return sorted(unique), {stage: None for stage in unique}
     if time_col not in obs:
         raise KeyError(f"obs time column {time_col!r} is missing")
-    numeric_time = pd.to_numeric(obs[time_col], errors="raise")
+    raw_time = obs[time_col]
+    numeric_time = pd.to_numeric(raw_time, errors="coerce")
+    if numeric_time.isna().any():
+        # Common developmental labels such as ``5.25hpf`` retain their unit in
+        # the H5AD.  Parse a leading numeric value only when every row follows
+        # the same number+unit contract; heterogeneous/free-text labels remain
+        # an error instead of being silently reordered.
+        parsed = raw_time.astype(str).str.extract(
+            r"^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*([^\d\s].*?)?\s*$"
+        )
+        parsed_numeric = pd.to_numeric(parsed[0], errors="coerce")
+        units = parsed[1].fillna("").str.strip().str.lower()
+        if parsed_numeric.isna().any() or units.nunique(dropna=False) != 1:
+            examples = raw_time.astype(str).drop_duplicates().head(5).tolist()
+            raise ValueError(
+                f"obs[{time_col!r}] must be numeric or consistently formatted as "
+                f"<number><unit>; examples={examples!r}. Use time_col=None to order "
+                "by stage labels without assigning numeric times."
+            )
+        numeric_time = parsed_numeric
     stage_times = {
         stage: float(np.median(numeric_time.loc[stages == stage].to_numpy(dtype=float)))
         for stage in unique

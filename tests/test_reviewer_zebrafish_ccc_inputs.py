@@ -188,3 +188,28 @@ def test_stratified_subsample_is_deterministic_and_retains_labels() -> None:
     second = stratified_subsample_indices(labels, max_cells=6, seed=7)
     assert np.array_equal(first, second)
     assert set(np.asarray(labels)[first]) == {"A", "B", "C"}
+
+
+def test_developmental_time_labels_are_parsed_with_a_consistent_unit(tmp_path: Path) -> None:
+    h5ad, lr_path, _, _ = _fixture(tmp_path)
+    data = ad.read_h5ad(h5ad)
+    data.obs["time"] = pd.Categorical(["5.25hpf", "5.25hpf", "10hpf", "10hpf"])
+    data.write_h5ad(h5ad)
+    audit_path = tmp_path / "preprocess_audit_hpf.json"
+    audit_path.write_text(
+        json.dumps(
+            {
+                "all_checks_passed": True,
+                "normalization_and_log1p": {"resolved_target_sum": 10.0},
+                "output_h5ad": {"sha256": sha256_file(h5ad)},
+                "inputs": {"lr_database": {"sha256": sha256_file(lr_path)}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prepared = prepare_inputs(
+        h5ad, lr_path, preprocess_audit_path=audit_path, source_x_tolerance=2e-5
+    )
+    assert prepared.stage_order == ["t0", "t1"]
+    assert prepared.stage_times == {"t0": 5.25, "t1": 10.0}
