@@ -96,7 +96,11 @@ observed stages.
 sensitivity experiment. They separate the immediate time-zero shift caused by
 removing cells from later trajectory divergence. This is a one-seed in-silico
 sensitivity analysis and must not be described as a causal genetic
-perturbation.
+perturbation. The figure resolves the ablation grid's internal stage indices
+against the one-to-one observed H5AD labels and displays `5.25 hpf`, `10 hpf`,
+`12 hpf`, `18 hpf`, and `24 hpf`; it never labels the 0–4 indices as continuous
+time. If labels do not match the verified hpf pattern, the plotting code falls
+back to `observed stage index`.
 
 Finally, `reviewer_validation_axes.{png,pdf}` provides a compact four-panel
 view, `reviewer_validation_summary.md` records the numerical interpretation,

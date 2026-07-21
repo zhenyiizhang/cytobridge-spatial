@@ -27,6 +27,7 @@ from hashlib import sha256
 import json
 import math
 from pathlib import Path
+import re
 import shutil
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -36,6 +37,7 @@ import pandas as pd
 
 ATTENTION_RESIDUAL = "oof_log1p_attention_confounder_residual"
 MESSAGE_RESIDUAL = "oof_log1p_edge_message_joint_confounder_residual"
+ABLATION_FIGURE_NOTE = "full S24; one-seed model sensitivity; not a causal perturbation"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1072,11 +1074,73 @@ def summarize_virtual_ablation(
     return pd.DataFrame(rows), observed
 
 
+def _verified_stage_label_map(frame: pd.DataFrame) -> dict[float, str]:
+    """Require one observed label per numeric model stage."""
+    _require_columns(frame, ["stage", "stage_label"], "stage-label table")
+    table = frame[["stage", "stage_label"]].copy()
+    table["stage"] = pd.to_numeric(table["stage"], errors="raise")
+    table["stage_label"] = table["stage_label"].astype(str).str.strip()
+    if table["stage_label"].eq("").any():
+        raise ValueError("Observed stage labels must be non-empty.")
+    counts = table.groupby("stage", sort=True)["stage_label"].nunique()
+    if (counts != 1).any():
+        conflicts = counts.loc[counts != 1].index.astype(float).tolist()
+        raise ValueError(f"Numeric stages map to multiple labels: {conflicts}.")
+    unique = table.drop_duplicates(["stage", "stage_label"]).sort_values("stage")
+    if unique["stage_label"].duplicated().any():
+        duplicates = unique.loc[
+            unique["stage_label"].duplicated(keep=False), "stage_label"
+        ].tolist()
+        raise ValueError(f"Observed stage labels map to multiple stages: {duplicates}.")
+    return {
+        float(row.stage): str(row.stage_label) for row in unique.itertuples(index=False)
+    }
+
+
+def _observed_stage_axis_spec(
+    observed_times: Sequence[float], stage_label_by_time: Mapping[float, str]
+) -> dict[str, Any]:
+    """Use verified hpf labels, otherwise explicitly label stage indices."""
+    ticks = sorted(set(float(value) for value in observed_times))
+    labels: list[str] = []
+    for tick in ticks:
+        matches = [
+            str(label)
+            for stage, label in stage_label_by_time.items()
+            if np.isclose(float(stage), tick, rtol=0.0, atol=1e-10)
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"Observed ablation time {tick:g} does not map to exactly one stage label."
+            )
+        labels.append(matches[0])
+    hpf_pattern = re.compile(r"^(?:\d+(?:\.\d+)?|\.\d+)hpf$", re.IGNORECASE)
+    verified_hpf = bool(labels) and all(
+        hpf_pattern.fullmatch(label) for label in labels
+    )
+    if verified_hpf:
+        display_labels = [
+            re.sub(r"hpf$", " hpf", label, flags=re.IGNORECASE) for label in labels
+        ]
+        xlabel = "observed developmental stage"
+    else:
+        display_labels = [f"stage {tick:g}" for tick in ticks]
+        xlabel = "observed stage index"
+    return {
+        "ticks": ticks,
+        "labels": display_labels,
+        "source_labels": labels,
+        "verified_hpf_labels": verified_hpf,
+        "xlabel": xlabel,
+    }
+
+
 def _plot_validation(
     context_tests: pd.DataFrame,
     matched_tests: pd.DataFrame,
     observed_ablation: pd.DataFrame | None,
     *,
+    stage_label_by_time: Mapping[float, str],
     output_png: Path,
     output_pdf: Path,
 ) -> None:
@@ -1085,7 +1149,10 @@ def _plot_validation(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    figure, axes = plt.subplots(2, 2, figsize=(12.0, 8.5), constrained_layout=True)
+    figure, axes = plt.subplots(2, 2, figsize=(12.0, 8.8), constrained_layout=True)
+    layout_engine = figure.get_layout_engine()
+    if layout_engine is not None:
+        layout_engine.set(rect=(0.0, 0.055, 1.0, 0.96))
     target_order = [
         "attention_mean",
         "exact_message_mean",
@@ -1148,6 +1215,9 @@ def _plot_validation(
             axis.text(0.5, 0.5, "No ablation bundle supplied", ha="center", va="center")
             axis.set_axis_off()
     else:
+        stage_axis = _observed_stage_axis_spec(
+            observed_ablation["time"].unique(), stage_label_by_time
+        )
         spatial = observed_ablation.loc[observed_ablation["space"] == "spatial"]
         for variant, frame in spatial.groupby("variant", sort=True):
             axes[1, 0].plot(
@@ -1156,7 +1226,8 @@ def _plot_validation(
                 marker="o",
                 label=str(variant),
             )
-        axes[1, 0].set_xlabel("model time")
+        axes[1, 0].set_xticks(stage_axis["ticks"], stage_axis["labels"])
+        axes[1, 0].set_xlabel(stage_axis["xlabel"])
         axes[1, 0].set_ylabel("centroid shift / baseline RMS radius")
         axes[1, 0].set_title("Virtual-removal spatial sensitivity")
         axes[1, 0].legend(frameon=False)
@@ -1168,7 +1239,8 @@ def _plot_validation(
                 marker="o",
                 label=str(variant),
             )
-        axes[1, 1].set_xlabel("model time")
+        axes[1, 1].set_xticks(stage_axis["ticks"], stage_axis["labels"])
+        axes[1, 1].set_xlabel(stage_axis["xlabel"])
         axes[1, 1].set_ylabel("label-composition total variation")
         axes[1, 1].set_title("Virtual-removal label sensitivity")
         axes[1, 1].legend(frameon=False)
@@ -1176,6 +1248,16 @@ def _plot_validation(
         "CytoBridge reviewer checks: internal consistency, not CCC probabilities",
         fontsize=13,
     )
+    if observed_ablation is not None and not observed_ablation.empty:
+        figure.text(
+            0.5,
+            0.014,
+            ABLATION_FIGURE_NOTE,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            style="italic",
+        )
     figure.savefig(output_png, dpi=220)
     figure.savefig(output_pdf)
     plt.close(figure)
@@ -1338,6 +1420,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     contexts = summarize_sender_receiver_contexts(
         edges, min_edges=int(args.context_min_edges)
     )
+    stage_label_by_time = _verified_stage_label_map(contexts)
     contexts_path = output / "sender_receiver_contexts.csv"
     contexts.to_csv(contexts_path, index=False)
     context_tests = run_context_enrichment_tests(
@@ -1422,6 +1505,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         context_tests,
         matched_tests,
         observed_ablation,
+        stage_label_by_time=stage_label_by_time,
         output_png=figure_png,
         output_pdf=figure_pdf,
     )
@@ -1494,6 +1578,19 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             ),
         },
         "virtual_ablation_reuse": ablation_metadata,
+        "figure_stage_axis": (
+            _observed_stage_axis_spec(
+                observed_ablation["time"].unique(), stage_label_by_time
+            )
+            if observed_ablation is not None and not observed_ablation.empty
+            else {
+                "stage_label_by_time": {
+                    str(stage): label for stage, label in stage_label_by_time.items()
+                },
+                "verified_hpf_labels": False,
+                "xlabel": "observed stage index",
+            }
+        ),
         "limitations": [
             "the frozen edge classifier is LR-informed, creating partial circularity",
             "edge rows share cells and are not independent biological replicates",

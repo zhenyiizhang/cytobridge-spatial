@@ -12,10 +12,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from reviewer_zebrafish_ccc.validate_reviewer_axes import (  # noqa: E402
     ATTENTION_RESIDUAL,
+    ABLATION_FIGURE_NOTE,
     MESSAGE_RESIDUAL,
     _benjamini_hochberg,
     _conditional_rank_permutation,
+    _observed_stage_axis_spec,
     _sha256,
+    _verified_stage_label_map,
     attach_known_axis_provenance,
     run_context_enrichment_tests,
     run_degree_matched_tests,
@@ -33,6 +36,41 @@ def test_benjamini_hochberg_is_monotone_in_ranked_p_values():
     assert np.all(np.diff(adjusted[order]) >= 0)
     assert np.all(adjusted >= p_values)
     assert adjusted[1] == pytest.approx(0.004)
+
+
+def test_observed_stage_axis_uses_verified_hpf_labels_and_causal_guardrail():
+    frame = pd.DataFrame(
+        {
+            "stage": np.repeat([0.0, 1.0, 2.0, 3.0, 4.0], 2),
+            "stage_label": np.repeat(
+                ["5.25hpf", "10hpf", "12hpf", "18hpf", "24hpf"], 2
+            ),
+        }
+    )
+    mapping = _verified_stage_label_map(frame)
+    spec = _observed_stage_axis_spec([0, 1, 2, 3, 4], mapping)
+    assert spec["verified_hpf_labels"] is True
+    assert spec["labels"] == ["5.25 hpf", "10 hpf", "12 hpf", "18 hpf", "24 hpf"]
+    assert spec["xlabel"] == "observed developmental stage"
+    assert ABLATION_FIGURE_NOTE == (
+        "full S24; one-seed model sensitivity; not a causal perturbation"
+    )
+
+
+def test_observed_stage_axis_falls_back_to_explicit_stage_index():
+    mapping = _verified_stage_label_map(
+        pd.DataFrame({"stage": [0.0, 1.0], "stage_label": ["early", "late"]})
+    )
+    spec = _observed_stage_axis_spec([0.0, 1.0], mapping)
+    assert spec["verified_hpf_labels"] is False
+    assert spec["labels"] == ["stage 0", "stage 1"]
+    assert spec["xlabel"] == "observed stage index"
+
+    conflicting = pd.DataFrame(
+        {"stage": [0.0, 0.0], "stage_label": ["5.25hpf", "10hpf"]}
+    )
+    with pytest.raises(ValueError, match="multiple labels"):
+        _verified_stage_label_map(conflicting)
 
 
 def _edge_table() -> pd.DataFrame:
