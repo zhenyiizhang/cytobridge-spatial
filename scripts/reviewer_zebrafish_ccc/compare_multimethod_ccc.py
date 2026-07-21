@@ -192,6 +192,31 @@ def _verify_manifest_artifact(
     return path
 
 
+def _verify_manifest_artifact_key(
+    directory: Path,
+    manifest: Mapping[str, Any],
+    *,
+    artifact_key: str,
+    expected_name: str,
+) -> tuple[Path, dict[str, Any]]:
+    """Fail closed on a colocated SHA256-bound manifest artifact."""
+
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, Mapping):
+        raise ValueError(f"{directory} manifest lacks an artifacts object")
+    path = _verify_manifest_artifact(
+        directory,
+        artifacts.get(artifact_key, {}),
+        expected_name=expected_name,
+    )
+    return path, {
+        "manifest_artifact_key": artifact_key,
+        "hash_algorithm": "sha256",
+        "verified": True,
+        **_file_record(path),
+    }
+
+
 def _verify_recorded_artifact(
     record: Mapping[str, Any], *, expected_name: str | None = None
 ) -> Path:
@@ -582,7 +607,12 @@ def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]
         raise ValueError(
             "CytoBridge manifest must explicitly set probability_claim=false"
         )
-    path = directory / "type_pair_summary.csv"
+    path, score_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="type_pair_summary",
+        expected_name="type_pair_summary.csv",
+    )
     frame = pd.read_csv(path)
     required = {
         "stage",
@@ -623,6 +653,8 @@ def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]
     message = _attach_native_no_completion_audit(
         message, universe_scope="native_cytobridge_type_pair_summary"
     )
+    attention.attrs["verified_primary_score_artifacts"] = [score_artifact]
+    message.attrs["verified_primary_score_artifacts"] = [score_artifact]
     return attention, message
 
 
@@ -635,7 +667,12 @@ def _load_commot(directory: Path) -> pd.DataFrame:
             "database_variant": "current_zebrafish_lr_database",
         },
     )
-    path = directory / "commot_type_pair_scores.csv.gz"
+    path, score_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="type_pair_scores",
+        expected_name="commot_type_pair_scores.csv.gz",
+    )
     frame = pd.read_csv(path)
     required = {
         "method",
@@ -665,13 +702,15 @@ def _load_commot(directory: Path) -> pd.DataFrame:
         stage=stage,
         stage_label=stage_label,
     )
-    return _complete_external_positive_only_grid(
+    result = _complete_external_positive_only_grid(
         emitted,
         manifest=manifest,
         universe=universe,
         input_manifest_path=input_manifest_path,
         score_path=path,
     )
+    result.attrs["verified_primary_score_artifacts"] = [score_artifact]
+    return result
 
 
 def _load_cellchat(directory: Path) -> pd.DataFrame:
@@ -754,7 +793,12 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
     eligible_text = exclusion["eligible"].astype(str).str.casefold()
     if len(exclusion) and not eligible_text.isin({"false", "0"}).all():
         raise ValueError(f"{exclusion_path} contains an eligible row")
-    path = directory / "cellchat_type_pair_scores.csv.gz"
+    path, score_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="cellchat_type_pair_scores.csv.gz",
+        expected_name="cellchat_type_pair_scores.csv.gz",
+    )
     frame = pd.read_csv(path)
     required = {
         "method",
@@ -823,6 +867,7 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
         "rows_method_unavailable": excluded,
         "method_unavailable_rows_zero_filled": False,
     }
+    result.attrs["verified_primary_score_artifacts"] = [score_artifact]
     return result
 
 
@@ -1241,6 +1286,16 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         "skipped_or_ineligible_units": int(len(unit_status) - len(complete_units)),
         "audit_rows": audit_rows,
     }
+    result.attrs["verified_primary_score_artifacts"] = [
+        {
+            "manifest_artifact_key": "output_files.sender_ligand_activity",
+            "hash_algorithm": "md5",
+            "verified": True,
+            "path": str(path.resolve()),
+            "size_bytes": int(path.stat().st_size),
+            "md5": _md5(path),
+        }
+    ]
     return result
 
 
@@ -1305,9 +1360,10 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
     preparation_manifest = _verify_recorded_artifact(
         shared_input.get("preparation_manifest", {}), expected_name="manifest.json"
     )
-    path = _verify_manifest_artifact(
+    path, score_artifact = _verify_manifest_artifact_key(
         directory,
-        manifest.get("artifacts", {}).get("cellagentchat_type_pair_scores.csv", {}),
+        manifest,
+        artifact_key="cellagentchat_type_pair_scores.csv",
         expected_name="cellagentchat_type_pair_scores.csv",
     )
     design = manifest.get("design")
@@ -1553,6 +1609,7 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         "method_unavailable_lr_rows_zero_filled": False,
         "audit_rows": audit_rows,
     }
+    result.attrs["verified_primary_score_artifacts"] = [score_artifact]
     return result
 
 
@@ -2107,10 +2164,25 @@ def _extract_one(
 def load_cytobridge_control(
     directory: Path, *, control: str, display_label: str
 ) -> pd.DataFrame:
-    _read_json(directory / "run_manifest.json")
-    permutation_path = directory / "conditional_permutation_tests.csv"
-    nested_path = directory / "nested_grouped_cv_metrics.csv"
-    reciprocal_path = directory / "reciprocal_edge_direction_tests.csv"
+    manifest = _read_json(directory / "run_manifest.json")
+    permutation_path, permutation_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="conditional_permutations",
+        expected_name="conditional_permutation_tests.csv",
+    )
+    nested_path, nested_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="nested_grouped_cv",
+        expected_name="nested_grouped_cv_metrics.csv",
+    )
+    reciprocal_path, reciprocal_artifact = _verify_manifest_artifact_key(
+        directory,
+        manifest,
+        artifact_key="reciprocal_edge_direction_tests",
+        expected_name="reciprocal_edge_direction_tests.csv",
+    )
     permutation = pd.read_csv(permutation_path)
     nested = pd.read_csv(nested_path)
     reciprocal = pd.read_csv(reciprocal_path, dtype={"stage": str})
@@ -2179,7 +2251,13 @@ def load_cytobridge_control(
                 "selection": "reciprocal directed edges, all stages",
             }
         )
-    return pd.DataFrame(rows)
+    result = pd.DataFrame(rows)
+    result.attrs["verified_primary_score_artifacts"] = [
+        permutation_artifact,
+        nested_artifact,
+        reciprocal_artifact,
+    ]
+    return result
 
 
 def condition_coverage(
@@ -2775,6 +2853,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     zero_completion_records: dict[str, Mapping[str, Any]] = {}
     zero_audit_frames: list[pd.DataFrame] = []
     cellchat_lr_universe: Mapping[str, Any] | None = None
+    primary_score_artifact_verification: dict[str, list[Mapping[str, Any]]] = {}
+    control_artifact_verification: dict[str, list[Mapping[str, Any]]] = {}
 
     loaders: list[tuple[list[str], Callable[[], Sequence[pd.DataFrame]]]] = [
         (
@@ -2807,6 +2887,21 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                     "Loader returned an unexpected number of score views"
                 )
             for view_id, frame in zip(view_ids, result):
+                score_artifacts = frame.attrs.get("verified_primary_score_artifacts")
+                if not isinstance(score_artifacts, list) or not score_artifacts:
+                    raise ValueError(
+                        f"Score view {view_id} lacks verified primary-score artifact provenance"
+                    )
+                if not all(
+                    isinstance(record, Mapping) and record.get("verified") is True
+                    for record in score_artifacts
+                ):
+                    raise ValueError(
+                        f"Score view {view_id} has invalid primary-score artifact provenance"
+                    )
+                primary_score_artifact_verification[view_id] = [
+                    dict(record) for record in score_artifacts
+                ]
                 unavailable = frame.attrs.get("method_unavailable_lr_rows")
                 if isinstance(unavailable, pd.DataFrame):
                     method_unavailable_frames.append(unavailable.copy())
@@ -3001,9 +3096,25 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     control_frames: list[pd.DataFrame] = []
     for control, label, directory in control_specs:
         try:
-            control_frames.append(
-                load_cytobridge_control(directory, control=control, display_label=label)
+            control_frame = load_cytobridge_control(
+                directory, control=control, display_label=label
             )
+            verified = control_frame.attrs.get("verified_primary_score_artifacts")
+            if (
+                not isinstance(verified, list)
+                or len(verified) != 3
+                or not all(
+                    isinstance(record, Mapping) and record.get("verified") is True
+                    for record in verified
+                )
+            ):
+                raise ValueError(
+                    f"CytoBridge control {control!r} lacks three verified score artifacts"
+                )
+            control_artifact_verification[control] = [
+                dict(record) for record in verified
+            ]
+            control_frames.append(control_frame)
         except Exception as error:
             if not args.allow_partial:
                 raise
@@ -3275,6 +3386,16 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
 
     expected_view_ids = {str(item["view_id"]) for item in expected}
     loaded_view_ids = set(scores["view_id"].astype(str).unique())
+    expected_control_ids = {item[0] for item in control_specs}
+    all_primary_score_artifacts_hash_verified = bool(
+        set(primary_score_artifact_verification) == expected_view_ids
+        and set(control_artifact_verification) == expected_control_ids
+        and all(primary_score_artifact_verification.values())
+        and all(
+            len(records) == 3 and records
+            for records in control_artifact_verification.values()
+        )
+    )
     external_condition_ids = {
         "commot__project_lr",
         "cellchat__project_lr",
@@ -3380,6 +3501,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         "nichenet_condition_pair_contract_verified": nichenet_pair_contract_ok,
         "cellagentchat_condition_pair_contract_verified": cellagentchat_pair_contract_ok,
         "cytobridge_controls_contract_verified": controls_contract_ok,
+        "all_primary_score_artifacts_hash_verified": (
+            all_primary_score_artifacts_hash_verified
+        ),
         "six_condition_execution_complete": six_condition_execution_complete,
     }
     status = "partial_diagnostic" if args.allow_partial or issues else "complete"
@@ -3415,6 +3539,10 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         "reviewer_reporting_ready": reviewer_reporting_ready,
         "six_condition_execution_complete": six_condition_execution_complete,
         "formal_readiness_checks": readiness_checks,
+        "primary_score_artifact_hash_verification": {
+            "score_views": primary_score_artifact_verification,
+            "cytobridge_controls": control_artifact_verification,
+        },
         "readiness_semantics": {
             "six_condition_execution_complete": (
                 "all six requested external method/database conditions passed execution, "

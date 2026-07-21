@@ -59,7 +59,6 @@ def _type_rows(score_name: str, values: list[float]) -> pd.DataFrame:
 
 def _write_control(directory: Path, *, attention: float, message: float) -> None:
     directory.mkdir(parents=True)
-    _json(directory / "run_manifest.json", {"schema_version": 1})
     permutation_rows = []
     for target, value in (
         ("log1p_attention", attention),
@@ -83,9 +82,9 @@ def _write_control(directory: Path, *, attention: float, message: float) -> None
                 "residual_definition": "test",
             }
         )
-    pd.DataFrame(permutation_rows).to_csv(
-        directory / "conditional_permutation_tests.csv", index=False
-    )
+    permutation_path = directory / "conditional_permutation_tests.csv"
+    pd.DataFrame(permutation_rows).to_csv(permutation_path, index=False)
+    nested_path = directory / "nested_grouped_cv_metrics.csv"
     pd.DataFrame(
         [
             {
@@ -104,7 +103,8 @@ def _write_control(directory: Path, *, attention: float, message: float) -> None
                 ("log1p_edge_message_joint", message / 100),
             )
         ]
-    ).to_csv(directory / "nested_grouped_cv_metrics.csv", index=False)
+    ).to_csv(nested_path, index=False)
+    reciprocal_path = directory / "reciprocal_edge_direction_tests.csv"
     pd.DataFrame(
         [
             {
@@ -122,7 +122,20 @@ def _write_control(directory: Path, *, attention: float, message: float) -> None
                 ("message_direction_delta", -abs(message), 1.0),
             )
         ]
-    ).to_csv(directory / "reciprocal_edge_direction_tests.csv", index=False)
+    ).to_csv(reciprocal_path, index=False)
+    _json(
+        directory / "run_manifest.json",
+        {
+            "schema_version": 1,
+            "artifacts": {
+                "conditional_permutations": comparison._file_record(permutation_path),
+                "nested_grouped_cv": comparison._file_record(nested_path),
+                "reciprocal_edge_direction_tests": comparison._file_record(
+                    reciprocal_path
+                ),
+            },
+        },
+    )
 
 
 def _build_formal_tree(root: Path) -> None:
@@ -137,7 +150,15 @@ def _build_formal_tree(root: Path) -> None:
     )
     cyto = _type_rows("G_AB_attention_mean_mean", [4.0, 3.0, 2.0, 1.0])
     cyto["D_AB_joint_mean"] = np.resize([1.0, 2.0, 3.0, 4.0], len(cyto))
-    cyto.to_csv(cytobridge / "type_pair_summary.csv", index=False)
+    cyto_path = cytobridge / "type_pair_summary.csv"
+    cyto.to_csv(cyto_path, index=False)
+    cyto_manifest = json.loads(
+        (cytobridge / "run_manifest.json").read_text(encoding="utf-8")
+    )
+    cyto_manifest["artifacts"] = {
+        "type_pair_summary": comparison._file_record(cyto_path)
+    }
+    _json(cytobridge / "run_manifest.json", cyto_manifest)
 
     _write_control(root / "02_attention_controls", attention=0.0284, message=0.0136)
     _write_control(
@@ -196,8 +217,9 @@ def _build_formal_tree(root: Path) -> None:
                         "abundance_controlled_score": score,
                     }
                 )
+        score_path = directory / f"{method}_type_pair_scores.csv.gz"
         pd.DataFrame(rows).to_csv(
-            directory / f"{method}_type_pair_scores.csv.gz",
+            score_path,
             index=False,
             compression="gzip",
         )
@@ -210,6 +232,13 @@ def _build_formal_tree(root: Path) -> None:
                     "structural zeros omitted; outer-join to input universe and "
                     "fill zero for comparisons"
                 )
+            },
+            "artifacts": {
+                (
+                    "type_pair_scores"
+                    if method == "commot"
+                    else "cellchat_type_pair_scores.csv.gz"
+                ): comparison._file_record(score_path)
             },
         }
         if method == "cellchat":
@@ -599,6 +628,20 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
     assert manifest["six_condition_execution_complete"] is True
     assert manifest["reviewer_reporting_ready"] is True
     assert all(manifest["formal_readiness_checks"].values())
+    assert (
+        manifest["formal_readiness_checks"]["all_primary_score_artifacts_hash_verified"]
+        is True
+    )
+    assert set(
+        manifest["primary_score_artifact_hash_verification"]["score_views"]
+    ) == set(manifest["loaded_score_views"])
+    assert set(
+        manifest["primary_score_artifact_hash_verification"]["cytobridge_controls"]
+    ) == {
+        "trained",
+        "init_interaction",
+        "randomized_interaction_seed17",
+    }
     assert set(manifest["score_view_zero_completion"]) == set(
         manifest["loaded_score_views"]
     )
@@ -635,6 +678,42 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
     ):
         assert (output / f"{stem}.png").stat().st_size > 1000
         assert (output / f"{stem}.pdf").stat().st_size > 1000
+
+
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "01_cytobridge/type_pair_summary.csv",
+        "03_external_ccc/commot_current_lr/commot_type_pair_scores.csv.gz",
+        "03_external_ccc/cellchat_current_lr/cellchat_type_pair_scores.csv.gz",
+        *[
+            f"{directory}/{filename}"
+            for directory in (
+                "02_attention_controls",
+                "02_attention_controls_init_interaction",
+                "02_attention_controls_random_seed17",
+            )
+            for filename in (
+                "conditional_permutation_tests.csv",
+                "nested_grouped_cv_metrics.csv",
+                "reciprocal_edge_direction_tests.csv",
+            )
+        ],
+    ],
+)
+def test_formal_comparison_fails_closed_on_tampered_primary_artifact(
+    tmp_path: Path, relative_path: str
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    path = root / relative_path
+    payload = bytearray(path.read_bytes())
+    assert payload
+    payload[len(payload) // 2] ^= 1
+    path.write_bytes(payload)
+
+    with pytest.raises(ValueError, match="Manifest SHA256 does not match"):
+        comparison.run(_args(root, tmp_path / "tampered"))
 
 
 def test_formal_missing_condition_fails_but_partial_records_it(tmp_path: Path) -> None:
@@ -698,6 +777,12 @@ def test_external_stage_id_and_hpf_time_must_match_shared_manifest(
     assert set(commot["stage_time"]) == {10.0, 12.0, 18.0, 24.0}
     commot.loc[commot["stage"].astype(str) == "1.0", "stage_time"] = 10.5
     commot.to_csv(commot_path, index=False, compression="gzip")
+    commot_manifest_path = commot_path.parent / "manifest.json"
+    commot_manifest = json.loads(commot_manifest_path.read_text())
+    commot_manifest["artifacts"]["type_pair_scores"] = comparison._file_record(
+        commot_path
+    )
+    _json(commot_manifest_path, commot_manifest)
     with pytest.raises(
         ValueError, match="disagree with the verified shared input manifest"
     ):
@@ -809,6 +894,10 @@ def test_control_loader_selects_strict_stratum_not_row_position(tmp_path: Path) 
     decoy["strata"] = "stage+distance_bin"
     decoy["observed_spearman"] = 0.99
     pd.concat([decoy, frame], ignore_index=True).to_csv(path, index=False)
+    manifest_path = directory / "run_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["artifacts"]["conditional_permutations"] = comparison._file_record(path)
+    _json(manifest_path, manifest)
 
     result = comparison.load_cytobridge_control(
         directory, control="trained", display_label="Trained"
