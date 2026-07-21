@@ -231,19 +231,28 @@ if (any(is.na(indices)) || any(indices < 1L) || any(indices > nrow(official_data
 pair_lr <- official_database$interaction[indices, , drop = FALSE]
 ligand_expanded <- tolower(expand_complex(pair_lr$ligand, official_database$complex))
 receptor_expanded <- tolower(expand_complex(pair_lr$receptor, official_database$complex))
-database_matches <- (
+database_structure_matches <- (
   ligand_expanded == tolower(flat_database$ligand) &
   receptor_expanded == tolower(flat_database$receptor) &
-  as.character(pair_lr$pathway_name) == flat_database$pathway &
   as.character(pair_lr$annotation) == flat_database$category
 )
-if (!all(database_matches)) {
-  first_bad <- which(!database_matches)[[1L]]
+if (!all(database_structure_matches)) {
+  first_bad <- which(!database_structure_matches)[[1L]]
   stop(paste(
-    "Installed CellChatDB.zebrafish does not reproduce prepared CSV at database_row",
+    "Installed CellChatDB.zebrafish does not reproduce the ligand, receptor, and category at database_row",
     flat_database$database_row[[first_bad]]
   ))
 }
+official_pathway <- as.character(pair_lr$pathway_name)
+pathway_mismatch <- official_pathway != flat_database$pathway
+# The current project CSV is the requested database and therefore remains the
+# authority for pathway labels.  Its ligand/receptor/category structure must
+# still reproduce the pinned CellChat database exactly.  At present the only
+# known difference is the auditable SOMATOSTATIN/SEMATOSTATIN label spelling;
+# probabilities are unaffected, while pathway summaries retain the project
+# CSV spelling instead of silently substituting CellChat's label.
+pair_lr$pathway_name <- flat_database$pathway
+pair_lr$annotation <- flat_database$category
 pair_lr$database_row <- as.integer(flat_database$database_row)
 pair_lr$flat_interaction_id <- flat_database$interaction_id
 database_use <- official_database
@@ -451,9 +460,17 @@ manifest <- list(
   input_manifest = file_record(input_manifest_path),
   database = file_record(database_path),
   database_validation = list(
-    rule = "database_row + expanded ligand + expanded receptor + pathway + category must match installed official CellChatDB.zebrafish rowwise",
+    rule = "database_row + expanded ligand + expanded receptor + category must match pinned CellChatDB.zebrafish rowwise; pathway labels are taken exactly from the requested current project CSV",
     rows_validated = nrow(flat_database),
-    all_rows_match = TRUE
+    all_structural_rows_match = TRUE,
+    pathway_values_taken_from_current_csv = TRUE,
+    official_pathway_mismatch_count = sum(pathway_mismatch),
+    official_pathway_mismatch_database_rows = as.integer(flat_database$database_row[pathway_mismatch]),
+    official_pathway_mismatch_labels = unique(data.frame(
+      official = official_pathway[pathway_mismatch],
+      current_csv = flat_database$pathway[pathway_mismatch],
+      stringsAsFactors = FALSE
+    ))
   ),
   design = list(
     all_prepared_observed_stages = TRUE,
