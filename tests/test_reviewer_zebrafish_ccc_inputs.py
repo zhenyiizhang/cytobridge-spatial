@@ -105,6 +105,60 @@ def test_wrong_explicit_target_is_rejected_by_frozen_x_check(tmp_path: Path) -> 
         )
 
 
+def test_exact_lowercase_feature_wins_over_casefold_duplicate(tmp_path: Path) -> None:
+    counts = np.asarray([[9, 1, 2], [4, 2, 4]], dtype=np.float32)
+    target_sum = 10.0
+    normalized = np.log1p(counts * target_sum / counts.sum(axis=1, keepdims=True))
+    obs = pd.DataFrame(
+        {
+            "Annotation": ["A", "B"],
+            "time_point_processed": ["t0", "t1"],
+            "time": [0.0, 1.0],
+        },
+        index=["cell_0", "cell_1"],
+    )
+    data = ad.AnnData(
+        X=sparse.csr_matrix(normalized),
+        obs=obs,
+        var=pd.DataFrame(index=["LIG", "lig", "rec"]),
+    )
+    data.layers["counts"] = sparse.csr_matrix(counts)
+    data.obsm["spatial_aligned"] = np.asarray([[0, 0], [1, 1]], dtype=float)
+    h5ad = tmp_path / "casefold_duplicate.h5ad"
+    data.write_h5ad(h5ad)
+
+    lr_path = tmp_path / "lr.csv"
+    pd.DataFrame(
+        {
+            "Unnamed: 0": [0],
+            "0": ["lig"],
+            "1": ["rec"],
+            "2": ["P"],
+            "3": ["Secreted Signaling"],
+        }
+    ).to_csv(lr_path, index=False)
+    audit_path = tmp_path / "audit.json"
+    audit_path.write_text(
+        json.dumps(
+            {
+                "all_checks_passed": True,
+                "normalization_and_log1p": {"resolved_target_sum": target_sum},
+                "output_h5ad": {"sha256": sha256_file(h5ad)},
+                "inputs": {"lr_database": {"sha256": sha256_file(lr_path)}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prepared = prepare_inputs(
+        h5ad, lr_path, preprocess_audit_path=audit_path, source_x_tolerance=2e-5
+    )
+    assert prepared.adata.var_names.tolist() == ["lig", "rec"]
+    np.testing.assert_allclose(
+        prepared.adata.X.toarray(), normalized[:, [1, 2]], rtol=0, atol=2e-5
+    )
+
+
 def test_bundle_writes_same_cells_expression_and_spatial_for_all_methods(tmp_path: Path) -> None:
     h5ad, lr_path, audit_path, _ = _fixture(tmp_path)
     prepared = prepare_inputs(

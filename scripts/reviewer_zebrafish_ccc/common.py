@@ -230,14 +230,45 @@ def _validate_counts(matrix: object, *, integer_tolerance: float) -> dict[str, o
 def _casefold_projection(
     source_names: Sequence[str], selected_names: Sequence[str]
 ) -> sparse.csr_matrix:
-    selected_lookup = {name: idx for idx, name in enumerate(selected_names)}
+    """Map each selected symbol to exactly one source feature.
+
+    Zebrafish symbols are normally lower-case, while the corrected artifact
+    also contains a small number of upper-case features with the same
+    case-folded spelling (for example ``tnc`` and ``TNC``).  Summing those
+    columns before ``log1p`` is mathematically wrong and no longer reproduces
+    the frozen expression matrix.  Prefer an exact spelling match and use a
+    case-insensitive fallback only when it is unambiguous.
+    """
+
+    source_strings = [str(name).strip() for name in source_names]
+    exact_lookup: dict[str, list[int]] = {}
+    folded_lookup: dict[str, list[int]] = {}
+    for source_idx, name in enumerate(source_strings):
+        exact_lookup.setdefault(name, []).append(source_idx)
+        folded_lookup.setdefault(name.lower(), []).append(source_idx)
+
     source_indices: list[int] = []
     target_indices: list[int] = []
-    for source_idx, raw_name in enumerate(source_names):
-        name = str(raw_name).strip().lower()
-        if name in selected_lookup:
-            source_indices.append(source_idx)
-            target_indices.append(selected_lookup[name])
+    for target_idx, raw_selected in enumerate(selected_names):
+        selected = str(raw_selected).strip()
+        exact = exact_lookup.get(selected, [])
+        if len(exact) == 1:
+            source_idx = exact[0]
+        elif len(exact) > 1:
+            raise ValueError(
+                f"Selected gene {selected!r} has duplicate exact source features"
+            )
+        else:
+            folded = folded_lookup.get(selected.lower(), [])
+            if len(folded) != 1:
+                candidates = [source_strings[idx] for idx in folded]
+                raise ValueError(
+                    f"Selected gene {selected!r} has {len(folded)} case-insensitive "
+                    f"source matches {candidates!r}; exact one-to-one mapping is required"
+                )
+            source_idx = folded[0]
+        source_indices.append(source_idx)
+        target_indices.append(target_idx)
     return sparse.csr_matrix(
         (
             np.ones(len(source_indices), dtype=np.float32),
