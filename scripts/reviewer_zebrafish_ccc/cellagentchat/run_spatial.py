@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import random
 import sys
+import types
 from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
@@ -138,6 +139,69 @@ def _set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def _ensure_torch_sparse_backend() -> str:
+    """Provide the two ``torch_sparse`` operations used by sparselinear.
+
+    CellAgentChat v0.2.0 depends on sparselinear 0.0.5.  When a compiled
+    torch-sparse wheel is unavailable for the installed PyTorch/CUDA build,
+    the same COO coalescing and sparse matrix multiplication are implemented
+    with PyTorch's native differentiable sparse operators.  This is a runtime
+    compatibility backend, not a change to the CellAgentChat model, and the
+    selected backend is sealed in the output manifest.
+    """
+
+    try:
+        import torch_sparse  # noqa: F401
+
+        return "compiled_torch_sparse"
+    except ModuleNotFoundError as error:
+        if error.name != "torch_sparse":
+            raise
+
+    import torch
+
+    compatibility = types.ModuleType("torch_sparse")
+
+    def spmm(
+        index: "torch.Tensor",
+        value: "torch.Tensor",
+        m: int,
+        n: int,
+        matrix: "torch.Tensor",
+    ) -> "torch.Tensor":
+        sparse_matrix = torch.sparse_coo_tensor(
+            index,
+            value,
+            size=(int(m), int(n)),
+            dtype=value.dtype,
+            device=value.device,
+        ).coalesce()
+        return torch.sparse.mm(sparse_matrix, matrix)
+
+    def coalesce(
+        index: "torch.Tensor",
+        value: "torch.Tensor",
+        m: int,
+        n: int,
+        op: str = "add",
+    ) -> tuple["torch.Tensor", "torch.Tensor"]:
+        if op != "add":
+            raise ValueError("The compatibility backend supports only coalesce(op='add').")
+        sparse_matrix = torch.sparse_coo_tensor(
+            index,
+            value,
+            size=(int(m), int(n)),
+            dtype=value.dtype,
+            device=value.device,
+        ).coalesce()
+        return sparse_matrix.indices(), sparse_matrix.values()
+
+    compatibility.spmm = spmm
+    compatibility.coalesce = coalesce
+    sys.modules["torch_sparse"] = compatibility
+    return "torch_native_sparse_compat_v1"
 
 
 def _tokenize(labels: Iterable[str]) -> tuple[dict[str, str], dict[str, str]]:
@@ -703,6 +767,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     if unknown_stages:
         raise ValueError(f"Stages absent from frozen plan: {unknown_stages}")
 
+    torch_sparse_backend = _ensure_torch_sparse_backend()
     run_records: list[dict[str, Any]] = []
     with _official_imports(source) as modules:
         for stage in stages:
@@ -817,6 +882,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "native_primary": "number of Bonferroni-significant LR pairs per directed cell-type pair",
             "raw_score_sum_is_secondary": True,
             "device": args.device,
+            "torch_sparse_backend": torch_sparse_backend,
+            "torch_sparse_backend_semantics": (
+                "compiled dependency when available; otherwise differentiable "
+                "torch.sparse COO coalesce/mm compatibility for sparselinear 0.0.5"
+            ),
         },
         "runs": run_records,
         "counts": {

@@ -88,6 +88,27 @@ def test_strict_projection_preserves_selected_single_log_values() -> None:
     assert set(used["source_gene"]) == {"a", "b"}
 
 
+def test_torch_sparse_compatibility_is_differentiable() -> None:
+    torch = pytest.importorskip("torch")
+    previous = sys.modules.pop("torch_sparse", None)
+    try:
+        backend = run_spatial._ensure_torch_sparse_backend()
+        torch_sparse = __import__("torch_sparse")
+        index = torch.tensor([[0, 1, 1], [1, 0, 2]], dtype=torch.long)
+        value = torch.tensor([2.0, 3.0, 4.0], requires_grad=True)
+        matrix = torch.tensor([[1.0], [2.0], [3.0]], requires_grad=True)
+        observed = torch_sparse.spmm(index, value, 2, 3, matrix)
+        assert torch.allclose(observed, torch.tensor([[4.0], [15.0]]))
+        observed.sum().backward()
+        assert value.grad is not None
+        assert matrix.grad is not None
+        assert backend in {"compiled_torch_sparse", "torch_native_sparse_compat_v1"}
+    finally:
+        sys.modules.pop("torch_sparse", None)
+        if previous is not None:
+            sys.modules["torch_sparse"] = previous
+
+
 def test_many_to_one_projection_uses_frozen_1105_target() -> None:
     counts = sparse.csr_matrix(np.array([[1, 2, 3], [2, 2, 4]], dtype=np.int32))
     mapping = pd.DataFrame(
