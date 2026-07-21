@@ -14,6 +14,8 @@ def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use(
     assert "all_structural_rows_match = TRUE" in script
     assert "pair_lr$pathway_name <- flat_database$pathway" in script
     assert "official_pathway_mismatch_count" in script
+    assert 'c("agonist", "antagonist", "co_A_receptor", "co_I_receptor")' in script
+    assert 'pair_lr[[column]] <- ""' in script
     assert "spatial_coordinates_used_by_cellchat = FALSE" in script
     assert "expression_retransformed_in_runner = FALSE" in script
     assert "abundance_controlled_score" in script

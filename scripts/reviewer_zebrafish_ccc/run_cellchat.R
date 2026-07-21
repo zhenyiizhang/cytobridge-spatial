@@ -253,6 +253,16 @@ pathway_mismatch <- official_pathway != flat_database$pathway
 # CSV spelling instead of silently substituting CellChat's label.
 pair_lr$pathway_name <- flat_database$pathway
 pair_lr$annotation <- flat_database$category
+# The requested flat LR database does not define CellChat's optional agonist,
+# antagonist, or co-receptor fields.  Retaining those values from the official
+# row would silently add biology outside the requested database and can require
+# genes absent from the structurally filtered LR expression matrix.  Disable
+# only these undeclared modifiers; ligand/receptor complexes remain intact.
+undeclared_modifier_columns <- intersect(
+  c("agonist", "antagonist", "co_A_receptor", "co_I_receptor"),
+  colnames(pair_lr)
+)
+for (column in undeclared_modifier_columns) pair_lr[[column]] <- ""
 pair_lr$database_row <- as.integer(flat_database$database_row)
 pair_lr$flat_interaction_id <- flat_database$interaction_id
 database_use <- official_database
@@ -470,7 +480,9 @@ manifest <- list(
       official = official_pathway[pathway_mismatch],
       current_csv = flat_database$pathway[pathway_mismatch],
       stringsAsFactors = FALSE
-    ))
+    )),
+    undeclared_official_modifier_columns_disabled = undeclared_modifier_columns,
+    modifier_policy = "agonist/antagonist/co-receptor fields are empty because the requested flat current LR database does not provide them"
   ),
   design = list(
     all_prepared_observed_stages = TRUE,
