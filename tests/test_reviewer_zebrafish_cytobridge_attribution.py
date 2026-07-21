@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 
 import pandas as pd
+import torch
+from torch import nn
 
 
 SCRIPT = (
@@ -45,3 +47,24 @@ def test_summary_averages_grouping_only_after_complete_tables():
     assert summary.loc[0, "G_AB_attention_mean_mean"] == 3.0
     assert summary.loc[0, "D_AB_joint_mean"] == 1.5
     assert summary.loc[0, "n_grouping_seeds"] == 2
+
+
+def test_random_control_preserves_edge_predictor_and_resets_message_modules():
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.gene_embed = nn.Linear(2, 3)
+            self.distance_projection = nn.Linear(2, 3)
+            self.gnn_layers = nn.ModuleList([nn.Linear(3, 3)])
+            self.gene_readout = nn.Linear(3, 2)
+            self.link_predictor = nn.Linear(4, 1)
+            self.rbf_expansion = nn.Linear(1, 2, bias=False)
+
+    torch.manual_seed(9)
+    net = Net()
+    predictor = {key: value.detach().clone() for key, value in net.link_predictor.state_dict().items()}
+    before = net.gene_embed.weight.detach().clone()
+    MODULE._randomize_interaction_modules(net, seed=17)
+    assert not torch.equal(before, net.gene_embed.weight)
+    for key, expected in predictor.items():
+        torch.testing.assert_close(net.link_predictor.state_dict()[key], expected)

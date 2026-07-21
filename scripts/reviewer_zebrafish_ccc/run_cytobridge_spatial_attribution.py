@@ -44,6 +44,16 @@ def _parser() -> argparse.ArgumentParser:
         "--grouping-seeds", type=_csv_ints, default=(101, 202, 303, 404, 505)
     )
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--checkpoint-stage", default="Finetune")
+    parser.add_argument(
+        "--randomize-interaction-seed",
+        type=int,
+        help=(
+            "Reset only the trainable spatial-interaction modules after loading "
+            "the requested checkpoint. The frozen LR-informed edge predictor "
+            "and fixed RBF basis remain unchanged."
+        ),
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser
 
@@ -124,6 +134,22 @@ def _summarize_type_pairs(tables: Sequence[pd.DataFrame]) -> pd.DataFrame:
     return summary
 
 
+def _randomize_interaction_modules(interaction_net, *, seed: int) -> None:
+    """Reset learned message modules while preserving graph construction."""
+    import torch
+
+    torch.manual_seed(int(seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(seed))
+
+    def reset(module) -> None:
+        if hasattr(module, "reset_parameters"):
+            module.reset_parameters()
+
+    for name in ("gene_embed", "distance_projection", "gnn_layers", "gene_readout"):
+        getattr(interaction_net, name).apply(reset)
+
+
 def run(args: argparse.Namespace) -> Mapping[str, Any]:
     import anndata as ad
     import torch
@@ -163,10 +189,17 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     device = torch.device(args.device)
     feature_dim = int(2 + state.shape[1])
     loaded = load_dynamical_model_from_dir(
-        model_dir, dim=feature_dim, device=device
+        model_dir,
+        dim=feature_dim,
+        device=device,
+        stage=str(args.checkpoint_stage),
     )
     interaction_net = loaded.model.interaction_net
     validate_spatial_exact_decomposition_model(interaction_net)
+    if args.randomize_interaction_seed is not None:
+        _randomize_interaction_modules(
+            interaction_net, seed=int(args.randomize_interaction_seed)
+        )
     configured_group_size = int(
         getattr(loaded.model, "interaction_group_size", args.group_size)
     )
@@ -328,6 +361,21 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "edge_predictor_threshold": float(interaction_net.edge_predictor_thre),
             "num_heads": int(interaction_net.num_heads),
             "num_layers": int(interaction_net.num_layers),
+            "requested_stage": str(args.checkpoint_stage),
+            "interaction_randomization": (
+                {
+                    "seed": int(args.randomize_interaction_seed),
+                    "reset_modules": [
+                        "gene_embed",
+                        "distance_projection",
+                        "gnn_layers",
+                        "gene_readout",
+                    ],
+                    "preserved_modules": ["link_predictor", "rbf_expansion"],
+                }
+                if args.randomize_interaction_seed is not None
+                else None
+            ),
         },
         "grouping": {
             "seeds": list(args.grouping_seeds),
