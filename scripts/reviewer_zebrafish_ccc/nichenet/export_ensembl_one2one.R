@@ -67,7 +67,23 @@ arg_value <- function(flag, default = NULL) {
 out_dir <- arg_value("--out-dir")
 raw_input <- arg_value("--raw-input")
 ensembl_version <- as.integer(arg_value("--ensembl-version", "116"))
+mapping_policy <- arg_value("--mapping-policy", "strict_confidence1")
+allowed_mapping_policies <- c(
+  "strict_confidence1",
+  "one2one_bijective_all_confidence"
+)
 if (is.null(out_dir)) stop("--out-dir is required")
+if (!mapping_policy %in% allowed_mapping_policies) {
+  stop(
+    "--mapping-policy must be one of: ",
+    paste(allowed_mapping_policies, collapse = ", ")
+  )
+}
+analysis_tier <- if (mapping_policy == "strict_confidence1") {
+  "primary"
+} else {
+  "sensitivity"
+}
 if (dir.exists(out_dir) && length(list.files(out_dir, all.files = TRUE, no.. = TRUE)) > 0) {
   stop("Output directory must be absent or empty: ", out_dir)
 }
@@ -171,22 +187,27 @@ standardized <- raw %>%
     mouse_percent_identity = suppressWarnings(as.numeric(mmusculus_homolog_perc_id))
   )
 
-confident <- standardized %>%
+one_to_one <- standardized %>%
   filter(
     nzchar(zebrafish_symbol),
     nzchar(mouse_symbol),
-    orthology_type == "ortholog_one2one",
-    orthology_confidence == 1
-  ) %>%
+    orthology_type == "ortholog_one2one"
+  )
+policy_candidates <- if (mapping_policy == "strict_confidence1") {
+  one_to_one %>% filter(orthology_confidence == 1)
+} else {
+  one_to_one
+}
+policy_candidates <- policy_candidates %>%
   mutate(
     zebrafish_symbol_key = tolower(zebrafish_symbol),
     mouse_symbol_key = tolower(mouse_symbol)
   ) %>%
   distinct(zebrafish_symbol_key, mouse_symbol_key, .keep_all = TRUE)
 
-z_degree <- confident %>% count(zebrafish_symbol_key, name = "z_degree")
-m_degree <- confident %>% count(mouse_symbol_key, name = "m_degree")
-strict <- confident %>%
+z_degree <- policy_candidates %>% count(zebrafish_symbol_key, name = "z_degree")
+m_degree <- policy_candidates %>% count(mouse_symbol_key, name = "m_degree")
+mapping <- policy_candidates %>%
   left_join(z_degree, by = "zebrafish_symbol_key") %>%
   left_join(m_degree, by = "mouse_symbol_key") %>%
   filter(z_degree == 1, m_degree == 1) %>%
@@ -201,18 +222,40 @@ strict <- confident %>%
     orthology_confidence,
     mouse_percent_identity
   )
+if (nrow(mapping) == 0) {
+  stop("No mapping pairs remain under --mapping-policy ", mapping_policy)
+}
 
-strict_path <- file.path(out_dir, "ensembl_compara_drerio_to_mouse_strict_one2one.csv")
-write_csv_table(strict, strict_path)
+mapping_filename <- if (mapping_policy == "strict_confidence1") {
+  "ensembl_compara_drerio_to_mouse_strict_one2one.csv"
+} else {
+  "ensembl_compara_drerio_to_mouse_one2one_bijective_all_confidence.csv"
+}
+mapping_path <- file.path(out_dir, mapping_filename)
+write_csv_table(mapping, mapping_path)
+
+selected_confidence_counts <- mapping %>%
+  mutate(confidence_label = ifelse(
+    is.na(orthology_confidence), "NA", as.character(orthology_confidence)
+  )) %>%
+  count(confidence_label, name = "n")
 
 manifest <- list(
-  schema_version = 1,
-  workflow = "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+  schema_version = 2,
+  workflow = "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
   status = "complete",
   created_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
   ensembl_release = ensembl_version,
   biomart = "genes",
   dataset = "drerio_gene_ensembl",
+  mapping_policy = mapping_policy,
+  analysis_tier = analysis_tier,
+  primary_claim_allowed = mapping_policy == "strict_confidence1",
+  mapping_label = if (mapping_policy == "strict_confidence1") {
+    "primary: Ensembl116 ortholog_one2one confidence=1 casefold-symbol-bijective"
+  } else {
+    "sensitivity only: Ensembl116 ortholog_one2one confidence unfiltered casefold-symbol-bijective"
+  },
   source_mode = source_mode,
   source_path = source_path,
   source_input = source_input_record,
@@ -222,18 +265,28 @@ manifest <- list(
   original_input_headers = header_audit$original_headers,
   filter = list(
     orthology_type = "ortholog_one2one",
-    orthology_confidence = 1,
+    orthology_confidence_policy = if (mapping_policy == "strict_confidence1") {
+      "require_equal_1"
+    } else {
+      "not_filtered"
+    },
     nonempty_symbols = TRUE,
     symbol_level_bijection_after_casefold = TRUE
   ),
   counts = list(
     raw_rows = nrow(raw),
-    high_confidence_one2one_symbol_pairs = nrow(confident),
-    strict_bijective_symbol_pairs = nrow(strict)
+    nonempty_ortholog_one2one_rows = nrow(one_to_one),
+    policy_candidate_symbol_pairs = nrow(policy_candidates),
+    selected_bijective_symbol_pairs = nrow(mapping),
+    selected_confidence_counts = setNames(
+      as.list(selected_confidence_counts$n),
+      selected_confidence_counts$confidence_label
+    )
   ),
+  mapping_file = mapping_filename,
   output_md5 = list(
     raw = unname(tools::md5sum(raw_path)),
-    strict = unname(tools::md5sum(strict_path))
+    mapping = unname(tools::md5sum(mapping_path))
   ),
   packages = list(
     R = R.version.string,

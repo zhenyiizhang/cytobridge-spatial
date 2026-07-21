@@ -6,7 +6,7 @@ keeping the receiver-response input and intracellular prior fixed.
 | Mode | LR candidate gate | Ligand-target/signaling/GRN prior |
 | --- | --- | --- |
 | `default` | Official NicheNet-v2 mouse LR network | Official NicheNet-v2 mouse prior |
-| `custom` | Current zebrafish CellChat LR table after strict orthology and complex checks | The same official NicheNet-v2 mouse prior |
+| `custom` | Current zebrafish CellChat LR table after the selected one-to-one orthology policy and complex checks | The same official NicheNet-v2 mouse prior |
 
 The custom condition is therefore named **custom-LR-constrained NicheNet-v2**.
 A flat LR table is insufficient to reconstruct a zebrafish ligand-target,
@@ -41,7 +41,8 @@ log-transforms an already normalized matrix.
 Formal mode is the default and fails closed: it requires target sum 1105,
 successful `X` reconstruction, and the frozen H5AD/LR SHA-256 values shown in
 the command below. It also requires the Ensembl exporter manifest, verifies
-that the strict mapping CSV matches that manifest, and requires release 116.
+that the selected mapping CSV and policy match that manifest, and requires
+release 116.
 `--skip-x-verification` is therefore incompatible with a formal run. For
 synthetic tests or a genuinely new dataset, `--nonformal` permits explicitly
 different inputs, but the resulting manifest is labeled `formal_mode: false`
@@ -52,10 +53,25 @@ and makes no zebrafish provenance claim.
 Use an isolated R library containing `biomaRt`, `dplyr`, and `jsonlite`.
 `readr` is optional; the exporter falls back to base R. It installs nothing.
 
+Freeze the primary mapping first. Its raw BioMart response is then the only
+allowed source for the all-confidence sensitivity mapping, so the two policies
+cannot silently use different Ensembl snapshots.
+
 ```bash
+STRICT_ORTHO="$RUN/00_provenance/ensembl_116_strict"
+SENS_ORTHO="$RUN/00_provenance/ensembl_116_sensitivity_all_confidence"
+
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/export_ensembl_one2one.R \
   --ensembl-version 116 \
-  --out-dir "$RUN/00_provenance/ensembl_116"
+  --mapping-policy strict_confidence1 \
+  --out-dir "$STRICT_ORTHO"
+
+ORTHO_RAW="$STRICT_ORTHO/ensembl_compara_drerio_to_mouse_raw.csv.gz"
+Rscript scripts/reviewer_zebrafish_ccc/nichenet/export_ensembl_one2one.R \
+  --ensembl-version 116 \
+  --mapping-policy one2one_bijective_all_confidence \
+  --raw-input "$ORTHO_RAW" \
+  --out-dir "$SENS_ORTHO"
 ```
 
 For an offline replay, pass the previously frozen raw BioMart CSV:
@@ -63,7 +79,8 @@ For an offline replay, pass the previously frozen raw BioMart CSV:
 ```bash
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/export_ensembl_one2one.R \
   --ensembl-version 116 \
-  --raw-input "$RUN/00_provenance/ensembl_116/ensembl_compara_drerio_to_mouse_raw.csv.gz" \
+  --mapping-policy strict_confidence1 \
+  --raw-input "$ORTHO_RAW" \
   --out-dir "$RUN/00_provenance/ensembl_116_replay"
 ```
 
@@ -74,20 +91,52 @@ the exact official Ensembl download display headers (for example,
 the header map, then writes the frozen raw output with canonical technical
 names; manual header editing is neither required nor allowed.
 
-Primary mappings require `ortholog_one2one`, confidence `1`, non-empty symbols,
-and a symbol-level bijection after case-folding. One-to-many mappings are not
-silently rescued. This is conservative for teleost paralogs, so coverage and
-known-axis exclusions must be reported.
+Both policies require `ortholog_one2one`, non-empty symbols, and a symbol-level
+bijection after case-folding; one-to-many mappings are never rescued. The
+primary `strict_confidence1` policy additionally requires confidence exactly
+`1`. `one2one_bijective_all_confidence` omits only that confidence filter and
+is labeled `analysis_tier: sensitivity` and `primary_claim_allowed: false` in
+every manifest. It is a coverage sensitivity analysis, not a replacement for
+the strict primary result.
 
-## 2. Prepare shared inputs once
+## 2. Prepare shared inputs per mapping policy
 
 ```bash
 python scripts/reviewer_zebrafish_ccc/nichenet/prepare_shared_inputs.py \
   --h5ad "$H5AD" \
-  --orthology-csv "$RUN/00_provenance/ensembl_116/ensembl_compara_drerio_to_mouse_strict_one2one.csv" \
-  --orthology-manifest "$RUN/00_provenance/ensembl_116/orthology_manifest.json" \
+  --orthology-policy strict_confidence1 \
+  --orthology-csv "$STRICT_ORTHO/ensembl_compara_drerio_to_mouse_strict_one2one.csv" \
+  --orthology-manifest "$STRICT_ORTHO/orthology_manifest.json" \
   --custom-lr-db "$LR_DB" \
-  --out-dir "$RUN/01_shared_inputs" \
+  --out-dir "$RUN/01_shared_inputs_primary" \
+  --expected-h5ad-sha256 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd \
+  --expected-custom-lr-sha256 27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37 \
+  --counts-layer counts \
+  --time-key time_point_processed \
+  --label-key Annotation \
+  --transitions 0:1,1:2,2:3,3:4 \
+  --stage-label-map '{"0":"5.25hpf","1":"10hpf","2":"12hpf","3":"18hpf","4":"24hpf"}' \
+  --normalization-target-sum 1105 \
+  --min-cells-per-receiver-stage 30 \
+  --min-expression-fraction 0.05 \
+  --min-abs-log2fc 0.25 \
+  --fdr-cutoff 0.05 \
+  --min-target-genes 20 \
+  --min-background-genes 500
+```
+
+For the expanded-coverage sensitivity, rerun preparation with the same H5AD,
+LR database, transitions, normalization, expression, DE, and unit thresholds;
+change only the policy, mapping CSV/manifest, and output directory:
+
+```bash
+python scripts/reviewer_zebrafish_ccc/nichenet/prepare_shared_inputs.py \
+  --h5ad "$H5AD" \
+  --orthology-policy one2one_bijective_all_confidence \
+  --orthology-csv "$SENS_ORTHO/ensembl_compara_drerio_to_mouse_one2one_bijective_all_confidence.csv" \
+  --orthology-manifest "$SENS_ORTHO/orthology_manifest.json" \
+  --custom-lr-db "$LR_DB" \
+  --out-dir "$RUN/01_shared_inputs_sensitivity_all_confidence" \
   --expected-h5ad-sha256 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd \
   --expected-custom-lr-sha256 27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37 \
   --counts-layer counts \
@@ -110,9 +159,10 @@ response gene set is cell-level Wilcoxon DE with BH `q <= 0.05` and
 receiver cells. Cells are not biological replicates, so these q values are a
 descriptive feature-selection device, not embryo-level inference.
 
-Custom receptor complexes use an AND gate: every subunit must have a strict
-mapping and pass the receiver expression cutoff. Multi-subunit ligands are
-excluded because the fixed NicheNet matrix has no composite-ligand column.
+Custom receptor complexes use an AND gate: every subunit must have a mapping
+under the selected policy and pass the receiver expression cutoff.
+Multi-subunit ligands are excluded because the fixed NicheNet matrix has no
+composite-ligand column.
 Every excluded database row and reason is retained in
 `custom_lr_mapping_audit.csv`; cross-component coverage is summarized in
 `coverage_summary.csv`.
@@ -184,23 +234,35 @@ chmod a-w *.rds zenodo_record_7074291.json SHA256SUMS
 
 ## 4. Run both modes
 
+The following pair is the expanded-coverage sensitivity requested for the
+formal comparison. Both outputs carry the same sensitivity policy in
+`run_manifest.json`, including the official/default condition, because its
+cross-species expression and response-gene universe came from the same shared
+mapping. They must be reported as sensitivity results.
+
 ```bash
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/run_nichenet_v2.R \
   --mode default \
-  --shared-dir "$RUN/01_shared_inputs" \
+  --shared-dir "$RUN/01_shared_inputs_sensitivity_all_confidence" \
   --prior-dir "$RUN/00_provenance/nichenet_v2" \
   --nichenetr-source "$NICHE_SOURCE" \
   --expected-nichenetr-version 2.2.1.1 \
-  --out-dir "$RUN/02_default_mouse_v2"
+  --out-dir "$RUN/04_sensitivity_all_confidence/default"
 
 Rscript scripts/reviewer_zebrafish_ccc/nichenet/run_nichenet_v2.R \
   --mode custom \
-  --shared-dir "$RUN/01_shared_inputs" \
+  --shared-dir "$RUN/01_shared_inputs_sensitivity_all_confidence" \
   --prior-dir "$RUN/00_provenance/nichenet_v2" \
   --nichenetr-source "$NICHE_SOURCE" \
   --expected-nichenetr-version 2.2.1.1 \
-  --out-dir "$RUN/03_custom_zebrafish_lr"
+  --out-dir "$RUN/04_sensitivity_all_confidence/custom"
 ```
+
+For the strict primary pair, use
+`$RUN/01_shared_inputs_primary` as `--shared-dir` and separate output
+directories such as `$RUN/03_primary/default` and `$RUN/03_primary/custom`.
+Do not compare or merge runs whose manifests carry different
+`orthology_policy` values as if they were the same condition pair.
 
 Each mode emits:
 

@@ -80,8 +80,23 @@ def test_strict_orthology_requires_confident_symbol_bijection(tmp_path):
         ["z1", "M1"],
         ["z2", "M2"],
     ]
-    assert audit["strict_bijective_symbol_pairs"] == 2
-    assert audit["filter"]["orthology_confidence"] == 1
+    assert audit["selected_bijective_symbol_pairs"] == 2
+    assert audit["filter"]["orthology_confidence_policy"] == "require_equal_1"
+    assert audit["analysis_tier"] == "primary"
+
+    sensitivity, sensitivity_audit = MODULE.load_one_to_one_orthology(
+        path, "one2one_bijective_all_confidence"
+    )
+    assert sensitivity[["zebrafish_symbol", "mouse_symbol"]].values.tolist() == [
+        ["z1", "M1"],
+        ["z2", "M2"],
+        ["z4", "M4"],
+        ["z7", "M7"],
+    ]
+    assert sensitivity_audit["selected_bijective_symbol_pairs"] == 4
+    assert sensitivity_audit["filter"]["orthology_confidence_policy"] == "not_filtered"
+    assert sensitivity_audit["analysis_tier"] == "sensitivity"
+    assert sensitivity_audit["primary_claim_allowed"] is False
 
 
 def test_custom_lr_mapping_uses_receptor_components_and_rejects_composite_ligands(
@@ -123,17 +138,29 @@ def test_formal_orthology_manifest_is_release_116_and_hash_bound(tmp_path):
     h5ad, orthology, lr = _write_synthetic_inputs(tmp_path)
     manifest_path = tmp_path / "orthology_manifest.json"
     payload = {
-        "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+        "schema_version": 2,
+        "workflow": "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
         "status": "complete",
         "ensembl_release": 116,
         "source_mode": "frozen_raw_input",
+        "mapping_policy": "strict_confidence1",
+        "analysis_tier": "primary",
+        "primary_claim_allowed": True,
+        "mapping_label": MODULE.ORTHOLOGY_POLICIES["strict_confidence1"][
+            "mapping_label"
+        ],
+        "mapping_file": orthology.name,
         "filter": {
             "orthology_type": "ortholog_one2one",
-            "orthology_confidence": 1,
+            "orthology_confidence_policy": "require_equal_1",
             "nonempty_symbols": True,
             "symbol_level_bijection_after_casefold": True,
         },
-        "output_md5": {"strict": MODULE._md5(orthology)},
+        "counts": {"selected_bijective_symbol_pairs": 6},
+        "output_md5": {
+            "raw": "a" * 32,
+            "mapping": MODULE._md5(orthology),
+        },
     }
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
     config = MODULE.PrepareConfig(
@@ -146,10 +173,70 @@ def test_formal_orthology_manifest_is_release_116_and_hash_bound(tmp_path):
     audit = MODULE.validate_orthology_provenance(config)
     assert audit["verified"] is True
     assert audit["ensembl_release"] == 116
+    assert audit["mapping_policy"] == "strict_confidence1"
+    assert audit["mapping_md5_verified"] is True
 
+    payload["mapping_policy"] = "one2one_bijective_all_confidence"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="selected-policy mismatch"):
+        MODULE.validate_orthology_provenance(config)
+
+    payload["mapping_policy"] = "strict_confidence1"
     payload["ensembl_release"] = 115
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="ensembl_release=116"):
+        MODULE.validate_orthology_provenance(config)
+
+
+def test_formal_sensitivity_manifest_requires_frozen_raw_replay(tmp_path):
+    h5ad, orthology, lr = _write_synthetic_inputs(tmp_path)
+    manifest_path = tmp_path / "orthology_sensitivity_manifest.json"
+    policy = "one2one_bijective_all_confidence"
+    payload = {
+        "schema_version": 2,
+        "workflow": "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
+        "status": "complete",
+        "ensembl_release": 116,
+        "source_mode": "frozen_raw_input",
+        "source_input": {
+            "path": "/frozen/ensembl116_raw.csv.gz",
+            "size_bytes": 123,
+            "md5": "b" * 32,
+        },
+        "mapping_policy": policy,
+        "analysis_tier": "sensitivity",
+        "primary_claim_allowed": False,
+        "mapping_label": MODULE.ORTHOLOGY_POLICIES[policy]["mapping_label"],
+        "mapping_file": orthology.name,
+        "filter": {
+            "orthology_type": "ortholog_one2one",
+            "orthology_confidence_policy": "not_filtered",
+            "nonempty_symbols": True,
+            "symbol_level_bijection_after_casefold": True,
+        },
+        "counts": {"selected_bijective_symbol_pairs": 6},
+        "output_md5": {
+            "raw": "c" * 32,
+            "mapping": MODULE._md5(orthology),
+        },
+    }
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = MODULE.PrepareConfig(
+        h5ad=h5ad,
+        orthology_csv=orthology,
+        orthology_manifest=manifest_path,
+        orthology_policy=policy,
+        custom_lr_db=lr,
+        out_dir=tmp_path / "formal_sensitivity",
+    )
+
+    audit = MODULE.validate_orthology_provenance(config)
+    assert audit["analysis_tier"] == "sensitivity"
+    assert audit["primary_claim_allowed"] is False
+
+    payload["source_mode"] = "biomaRt_query"
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="frozen Ensembl-116 raw input"):
         MODULE.validate_orthology_provenance(config)
 
 
@@ -236,6 +323,13 @@ def test_prepare_shared_inputs_writes_auditable_transition_units(tmp_path):
     )
     assert manifest["normalization"]["x_validation"]["passed"] is True
     assert manifest["formal_mode"] is False
+    assert manifest["orthology_policy"] == "strict_confidence1"
+    assert manifest["analysis_tier"] == "primary"
+    assert manifest["primary_claim_allowed"] is True
+    assert manifest["selected_files"] == {
+        "orthology_present": "orthology_strict_one2one_present.csv",
+        "custom_lr_mapped": "custom_lr_strict_one2one_mapped.csv",
+    }
     assert all("md5" in record for record in manifest["output_files"])
     assert (out / "prepare_manifest.json").is_file()
     assert (out / "coverage_summary.csv").is_file()
@@ -251,6 +345,45 @@ def test_prepare_shared_inputs_writes_auditable_transition_units(tmp_path):
     metadata = pd.read_json(unit_dir / "unit_metadata.json", typ="series")
     assert metadata["source_stage_label"] == "early"
     assert metadata["target_stage_label"] == "late"
+
+
+def test_prepare_shared_inputs_all_confidence_is_explicit_sensitivity(tmp_path):
+    h5ad, orthology, lr = _write_synthetic_inputs(tmp_path)
+    mapping = pd.read_csv(orthology)
+    mapping.loc[mapping["zebrafish_symbol"].eq("liga"), "orthology_confidence"] = 0
+    mapping.to_csv(orthology, index=False)
+
+    out = tmp_path / "sensitivity"
+    manifest = MODULE.prepare_shared_inputs(
+        MODULE.PrepareConfig(
+            h5ad=h5ad,
+            orthology_csv=orthology,
+            orthology_policy="one2one_bijective_all_confidence",
+            custom_lr_db=lr,
+            out_dir=out,
+            formal_mode=False,
+            transitions=(("0", "1"),),
+            normalization_target_sum=100.0,
+            min_cells_per_receiver_stage=5,
+            fdr_cutoff=1.0,
+            min_target_genes=1,
+            min_background_genes=1,
+        )
+    )
+
+    assert manifest["analysis_tier"] == "sensitivity"
+    assert manifest["primary_claim_allowed"] is False
+    assert (
+        manifest["orthology"]["filter"]["orthology_confidence_policy"] == "not_filtered"
+    )
+    selected = manifest["selected_files"]
+    assert selected["custom_lr_mapped"] == (
+        "custom_lr_one2one_bijective_all_confidence_mapped.csv"
+    )
+    assert (out / selected["custom_lr_mapped"]).is_file()
+    assert (out / selected["orthology_present"]).is_file()
+    mapped_lr = pd.read_csv(out / selected["custom_lr_mapped"])
+    assert set(mapped_lr["ligand_mouse"]) == {"Liga"}
 
 
 def test_prepare_shared_inputs_refuses_nonmatching_x(tmp_path):
@@ -350,6 +483,20 @@ def test_r_runner_uses_official_nichenetr_activity_and_fixed_prior():
     assert "prepare_manifest <- fromJSON" in runner
     assert "shared_file_integrity" in runner
     assert "prepare_manifest$orthology_source$ensembl_release" in runner
+    assert "prepare_manifest$selected_files$custom_lr_mapped" in runner
+    assert "prepare_manifest$selected_files$orthology_present" in runner
+    assert "mapping_md5_verified" in runner
+    assert "strict_map_md5_verified" not in runner
+    assert "[orthology sensitivity: confidence unfiltered]" in runner
+    assert "primary_claim_allowed = primary_claim_allowed" in runner
+    assert (
+        runner.count("source_stage_label = as.character(unit$source_stage_label[[1]])")
+        >= 6
+    )
+    assert (
+        runner.count("target_stage_label = as.character(unit$target_stage_label[[1]])")
+        >= 6
+    )
     assert "valid_sha256" in runner
     assert 'arg_value("--nichenetr-source")' in runner
     assert 'arg_value("--allow-installed-nichenetr", "false")' in runner
@@ -365,6 +512,13 @@ def test_r_runner_uses_official_nichenetr_activity_and_fixed_prior():
     assert "if (nrow(custom_lr) == 0)" in runner
     assert "all(matched$pct_detected >= min_expression_fraction)" in runner
     assert "ortholog_one2one" in orthology_exporter
+    assert (
+        'mapping_policy <- arg_value("--mapping-policy", "strict_confidence1")'
+        in orthology_exporter
+    )
+    assert "one2one_bijective_all_confidence" in orthology_exporter
+    assert "analysis_tier = analysis_tier" in orthology_exporter
+    assert "orthology_confidence_policy = if" in orthology_exporter
     assert "version = ensembl_version" in orthology_exporter
     assert "Mouse orthology confidence [0 low, 1 high]" in orthology_exporter
     assert "standardize_attribute_headers" in orthology_exporter

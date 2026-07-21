@@ -5,7 +5,7 @@ This module deliberately stops before running NicheNet.  It performs the
 species-independent work once:
 
 * validate raw counts and reconstruct the single-log expression matrix;
-* require an exact, high-confidence Ensembl one-to-one zebrafish/mouse map;
+* require an explicitly selected Ensembl one-to-one zebrafish/mouse map;
 * construct lagged receiver response gene sets for adjacent observed stages;
 * summarize source-stage expression for sender/receiver candidate gates; and
 * map a zebrafish LR table without changing NicheNet's signaling/GRN prior.
@@ -33,13 +33,40 @@ import pandas as pd
 from scipy import sparse, stats
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 FORMAL_NORMALIZATION_TARGET_SUM = 1105.0
 FORMAL_ENSEMBL_RELEASE = 116
 FORMAL_H5AD_SHA256 = "433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd"
 FORMAL_CUSTOM_LR_SHA256 = (
     "27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37"
 )
+
+ORTHOLOGY_POLICIES: dict[str, dict[str, object]] = {
+    "strict_confidence1": {
+        "analysis_tier": "primary",
+        "primary_claim_allowed": True,
+        "confidence_policy": "require_equal_1",
+        "mapping_label": (
+            "primary: Ensembl116 ortholog_one2one confidence=1 "
+            "casefold-symbol-bijective"
+        ),
+        "orthology_present_filename": "orthology_strict_one2one_present.csv",
+        "custom_lr_filename": "custom_lr_strict_one2one_mapped.csv",
+    },
+    "one2one_bijective_all_confidence": {
+        "analysis_tier": "sensitivity",
+        "primary_claim_allowed": False,
+        "confidence_policy": "not_filtered",
+        "mapping_label": (
+            "sensitivity only: Ensembl116 ortholog_one2one confidence unfiltered "
+            "casefold-symbol-bijective"
+        ),
+        "orthology_present_filename": (
+            "orthology_one2one_bijective_all_confidence_present.csv"
+        ),
+        "custom_lr_filename": ("custom_lr_one2one_bijective_all_confidence_mapped.csv"),
+    },
+}
 
 
 ORTHOLOGY_COLUMN_ALIASES = {
@@ -78,6 +105,7 @@ class PrepareConfig:
     custom_lr_db: Path
     out_dir: Path
     formal_mode: bool = True
+    orthology_policy: str = "strict_confidence1"
     orthology_manifest: Path | None = None
     expected_h5ad_sha256: str | None = None
     expected_custom_lr_sha256: str | None = None
@@ -258,9 +286,16 @@ def _resolve_column(
     return None
 
 
-def load_strict_one_to_one_orthology(
+def load_one_to_one_orthology(
     path: Path,
+    mapping_policy: str,
 ) -> tuple[pd.DataFrame, dict[str, object]]:
+    if mapping_policy not in ORTHOLOGY_POLICIES:
+        raise ValueError(
+            "Unknown orthology policy "
+            f"{mapping_policy!r}; expected one of {sorted(ORTHOLOGY_POLICIES)}."
+        )
+    policy = ORTHOLOGY_POLICIES[mapping_policy]
     raw = pd.read_csv(path)
     z_col = _resolve_column(raw, "zebrafish_symbol", True)
     m_col = _resolve_column(raw, "mouse_symbol", True)
@@ -293,40 +328,67 @@ def load_strict_one_to_one_orthology(
     one_to_one = nonempty[
         nonempty["orthology_type"].str.casefold().eq("ortholog_one2one")
     ].copy()
-    confident = one_to_one[one_to_one["orthology_confidence"].eq(1.0)].copy()
-    confident["_z_key"] = confident["zebrafish_symbol"].str.casefold()
-    confident["_m_key"] = confident["mouse_symbol"].str.casefold()
-    confident = confident.drop_duplicates(["_z_key", "_m_key"])
+    if mapping_policy == "strict_confidence1":
+        policy_candidates = one_to_one[
+            one_to_one["orthology_confidence"].eq(1.0)
+        ].copy()
+    else:
+        policy_candidates = one_to_one.copy()
+    policy_candidates["_z_key"] = policy_candidates["zebrafish_symbol"].str.casefold()
+    policy_candidates["_m_key"] = policy_candidates["mouse_symbol"].str.casefold()
+    policy_candidates = policy_candidates.drop_duplicates(["_z_key", "_m_key"])
 
-    z_degree = confident.groupby("_z_key")["_m_key"].nunique()
-    m_degree = confident.groupby("_m_key")["_z_key"].nunique()
-    strict = confident[
-        confident["_z_key"].map(z_degree).eq(1)
-        & confident["_m_key"].map(m_degree).eq(1)
+    z_degree = policy_candidates.groupby("_z_key")["_m_key"].nunique()
+    m_degree = policy_candidates.groupby("_m_key")["_z_key"].nunique()
+    selected = policy_candidates[
+        policy_candidates["_z_key"].map(z_degree).eq(1)
+        & policy_candidates["_m_key"].map(m_degree).eq(1)
     ].copy()
-    strict = strict.sort_values(["_z_key", "_m_key"]).drop_duplicates("_z_key")
-    strict = strict.drop(columns=["_z_key", "_m_key"]).reset_index(drop=True)
+    selected = selected.sort_values(["_z_key", "_m_key"]).drop_duplicates("_z_key")
+    selected = selected.drop(columns=["_z_key", "_m_key"]).reset_index(drop=True)
+
+    selected_confidence_counts: dict[str, int] = {}
+    for confidence, count in (
+        selected["orthology_confidence"].value_counts(dropna=False).items()
+    ):
+        label = "NA" if pd.isna(confidence) else format(float(confidence), ".15g")
+        selected_confidence_counts[label] = int(count)
 
     audit = {
         "input_rows": int(len(raw)),
         "rows_with_nonempty_symbols": int(len(nonempty)),
         "ensembl_ortholog_one2one_rows": int(len(one_to_one)),
-        "high_confidence_one2one_rows": int(len(confident)),
-        "strict_bijective_symbol_pairs": int(len(strict)),
+        "policy_candidate_symbol_pairs": int(len(policy_candidates)),
+        "selected_bijective_symbol_pairs": int(len(selected)),
+        "selected_confidence_counts": selected_confidence_counts,
+        "mapping_policy": mapping_policy,
+        "analysis_tier": policy["analysis_tier"],
+        "primary_claim_allowed": policy["primary_claim_allowed"],
+        "mapping_label": policy["mapping_label"],
         "filter": {
             "orthology_type": "ortholog_one2one",
-            "orthology_confidence": 1,
+            "orthology_confidence_policy": policy["confidence_policy"],
             "require_nonempty_symbols": True,
             "require_symbol_level_bijection_after_casefold": True,
         },
     }
-    if strict.empty:
-        raise ValueError("No strict high-confidence one-to-one orthologues remain.")
-    return strict, audit
+    if selected.empty:
+        raise ValueError(
+            f"No orthologues remain under mapping policy {mapping_policy!r}."
+        )
+    return selected, audit
+
+
+def load_strict_one_to_one_orthology(
+    path: Path,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Compatibility wrapper for the frozen primary mapping policy."""
+
+    return load_one_to_one_orthology(path, "strict_confidence1")
 
 
 def restrict_orthology_to_adata_genes(
-    strict: pd.DataFrame,
+    selected: pd.DataFrame,
     var_names: Sequence[str],
 ) -> tuple[pd.DataFrame, np.ndarray, dict[str, object]]:
     lookup: dict[str, list[int]] = {}
@@ -339,21 +401,21 @@ def restrict_orthology_to_adata_genes(
 
     rows = []
     indices = []
-    for row in strict.itertuples(index=False):
+    for row in selected.itertuples(index=False):
         key = str(row.zebrafish_symbol).casefold()
         if key not in unique_lookup:
             continue
         rows.append(row._asdict())
         indices.append(unique_lookup[key])
-    present = pd.DataFrame(rows, columns=strict.columns)
+    present = pd.DataFrame(rows, columns=selected.columns)
     audit = {
         "h5ad_var_count": int(len(var_names)),
         "h5ad_casefold_duplicate_symbol_count": int(len(duplicated_keys)),
-        "strict_pairs_before_h5ad_intersection": int(len(strict)),
-        "strict_pairs_present_in_h5ad": int(len(present)),
+        "selected_pairs_before_h5ad_intersection": int(len(selected)),
+        "selected_pairs_present_in_h5ad": int(len(present)),
     }
     if present.empty:
-        raise ValueError("No strict orthologues match the H5AD var names.")
+        raise ValueError("No selected orthologues match the H5AD var names.")
     return present.reset_index(drop=True), np.asarray(indices, dtype=int), audit
 
 
@@ -517,12 +579,12 @@ def _split_complex(value: str) -> list[str]:
 
 def map_custom_lr_database(
     path: Path,
-    strict_present_orthology: pd.DataFrame,
+    selected_present_orthology: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, object]]:
     raw = _standardize_lr_database(path)
     orthology_map = {
         str(row.zebrafish_symbol).casefold(): str(row.mouse_symbol)
-        for row in strict_present_orthology.itertuples(index=False)
+        for row in selected_present_orthology.itertuples(index=False)
     }
     audit_rows: list[dict[str, object]] = []
     for row in raw.itertuples(index=False):
@@ -545,9 +607,9 @@ def map_custom_lr_database(
             if mapped is None
         ]
         if missing_ligands:
-            reasons.append("ligand_component_missing_strict_one2one")
+            reasons.append("ligand_component_missing_selected_orthology")
         if missing_receptors:
-            reasons.append("receptor_component_missing_strict_one2one")
+            reasons.append("receptor_component_missing_selected_orthology")
         if len(ligand_parts) > 1:
             reasons.append("unsupported_multisubunit_ligand_prior_column")
 
@@ -632,7 +694,7 @@ def map_custom_lr_database(
         "excluded_rows": int((~audit_frame["eligible_for_custom_nichenet_gate"]).sum()),
         "exclusion_reason_counts": reason_counts,
         "complex_rule": {
-            "receptor": "all components must have strict one-to-one mappings; expression AND gate is applied in R",
+            "receptor": "all components must have the selected one-to-one mappings; expression AND gate is applied in R",
             "ligand": "multi-subunit ligands are excluded because the fixed NicheNet-v2 ligand-target matrix has no composite column",
         },
     }
@@ -721,6 +783,11 @@ def _receiver_de(
 
 
 def _validate_config(config: PrepareConfig) -> None:
+    if config.orthology_policy not in ORTHOLOGY_POLICIES:
+        raise ValueError(
+            "orthology_policy must be one of "
+            f"{sorted(ORTHOLOGY_POLICIES)}; received {config.orthology_policy!r}."
+        )
     for path, label in (
         (config.h5ad, "h5ad"),
         (config.orthology_csv, "orthology_csv"),
@@ -794,11 +861,15 @@ def _validate_config(config: PrepareConfig) -> None:
 
 
 def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
+    policy = ORTHOLOGY_POLICIES[config.orthology_policy]
     if config.orthology_manifest is None:
         return {
             "provided": False,
             "verified": False,
             "formal_requirement": False,
+            "mapping_policy": config.orthology_policy,
+            "analysis_tier": policy["analysis_tier"],
+            "primary_claim_allowed": policy["primary_claim_allowed"],
         }
 
     try:
@@ -810,18 +881,36 @@ def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise ValueError("Orthology manifest must contain a JSON object.")
 
-    recorded_strict_md5 = str(payload.get("output_md5", {}).get("strict", ""))
-    observed_strict_md5 = _md5(config.orthology_csv)
-    if not recorded_strict_md5 or recorded_strict_md5.casefold() != observed_strict_md5:
+    recorded_mapping_md5 = str(payload.get("output_md5", {}).get("mapping", ""))
+    observed_mapping_md5 = _md5(config.orthology_csv)
+    if (
+        not recorded_mapping_md5
+        or recorded_mapping_md5.casefold() != observed_mapping_md5
+    ):
         raise ValueError(
             "Orthology CSV MD5 does not match orthology_manifest.json: "
-            f"recorded={recorded_strict_md5 or '<missing>'}, "
-            f"observed={observed_strict_md5}."
+            f"recorded={recorded_mapping_md5 or '<missing>'}, "
+            f"observed={observed_mapping_md5}."
         )
+
+    required_policy_values = {
+        "mapping_policy": config.orthology_policy,
+        "analysis_tier": policy["analysis_tier"],
+        "primary_claim_allowed": policy["primary_claim_allowed"],
+        "mapping_label": policy["mapping_label"],
+        "mapping_file": config.orthology_csv.name,
+    }
+    for key, expected in required_policy_values.items():
+        if payload.get(key) != expected:
+            raise ValueError(
+                f"Orthology manifest selected-policy mismatch: requires "
+                f"{key}={expected!r}; observed {payload.get(key)!r}."
+            )
 
     if config.formal_mode:
         required_values = {
-            "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+            "schema_version": 2,
+            "workflow": "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
             "status": "complete",
             "ensembl_release": FORMAL_ENSEMBL_RELEASE,
         }
@@ -834,7 +923,7 @@ def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
         filters = payload.get("filter", {})
         required_filters = {
             "orthology_type": "ortholog_one2one",
-            "orthology_confidence": 1,
+            "orthology_confidence_policy": policy["confidence_policy"],
             "nonempty_symbols": True,
             "symbol_level_bijection_after_casefold": True,
         }
@@ -843,6 +932,39 @@ def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
                 raise ValueError(
                     f"Formal orthology manifest requires filter {key}={expected!r}; "
                     f"observed {filters.get(key)!r}."
+                )
+        recorded_raw_md5 = str(payload.get("output_md5", {}).get("raw", ""))
+        if re.fullmatch(r"[0-9a-fA-F]{32}", recorded_raw_md5) is None:
+            raise ValueError(
+                "Formal orthology manifest requires a valid output_md5.raw value."
+            )
+        selected_count = payload.get("counts", {}).get(
+            "selected_bijective_symbol_pairs"
+        )
+        if not isinstance(selected_count, int) or selected_count <= 0:
+            raise ValueError(
+                "Formal orthology manifest requires a positive integer "
+                "counts.selected_bijective_symbol_pairs."
+            )
+        if config.orthology_policy == "one2one_bijective_all_confidence":
+            source_input = payload.get("source_input")
+            if payload.get("source_mode") != "frozen_raw_input" or not isinstance(
+                source_input, dict
+            ):
+                raise ValueError(
+                    "Formal all-confidence sensitivity mapping must be replayed from "
+                    "the frozen Ensembl-116 raw input."
+                )
+            source_md5 = str(source_input.get("md5", ""))
+            source_size = source_input.get("size_bytes")
+            if (
+                re.fullmatch(r"[0-9a-fA-F]{32}", source_md5) is None
+                or not isinstance(source_size, int | float)
+                or source_size <= 0
+            ):
+                raise ValueError(
+                    "Formal sensitivity orthology manifest lacks a complete frozen "
+                    "source_input size/MD5 record."
                 )
 
     return {
@@ -853,14 +975,20 @@ def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
         "workflow": payload.get("workflow"),
         "status": payload.get("status"),
         "source_mode": payload.get("source_mode"),
-        "strict_map_md5_verified": True,
-        "strict_map_md5": observed_strict_md5,
+        "mapping_policy": payload.get("mapping_policy"),
+        "analysis_tier": payload.get("analysis_tier"),
+        "primary_claim_allowed": payload.get("primary_claim_allowed"),
+        "mapping_label": payload.get("mapping_label"),
+        "mapping_file": payload.get("mapping_file"),
+        "mapping_md5_verified": True,
+        "mapping_md5": observed_mapping_md5,
         "manifest": _file_record(config.orthology_manifest),
     }
 
 
 def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
     _validate_config(config)
+    policy = ORTHOLOGY_POLICIES[config.orthology_policy]
     orthology_provenance = validate_orthology_provenance(config)
     config.out_dir.mkdir(parents=True, exist_ok=True)
     units_dir = config.out_dir / "units"
@@ -893,12 +1021,16 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
             "reason": "--skip-x-verification was explicitly requested",
         }
 
-    strict, orthology_audit = load_strict_one_to_one_orthology(config.orthology_csv)
+    selected, orthology_audit = load_one_to_one_orthology(
+        config.orthology_csv, config.orthology_policy
+    )
     present, gene_indices, h5ad_orthology_audit = restrict_orthology_to_adata_genes(
-        strict, adata.var_names.astype(str)
+        selected, adata.var_names.astype(str)
     )
     orthology_audit.update(h5ad_orthology_audit)
-    present.to_csv(config.out_dir / "orthology_strict_one2one_present.csv", index=False)
+    orthology_present_filename = str(policy["orthology_present_filename"])
+    custom_lr_filename = str(policy["custom_lr_filename"])
+    present.to_csv(config.out_dir / orthology_present_filename, index=False)
 
     counts = full_counts[:, gene_indices].tocsr()
     normalized = full_normalized[:, gene_indices].tocsr()
@@ -925,9 +1057,13 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
     mapped_lr, lr_audit_frame, lr_audit = map_custom_lr_database(
         config.custom_lr_db, present
     )
-    mapped_lr.to_csv(
-        config.out_dir / "custom_lr_strict_one2one_mapped.csv", index=False
+    lr_audit.update(
+        {
+            "orthology_policy": config.orthology_policy,
+            "analysis_tier": policy["analysis_tier"],
+        }
     )
+    mapped_lr.to_csv(config.out_dir / custom_lr_filename, index=False)
     lr_audit_frame.to_csv(config.out_dir / "custom_lr_mapping_audit.csv", index=False)
 
     observed_stages = list(pd.unique(adata.obs[config.time_key]))
@@ -1099,8 +1235,8 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
         },
         {
             "component": "orthology",
-            "metric": "strict_one2one_pairs_present_in_h5ad",
-            "value": int(orthology_audit["strict_pairs_present_in_h5ad"]),
+            "metric": "selected_one2one_pairs_present_in_h5ad",
+            "value": int(orthology_audit["selected_pairs_present_in_h5ad"]),
         },
         {
             "component": "custom_lr",
@@ -1155,7 +1291,15 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
         "workflow": "reviewer_zebrafish_nichenet_shared_input_preparation",
         "status": "complete",
         "formal_mode": bool(config.formal_mode),
+        "orthology_policy": config.orthology_policy,
+        "analysis_tier": policy["analysis_tier"],
+        "primary_claim_allowed": policy["primary_claim_allowed"],
+        "mapping_label": policy["mapping_label"],
         "created_at_utc": _utc_now(),
+        "selected_files": {
+            "orthology_present": orthology_present_filename,
+            "custom_lr_mapped": custom_lr_filename,
+        },
         "inputs": {
             "h5ad": _file_record(config.h5ad),
             "orthology_csv": _file_record(config.orthology_csv),
@@ -1259,6 +1403,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--h5ad", type=Path, required=True)
     parser.add_argument("--orthology-csv", type=Path, required=True)
     parser.add_argument("--orthology-manifest", type=Path, default=None)
+    parser.add_argument(
+        "--orthology-policy",
+        choices=tuple(ORTHOLOGY_POLICIES),
+        default="strict_confidence1",
+        help=(
+            "Select the explicit orthology filter. The all-confidence policy is "
+            "labeled sensitivity-only and does not change expression/DE thresholds."
+        ),
+    )
     parser.add_argument("--custom-lr-db", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument(
@@ -1304,6 +1457,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         custom_lr_db=args.custom_lr_db,
         out_dir=args.out_dir,
         formal_mode=not args.nonformal,
+        orthology_policy=args.orthology_policy,
         expected_h5ad_sha256=args.expected_h5ad_sha256,
         expected_custom_lr_sha256=args.expected_custom_lr_sha256,
         counts_layer=args.counts_layer,

@@ -3,8 +3,8 @@
 # Run one of two cross-species NicheNet-v2 conditions on frozen shared inputs.
 #
 #   default: official NicheNet-v2 mouse LR network
-#   custom:  current zebrafish LR database mapped to strict mouse one-to-one
-#            orthologues and used only as a candidate gate
+#   custom:  current zebrafish LR database mapped with the explicitly selected
+#            one-to-one orthology policy and used only as a candidate gate
 #
 # Both modes always use the same official mouse ligand-target matrix.  The
 # custom mode therefore does not claim to construct a zebrafish signaling/GRN
@@ -29,10 +29,7 @@ mode <- tolower(arg_value("--mode", "default"))
 shared_dir <- arg_value("--shared-dir")
 prior_dir <- arg_value("--prior-dir")
 out_dir <- arg_value("--out-dir")
-custom_lr_path <- arg_value(
-  "--custom-lr",
-  if (!is.null(shared_dir)) file.path(shared_dir, "custom_lr_strict_one2one_mapped.csv") else NULL
-)
+custom_lr_override <- arg_value("--custom-lr")
 nichenetr_source <- arg_value("--nichenetr-source")
 expected_version <- arg_value("--expected-nichenetr-version", "2.2.1.1")
 allow_version_mismatch <- as_flag(arg_value("--allow-version-mismatch", "false"))
@@ -323,7 +320,60 @@ prepare_manifest <- fromJSON(prepare_manifest_path, simplifyVector = TRUE)
 if (!identical(as.character(prepare_manifest$status), "complete")) {
   stop("Shared-input preparation manifest is not complete")
 }
+scalar_character <- function(value, label) {
+  if (length(value) != 1 || is.na(value) || !nzchar(as.character(value))) {
+    stop("Shared-input manifest lacks scalar ", label)
+  }
+  as.character(value)
+}
+orthology_policy <- scalar_character(
+  prepare_manifest$orthology_policy, "orthology_policy"
+)
+analysis_tier <- scalar_character(
+  prepare_manifest$analysis_tier, "analysis_tier"
+)
+mapping_label <- scalar_character(
+  prepare_manifest$mapping_label, "mapping_label"
+)
+allowed_policy_tiers <- c(
+  strict_confidence1 = "primary",
+  one2one_bijective_all_confidence = "sensitivity"
+)
+if (
+  !orthology_policy %in% names(allowed_policy_tiers) ||
+    analysis_tier != unname(allowed_policy_tiers[[orthology_policy]])
+) {
+  stop(
+    "Shared-input manifest has an invalid orthology_policy/analysis_tier pair: ",
+    orthology_policy, "/", analysis_tier
+  )
+}
+primary_claim_allowed <- isTRUE(prepare_manifest$primary_claim_allowed)
+expected_primary_claim <- orthology_policy == "strict_confidence1"
+if (primary_claim_allowed != expected_primary_claim) {
+  stop("Shared-input manifest primary_claim_allowed conflicts with orthology_policy")
+}
+selected_custom_lr_relative <- scalar_character(
+  prepare_manifest$selected_files$custom_lr_mapped,
+  "selected_files.custom_lr_mapped"
+)
+selected_orthology_relative <- scalar_character(
+  prepare_manifest$selected_files$orthology_present,
+  "selected_files.orthology_present"
+)
+selected_custom_lr_path <- file.path(shared_dir, selected_custom_lr_relative)
+custom_lr_path <- if (is.null(custom_lr_override)) {
+  selected_custom_lr_path
+} else {
+  custom_lr_override
+}
 if (!allow_nonformal_shared) {
+  if (
+    length(prepare_manifest$schema_version) != 1 ||
+      as.integer(prepare_manifest$schema_version) != 2
+  ) {
+    stop("Formal run requires shared-input schema_version=2")
+  }
   if (!isTRUE(prepare_manifest$formal_mode)) {
     stop("Formal run requires a shared-input manifest with formal_mode=true")
   }
@@ -341,10 +391,32 @@ if (!allow_nonformal_shared) {
   )
   if (
     !isTRUE(prepare_manifest$orthology_source$verified) ||
-      !isTRUE(prepare_manifest$orthology_source$strict_map_md5_verified) ||
+      !isTRUE(prepare_manifest$orthology_source$mapping_md5_verified) ||
       length(orthology_release) != 1 || is.na(orthology_release) || orthology_release != 116
   ) {
-    stop("Formal run requires a verified Ensembl release 116 strict orthology manifest")
+    stop("Formal run requires a verified Ensembl release 116 selected orthology manifest")
+  }
+  if (
+    !identical(
+      as.character(prepare_manifest$orthology_source$mapping_policy),
+      orthology_policy
+    ) ||
+      !identical(
+        as.character(prepare_manifest$orthology_source$analysis_tier),
+        analysis_tier
+      ) ||
+      !identical(
+        as.character(prepare_manifest$orthology_source$mapping_label),
+        mapping_label
+      ) ||
+      isTRUE(prepare_manifest$orthology_source$primary_claim_allowed) !=
+        primary_claim_allowed ||
+      !identical(
+        as.character(prepare_manifest$orthology$mapping_policy),
+        orthology_policy
+      )
+  ) {
+    stop("Formal run orthology policy disagrees across preparation manifest fields")
   }
   frozen_input_sha256 <- c(
     h5ad = "433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd",
@@ -378,7 +450,8 @@ if (!all(required_integrity_columns %in% colnames(shared_file_records))) {
 required_shared_files <- c(
   "units_manifest.csv",
   "expression_by_stage_celltype.csv.gz",
-  "custom_lr_strict_one2one_mapped.csv"
+  selected_custom_lr_relative,
+  selected_orthology_relative
 )
 if (!all(required_shared_files %in% shared_file_records$path)) {
   stop(
@@ -437,7 +510,7 @@ if (mode == "custom") {
   if (
     !allow_nonformal_shared &&
       normalizePath(custom_lr_path, mustWork = TRUE) !=
-        normalizePath(file.path(shared_dir, "custom_lr_strict_one2one_mapped.csv"), mustWork = TRUE)
+        normalizePath(selected_custom_lr_path, mustWork = TRUE)
   ) {
     stop("Formal custom mode must use the integrity-checked mapped LR table from shared-dir")
   }
@@ -476,23 +549,28 @@ empty_activity <- tibble(
 )
 empty_sender <- tibble(
   unit_id = character(), source_stage_id = character(), target_stage_id = character(),
+  source_stage_label = character(), target_stage_label = character(),
   receiver = character(), mode = character(), sender = character(), ligand = character(),
   sender_ligand_pct_detected = double(), sender_ligand_mean_normalized_linear = double(),
+  sender_ligand_mean_log1p = double(),
   aupr_corrected = double(), ligand_activity_rank = double(), activity_scope = character()
 )
 empty_lr <- tibble(
   unit_id = character(), source_stage_id = character(), target_stage_id = character(),
+  source_stage_label = character(), target_stage_label = character(),
   receiver = character(), mode = character(), sender = character(), ligand = character(),
   receptor = character(), pathways = character(), categories = character(),
   aupr_corrected = double(), ligand_activity_rank = double(), activity_scope = character()
 )
 empty_targets <- tibble(
   unit_id = character(), source_stage_id = character(), target_stage_id = character(),
+  source_stage_label = character(), target_stage_label = character(),
   receiver = character(), mode = character(), ligand = character(), target = character(),
   ligand_target_score = double()
 )
 empty_target_errors <- tibble(
   unit_id = character(), source_stage_id = character(), target_stage_id = character(),
+  source_stage_label = character(), target_stage_label = character(),
   receiver = character(), mode = character(), ligand = character(), error = character()
 )
 empty_coverage <- tibble(
@@ -680,6 +758,8 @@ for (unit_index in seq_len(nrow(units))) {
       unit_id = unit_id,
       source_stage_id = source_stage,
       target_stage_id = as.character(unit$target_stage_id[[1]]),
+      source_stage_label = as.character(unit$source_stage_label[[1]]),
+      target_stage_label = as.character(unit$target_stage_label[[1]]),
       receiver = receiver,
       mode = mode,
       activity_scope = "transition_receiver_ligand_not_sender_specific",
@@ -720,6 +800,8 @@ for (unit_index in seq_len(nrow(units))) {
       unit_id = unit_id,
       source_stage_id = source_stage,
       target_stage_id = as.character(unit$target_stage_id[[1]]),
+      source_stage_label = as.character(unit$source_stage_label[[1]]),
+      target_stage_label = as.character(unit$target_stage_label[[1]]),
       receiver = receiver,
       mode = mode,
       activity_scope = "transition_receiver_ligand_not_sender_or_receptor_specific",
@@ -753,6 +835,8 @@ for (unit_index in seq_len(nrow(units))) {
       unit_id = unit_id,
       source_stage_id = source_stage,
       target_stage_id = as.character(unit$target_stage_id[[1]]),
+      source_stage_label = as.character(unit$source_stage_label[[1]]),
+      target_stage_label = as.character(unit$target_stage_label[[1]]),
       receiver = receiver,
       mode = mode,
       ligand = result$ligand,
@@ -773,6 +857,8 @@ for (unit_index in seq_len(nrow(units))) {
         unit_id = unit_id,
         source_stage_id = source_stage,
         target_stage_id = as.character(unit$target_stage_id[[1]]),
+        source_stage_label = as.character(unit$source_stage_label[[1]]),
+        target_stage_label = as.character(unit$target_stage_label[[1]]),
         receiver = receiver,
         mode = mode,
         .before = 1
@@ -836,18 +922,33 @@ write_csv_table(unit_status_all, output_paths[["unit_status"]])
 output_md5 <- unname(tools::md5sum(output_paths))
 names(output_md5) <- names(output_paths)
 
+base_method_label <- if (mode == "default") {
+  "cross-species mapped NicheNet-v2 (official mouse LR)"
+} else {
+  "custom-LR-constrained cross-species mapped NicheNet-v2"
+}
+orthology_method_suffix <- if (analysis_tier == "primary") {
+  "[primary orthology: confidence=1]"
+} else {
+  "[orthology sensitivity: confidence unfiltered]"
+}
+
 manifest <- list(
-  schema_version = 1,
+  schema_version = 2,
   workflow = "reviewer_zebrafish_cross_species_nichenet_v2",
   status = run_status,
   created_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
   mode = mode,
-  method_label = if (mode == "default") {
-    "cross-species mapped NicheNet-v2 (official mouse LR)"
-  } else {
-    "custom-LR-constrained cross-species mapped NicheNet-v2"
-  },
+  orthology_policy = orthology_policy,
+  analysis_tier = analysis_tier,
+  primary_claim_allowed = primary_claim_allowed,
+  mapping_label = mapping_label,
+  method_label = paste(base_method_label, orthology_method_suffix),
   shared_dir = normalizePath(shared_dir),
+  selected_files = list(
+    orthology_present = selected_orthology_relative,
+    custom_lr_mapped = selected_custom_lr_relative
+  ),
   shared_prepare_manifest = list(
     path = normalizePath(prepare_manifest_path),
     md5 = unname(tools::md5sum(prepare_manifest_path)),
@@ -897,7 +998,14 @@ manifest <- list(
   ),
   cross_species_caveat = paste(
     "NicheNet-v2 has human/mouse priors, not a native zebrafish prior.",
-    "This run uses frozen high-confidence strict one-to-one zebrafish-to-mouse mappings."
+    if (analysis_tier == "primary") {
+      "This primary run uses frozen confidence=1 one-to-one zebrafish-to-mouse mappings."
+    } else {
+      paste(
+        "This sensitivity-only run keeps Ensembl ortholog_one2one and casefold-symbol",
+        "bijection but does not filter orthology confidence; it must not replace the primary result."
+      )
+    }
   )
 )
 write_json(manifest, file.path(out_dir, "run_manifest.json"), pretty = TRUE, auto_unbox = TRUE, null = "null")
