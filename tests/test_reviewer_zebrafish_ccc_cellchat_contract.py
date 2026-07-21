@@ -1,7 +1,9 @@
 from pathlib import Path
 
 
-def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use() -> None:
+def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use() -> (
+    None
+):
     script = (
         Path(__file__).parents[1]
         / "scripts"
@@ -22,10 +24,25 @@ def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use(
     assert "excluded_lr_rows.csv" in script
     assert "pair_lr_requested[database_eligibility$eligible" in script
     assert "excluded_rows_are_method_unavailable_not_biological_zero = TRUE" in script
-    assert "must be excluded from CellChat cross-method universes, never zero-filled" in script
+    assert (
+        "must be excluded from CellChat cross-method universes, never zero-filled"
+        in script
+    )
     assert "spatial_coordinates_used_by_cellchat = FALSE" in script
     assert "expression_retransformed_in_runner = FALSE" in script
     assert "abundance_controlled_score" in script
     assert 'args[["cellchat-source"]]' in script
     assert '"CellChatDB.zebrafish.rda"' in script
-    assert 'CellChat_source_commit = cellchat_commit' in script
+    assert "CellChat_source_commit = cellchat_commit" in script
+    assert (
+        'pinned_cellchat_commit <- "75253cd0c9e68410e6e721a6d3a0419a1d7e358f"' in script
+    )
+    assert (
+        '"sum of unthresholded official CellChat LR probabilities over the prepared database",\n    FALSE'
+        in script
+    )
+    assert "complete_directed_stage_type_square = TRUE" in script
+    assert 'universe_source = "input_manifest.stages[].cell_type_counts"' in script
+    assert "matrix_context(\n      score_matrix" in script
+    assert "positive_only\n    )" in script
+    assert "excluded_rows_are_method_unavailable_not_biological_zero = TRUE" in script

@@ -61,21 +61,24 @@ only within-stage ranks are compared across methods.
 
 - Rank concordance is a stage-wise Spearman correlation on the exact shared
   directed-key universe, summarized across stages.
-- Top-edge overlap uses deterministic top-k sets on that same shared universe
-  and reports overlap fraction and Jaccard. Effective k is reduced when the
-  shared universe is smaller than requested. If effective k equals the entire
-  shared universe, Jaccard is necessarily 1 and is marked
-  `top_k_informative=false`. The audit table retains that value, while the
-  primary summary and heatmap use informative stages only (`k < n_shared`) and
-  report NA if none exist.
+- Top-edge overlap uses only positive scores. Effective k is
+  `min(requested, n_shared, n_positive_left, n_positive_right)`, and all edges
+  tied at the kth score boundary are retained. Thus row order or alphabetical
+  labels cannot select arbitrary edges from a zero tail. All-zero support is
+  NA, and any tie-expanded selection covering the whole shared universe is
+  audit-only (`top_k_informative=false`).
 - Reciprocal asymmetry is
   `rank_percentile(A→B) - rank_percentile(B→A)`, followed by cross-method
   stage-wise Spearman comparison.
 - Stage stability compares the same directed cell-type keys only between
   adjacent global observed stages. Its displayed top-k panel applies the same
   informative-only rule.
-- Coverage is reported before pairwise joins; absent keys are not silently
-  converted to zero communication.
+- Coverage is reported before pairwise joins on canonical evaluated keys.
+  COMMOT and CellChat positive-only aggregation gaps are zero-completed only
+  against the hash-verified stage-specific `cell_type_counts` square. NicheNet
+  is completed only across verified source-stage sender types inside
+  `unit_status==complete` receiver units. Skipped/ineligible units, absent
+  transitions, and method-unavailable LR rows remain unavailable, not zero.
 
 The CellChat manifest's executable-database audit is mandatory. Requested LR
 rows that the pinned CellChat database cannot represent are copied to
@@ -101,10 +104,17 @@ standalone interpretation README, and PNG/PDF panels:
 - `directionality_concordance.*`
 - `stage_stability.*`
 - `cytobridge_control_panel.*`
+- `structural_zero_audit.csv`
 
 The audit tables also include `method_unavailable_lr_rows.csv`; the current
 formal zebrafish run is expected to preserve the two CellChat-unexecutable
 complex-token rows without treating them as zero communication.
+
+The manifest exposes `score_view_zero_completion` for all eight score views,
+`six_condition_execution_complete`, `formal_readiness_checks`, and
+`reviewer_reporting_ready`. Reporting readiness is an execution/provenance
+contract; it does not override condition-level `primary_claim_allowed=false`
+for all-confidence orthology sensitivity analyses.
 
 The control panel reads the trained, `Init_interaction`, and randomized
 interaction directories. It shows the strict conditional-permutation residual

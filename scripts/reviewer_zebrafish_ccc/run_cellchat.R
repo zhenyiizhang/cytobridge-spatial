@@ -34,6 +34,9 @@ as_bool <- function(value, default = FALSE) {
   stop(paste("Expected a boolean but received", value))
 }
 
+pinned_cellchat_commit <- "75253cd0c9e68410e6e721a6d3a0419a1d7e358f"
+pinned_cellchat_version <- "2.2.0.9001"
+
 sha256_file <- function(path) {
   executable <- Sys.which("sha256sum")
   args <- c(shQuote(normalizePath(path, mustWork = TRUE)))
@@ -318,6 +321,18 @@ if (!is.null(cellchat_source)) {
     NA_character_
   }
   cellchat_load_mode <- "pinned official core R source"
+  if (
+    is.na(cellchat_commit) ||
+      tolower(cellchat_commit) != pinned_cellchat_commit ||
+      cellchat_version != pinned_cellchat_version
+  ) {
+    stop(
+      "Pinned CellChat source mismatch: expected commit ",
+      pinned_cellchat_commit,
+      " and version ",
+      pinned_cellchat_version
+    )
+  }
 } else {
   suppressPackageStartupMessages(library(CellChat))
   data("CellChatDB.zebrafish", package = "CellChat", envir = environment())
@@ -582,7 +597,7 @@ for (stage_position in seq_along(input_manifest$stages)) {
     total_score, NULL, stage, stage_time, "", "", "__all__", "__all__", "total",
     cell_counts,
     "sum of unthresholded official CellChat LR probabilities over the prepared database",
-    positive_only
+    FALSE
   )
   if (nrow(total_context) > 0L) {
     total_context$score_significant_p_lt_0p05 <- total_significant[
@@ -690,10 +705,16 @@ manifest <- list(
     spatial_coordinates = "prepared spatial_aligned coordinates are read, order-checked, and retained with RDS",
     spatial_coordinates_used_by_cellchat = FALSE,
     long_table_zero_policy = if (positive_only) {
-      "structural zeros omitted; outer-join to input universe and fill zero for comparisons"
+      "LR and pathway structural zeros omitted; primary type-pair table exports the complete directed stage-specific cell-type square"
     } else {
       "all LR/type contexts exported"
     },
+    type_pair_grid_export = list(
+      complete_directed_stage_type_square = TRUE,
+      zero_score_semantics = "evaluated CellChat total probability is exactly zero for this sender/receiver type pair",
+      universe_source = "input_manifest.stages[].cell_type_counts",
+      loader_zero_completion_required = FALSE
+    ),
     method_unavailable_policy = "database rows listed in excluded_lr_rows.csv must be excluded from CellChat cross-method universes, never zero-filled"
   ),
   score_semantics = list(

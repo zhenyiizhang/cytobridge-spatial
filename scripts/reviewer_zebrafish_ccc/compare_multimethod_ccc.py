@@ -19,7 +19,8 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from hashlib import sha256
+from hashlib import md5, sha256
+from itertools import product
 import json
 import math
 from pathlib import Path
@@ -35,11 +36,13 @@ import pandas as pd
 
 
 KEYS = ["stage", "sender_type", "receiver_type"]
-STRICT_PERMUTATION_STRATA = (
-    "stage+sender_type+receiver_type+distance_bin+state_bin"
-)
+EXPECTED_FULL_GRID_STAGES = (0.0, 1.0, 2.0, 3.0, 4.0)
+STRICT_PERMUTATION_STRATA = "stage+sender_type+receiver_type+distance_bin+state_bin"
 CELLAGENTCHAT_OFFICIAL = "official_mouse_default_celltalkdb"
 CELLAGENTCHAT_CUSTOM = "cytobridge_zebrafish_lr_projected_singletons"
+PINNED_CELLAGENTCHAT_COMMIT = "310cfc03df91c5ec917f110801e0c2ae4ab57800"
+PINNED_CELLCHAT_COMMIT = "75253cd0c9e68410e6e721a6d3a0419a1d7e358f"
+PINNED_NICHENETR_COMMIT = "66f90d5eeafef280b2b2f339b3fd70ffec1781dd"
 
 
 @dataclass(frozen=True)
@@ -86,6 +89,14 @@ def _utc_now() -> str:
 
 def _sha256(path: Path) -> str:
     digest = sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _md5(path: Path) -> str:
+    digest = md5()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
@@ -208,10 +219,16 @@ def _format_hpf(value: float) -> str:
     return f"{value:g}hpf"
 
 
-def _external_stage_contract(
-    manifest: Mapping[str, Any], frame: pd.DataFrame, *, score_path: Path
-) -> tuple[pd.Series, pd.Series]:
-    """Map runner stage IDs to manuscript hpf labels through shared inputs."""
+def _verified_external_type_pair_universe(
+    manifest: Mapping[str, Any],
+) -> tuple[Path, pd.DataFrame]:
+    """Build the evaluated directed grid from the hash-bound shared input.
+
+    COMMOT and CellChat evaluate every sender/receiver cell-type combination at
+    every prepared stage.  Their historical long tables emitted positive
+    aggregates only, so the only defensible zeros are missing rows in this
+    independently verified stage-specific ``cell_type_counts`` universe.
+    """
 
     input_manifest_path = _verify_recorded_artifact(
         manifest.get("input_manifest", {}), expected_name="input_manifest.json"
@@ -220,28 +237,113 @@ def _external_stage_contract(
     stages = shared.get("stages")
     if not isinstance(stages, list) or not stages:
         raise ValueError(f"{input_manifest_path} has no stage records")
-    mapping: dict[float, float] = {}
+    rows: list[dict[str, Any]] = []
+    observed_stages: list[float] = []
     for record in stages:
         if not isinstance(record, Mapping):
-            raise ValueError(f"{input_manifest_path} contains a non-object stage record")
-        stage_id = float(record.get("stage"))
-        stage_time = float(record.get("stage_time"))
+            raise ValueError(
+                f"{input_manifest_path} contains a non-object stage record"
+            )
+        try:
+            stage_id = float(record.get("stage"))
+            stage_time = float(record.get("stage_time"))
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                f"{input_manifest_path} has an invalid stage mapping"
+            ) from error
         if not np.isfinite(stage_id) or not np.isfinite(stage_time):
             raise ValueError(f"{input_manifest_path} has a non-finite stage mapping")
         stage_id = float(np.round(stage_id, 12))
-        previous = mapping.get(stage_id)
-        if previous is not None and not np.isclose(
-            previous, stage_time, rtol=0.0, atol=1e-12
+        if stage_id in observed_stages:
+            raise ValueError(f"{input_manifest_path} repeats stage {stage_id:g}")
+        observed_stages.append(stage_id)
+        counts = record.get("cell_type_counts")
+        if not isinstance(counts, Mapping) or not counts:
+            raise ValueError(
+                f"{input_manifest_path} stage {stage_id:g} lacks cell_type_counts"
+            )
+        cleaned_counts: dict[str, int] = {}
+        for raw_label, raw_count in counts.items():
+            label = str(raw_label).strip()
+            if not label:
+                raise ValueError(
+                    f"{input_manifest_path} stage {stage_id:g} has an empty cell type"
+                )
+            if isinstance(raw_count, bool):
+                raise ValueError(
+                    f"{input_manifest_path} stage {stage_id:g} has an invalid count"
+                )
+            try:
+                count = int(raw_count)
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    f"{input_manifest_path} stage {stage_id:g} has an invalid count"
+                ) from error
+            if count <= 0 or float(raw_count) != float(count):
+                raise ValueError(
+                    f"{input_manifest_path} stage {stage_id:g} has a non-positive/non-integer count"
+                )
+            if label in cleaned_counts:
+                raise ValueError(
+                    f"{input_manifest_path} stage {stage_id:g} repeats cell type {label!r}"
+                )
+            cleaned_counts[label] = count
+        recorded_n_types = record.get("n_cell_types")
+        if recorded_n_types is not None and int(recorded_n_types) != len(
+            cleaned_counts
         ):
-            raise ValueError(f"{input_manifest_path} maps one stage ID to two times")
-        mapping[stage_id] = stage_time
+            raise ValueError(
+                f"{input_manifest_path} stage {stage_id:g} n_cell_types disagrees with cell_type_counts"
+            )
+        recorded_n_cells = record.get("n_cells")
+        if recorded_n_cells is not None and int(recorded_n_cells) != sum(
+            cleaned_counts.values()
+        ):
+            raise ValueError(
+                f"{input_manifest_path} stage {stage_id:g} n_cells disagrees with cell_type_counts"
+            )
+        for sender, receiver in product(sorted(cleaned_counts), repeat=2):
+            rows.append(
+                {
+                    "stage": stage_id,
+                    "stage_time": stage_time,
+                    "stage_label": _format_hpf(stage_time),
+                    "sender_type": sender,
+                    "receiver_type": receiver,
+                    "n_sender_cells": cleaned_counts[sender],
+                    "n_receiver_cells": cleaned_counts[receiver],
+                    "n_cell_types": len(cleaned_counts),
+                }
+            )
+    if tuple(sorted(observed_stages)) != EXPECTED_FULL_GRID_STAGES:
+        raise ValueError(
+            f"{input_manifest_path} stages={sorted(observed_stages)!r}; expected the five "
+            f"observed stages {list(EXPECTED_FULL_GRID_STAGES)!r}"
+        )
+    universe = pd.DataFrame(rows)
+    if universe.duplicated(KEYS).any():
+        raise ValueError(
+            f"{input_manifest_path} creates duplicate directed type-pair keys"
+        )
+    return input_manifest_path, universe.sort_values(KEYS).reset_index(drop=True)
 
+
+def _external_stage_contract(
+    universe: pd.DataFrame, frame: pd.DataFrame, *, score_path: Path
+) -> tuple[pd.Series, pd.Series]:
+    """Map emitted runner stage IDs to verified manuscript hpf labels."""
+
+    stage_mapping = universe[["stage", "stage_time", "stage_label"]].drop_duplicates()
+    mapping = stage_mapping.set_index("stage")["stage_time"]
+    labels = stage_mapping.set_index("stage")["stage_label"]
     stage = _stage_values(frame["stage"], path=score_path)
     observed_time = _numeric(frame["stage_time"], name="stage_time", path=score_path)
     expected_time = stage.map(mapping)
     if expected_time.isna().any():
         unknown = sorted(set(stage.loc[expected_time.isna()]))
-        raise ValueError(f"{score_path} contains stages absent from shared inputs: {unknown}")
+        raise ValueError(
+            f"{score_path} contains stages absent from shared inputs: {unknown}"
+        )
     if not np.allclose(
         observed_time.to_numpy(float),
         expected_time.to_numpy(float),
@@ -251,8 +353,129 @@ def _external_stage_contract(
         raise ValueError(
             f"{score_path} stage_time values disagree with the verified shared input manifest"
         )
-    stage_label = expected_time.map(lambda value: _format_hpf(float(value)))
-    return stage, stage_label
+    return stage, stage.map(labels)
+
+
+def _complete_external_positive_only_grid(
+    emitted: pd.DataFrame,
+    *,
+    manifest: Mapping[str, Any],
+    universe: pd.DataFrame,
+    input_manifest_path: Path,
+    score_path: Path,
+) -> pd.DataFrame:
+    """Complete only verified positive-only aggregation gaps with native zero."""
+
+    if (emitted["native_score"] < 0).any():
+        raise ValueError(f"{score_path} contains a negative communication score")
+    unknown = emitted[KEYS].merge(universe[KEYS], on=KEYS, how="left", indicator=True)
+    unknown = unknown.loc[unknown["_merge"] == "left_only", KEYS]
+    if not unknown.empty:
+        raise ValueError(
+            f"{score_path} contains keys outside the verified stage/type universe: "
+            f"{unknown.head(5).to_dict('records')}"
+        )
+    template = universe[["stage", "stage_label", "sender_type", "receiver_type"]]
+    completed = template.merge(
+        emitted.drop(columns=["stage_label", "heterotypic"]),
+        on=KEYS,
+        how="left",
+        validate="one_to_one",
+    )
+    missing = completed["native_score"].isna()
+    export_contract = manifest.get("design", {}).get("type_pair_grid_export", {})
+    declared_complete = bool(
+        isinstance(export_contract, Mapping)
+        and export_contract.get("complete_directed_stage_type_square") is True
+    )
+    positive_only_policy = str(
+        manifest.get("design", {}).get("long_table_zero_policy", "")
+    ).casefold()
+    explicitly_positive_only = (
+        "structural zeros omitted" in positive_only_policy
+        and "fill zero for comparisons" in positive_only_policy
+    )
+    if missing.any() and declared_complete:
+        raise ValueError(
+            f"{score_path} is missing {int(missing.sum())} rows despite declaring a complete grid"
+        )
+    if missing.any() and not explicitly_positive_only:
+        raise ValueError(
+            f"{score_path} is missing {int(missing.sum())} evaluated type-pair rows, but "
+            "the runner manifest does not explicitly declare positive-only aggregation"
+        )
+    completed["native_score"] = completed["native_score"].fillna(0.0)
+    completed["structural_zero_filled"] = missing.to_numpy(bool)
+    completed["heterotypic"] = completed["sender_type"] != completed["receiver_type"]
+    metadata_columns = [
+        "view_id",
+        "display_label",
+        "method",
+        "database_condition",
+        "score_view",
+    ]
+    for column in metadata_columns:
+        values = emitted[column].drop_duplicates()
+        if len(values) != 1:
+            raise ValueError(f"{score_path} has no unique {column} metadata value")
+        completed[column] = values.iloc[0]
+    completed = (
+        completed[
+            metadata_columns
+            + [
+                "stage",
+                "stage_label",
+                "sender_type",
+                "receiver_type",
+                "native_score",
+                "structural_zero_filled",
+                "heterotypic",
+            ]
+        ]
+        .sort_values(KEYS, kind="mergesort")
+        .reset_index(drop=True)
+    )
+
+    stage_audit: list[dict[str, Any]] = []
+    for stage, grid in completed.groupby("stage", sort=True):
+        source = emitted.loc[emitted["stage"] == stage]
+        n_types = int(universe.loc[universe["stage"] == stage, "n_cell_types"].iloc[0])
+        stage_audit.append(
+            {
+                "stage": float(stage),
+                "stage_label": str(grid["stage_label"].iloc[0]),
+                "receiver_unit": "",
+                "n_cell_types": n_types,
+                "expected_directed_rows": int(n_types**2),
+                "native_emitted_rows": int(len(source)),
+                "native_emitted_positive_rows": int((source["native_score"] > 0).sum()),
+                "native_emitted_zero_rows": int((source["native_score"] == 0).sum()),
+                "structural_zero_filled_rows": int(
+                    grid["structural_zero_filled"].sum()
+                ),
+                "verified_complete_evaluated_universe": True,
+            }
+        )
+    completed.attrs["zero_completion"] = {
+        "universe_scope": "verified_stage_specific_cell_type_square",
+        "universe_source": _file_record(input_manifest_path),
+        "runner_export_contract": (
+            "complete_directed_grid"
+            if declared_complete
+            else "positive_only_aggregation"
+        ),
+        "full_stage_type_square_required": True,
+        "expected_stage_count": len(EXPECTED_FULL_GRID_STAGES),
+        "observed_stage_count": int(completed["stage"].nunique()),
+        "expected_rows": int(len(completed)),
+        "native_emitted_rows": int(len(emitted)),
+        "structural_zero_filled_rows": int(missing.sum()),
+        "verified_complete_evaluated_universe": True,
+        "unevaluated_units_zero_filled": False,
+        "method_unavailable_lr_rows_zero_filled": False,
+        "audit_rows": stage_audit,
+    }
+    return completed
 
 
 def _canonical(
@@ -277,7 +500,9 @@ def _canonical(
             "score_view": score_view,
             "stage": _stage_values(stage, path=path),
             "stage_label": _clean_labels(stage_label, name="stage_label", path=path),
-            "sender_type": _clean_labels(frame["sender_type"], name="sender_type", path=path),
+            "sender_type": _clean_labels(
+                frame["sender_type"], name="sender_type", path=path
+            ),
             "receiver_type": _clean_labels(
                 frame["receiver_type"], name="receiver_type", path=path
             ),
@@ -287,12 +512,64 @@ def _canonical(
     duplicate = result.duplicated(KEYS, keep=False)
     if duplicate.any():
         examples = result.loc[duplicate, KEYS].head(5).to_dict("records")
-        raise ValueError(f"{path} has duplicate directed keys after adaptation: {examples}")
+        raise ValueError(
+            f"{path} has duplicate directed keys after adaptation: {examples}"
+        )
     labels_per_stage = result.groupby("stage", sort=False)["stage_label"].nunique()
     if (labels_per_stage != 1).any():
         raise ValueError(f"{path} maps a numeric stage to multiple labels")
     result["heterotypic"] = result["sender_type"] != result["receiver_type"]
     return result.sort_values(KEYS, kind="mergesort").reset_index(drop=True)
+
+
+def _attach_native_no_completion_audit(
+    frame: pd.DataFrame, *, universe_scope: str
+) -> pd.DataFrame:
+    """Record that a score view was retained exactly as natively emitted."""
+
+    result = frame.copy()
+    result["structural_zero_filled"] = False
+    audit_rows: list[dict[str, Any]] = []
+    for stage, stage_frame in result.groupby("stage", sort=True):
+        audit_rows.append(
+            {
+                "stage": float(stage),
+                "stage_label": str(stage_frame["stage_label"].iloc[0]),
+                "receiver_unit": "",
+                "n_cell_types": int(
+                    len(
+                        set(stage_frame["sender_type"])
+                        | set(stage_frame["receiver_type"])
+                    )
+                ),
+                "expected_directed_rows": int(len(stage_frame)),
+                "native_emitted_rows": int(len(stage_frame)),
+                "native_emitted_positive_rows": int(
+                    (stage_frame["native_score"] > 0).sum()
+                ),
+                "native_emitted_zero_rows": int(
+                    (stage_frame["native_score"] == 0).sum()
+                ),
+                "structural_zero_filled_rows": 0,
+                "verified_complete_evaluated_universe": False,
+            }
+        )
+    result.attrs["zero_completion"] = {
+        "universe_scope": universe_scope,
+        "universe_source": None,
+        "runner_export_contract": "native_emitted_rows_no_loader_completion",
+        "full_stage_type_square_required": False,
+        "expected_stage_count": None,
+        "observed_stage_count": int(result["stage"].nunique()),
+        "expected_rows": int(len(result)),
+        "native_emitted_rows": int(len(result)),
+        "structural_zero_filled_rows": 0,
+        "verified_complete_evaluated_universe": False,
+        "unevaluated_units_zero_filled": False,
+        "method_unavailable_lr_rows_zero_filled": False,
+        "audit_rows": audit_rows,
+    }
+    return result
 
 
 def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -302,7 +579,9 @@ def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]
         expected={"method": "cytobridge_one_layer_spatial_attention_and_exact_message"},
     )
     if manifest.get("interpretation", {}).get("probability_claim") is not False:
-        raise ValueError("CytoBridge manifest must explicitly set probability_claim=false")
+        raise ValueError(
+            "CytoBridge manifest must explicitly set probability_claim=false"
+        )
     path = directory / "type_pair_summary.csv"
     frame = pd.read_csv(path)
     required = {
@@ -338,6 +617,12 @@ def _load_cytobridge_views(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]
         stage=frame["stage"],
         stage_label=frame["stage_label"],
     )
+    attention = _attach_native_no_completion_audit(
+        attention, universe_scope="native_cytobridge_type_pair_summary"
+    )
+    message = _attach_native_no_completion_audit(
+        message, universe_scope="native_cytobridge_type_pair_summary"
+    )
     return attention, message
 
 
@@ -364,12 +649,11 @@ def _load_commot(directory: Path) -> pd.DataFrame:
     _require_columns(frame, required, path)
     if set(frame["method"].astype(str)) != {"COMMOT"}:
         raise ValueError(f"{path} contains an unexpected method label")
-    if set(frame["database_variant"].astype(str)) != {
-        "current_zebrafish_lr_database"
-    }:
+    if set(frame["database_variant"].astype(str)) != {"current_zebrafish_lr_database"}:
         raise ValueError(f"{path} contains an unexpected database variant")
-    stage, stage_label = _external_stage_contract(manifest, frame, score_path=path)
-    return _canonical(
+    input_manifest_path, universe = _verified_external_type_pair_universe(manifest)
+    stage, stage_label = _external_stage_contract(universe, frame, score_path=path)
+    emitted = _canonical(
         frame,
         path=path,
         method="COMMOT",
@@ -380,6 +664,13 @@ def _load_commot(directory: Path) -> pd.DataFrame:
         score=frame["abundance_controlled_score"],
         stage=stage,
         stage_label=stage_label,
+    )
+    return _complete_external_positive_only_grid(
+        emitted,
+        manifest=manifest,
+        universe=universe,
+        input_manifest_path=input_manifest_path,
+        score_path=path,
     )
 
 
@@ -392,6 +683,29 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
             "database_variant": "current_zebrafish_lr_database",
         },
     )
+    design = manifest.get("design")
+    software = manifest.get("software")
+    if not isinstance(design, Mapping) or not isinstance(software, Mapping):
+        raise ValueError("CellChat manifest lacks design/software provenance")
+    if (
+        design.get("population_size") is not False
+        or int(design.get("nboot", -1)) != 100
+        or str(design.get("mean_method", "")) != "triMean"
+        or design.get("raw_use") is not True
+    ):
+        raise ValueError(
+            "CellChat score label requires population_size=false, nboot=100, "
+            "mean_method=triMean, and raw_use=true"
+        )
+    cellchat_commit = str(software.get("CellChat_source_commit", "")).casefold()
+    if (
+        str(software.get("CellChat_load_mode", "")) != "pinned official core R source"
+        or str(software.get("CellChat", "")) != "2.2.0.9001"
+        or cellchat_commit != PINNED_CELLCHAT_COMMIT
+    ):
+        raise ValueError(
+            "CellChat manifest does not identify the pinned official source"
+        )
     validation = manifest.get("database_validation")
     if not isinstance(validation, Mapping):
         raise ValueError("CellChat manifest lacks database_validation")
@@ -399,14 +713,21 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
     eligible = int(validation.get("rows_eligible", -1))
     excluded = int(validation.get("rows_excluded", -1))
     if min(requested, eligible, excluded) < 0 or requested != eligible + excluded:
-        raise ValueError("CellChat manifest has inconsistent requested/eligible/excluded counts")
-    if validation.get("excluded_rows_are_method_unavailable_not_biological_zero") is not True:
+        raise ValueError(
+            "CellChat manifest has inconsistent requested/eligible/excluded counts"
+        )
+    if (
+        validation.get("excluded_rows_are_method_unavailable_not_biological_zero")
+        is not True
+    ):
         raise ValueError(
             "CellChat manifest must mark excluded rows as method-unavailable, not zero"
         )
     policy = str(manifest.get("design", {}).get("method_unavailable_policy", ""))
     if "never zero-filled" not in policy:
-        raise ValueError("CellChat manifest lost the method-unavailable no-zero-fill policy")
+        raise ValueError(
+            "CellChat manifest lost the method-unavailable no-zero-fill policy"
+        )
     exclusion_path = _verify_manifest_artifact(
         directory,
         validation.get("exclusion_table", {}),
@@ -447,12 +768,11 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
     _require_columns(frame, required, path)
     if set(frame["method"].astype(str)) != {"CellChat"}:
         raise ValueError(f"{path} contains an unexpected method label")
-    if set(frame["database_variant"].astype(str)) != {
-        "current_zebrafish_lr_database"
-    }:
+    if set(frame["database_variant"].astype(str)) != {"current_zebrafish_lr_database"}:
         raise ValueError(f"{path} contains an unexpected database variant")
-    stage, stage_label = _external_stage_contract(manifest, frame, score_path=path)
-    result = _canonical(
+    input_manifest_path, universe = _verified_external_type_pair_universe(manifest)
+    stage, stage_label = _external_stage_contract(universe, frame, score_path=path)
+    emitted = _canonical(
         frame,
         path=path,
         method="CellChat",
@@ -463,6 +783,13 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
         score=frame["abundance_controlled_score"],
         stage=stage,
         stage_label=stage_label,
+    )
+    result = _complete_external_positive_only_grid(
+        emitted,
+        manifest=manifest,
+        universe=universe,
+        input_manifest_path=input_manifest_path,
+        score_path=path,
     )
 
     unavailable = exclusion.rename(
@@ -497,6 +824,89 @@ def _load_cellchat(directory: Path) -> pd.DataFrame:
         "method_unavailable_rows_zero_filled": False,
     }
     return result
+
+
+def _verify_nichenet_output(
+    directory: Path,
+    manifest: Mapping[str, Any],
+    *,
+    key: str,
+    filename: str,
+) -> Path:
+    output_files = manifest.get("output_files")
+    output_md5 = manifest.get("output_md5")
+    if not isinstance(output_files, Mapping) or not isinstance(output_md5, Mapping):
+        raise ValueError("NicheNet manifest lacks output_files/output_md5")
+    recorded = Path(str(output_files.get(key, "")))
+    if recorded.name != filename:
+        raise ValueError(f"NicheNet manifest does not bind {key!r} to {filename!r}")
+    path = directory / filename
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    expected_md5 = str(output_md5.get(key, "")).casefold()
+    if len(expected_md5) != 32 or expected_md5 != _md5(path).casefold():
+        raise ValueError(f"NicheNet manifest MD5 does not match {path}")
+    return path
+
+
+def _verify_nichenet_shared_inputs(
+    manifest: Mapping[str, Any],
+) -> tuple[Path, Mapping[str, Any], Path]:
+    record = manifest.get("shared_prepare_manifest")
+    if not isinstance(record, Mapping):
+        raise ValueError("NicheNet manifest lacks shared_prepare_manifest")
+    prepare_path = Path(str(record.get("path", ""))).expanduser().resolve()
+    if prepare_path.name != "prepare_manifest.json" or not prepare_path.is_file():
+        raise FileNotFoundError(prepare_path)
+    recorded_md5 = str(record.get("md5", "")).casefold()
+    if len(recorded_md5) != 32 or recorded_md5 != _md5(prepare_path).casefold():
+        raise ValueError("NicheNet shared prepare manifest MD5 mismatch")
+    prepare = _read_json(prepare_path)
+    if (
+        prepare.get("workflow")
+        != "reviewer_zebrafish_nichenet_shared_input_preparation"
+        or prepare.get("status") != "complete"
+    ):
+        raise ValueError(
+            "NicheNet shared prepare manifest is not a completed preparation"
+        )
+    for field in ("orthology_policy", "analysis_tier", "primary_claim_allowed"):
+        if prepare.get(field) != manifest.get(field):
+            raise ValueError(f"NicheNet run and shared preparation disagree on {field}")
+    records = prepare.get("output_files")
+    if not isinstance(records, list):
+        raise ValueError("NicheNet shared prepare manifest lacks output_files")
+    matches = [
+        item
+        for item in records
+        if isinstance(item, Mapping)
+        and Path(str(item.get("path", ""))).name
+        == "expression_by_stage_celltype.csv.gz"
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "NicheNet shared prepare manifest must inventory expression_by_stage_celltype.csv.gz once"
+        )
+    item = matches[0]
+    relative = Path(str(item.get("path", "")))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("NicheNet shared input artifact path escapes shared directory")
+    expression_path = (prepare_path.parent / relative).resolve()
+    try:
+        expression_path.relative_to(prepare_path.parent.resolve())
+    except ValueError as error:
+        raise ValueError(
+            "NicheNet shared input artifact path escapes shared directory"
+        ) from error
+    if not expression_path.is_file():
+        raise FileNotFoundError(expression_path)
+    if int(item.get("size_bytes", -1)) != expression_path.stat().st_size:
+        raise ValueError("NicheNet shared expression size mismatch")
+    if str(item.get("sha256", "")).casefold() != _sha256(expression_path).casefold():
+        raise ValueError("NicheNet shared expression SHA256 mismatch")
+    if str(item.get("md5", "")).casefold() != _md5(expression_path).casefold():
+        raise ValueError("NicheNet shared expression MD5 mismatch")
+    return prepare_path, prepare, expression_path
 
 
 def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
@@ -534,7 +944,9 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
     if manifest.get("analysis_tier") != policy["analysis_tier"]:
         raise ValueError("NicheNet analysis_tier disagrees with orthology_policy")
     if manifest.get("primary_claim_allowed") is not policy["primary_claim_allowed"]:
-        raise ValueError("NicheNet primary_claim_allowed disagrees with orthology_policy")
+        raise ValueError(
+            "NicheNet primary_claim_allowed disagrees with orthology_policy"
+        )
     method_label = str(manifest.get("method_label", ""))
     if orthology_policy == "one2one_bijective_all_confidence" and (
         "orthology sensitivity: confidence unfiltered" not in method_label
@@ -542,9 +954,48 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         raise ValueError(
             "All-confidence NicheNet output must explicitly label its orthology sensitivity"
         )
-    path = directory / "sender_ligand_activity.csv"
+    prior = manifest.get("official_prior")
+    engine = manifest.get("software", {}).get("nichenetr")
+    if not isinstance(prior, Mapping) or not isinstance(engine, Mapping):
+        raise ValueError("NicheNet manifest lacks frozen prior/source provenance")
+    if prior.get("md5_verified") is not True or prior.get("expected_md5") != prior.get(
+        "observed_md5"
+    ):
+        raise ValueError("NicheNet official prior MD5 contract is not verified")
+    if (
+        engine.get("mode") != "pinned_core_source"
+        or str(engine.get("version", "")) != "2.2.1.1"
+        or engine.get("version_verified") is not True
+        or str(engine.get("git_commit", "")).casefold() != PINNED_NICHENETR_COMMIT
+        or str(engine.get("expected_git_commit", "")).casefold()
+        != PINNED_NICHENETR_COMMIT
+        or engine.get("commit_verified") is not True
+        or engine.get("core_md5_verified") is not True
+    ):
+        raise ValueError("NicheNet pinned source contract is not verified")
+    prior_source_signature = sha256(
+        json.dumps(
+            {"official_prior": prior, "nichenetr": engine},
+            sort_keys=True,
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()
+    prepare_path, _, expression_path = _verify_nichenet_shared_inputs(manifest)
+    path = _verify_nichenet_output(
+        directory,
+        manifest,
+        key="sender_ligand_activity",
+        filename="sender_ligand_activity.csv",
+    )
+    unit_status_path = _verify_nichenet_output(
+        directory,
+        manifest,
+        key="unit_status",
+        filename="unit_status.csv",
+    )
     frame = pd.read_csv(path)
     required = {
+        "unit_id",
         "source_stage_id",
         "source_stage_label",
         "receiver",
@@ -559,10 +1010,75 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         raise ValueError(f"{path} contains no completed sender-ligand activities")
     if set(frame["mode"].astype(str)) != {mode}:
         raise ValueError(f"{path} mode differs from requested {mode!r}")
-    if not frame["activity_scope"].astype(str).str.contains(
-        "not_sender_specific", regex=False
-    ).all():
+    if (
+        not frame["activity_scope"]
+        .astype(str)
+        .str.contains("not_sender_specific", regex=False)
+        .all()
+    ):
         raise ValueError(f"{path} lost the NicheNet activity-scope caveat")
+
+    unit_status = pd.read_csv(unit_status_path)
+    unit_columns = {
+        "unit_id",
+        "source_stage_id",
+        "source_stage_label",
+        "receiver",
+        "mode",
+        "status",
+    }
+    _require_columns(unit_status, unit_columns, unit_status_path)
+    if unit_status["unit_id"].astype(str).duplicated().any():
+        raise ValueError(f"{unit_status_path} contains duplicate unit_id values")
+    if set(unit_status["mode"].astype(str)) != {mode}:
+        raise ValueError(f"{unit_status_path} mode differs from requested {mode!r}")
+    complete_units = unit_status.loc[
+        unit_status["status"].astype(str) == "complete"
+    ].copy()
+    recorded_complete = int(manifest.get("counts", {}).get("units_complete", -1))
+    if recorded_complete != len(complete_units) or complete_units.empty:
+        raise ValueError(
+            f"{unit_status_path} complete-unit count disagrees with run manifest"
+        )
+    if complete_units.duplicated(["source_stage_id", "receiver"]).any():
+        raise ValueError(
+            "NicheNet has multiple completed transitions for one source-stage/receiver; "
+            "the directed stage/type key cannot represent the target transition"
+        )
+    activity_units = set(frame["unit_id"].astype(str))
+    complete_ids = set(complete_units["unit_id"].astype(str))
+    if not activity_units.issubset(complete_ids):
+        raise ValueError(
+            f"{path} contains sender activities from skipped, ineligible, or failed units"
+        )
+
+    expression = pd.read_csv(expression_path)
+    expression_columns = {"stage_id", "stage_label", "cell_type", "n_cells"}
+    _require_columns(expression, expression_columns, expression_path)
+    expression["stage_id"] = _stage_values(expression["stage_id"], path=expression_path)
+    expression["stage_label"] = _clean_labels(
+        expression["stage_label"], name="stage_label", path=expression_path
+    )
+    expression["cell_type"] = _clean_labels(
+        expression["cell_type"], name="cell_type", path=expression_path
+    )
+    expression["n_cells"] = _numeric(
+        expression["n_cells"], name="n_cells", path=expression_path
+    )
+    if (expression["n_cells"] <= 0).any():
+        raise ValueError(f"{expression_path} contains non-positive cell counts")
+    group_check = expression.groupby(["stage_id", "cell_type"], sort=False).agg(
+        n_counts=("n_cells", "nunique"),
+        n_labels=("stage_label", "nunique"),
+    )
+    if (group_check[["n_counts", "n_labels"]] != 1).any().any():
+        raise ValueError(
+            f"{expression_path} has inconsistent stage/type count or label metadata"
+        )
+    stage_types = expression[
+        ["stage_id", "stage_label", "cell_type", "n_cells"]
+    ].drop_duplicates()
+
     work = frame.rename(
         columns={"sender": "sender_type", "receiver": "receiver_type"}
     ).copy()
@@ -571,6 +1087,7 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
     )
     work["positive_aupr_corrected"] = work["aupr_corrected"].clip(lower=0.0)
     keys = [
+        "unit_id",
         "source_stage_id",
         "source_stage_label",
         "sender_type",
@@ -581,6 +1098,85 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         .sum()
         .reset_index()
     )
+    aggregated["source_stage_id"] = _stage_values(
+        aggregated["source_stage_id"], path=path
+    )
+    complete_units["source_stage_id"] = _stage_values(
+        complete_units["source_stage_id"], path=unit_status_path
+    )
+    completed_rows: list[dict[str, Any]] = []
+    audit_rows: list[dict[str, Any]] = []
+    for unit in complete_units.itertuples(index=False):
+        unit_id = str(unit.unit_id)
+        stage = float(unit.source_stage_id)
+        receiver = str(unit.receiver).strip()
+        unit_label = str(unit.source_stage_label).strip()
+        available = stage_types.loc[stage_types["stage_id"] == stage]
+        if available.empty:
+            raise ValueError(
+                f"{unit_status_path} complete unit {unit_id!r} has no verified source-stage expression"
+            )
+        labels = available["stage_label"].drop_duplicates().tolist()
+        if len(labels) != 1 or labels[0] != unit_label:
+            raise ValueError(
+                f"{unit_status_path} unit {unit_id!r} stage label disagrees with shared expression"
+            )
+        if receiver not in set(available["cell_type"]):
+            raise ValueError(
+                f"{unit_status_path} unit {unit_id!r} receiver is absent from source-stage expression"
+            )
+        native = aggregated.loc[aggregated["unit_id"].astype(str) == unit_id].copy()
+        if not native.empty and (
+            set(native["source_stage_id"].astype(float)) != {stage}
+            or set(native["source_stage_label"].astype(str)) != {unit_label}
+            or set(native["receiver_type"].astype(str)) != {receiver}
+        ):
+            raise ValueError(
+                f"{path} metadata disagrees with completed unit {unit_id!r}"
+            )
+        if not set(native["sender_type"].astype(str)).issubset(
+            set(available["cell_type"].astype(str))
+        ):
+            raise ValueError(
+                f"{path} contains an unverified sender for unit {unit_id!r}"
+            )
+        native_by_sender = native.set_index("sender_type")[
+            "positive_aupr_corrected"
+        ].to_dict()
+        for sender in sorted(available["cell_type"].astype(str)):
+            filled = sender not in native_by_sender
+            completed_rows.append(
+                {
+                    "unit_id": unit_id,
+                    "source_stage_id": stage,
+                    "source_stage_label": unit_label,
+                    "sender_type": sender,
+                    "receiver_type": receiver,
+                    "positive_aupr_corrected": float(native_by_sender.get(sender, 0.0)),
+                    "structural_zero_filled": filled,
+                }
+            )
+        audit_rows.append(
+            {
+                "stage": stage,
+                "stage_label": unit_label,
+                "receiver_unit": receiver,
+                "n_cell_types": int(available["cell_type"].nunique()),
+                "expected_directed_rows": int(available["cell_type"].nunique()),
+                "native_emitted_rows": int(len(native)),
+                "native_emitted_positive_rows": int(
+                    (native["positive_aupr_corrected"] > 0).sum()
+                ),
+                "native_emitted_zero_rows": int(
+                    (native["positive_aupr_corrected"] == 0).sum()
+                ),
+                "structural_zero_filled_rows": int(
+                    available["cell_type"].nunique() - len(native)
+                ),
+                "verified_complete_evaluated_universe": True,
+            }
+        )
+    completed = pd.DataFrame(completed_rows)
     condition_prefix = (
         "official_mouse_lr_prior" if mode == "default" else "project_lr_mouse_gate"
     )
@@ -597,16 +1193,25 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         else "nichenet_v2__project_lr_gate"
     )
     result = _canonical(
-        aggregated,
+        completed,
         path=path,
         method="NicheNet-v2 (cross-species)",
         database_condition=condition,
         score_view="sum_positive_sender_associated_aupr_corrected",
         display_label=label,
         view_id=view_id,
-        score=aggregated["positive_aupr_corrected"],
-        stage=aggregated["source_stage_id"],
-        stage_label=aggregated["source_stage_label"],
+        score=completed["positive_aupr_corrected"],
+        stage=completed["source_stage_id"],
+        stage_label=completed["source_stage_label"],
+    )
+    completion_flags = completed.rename(columns={"source_stage_id": "stage"})[
+        KEYS + ["structural_zero_filled"]
+    ]
+    result = result.merge(
+        completion_flags,
+        on=KEYS,
+        how="left",
+        validate="one_to_one",
     )
     result["orthology_policy"] = orthology_policy
     result["analysis_tier"] = str(policy["analysis_tier"])
@@ -616,6 +1221,25 @@ def _load_nichenet(directory: Path, *, mode: str) -> pd.DataFrame:
         "analysis_tier": policy["analysis_tier"],
         "primary_claim_allowed": policy["primary_claim_allowed"],
         "method_label": method_label,
+        "shared_prepare_manifest_md5": _md5(prepare_path),
+        "prior_source_signature_sha256": prior_source_signature,
+    }
+    result.attrs["zero_completion"] = {
+        "universe_scope": "verified_complete_nichenet_unit_source_sender_types",
+        "universe_source": _file_record(expression_path),
+        "runner_export_contract": "complete_units_only_sender_assignment_completion",
+        "full_stage_type_square_required": False,
+        "expected_stage_count": None,
+        "observed_stage_count": int(result["stage"].nunique()),
+        "expected_rows": int(len(result)),
+        "native_emitted_rows": int(len(aggregated)),
+        "structural_zero_filled_rows": int(result["structural_zero_filled"].sum()),
+        "verified_complete_evaluated_universe": True,
+        "unevaluated_units_zero_filled": False,
+        "method_unavailable_lr_rows_zero_filled": False,
+        "completed_units": int(len(complete_units)),
+        "skipped_or_ineligible_units": int(len(unit_status) - len(complete_units)),
+        "audit_rows": audit_rows,
     }
     return result
 
@@ -631,7 +1255,9 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
     )
     native_primary = manifest.get("design", {}).get("native_primary")
     if "Bonferroni-significant LR pairs" not in str(native_primary):
-        raise ValueError("CellAgentChat manifest has unexpected native-primary semantics")
+        raise ValueError(
+            "CellAgentChat manifest has unexpected native-primary semantics"
+        )
     claims = manifest.get("shared_input", {}).get("preparation_claims")
     if not isinstance(claims, Mapping):
         raise ValueError("CellAgentChat manifest lacks shared_input.preparation_claims")
@@ -666,7 +1292,137 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         raise ValueError(
             "CellAgentChat preparation primary_claim_allowed conflicts with policy"
         )
-    path = directory / "cellagentchat_type_pair_scores.csv"
+    shared_input = manifest.get("shared_input")
+    if not isinstance(shared_input, Mapping):
+        raise ValueError("CellAgentChat manifest lacks shared_input")
+    sample_plan_path = _verify_recorded_artifact(
+        shared_input.get("sample_plan", {}),
+        expected_name="shared_sampled_cells.csv.gz",
+    )
+    mapped_expression = _verify_recorded_artifact(
+        shared_input.get("mapped_expression", {})
+    )
+    preparation_manifest = _verify_recorded_artifact(
+        shared_input.get("preparation_manifest", {}), expected_name="manifest.json"
+    )
+    path = _verify_manifest_artifact(
+        directory,
+        manifest.get("artifacts", {}).get("cellagentchat_type_pair_scores.csv", {}),
+        expected_name="cellagentchat_type_pair_scores.csv",
+    )
+    design = manifest.get("design")
+    if not isinstance(design, Mapping):
+        raise ValueError("CellAgentChat manifest lacks design")
+    design_stages = tuple(sorted(float(value) for value in design.get("stages", [])))
+    if design_stages != EXPECTED_FULL_GRID_STAGES:
+        raise ValueError(
+            "CellAgentChat formal comparison requires exactly the five observed stages"
+        )
+    design_seeds = tuple(
+        sorted(int(value) for value in design.get("sampling_seeds", []))
+    )
+    if design_seeds != (101, 202, 303):
+        raise ValueError(
+            "CellAgentChat formal comparison requires sampling seeds 101,202,303"
+        )
+    if (
+        int(design.get("epochs", -1)) != 50
+        or int(design.get("permutation_score_target", -1)) != 10_000
+        or design.get("spatial") is not True
+        or design.get("permutation_background_distance_scaled") is not True
+    ):
+        raise ValueError(
+            "CellAgentChat formal comparison requires epochs=50, permutation target=10000, "
+            "and the spatial distance-scaled design"
+        )
+    source = manifest.get("source")
+    if not isinstance(source, Mapping):
+        raise ValueError("CellAgentChat manifest lacks source provenance")
+    if (
+        str(source.get("release", "")) != "v0.2.0"
+        or str(source.get("expected_commit", "")).casefold()
+        != PINNED_CELLAGENTCHAT_COMMIT
+        or str(source.get("observed_commit", "")).casefold()
+        != PINNED_CELLAGENTCHAT_COMMIT
+        or source.get("pinned_source_verified") is not True
+    ):
+        raise ValueError(
+            "CellAgentChat source is not the pinned official v0.2.0 commit"
+        )
+    source_files = source.get("files")
+    if not isinstance(source_files, Mapping) or not source_files:
+        raise ValueError("CellAgentChat source provenance has no frozen file artifacts")
+    source_signature: list[tuple[str, str]] = []
+    for name, record in sorted(source_files.items()):
+        source_path = _verify_recorded_artifact(record)
+        source_signature.append((str(name), _sha256(source_path)))
+    sample_plan = pd.read_csv(sample_plan_path)
+    plan_columns = {"stage", "stage_label", "sampling_seed", "cell_type", "obs_name"}
+    _require_columns(sample_plan, plan_columns, sample_plan_path)
+    sample_plan["stage"] = _stage_values(sample_plan["stage"], path=sample_plan_path)
+    sample_plan["stage_label"] = _clean_labels(
+        sample_plan["stage_label"], name="stage_label", path=sample_plan_path
+    )
+    sample_plan["cell_type"] = _clean_labels(
+        sample_plan["cell_type"], name="cell_type", path=sample_plan_path
+    )
+    numeric_seeds = _numeric(
+        sample_plan["sampling_seed"], name="sampling_seed", path=sample_plan_path
+    )
+    if not np.equal(numeric_seeds, np.floor(numeric_seeds)).all():
+        raise ValueError("CellAgentChat sample plan has a non-integer sampling seed")
+    sample_plan["sampling_seed"] = numeric_seeds.astype(int)
+    selected_plan = sample_plan.loc[
+        sample_plan["stage"].isin(design_stages)
+        & sample_plan["sampling_seed"].isin(design_seeds)
+    ].copy()
+    if (
+        selected_plan.empty
+        or selected_plan.assign(obs_name=selected_plan["obs_name"].astype(str))
+        .duplicated(["stage", "sampling_seed", "obs_name"])
+        .any()
+    ):
+        raise ValueError(
+            "CellAgentChat sample plan is empty or repeats cells within a run"
+        )
+    expected_rows: list[dict[str, Any]] = []
+    stage_grid_meta: dict[float, dict[str, Any]] = {}
+    for stage in design_stages:
+        stage_plan = selected_plan.loc[selected_plan["stage"] == stage]
+        if set(stage_plan["sampling_seed"].astype(int)) != set(design_seeds):
+            raise ValueError(
+                f"CellAgentChat sample plan lacks a seed at stage {stage:g}"
+            )
+        type_sets = []
+        label_sets = []
+        for seed in design_seeds:
+            run_plan = stage_plan.loc[stage_plan["sampling_seed"] == seed]
+            type_sets.append(tuple(sorted(run_plan["cell_type"].unique())))
+            label_sets.append(tuple(sorted(run_plan["stage_label"].unique())))
+        if len(set(type_sets)) != 1 or not type_sets[0]:
+            raise ValueError(
+                f"CellAgentChat sampled cell-type universe differs across seeds at stage {stage:g}"
+            )
+        if len(set(label_sets)) != 1 or len(label_sets[0]) != 1:
+            raise ValueError(
+                f"CellAgentChat stage label differs across seeds at stage {stage:g}"
+            )
+        types = type_sets[0]
+        stage_label = label_sets[0][0]
+        stage_grid_meta[stage] = {
+            "stage_label": stage_label,
+            "n_cell_types": len(types),
+        }
+        for sender, receiver in product(types, repeat=2):
+            expected_rows.append(
+                {
+                    "stage": stage,
+                    "stage_label": stage_label,
+                    "sender_type": sender,
+                    "receiver_type": receiver,
+                }
+            )
+    expected_grid = pd.DataFrame(expected_rows)
     frame = pd.read_csv(path)
     required = {
         "stage",
@@ -676,6 +1432,52 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         "cellagentchat_native_primary_mean",
     }
     _require_columns(frame, required, path)
+    observed_keys = frame[
+        ["stage", "stage_label", "sender_type", "receiver_type"]
+    ].copy()
+    observed_keys["stage"] = _stage_values(observed_keys["stage"], path=path)
+    observed_keys["stage_label"] = _clean_labels(
+        observed_keys["stage_label"], name="stage_label", path=path
+    )
+    observed_keys["sender_type"] = _clean_labels(
+        observed_keys["sender_type"], name="sender_type", path=path
+    )
+    observed_keys["receiver_type"] = _clean_labels(
+        observed_keys["receiver_type"], name="receiver_type", path=path
+    )
+    if observed_keys.duplicated(KEYS).any():
+        raise ValueError(f"{path} contains duplicate stage/type-pair rows")
+    grid_check = expected_grid.merge(
+        observed_keys,
+        on=["stage", "stage_label", "sender_type", "receiver_type"],
+        how="outer",
+        indicator=True,
+    )
+    if not (grid_check["_merge"] == "both").all():
+        counts = grid_check["_merge"].value_counts().to_dict()
+        raise ValueError(
+            f"{path} is not the complete verified stage/type square: {counts}"
+        )
+    if (
+        "n_sampling_seeds" not in frame
+        or not (
+            pd.to_numeric(frame["n_sampling_seeds"], errors="coerce")
+            == len(design_seeds)
+        ).all()
+    ):
+        raise ValueError(f"{path} is not summarized over every declared sampling seed")
+    expected_by_seed = int(len(expected_grid) * len(design_seeds))
+    counts_manifest = manifest.get("counts", {})
+    if int(
+        counts_manifest.get("type_pair_rows_by_seed", -1)
+    ) != expected_by_seed or int(counts_manifest.get("n_runs", -1)) != len(
+        EXPECTED_FULL_GRID_STAGES
+    ) * len(
+        design_seeds
+    ):
+        raise ValueError(
+            "CellAgentChat manifest type-pair row count violates the full-grid contract"
+        )
     official = condition == CELLAGENTCHAT_OFFICIAL
     label_prefix = (
         "CellAgentChat | official mouse DB"
@@ -700,6 +1502,7 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         stage=frame["stage"],
         stage_label=frame["stage_label"],
     )
+    result["structural_zero_filled"] = False
     result["orthology_policy"] = orthology_policy
     result["analysis_tier"] = analysis_tier
     result["primary_claim_allowed"] = bool(primary_claim_allowed)
@@ -707,22 +1510,113 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         "orthology_policy": orthology_policy,
         "analysis_tier": analysis_tier,
         "primary_claim_allowed": bool(primary_claim_allowed),
+        "sample_plan_sha256": _sha256(sample_plan_path),
+        "mapped_expression_sha256": _sha256(mapped_expression),
+        "preparation_manifest_sha256": _sha256(preparation_manifest),
+        "source_commit": PINNED_CELLAGENTCHAT_COMMIT,
+        "source_signature": source_signature,
+    }
+    audit_rows = []
+    for stage in design_stages:
+        stage_frame = result.loc[result["stage"] == stage]
+        n_types = int(stage_grid_meta[stage]["n_cell_types"])
+        audit_rows.append(
+            {
+                "stage": float(stage),
+                "stage_label": str(stage_grid_meta[stage]["stage_label"]),
+                "receiver_unit": "",
+                "n_cell_types": n_types,
+                "expected_directed_rows": int(n_types**2),
+                "native_emitted_rows": int(len(stage_frame)),
+                "native_emitted_positive_rows": int(
+                    (stage_frame["native_score"] > 0).sum()
+                ),
+                "native_emitted_zero_rows": int(
+                    (stage_frame["native_score"] == 0).sum()
+                ),
+                "structural_zero_filled_rows": 0,
+                "verified_complete_evaluated_universe": True,
+            }
+        )
+    result.attrs["zero_completion"] = {
+        "universe_scope": "verified_cellagentchat_sample_plan_stage_type_square",
+        "universe_source": _file_record(sample_plan_path),
+        "runner_export_contract": "native_complete_grid_no_loader_completion",
+        "full_stage_type_square_required": True,
+        "expected_stage_count": len(EXPECTED_FULL_GRID_STAGES),
+        "observed_stage_count": int(result["stage"].nunique()),
+        "expected_rows": int(len(expected_grid)),
+        "native_emitted_rows": int(len(result)),
+        "structural_zero_filled_rows": 0,
+        "verified_complete_evaluated_universe": True,
+        "unevaluated_units_zero_filled": False,
+        "method_unavailable_lr_rows_zero_filled": False,
+        "audit_rows": audit_rows,
     }
     return result
+
+
+def _load_cellagentchat_pair(directory: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    parent = _validate_manifest_identity(
+        directory,
+        filename="manifest.json",
+        expected={
+            "workflow": "official_cellagentchat_spatial_dual_lr_database",
+            "status": "complete",
+            "conditions": [CELLAGENTCHAT_OFFICIAL, CELLAGENTCHAT_CUSTOM],
+            "same_mapped_expression_and_sample_plan_verified": True,
+            "same_preparation_manifest_and_orthology_claims_verified": True,
+            "same_formal_design_and_pinned_source_verified": True,
+            "exact_stage_seed_grid_verified": True,
+            "formal_non_smoke_verified": True,
+            "database_sha256_are_distinct": True,
+        },
+    )
+    formal_design = parent.get("formal_design")
+    if not isinstance(formal_design, Mapping) or (
+        tuple(float(value) for value in formal_design.get("stages", []))
+        != EXPECTED_FULL_GRID_STAGES
+        or tuple(int(value) for value in formal_design.get("sampling_seeds", []))
+        != (101, 202, 303)
+        or int(formal_design.get("epochs", -1)) != 50
+        or int(formal_design.get("permutation_score_target", -1)) != 10_000
+        or str(formal_design.get("source_commit", "")).casefold()
+        != PINNED_CELLAGENTCHAT_COMMIT
+    ):
+        raise ValueError("CellAgentChat dual manifest lacks the exact formal design")
+    condition_records = parent.get("condition_manifests")
+    if not isinstance(condition_records, Mapping):
+        raise ValueError("CellAgentChat dual manifest lacks condition_manifests")
+    for condition in (CELLAGENTCHAT_OFFICIAL, CELLAGENTCHAT_CUSTOM):
+        path = _verify_recorded_artifact(
+            condition_records.get(condition, {}), expected_name="manifest.json"
+        )
+        expected_path = (directory / condition / "manifest.json").resolve()
+        if path.resolve() != expected_path:
+            raise ValueError(
+                f"CellAgentChat dual manifest points {condition!r} at the wrong condition"
+            )
+    official = _load_cellagentchat(
+        directory / CELLAGENTCHAT_OFFICIAL,
+        condition=CELLAGENTCHAT_OFFICIAL,
+    )
+    custom = _load_cellagentchat(
+        directory / CELLAGENTCHAT_CUSTOM,
+        condition=CELLAGENTCHAT_CUSTOM,
+    )
+    return official, custom
 
 
 def _add_stage_ranks(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
     grouped = result.groupby(["view_id", "stage"], sort=False)["native_score"]
-    result["within_stage_rank_high"] = grouped.rank(
-        method="average", ascending=False
-    )
+    result["within_stage_rank_high"] = grouped.rank(method="average", ascending=False)
     counts = grouped.transform("size").astype(int)
     result["n_directed_pairs_in_view_stage"] = counts
     denominator = (counts - 1).replace(0, 1)
-    result["within_stage_rank_percentile_high"] = 1.0 - (
-        result["within_stage_rank_high"] - 1.0
-    ) / denominator
+    result["within_stage_rank_percentile_high"] = (
+        1.0 - (result["within_stage_rank_high"] - 1.0) / denominator
+    )
     result.loc[counts == 1, "within_stage_rank_percentile_high"] = 1.0
     return result
 
@@ -733,13 +1627,31 @@ def _safe_spearman(left: pd.Series, right: pd.Series) -> float:
     return float(left.corr(right, method="spearman"))
 
 
-def _top_keys(frame: pd.DataFrame, score: str, k: int) -> set[tuple[str, str]]:
-    ordered = frame.sort_values(
-        [score, "sender_type", "receiver_type"],
-        ascending=[False, True, True],
-        kind="mergesort",
-    ).head(k)
-    return set(zip(ordered["sender_type"], ordered["receiver_type"]))
+def _positive_top_selection(frame: pd.DataFrame, score: str, k: int) -> dict[str, Any]:
+    """Select positive top edges and expand every tie at the kth boundary."""
+
+    positive = frame.loc[frame[score] > 0].copy()
+    effective_k = min(int(k), int(len(positive)))
+    if effective_k < 1:
+        return {
+            "keys": set(),
+            "boundary_score": float("nan"),
+            "boundary_tie_count": 0,
+            "realized_size": 0,
+            "tie_expanded": False,
+        }
+    ordered_scores = positive[score].sort_values(ascending=False, kind="mergesort")
+    boundary = float(ordered_scores.iloc[effective_k - 1])
+    selected = positive.loc[positive[score] >= boundary]
+    keys = set(zip(selected["sender_type"], selected["receiver_type"]))
+    tie_count = int(np.isclose(positive[score], boundary, rtol=0.0, atol=0.0).sum())
+    return {
+        "keys": keys,
+        "boundary_score": boundary,
+        "boundary_tie_count": tie_count,
+        "realized_size": len(keys),
+        "tie_expanded": len(keys) > effective_k,
+    }
 
 
 def pairwise_consistency(
@@ -765,8 +1677,11 @@ def pairwise_consistency(
                     suffixes=("_left", "_right"),
                 )
                 n_shared = int(len(merged))
-                effective_k = min(int(top_k), n_shared)
-                top_k_informative = bool(effective_k < n_shared)
+                n_positive_left = int((merged["native_score_left"] > 0).sum())
+                n_positive_right = int((merged["native_score_right"] > 0).sum())
+                effective_k = min(
+                    int(top_k), n_shared, n_positive_left, n_positive_right
+                )
                 if effective_k:
                     common_left = merged[
                         ["sender_type", "receiver_type", "native_score_left"]
@@ -774,15 +1689,40 @@ def pairwise_consistency(
                     common_right = merged[
                         ["sender_type", "receiver_type", "native_score_right"]
                     ].rename(columns={"native_score_right": "score"})
-                    left_top = _top_keys(common_left, "score", effective_k)
-                    right_top = _top_keys(common_right, "score", effective_k)
+                    left_selection = _positive_top_selection(
+                        common_left, "score", effective_k
+                    )
+                    right_selection = _positive_top_selection(
+                        common_right, "score", effective_k
+                    )
+                    left_top = left_selection["keys"]
+                    right_top = right_selection["keys"]
                     intersection = len(left_top & right_top)
                     union = len(left_top | right_top)
                     jaccard = intersection / union if union else float("nan")
                 else:
+                    left_selection = _positive_top_selection(
+                        merged.rename(columns={"native_score_left": "score"}),
+                        "score",
+                        0,
+                    )
+                    right_selection = _positive_top_selection(
+                        merged.rename(columns={"native_score_right": "score"}),
+                        "score",
+                        0,
+                    )
                     intersection = 0
                     union = 0
                     jaccard = float("nan")
+                top_k_informative = bool(
+                    effective_k > 0
+                    and left_selection["realized_size"] < n_shared
+                    and right_selection["realized_size"] < n_shared
+                )
+                overlap_denominator = min(
+                    left_selection["realized_size"],
+                    right_selection["realized_size"],
+                )
                 rows.append(
                     {
                         "view_id_left": left_id,
@@ -791,23 +1731,46 @@ def pairwise_consistency(
                         "display_label_right": labels[right_id],
                         "stage": float(stage),
                         "stage_label": (
-                            merged["stage_label_left"].iloc[0]
-                            if n_shared
-                            else ""
+                            merged["stage_label_left"].iloc[0] if n_shared else ""
                         ),
                         "n_shared_directed_pairs": n_shared,
                         "spearman_rank_concordance": _safe_spearman(
                             merged["native_score_left"], merged["native_score_right"]
                         ),
                         "requested_top_k": int(top_k),
+                        "n_positive_left": n_positive_left,
+                        "n_positive_right": n_positive_right,
                         "effective_top_k": effective_k,
                         "top_k_informative": top_k_informative,
+                        "top_k_left_realized_set_size": left_selection["realized_size"],
+                        "top_k_right_realized_set_size": right_selection[
+                            "realized_size"
+                        ],
+                        "top_k_left_boundary_score": left_selection["boundary_score"],
+                        "top_k_right_boundary_score": right_selection["boundary_score"],
+                        "top_k_left_boundary_tie_count": left_selection[
+                            "boundary_tie_count"
+                        ],
+                        "top_k_right_boundary_tie_count": right_selection[
+                            "boundary_tie_count"
+                        ],
+                        "top_k_left_boundary_tie_expanded": left_selection[
+                            "tie_expanded"
+                        ],
+                        "top_k_right_boundary_tie_expanded": right_selection[
+                            "tie_expanded"
+                        ],
                         "top_k_intersection": intersection,
                         "top_k_union": union,
                         "top_k_overlap_fraction": (
-                            intersection / effective_k if effective_k else float("nan")
+                            intersection / overlap_denominator
+                            if overlap_denominator
+                            else float("nan")
                         ),
                         "top_k_jaccard": jaccard,
+                        "top_k_selection_rule": (
+                            "positive_support_kth_score_boundary_tie_expanded"
+                        ),
                         "comparison_universe": "inner_join_on_stage_sender_type_receiver_type",
                     }
                 )
@@ -820,6 +1783,7 @@ def pairwise_consistency(
                 "view_id_right",
                 "display_label_right",
                 "n_stages_compared",
+                "n_finite_spearman_stages",
                 "n_shared_directed_pairs_total",
                 "mean_stage_spearman",
                 "median_stage_spearman",
@@ -831,9 +1795,9 @@ def pairwise_consistency(
             ]
         )
         return by_stage, summary
-    by_stage["top_k_jaccard_informative_only"] = by_stage[
-        "top_k_jaccard"
-    ].where(by_stage["top_k_informative"])
+    by_stage["top_k_jaccard_informative_only"] = by_stage["top_k_jaccard"].where(
+        by_stage["top_k_informative"]
+    )
     keys = [
         "view_id_left",
         "display_label_left",
@@ -844,6 +1808,10 @@ def pairwise_consistency(
         by_stage.groupby(keys, sort=False, dropna=False)
         .agg(
             n_stages_compared=("stage", "nunique"),
+            n_finite_spearman_stages=(
+                "spearman_rank_concordance",
+                lambda values: int(pd.Series(values).notna().sum()),
+            ),
             n_shared_directed_pairs_total=("n_shared_directed_pairs", "sum"),
             mean_stage_spearman=("spearman_rank_concordance", "mean"),
             median_stage_spearman=("spearman_rank_concordance", "median"),
@@ -870,7 +1838,12 @@ def reciprocal_asymmetry(
     rows: list[pd.DataFrame] = []
     for (_, _), frame in scores.groupby(["view_id", "stage"], sort=False):
         reverse = frame[
-            ["sender_type", "receiver_type", "native_score", "within_stage_rank_percentile_high"]
+            [
+                "sender_type",
+                "receiver_type",
+                "native_score",
+                "within_stage_rank_percentile_high",
+            ]
         ].rename(
             columns={
                 "sender_type": "receiver_type",
@@ -1017,8 +1990,18 @@ def stage_stability(
                         "status": "missing_stage",
                         "n_shared_directed_pairs": 0,
                         "spearman_rank_stability": float("nan"),
+                        "n_positive_from": 0,
+                        "n_positive_to": 0,
                         "effective_top_k": 0,
                         "top_k_informative": False,
+                        "top_k_from_realized_set_size": 0,
+                        "top_k_to_realized_set_size": 0,
+                        "top_k_from_boundary_score": float("nan"),
+                        "top_k_to_boundary_score": float("nan"),
+                        "top_k_from_boundary_tie_count": 0,
+                        "top_k_to_boundary_tie_count": 0,
+                        "top_k_from_boundary_tie_expanded": False,
+                        "top_k_to_boundary_tie_expanded": False,
                         "top_k_jaccard": float("nan"),
                     }
                 )
@@ -1030,8 +2013,9 @@ def stage_stability(
                 validate="one_to_one",
                 suffixes=("_from", "_to"),
             )
-            effective_k = min(int(top_k), len(merged))
-            top_k_informative = bool(effective_k < len(merged))
+            n_positive_from = int((merged["native_score_from"] > 0).sum())
+            n_positive_to = int((merged["native_score_to"] > 0).sum())
+            effective_k = min(int(top_k), len(merged), n_positive_from, n_positive_to)
             if effective_k:
                 left_common = merged[
                     ["sender_type", "receiver_type", "native_score_from"]
@@ -1039,12 +2023,33 @@ def stage_stability(
                 right_common = merged[
                     ["sender_type", "receiver_type", "native_score_to"]
                 ].rename(columns={"native_score_to": "score"})
-                left_top = _top_keys(left_common, "score", effective_k)
-                right_top = _top_keys(right_common, "score", effective_k)
+                left_selection = _positive_top_selection(
+                    left_common, "score", effective_k
+                )
+                right_selection = _positive_top_selection(
+                    right_common, "score", effective_k
+                )
+                left_top = left_selection["keys"]
+                right_top = right_selection["keys"]
                 union = len(left_top | right_top)
                 jaccard = len(left_top & right_top) / union if union else float("nan")
             else:
+                left_selection = _positive_top_selection(
+                    merged.rename(columns={"native_score_from": "score"}),
+                    "score",
+                    0,
+                )
+                right_selection = _positive_top_selection(
+                    merged.rename(columns={"native_score_to": "score"}),
+                    "score",
+                    0,
+                )
                 jaccard = float("nan")
+            top_k_informative = bool(
+                effective_k > 0
+                and left_selection["realized_size"] < len(merged)
+                and right_selection["realized_size"] < len(merged)
+            )
             rows.append(
                 {
                     "view_id": view_id,
@@ -1056,9 +2061,26 @@ def stage_stability(
                     "spearman_rank_stability": _safe_spearman(
                         merged["native_score_from"], merged["native_score_to"]
                     ),
+                    "n_positive_from": n_positive_from,
+                    "n_positive_to": n_positive_to,
                     "effective_top_k": int(effective_k),
                     "top_k_informative": top_k_informative,
+                    "top_k_from_realized_set_size": left_selection["realized_size"],
+                    "top_k_to_realized_set_size": right_selection["realized_size"],
+                    "top_k_from_boundary_score": left_selection["boundary_score"],
+                    "top_k_to_boundary_score": right_selection["boundary_score"],
+                    "top_k_from_boundary_tie_count": left_selection[
+                        "boundary_tie_count"
+                    ],
+                    "top_k_to_boundary_tie_count": right_selection[
+                        "boundary_tie_count"
+                    ],
+                    "top_k_from_boundary_tie_expanded": left_selection["tie_expanded"],
+                    "top_k_to_boundary_tie_expanded": right_selection["tie_expanded"],
                     "top_k_jaccard": jaccard,
+                    "top_k_selection_rule": (
+                        "positive_support_kth_score_boundary_tie_expanded"
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -1151,9 +2173,7 @@ def load_cytobridge_control(
                 "control_label": display_label,
                 "target": target_label,
                 "metric": "reciprocal_direction_spearman_all_stage",
-                "estimate": float(
-                    reciprocal_row["spearman_with_lr_direction_delta"]
-                ),
+                "estimate": float(reciprocal_row["spearman_with_lr_direction_delta"]),
                 "p_value": float(reciprocal_row["empirical_p_greater"]),
                 "n_observations": int(reciprocal_row["n_reciprocal_pairs"]),
                 "selection": "reciprocal directed edges, all stages",
@@ -1193,6 +2213,8 @@ def condition_coverage(
                     "n_directed_pairs": 0,
                     "n_sender_types": 0,
                     "n_receiver_types": 0,
+                    "n_positive_directed_pairs": 0,
+                    "n_structural_zero_filled": 0,
                     "fraction_of_loaded_union_keys": float("nan"),
                     "diagnostic": issue_by_view.get(view_id, "not loaded"),
                 }
@@ -1210,6 +2232,18 @@ def condition_coverage(
                     "n_directed_pairs": int(len(stage_view)),
                     "n_sender_types": int(stage_view["sender_type"].nunique()),
                     "n_receiver_types": int(stage_view["receiver_type"].nunique()),
+                    "n_positive_directed_pairs": int(
+                        (stage_view["native_score"] > 0).sum()
+                    ),
+                    "n_structural_zero_filled": int(
+                        stage_view.get(
+                            "structural_zero_filled",
+                            pd.Series(False, index=stage_view.index),
+                        )
+                        .fillna(False)
+                        .astype(bool)
+                        .sum()
+                    ),
                     "fraction_of_loaded_union_keys": (
                         len(stage_view) / union_count if union_count else float("nan")
                     ),
@@ -1266,7 +2300,9 @@ def _heatmap(
             value = matrix[row, column]
             text = "NA" if not np.isfinite(value) else f"{value:.2f}"
             color = "white" if np.isfinite(value) and value > threshold else "#111827"
-            axis.text(column, row, text, ha="center", va="center", fontsize=7, color=color)
+            axis.text(
+                column, row, text, ha="center", va="center", fontsize=7, color=color
+            )
     colorbar = figure.colorbar(image, ax=axis, fraction=0.046, pad=0.04)
     colorbar.set_label(colorbar_label)
     if diagonal_note:
@@ -1327,11 +2363,14 @@ def _plot_coverage(
                 color="#111827",
             )
     colorbar = figure.colorbar(image, ax=axis, fraction=0.035, pad=0.03)
-    colorbar.set_label("log(1 + emitted directed keys); cell text is raw count")
+    colorbar.set_label(
+        "log(1 + canonical evaluated directed keys); cell text is raw count"
+    )
     figure.text(
         0.01,
         0.01,
-        "Grey = method/condition or stage not emitted. Coverage is reported before any pairwise inner join.",
+        "Counts include explicitly provenance-verified structural zeros. Grey = unevaluated, "
+        "unavailable, or invalid condition/stage; coverage precedes pairwise inner joins.",
         fontsize=8,
         color="#4B5563",
     )
@@ -1357,7 +2396,9 @@ def _plot_stage_stability(
     transition_index = {pair: pos for pos, pair in enumerate(transitions)}
     for row in stability.itertuples(index=False):
         position = (float(row.stage_from), float(row.stage_to))
-        rho[index[row.view_id], transition_index[position]] = row.spearman_rank_stability
+        rho[
+            index[row.view_id], transition_index[position]
+        ] = row.spearman_rank_stability
         jaccard[index[row.view_id], transition_index[position]] = (
             row.top_k_jaccard if row.top_k_informative else np.nan
         )
@@ -1376,7 +2417,7 @@ def _plot_stage_stability(
         (
             axes[1],
             jaccard,
-            "Adjacent-stage top-k stability (informative k < n only)",
+            "Adjacent-stage positive-support top-k stability (tie-aware informative sets)",
             "viridis",
             0,
             1,
@@ -1385,9 +2426,15 @@ def _plot_stage_stability(
         color_map = plt.get_cmap(cmap).copy()
         color_map.set_bad("#E5E7EB")
         image = axis.imshow(
-            np.ma.masked_invalid(matrix), cmap=color_map, vmin=vmin, vmax=vmax, aspect="auto"
+            np.ma.masked_invalid(matrix),
+            cmap=color_map,
+            vmin=vmin,
+            vmax=vmax,
+            aspect="auto",
         )
-        axis.set_xticks(np.arange(len(transitions)), transition_labels, rotation=35, ha="right")
+        axis.set_xticks(
+            np.arange(len(transitions)), transition_labels, rotation=35, ha="right"
+        )
         axis.set_title(title, loc="left", fontweight="bold")
         for row_index in range(matrix.shape[0]):
             for column_index in range(matrix.shape[1]):
@@ -1509,6 +2556,8 @@ def _write_readme(
     top_k: int,
     expected: Sequence[Mapping[str, str]],
     issues: Sequence[Mapping[str, str]],
+    zero_completion: Mapping[str, Mapping[str, Any]],
+    readiness_checks: Mapping[str, bool],
 ) -> None:
     condition_lines = "\n".join(
         f"- `{item['view_id']}`: {item['display_label']} — "
@@ -1519,6 +2568,17 @@ def _write_readme(
         "\n".join(f"- `{item['view_id']}`: {item['error']}" for item in issues)
         if issues
         else "- None. All required inputs passed validation."
+    )
+    zero_lines = "\n".join(
+        f"- `{view_id}`: scope `{record.get('universe_scope')}`; "
+        f"native rows {record.get('native_emitted_rows')}; verified structural zeros added "
+        f"{record.get('structural_zero_filled_rows')}; unevaluated units zero-filled = "
+        f"`{record.get('unevaluated_units_zero_filled')}`."
+        for view_id, record in zero_completion.items()
+    )
+    readiness_lines = "\n".join(
+        f"- `{key}`: `{str(bool(value)).lower()}`"
+        for key, value in readiness_checks.items()
     )
     path.write_text(
         f"""# Zebrafish directed-CCC comparison
@@ -1551,12 +2611,16 @@ always labelled as a sensitivity and never as primary.
 
 - Exact join key: `stage, sender_type, receiver_type`.
 - Rank and percentile: computed within each method/condition/stage.
-- Pairwise universe: inner join of emitted directed keys; coverage is reported
-  separately so missing keys are never silently converted to evidence.
-- Top-edge overlap: deterministic top-{top_k} on the shared key universe; the
-  effective k is reduced when fewer shared keys exist. Stages where effective
-  k equals the entire shared universe are retained for audit but marked
-  non-informative; main summaries and figures use only k < n_shared.
+- Pairwise universe: exact-key inner join after method-specific evaluated-grid
+  completion. COMMOT/CellChat gaps are zero only when the hash-verified
+  stage-specific type square and runner positive-only policy both authorize it.
+  NicheNet is completed only across source-stage sender types for `complete`
+  receiver units; skipped/ineligible units and absent transitions stay unavailable.
+- Top-edge overlap: requested top-{top_k} is capped by positive support in both
+  views. Selection is restricted to scores > 0 and expands all ties at the kth
+  score boundary, so alphabetical tie-breaking cannot manufacture overlap from
+  an all-zero or zero-tail grid. Zero support gives NA. A selection covering the
+  whole shared universe is audit-only/non-informative.
 - Directionality: difference of within-stage rank percentiles for reciprocal
   A→B and B→A edges.
 - Stage stability: adjacent global observed stages only.
@@ -1567,6 +2631,8 @@ always labelled as a sensitivity and never as primary.
 - `pairwise_consistency_by_stage.csv` and `pairwise_consistency_summary.csv`.
 - `reciprocal_rank_asymmetry.csv.gz` and directionality concordance summaries.
 - `stage_stability.csv` and `condition_coverage.csv`.
+- `structural_zero_audit.csv`: per-view/stage (and per NicheNet completed
+  receiver unit) evaluated-universe, native-row, and zero-completion counts.
 - `method_unavailable_lr_rows.csv`: CellChat-incompatible requested LR rows;
   these are excluded from its method universe and are never zero-filled.
 - `cytobridge_control_metrics.csv`: trained, Init_interaction, and randomized
@@ -1577,6 +2643,14 @@ always labelled as a sensitivity and never as primary.
 ## Diagnostics
 
 {issue_text}
+
+## Structural-zero provenance
+
+{zero_lines}
+
+## Formal readiness checks
+
+{readiness_lines}
 
 `partial_diagnostic` output was generated with `--allow-partial` and must not be
 used as the formal reviewer comparison until every required condition is
@@ -1589,33 +2663,43 @@ available and the script completes without that flag.
 def _resolve_paths(args: argparse.Namespace) -> dict[str, Path]:
     root = args.run_root.expanduser().resolve()
     return {
-        "cytobridge": (args.cytobridge_dir or root / "01_cytobridge").expanduser().resolve(),
-        "control_trained": (
-            args.controls_trained_dir or root / "02_attention_controls"
-        ).expanduser().resolve(),
+        "cytobridge": (args.cytobridge_dir or root / "01_cytobridge")
+        .expanduser()
+        .resolve(),
+        "control_trained": (args.controls_trained_dir or root / "02_attention_controls")
+        .expanduser()
+        .resolve(),
         "control_init": (
             args.controls_init_dir or root / "02_attention_controls_init_interaction"
-        ).expanduser().resolve(),
+        )
+        .expanduser()
+        .resolve(),
         "control_random": (
             args.controls_random_dir or root / "02_attention_controls_random_seed17"
-        ).expanduser().resolve(),
-        "commot": (
-            args.commot_dir or root / "03_external_ccc" / "commot_current_lr"
-        ).expanduser().resolve(),
+        )
+        .expanduser()
+        .resolve(),
+        "commot": (args.commot_dir or root / "03_external_ccc" / "commot_current_lr")
+        .expanduser()
+        .resolve(),
         "cellchat": (
             args.cellchat_dir or root / "03_external_ccc" / "cellchat_current_lr"
-        ).expanduser().resolve(),
+        )
+        .expanduser()
+        .resolve(),
         "nichenet_default": (
-            args.nichenet_default_dir
-            or root / "04_nichenet" / "02_default_mouse_v2"
-        ).expanduser().resolve(),
+            args.nichenet_default_dir or root / "04_nichenet" / "02_default_mouse_v2"
+        )
+        .expanduser()
+        .resolve(),
         "nichenet_custom": (
-            args.nichenet_custom_dir
-            or root / "04_nichenet" / "03_custom_zebrafish_lr"
-        ).expanduser().resolve(),
-        "cellagentchat": (
-            args.cellagentchat_dir or root / "05_cellagentchat"
-        ).expanduser().resolve(),
+            args.nichenet_custom_dir or root / "04_nichenet" / "03_custom_zebrafish_lr"
+        )
+        .expanduser()
+        .resolve(),
+        "cellagentchat": (args.cellagentchat_dir or root / "05_cellagentchat")
+        .expanduser()
+        .resolve(),
     }
 
 
@@ -1688,6 +2772,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     method_unavailable_frames: list[pd.DataFrame] = []
     nichenet_orthology_records: dict[str, Mapping[str, Any]] = {}
     cellagentchat_orthology_records: dict[str, Mapping[str, Any]] = {}
+    zero_completion_records: dict[str, Mapping[str, Any]] = {}
+    zero_audit_frames: list[pd.DataFrame] = []
     cellchat_lr_universe: Mapping[str, Any] | None = None
 
     loaders: list[tuple[list[str], Callable[[], Sequence[pd.DataFrame]]]] = [
@@ -1706,29 +2792,20 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             lambda: (_load_nichenet(paths["nichenet_custom"], mode="custom"),),
         ),
         (
-            ["cellagentchat__official_mouse_default"],
-            lambda: (
-                _load_cellagentchat(
-                    paths["cellagentchat"] / CELLAGENTCHAT_OFFICIAL,
-                    condition=CELLAGENTCHAT_OFFICIAL,
-                ),
-            ),
-        ),
-        (
-            ["cellagentchat__project_lr"],
-            lambda: (
-                _load_cellagentchat(
-                    paths["cellagentchat"] / CELLAGENTCHAT_CUSTOM,
-                    condition=CELLAGENTCHAT_CUSTOM,
-                ),
-            ),
+            [
+                "cellagentchat__official_mouse_default",
+                "cellagentchat__project_lr",
+            ],
+            lambda: _load_cellagentchat_pair(paths["cellagentchat"]),
         ),
     ]
     for view_ids, loader in loaders:
         try:
             result = tuple(loader())
             if len(result) != len(view_ids):
-                raise RuntimeError("Loader returned an unexpected number of score views")
+                raise RuntimeError(
+                    "Loader returned an unexpected number of score views"
+                )
             for view_id, frame in zip(view_ids, result):
                 unavailable = frame.attrs.get("method_unavailable_lr_rows")
                 if isinstance(unavailable, pd.DataFrame):
@@ -1739,13 +2816,58 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                 orthology = frame.attrs.get("nichenet_orthology")
                 if isinstance(orthology, Mapping):
                     nichenet_orthology_records[view_id] = dict(orthology)
-                cellagentchat_orthology = frame.attrs.get(
-                    "cellagentchat_orthology"
-                )
+                cellagentchat_orthology = frame.attrs.get("cellagentchat_orthology")
                 if isinstance(cellagentchat_orthology, Mapping):
                     cellagentchat_orthology_records[view_id] = dict(
                         cellagentchat_orthology
                     )
+                zero_completion = frame.attrs.get("zero_completion")
+                if not isinstance(zero_completion, Mapping):
+                    raise ValueError(
+                        f"Score view {view_id} lacks structural-zero provenance"
+                    )
+                zero_record = dict(zero_completion)
+                zero_completion_records[view_id] = {
+                    key: value
+                    for key, value in zero_record.items()
+                    if key != "audit_rows"
+                }
+                audit_rows = zero_record.get("audit_rows")
+                if not isinstance(audit_rows, list) or not audit_rows:
+                    raise ValueError(
+                        f"Score view {view_id} has no structural-zero audit rows"
+                    )
+                metadata = frame[
+                    [
+                        "view_id",
+                        "display_label",
+                        "method",
+                        "database_condition",
+                    ]
+                ].drop_duplicates()
+                if len(metadata) != 1:
+                    raise ValueError(f"Score view {view_id} has ambiguous metadata")
+                audit = pd.DataFrame(audit_rows)
+                audit.insert(0, "universe_scope", str(zero_record["universe_scope"]))
+                audit.insert(
+                    0,
+                    "database_condition",
+                    str(metadata["database_condition"].iloc[0]),
+                )
+                audit.insert(0, "method", str(metadata["method"].iloc[0]))
+                audit.insert(0, "display_label", str(metadata["display_label"].iloc[0]))
+                audit.insert(0, "view_id", view_id)
+                audit["unevaluated_units_zero_filled"] = bool(
+                    zero_record.get("unevaluated_units_zero_filled")
+                )
+                audit["method_unavailable_lr_rows_zero_filled"] = bool(
+                    zero_record.get("method_unavailable_lr_rows_zero_filled")
+                )
+                source = zero_record.get("universe_source")
+                audit["provenance_manifest_path"] = (
+                    str(source.get("path", "")) if isinstance(source, Mapping) else ""
+                )
+                zero_audit_frames.append(audit)
                 loaded.append(frame)
         except Exception as error:
             if not args.allow_partial:
@@ -1759,7 +2881,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                     }
                 )
     if not loaded:
-        raise RuntimeError("No valid score view is available, even for partial diagnostics")
+        raise RuntimeError(
+            "No valid score view is available, even for partial diagnostics"
+        )
     combined_scores = pd.concat(loaded, ignore_index=True)
     for spec in expected:
         observed = combined_scores.loc[combined_scores["view_id"] == spec["view_id"]]
@@ -1778,15 +2902,28 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         for record in nichenet_orthology_records.values()
     }
     nichenet_tiers = {
-        str(record["analysis_tier"])
+        str(record["analysis_tier"]) for record in nichenet_orthology_records.values()
+    }
+    nichenet_shared_preparations = {
+        str(record.get("shared_prepare_manifest_md5", ""))
         for record in nichenet_orthology_records.values()
     }
-    if len(nichenet_orthology_records) == 2 and (
-        len(nichenet_policies) != 1 or len(nichenet_tiers) != 1
-    ):
+    nichenet_prior_sources = {
+        str(record.get("prior_source_signature_sha256", ""))
+        for record in nichenet_orthology_records.values()
+    }
+    nichenet_pair_contract_ok = len(nichenet_orthology_records) == 2 and (
+        len(nichenet_policies) == 1
+        and len(nichenet_tiers) == 1
+        and len(nichenet_shared_preparations) == 1
+        and "" not in nichenet_shared_preparations
+        and len(nichenet_prior_sources) == 1
+        and "" not in nichenet_prior_sources
+    )
+    if len(nichenet_orthology_records) == 2 and not nichenet_pair_contract_ok:
         error = ValueError(
             "The official/default and project-LR NicheNet conditions do not share "
-            "the same orthology_policy and analysis_tier"
+            "the same orthology_policy, analysis_tier, and shared preparation"
         )
         if not args.allow_partial:
             raise error
@@ -1805,12 +2942,26 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         str(record["analysis_tier"])
         for record in cellagentchat_orthology_records.values()
     }
-    if len(cellagentchat_orthology_records) == 2 and (
-        len(cellagentchat_policies) != 1 or len(cellagentchat_tiers) != 1
-    ):
+    cellagentchat_shared_contracts = {
+        (
+            str(record.get("sample_plan_sha256", "")),
+            str(record.get("mapped_expression_sha256", "")),
+            str(record.get("preparation_manifest_sha256", "")),
+            str(record.get("source_commit", "")),
+            json.dumps(record.get("source_signature", []), sort_keys=True),
+        )
+        for record in cellagentchat_orthology_records.values()
+    }
+    cellagentchat_pair_contract_ok = len(cellagentchat_orthology_records) == 2 and (
+        len(cellagentchat_policies) == 1
+        and len(cellagentchat_tiers) == 1
+        and len(cellagentchat_shared_contracts) == 1
+        and all(next(iter(cellagentchat_shared_contracts), ()))
+    )
+    if len(cellagentchat_orthology_records) == 2 and not cellagentchat_pair_contract_ok:
         error = ValueError(
             "The official/default and project-LR CellAgentChat conditions do not "
-            "share the same orthology_policy and analysis_tier"
+            "share the same expression/sample preparation, orthology_policy, and analysis_tier"
         )
         if not args.allow_partial:
             raise error
@@ -1841,7 +2992,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     control_specs = [
         ("trained", "Trained", paths["control_trained"]),
         ("init_interaction", "Init interaction", paths["control_init"]),
-        ("randomized_interaction_seed17", "Randomized interaction", paths["control_random"]),
+        (
+            "randomized_interaction_seed17",
+            "Randomized interaction",
+            paths["control_random"],
+        ),
     ]
     control_frames: list[pd.DataFrame] = []
     for control, label, directory in control_specs:
@@ -1908,6 +3063,53 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     write_csv(stability, "stage_stability.csv")
     write_csv(coverage, "condition_coverage.csv")
     write_csv(controls, "cytobridge_control_metrics.csv")
+    structural_zero_audit = (
+        pd.concat(zero_audit_frames, ignore_index=True)
+        if zero_audit_frames
+        else pd.DataFrame()
+    )
+    structural_columns = [
+        "view_id",
+        "display_label",
+        "method",
+        "database_condition",
+        "universe_scope",
+        "stage",
+        "stage_label",
+        "receiver_unit",
+        "n_cell_types",
+        "expected_directed_rows",
+        "native_emitted_rows",
+        "native_emitted_positive_rows",
+        "native_emitted_zero_rows",
+        "structural_zero_filled_rows",
+        "verified_complete_evaluated_universe",
+        "unevaluated_units_zero_filled",
+        "method_unavailable_lr_rows_zero_filled",
+        "provenance_manifest_path",
+    ]
+    for column in structural_columns:
+        if column not in structural_zero_audit:
+            structural_zero_audit[column] = (
+                ""
+                if column
+                in {
+                    "view_id",
+                    "display_label",
+                    "method",
+                    "database_condition",
+                    "universe_scope",
+                    "stage_label",
+                    "receiver_unit",
+                    "provenance_manifest_path",
+                }
+                else np.nan
+            )
+    structural_zero_audit = structural_zero_audit[structural_columns]
+    structural_zero_path = write_csv(
+        structural_zero_audit,
+        "structural_zero_audit.csv",
+    )
     method_unavailable = (
         pd.concat(method_unavailable_frames, ignore_index=True)
         if method_unavailable_frames
@@ -2026,9 +3228,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         vmax=1,
         output_base=top_base,
         diagonal_note=(
-            "Top-k is selected independently within each method on the shared stage/type-pair "
-            "universe. Stages where effective k equals all shared keys are audit-only and "
-            "excluded here; no informative stage is shown as NA."
+            "Selection uses positive scores only, caps k by both positive supports, and expands "
+            "every kth-score boundary tie. All-zero support is NA; a tie-expanded selection "
+            "covering the whole shared universe is audit-only and excluded here."
         ),
     )
     direction_base = output / "directionality_concordance"
@@ -2067,9 +3269,128 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     if not controls.empty:
         control_base = output / "cytobridge_control_panel"
         _plot_controls(controls, control_base)
-        artifacts.extend([control_base.with_suffix(".png"), control_base.with_suffix(".pdf")])
+        artifacts.extend(
+            [control_base.with_suffix(".png"), control_base.with_suffix(".pdf")]
+        )
 
+    expected_view_ids = {str(item["view_id"]) for item in expected}
+    loaded_view_ids = set(scores["view_id"].astype(str).unique())
+    external_condition_ids = {
+        "commot__project_lr",
+        "cellchat__project_lr",
+        "nichenet_v2__official_mouse_lr",
+        "nichenet_v2__project_lr_gate",
+        "cellagentchat__official_mouse_default",
+        "cellagentchat__project_lr",
+    }
+    full_grid_view_ids = {
+        "commot__project_lr",
+        "cellchat__project_lr",
+        "cellagentchat__official_mouse_default",
+        "cellagentchat__project_lr",
+    }
+    nichenet_view_ids = {
+        "nichenet_v2__official_mouse_lr",
+        "nichenet_v2__project_lr_gate",
+    }
+    full_grid_stages_ok = all(
+        set(scores.loc[scores["view_id"] == view_id, "stage"].astype(float).unique())
+        == set(EXPECTED_FULL_GRID_STAGES)
+        for view_id in full_grid_view_ids
+        if view_id in loaded_view_ids
+    ) and full_grid_view_ids.issubset(loaded_view_ids)
+    full_grid_zero_contracts_ok = all(
+        bool(
+            zero_completion_records.get(view_id, {}).get(
+                "verified_complete_evaluated_universe"
+            )
+        )
+        and bool(
+            zero_completion_records.get(view_id, {}).get(
+                "full_stage_type_square_required"
+            )
+        )
+        and int(
+            zero_completion_records.get(view_id, {}).get("observed_stage_count", -1)
+        )
+        == len(EXPECTED_FULL_GRID_STAGES)
+        and zero_completion_records.get(view_id, {}).get(
+            "unevaluated_units_zero_filled"
+        )
+        is False
+        and zero_completion_records.get(view_id, {}).get(
+            "method_unavailable_lr_rows_zero_filled"
+        )
+        is False
+        for view_id in full_grid_view_ids
+    )
+    nichenet_zero_contracts_ok = all(
+        bool(
+            zero_completion_records.get(view_id, {}).get(
+                "verified_complete_evaluated_universe"
+            )
+        )
+        and zero_completion_records.get(view_id, {}).get(
+            "full_stage_type_square_required"
+        )
+        is False
+        and zero_completion_records.get(view_id, {}).get(
+            "unevaluated_units_zero_filled"
+        )
+        is False
+        for view_id in nichenet_view_ids
+    )
+    controls_contract_ok = bool(
+        set(controls["control"].astype(str))
+        == {"trained", "init_interaction", "randomized_interaction_seed17"}
+        and set(controls["target"].astype(str)) == {"attention", "exact message"}
+        and set(controls["metric"].astype(str))
+        == {
+            "conditional_residual_spearman_forward_lr",
+            "delta_r2_forward_lr_over_confounders",
+            "reciprocal_direction_spearman_all_stage",
+        }
+        and controls.groupby("control").size().eq(6).all()
+    )
+    six_condition_execution_complete = (
+        external_condition_ids.issubset(loaded_view_ids)
+        and not bool(issues)
+        and nichenet_pair_contract_ok
+        and cellagentchat_pair_contract_ok
+        and full_grid_stages_ok
+        and full_grid_zero_contracts_ok
+        and nichenet_zero_contracts_ok
+    )
+    readiness_checks = {
+        "exact_eight_score_views_loaded": (
+            loaded_view_ids == expected_view_ids and len(loaded_view_ids) == 8
+        ),
+        "no_input_issues": not bool(issues),
+        "global_observed_stages_are_exactly_five": set(global_stages)
+        == set(EXPECTED_FULL_GRID_STAGES),
+        "full_grid_methods_have_all_five_stages": full_grid_stages_ok,
+        "all_eight_views_have_zero_completion_provenance": set(zero_completion_records)
+        == expected_view_ids,
+        "full_grid_zero_completion_contracts_verified": full_grid_zero_contracts_ok,
+        "nichenet_complete_unit_zero_contracts_verified": nichenet_zero_contracts_ok,
+        "cellchat_method_unavailable_rows_not_zero_filled": (
+            cellchat_lr_universe is not None
+            and cellchat_lr_universe.get("method_unavailable_rows_zero_filled") is False
+        ),
+        "nichenet_condition_pair_contract_verified": nichenet_pair_contract_ok,
+        "cellagentchat_condition_pair_contract_verified": cellagentchat_pair_contract_ok,
+        "cytobridge_controls_contract_verified": controls_contract_ok,
+        "six_condition_execution_complete": six_condition_execution_complete,
+    }
     status = "partial_diagnostic" if args.allow_partial or issues else "complete"
+    reviewer_reporting_ready = bool(
+        status == "complete"
+        and not args.allow_partial
+        and all(readiness_checks.values())
+    )
+    if status == "complete" and not args.allow_partial and not reviewer_reporting_ready:
+        failed = sorted(key for key, value in readiness_checks.items() if not value)
+        raise RuntimeError(f"Formal reviewer readiness checks failed: {failed}")
     readme_path = output / "README.md"
     _write_readme(
         readme_path,
@@ -2077,6 +3398,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         top_k=int(args.top_k),
         expected=expected,
         issues=issues,
+        zero_completion=zero_completion_records,
+        readiness_checks=readiness_checks,
     )
     artifacts.append(readme_path)
 
@@ -2084,26 +3407,58 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     for name, path in paths.items():
         input_records[name] = {"path": str(path), "exists": path.exists()}
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_at_utc": _utc_now(),
         "workflow": "reviewer_zebrafish_multimethod_directed_ccc_rank_comparison",
         "status": status,
-        "formal_reviewer_ready": status == "complete" and not bool(args.allow_partial),
+        "formal_reviewer_ready": reviewer_reporting_ready,
+        "reviewer_reporting_ready": reviewer_reporting_ready,
+        "six_condition_execution_complete": six_condition_execution_complete,
+        "formal_readiness_checks": readiness_checks,
+        "readiness_semantics": {
+            "six_condition_execution_complete": (
+                "all six requested external method/database conditions passed execution, "
+                "pairing, evaluated-universe, and stage contracts"
+            ),
+            "reviewer_reporting_ready": (
+                "all eight score views plus controls and provenance passed report-generation contracts"
+            ),
+            "readiness_is_not_primary_claim_permission": True,
+            "condition_level_primary_claim_allowed_remains_authoritative": True,
+        },
         "allow_partial": bool(args.allow_partial),
         "contract": {
             "exact_key": KEYS,
             "rank_scope": "within method/database condition/score view/stage",
             "raw_cross_method_units_compared": False,
-            "pairwise_universe": "inner join on exact key; no silent zero fill",
+            "pairwise_universe": (
+                "inner join on exact key after provenance-verified completion of "
+                "evaluated structural zeros only"
+            ),
+            "structural_zero_policy": (
+                "COMMOT/CellChat: hash-bound stage cell_type_counts type-square; "
+                "NicheNet: complete units only across verified source-stage sender types; "
+                "CellAgentChat: validate native complete grid; unavailable units are never zero"
+            ),
             "top_k": int(args.top_k),
-            "top_k_tie_break": "score descending, then sender_type and receiver_type ascending",
-            "top_k_informative_rule": "effective_top_k < n_shared_directed_pairs",
+            "top_k_selection_rule": (
+                "positive scores only; effective k=min(requested,n_shared,n_positive_left,"
+                "n_positive_right); include every kth-score boundary tie"
+            ),
+            "top_k_tie_break": "none; kth-score boundary ties are expanded",
+            "top_k_informative_rule": (
+                "effective k > 0 and neither tie-expanded selection equals the whole "
+                "shared directed universe"
+            ),
             "primary_top_k_summary": "informative stages only; NA when none",
             "directionality": "within-stage rank percentile A->B minus B->A",
             "stage_stability": "adjacent global observed stages",
             "cytobridge_attention_is_ccc_probability": False,
             "nichenet_type_pair_score_is_native": False,
             "cellchat_method_unavailable_lr_rows_zero_filled": False,
+            "nichenet_skipped_or_ineligible_units_zero_filled": False,
+            "cellagentchat_native_full_grid_required": True,
+            "formal_expected_full_grid_stages": list(EXPECTED_FULL_GRID_STAGES),
         },
         "expected_score_views": expected,
         "loaded_score_views": scores["view_id"].drop_duplicates().tolist(),
@@ -2113,6 +3468,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         ],
         "inputs": input_records,
         "issues": issues,
+        "score_view_zero_completion": zero_completion_records,
         "cellchat_lr_universe": (
             dict(cellchat_lr_universe) if cellchat_lr_universe is not None else None
         ),
@@ -2133,7 +3489,9 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     manifest["artifacts"][unavailable_path.name] = _file_record(unavailable_path)
     manifest["artifacts"][issues_path.name] = _file_record(issues_path)
     manifest_path = output / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return manifest
 
 

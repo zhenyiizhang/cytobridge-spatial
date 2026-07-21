@@ -3,13 +3,14 @@
 
 The runner consumes the method-neutral bundle created by ``prepare_inputs.py``.
 It does not re-normalize expression, re-filter LR rows by stage, or silently
-subsample cells.  Structural zeros are omitted from long tables and must be
-zero-filled against the exported input universe for cross-method comparisons.
+subsample cells. Detailed LR/pathway tables remain positive-only, while the
+primary type-pair table exports the complete directed cell-type square.
 """
 
 from __future__ import annotations
 
 import argparse
+from importlib import metadata as importlib_metadata
 import json
 from pathlib import Path
 from typing import Iterable
@@ -68,8 +69,14 @@ def load_stage(input_dir: Path, stage_record: dict[str, object]) -> ad.AnnData:
     stage_dir = input_dir / "stages" / str(stage_record["token"])
     expression = mmread(stage_dir / "expression_genes_by_cells.mtx")
     expression = sparse.csr_matrix(expression).T.tocsr().astype(np.float32)
-    genes = [line.strip() for line in (stage_dir / "genes.txt").read_text().splitlines() if line.strip()]
-    metadata = pd.read_csv(stage_dir / "metadata.csv", dtype={"cell_id": str, "label": str, "stage": str})
+    genes = [
+        line.strip()
+        for line in (stage_dir / "genes.txt").read_text().splitlines()
+        if line.strip()
+    ]
+    metadata = pd.read_csv(
+        stage_dir / "metadata.csv", dtype={"cell_id": str, "label": str, "stage": str}
+    )
     spatial = pd.read_csv(stage_dir / "spatial_aligned.csv", dtype={"cell_id": str})
     if expression.shape != (len(metadata), len(genes)):
         raise ValueError(
@@ -77,12 +84,18 @@ def load_stage(input_dir: Path, stage_record: dict[str, object]) -> ad.AnnData:
             f"match metadata/genes {(len(metadata), len(genes))}"
         )
     if metadata["cell_id"].tolist() != spatial["cell_id"].tolist():
-        raise ValueError(f"Stage {stage_record['stage']!r} metadata/spatial cell order differs")
+        raise ValueError(
+            f"Stage {stage_record['stage']!r} metadata/spatial cell order differs"
+        )
     if metadata["cell_id"].duplicated().any() or len(set(genes)) != len(genes):
-        raise ValueError(f"Stage {stage_record['stage']!r} has duplicate cell or gene IDs")
+        raise ValueError(
+            f"Stage {stage_record['stage']!r} has duplicate cell or gene IDs"
+        )
     coordinate_columns = [column for column in spatial if column.startswith("coord_")]
     if len(coordinate_columns) < 2:
-        raise ValueError("Prepared spatial input must have at least two coordinate columns")
+        raise ValueError(
+            "Prepared spatial input must have at least two coordinate columns"
+        )
     result = ad.AnnData(
         X=expression,
         obs=metadata.set_index("cell_id", drop=False),
@@ -126,9 +139,9 @@ def aggregate_matrix_by_labels(
     counts = np.bincount(group_index, minlength=len(groups))
     coo = sparse.coo_matrix(matrix)
     flat_index = group_index[coo.row] * len(groups) + group_index[coo.col]
-    sums = np.bincount(flat_index, weights=coo.data, minlength=len(groups) ** 2).reshape(
-        len(groups), len(groups)
-    )
+    sums = np.bincount(
+        flat_index, weights=coo.data, minlength=len(groups) ** 2
+    ).reshape(len(groups), len(groups))
     rows: list[dict[str, object]] = []
     for sender_idx, sender in enumerate(groups):
         for receiver_idx, receiver in enumerate(groups):
@@ -174,7 +187,11 @@ def _common_context(
     if frame.empty:
         return pd.DataFrame(
             columns=COMMON_SCORE_COLUMNS
-            + ["score_mean_possible_cell_pairs", "abundance_controlled_score", "matrix_key"]
+            + [
+                "score_mean_possible_cell_pairs",
+                "abundance_controlled_score",
+                "matrix_key",
+            ]
         )
     result = frame.copy()
     result.insert(0, "method", "COMMOT")
@@ -188,7 +205,9 @@ def _common_context(
     result["interaction_id"] = interaction_id
     result["p_value"] = np.nan
     result["significant"] = pd.NA
-    result["score_semantics"] = "sum of COMMOT sender-row/receiver-column cell-cell OT communication mass"
+    result[
+        "score_semantics"
+    ] = "sum of COMMOT sender-row/receiver-column cell-cell OT communication mass"
     result["abundance_controlled_score"] = result["score_mean_possible_cell_pairs"]
     result["matrix_key"] = matrix_key
     return ensure_common_score_schema(result)
@@ -245,7 +264,9 @@ def extract_commot_tables(
         if key not in adata.obsp:
             continue
         aggregated = aggregate_matrix_by_labels(adata.obsp[key], labels)
-        categories = ";".join(sorted(database.loc[database["pathway"] == pathway, "category"].unique()))
+        categories = ";".join(
+            sorted(database.loc[database["pathway"] == pathway, "category"].unique())
+        )
         pathway_frames.append(
             _common_context(
                 aggregated,
@@ -264,7 +285,7 @@ def extract_commot_tables(
     if total_key not in adata.obsp:
         raise KeyError(f"COMMOT did not create required total matrix {total_key!r}")
     total = _common_context(
-        aggregate_matrix_by_labels(adata.obsp[total_key], labels),
+        aggregate_matrix_by_labels(adata.obsp[total_key], labels, include_zeros=True),
         stage=stage,
         stage_time=stage_time,
         ligand="",
@@ -274,7 +295,11 @@ def extract_commot_tables(
         interaction_id="total",
         matrix_key=total_key,
     )
-    lr = pd.concat(lr_frames, ignore_index=True) if lr_frames else pd.DataFrame(columns=COMMON_SCORE_COLUMNS)
+    lr = (
+        pd.concat(lr_frames, ignore_index=True)
+        if lr_frames
+        else pd.DataFrame(columns=COMMON_SCORE_COLUMNS)
+    )
     pathway = (
         pd.concat(pathway_frames, ignore_index=True)
         if pathway_frames
@@ -286,7 +311,9 @@ def extract_commot_tables(
         "missing_lr_matrix_keys_first_20": missing_lr_keys[:20],
         "n_lr_positive_context_rows": int(len(lr)),
         "n_pathway_positive_context_rows": int(len(pathway)),
-        "n_total_positive_context_rows": int(len(total)),
+        "n_total_context_rows": int(len(total)),
+        "n_total_positive_context_rows": int((total["score"] > 0).sum()),
+        "n_total_structural_zero_rows": int((total["score"] == 0).sum()),
     }
     return lr, pathway, total, diagnostics
 
@@ -309,7 +336,9 @@ def main() -> None:
     input_manifest = json.loads(input_manifest_path.read_text(encoding="utf-8"))
     database_path = args.input_dir / "filtered_lr_database.csv"
     database = pd.read_csv(database_path)
-    commot_database = database[["ligand", "receptor", "pathway", "category"]].drop_duplicates()
+    commot_database = database[
+        ["ligand", "receptor", "pathway", "category"]
+    ].drop_duplicates()
     commot_database.columns = ["0", "1", "2", "3"]
 
     # COMMOT 0.0.3 references the removed NumPy alias.  This compatibility
@@ -321,14 +350,20 @@ def main() -> None:
     pathway_frames: list[pd.DataFrame] = []
     total_frames: list[pd.DataFrame] = []
     stage_diagnostics: list[dict[str, object]] = []
-    interaction_graph = input_manifest.get("preprocessing", {}).get("interaction_graph", {})
+    interaction_graph = input_manifest.get("preprocessing", {}).get(
+        "interaction_graph", {}
+    )
     graph_cutoff = interaction_graph.get("neighborhood_threshold")
     spot_diameter = interaction_graph.get("recommended_spot_diameter")
     if args.distance_threshold is not None:
         distance_rule = "explicit_cli_override"
         shared_cutoff = float(args.distance_threshold)
     elif args.distance_mode == "cytobridge_graph":
-        if graph_cutoff is None or not np.isfinite(float(graph_cutoff)) or float(graph_cutoff) <= 0:
+        if (
+            graph_cutoff is None
+            or not np.isfinite(float(graph_cutoff))
+            or float(graph_cutoff) <= 0
+        ):
             raise ValueError(
                 "Primary COMMOT requires input_manifest preprocessing.interaction_graph."
                 "neighborhood_threshold; use --distance-mode knn only for an explicit sensitivity"
@@ -346,7 +381,9 @@ def main() -> None:
             shared_cutoff
             if shared_cutoff is not None
             else infer_distance_threshold(
-                snapshot.obsm["spatial"], k=args.distance_k, quantile=args.distance_quantile
+                snapshot.obsm["spatial"],
+                k=args.distance_k,
+                quantile=args.distance_quantile,
             )
         )
         ct.tl.spatial_communication(
@@ -377,7 +414,10 @@ def main() -> None:
         )
         stage_diagnostics.append(diagnostics)
         if args.save_result_h5ad:
-            snapshot.write_h5ad(args.out_dir / f"commot_{stage_record['token']}.h5ad", compression="gzip")
+            snapshot.write_h5ad(
+                args.out_dir / f"commot_{stage_record['token']}.h5ad",
+                compression="gzip",
+            )
 
     lr_all = pd.concat(lr_frames, ignore_index=True)
     pathway_all = pd.concat(pathway_frames, ignore_index=True)
@@ -392,7 +432,15 @@ def main() -> None:
     _write_table(total_all, output_paths["type_pair_scores"])
 
     versions = software_versions()
-    versions["commot"] = getattr(ct, "__version__", "unknown")
+    commot_version = str(getattr(ct, "__version__", "")).strip()
+    if not commot_version or commot_version.casefold() == "unknown":
+        try:
+            commot_version = importlib_metadata.version("commot")
+        except importlib_metadata.PackageNotFoundError as error:
+            raise RuntimeError(
+                "COMMOT version is unavailable from both the module and package metadata"
+            ) from error
+    versions["commot"] = commot_version
     manifest = {
         "schema_version": 1,
         "created_at_utc": utc_now(),
@@ -430,7 +478,19 @@ def main() -> None:
             "cot_nitermax": args.cot_nitermax,
             "stage_prevalence_filter": None,
             "flat_exact_duplicates": "deduplicated for COMMOT execution and linked back through database_rows",
-            "long_table_zero_policy": "structural zeros omitted; outer-join to input universe and fill zero for comparisons",
+            "long_table_zero_policy": (
+                "LR and pathway structural zeros omitted; primary type-pair table exports "
+                "the complete directed stage-specific cell-type square"
+            ),
+            "type_pair_grid_export": {
+                "complete_directed_stage_type_square": True,
+                "zero_score_semantics": (
+                    "evaluated COMMOT total communication mass is exactly zero for this "
+                    "sender/receiver type block"
+                ),
+                "universe_source": "input_manifest.stages[].cell_type_counts",
+                "loader_zero_completion_required": False,
+            },
         },
         "score_semantics": {
             "score": "sum of native COMMOT cell-cell OT communication mass within a sender/receiver type block",

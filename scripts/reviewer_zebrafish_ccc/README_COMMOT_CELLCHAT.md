@@ -92,9 +92,13 @@ number of possible sender/receiver cell pairs, while CellChat uses its native
 score from the `population.size=false` run.  COMMOT's native block-mass `score`
 is retained as an abundance-sensitive analysis rather than discarded.
 
-By default, long files omit score-zero rows to control file size.  A valid
-comparison must outer-join to the shared stage × type-pair × LR universe and
-fill absent entries with zero.  Both manifests record this rule.
+Detailed LR and pathway long files may omit score-zero rows to control file
+size. The primary `*_type_pair_scores.csv.gz` files now export every evaluated
+stage-specific directed type pair, including native zeros. The comparison
+loader remains backward-compatible with historical positive-only type-pair
+outputs: it may add zeros only after verifying the input manifest hash, every
+stage's `cell_type_counts`, and the runner's explicit positive-only policy.
+CellChat-incompatible LR rows are method-unavailable and are never zero-filled.
 
 Every input and result directory has a JSON manifest containing SHA-256 file
 records, preprocessing choices, software versions, stage cell counts, spatial

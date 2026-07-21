@@ -17,13 +17,28 @@ from reviewer_zebrafish_ccc import compare_multimethod_ccc as comparison  # noqa
 
 
 PAIRS = [("A", "A"), ("A", "B"), ("B", "A"), ("B", "B")]
-STAGES = [(0.0, "5.25hpf"), (1.0, "10hpf")]
-STAGE_TIMES = {0.0: 5.25, 1.0: 10.0}
+STAGES = [
+    (0.0, "5.25hpf"),
+    (1.0, "10hpf"),
+    (2.0, "12hpf"),
+    (3.0, "18hpf"),
+    (4.0, "24hpf"),
+]
+STAGE_TIMES = {0.0: 5.25, 1.0: 10.0, 2.0: 12.0, 3.0: 18.0, 4.0: 24.0}
 
 
 def _json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding="utf-8")
+
+
+def _prepare_record(path: Path, *, relative_to: Path) -> dict[str, object]:
+    return {
+        "path": str(path.relative_to(relative_to)),
+        "size_bytes": path.stat().st_size,
+        "sha256": comparison._sha256(path),
+        "md5": comparison._md5(path),
+    }
 
 
 def _type_rows(score_name: str, values: list[float]) -> pd.DataFrame:
@@ -121,7 +136,7 @@ def _build_formal_tree(root: Path) -> None:
         },
     )
     cyto = _type_rows("G_AB_attention_mean_mean", [4.0, 3.0, 2.0, 1.0])
-    cyto["D_AB_joint_mean"] = np.tile([1.0, 2.0, 3.0, 4.0], 2)
+    cyto["D_AB_joint_mean"] = np.resize([1.0, 2.0, 3.0, 4.0], len(cyto))
     cyto.to_csv(cytobridge / "type_pair_summary.csv", index=False)
 
     _write_control(root / "02_attention_controls", attention=0.0284, message=0.0136)
@@ -149,6 +164,9 @@ def _build_formal_tree(root: Path) -> None:
                     "stage": str(stage),
                     "stage_time": STAGE_TIMES[stage],
                     "token": f"stage_{int(stage)}",
+                    "n_cells": 5,
+                    "n_cell_types": 2,
+                    "cell_type_counts": {"A": 3, "B": 2},
                 }
                 for stage, _ in STAGES
             ],
@@ -160,6 +178,13 @@ def _build_formal_tree(root: Path) -> None:
         rows = []
         for stage_index, (stage, _) in enumerate(STAGES):
             for pair_index, (sender, receiver) in enumerate(PAIRS):
+                score = (
+                    0.0
+                    if stage_index == 0 or pair_index == 3
+                    else float(4 - ((pair_index + stage_index) % 3))
+                )
+                if score == 0:
+                    continue
                 rows.append(
                     {
                         "method": display,
@@ -168,9 +193,7 @@ def _build_formal_tree(root: Path) -> None:
                         "stage_time": STAGE_TIMES[stage],
                         "sender_type": sender,
                         "receiver_type": receiver,
-                        "abundance_controlled_score": float(
-                            4 - ((pair_index + stage_index) % 4)
-                        ),
+                        "abundance_controlled_score": score,
                     }
                 )
         pd.DataFrame(rows).to_csv(
@@ -182,8 +205,27 @@ def _build_formal_tree(root: Path) -> None:
             "method": display,
             "database_variant": "current_zebrafish_lr_database",
             "input_manifest": comparison._file_record(shared_manifest_path),
+            "design": {
+                "long_table_zero_policy": (
+                    "structural zeros omitted; outer-join to input universe and "
+                    "fill zero for comparisons"
+                )
+            },
         }
         if method == "cellchat":
+            manifest["design"].update(
+                {
+                    "population_size": False,
+                    "nboot": 100,
+                    "mean_method": "triMean",
+                    "raw_use": True,
+                }
+            )
+            manifest["software"] = {
+                "CellChat": "2.2.0.9001",
+                "CellChat_load_mode": "pinned official core R source",
+                "CellChat_source_commit": comparison.PINNED_CELLCHAT_COMMIT,
+            }
             exclusion_path = directory / "excluded_lr_rows.csv"
             pd.DataFrame(
                 [
@@ -220,21 +262,102 @@ def _build_formal_tree(root: Path) -> None:
                 "excluded_rows_are_method_unavailable_not_biological_zero": True,
                 "exclusion_table": comparison._file_record(exclusion_path),
             }
-            manifest["design"] = {
-                "method_unavailable_policy": (
-                    "database rows listed in excluded_lr_rows.csv must be excluded "
-                    "from CellChat cross-method universes, never zero-filled"
-                )
-            }
+            manifest["design"].update(
+                {
+                    "method_unavailable_policy": (
+                        "database rows listed in excluded_lr_rows.csv must be excluded "
+                        "from CellChat cross-method universes, never zero-filled"
+                    )
+                }
+            )
         _json(directory / "manifest.json", manifest)
 
     nichenet = root / "04_nichenet"
+    nichenet_shared = nichenet / "01_shared_inputs"
+    nichenet_shared.mkdir(parents=True)
+    expression_path = nichenet_shared / "expression_by_stage_celltype.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "stage_id": stage,
+                "stage_label": stage_label,
+                "cell_type": cell_type,
+                "n_cells": 3 if cell_type == "A" else 2,
+                "gene_mouse": "Gene1",
+                "pct_detected": 0.5,
+                "mean_normalized_linear": 1.0,
+                "mean_log1p": 0.5,
+            }
+            for stage, stage_label in STAGES
+            for cell_type in ("A", "B")
+        ]
+    ).to_csv(expression_path, index=False, compression="gzip")
+    prepare_manifest_path = nichenet_shared / "prepare_manifest.json"
+    _json(
+        prepare_manifest_path,
+        {
+            "schema_version": 2,
+            "workflow": "reviewer_zebrafish_nichenet_shared_input_preparation",
+            "status": "complete",
+            "orthology_policy": "one2one_bijective_all_confidence",
+            "analysis_tier": "sensitivity",
+            "primary_claim_allowed": False,
+            "output_files": [
+                _prepare_record(expression_path, relative_to=nichenet_shared)
+            ],
+        },
+    )
     for directory_name, mode in (
         ("02_default_mouse_v2", "default"),
         ("03_custom_zebrafish_lr", "custom"),
     ):
         directory = nichenet / directory_name
         directory.mkdir(parents=True)
+        rows = []
+        status_rows = []
+        for stage_index, (stage, stage_label) in enumerate(STAGES):
+            unit_id = f"unit_{stage_index}"
+            status = "complete" if stage_index < 4 else "skipped_nichenet_ineligible"
+            status_rows.append(
+                {
+                    "unit_id": unit_id,
+                    "source_stage_id": str(stage),
+                    "target_stage_id": str(stage + 1),
+                    "source_stage_label": stage_label,
+                    "target_stage_label": f"target_{stage_index}",
+                    "receiver": "A",
+                    "mode": mode,
+                    "input_status": "eligible",
+                    "status": status,
+                    "detail": ""
+                    if status == "complete"
+                    else "too_few_potential_ligands",
+                }
+            )
+            if status == "complete":
+                rows.append(
+                    {
+                        "unit_id": unit_id,
+                        "source_stage_id": str(stage),
+                        "source_stage_label": stage_label,
+                        "target_stage_id": str(stage + 1),
+                        "receiver": "A",
+                        "mode": mode,
+                        "sender": "A",
+                        "ligand": f"L{stage_index}",
+                        "sender_ligand_pct_detected": 0.5,
+                        "sender_ligand_mean_normalized_linear": 1.0,
+                        "aupr_corrected": float(0.4 - 0.05 * stage_index),
+                        "ligand_activity_rank": 1,
+                        "activity_scope": (
+                            "transition_receiver_ligand_not_sender_specific"
+                        ),
+                    }
+                )
+        sender_path = directory / "sender_ligand_activity.csv"
+        unit_path = directory / "unit_status.csv"
+        pd.DataFrame(rows).to_csv(sender_path, index=False)
+        pd.DataFrame(status_rows).to_csv(unit_path, index=False)
         _json(
             directory / "run_manifest.json",
             {
@@ -249,40 +372,73 @@ def _build_formal_tree(root: Path) -> None:
                     "cross-species NicheNet-v2 "
                     "[orthology sensitivity: confidence unfiltered]"
                 ),
+                "official_prior": {
+                    "md5_verified": True,
+                    "expected_md5": {"ligand_target_matrix": "a" * 32},
+                    "observed_md5": {"ligand_target_matrix": "a" * 32},
+                },
+                "software": {
+                    "nichenetr": {
+                        "mode": "pinned_core_source",
+                        "version": "2.2.1.1",
+                        "version_verified": True,
+                        "git_commit": comparison.PINNED_NICHENETR_COMMIT,
+                        "expected_git_commit": comparison.PINNED_NICHENETR_COMMIT,
+                        "commit_verified": True,
+                        "core_md5_verified": True,
+                        "observed_core_md5": {"application_prediction.R": "b" * 32},
+                    }
+                },
+                "shared_prepare_manifest": {
+                    "path": str(prepare_manifest_path),
+                    "md5": comparison._md5(prepare_manifest_path),
+                },
+                "counts": {"units_complete": 4},
+                "output_files": {
+                    "sender_ligand_activity": str(sender_path),
+                    "unit_status": str(unit_path),
+                },
+                "output_md5": {
+                    "sender_ligand_activity": comparison._md5(sender_path),
+                    "unit_status": comparison._md5(unit_path),
+                },
             },
         )
-        rows = []
-        for stage_index, (stage, stage_label) in enumerate(STAGES):
-            for pair_index, (sender, receiver) in enumerate(PAIRS):
-                rows.append(
-                    {
-                        "source_stage_id": str(stage),
-                        "source_stage_label": stage_label,
-                        "target_stage_id": str(stage + 1),
-                        "receiver": receiver,
-                        "mode": mode,
-                        "sender": sender,
-                        "ligand": f"L{pair_index}",
-                        "sender_ligand_pct_detected": 0.5,
-                        "sender_ligand_mean_normalized_linear": 1.0,
-                        "aupr_corrected": float(
-                            0.4 - 0.1 * ((pair_index + stage_index) % 4)
-                        ),
-                        "ligand_activity_rank": pair_index + 1,
-                        "activity_scope": (
-                            "transition_receiver_ligand_not_sender_specific"
-                        ),
-                    }
-                )
-        pd.DataFrame(rows).to_csv(directory / "sender_ligand_activity.csv", index=False)
 
     cellagent = root / "05_cellagentchat"
+    cellagent_shared = cellagent / "shared"
+    cellagent_shared.mkdir(parents=True)
+    cellagent_prepare = cellagent_shared / "manifest.json"
+    cellagent_prepare.write_text("{}", encoding="utf-8")
+    mapped_expression = cellagent_shared / "mapped_expression.h5ad"
+    mapped_expression.write_bytes(b"fixture")
+    source_file = cellagent_shared / "model_setup.py"
+    source_file.write_text("# pinned fixture\n", encoding="utf-8")
+    sample_plan_path = cellagent_shared / "shared_sampled_cells.csv.gz"
+    pd.DataFrame(
+        [
+            {
+                "sampling_seed": seed,
+                "stage": stage,
+                "stage_label": stage_label,
+                "cell_type": cell_type,
+                "obs_name": f"{seed}_{stage:g}_{cell_type}",
+            }
+            for seed in (101, 202, 303)
+            for stage, stage_label in STAGES
+            for cell_type in ("A", "B")
+        ]
+    ).to_csv(sample_plan_path, index=False, compression="gzip")
     for condition in (
         comparison.CELLAGENTCHAT_OFFICIAL,
         comparison.CELLAGENTCHAT_CUSTOM,
     ):
         directory = cellagent / condition
         directory.mkdir(parents=True)
+        frame = _type_rows("cellagentchat_native_primary_mean", [4.0, 3.0, 2.0, 1.0])
+        frame["n_sampling_seeds"] = 3
+        type_pair_path = directory / "cellagentchat_type_pair_scores.csv"
+        frame.to_csv(type_pair_path, index=False)
         _json(
             directory / "manifest.json",
             {
@@ -291,24 +447,78 @@ def _build_formal_tree(root: Path) -> None:
                 "design": {
                     "native_primary": (
                         "number of Bonferroni-significant LR pairs per directed cell-type pair"
-                    )
+                    ),
+                    "stages": [stage for stage, _ in STAGES],
+                    "sampling_seeds": [101, 202, 303],
+                    "epochs": 50,
+                    "permutation_score_target": 10_000,
+                    "spatial": True,
+                    "permutation_background_distance_scaled": True,
+                },
+                "source": {
+                    "release": "v0.2.0",
+                    "expected_commit": comparison.PINNED_CELLAGENTCHAT_COMMIT,
+                    "observed_commit": comparison.PINNED_CELLAGENTCHAT_COMMIT,
+                    "pinned_source_verified": True,
+                    "files": {"model_setup.py": comparison._file_record(source_file)},
                 },
                 "shared_input": {
+                    "preparation_manifest": comparison._file_record(cellagent_prepare),
+                    "mapped_expression": comparison._file_record(mapped_expression),
+                    "sample_plan": comparison._file_record(sample_plan_path),
                     "preparation_claims": {
                         "orthology_policy": "one2one_bijective_all_confidence",
                         "orthology_analysis_tier": "sensitivity",
                         "primary_claim_allowed": False,
-                    }
+                    },
+                },
+                "counts": {
+                    "n_runs": 15,
+                    "type_pair_rows_by_seed": len(frame) * 3,
+                },
+                "artifacts": {
+                    type_pair_path.name: comparison._file_record(type_pair_path)
                 },
             },
         )
-        frame = _type_rows(
-            "cellagentchat_native_primary_mean", [4.0, 3.0, 2.0, 1.0]
-        )
-        frame.to_csv(directory / "cellagentchat_type_pair_scores.csv", index=False)
+    _json(
+        cellagent / "manifest.json",
+        {
+            "workflow": "official_cellagentchat_spatial_dual_lr_database",
+            "status": "complete",
+            "conditions": [
+                comparison.CELLAGENTCHAT_OFFICIAL,
+                comparison.CELLAGENTCHAT_CUSTOM,
+            ],
+            "same_mapped_expression_and_sample_plan_verified": True,
+            "same_preparation_manifest_and_orthology_claims_verified": True,
+            "same_formal_design_and_pinned_source_verified": True,
+            "exact_stage_seed_grid_verified": True,
+            "formal_non_smoke_verified": True,
+            "database_sha256_are_distinct": True,
+            "formal_design": {
+                "stages": [stage for stage, _ in STAGES],
+                "sampling_seeds": [101, 202, 303],
+                "epochs": 50,
+                "permutation_score_target": 10_000,
+                "source_commit": comparison.PINNED_CELLAGENTCHAT_COMMIT,
+            },
+            "condition_manifests": {
+                condition: comparison._file_record(
+                    cellagent / condition / "manifest.json"
+                )
+                for condition in (
+                    comparison.CELLAGENTCHAT_OFFICIAL,
+                    comparison.CELLAGENTCHAT_CUSTOM,
+                )
+            },
+        },
+    )
 
 
-def _args(root: Path, output: Path, *, allow_partial: bool = False) -> argparse.Namespace:
+def _args(
+    root: Path, output: Path, *, allow_partial: bool = False
+) -> argparse.Namespace:
     return argparse.Namespace(
         run_root=root,
         output_dir=output,
@@ -327,7 +537,9 @@ def _args(root: Path, output: Path, *, allow_partial: bool = False) -> argparse.
     )
 
 
-def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path) -> None:
+def test_formal_comparison_writes_all_rank_and_control_artifacts(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "run"
     _build_formal_tree(root)
     output = tmp_path / "comparison"
@@ -338,15 +550,37 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
     assert len(manifest["loaded_score_views"]) == 8
     canonical = pd.read_csv(output / "canonical_type_pair_scores.csv.gz")
     assert canonical["view_id"].nunique() == 8
-    assert canonical.groupby(["view_id", "stage"])[
-        ["sender_type", "receiver_type"]
-    ].size().eq(4).all()
+    full_grid_ids = {
+        "commot__project_lr",
+        "cellchat__project_lr",
+        "cellagentchat__official_mouse_default",
+        "cellagentchat__project_lr",
+    }
+    full_grid = canonical.loc[canonical["view_id"].isin(full_grid_ids)]
+    assert set(full_grid["stage"]) == {0.0, 1.0, 2.0, 3.0, 4.0}
+    assert full_grid.groupby(["view_id", "stage"]).size().eq(4).all()
+    for view_id in ("commot__project_lr", "cellchat__project_lr"):
+        stage0 = canonical.loc[
+            (canonical["view_id"] == view_id) & (canonical["stage"] == 0.0)
+        ]
+        assert len(stage0) == 4
+        assert stage0["native_score"].eq(0).all()
+        assert stage0["structural_zero_filled"].all()
+    nichenet_completed = canonical.loc[
+        canonical["view_id"].str.startswith("nichenet_v2__")
+    ]
+    assert set(nichenet_completed["stage"]) == {0.0, 1.0, 2.0, 3.0}
+    assert set(nichenet_completed["receiver_type"]) == {"A"}
+    assert nichenet_completed.groupby(["view_id", "stage"]).size().eq(2).all()
+    assert nichenet_completed.loc[
+        nichenet_completed["sender_type"] == "B", "structural_zero_filled"
+    ].all()
     summary = pd.read_csv(output / "pairwise_consistency_summary.csv")
     assert not summary.empty
     assert summary["mean_stage_spearman"].between(-1, 1).all()
-    compared_pairs = set(
-        zip(summary["view_id_left"], summary["view_id_right"])
-    ) | set(zip(summary["view_id_right"], summary["view_id_left"]))
+    compared_pairs = set(zip(summary["view_id_left"], summary["view_id_right"])) | set(
+        zip(summary["view_id_right"], summary["view_id_left"])
+    )
     assert ("cytobridge__trained__attention", "commot__project_lr") in compared_pairs
     controls = pd.read_csv(output / "cytobridge_control_metrics.csv")
     trained = controls.loc[
@@ -357,30 +591,40 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
     assert trained["estimate"].item() == pytest.approx(0.0284)
     assert manifest["contract"]["raw_cross_method_units_compared"] is False
     assert manifest["contract"]["cytobridge_attention_is_ccc_probability"] is False
-    assert manifest["contract"]["cellchat_method_unavailable_lr_rows_zero_filled"] is False
+    assert (
+        manifest["contract"]["cellchat_method_unavailable_lr_rows_zero_filled"] is False
+    )
     assert manifest["cellchat_method_unavailable_lr_rows"]["count"] == 2
     assert manifest["cellchat_method_unavailable_lr_rows"]["zero_filled"] is False
+    assert manifest["six_condition_execution_complete"] is True
+    assert manifest["reviewer_reporting_ready"] is True
+    assert all(manifest["formal_readiness_checks"].values())
+    assert set(manifest["score_view_zero_completion"]) == set(
+        manifest["loaded_score_views"]
+    )
+    zero_audit = pd.read_csv(output / "structural_zero_audit.csv")
+    assert set(zero_audit["view_id"]) == set(manifest["loaded_score_views"])
+    assert not zero_audit["unevaluated_units_zero_filled"].any()
+    assert not zero_audit["method_unavailable_lr_rows_zero_filled"].any()
     unavailable = pd.read_csv(output / "method_unavailable_lr_rows.csv")
     assert unavailable["database_row"].tolist() == [2281, 2292]
     assert not unavailable["zero_filled"].any()
     nichenet = canonical.loc[canonical["method"] == "NicheNet-v2 (cross-species)"]
-    assert set(nichenet["orthology_policy"]) == {
-        "one2one_bijective_all_confidence"
-    }
+    assert set(nichenet["orthology_policy"]) == {"one2one_bijective_all_confidence"}
     assert set(nichenet["analysis_tier"]) == {"sensitivity"}
-    assert nichenet["display_label"].str.contains(
-        "all-confidence orthology sensitivity", regex=False
-    ).all()
-    cellagent = canonical.loc[
-        canonical["method"] == "CellAgentChat (cross-species)"
-    ]
-    assert set(cellagent["orthology_policy"]) == {
-        "one2one_bijective_all_confidence"
-    }
+    assert (
+        nichenet["display_label"]
+        .str.contains("all-confidence orthology sensitivity", regex=False)
+        .all()
+    )
+    cellagent = canonical.loc[canonical["method"] == "CellAgentChat (cross-species)"]
+    assert set(cellagent["orthology_policy"]) == {"one2one_bijective_all_confidence"}
     assert set(cellagent["analysis_tier"]) == {"sensitivity"}
-    assert cellagent["display_label"].str.contains(
-        "all-confidence orthology sensitivity", regex=False
-    ).all()
+    assert (
+        cellagent["display_label"]
+        .str.contains("all-confidence orthology sensitivity", regex=False)
+        .all()
+    )
     for stem in (
         "rank_concordance",
         "top_edge_overlap",
@@ -434,7 +678,7 @@ def test_nichenet_manifest_policy_must_be_explicit_and_paired(tmp_path: Path) ->
         }
     )
     _json(custom_manifest_path, custom_manifest)
-    with pytest.raises(ValueError, match="do not share the same orthology_policy"):
+    with pytest.raises(ValueError, match="orthology_policy"):
         comparison.run(_args(root, tmp_path / "mismatched"))
 
 
@@ -450,11 +694,13 @@ def test_external_stage_id_and_hpf_time_must_match_shared_manifest(
         / "commot_type_pair_scores.csv.gz"
     )
     commot = pd.read_csv(commot_path)
-    assert set(commot["stage"].astype(str)) == {"0.0", "1.0"}
-    assert set(commot["stage_time"]) == {5.25, 10.0}
-    commot.loc[commot["stage"].astype(str) == "0.0", "stage_time"] = 5.5
+    assert set(commot["stage"].astype(str)) == {"1.0", "2.0", "3.0", "4.0"}
+    assert set(commot["stage_time"]) == {10.0, 12.0, 18.0, 24.0}
+    commot.loc[commot["stage"].astype(str) == "1.0", "stage_time"] = 10.5
     commot.to_csv(commot_path, index=False, compression="gzip")
-    with pytest.raises(ValueError, match="disagree with the verified shared input manifest"):
+    with pytest.raises(
+        ValueError, match="disagree with the verified shared input manifest"
+    ):
         comparison.run(_args(root, tmp_path / "bad_stage_mapping"))
 
 
@@ -464,10 +710,7 @@ def test_cellagentchat_conditions_must_share_manifest_orthology_claims(
     root = tmp_path / "run"
     _build_formal_tree(root)
     custom_manifest_path = (
-        root
-        / "05_cellagentchat"
-        / comparison.CELLAGENTCHAT_CUSTOM
-        / "manifest.json"
+        root / "05_cellagentchat" / comparison.CELLAGENTCHAT_CUSTOM / "manifest.json"
     )
     custom_manifest = json.loads(custom_manifest_path.read_text())
     custom_manifest["shared_input"]["preparation_claims"] = {
@@ -476,6 +719,12 @@ def test_cellagentchat_conditions_must_share_manifest_orthology_claims(
         "primary_claim_allowed": True,
     }
     _json(custom_manifest_path, custom_manifest)
+    parent_path = root / "05_cellagentchat" / "manifest.json"
+    parent = json.loads(parent_path.read_text())
+    parent["condition_manifests"][
+        comparison.CELLAGENTCHAT_CUSTOM
+    ] = comparison._file_record(custom_manifest_path)
+    _json(parent_path, parent)
     with pytest.raises(ValueError, match="CellAgentChat conditions do not share"):
         comparison.run(_args(root, tmp_path / "mismatched_cellagent"))
 
@@ -569,3 +818,123 @@ def test_control_loader_selects_strict_stratum_not_row_position(tmp_path: Path) 
         & (result["metric"] == "conditional_residual_spearman_forward_lr")
     ]
     assert selected["estimate"].item() == pytest.approx(0.02)
+
+
+def _two_view_scores(left: list[float], right: list[float]) -> pd.DataFrame:
+    keys = [("A", "A"), ("A", "B"), ("B", "A"), ("B", "B")]
+    rows = []
+    for view_id, values in (("left", left), ("right", right)):
+        for score, (sender, receiver) in zip(values, keys):
+            rows.append(
+                {
+                    "view_id": view_id,
+                    "display_label": view_id,
+                    "method": view_id,
+                    "database_condition": "test",
+                    "score_view": "test",
+                    "stage": 0.0,
+                    "stage_label": "t0",
+                    "sender_type": sender,
+                    "receiver_type": receiver,
+                    "native_score": score,
+                    "heterotypic": sender != receiver,
+                    "structural_zero_filled": score == 0,
+                }
+            )
+    return comparison._add_stage_ranks(pd.DataFrame(rows))
+
+
+def test_top_k_all_zero_support_is_na_not_false_perfect_overlap() -> None:
+    frame = _two_view_scores([0, 0, 0, 0], [0, 0, 0, 0])
+    by_stage, summary = comparison.pairwise_consistency(frame, top_k=20)
+    row = by_stage.iloc[0]
+    assert row["n_positive_left"] == 0
+    assert row["n_positive_right"] == 0
+    assert row["effective_top_k"] == 0
+    assert not row["top_k_informative"]
+    assert np.isnan(row["top_k_jaccard"])
+    assert summary["n_finite_spearman_stages"].item() == 0
+
+
+def test_top_k_caps_at_positive_support_and_never_selects_zero_tail() -> None:
+    frame = _two_view_scores([3, 0, 0, 0], [4, 2, 0, 0])
+    by_stage, _ = comparison.pairwise_consistency(frame, top_k=20)
+    row = by_stage.iloc[0]
+    assert row["n_positive_left"] == 1
+    assert row["n_positive_right"] == 2
+    assert row["effective_top_k"] == 1
+    assert row["top_k_left_realized_set_size"] == 1
+    assert row["top_k_right_realized_set_size"] == 1
+    assert row["top_k_jaccard"] == 1.0
+
+
+def test_top_k_expands_kth_boundary_ties_without_label_or_order_truncation() -> None:
+    frame = _two_view_scores([3, 2, 2, 0], [3, 2, 2, 0])
+    frame = frame.sample(frac=1.0, random_state=19).reset_index(drop=True)
+    by_stage, _ = comparison.pairwise_consistency(frame, top_k=2)
+    row = by_stage.iloc[0]
+    assert row["effective_top_k"] == 2
+    assert row["top_k_left_realized_set_size"] == 3
+    assert row["top_k_right_realized_set_size"] == 3
+    assert row["top_k_left_boundary_tie_count"] == 2
+    assert row["top_k_right_boundary_tie_count"] == 2
+    assert row["top_k_left_boundary_tie_expanded"]
+    assert row["top_k_right_boundary_tie_expanded"]
+    assert row["top_k_jaccard"] == 1.0
+
+
+def test_external_grid_gaps_require_explicit_positive_only_runner_policy(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    manifest_path = root / "03_external_ccc" / "commot_current_lr" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["design"].pop("long_table_zero_policy")
+    _json(manifest_path, manifest)
+    with pytest.raises(ValueError, match="does not explicitly declare positive-only"):
+        comparison.run(_args(root, tmp_path / "bad_zero_policy"))
+
+
+def test_cellagentchat_missing_native_grid_row_fails_closed(tmp_path: Path) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    condition = comparison.CELLAGENTCHAT_OFFICIAL
+    directory = root / "05_cellagentchat" / condition
+    score_path = directory / "cellagentchat_type_pair_scores.csv"
+    scores = pd.read_csv(score_path).iloc[:-1]
+    scores.to_csv(score_path, index=False)
+    condition_manifest_path = directory / "manifest.json"
+    condition_manifest = json.loads(condition_manifest_path.read_text())
+    condition_manifest["artifacts"][score_path.name] = comparison._file_record(
+        score_path
+    )
+    _json(condition_manifest_path, condition_manifest)
+    parent_path = root / "05_cellagentchat" / "manifest.json"
+    parent = json.loads(parent_path.read_text())
+    parent["condition_manifests"][condition] = comparison._file_record(
+        condition_manifest_path
+    )
+    _json(parent_path, parent)
+    with pytest.raises(ValueError, match="complete verified stage/type square"):
+        comparison.run(_args(root, tmp_path / "missing_cag_grid"))
+
+
+def test_cellagentchat_smoke_seed_design_cannot_be_reviewer_ready(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    condition = comparison.CELLAGENTCHAT_OFFICIAL
+    condition_manifest_path = root / "05_cellagentchat" / condition / "manifest.json"
+    condition_manifest = json.loads(condition_manifest_path.read_text())
+    condition_manifest["design"]["sampling_seeds"] = [101]
+    _json(condition_manifest_path, condition_manifest)
+    parent_path = root / "05_cellagentchat" / "manifest.json"
+    parent = json.loads(parent_path.read_text())
+    parent["condition_manifests"][condition] = comparison._file_record(
+        condition_manifest_path
+    )
+    _json(parent_path, parent)
+    with pytest.raises(ValueError, match="sampling seeds 101,202,303"):
+        comparison.run(_args(root, tmp_path / "smoke_cag"))

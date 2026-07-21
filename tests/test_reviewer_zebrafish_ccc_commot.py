@@ -18,7 +18,9 @@ from reviewer_zebrafish_ccc.run_commot import (
 )
 
 
-def test_label_aggregation_preserves_commot_sender_row_receiver_column_direction() -> None:
+def test_label_aggregation_preserves_commot_sender_row_receiver_column_direction() -> (
+    None
+):
     matrix = sparse.csr_matrix(
         np.asarray(
             [
@@ -63,14 +65,40 @@ def test_commot_extraction_uses_common_long_schema_and_keeps_database_rows() -> 
     )
     assert COMMON_SCORE_COLUMNS == lr.columns[: len(COMMON_SCORE_COLUMNS)].tolist()
     assert set(lr["database_rows"]) == {"4;9"}
-    assert np.allclose(lr["abundance_controlled_score"], lr["score_mean_possible_cell_pairs"])
-    assert set(lr[["sender_type", "receiver_type"]].itertuples(index=False, name=None)) == {
+    assert np.allclose(
+        lr["abundance_controlled_score"], lr["score_mean_possible_cell_pairs"]
+    )
+    assert set(
+        lr[["sender_type", "receiver_type"]].itertuples(index=False, name=None)
+    ) == {
         ("A", "B"),
         ("B", "A"),
     }
     assert len(pathway) == 2
-    assert len(total) == 2
+    assert len(total) == 4
+    zero_pairs = total.loc[total["score"] == 0, ["sender_type", "receiver_type"]]
+    assert set(zero_pairs.itertuples(index=False, name=None)) == {
+        ("A", "A"),
+        ("B", "B"),
+    }
     assert diagnostics["n_unique_flat_lr_rows"] == 1
+    assert diagnostics["n_total_context_rows"] == 4
+    assert diagnostics["n_total_positive_context_rows"] == 2
+    assert diagnostics["n_total_structural_zero_rows"] == 2
+
+
+def test_commot_runner_exports_full_total_grid_and_version_never_unknown() -> None:
+    script = (
+        Path(__file__).parents[1]
+        / "scripts"
+        / "reviewer_zebrafish_ccc"
+        / "run_commot.py"
+    ).read_text(encoding="utf-8")
+    assert "include_zeros=True" in script
+    assert '"complete_directed_stage_type_square": True' in script
+    assert 'importlib_metadata.version("commot")' in script
+    assert 'versions["commot"] = commot_version' in script
+    assert 'versions["commot"] = getattr(ct, "__version__", "unknown")' not in script
 
 
 def test_distance_inference_is_local_and_positive() -> None:
