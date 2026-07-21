@@ -293,6 +293,13 @@ def _build_formal_tree(root: Path) -> None:
                         "number of Bonferroni-significant LR pairs per directed cell-type pair"
                     )
                 },
+                "shared_input": {
+                    "preparation_claims": {
+                        "orthology_policy": "one2one_bijective_all_confidence",
+                        "orthology_analysis_tier": "sensitivity",
+                        "primary_claim_allowed": False,
+                    }
+                },
             },
         )
         frame = _type_rows(
@@ -362,6 +369,16 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(tmp_path: Path)
     }
     assert set(nichenet["analysis_tier"]) == {"sensitivity"}
     assert nichenet["display_label"].str.contains(
+        "all-confidence orthology sensitivity", regex=False
+    ).all()
+    cellagent = canonical.loc[
+        canonical["method"] == "CellAgentChat (cross-species)"
+    ]
+    assert set(cellagent["orthology_policy"]) == {
+        "one2one_bijective_all_confidence"
+    }
+    assert set(cellagent["analysis_tier"]) == {"sensitivity"}
+    assert cellagent["display_label"].str.contains(
         "all-confidence orthology sensitivity", regex=False
     ).all()
     for stem in (
@@ -441,6 +458,28 @@ def test_external_stage_id_and_hpf_time_must_match_shared_manifest(
         comparison.run(_args(root, tmp_path / "bad_stage_mapping"))
 
 
+def test_cellagentchat_conditions_must_share_manifest_orthology_claims(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    custom_manifest_path = (
+        root
+        / "05_cellagentchat"
+        / comparison.CELLAGENTCHAT_CUSTOM
+        / "manifest.json"
+    )
+    custom_manifest = json.loads(custom_manifest_path.read_text())
+    custom_manifest["shared_input"]["preparation_claims"] = {
+        "orthology_policy": "strict_confidence1",
+        "orthology_analysis_tier": "primary",
+        "primary_claim_allowed": True,
+    }
+    _json(custom_manifest_path, custom_manifest)
+    with pytest.raises(ValueError, match="CellAgentChat conditions do not share"):
+        comparison.run(_args(root, tmp_path / "mismatched_cellagent"))
+
+
 def test_pairwise_top_k_is_computed_on_exact_shared_key_universe() -> None:
     rows = []
     for view_id, scores, keys in (
@@ -464,11 +503,52 @@ def test_pairwise_top_k_is_computed_on_exact_shared_key_universe() -> None:
                 }
             )
     frame = comparison._add_stage_ranks(pd.DataFrame(rows))
-    by_stage, _ = comparison.pairwise_consistency(frame, top_k=2)
+    by_stage, summary = comparison.pairwise_consistency(frame, top_k=2)
     row = by_stage.iloc[0]
     assert row["n_shared_directed_pairs"] == 2
     assert row["effective_top_k"] == 2
     assert row["top_k_jaccard"] == 1.0
+    assert not row["top_k_informative"]
+    assert summary["n_top_k_informative_stages"].item() == 0
+    assert np.isnan(summary["mean_stage_top_k_jaccard_informative_only"].item())
+
+
+def test_top_k_summary_separates_trivial_all_selected_stages() -> None:
+    rows = []
+    keys = [("A", "B"), ("B", "A"), ("C", "A")]
+    for stage, n_keys in ((0.0, 2), (1.0, 3)):
+        for view_id, values in (
+            ("left", [3.0, 2.0, 1.0]),
+            ("right", [3.0, 1.0, 2.0]),
+        ):
+            for score, (sender, receiver) in zip(values[:n_keys], keys[:n_keys]):
+                rows.append(
+                    {
+                        "view_id": view_id,
+                        "display_label": view_id,
+                        "method": view_id,
+                        "database_condition": "test",
+                        "score_view": "test",
+                        "stage": stage,
+                        "stage_label": f"t{stage:g}",
+                        "sender_type": sender,
+                        "receiver_type": receiver,
+                        "native_score": score,
+                        "heterotypic": True,
+                    }
+                )
+    frame = comparison._add_stage_ranks(pd.DataFrame(rows))
+    by_stage, summary = comparison.pairwise_consistency(frame, top_k=2)
+    stage0 = by_stage.loc[by_stage["stage"] == 0.0].iloc[0]
+    stage1 = by_stage.loc[by_stage["stage"] == 1.0].iloc[0]
+    assert not stage0["top_k_informative"]
+    assert stage0["top_k_jaccard"] == 1.0
+    assert stage1["top_k_informative"]
+    assert stage1["top_k_jaccard"] == pytest.approx(1 / 3)
+    result = summary.iloc[0]
+    assert result["n_top_k_informative_stages"] == 1
+    assert result["mean_stage_top_k_jaccard_all_stages"] == pytest.approx(2 / 3)
+    assert result["mean_stage_top_k_jaccard_informative_only"] == pytest.approx(1 / 3)
 
 
 def test_control_loader_selects_strict_stratum_not_row_position(tmp_path: Path) -> None:

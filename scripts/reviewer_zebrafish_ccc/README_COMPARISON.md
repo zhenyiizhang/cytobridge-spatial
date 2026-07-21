@@ -22,6 +22,10 @@ separate. They are not pooled under a generic method label. NicheNet's
 from each completed run manifest. The two NicheNet conditions must carry the
 same policy/tier. `one2one_bijective_all_confidence` is always displayed as an
 orthology sensitivity and can never acquire a primary label in this report.
+The same rule is enforced for CellAgentChat through each condition manifest's
+`shared_input.preparation_claims`: the official/default and project-LR runs
+must share identical orthology policy/tier claims, and an all-confidence
+mapping is explicitly labelled `all-confidence orthology sensitivity`.
 
 ## Formal command
 
@@ -59,12 +63,17 @@ only within-stage ranks are compared across methods.
   directed-key universe, summarized across stages.
 - Top-edge overlap uses deterministic top-k sets on that same shared universe
   and reports overlap fraction and Jaccard. Effective k is reduced when the
-  shared universe is smaller than requested.
+  shared universe is smaller than requested. If effective k equals the entire
+  shared universe, Jaccard is necessarily 1 and is marked
+  `top_k_informative=false`. The audit table retains that value, while the
+  primary summary and heatmap use informative stages only (`k < n_shared`) and
+  report NA if none exist.
 - Reciprocal asymmetry is
   `rank_percentile(A→B) - rank_percentile(B→A)`, followed by cross-method
   stage-wise Spearman comparison.
 - Stage stability compares the same directed cell-type keys only between
-  adjacent global observed stages.
+  adjacent global observed stages. Its displayed top-k panel applies the same
+  informative-only rule.
 - Coverage is reported before pairwise joins; absent keys are not silently
   converted to zero communication.
 

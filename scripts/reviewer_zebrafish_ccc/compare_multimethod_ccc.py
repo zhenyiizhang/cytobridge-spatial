@@ -632,6 +632,40 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
     native_primary = manifest.get("design", {}).get("native_primary")
     if "Bonferroni-significant LR pairs" not in str(native_primary):
         raise ValueError("CellAgentChat manifest has unexpected native-primary semantics")
+    claims = manifest.get("shared_input", {}).get("preparation_claims")
+    if not isinstance(claims, Mapping):
+        raise ValueError("CellAgentChat manifest lacks shared_input.preparation_claims")
+    orthology_policy = str(claims.get("orthology_policy", ""))
+    analysis_tier = str(claims.get("orthology_analysis_tier", ""))
+    primary_claim_allowed = claims.get("primary_claim_allowed")
+    policy_contract = {
+        "strict_confidence1": {
+            "analysis_tier": "primary",
+            "primary_claim_allowed": True,
+            "condition_suffix": "strict_confidence1_orthology",
+            "label_suffix": "strict confidence=1 orthology",
+        },
+        "one2one_bijective_all_confidence": {
+            "analysis_tier": "sensitivity",
+            "primary_claim_allowed": False,
+            "condition_suffix": "one2one_all_confidence_sensitivity",
+            "label_suffix": "all-confidence orthology sensitivity",
+        },
+    }
+    if orthology_policy not in policy_contract:
+        raise ValueError(
+            "CellAgentChat manifest has unsupported preparation orthology_policy="
+            f"{orthology_policy!r}"
+        )
+    policy = policy_contract[orthology_policy]
+    if analysis_tier != policy["analysis_tier"]:
+        raise ValueError(
+            "CellAgentChat preparation orthology_analysis_tier conflicts with policy"
+        )
+    if primary_claim_allowed is not policy["primary_claim_allowed"]:
+        raise ValueError(
+            "CellAgentChat preparation primary_claim_allowed conflicts with policy"
+        )
     path = directory / "cellagentchat_type_pair_scores.csv"
     frame = pd.read_csv(path)
     required = {
@@ -643,16 +677,18 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
     }
     _require_columns(frame, required, path)
     official = condition == CELLAGENTCHAT_OFFICIAL
-    label = (
+    label_prefix = (
         "CellAgentChat | official mouse DB"
         if official
         else "CellAgentChat | project LR"
     )
-    return _canonical(
+    label = f"{label_prefix} | {policy['label_suffix']}"
+    database_condition = f"{condition}__{policy['condition_suffix']}"
+    result = _canonical(
         frame,
         path=path,
         method="CellAgentChat (cross-species)",
-        database_condition=condition,
+        database_condition=database_condition,
         score_view="mean_bonferroni_significant_lr_count",
         display_label=label,
         view_id=(
@@ -664,6 +700,15 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         stage=frame["stage"],
         stage_label=frame["stage_label"],
     )
+    result["orthology_policy"] = orthology_policy
+    result["analysis_tier"] = analysis_tier
+    result["primary_claim_allowed"] = bool(primary_claim_allowed)
+    result.attrs["cellagentchat_orthology"] = {
+        "orthology_policy": orthology_policy,
+        "analysis_tier": analysis_tier,
+        "primary_claim_allowed": bool(primary_claim_allowed),
+    }
+    return result
 
 
 def _add_stage_ranks(frame: pd.DataFrame) -> pd.DataFrame:
@@ -721,6 +766,7 @@ def pairwise_consistency(
                 )
                 n_shared = int(len(merged))
                 effective_k = min(int(top_k), n_shared)
+                top_k_informative = bool(effective_k < n_shared)
                 if effective_k:
                     common_left = merged[
                         ["sender_type", "receiver_type", "native_score_left"]
@@ -755,6 +801,7 @@ def pairwise_consistency(
                         ),
                         "requested_top_k": int(top_k),
                         "effective_top_k": effective_k,
+                        "top_k_informative": top_k_informative,
                         "top_k_intersection": intersection,
                         "top_k_union": union,
                         "top_k_overlap_fraction": (
@@ -776,11 +823,17 @@ def pairwise_consistency(
                 "n_shared_directed_pairs_total",
                 "mean_stage_spearman",
                 "median_stage_spearman",
-                "mean_stage_top_k_jaccard",
-                "median_stage_top_k_jaccard",
+                "n_top_k_informative_stages",
+                "mean_stage_top_k_jaccard_all_stages",
+                "median_stage_top_k_jaccard_all_stages",
+                "mean_stage_top_k_jaccard_informative_only",
+                "median_stage_top_k_jaccard_informative_only",
             ]
         )
         return by_stage, summary
+    by_stage["top_k_jaccard_informative_only"] = by_stage[
+        "top_k_jaccard"
+    ].where(by_stage["top_k_informative"])
     keys = [
         "view_id_left",
         "display_label_left",
@@ -794,8 +847,17 @@ def pairwise_consistency(
             n_shared_directed_pairs_total=("n_shared_directed_pairs", "sum"),
             mean_stage_spearman=("spearman_rank_concordance", "mean"),
             median_stage_spearman=("spearman_rank_concordance", "median"),
-            mean_stage_top_k_jaccard=("top_k_jaccard", "mean"),
-            median_stage_top_k_jaccard=("top_k_jaccard", "median"),
+            n_top_k_informative_stages=("top_k_informative", "sum"),
+            mean_stage_top_k_jaccard_all_stages=("top_k_jaccard", "mean"),
+            median_stage_top_k_jaccard_all_stages=("top_k_jaccard", "median"),
+            mean_stage_top_k_jaccard_informative_only=(
+                "top_k_jaccard_informative_only",
+                "mean",
+            ),
+            median_stage_top_k_jaccard_informative_only=(
+                "top_k_jaccard_informative_only",
+                "median",
+            ),
         )
         .reset_index()
     )
@@ -956,6 +1018,7 @@ def stage_stability(
                         "n_shared_directed_pairs": 0,
                         "spearman_rank_stability": float("nan"),
                         "effective_top_k": 0,
+                        "top_k_informative": False,
                         "top_k_jaccard": float("nan"),
                     }
                 )
@@ -968,6 +1031,7 @@ def stage_stability(
                 suffixes=("_from", "_to"),
             )
             effective_k = min(int(top_k), len(merged))
+            top_k_informative = bool(effective_k < len(merged))
             if effective_k:
                 left_common = merged[
                     ["sender_type", "receiver_type", "native_score_from"]
@@ -993,6 +1057,7 @@ def stage_stability(
                         merged["native_score_from"], merged["native_score_to"]
                     ),
                     "effective_top_k": int(effective_k),
+                    "top_k_informative": top_k_informative,
                     "top_k_jaccard": jaccard,
                 }
             )
@@ -1293,7 +1358,9 @@ def _plot_stage_stability(
     for row in stability.itertuples(index=False):
         position = (float(row.stage_from), float(row.stage_to))
         rho[index[row.view_id], transition_index[position]] = row.spearman_rank_stability
-        jaccard[index[row.view_id], transition_index[position]] = row.top_k_jaccard
+        jaccard[index[row.view_id], transition_index[position]] = (
+            row.top_k_jaccard if row.top_k_informative else np.nan
+        )
     figure, axes = plt.subplots(
         1,
         2,
@@ -1306,7 +1373,14 @@ def _plot_stage_stability(
     ]
     for axis, matrix, title, cmap, vmin, vmax in (
         (axes[0], rho, "Adjacent-stage rank stability", "coolwarm", -1, 1),
-        (axes[1], jaccard, "Adjacent-stage top-k stability", "viridis", 0, 1),
+        (
+            axes[1],
+            jaccard,
+            "Adjacent-stage top-k stability (informative k < n only)",
+            "viridis",
+            0,
+            1,
+        ),
     ):
         color_map = plt.get_cmap(cmap).copy()
         color_map.set_bad("#E5E7EB")
@@ -1469,7 +1543,9 @@ sum of positive sender-associated ligand
 activities and is not native sender-specific, receptor-specific, spatial, or a
 biochemical strength. CytoBridge attention is an internal gate magnitude, not
 a calibrated CCC probability. The exact message contribution is shown as a
-separate model-internal view.
+separate model-internal view. CellAgentChat's two database conditions must also
+share identical preparation orthology claims; an all-confidence mapping is
+always labelled as a sensitivity and never as primary.
 
 ## Comparison contract
 
@@ -1478,7 +1554,9 @@ separate model-internal view.
 - Pairwise universe: inner join of emitted directed keys; coverage is reported
   separately so missing keys are never silently converted to evidence.
 - Top-edge overlap: deterministic top-{top_k} on the shared key universe; the
-  effective k is reduced when fewer shared keys exist.
+  effective k is reduced when fewer shared keys exist. Stages where effective
+  k equals the entire shared universe are retained for audit but marked
+  non-informative; main summaries and figures use only k < n_shared.
 - Directionality: difference of within-stage rank percentiles for reciprocal
   A→B and B→A edges.
 - Stage stability: adjacent global observed stages only.
@@ -1592,16 +1670,16 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         },
         {
             "view_id": "cellagentchat__official_mouse_default",
-            "display_label": "CellAgentChat | official mouse DB",
+            "display_label": "CellAgentChat | official mouse DB | manifest policy",
             "method": "CellAgentChat (cross-species)",
-            "database_condition": CELLAGENTCHAT_OFFICIAL,
+            "database_condition": "from_run_manifest",
             "score_view": "mean_bonferroni_significant_lr_count",
         },
         {
             "view_id": "cellagentchat__project_lr",
-            "display_label": "CellAgentChat | project LR",
+            "display_label": "CellAgentChat | project LR | manifest policy",
             "method": "CellAgentChat (cross-species)",
-            "database_condition": CELLAGENTCHAT_CUSTOM,
+            "database_condition": "from_run_manifest",
             "score_view": "mean_bonferroni_significant_lr_count",
         },
     ]
@@ -1609,6 +1687,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     issues: list[dict[str, str]] = []
     method_unavailable_frames: list[pd.DataFrame] = []
     nichenet_orthology_records: dict[str, Mapping[str, Any]] = {}
+    cellagentchat_orthology_records: dict[str, Mapping[str, Any]] = {}
     cellchat_lr_universe: Mapping[str, Any] | None = None
 
     loaders: list[tuple[list[str], Callable[[], Sequence[pd.DataFrame]]]] = [
@@ -1660,6 +1739,13 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                 orthology = frame.attrs.get("nichenet_orthology")
                 if isinstance(orthology, Mapping):
                     nichenet_orthology_records[view_id] = dict(orthology)
+                cellagentchat_orthology = frame.attrs.get(
+                    "cellagentchat_orthology"
+                )
+                if isinstance(cellagentchat_orthology, Mapping):
+                    cellagentchat_orthology_records[view_id] = dict(
+                        cellagentchat_orthology
+                    )
                 loaded.append(frame)
         except Exception as error:
             if not args.allow_partial:
@@ -1708,6 +1794,30 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             {
                 "component": "nichenet_condition_pair",
                 "view_id": "nichenet_v2__official_and_project_lr",
+                "error": f"{type(error).__name__}: {error}",
+            }
+        )
+    cellagentchat_policies = {
+        str(record["orthology_policy"])
+        for record in cellagentchat_orthology_records.values()
+    }
+    cellagentchat_tiers = {
+        str(record["analysis_tier"])
+        for record in cellagentchat_orthology_records.values()
+    }
+    if len(cellagentchat_orthology_records) == 2 and (
+        len(cellagentchat_policies) != 1 or len(cellagentchat_tiers) != 1
+    ):
+        error = ValueError(
+            "The official/default and project-LR CellAgentChat conditions do not "
+            "share the same orthology_policy and analysis_tier"
+        )
+        if not args.allow_partial:
+            raise error
+        issues.append(
+            {
+                "component": "cellagentchat_condition_pair",
+                "view_id": "cellagentchat__official_and_project_lr",
                 "error": f"{type(error).__name__}: {error}",
             }
         )
@@ -1880,7 +1990,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     top_matrix = _matrix_from_summary(
         summary,
         views=views,
-        value_column="mean_stage_top_k_jaccard",
+        value_column="mean_stage_top_k_jaccard_informative_only",
     )
     direction_matrix = _matrix_from_summary(
         direction_summary,
@@ -1906,15 +2016,19 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     _heatmap(
         top_matrix,
         views["display_label"].tolist(),
-        title=f"Directed top-edge overlap (requested k={int(args.top_k)})",
-        colorbar_label="Mean per-stage Jaccard",
+        title=(
+            f"Directed top-edge overlap (requested k={int(args.top_k)}; "
+            "informative stages only)"
+        ),
+        colorbar_label="Mean per-stage Jaccard where k < n shared",
         cmap="viridis",
         vmin=0,
         vmax=1,
         output_base=top_base,
         diagonal_note=(
             "Top-k is selected independently within each method on the shared stage/type-pair "
-            "universe; effective k is recorded when fewer than requested keys exist."
+            "universe. Stages where effective k equals all shared keys are audit-only and "
+            "excluded here; no informative stage is shown as NA."
         ),
     )
     direction_base = output / "directionality_concordance"
@@ -1983,6 +2097,8 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "pairwise_universe": "inner join on exact key; no silent zero fill",
             "top_k": int(args.top_k),
             "top_k_tie_break": "score descending, then sender_type and receiver_type ascending",
+            "top_k_informative_rule": "effective_top_k < n_shared_directed_pairs",
+            "primary_top_k_summary": "informative stages only; NA when none",
             "directionality": "within-stage rank percentile A->B minus B->A",
             "stage_stability": "adjacent global observed stages",
             "cytobridge_attention_is_ccc_probability": False,
@@ -2007,6 +2123,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "rows": method_unavailable.to_dict("records"),
         },
         "nichenet_orthology_conditions": nichenet_orthology_records,
+        "cellagentchat_orthology_conditions": cellagentchat_orthology_records,
         "artifacts": {
             path.name: _file_record(path)
             for path in artifacts
