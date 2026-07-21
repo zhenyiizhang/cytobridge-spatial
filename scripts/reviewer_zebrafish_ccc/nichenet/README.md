@@ -40,10 +40,12 @@ log-transforms an already normalized matrix.
 
 Formal mode is the default and fails closed: it requires target sum 1105,
 successful `X` reconstruction, and the frozen H5AD/LR SHA-256 values shown in
-the command below. `--skip-x-verification` is therefore incompatible with a
-formal run. For synthetic tests or a genuinely new dataset, `--nonformal`
-permits explicitly different inputs, but the resulting manifest is labeled
-`formal_mode: false` and makes no zebrafish provenance claim.
+the command below. It also requires the Ensembl exporter manifest, verifies
+that the strict mapping CSV matches that manifest, and requires release 116.
+`--skip-x-verification` is therefore incompatible with a formal run. For
+synthetic tests or a genuinely new dataset, `--nonformal` permits explicitly
+different inputs, but the resulting manifest is labeled `formal_mode: false`
+and makes no zebrafish provenance claim.
 
 ## 1. Freeze Ensembl orthology
 
@@ -76,6 +78,7 @@ known-axis exclusions must be reported.
 python scripts/reviewer_zebrafish_ccc/nichenet/prepare_shared_inputs.py \
   --h5ad "$H5AD" \
   --orthology-csv "$RUN/00_provenance/ensembl_116/ensembl_compara_drerio_to_mouse_strict_one2one.csv" \
+  --orthology-manifest "$RUN/00_provenance/ensembl_116/orthology_manifest.json" \
   --custom-lr-db "$LR_DB" \
   --out-dir "$RUN/01_shared_inputs" \
   --expected-h5ad-sha256 433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd \

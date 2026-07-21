@@ -122,13 +122,31 @@ if (!allow_nonformal_shared) {
   if (!isTRUE(prepare_manifest$normalization$x_validation$passed)) {
     stop("Formal run requires successful X reconstruction validation")
   }
+  orthology_release <- suppressWarnings(
+    as.integer(prepare_manifest$orthology_source$ensembl_release)
+  )
+  if (
+    !isTRUE(prepare_manifest$orthology_source$verified) ||
+      !isTRUE(prepare_manifest$orthology_source$strict_map_md5_verified) ||
+      length(orthology_release) != 1 || is.na(orthology_release) || orthology_release != 116
+  ) {
+    stop("Formal run requires a verified Ensembl release 116 strict orthology manifest")
+  }
   frozen_input_sha256 <- c(
     h5ad = "433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd",
     custom_lr_db = "27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37"
   )
+  valid_sha256 <- function(value) {
+    length(value) == 1 && !is.na(value) && grepl("^[0-9a-fA-F]{64}$", value)
+  }
+  h5ad_sha256 <- as.character(prepare_manifest$inputs$h5ad$sha256)
+  custom_lr_sha256 <- as.character(prepare_manifest$inputs$custom_lr_db$sha256)
+  if (!valid_sha256(h5ad_sha256) || !valid_sha256(custom_lr_sha256)) {
+    stop("Formal shared-input manifest lacks valid scalar H5AD/custom-LR SHA256 values")
+  }
   observed_input_sha256 <- c(
-    h5ad = as.character(prepare_manifest$inputs$h5ad$sha256),
-    custom_lr_db = as.character(prepare_manifest$inputs$custom_lr_db$sha256)
+    h5ad = h5ad_sha256,
+    custom_lr_db = custom_lr_sha256
   )
   if (any(tolower(observed_input_sha256) != frozen_input_sha256)) {
     stop("Formal shared-input manifest does not reference the frozen H5AD/custom-LR hashes")

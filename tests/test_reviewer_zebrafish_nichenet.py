@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -116,6 +117,40 @@ def test_custom_lr_mapping_uses_receptor_components_and_rejects_composite_ligand
     assert (
         "unsupported_multisubunit_ligand_prior_column" in composite["exclusion_reason"]
     )
+
+
+def test_formal_orthology_manifest_is_release_116_and_hash_bound(tmp_path):
+    h5ad, orthology, lr = _write_synthetic_inputs(tmp_path)
+    manifest_path = tmp_path / "orthology_manifest.json"
+    payload = {
+        "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+        "status": "complete",
+        "ensembl_release": 116,
+        "source_mode": "frozen_raw_input",
+        "filter": {
+            "orthology_type": "ortholog_one2one",
+            "orthology_confidence": 1,
+            "nonempty_symbols": True,
+            "symbol_level_bijection_after_casefold": True,
+        },
+        "output_md5": {"strict": MODULE._md5(orthology)},
+    }
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = MODULE.PrepareConfig(
+        h5ad=h5ad,
+        orthology_csv=orthology,
+        orthology_manifest=manifest_path,
+        custom_lr_db=lr,
+        out_dir=tmp_path / "formal",
+    )
+    audit = MODULE.validate_orthology_provenance(config)
+    assert audit["verified"] is True
+    assert audit["ensembl_release"] == 116
+
+    payload["ensembl_release"] = 115
+    manifest_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="ensembl_release=116"):
+        MODULE.validate_orthology_provenance(config)
 
 
 def _write_synthetic_inputs(tmp_path: Path, *, corrupt_x: bool = False):
@@ -261,6 +296,16 @@ def test_formal_mode_enforces_target_and_x_verification(tmp_path):
     with pytest.raises(ValueError, match="requires X verification"):
         MODULE.prepare_shared_inputs(skipped_x)
 
+    missing_orthology_manifest = MODULE.PrepareConfig(
+        h5ad=h5ad,
+        orthology_csv=orthology,
+        custom_lr_db=lr,
+        out_dir=tmp_path / "missing_orthology_manifest",
+        normalization_target_sum=1105.0,
+    )
+    with pytest.raises(ValueError, match="requires --orthology-manifest"):
+        MODULE.prepare_shared_inputs(missing_orthology_manifest)
+
 
 def test_prepare_shared_inputs_emits_zero_unit_manifest(tmp_path):
     h5ad, orthology, lr = _write_synthetic_inputs(tmp_path)
@@ -304,6 +349,8 @@ def test_r_runner_uses_official_nichenetr_activity_and_fixed_prior():
     assert 'mode %in% c("default", "custom")' in runner
     assert "prepare_manifest <- fromJSON" in runner
     assert "shared_file_integrity" in runner
+    assert "prepare_manifest$orthology_source$ensembl_release" in runner
+    assert "valid_sha256" in runner
     assert "status = run_status" in runner
     assert "target_link_errors.csv" in runner
     assert "if (nrow(custom_lr) == 0)" in runner

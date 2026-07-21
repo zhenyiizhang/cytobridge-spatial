@@ -35,6 +35,7 @@ from scipy import sparse, stats
 
 SCHEMA_VERSION = 1
 FORMAL_NORMALIZATION_TARGET_SUM = 1105.0
+FORMAL_ENSEMBL_RELEASE = 116
 FORMAL_H5AD_SHA256 = "433b344b32300c9f58c7de4ac6b8f4ce808934be93b05c939ef24b9ea80fe1cd"
 FORMAL_CUSTOM_LR_SHA256 = (
     "27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37"
@@ -77,6 +78,7 @@ class PrepareConfig:
     custom_lr_db: Path
     out_dir: Path
     formal_mode: bool = True
+    orthology_manifest: Path | None = None
     expected_h5ad_sha256: str | None = None
     expected_custom_lr_sha256: str | None = None
     counts_layer: str = "counts"
@@ -726,6 +728,13 @@ def _validate_config(config: PrepareConfig) -> None:
     ):
         if not path.is_file():
             raise FileNotFoundError(f"{label} does not exist: {path}")
+    if (
+        config.orthology_manifest is not None
+        and not config.orthology_manifest.is_file()
+    ):
+        raise FileNotFoundError(
+            f"orthology_manifest does not exist: {config.orthology_manifest}"
+        )
     if config.formal_mode:
         if config.normalization_target_sum != FORMAL_NORMALIZATION_TARGET_SUM:
             raise ValueError(
@@ -735,6 +744,10 @@ def _validate_config(config: PrepareConfig) -> None:
             )
         if not config.verify_x:
             raise ValueError("Formal zebrafish mode requires X verification.")
+        if config.orthology_manifest is None:
+            raise ValueError(
+                "Formal zebrafish mode requires --orthology-manifest from the Ensembl exporter."
+            )
         for supplied, frozen, label in (
             (config.expected_h5ad_sha256, FORMAL_H5AD_SHA256, "H5AD"),
             (
@@ -780,8 +793,75 @@ def _validate_config(config: PrepareConfig) -> None:
         raise ValueError("normalization_target_sum must be positive.")
 
 
+def validate_orthology_provenance(config: PrepareConfig) -> dict[str, object]:
+    if config.orthology_manifest is None:
+        return {
+            "provided": False,
+            "verified": False,
+            "formal_requirement": False,
+        }
+
+    try:
+        payload = json.loads(config.orthology_manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(
+            f"Could not parse orthology manifest {config.orthology_manifest}: {error}"
+        ) from error
+    if not isinstance(payload, dict):
+        raise ValueError("Orthology manifest must contain a JSON object.")
+
+    recorded_strict_md5 = str(payload.get("output_md5", {}).get("strict", ""))
+    observed_strict_md5 = _md5(config.orthology_csv)
+    if not recorded_strict_md5 or recorded_strict_md5.casefold() != observed_strict_md5:
+        raise ValueError(
+            "Orthology CSV MD5 does not match orthology_manifest.json: "
+            f"recorded={recorded_strict_md5 or '<missing>'}, "
+            f"observed={observed_strict_md5}."
+        )
+
+    if config.formal_mode:
+        required_values = {
+            "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+            "status": "complete",
+            "ensembl_release": FORMAL_ENSEMBL_RELEASE,
+        }
+        for key, expected in required_values.items():
+            if payload.get(key) != expected:
+                raise ValueError(
+                    f"Formal orthology manifest requires {key}={expected!r}; "
+                    f"observed {payload.get(key)!r}."
+                )
+        filters = payload.get("filter", {})
+        required_filters = {
+            "orthology_type": "ortholog_one2one",
+            "orthology_confidence": 1,
+            "nonempty_symbols": True,
+            "symbol_level_bijection_after_casefold": True,
+        }
+        for key, expected in required_filters.items():
+            if filters.get(key) != expected:
+                raise ValueError(
+                    f"Formal orthology manifest requires filter {key}={expected!r}; "
+                    f"observed {filters.get(key)!r}."
+                )
+
+    return {
+        "provided": True,
+        "verified": True,
+        "formal_requirement": bool(config.formal_mode),
+        "ensembl_release": payload.get("ensembl_release"),
+        "workflow": payload.get("workflow"),
+        "status": payload.get("status"),
+        "source_mode": payload.get("source_mode"),
+        "strict_map_md5_verified": True,
+        "strict_map_md5": observed_strict_md5,
+        "manifest": _file_record(config.orthology_manifest),
+    }
+
+
 def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
     _validate_config(config)
+    orthology_provenance = validate_orthology_provenance(config)
     config.out_dir.mkdir(parents=True, exist_ok=True)
     units_dir = config.out_dir / "units"
     units_dir.mkdir()
@@ -1079,6 +1159,11 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
         "inputs": {
             "h5ad": _file_record(config.h5ad),
             "orthology_csv": _file_record(config.orthology_csv),
+            "orthology_manifest": (
+                _file_record(config.orthology_manifest)
+                if config.orthology_manifest is not None
+                else None
+            ),
             "custom_lr_db": _file_record(config.custom_lr_db),
         },
         "h5ad": {
@@ -1103,6 +1188,7 @@ def prepare_shared_inputs(config: PrepareConfig) -> dict[str, object]:
             "x_validation": x_audit,
         },
         "orthology": orthology_audit,
+        "orthology_source": orthology_provenance,
         "custom_lr_mapping": lr_audit,
         "receiver_units": {
             "n_rows": int(len(units_manifest)),
@@ -1172,6 +1258,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--h5ad", type=Path, required=True)
     parser.add_argument("--orthology-csv", type=Path, required=True)
+    parser.add_argument("--orthology-manifest", type=Path, default=None)
     parser.add_argument("--custom-lr-db", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument(
@@ -1213,6 +1300,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     config = PrepareConfig(
         h5ad=args.h5ad,
         orthology_csv=args.orthology_csv,
+        orthology_manifest=args.orthology_manifest,
         custom_lr_db=args.custom_lr_db,
         out_dir=args.out_dir,
         formal_mode=not args.nonformal,
