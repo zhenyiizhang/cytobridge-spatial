@@ -51,8 +51,20 @@ deterministic and label-stratified, and both methods receive the same cells.
   in every manifest rather than presenting CellChat as spatial evidence.
 - CellChat resolves each CSV `database_row` against the installed official
   `CellChatDB.zebrafish`.  Expanded ligand, expanded receptor, pathway, and
-  annotation must match row by row or the run stops.  Thus the custom CSV is
-  the executed universe, not just a label attached to a default-database run.
+  annotation are audited row by row.  Ligand, receptor, and annotation must
+  match or the run stops; the requested CSV remains authoritative for pathway
+  labels and any difference from the pinned CellChat label is recorded.  Thus
+  the custom CSV is the executed universe, not just a label attached to a
+  default-database run.
+- Before inference, CellChat applies a fail-closed executability check matching
+  its own `subsetData` rules: a simple token must be an exact `geneInfo` symbol
+  present in the shared matrix, while a complex must be declared in the pinned
+  complex table and every exact subunit must be present.  The runner never
+  invents an undeclared complex by splitting an underscore-delimited token.
+  `database_eligibility_audit.csv` records every requested row and
+  `excluded_lr_rows.csv` records method-unavailable rows.  Those exclusions
+  must be removed from CellChat cross-method comparison universes rather than
+  filled as biological zeros.
 - COMMOT receives the same structurally available CSV rows.  Exact identical
   flat duplicates are computed once and their source row IDs are retained in
   `database_rows`.

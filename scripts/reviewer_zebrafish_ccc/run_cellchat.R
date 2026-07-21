@@ -67,6 +67,125 @@ expand_complex <- function(tokens, complex_table) {
   }, character(1L))
 }
 
+cellchat_token_eligibility <- function(token, expression_genes, complex_table, gene_info) {
+  token <- as.character(token)
+  gene_symbols <- as.character(gene_info$Symbol)
+  if (!length(token) || is.na(token) || !nzchar(token)) {
+    return(list(
+      eligible = FALSE,
+      mode = "invalid_empty_token",
+      required_genes = character(0),
+      missing_genes = character(0),
+      reason = "empty_token"
+    ))
+  }
+
+  # This follows CellChat::extractGeneSubset exactly.  A simple ligand or
+  # receptor is retained by subsetData only when it is an official geneInfo
+  # symbol.  Any other token is interpreted as a declared complex, for which
+  # every subunit must be present in the expression matrix.
+  if (token %in% gene_symbols) {
+    missing <- setdiff(token, expression_genes)
+    return(list(
+      eligible = length(missing) == 0L,
+      mode = "gene_info_symbol",
+      required_genes = token,
+      missing_genes = missing,
+      reason = if (length(missing)) "simple_gene_missing_expression" else ""
+    ))
+  }
+
+  if (!(token %in% rownames(complex_table))) {
+    return(list(
+      eligible = FALSE,
+      mode = "undeclared_token",
+      required_genes = token,
+      missing_genes = token,
+      reason = "token_not_geneinfo_or_declared_complex"
+    ))
+  }
+  subunit_columns <- grep("^subunit", colnames(complex_table), value = TRUE)
+  if (!length(subunit_columns)) stop("CellChat complex table has no subunit columns")
+  subunits <- as.character(unlist(
+    complex_table[token, subunit_columns, drop = FALSE],
+    use.names = FALSE
+  ))
+  subunits <- unique(subunits[!is.na(subunits) & nzchar(subunits)])
+  if (!length(subunits)) {
+    return(list(
+      eligible = FALSE,
+      mode = "declared_complex",
+      required_genes = character(0),
+      missing_genes = character(0),
+      reason = "declared_complex_without_subunits"
+    ))
+  }
+  missing <- setdiff(subunits, expression_genes)
+  list(
+    eligible = length(missing) == 0L,
+    mode = "declared_complex",
+    required_genes = subunits,
+    missing_genes = missing,
+    reason = if (length(missing)) "complex_subunit_missing_expression" else ""
+  )
+}
+
+build_cellchat_database_eligibility <- function(
+    flat_database, pair_lr, expression_genes, complex_table, gene_info) {
+  if (nrow(flat_database) != nrow(pair_lr)) {
+    stop("Flat and pinned CellChat interaction tables differ in length")
+  }
+  ligand_checks <- lapply(
+    as.character(pair_lr$ligand),
+    cellchat_token_eligibility,
+    expression_genes = expression_genes,
+    complex_table = complex_table,
+    gene_info = gene_info
+  )
+  receptor_checks <- lapply(
+    as.character(pair_lr$receptor),
+    cellchat_token_eligibility,
+    expression_genes = expression_genes,
+    complex_table = complex_table,
+    gene_info = gene_info
+  )
+  ligand_eligible <- vapply(ligand_checks, `[[`, logical(1L), "eligible")
+  receptor_eligible <- vapply(receptor_checks, `[[`, logical(1L), "eligible")
+  collapse_values <- function(checks, field) {
+    vapply(checks, function(value) paste(value[[field]], collapse = ";"), character(1L))
+  }
+  exclusion_reason <- vapply(seq_len(nrow(pair_lr)), function(position) {
+    reasons <- character(0)
+    if (!ligand_eligible[[position]]) {
+      reasons <- c(reasons, paste0("ligand:", ligand_checks[[position]]$reason))
+    }
+    if (!receptor_eligible[[position]]) {
+      reasons <- c(reasons, paste0("receptor:", receptor_checks[[position]]$reason))
+    }
+    paste(reasons, collapse = "|")
+  }, character(1L))
+  data.frame(
+    database_row = as.integer(flat_database$database_row),
+    interaction_id = as.character(flat_database$interaction_id),
+    current_ligand = as.character(flat_database$ligand),
+    current_receptor = as.character(flat_database$receptor),
+    cellchat_ligand_token = as.character(pair_lr$ligand),
+    cellchat_receptor_token = as.character(pair_lr$receptor),
+    ligand_mode = collapse_values(ligand_checks, "mode"),
+    receptor_mode = collapse_values(receptor_checks, "mode"),
+    ligand_required_genes = collapse_values(ligand_checks, "required_genes"),
+    receptor_required_genes = collapse_values(receptor_checks, "required_genes"),
+    ligand_missing_genes = collapse_values(ligand_checks, "missing_genes"),
+    receptor_missing_genes = collapse_values(receptor_checks, "missing_genes"),
+    ligand_eligible = ligand_eligible,
+    receptor_eligible = receptor_eligible,
+    eligible = ligand_eligible & receptor_eligible,
+    exclusion_reason = exclusion_reason,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 write_csv_gz <- function(frame, path) {
   connection <- gzfile(path, open = "wt")
   on.exit(close(connection), add = TRUE)
@@ -224,6 +343,12 @@ if (!exists("CellChatDB.zebrafish")) {
   stop("The installed official CellChat package does not provide CellChatDB.zebrafish")
 }
 official_database <- CellChatDB.zebrafish
+if (is.null(rownames(official_database$complex)) || anyDuplicated(rownames(official_database$complex))) {
+  stop("Pinned CellChat complex table must have unique non-null row names")
+}
+if (!("Symbol" %in% colnames(official_database$geneInfo))) {
+  stop("Pinned CellChat geneInfo table has no Symbol column")
+}
 indices <- as.integer(flat_database$database_row) + 1L
 if (any(is.na(indices)) || any(indices < 1L) || any(indices > nrow(official_database$interaction))) {
   stop("Prepared database_row is outside the installed CellChatDB.zebrafish interaction table")
@@ -265,6 +390,59 @@ undeclared_modifier_columns <- intersect(
 for (column in undeclared_modifier_columns) pair_lr[[column]] <- ""
 pair_lr$database_row <- as.integer(flat_database$database_row)
 pair_lr$flat_interaction_id <- flat_database$interaction_id
+
+# Every prepared stage must expose the same global feature universe.  Test
+# CellChat executability against that exact universe before calling subsetData:
+# simple tokens must survive geneInfo filtering, and declared complexes must
+# have every subunit.  Never repair an undeclared token by splitting on `_`,
+# because doing so would invent CellChat complex semantics absent from the
+# pinned database.
+prepared_gene_lists <- lapply(input_manifest$stages, function(stage_record) {
+  readLines(
+    file.path(input_dir, "stages", as.character(stage_record$token), "genes.txt"),
+    warn = FALSE
+  )
+})
+if (!length(prepared_gene_lists) || !length(prepared_gene_lists[[1L]])) {
+  stop("Prepared input manifest has no non-empty stage gene universe")
+}
+if (any(vapply(prepared_gene_lists, anyDuplicated, integer(1L)) > 0L)) {
+  stop("Prepared stage gene lists contain duplicate names")
+}
+if (!all(vapply(
+  prepared_gene_lists[-1L],
+  identical,
+  logical(1L),
+  prepared_gene_lists[[1L]]
+))) {
+  stop("Prepared stages do not share an identical ordered gene universe")
+}
+expression_genes <- prepared_gene_lists[[1L]]
+database_eligibility <- build_cellchat_database_eligibility(
+  flat_database,
+  pair_lr,
+  expression_genes,
+  official_database$complex,
+  official_database$geneInfo
+)
+eligibility_path <- file.path(output_dir, "database_eligibility_audit.csv")
+exclusion_path <- file.path(output_dir, "excluded_lr_rows.csv")
+write.csv(database_eligibility, eligibility_path, row.names = FALSE, quote = TRUE)
+write.csv(
+  database_eligibility[!database_eligibility$eligible, , drop = FALSE],
+  exclusion_path,
+  row.names = FALSE,
+  quote = TRUE
+)
+pair_lr_requested <- pair_lr
+pair_lr <- pair_lr_requested[database_eligibility$eligible, , drop = FALSE]
+flat_database_eligible <- flat_database[database_eligibility$eligible, , drop = FALSE]
+if (!nrow(pair_lr)) {
+  stop("No requested LR rows are executable by pinned CellChat and the prepared expression universe")
+}
+if (anyDuplicated(rownames(pair_lr))) {
+  stop("Eligible CellChat interaction names must be unique")
+}
 database_use <- official_database
 database_use$interaction <- pair_lr
 
@@ -273,6 +451,7 @@ pathway_frames <- list()
 total_frames <- list()
 diagnostic_frames <- list()
 artifact_paths <- character(0)
+artifact_paths <- c(artifact_paths, eligibility_path, exclusion_path)
 
 for (stage_position in seq_along(input_manifest$stages)) {
   stage_record <- input_manifest$stages[[stage_position]]
@@ -331,7 +510,11 @@ for (stage_position in seq_along(input_manifest$stages)) {
     stop(paste("Could not map CellChat interactions back to prepared database for", stage))
   }
   ordered_pairs <- pair_lr[pair_order, , drop = FALSE]
-  ordered_flat <- flat_database[match(ordered_pairs$database_row, flat_database$database_row), , drop = FALSE]
+  ordered_flat <- flat_database_eligible[
+    match(ordered_pairs$database_row, flat_database_eligible$database_row),
+    ,
+    drop = FALSE
+  ]
 
   stage_lr <- vector("list", length(interaction_ids))
   for (interaction_position in seq_along(interaction_ids)) {
@@ -415,7 +598,9 @@ for (stage_position in seq_along(input_manifest$stages)) {
     stage_time = stage_time,
     n_cells = nrow(metadata),
     n_cell_types = length(cell_counts),
-    n_lr_rows_requested = nrow(pair_lr),
+    n_lr_rows_requested = nrow(pair_lr_requested),
+    n_lr_rows_eligible = nrow(pair_lr),
+    n_lr_rows_excluded = nrow(pair_lr_requested) - nrow(pair_lr),
     n_lr_rows_returned = dim(probabilities)[[3L]],
     n_positive_lr_contexts = sum(probabilities > 0),
     n_significant_lr_contexts = sum(probabilities > 0 & pvalues < 0.05),
@@ -482,7 +667,15 @@ manifest <- list(
       stringsAsFactors = FALSE
     )),
     undeclared_official_modifier_columns_disabled = undeclared_modifier_columns,
-    modifier_policy = "agonist/antagonist/co-receptor fields are empty because the requested flat current LR database does not provide them"
+    modifier_policy = "agonist/antagonist/co-receptor fields are empty because the requested flat current LR database does not provide them",
+    cellchat_executability_rule = "simple tokens must be exact geneInfo symbols present in every prepared stage; complex tokens must be declared in the pinned complex table and every exact subunit must be present; underscore splitting never invents an undeclared complex",
+    rows_requested = nrow(pair_lr_requested),
+    rows_eligible = nrow(pair_lr),
+    rows_excluded = nrow(pair_lr_requested) - nrow(pair_lr),
+    all_eligible_rows_cellchat_representable = TRUE,
+    excluded_rows_are_method_unavailable_not_biological_zero = TRUE,
+    eligibility_audit = file_record(eligibility_path),
+    exclusion_table = file_record(exclusion_path)
   ),
   design = list(
     all_prepared_observed_stages = TRUE,
@@ -500,7 +693,8 @@ manifest <- list(
       "structural zeros omitted; outer-join to input universe and fill zero for comparisons"
     } else {
       "all LR/type contexts exported"
-    }
+    },
+    method_unavailable_policy = "database rows listed in excluded_lr_rows.csv must be excluded from CellChat cross-method universes, never zero-filled"
   ),
   score_semantics = list(
     lr_score = "official CellChat type-level LR communication probability",
