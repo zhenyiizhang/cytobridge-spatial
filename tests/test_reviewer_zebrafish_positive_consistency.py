@@ -149,3 +149,8 @@ def test_top_overlap_expands_boundary_ties_and_reports_random_enrichment() -> No
     assert row["target_set_size_after_boundary_ties"] == 3
     assert row["intersection"] == 3
     assert row["overlap_enrichment_over_random"] == pytest.approx(2.0)
+
+
+def test_top_set_does_not_promote_zero_ties_to_top_signals() -> None:
+    frame = pd.DataFrame({"score": [0.0, 0.0, 0.0, np.nan]})
+    assert analysis._top_set(frame, "score", requested=2) == set()

@@ -296,7 +296,7 @@ def select_biological_examples(
         ],
     )
     selected["selection_rule"] = (
-        "highest mean of within-stage CytoBridge attention×LR and COMMOT native-flow "
+        "highest mean of within-stage CytoBridge LR-compatible attention and COMMOT native-flow "
         "percentiles within the pre-specified pathway family, requiring positive "
         f"support and n_active_edges>={min_active_edges}"
     )
@@ -644,7 +644,7 @@ def plot_spatial_lr_maps(
             f"{str(example.stage_label)} | {str(example.selection_family)}\n"
             f"within-stage percentiles: CytoBridge {example.cytobridge_percentile_all_axes:.1%}, "
             f"COMMOT {example.commot_percentile_all_axes:.1%}\n"
-            f"top-20% midpoint co-localization (radius={midpoint_match_radius:.3f}): "
+            f"top-20% midpoint coverage (radius={midpoint_match_radius:.3f}): "
             f"CB→COMMOT {colocalization['cytobridge_midpoints_near_commot_fraction']:.1%}, "
             f"COMMOT→CB {colocalization['commot_midpoints_near_cytobridge_fraction']:.1%}"
         )
@@ -657,7 +657,7 @@ def plot_spatial_lr_maps(
             cb_top,
             "cytobridge_attention_lr_flow",
             edge_color="#e66101",
-            title="CytoBridge: attention × LR activity",
+            title="CytoBridge: LR-compatible attention score",
         )
         _draw_spatial_panel(
             axes[row_index, 1],
@@ -1072,7 +1072,7 @@ def plot_temporal_bubble(
             color="none",
             markerfacecolor="#e66101",
             markersize=8,
-            label="CytoBridge attention × LR",
+            label="CytoBridge LR-compatible attention",
         ),
         Line2D(
             [0],
@@ -1158,13 +1158,13 @@ def _write_notes(
                 "",
                 "## Selection rule",
                 "",
-                "The spatial examples were selected before plotting. Within each pre-specified family (ncWNT, CXCL, NOTCH), the chosen exact LR/stage maximizes the mean of the within-stage CytoBridge attention×LR percentile and COMMOT native-flow percentile, requires both scores to be positive, and requires at least 10 active CytoBridge graph edges. The rule is evaluated only among the literature-scoped zebrafish axes already in the validation audit.",
+                "The spatial examples were selected before plotting. Within each pre-specified family (ncWNT, CXCL, NOTCH), the chosen exact LR/stage maximizes the mean of the within-stage CytoBridge LR-compatible-attention percentile and COMMOT native-flow percentile, requires both scores to be positive, and requires at least 10 active CytoBridge graph edges. The LR-compatible score is the post-hoc product of the model attention magnitude, sender ligand activity, and receiver receptor activity. The rule is evaluated only among the literature-scoped zebrafish axes already in the validation audit.",
                 "",
                 *example_lines,
                 "",
                 "## Figures",
                 "",
-                "- `spatial_lr_interaction_maps`: identical ligand/receptor expression landscapes are overlaid with the top positive, non-self cell-level directed edges from CytoBridge or the narrowly reconstructed COMMOT matrix. The annotation also reports bidirectional nearest-neighbor co-localization of top-20% interaction midpoints at half the frozen graph cutoff. Edge truncation is only for display; every positive selected COMMOT flow is retained in the audit table.",
+                "- `spatial_lr_interaction_maps`: identical ligand/receptor expression landscapes are overlaid with the top positive, non-self cell-level directed edges from CytoBridge or the narrowly reconstructed COMMOT matrix. The annotation reports asymmetric nearest-neighbor coverage of top-20% interaction midpoints at half the frozen graph cutoff; this is not exact-edge or direction accuracy. Edge truncation is only for display; every positive selected COMMOT flow is retained in the audit table.",
                 f"- `ccc_circle_comparison`: conventional directed CCC circles for one early (10 hpf) and one late (24 hpf) observed stage. Each panel displays the top {circle_top_n} positive off-diagonal edges; purple edges are shared with the counterpart top-20% set.",
                 "- `known_lr_temporal_consistency_bubble`: all nine literature-scoped axes across five stages. Bubble size and opacity are within-stage percentiles among all identifiable LR axes, so the two methods' raw units are never compared.",
                 "",
@@ -1192,7 +1192,7 @@ def _write_notes(
                 "",
                 "## 三张主图怎么读",
                 "",
-                "- `spatial_lr_interaction_maps`：左右使用完全相同的 ligand/receptor 表达背景，只替换箭头来源。左侧是 CytoBridge attention×LR activity，右侧是 COMMOT cell-level OT flow。标题下还报告 top-20% interaction midpoint 在半个固定 graph cutoff 内的双向空间覆盖率。",
+                "- `spatial_lr_interaction_maps`：左右使用完全相同的 ligand/receptor 表达背景，只替换箭头来源。左侧是后处理得到的 CytoBridge LR-compatible attention（attention magnitude × sender ligand activity × receiver receptor activity），右侧是 COMMOT cell-level OT flow。标题下还报告 top-20% interaction midpoint 在半个固定 graph cutoff 内的双向空间覆盖率。",
                 f"- `ccc_circle_comparison`：CCC 领域常见的 circle network。每个 panel 只画排名最高的 {circle_top_n} 条非对角正信号；紫色边表示与对照 top-20% 集合重合。",
                 "- `known_lr_temporal_consistency_bubble`：9 条有文献边界的斑马鱼 LR axis 跨 5 个 stage 的时间图。气泡大小/透明度是各方法内部 percentile，不会直接比两个不同单位的 raw score。",
                 "",

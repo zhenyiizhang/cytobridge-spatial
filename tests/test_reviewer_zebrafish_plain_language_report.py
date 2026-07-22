@@ -22,6 +22,7 @@ SPEC.loader.exec_module(report)
 def test_top_set_keeps_boundary_ties() -> None:
     frame = pd.DataFrame({"score": [5.0, 4.0, 4.0, 1.0, 0.0]})
     assert report.top_set(frame, "score", 2) == {0, 1, 2}
+    assert report.top_set(pd.DataFrame({"score": [0.0, 0.0]}), "score", 1) == set()
 
 
 def test_stage_table_reproduces_formal_top_overlap() -> None:
@@ -52,6 +53,59 @@ def test_stage_table_reproduces_formal_top_overlap() -> None:
 
 def test_figure_index_separates_evidence_from_audit() -> None:
     index = report.build_figure_index().set_index("figure")
+    assert index.loc["02_direct_ccc_comparison", "recommended_role"] == "最主要直接证据"
     assert index.loc["01_reviewer_evidence_map", "recommended_role"] == "新主图"
     assert index.loc["condition_coverage", "recommended_role"] == "质量审计"
     assert index.loc["directionality_concordance", "recommended_role"] == "限制/审计"
+
+
+def test_homotypic_type_pair_is_not_mislabeled_as_cell_self_loop() -> None:
+    label = report.pair_label("Somite", "Somite")
+    assert "homotypic type pair" in label
+    assert "self-loop" not in label
+
+
+def test_direct_comparison_reconstructs_stagewise_commot_correlations() -> None:
+    score_rows = []
+    pair_rows = []
+    consensus_rows = []
+    for stage in range(5):
+        for index in range(4):
+            score_rows.append(
+                {
+                    "stage": float(stage),
+                    "cytobridge_attention": float(index),
+                    "cytobridge_exact_message": float(3 - index),
+                    "commot": float(index),
+                }
+            )
+        for target, rho, intersection in (
+            ("CytoBridge attention", 1.0, 2),
+            ("CytoBridge exact message", -1.0, 1),
+        ):
+            pair_rows.append(
+                {
+                    "display_label_left": target,
+                    "display_label_right": "COMMOT | project LR",
+                    "stage": float(stage),
+                    "spearman_rank_concordance": rho,
+                    "top_k_intersection": intersection,
+                    "effective_top_k": 10,
+                }
+            )
+            consensus_rows.append(
+                {
+                    "design": "external_only_native_primary",
+                    "target": target,
+                    "stage": float(stage),
+                    "spearman": rho / 2,
+                }
+            )
+    result = report.direct_comparison_table(
+        pd.DataFrame(pair_rows),
+        pd.DataFrame(consensus_rows),
+        pd.DataFrame(score_rows),
+    )
+    assert result["attention_vs_commot_rho"].eq(1.0).all()
+    assert result["exact_message_vs_commot_rho"].eq(-1.0).all()
+    assert result["attention_vs_external_consensus_rho"].eq(0.5).all()

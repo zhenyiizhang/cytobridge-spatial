@@ -325,11 +325,11 @@ def pairwise_metrics(scores: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def _top_set(frame: pd.DataFrame, column: str, requested: int) -> set[int]:
     values = pd.to_numeric(frame[column], errors="coerce")
-    finite = values[np.isfinite(values)]
-    if finite.empty or requested <= 0:
+    supported = values[np.isfinite(values) & values.gt(0)]
+    if supported.empty or requested <= 0:
         return set()
-    boundary = finite.nlargest(min(requested, len(finite))).iloc[-1]
-    return set(frame.index[np.isfinite(values) & (values >= boundary)])
+    boundary = supported.nlargest(min(requested, len(supported))).iloc[-1]
+    return set(frame.index[np.isfinite(values) & values.gt(0) & (values >= boundary)])
 
 
 def top_overlap(
@@ -385,6 +385,7 @@ def top_overlap(
                             else float("nan")
                         ),
                         "tie_policy": "include_all_scores_at_kth_boundary",
+                        "positive_support_required": True,
                     }
                 )
     by_stage = pd.DataFrame(rows)
@@ -534,7 +535,7 @@ def pathway_enrichment(
                     hypergeom.sf(hit - 1, population, successes, draws)
                 ),
                 "top_definition": (
-                    f"rank <= {top_axis_rank} attention×LR axes per stage, pooled unique"
+                    f"rank <= {top_axis_rank} LR-compatible attention axes per stage, pooled unique"
                 ),
             }
         )
@@ -781,7 +782,7 @@ def plot_biology(pathway: pd.DataFrame, niche: pd.DataFrame, output: Path) -> No
     axes[0].set_yticklabels(selected["pathway"])
     axes[0].axvline(1, color="#374151", linestyle="--", linewidth=1)
     axes[0].set_xlabel("Fold enrichment vs LR-database background")
-    axes[0].set_title("A  Pathways among top attention×LR axes", loc="left")
+    axes[0].set_title("A  Pathways among top LR-compatible attention axes", loc="left")
     for index, (_, row) in enumerate(selected.iterrows()):
         axes[0].text(row["fold_enrichment"] + 0.3, index, f"q={row['bh_q']:.2g}", va="center", fontsize=8)
 

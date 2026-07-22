@@ -144,8 +144,16 @@ python scripts/reviewer_zebrafish_ccc/plain_language_consistency_report.py \
   --output-dir /path/to/zebrafish_ccc_plain_language_guide
 ```
 
-Start from `START_HERE_CN.md`. The guide adds an evidence map, five stage-wise
-rank-scatter panels, and a concrete sender-to-receiver arrow checklist. It also
-labels every original panel as main evidence, supporting evidence, an audit,
-or a limitation. Its top-20% reconstruction is checked against the formal
-tie-inclusive table in the source bundle before any output is written.
+Start from `START_HERE_CN.md`. The guide first maps every model-native and
+post-hoc interaction quantity to the exact analysis that consumes it. It then
+adds a 2-by-5 direct CytoBridge-versus-COMMOT scatter, an external-consensus
+scatter, a concrete sender-to-receiver checklist, and a quantitative spatial
+location-coverage panel. It labels every original panel as main evidence,
+supporting evidence, an audit, or a limitation. Its top-20% reconstruction is
+checked against the formal tie-inclusive table in the source bundle before any
+output is written.
+
+Pairwise and positive-consistency top-set selection requires strictly positive
+native support before expanding kth-boundary ties. This prevents a method with
+an all-zero or sparse zero-tied stage from turning the whole type-pair matrix
+into a nominal "top" set.
