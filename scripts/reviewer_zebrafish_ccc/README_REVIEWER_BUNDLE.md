@@ -26,6 +26,7 @@ directory arguments are available when the source tree was moved.
 python scripts/reviewer_zebrafish_ccc/build_reviewer_bundle.py \
   --comparison-dir "$RUN/06_multimethod_comparison_final" \
   --validation-dir "$RUN/04_reviewer_validation_axes" \
+  --positive-consistency-dir "$RUN/07_positive_consistency" \
   --output-dir "$RUN/reviewer_delivery_20260722"
 ```
 
@@ -41,6 +42,11 @@ For relocated method results, add:
 
 The command refuses a nonempty output directory unless `--overwrite` is
 explicitly supplied.
+
+`--positive-consistency-dir` is optional for legacy bundles. When supplied,
+the builder verifies its external-only primary design, disclosed self-included
+ensemble, CellAgentChat CTPS correction, and every artifact hash before copying
+the new figures, tables, Chinese note, and reviewer-response draft.
 
 ## Output contract
 

@@ -86,7 +86,8 @@ SHARED_DESIGN_FIELDS = (
     "tau",
     "delta",
     "native_primary",
-    "raw_score_sum_is_secondary",
+    "significant_lr_count_is_diagnostic",
+    "unthresholded_raw_score_sum_is_secondary",
     "torch_sparse_backend",
     "torch_sparse_backend_semantics",
 )

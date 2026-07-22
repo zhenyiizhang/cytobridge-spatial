@@ -3,9 +3,9 @@
 
 This adapter follows the CellAgentChat v0.2.0 spatial tutorial contract:
 spatial distance is enabled for the observed model, the permutation background
-is distance-scaled, and the native sender-to-receiver score is the number of
-Bonferroni-significant LR pairs.  No UMAP or other embedding is treated as
-physical space.
+is distance-scaled, and the native sender-to-receiver CTPS is the sum of
+Bonferroni-significant interaction scores (CellAgentChat Methods, Eq. 8).  No
+UMAP or other embedding is treated as physical space.
 """
 
 from __future__ import annotations
@@ -476,7 +476,14 @@ def _complete_type_pairs(
                         if raw_frame is None
                         else float(raw_frame["cellagentchat_score_raw"].sum())
                     ),
-                    "cellagentchat_native_primary": significant_count,
+                    # CellAgentChat Methods Eq. 8 defines CTPS as the sum of
+                    # significant interaction scores, not the number of
+                    # significant LR pairs.  Keep the count as a diagnostic.
+                    "cellagentchat_native_primary": (
+                        0.0
+                        if sig_frame is None
+                        else float(sig_frame["cellagentchat_score"].sum())
+                    ),
                     "heterotypic": bool(sender != receiver),
                 }
             )
@@ -952,8 +959,12 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "permutation_background_distance_scaled": True,
             "tau": float(args.tau),
             "delta": float(args.delta),
-            "native_primary": "number of Bonferroni-significant LR pairs per directed cell-type pair",
-            "raw_score_sum_is_secondary": True,
+            "native_primary": (
+                "CTPS: sum of Bonferroni-significant CellAgentChat interaction "
+                "scores per directed cell-type pair (Methods Eq. 8)"
+            ),
+            "significant_lr_count_is_diagnostic": True,
+            "unthresholded_raw_score_sum_is_secondary": True,
             "device": args.device,
             "torch_sparse_backend": torch_sparse_backend,
             "torch_sparse_backend_semantics": (

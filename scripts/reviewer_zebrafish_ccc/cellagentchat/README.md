@@ -150,11 +150,13 @@ CUDA_VISIBLE_DEVICES=7 python scripts/reviewer_zebrafish_ccc/cellagentchat/run_d
   --output-dir /path/to/cellagentchat/formal
 ```
 
-The native primary output is the number of Bonferroni-significant LR pairs per
-directed sender/receiver cell-type pair. Raw score sums are exported only as
-secondary sensitivity views. Absolute significant-pair counts across the two
-different LR universes are not directly comparable; use ranks, significant
-fractions, or their common mapped-LR universe.
+The native primary output is CellAgentChat's CTPS: the sum of
+Bonferroni-significant interaction scores per directed sender/receiver
+cell-type pair (Methods, Eq. 8). The number of significant LR pairs is retained
+as a diagnostic, and the unthresholded raw score sum is exported as a secondary
+sensitivity view. Absolute CTPS values across the two different LR universes
+are not directly comparable; use within-stage ranks or their common mapped-LR
+universe.
 
 ### Assemble two parallel formal runs
 

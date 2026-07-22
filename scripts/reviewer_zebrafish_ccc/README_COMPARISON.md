@@ -123,3 +123,21 @@ association for attention and exact messages. The strict conditional test is
 selected by the full
 `stage+sender_type+receiver_type+distance_bin+state_bin` stratum label; the
 script does not choose rows by position.
+
+## CellAgentChat-Fig.-2-style positive consistency
+
+`paper_style_positive_consistency.py` adds a non-circular external consensus,
+the self-included ensemble used for comparison with CellAgentChat Fig. 2A,
+paper-style inverse-distance localization, top-20% overlap enrichment,
+LR-background pathway enrichment, and NicheNet downstream ligand consistency.
+
+The primary consensus excludes CytoBridge and combines within-stage percentile
+ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean. The supporting
+all-method ensemble includes CytoBridge and is explicitly labelled as
+self-included. A separate threshold-sensitivity consensus uses unthresholded
+CellAgentChat scores and CellChat truncatedMean.
+
+CellAgentChat CTPS follows Methods Eq. 8: the sum of significant interaction
+scores. Historical result tables that preserved this score-sum but mislabeled
+significant-pair count as native primary are consumed without mutation; the
+correction is recorded in the new manifest.

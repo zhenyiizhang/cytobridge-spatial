@@ -465,6 +465,11 @@ def _build_formal_tree(root: Path) -> None:
         directory = cellagent / condition
         directory.mkdir(parents=True)
         frame = _type_rows("cellagentchat_native_primary_mean", [4.0, 3.0, 2.0, 1.0])
+        # This fixture deliberately retains the historical manifest mislabel;
+        # the loader must recover the immutable Methods Eq. 8 CTPS column.
+        frame["cellagentchat_significant_score_sum_mean"] = (
+            frame["cellagentchat_native_primary_mean"] / 10.0
+        )
         frame["n_sampling_seeds"] = 3
         type_pair_path = directory / "cellagentchat_type_pair_scores.csv"
         frame.to_csv(type_pair_path, index=False)
@@ -668,6 +673,10 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
         .str.contains("all-confidence orthology sensitivity", regex=False)
         .all()
     )
+    assert set(cellagent["score_view"]) == {
+        "mean_ctps_sum_bonferroni_significant_interaction_scores"
+    }
+    assert cellagent["native_score"].max() == pytest.approx(0.4)
     for stem in (
         "rank_concordance",
         "top_edge_overlap",

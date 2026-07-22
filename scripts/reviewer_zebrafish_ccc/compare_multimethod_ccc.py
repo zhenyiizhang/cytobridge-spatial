@@ -1308,8 +1308,15 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
             "database_condition": condition,
         },
     )
-    native_primary = manifest.get("design", {}).get("native_primary")
-    if "Bonferroni-significant LR pairs" not in str(native_primary):
+    native_primary = str(manifest.get("design", {}).get("native_primary", ""))
+    paper_ctps_manifest = (
+        "sum of Bonferroni-significant" in native_primary
+        and "interaction scores" in native_primary
+    )
+    legacy_count_manifest = (
+        "number of Bonferroni-significant LR pairs" in native_primary
+    )
+    if not (paper_ctps_manifest or legacy_count_manifest):
         raise ValueError(
             "CellAgentChat manifest has unexpected native-primary semantics"
         )
@@ -1486,6 +1493,7 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         "sender_type",
         "receiver_type",
         "cellagentchat_native_primary_mean",
+        "cellagentchat_significant_score_sum_mean",
     }
     _require_columns(frame, required, path)
     observed_keys = frame[
@@ -1542,19 +1550,41 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
     )
     label = f"{label_prefix} | {policy['label_suffix']}"
     database_condition = f"{condition}__{policy['condition_suffix']}"
+    paper_ctps = pd.to_numeric(
+        frame["cellagentchat_significant_score_sum_mean"], errors="coerce"
+    )
+    if not np.isfinite(paper_ctps).all() or (paper_ctps < 0).any():
+        raise ValueError(f"{path} contains invalid CellAgentChat CTPS values")
+    if paper_ctps_manifest:
+        declared_primary = pd.to_numeric(
+            frame["cellagentchat_native_primary_mean"], errors="coerce"
+        )
+        if not np.allclose(
+            declared_primary.to_numpy(dtype=float),
+            paper_ctps.to_numpy(dtype=float),
+            rtol=1e-10,
+            atol=1e-12,
+        ):
+            raise ValueError(
+                "CellAgentChat native primary does not equal the Methods Eq. 8 CTPS"
+            )
     result = _canonical(
         frame,
         path=path,
         method="CellAgentChat (cross-species)",
         database_condition=database_condition,
-        score_view="mean_bonferroni_significant_lr_count",
+        score_view="mean_ctps_sum_bonferroni_significant_interaction_scores",
         display_label=label,
         view_id=(
             "cellagentchat__official_mouse_default"
             if official
             else "cellagentchat__project_lr"
         ),
-        score=frame["cellagentchat_native_primary_mean"],
+        # Historical 2026-07-22 manifests mislabeled significant-pair count as
+        # native primary, but preserved the actual Eq. 8 CTPS column.  Consume
+        # that immutable score column and record the correction below; never
+        # rewrite the source manifest or output table in place.
+        score=paper_ctps,
         stage=frame["stage"],
         stage_label=frame["stage_label"],
     )
@@ -1571,6 +1601,13 @@ def _load_cellagentchat(directory: Path, *, condition: str) -> pd.DataFrame:
         "preparation_manifest_sha256": _sha256(preparation_manifest),
         "source_commit": PINNED_CELLAGENTCHAT_COMMIT,
         "source_signature": source_signature,
+        "paper_ctps_definition": (
+            "sum of Bonferroni-significant CellAgentChat interaction scores "
+            "per directed cell-type pair (Methods Eq. 8)"
+        ),
+        "source_manifest_native_primary": native_primary,
+        "legacy_native_primary_mislabel_corrected": bool(legacy_count_manifest),
+        "ctps_source_column": "cellagentchat_significant_score_sum_mean",
     }
     audit_rows = []
     for stage in design_stages:
@@ -2665,7 +2702,7 @@ Status: **{status}**
 
 This directory compares methods only after ranking each method/condition within
 each observed stage. Raw COMMOT mass, CellChat probability, NicheNet ligand
-activity, CellAgentChat significant-pair count, CytoBridge attention, and exact
+activity, CellAgentChat CTPS, CytoBridge attention, and exact
 CytoBridge message norms are not treated as a shared numerical unit.
 
 ## Conditions and score views
@@ -2835,14 +2872,14 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "display_label": "CellAgentChat | official mouse DB | manifest policy",
             "method": "CellAgentChat (cross-species)",
             "database_condition": "from_run_manifest",
-            "score_view": "mean_bonferroni_significant_lr_count",
+            "score_view": "mean_ctps_sum_bonferroni_significant_interaction_scores",
         },
         {
             "view_id": "cellagentchat__project_lr",
             "display_label": "CellAgentChat | project LR | manifest policy",
             "method": "CellAgentChat (cross-species)",
             "database_condition": "from_run_manifest",
-            "score_view": "mean_bonferroni_significant_lr_count",
+            "score_view": "mean_ctps_sum_bonferroni_significant_interaction_scores",
         },
     ]
     loaded: list[pd.DataFrame] = []

@@ -447,9 +447,10 @@ def test_spatial_adapter_preserves_sender_receiver_direction_and_zeros() -> None
     target = complete[
         complete["sender_type"].eq("A") & complete["receiver_type"].eq("B")
     ].iloc[0]
-    assert target["cellagentchat_native_primary"] == 1
+    assert target["cellagentchat_native_primary"] == pytest.approx(2.5)
+    assert target["cellagentchat_significant_score_sum"] == pytest.approx(2.5)
     assert target["cellagentchat_significant_lr_fraction"] == 0.1
-    assert complete["cellagentchat_native_primary"].sum() == 1
+    assert complete["cellagentchat_native_primary"].sum() == pytest.approx(2.5)
 
 
 def test_lr_output_keys_are_decoded_from_loaded_universe() -> None:

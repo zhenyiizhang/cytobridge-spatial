@@ -471,6 +471,43 @@ def _fixture(tmp_path: Path) -> argparse.Namespace:
     )
 
 
+def _write_positive_consistency(root: Path) -> Path:
+    directory = root / "positive_consistency"
+    directory.mkdir()
+    for filename in bundle.POSITIVE_CONSISTENCY_TABLES:
+        path = directory / filename
+        if filename.endswith(".csv.gz"):
+            pd.DataFrame([{"value": 1}]).to_csv(path, index=False, compression="gzip")
+        else:
+            pd.DataFrame([{"value": 1}]).to_csv(path, index=False)
+    for filename in bundle.POSITIVE_CONSISTENCY_FIGURES:
+        (directory / filename).write_bytes(b"positive-figure")
+    for filename in ("README.md", "reviewer_response_draft.md", "汇报说明.md"):
+        (directory / filename).write_text("positive note\n", encoding="utf-8")
+    names = (
+        bundle.POSITIVE_CONSISTENCY_TABLES
+        + bundle.POSITIVE_CONSISTENCY_FIGURES
+        + ("README.md", "reviewer_response_draft.md", "汇报说明.md")
+    )
+    _json(
+        directory / "manifest.json",
+        {
+            "workflow": "zebrafish_paper_style_positive_communication_consistency",
+            "primary_design": {
+                "name": "external_only_native_primary",
+                "cytobridge_excluded": True,
+            },
+            "supporting_design": {"self_inclusion_disclosed": True},
+            "cellagentchat_ctps_correction": {
+                "source_column": "cellagentchat_significant_score_sum_mean",
+                "source_files_mutated": False,
+            },
+            "artifacts": _artifact_manifest(directory, names),
+        },
+    )
+    return directory
+
+
 def test_builds_six_condition_bundle_with_claim_guardrails(tmp_path: Path) -> None:
     args = _fixture(tmp_path)
     manifest = bundle.build_bundle(args)
@@ -496,6 +533,21 @@ def test_builds_six_condition_bundle_with_claim_guardrails(tmp_path: Path) -> No
     assert "六个外部条件" in readme_cn
     assert "structural zero 审计" in readme_cn
     assert "不是 CCC probability" in readme_cn
+
+
+def test_optionally_bundles_hash_verified_positive_consistency(tmp_path: Path) -> None:
+    args = _fixture(tmp_path)
+    args.positive_consistency_dir = _write_positive_consistency(tmp_path)
+    manifest = bundle.build_bundle(args)
+    assert manifest["positive_consistency_included"] is True
+    assert (
+        args.output_dir / "figures" / "positive_consistency_overview.png"
+    ).is_file()
+    assert (args.output_dir / "tables" / "consensus_summary.csv").is_file()
+    assert (args.output_dir / "notes" / "reviewer_response_draft.md").is_file()
+    assert "Positive-consistency addendum" in (
+        args.output_dir / "README.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_rejects_nonformal_comparison_before_creating_bundle(tmp_path: Path) -> None:

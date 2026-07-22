@@ -108,6 +108,26 @@ VALIDATION_FIGURES = (
     "reviewer_validation_axes.png",
     "reviewer_validation_axes.pdf",
 )
+POSITIVE_CONSISTENCY_TABLES = (
+    "harmonized_type_pair_scores.csv.gz",
+    "consensus_by_stage.csv",
+    "consensus_summary.csv",
+    "pairwise_sensitivity_by_stage.csv",
+    "pairwise_sensitivity_summary.csv",
+    "top_signal_overlap_by_stage.csv",
+    "top_signal_overlap_summary.csv",
+    "spatial_proximity_by_stage.csv",
+    "spatial_proximity_summary.csv",
+    "spatial_beyond_proximity_conditional_tests.csv",
+    "pathway_enrichment.csv",
+    "nichenet_downstream_ligand_detail.csv",
+    "nichenet_downstream_consistency_summary.csv",
+)
+POSITIVE_CONSISTENCY_FIGURES = tuple(
+    f"{stem}.{suffix}"
+    for stem in ("positive_consistency_overview", "top_signal_biology")
+    for suffix in ("png", "pdf")
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -120,6 +140,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--nichenet-default-dir", type=Path)
     parser.add_argument("--nichenet-custom-dir", type=Path)
     parser.add_argument("--cellagentchat-dir", type=Path)
+    parser.add_argument(
+        "--positive-consistency-dir",
+        type=Path,
+        help=(
+            "Optional hash-verified output from paper_style_positive_consistency.py. "
+            "When supplied, its figures, tables, and reviewer-response notes are bundled."
+        ),
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser
 
@@ -195,6 +223,42 @@ def _verify_artifact(path: Path, record: Mapping[str, Any] | None) -> None:
     recorded_hash = str(record.get("sha256", "")).casefold()
     if not recorded_hash or recorded_hash != _sha256(path).casefold():
         raise ValueError(f"Manifest SHA256 does not match {path}")
+
+
+def _validate_positive_consistency(
+    directory: Path,
+) -> tuple[dict[str, Any], dict[str, Mapping[str, Any]]]:
+    manifest = _read_json(directory / "manifest.json")
+    _require(
+        manifest.get("workflow")
+        == "zebrafish_paper_style_positive_communication_consistency",
+        "Unexpected positive-consistency workflow",
+    )
+    primary = manifest.get("primary_design", {})
+    _require(
+        isinstance(primary, Mapping)
+        and primary.get("name") == "external_only_native_primary"
+        and primary.get("cytobridge_excluded") is True,
+        "Positive-consistency primary design is not external-only",
+    )
+    supporting = manifest.get("supporting_design", {})
+    _require(
+        isinstance(supporting, Mapping)
+        and supporting.get("self_inclusion_disclosed") is True,
+        "Positive-consistency all-method self-inclusion is not disclosed",
+    )
+    correction = manifest.get("cellagentchat_ctps_correction", {})
+    _require(
+        isinstance(correction, Mapping)
+        and correction.get("source_column")
+        == "cellagentchat_significant_score_sum_mean"
+        and correction.get("source_files_mutated") is False,
+        "Positive-consistency CellAgentChat CTPS correction contract is missing",
+    )
+    records = _manifest_artifacts_by_name(manifest)
+    for filename in (*POSITIVE_CONSISTENCY_TABLES, *POSITIVE_CONSISTENCY_FIGURES):
+        _verify_artifact(directory / filename, records.get(filename))
+    return manifest, records
 
 
 def _prepare_output(path: Path, overwrite: bool) -> Path:
@@ -865,9 +929,13 @@ def _validate_methods(
             and manifest.get("database_condition") == condition,
             f"Unexpected CellAgentChat manifest for {condition}",
         )
+        native_primary = str(manifest.get("design", {}).get("native_primary", ""))
         _require(
-            "Bonferroni-significant LR pairs"
-            in str(manifest.get("design", {}).get("native_primary", "")),
+            (
+                "sum of Bonferroni-significant" in native_primary
+                and "interaction scores" in native_primary
+            )
+            or "number of Bonferroni-significant LR pairs" in native_primary,
             "CellAgentChat native score semantics are missing",
         )
         claims = manifest.get("shared_input", {}).get("preparation_claims", {})
@@ -931,7 +999,7 @@ def _validate_methods(
             "view_id": "cellagentchat__official_mouse_default",
             "condition": "CellAgentChat — official/default",
             "database": "official mouse CellTalkDB default",
-            "score": "mean count of Bonferroni-significant LR pairs across sampling seeds",
+            "score": "mean CTPS: sum of Bonferroni-significant interaction scores across sampling seeds",
             "space": "spatial CellAgentChat",
             "tier": cellagent_tiers[0],
         },
@@ -939,7 +1007,7 @@ def _validate_methods(
             "view_id": "cellagentchat__project_lr",
             "condition": "CellAgentChat — project LR",
             "database": "project zebrafish LR projected to supported mouse singleton pairs",
-            "score": "mean count of Bonferroni-significant LR pairs across sampling seeds",
+            "score": "mean CTPS: sum of Bonferroni-significant interaction scores across sampling seeds",
             "space": "spatial CellAgentChat",
             "tier": cellagent_tiers[0],
         },
@@ -1847,13 +1915,30 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
     _validate_structural_zero_completion(comparison_dir, comparison)
     _validate_positive_support_top_k(comparison_dir, comparison)
     validation = _validate_validation_axes(validation_dir)
+    positive_dir = (
+        getattr(args, "positive_consistency_dir", None).expanduser().resolve()
+        if getattr(args, "positive_consistency_dir", None) is not None
+        else None
+    )
+    positive_manifest: Mapping[str, Any] | None = None
+    positive_records: Mapping[str, Mapping[str, Any]] = {}
+    if positive_dir is not None:
+        positive_manifest, positive_records = _validate_positive_consistency(
+            positive_dir
+        )
     method_dirs = _resolve_method_dirs(comparison, args)
     manifests, conditions = _validate_methods(method_dirs)
     _crosscheck_orthology_records(comparison, manifests)
 
     output_path = args.output_dir.expanduser().resolve()
     _require(
-        output_path not in {comparison_dir, validation_dir, *method_dirs.values()},
+        output_path
+        not in {
+            comparison_dir,
+            validation_dir,
+            *method_dirs.values(),
+            *([positive_dir] if positive_dir is not None else []),
+        },
         "Output directory must differ from every source result directory",
     )
     output = _prepare_output(output_path, bool(args.overwrite))
@@ -1915,6 +2000,25 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
                 destination_dir=output / "figures",
             )
         )
+    if positive_dir is not None:
+        for filename in POSITIVE_CONSISTENCY_TABLES:
+            copied.append(
+                _copy_verified(
+                    source_dir=positive_dir,
+                    filename=filename,
+                    records=positive_records,
+                    destination_dir=output / "tables",
+                )
+            )
+        for filename in POSITIVE_CONSISTENCY_FIGURES:
+            copied.append(
+                _copy_verified(
+                    source_dir=positive_dir,
+                    filename=filename,
+                    records=positive_records,
+                    destination_dir=output / "figures",
+                )
+            )
 
     note_sources = (
         (
@@ -1934,6 +2038,16 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
         )
         _verify_artifact(source, source_records.get(source.name))
         copied.append(_copy_plain(source, destination))
+    if positive_dir is not None:
+        positive_notes = {
+            "README.md": "positive_consistency_interpretation.md",
+            "reviewer_response_draft.md": "reviewer_response_draft.md",
+            "汇报说明.md": "positive_consistency_CN.md",
+        }
+        for source_name, destination_name in positive_notes.items():
+            source = positive_dir / source_name
+            _verify_artifact(source, positive_records.get(source_name))
+            copied.append(_copy_plain(source, output / "notes" / destination_name))
 
     manifest_sources = {
         "comparison_manifest.json": comparison_dir / "manifest.json",
@@ -1950,6 +2064,10 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
             "path"
         ],
     }
+    if positive_dir is not None:
+        manifest_sources["positive_consistency_manifest.json"] = (
+            positive_dir / "manifest.json"
+        )
     for destination_name, source in manifest_sources.items():
         copied.append(_copy_plain(source, output / "manifests" / destination_name))
 
@@ -1967,6 +2085,26 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
         conditions=conditions,
     )
     copied.append(readme_cn)
+    if positive_dir is not None:
+        with readme.open("a", encoding="utf-8") as handle:
+            handle.write(
+                "\n## Positive-consistency addendum\n\n"
+                "The primary consensus in this addendum excludes CytoBridge; the "
+                "CellAgentChat-style all-method ensemble is explicitly self-included.\n\n"
+                "![Positive communication consistency](figures/positive_consistency_overview.png)\n\n"
+                "![Top-signal biology](figures/top_signal_biology.png)\n\n"
+                "See `notes/reviewer_response_draft.md` and "
+                "`notes/positive_consistency_interpretation.md`.\n"
+            )
+        with readme_cn.open("a", encoding="utf-8") as handle:
+            handle.write(
+                "\n## 正向 communication consistency 补充分析\n\n"
+                "主分析的 external-only consensus 不包含 CytoBridge；包含我们"
+                "自身的 all-method ensemble 仅作论文式 supporting comparison。\n\n"
+                "![正向一致性](figures/positive_consistency_overview.png)\n\n"
+                "![Top-signal biology](figures/top_signal_biology.png)\n\n"
+                "详细解释见 `notes/positive_consistency_CN.md`。\n"
+            )
 
     bundle_manifest = {
         "schema_version": 1,
@@ -2001,7 +2139,15 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
             "cellchat_method_unavailable_rows_are_biological_zero": False,
             "unevaluated_or_skipped_units_are_structural_zero": False,
             "virtual_removal_is_causal_perturbation": False,
+            "all_method_self_included_ensemble_is_independent_validation": False,
+            "nichenet_downstream_consistency_is_direct_spatial_ccc_strength": False,
         },
+        "positive_consistency_included": positive_dir is not None,
+        "positive_consistency_contract": (
+            positive_manifest.get("primary_design")
+            if positive_manifest is not None
+            else None
+        ),
         "source_manifests": {
             name: _file_record(source) for name, source in manifest_sources.items()
         },

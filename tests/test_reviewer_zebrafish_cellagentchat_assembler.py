@@ -79,9 +79,11 @@ def _design() -> dict:
         "tau": 2.0,
         "delta": 1.0,
         "native_primary": (
-            "number of Bonferroni-significant LR pairs per directed cell-type pair"
+            "CTPS: sum of Bonferroni-significant CellAgentChat interaction "
+            "scores per directed cell-type pair (Methods Eq. 8)"
         ),
-        "raw_score_sum_is_secondary": True,
+        "significant_lr_count_is_diagnostic": True,
+        "unthresholded_raw_score_sum_is_secondary": True,
         "device": "cuda:0",
         "torch_sparse_backend": "torch_native_sparse_compat_v1",
         "torch_sparse_backend_semantics": "tested compatibility backend",
