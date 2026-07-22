@@ -27,6 +27,7 @@ python scripts/reviewer_zebrafish_ccc/build_reviewer_bundle.py \
   --comparison-dir "$RUN/06_multimethod_comparison_final" \
   --validation-dir "$RUN/04_reviewer_validation_axes" \
   --positive-consistency-dir "$RUN/07_positive_consistency" \
+  --biological-consistency-dir "$RUN/10_biological_consistency_visuals" \
   --output-dir "$RUN/reviewer_delivery_20260722"
 ```
 
@@ -48,6 +49,52 @@ the builder verifies its external-only primary design, disclosed self-included
 ensemble, CellAgentChat CTPS correction, and every artifact hash before copying
 the new figures, tables, Chinese note, and reviewer-response draft.
 
+`--biological-consistency-dir` is also optional. When supplied, the builder
+requires a frozen, non-visual ncWNT/CXCL/NOTCH example-selection contract,
+rejects raw cross-method score comparisons, verifies every cell-flow/table/
+figure hash, and adds the direct spatial LR maps, CCC circles, and temporal LR
+bubble plot.
+
+## Direct biological visualization addendum
+
+This addendum is intentionally two-phase so that the final spatial examples
+are fixed before the cell-level COMMOT matrices are reconstructed:
+
+```bash
+python scripts/reviewer_zebrafish_ccc/biological_consistency_panels.py \
+  --validation-dir "$RUN/04_reviewer_validation_axes" \
+  --positive-consistency-dir "$RUN/07_positive_consistency" \
+  --cytobridge-dir "$RUN/01_cytobridge" \
+  --commot-dir "$RUN/03_external_ccc/commot_current_lr" \
+  --h5ad /path/to/zebrafish_aligned.h5ad \
+  --out-dir "$RUN/08_biological_consistency_preselection" \
+  --select-only
+
+/path/to/commot-env/bin/python \
+  scripts/reviewer_zebrafish_ccc/run_selected_commot_flows.py \
+  --input-dir "$RUN/03_external_ccc/shared_inputs" \
+  --examples-csv \
+    "$RUN/08_biological_consistency_preselection/biological_example_selection.csv" \
+  --out-dir "$RUN/09_selected_commot_cell_flows" \
+  --cot-nitermax 2000
+
+python scripts/reviewer_zebrafish_ccc/biological_consistency_panels.py \
+  --validation-dir "$RUN/04_reviewer_validation_axes" \
+  --positive-consistency-dir "$RUN/07_positive_consistency" \
+  --cytobridge-dir "$RUN/01_cytobridge" \
+  --commot-dir "$RUN/03_external_ccc/commot_current_lr" \
+  --h5ad /path/to/zebrafish_aligned.h5ad \
+  --selected-examples-csv \
+    "$RUN/08_biological_consistency_preselection/biological_example_selection.csv" \
+  --selected-commot-flow-dir "$RUN/09_selected_commot_cell_flows" \
+  --out-dir "$RUN/10_biological_consistency_visuals"
+```
+
+The selected COMMOT runner uses the same prepared stage matrices, LR database,
+spatial cutoff, heteromeric `min` rule, and COT iteration budget as the formal
+COMMOT benchmark. It evaluates only the frozen examples and writes every
+positive cell-level flow; it never edits the formal benchmark directory.
+
 ## Output contract
 
 The bundle contains:
@@ -55,10 +102,12 @@ The bundle contains:
 - `README.md`: reviewer-facing design, exact scores, coverage, rank results,
   controls, validation axes, and interpretation guardrails;
 - `README_CN.md`: concise CSV-backed Chinese handoff for lab presentation;
-- `figures/`: verified PNG/PDF comparison and validation panels;
+- `figures/`: verified PNG/PDF comparison, validation, and optional direct
+  biological/spatial panels;
 - `tables/`: verified concordance, coverage, control, LR-axis, and optional
   virtual-removal audit tables;
-- `manifests/`: renamed copies of all nine source manifests;
+- `manifests/`: renamed copies of all source manifests, including optional
+  biological selection and selected-flow manifests;
 - `notes/`: the two upstream interpretation notes;
 - `bundle_manifest.json`: source provenance, SHA256 inventory, six-condition
   definitions, and explicit false-claim guardrails.

@@ -508,6 +508,61 @@ def _write_positive_consistency(root: Path) -> Path:
     return directory
 
 
+def _write_biological_consistency(root: Path) -> Path:
+    directory = root / "biological_consistency"
+    directory.mkdir()
+    for filename in bundle.BIOLOGICAL_CONSISTENCY_TABLES:
+        path = directory / filename
+        if filename == "biological_example_selection.csv":
+            pd.DataFrame(
+                [
+                    {
+                        "selection_family": family,
+                        "both_methods_top_quartile": True,
+                    }
+                    for family in ("ncWNT", "CXCL", "NOTCH")
+                ]
+            ).to_csv(path, index=False)
+        elif filename.endswith(".csv.gz"):
+            pd.DataFrame([{"value": 1}]).to_csv(path, index=False, compression="gzip")
+        else:
+            pd.DataFrame([{"value": 1}]).to_csv(path, index=False)
+    for filename in bundle.BIOLOGICAL_CONSISTENCY_FIGURES:
+        (directory / filename).write_bytes(b"biological-figure")
+    for filename in bundle.BIOLOGICAL_CONSISTENCY_NOTES:
+        (directory / filename).write_text("biological note\n", encoding="utf-8")
+    for filename in bundle.BIOLOGICAL_CONSISTENCY_MANIFESTS:
+        _json(directory / filename, {"workflow": "audit"})
+    names = (
+        bundle.BIOLOGICAL_CONSISTENCY_TABLES
+        + bundle.BIOLOGICAL_CONSISTENCY_FIGURES
+        + bundle.BIOLOGICAL_CONSISTENCY_NOTES
+        + bundle.BIOLOGICAL_CONSISTENCY_MANIFESTS
+    )
+    _json(
+        directory / "manifest.json",
+        {
+            "workflow": "zebrafish_direct_biological_ccc_consistency_visualization",
+            "status": "complete",
+            "selection": {
+                "pre_specified_pathway_families": ["ncWNT", "CXCL", "NOTCH"],
+                "selection_was_completed_before_cell_level_commot_reconstruction": True,
+                "selection_uses_visual_appearance": False,
+            },
+            "display": {"raw_cross_method_units_compared": False},
+            "claims": {
+                "method_agreement_is_ground_truth": False,
+                "attention_is_ccc_probability": False,
+                "commot_ot_mass_is_biochemical_flux": False,
+                "lr_agreement_is_fully_independent": False,
+                "nichenet_is_direct_spatial_ccc_strength": False,
+            },
+            "artifacts": _artifact_manifest(directory, names),
+        },
+    )
+    return directory
+
+
 def test_builds_six_condition_bundle_with_claim_guardrails(tmp_path: Path) -> None:
     args = _fixture(tmp_path)
     manifest = bundle.build_bundle(args)
@@ -540,12 +595,26 @@ def test_optionally_bundles_hash_verified_positive_consistency(tmp_path: Path) -
     args.positive_consistency_dir = _write_positive_consistency(tmp_path)
     manifest = bundle.build_bundle(args)
     assert manifest["positive_consistency_included"] is True
-    assert (
-        args.output_dir / "figures" / "positive_consistency_overview.png"
-    ).is_file()
+    assert (args.output_dir / "figures" / "positive_consistency_overview.png").is_file()
     assert (args.output_dir / "tables" / "consensus_summary.csv").is_file()
     assert (args.output_dir / "notes" / "reviewer_response_draft.md").is_file()
-    assert "Positive-consistency addendum" in (
+    assert "Positive-consistency addendum" in (args.output_dir / "README.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_optionally_bundles_direct_biological_consistency_views(
+    tmp_path: Path,
+) -> None:
+    args = _fixture(tmp_path)
+    args.positive_consistency_dir = _write_positive_consistency(tmp_path)
+    args.biological_consistency_dir = _write_biological_consistency(tmp_path)
+    manifest = bundle.build_bundle(args)
+    assert manifest["biological_consistency_included"] is True
+    assert (args.output_dir / "figures" / "spatial_lr_interaction_maps.png").is_file()
+    assert (args.output_dir / "tables" / "selected_commot_cell_flows.csv.gz").is_file()
+    assert (args.output_dir / "notes" / "biological_consistency_CN.md").is_file()
+    assert "Direct biological and spatial consistency views" in (
         args.output_dir / "README.md"
     ).read_text(encoding="utf-8")
 

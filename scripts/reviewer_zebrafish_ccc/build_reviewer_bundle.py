@@ -128,6 +128,33 @@ POSITIVE_CONSISTENCY_FIGURES = tuple(
     for stem in ("positive_consistency_overview", "top_signal_biology")
     for suffix in ("png", "pdf")
 )
+BIOLOGICAL_CONSISTENCY_TABLES = (
+    "biological_example_candidates.csv",
+    "biological_example_selection.csv",
+    "selected_cytobridge_cell_edges.csv.gz",
+    "selected_commot_cell_flows.csv.gz",
+    "selected_commot_cell_summary.csv.gz",
+    "spatial_display_audit.csv",
+    "circle_display_edges.csv",
+)
+BIOLOGICAL_CONSISTENCY_FIGURES = tuple(
+    f"{stem}.{suffix}"
+    for stem in (
+        "spatial_lr_interaction_maps",
+        "ccc_circle_comparison",
+        "known_lr_temporal_consistency_bubble",
+    )
+    for suffix in ("png", "pdf")
+)
+BIOLOGICAL_CONSISTENCY_NOTES = (
+    "README.md",
+    "汇报说明.md",
+    "reviewer_response_biological_visuals.md",
+)
+BIOLOGICAL_CONSISTENCY_MANIFESTS = (
+    "selection_manifest.json",
+    "selected_commot_flow_manifest.json",
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -146,6 +173,15 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "Optional hash-verified output from paper_style_positive_consistency.py. "
             "When supplied, its figures, tables, and reviewer-response notes are bundled."
+        ),
+    )
+    parser.add_argument(
+        "--biological-consistency-dir",
+        type=Path,
+        help=(
+            "Optional hash-verified output from biological_consistency_panels.py. "
+            "When supplied, direct spatial LR maps, CCC circles, temporal bubbles, "
+            "and their complete display audit tables are bundled."
         ),
     )
     parser.add_argument("--overwrite", action="store_true")
@@ -258,6 +294,73 @@ def _validate_positive_consistency(
     records = _manifest_artifacts_by_name(manifest)
     for filename in (*POSITIVE_CONSISTENCY_TABLES, *POSITIVE_CONSISTENCY_FIGURES):
         _verify_artifact(directory / filename, records.get(filename))
+    return manifest, records
+
+
+def _validate_biological_consistency(
+    directory: Path,
+) -> tuple[dict[str, Any], dict[str, Mapping[str, Any]]]:
+    manifest = _read_json(directory / "manifest.json")
+    _require(
+        manifest.get("workflow")
+        == "zebrafish_direct_biological_ccc_consistency_visualization",
+        "Unexpected biological-consistency workflow",
+    )
+    _require(
+        manifest.get("status") == "complete", "Biological visualization is incomplete"
+    )
+    selection = manifest.get("selection", {})
+    _require(
+        isinstance(selection, Mapping)
+        and selection.get("pre_specified_pathway_families")
+        == ["ncWNT", "CXCL", "NOTCH"]
+        and selection.get(
+            "selection_was_completed_before_cell_level_commot_reconstruction"
+        )
+        is True
+        and selection.get("selection_uses_visual_appearance") is False,
+        "Biological examples were not selected under the frozen non-visual rule",
+    )
+    display = manifest.get("display", {})
+    _require(
+        isinstance(display, Mapping)
+        and display.get("raw_cross_method_units_compared") is False,
+        "Biological visualization must compare ranks, not raw cross-method units",
+    )
+    claims = manifest.get("claims", {})
+    for false_claim in (
+        "method_agreement_is_ground_truth",
+        "attention_is_ccc_probability",
+        "commot_ot_mass_is_biochemical_flux",
+        "lr_agreement_is_fully_independent",
+        "nichenet_is_direct_spatial_ccc_strength",
+    ):
+        _require(
+            isinstance(claims, Mapping) and claims.get(false_claim) is False,
+            f"Biological visualization claim must be false: {false_claim}",
+        )
+    records = _manifest_artifacts_by_name(manifest)
+    for filename in (
+        *BIOLOGICAL_CONSISTENCY_TABLES,
+        *BIOLOGICAL_CONSISTENCY_FIGURES,
+        *BIOLOGICAL_CONSISTENCY_NOTES,
+        *BIOLOGICAL_CONSISTENCY_MANIFESTS,
+    ):
+        _verify_artifact(directory / filename, records.get(filename))
+    selected = pd.read_csv(directory / "biological_example_selection.csv")
+    _require(
+        set(selected["selection_family"].astype(str)) == {"ncWNT", "CXCL", "NOTCH"}
+        and len(selected) == 3,
+        "Biological selection must contain exactly one example per frozen family",
+    )
+    _require(
+        selected["both_methods_top_quartile"]
+        .astype(str)
+        .str.casefold()
+        .eq("true")
+        .all(),
+        "Every displayed spatial example must be top-quartile in both methods",
+    )
     return manifest, records
 
 
@@ -1926,6 +2029,17 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
         positive_manifest, positive_records = _validate_positive_consistency(
             positive_dir
         )
+    biological_dir = (
+        getattr(args, "biological_consistency_dir", None).expanduser().resolve()
+        if getattr(args, "biological_consistency_dir", None) is not None
+        else None
+    )
+    biological_manifest: Mapping[str, Any] | None = None
+    biological_records: Mapping[str, Mapping[str, Any]] = {}
+    if biological_dir is not None:
+        biological_manifest, biological_records = _validate_biological_consistency(
+            biological_dir
+        )
     method_dirs = _resolve_method_dirs(comparison, args)
     manifests, conditions = _validate_methods(method_dirs)
     _crosscheck_orthology_records(comparison, manifests)
@@ -1938,6 +2052,7 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
             validation_dir,
             *method_dirs.values(),
             *([positive_dir] if positive_dir is not None else []),
+            *([biological_dir] if biological_dir is not None else []),
         },
         "Output directory must differ from every source result directory",
     )
@@ -2019,6 +2134,25 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
                     destination_dir=output / "figures",
                 )
             )
+    if biological_dir is not None:
+        for filename in BIOLOGICAL_CONSISTENCY_TABLES:
+            copied.append(
+                _copy_verified(
+                    source_dir=biological_dir,
+                    filename=filename,
+                    records=biological_records,
+                    destination_dir=output / "tables",
+                )
+            )
+        for filename in BIOLOGICAL_CONSISTENCY_FIGURES:
+            copied.append(
+                _copy_verified(
+                    source_dir=biological_dir,
+                    filename=filename,
+                    records=biological_records,
+                    destination_dir=output / "figures",
+                )
+            )
 
     note_sources = (
         (
@@ -2048,6 +2182,18 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
             source = positive_dir / source_name
             _verify_artifact(source, positive_records.get(source_name))
             copied.append(_copy_plain(source, output / "notes" / destination_name))
+    if biological_dir is not None:
+        biological_notes = {
+            "README.md": "biological_consistency_interpretation.md",
+            "汇报说明.md": "biological_consistency_CN.md",
+            "reviewer_response_biological_visuals.md": (
+                "reviewer_response_biological_visuals.md"
+            ),
+        }
+        for source_name, destination_name in biological_notes.items():
+            source = biological_dir / source_name
+            _verify_artifact(source, biological_records.get(source_name))
+            copied.append(_copy_plain(source, output / "notes" / destination_name))
 
     manifest_sources = {
         "comparison_manifest.json": comparison_dir / "manifest.json",
@@ -2068,6 +2214,12 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
         manifest_sources["positive_consistency_manifest.json"] = (
             positive_dir / "manifest.json"
         )
+    if biological_dir is not None:
+        manifest_sources["biological_consistency_manifest.json"] = (
+            biological_dir / "manifest.json"
+        )
+        for filename in BIOLOGICAL_CONSISTENCY_MANIFESTS:
+            manifest_sources[filename] = biological_dir / filename
     for destination_name, source in manifest_sources.items():
         copied.append(_copy_plain(source, output / "manifests" / destination_name))
 
@@ -2104,6 +2256,30 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
                 "![正向一致性](figures/positive_consistency_overview.png)\n\n"
                 "![Top-signal biology](figures/top_signal_biology.png)\n\n"
                 "详细解释见 `notes/positive_consistency_CN.md`。\n"
+            )
+    if biological_dir is not None:
+        with readme.open("a", encoding="utf-8") as handle:
+            handle.write(
+                "\n## Direct biological and spatial consistency views\n\n"
+                "The examples were selected under a frozen ncWNT/CXCL/NOTCH rule "
+                "before cell-level COMMOT reconstruction; visual appearance was not "
+                "used for selection. Raw cross-method units are not compared.\n\n"
+                "![Spatial LR interaction maps](figures/spatial_lr_interaction_maps.png)\n\n"
+                "![CCC circle comparison](figures/ccc_circle_comparison.png)\n\n"
+                "![Known LR temporal consistency](figures/known_lr_temporal_consistency_bubble.png)\n\n"
+                "See `notes/biological_consistency_interpretation.md` and "
+                "`notes/reviewer_response_biological_visuals.md`.\n"
+            )
+        with readme_cn.open("a", encoding="utf-8") as handle:
+            handle.write(
+                "\n## 生物学与空间一致性直观图\n\n"
+                "空间例子先按固定的 ncWNT/CXCL/NOTCH 规则选择，再重建少量 "
+                "COMMOT cell-level flow；没有按图的外观挑例子，也没有直接比较"
+                "不同方法的 raw score。\n\n"
+                "![空间 LR interaction](figures/spatial_lr_interaction_maps.png)\n\n"
+                "![CCC circle](figures/ccc_circle_comparison.png)\n\n"
+                "![已知 LR 的时序一致性](figures/known_lr_temporal_consistency_bubble.png)\n\n"
+                "详细解释见 `notes/biological_consistency_CN.md`。\n"
             )
 
     bundle_manifest = {
@@ -2146,6 +2322,12 @@ def build_bundle(args: argparse.Namespace) -> Mapping[str, Any]:
         "positive_consistency_contract": (
             positive_manifest.get("primary_design")
             if positive_manifest is not None
+            else None
+        ),
+        "biological_consistency_included": biological_dir is not None,
+        "biological_consistency_contract": (
+            biological_manifest.get("selection")
+            if biological_manifest is not None
             else None
         ),
         "source_manifests": {
