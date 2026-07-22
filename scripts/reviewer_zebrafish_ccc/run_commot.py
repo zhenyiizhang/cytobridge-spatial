@@ -28,7 +28,6 @@ try:
         ensure_common_score_schema,
         file_record,
         json_dump,
-        sha256_file,
         software_versions,
         utc_now,
     )
@@ -38,7 +37,6 @@ except ImportError:  # direct script execution
         ensure_common_score_schema,
         file_record,
         json_dump,
-        sha256_file,
         software_versions,
         utc_now,
     )
@@ -142,6 +140,12 @@ def aggregate_matrix_by_labels(
     sums = np.bincount(
         flat_index, weights=coo.data, minlength=len(groups) ** 2
     ).reshape(len(groups), len(groups))
+    diagonal_mask = coo.row == coo.col
+    diagonal_sums = np.bincount(
+        group_index[coo.row[diagonal_mask]],
+        weights=coo.data[diagonal_mask],
+        minlength=len(groups),
+    )
     rows: list[dict[str, object]] = []
     for sender_idx, sender in enumerate(groups):
         for receiver_idx, receiver in enumerate(groups):
@@ -149,12 +153,31 @@ def aggregate_matrix_by_labels(
             if not include_zeros and value == 0:
                 continue
             denominator = int(counts[sender_idx] * counts[receiver_idx])
+            shared_cells = int(counts[sender_idx]) if sender_idx == receiver_idx else 0
+            distinct_denominator = denominator - shared_cells
+            distinct_value = (
+                value - float(diagonal_sums[sender_idx])
+                if sender_idx == receiver_idx
+                else value
+            )
+            tolerance = 1e-12 * max(1.0, abs(value))
+            if distinct_value < -tolerance:
+                raise ValueError("Cell-diagonal COMMOT mass exceeds its type block")
+            distinct_value = max(0.0, distinct_value)
+            if distinct_denominator <= 0:
+                distinct_mean = np.nan
+            else:
+                distinct_mean = distinct_value / distinct_denominator
             rows.append(
                 {
                     "sender_type": sender,
                     "receiver_type": receiver,
                     "score": value,
                     "score_mean_possible_cell_pairs": value / denominator,
+                    "score_distinct_cell_pairs": distinct_value,
+                    "score_mean_possible_distinct_cell_pairs": distinct_mean,
+                    "n_shared_sender_receiver_cells": shared_cells,
+                    "n_possible_distinct_cell_pairs": distinct_denominator,
                     "n_sender_cells": int(counts[sender_idx]),
                     "n_receiver_cells": int(counts[receiver_idx]),
                 }
@@ -166,6 +189,10 @@ def aggregate_matrix_by_labels(
             "receiver_type",
             "score",
             "score_mean_possible_cell_pairs",
+            "score_distinct_cell_pairs",
+            "score_mean_possible_distinct_cell_pairs",
+            "n_shared_sender_receiver_cells",
+            "n_possible_distinct_cell_pairs",
             "n_sender_cells",
             "n_receiver_cells",
         ],
@@ -190,6 +217,11 @@ def _common_context(
             + [
                 "score_mean_possible_cell_pairs",
                 "abundance_controlled_score",
+                "score_distinct_cell_pairs",
+                "score_mean_possible_distinct_cell_pairs",
+                "abundance_controlled_distinct_cell_score",
+                "n_shared_sender_receiver_cells",
+                "n_possible_distinct_cell_pairs",
                 "matrix_key",
             ]
         )
@@ -209,6 +241,9 @@ def _common_context(
         "score_semantics"
     ] = "sum of COMMOT sender-row/receiver-column cell-cell OT communication mass"
     result["abundance_controlled_score"] = result["score_mean_possible_cell_pairs"]
+    result["abundance_controlled_distinct_cell_score"] = result[
+        "score_mean_possible_distinct_cell_pairs"
+    ]
     result["matrix_key"] = matrix_key
     return ensure_common_score_schema(result)
 
@@ -220,18 +255,32 @@ def extract_commot_tables(
     stage: str,
     stage_time: float | None,
     database_name: str = DATABASE_NAME,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
     labels = adata.obs["commot_label"].astype(str).to_numpy()
     prefix = f"commot-{database_name}-"
     lr_frames: list[pd.DataFrame] = []
     missing_lr_keys: list[str] = []
+    availability_rows: list[dict[str, object]] = []
     # COMMOT identifies a cell-cell matrix by expanded ligand/receptor.  Exact
     # flat duplicates are emitted once, with every source database_row retained
     # in the audit column rather than counted repeatedly as independent results.
     unique_lr = database.drop_duplicates(["ligand", "receptor", "pathway", "category"])
     for row in unique_lr.itertuples(index=False):
         key = f"{prefix}{row.ligand}-{row.receptor}"
-        if key not in adata.obsp:
+        method_available = key in adata.obsp
+        availability_rows.append(
+            {
+                "stage": stage,
+                "stage_time": stage_time,
+                "ligand": row.ligand,
+                "receptor": row.receptor,
+                "pathway": row.pathway,
+                "category": row.category,
+                "matrix_key": key,
+                "method_available": bool(method_available),
+            }
+        )
+        if not method_available:
             missing_lr_keys.append(key)
             continue
         aggregated = aggregate_matrix_by_labels(adata.obsp[key], labels)
@@ -315,7 +364,7 @@ def extract_commot_tables(
         "n_total_positive_context_rows": int((total["score"] > 0).sum()),
         "n_total_structural_zero_rows": int((total["score"] == 0).sum()),
     }
-    return lr, pathway, total, diagnostics
+    return lr, pathway, total, pd.DataFrame(availability_rows), diagnostics
 
 
 def _write_table(frame: pd.DataFrame, path: Path) -> None:
@@ -349,6 +398,7 @@ def main() -> None:
     lr_frames: list[pd.DataFrame] = []
     pathway_frames: list[pd.DataFrame] = []
     total_frames: list[pd.DataFrame] = []
+    availability_frames: list[pd.DataFrame] = []
     stage_diagnostics: list[dict[str, object]] = []
     interaction_graph = input_manifest.get("preprocessing", {}).get(
         "interaction_graph", {}
@@ -397,12 +447,13 @@ def main() -> None:
             dis_thr=cutoff,
             cot_nitermax=args.cot_nitermax,
         )
-        lr, pathway, total, diagnostics = extract_commot_tables(
+        lr, pathway, total, availability, diagnostics = extract_commot_tables(
             snapshot, database, stage=stage, stage_time=stage_time
         )
         lr_frames.append(lr)
         pathway_frames.append(pathway)
         total_frames.append(total)
+        availability_frames.append(availability)
         diagnostics.update(
             {
                 "stage": stage,
@@ -422,14 +473,19 @@ def main() -> None:
     lr_all = pd.concat(lr_frames, ignore_index=True)
     pathway_all = pd.concat(pathway_frames, ignore_index=True)
     total_all = pd.concat(total_frames, ignore_index=True)
+    availability_all = pd.concat(availability_frames, ignore_index=True)
     output_paths = {
         "lr_scores": args.out_dir / "commot_lr_scores.csv.gz",
         "pathway_scores": args.out_dir / "commot_pathway_scores.csv.gz",
         "type_pair_scores": args.out_dir / "commot_type_pair_scores.csv.gz",
+        "lr_axis_stage_availability": (
+            args.out_dir / "commot_lr_axis_stage_availability.csv.gz"
+        ),
     }
     _write_table(lr_all, output_paths["lr_scores"])
     _write_table(pathway_all, output_paths["pathway_scores"])
     _write_table(total_all, output_paths["type_pair_scores"])
+    _write_table(availability_all, output_paths["lr_axis_stage_availability"])
 
     versions = software_versions()
     commot_version = str(getattr(ct, "__version__", "")).strip()
@@ -482,6 +538,11 @@ def main() -> None:
                 "LR and pathway structural zeros omitted; primary type-pair table exports "
                 "the complete directed stage-specific cell-type square"
             ),
+            "lr_axis_stage_availability": (
+                "explicit matrix-key availability for every requested stage x LR row; "
+                "downstream loaders may zero-complete context rows only when this table "
+                "marks the stage x axis available"
+            ),
             "type_pair_grid_export": {
                 "complete_directed_stage_type_square": True,
                 "zero_score_semantics": (
@@ -495,6 +556,18 @@ def main() -> None:
         "score_semantics": {
             "score": "sum of native COMMOT cell-cell OT communication mass within a sender/receiver type block",
             "score_mean_possible_cell_pairs": "score divided by n_sender_cells*n_receiver_cells; not a COMMOT-native probability",
+            "score_distinct_cell_pairs": (
+                "COMMOT block mass after removing cell-diagonal entries for "
+                "homotypic sender/receiver labels"
+            ),
+            "score_mean_possible_distinct_cell_pairs": (
+                "distinct-cell score divided by n_sender*n_receiver minus the "
+                "sender/receiver cell-set overlap; homotypic denominator is n*(n-1)"
+            ),
+            "abundance_controlled_distinct_cell_score": (
+                "score_mean_possible_distinct_cell_pairs; required for comparisons "
+                "to methods that exclude self edges"
+            ),
             "abundance_controlled_score": (
                 "score_mean_possible_cell_pairs; use this rank for the primary comparison "
                 "to CellChat population.size=false, with native score retained as sensitivity"

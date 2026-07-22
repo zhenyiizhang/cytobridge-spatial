@@ -35,6 +35,27 @@ def test_label_aggregation_preserves_commot_sender_row_receiver_column_direction
     assert lookup.loc[("A", "B"), "score"] == 2.0
     assert lookup.loc[("B", "A"), "score"] == 3.0
     assert lookup.loc[("A", "B"), "score_mean_possible_cell_pairs"] == 1.0
+    assert lookup.loc[("A", "B"), "n_possible_distinct_cell_pairs"] == 2
+
+
+def test_homotypic_commot_score_removes_cell_diagonal_and_uses_n_times_n_minus_1() -> None:
+    matrix = sparse.csr_matrix(
+        np.asarray(
+            [
+                [5.0, 2.0, 0.0],
+                [3.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ]
+        )
+    )
+    result = aggregate_matrix_by_labels(matrix, ["A", "A", "B"])
+    row = result.set_index(["sender_type", "receiver_type"]).loc[("A", "A")]
+
+    assert row["score"] == 10.0
+    assert row["score_distinct_cell_pairs"] == 5.0
+    assert row["n_shared_sender_receiver_cells"] == 2
+    assert row["n_possible_distinct_cell_pairs"] == 2
+    assert row["score_mean_possible_distinct_cell_pairs"] == 2.5
 
 
 def test_commot_extraction_uses_common_long_schema_and_keeps_database_rows() -> None:
@@ -60,13 +81,17 @@ def test_commot_extraction_uses_common_long_schema_and_keeps_database_rows() -> 
             "interaction_id": ["row4", "row9"],
         }
     )
-    lr, pathway, total, diagnostics = extract_commot_tables(
+    lr, pathway, total, availability, diagnostics = extract_commot_tables(
         data, database, stage="t0", stage_time=0.0
     )
     assert COMMON_SCORE_COLUMNS == lr.columns[: len(COMMON_SCORE_COLUMNS)].tolist()
     assert set(lr["database_rows"]) == {"4;9"}
     assert np.allclose(
         lr["abundance_controlled_score"], lr["score_mean_possible_cell_pairs"]
+    )
+    assert np.allclose(
+        lr["abundance_controlled_distinct_cell_score"],
+        lr["score_mean_possible_distinct_cell_pairs"],
     )
     assert set(
         lr[["sender_type", "receiver_type"]].itertuples(index=False, name=None)
@@ -85,6 +110,8 @@ def test_commot_extraction_uses_common_long_schema_and_keeps_database_rows() -> 
     assert diagnostics["n_total_context_rows"] == 4
     assert diagnostics["n_total_positive_context_rows"] == 2
     assert diagnostics["n_total_structural_zero_rows"] == 2
+    assert len(availability) == 1
+    assert bool(availability.loc[0, "method_available"])
 
 
 def test_commot_runner_exports_full_total_grid_and_version_never_unknown() -> None:

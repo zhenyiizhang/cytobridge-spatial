@@ -154,3 +154,38 @@ def test_top_overlap_expands_boundary_ties_and_reports_random_enrichment() -> No
 def test_top_set_does_not_promote_zero_ties_to_top_signals() -> None:
     frame = pd.DataFrame({"score": [0.0, 0.0, 0.0, np.nan]})
     assert analysis._top_set(frame, "score", requested=2) == set()
+
+
+def test_pathway_enrichment_bh_uses_full_pathway_universe_including_zero_hits(
+    tmp_path: Path,
+) -> None:
+    validation = tmp_path / "validation"
+    shared = tmp_path / "shared"
+    validation.mkdir()
+    shared.mkdir()
+    pd.DataFrame(
+        {
+            "ranking_target": ["attention"],
+            "rank": [1],
+            "ligand": ["l1"],
+            "receptor": ["r1"],
+        }
+    ).to_csv(validation / "top_identifiable_lr_axes.csv", index=False)
+    pd.DataFrame(
+        {
+            "ligand": ["l1", "l2", "l3"],
+            "receptor": ["r1", "r2", "r3"],
+            "pathway": ["hit", "zero_a", "zero_b"],
+        }
+    ).to_csv(shared / "filtered_lr_database.csv", index=False)
+
+    result, _ = analysis.pathway_enrichment(validation, shared, top_axis_rank=1)
+
+    assert set(result["pathway"]) == {"hit", "zero_a", "zero_b"}
+    zeros = result.loc[result["pathway"].str.startswith("zero")]
+    assert zeros["top_axis_hits"].eq(0).all()
+    assert zeros["fold_enrichment"].eq(0).all()
+    assert zeros["hypergeometric_p_greater"].eq(1.0).all()
+    assert result["n_evaluated_pathways"].eq(3).all()
+    expected_q = analysis._bh(result["hypergeometric_p_greater"].to_numpy())
+    np.testing.assert_allclose(result["bh_q"], expected_q)

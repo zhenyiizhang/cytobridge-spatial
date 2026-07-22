@@ -519,8 +519,6 @@ def pathway_enrichment(
     for pathway, group in database.groupby("pathway", dropna=False, sort=True):
         pathway_axes = set(group["axis"])
         hit = len(top_axes & pathway_axes)
-        if not hit:
-            continue
         population, successes, draws = len(background_axes), len(pathway_axes), len(top_axes)
         expected = draws * successes / population
         rows.append(
@@ -530,9 +528,11 @@ def pathway_enrichment(
                 "background_pathway_axes": successes,
                 "n_unique_top_axes": draws,
                 "n_unique_background_axes": population,
-                "fold_enrichment": hit / expected,
-                "hypergeometric_p_greater": float(
-                    hypergeom.sf(hit - 1, population, successes, draws)
+                "fold_enrichment": 0.0 if hit == 0 else hit / expected,
+                "hypergeometric_p_greater": (
+                    1.0
+                    if hit == 0
+                    else float(hypergeom.sf(hit - 1, population, successes, draws))
                 ),
                 "top_definition": (
                     f"rank <= {top_axis_rank} LR-compatible attention axes per stage, pooled unique"
@@ -543,6 +543,7 @@ def pathway_enrichment(
         ["hypergeometric_p_greater", "fold_enrichment"], ascending=[True, False]
     )
     result["bh_q"] = _bh(result["hypergeometric_p_greater"].to_numpy())
+    result["n_evaluated_pathways"] = int(len(result))
     return result, {
         "top_identifiable_lr_axes": _record(axes_path),
         "lr_database_background": _record(database_path),

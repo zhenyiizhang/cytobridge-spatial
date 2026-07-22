@@ -190,3 +190,11 @@ Pairwise and positive-consistency top-set selection requires strictly positive
 native support before expanding kth-boundary ties. This prevents a method with
 an all-zero or sparse zero-tied stage from turning the whole type-pair matrix
 into a nominal "top" set.
+
+## Biology-first addendum
+
+The cross-method bundle is a numerical consistency analysis; it does not by
+itself establish that attention measures communication. The Jam2a–Jam3b
+myocyte-fusion case, trained/initialization/random controls, Delta–Notch
+limitation audit, score definitions, and new-dataset adaptation contract are
+documented in [README_BIOLOGY_FIRST.md](README_BIOLOGY_FIRST.md).
