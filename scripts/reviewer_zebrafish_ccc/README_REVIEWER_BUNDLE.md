@@ -132,3 +132,20 @@ The report keeps these distinctions explicit:
   filled as biological zero (this is distinct from evaluated-grid structural
   zero completion);
 - virtual removal is a model sensitivity analysis, not a causal perturbation.
+
+## Plain-language reading guide
+
+After building the frozen bundle, generate a separate Chinese reading guide
+and direct comparison figures without modifying the bundle:
+
+```bash
+python scripts/reviewer_zebrafish_ccc/plain_language_consistency_report.py \
+  --bundle-dir /path/to/reviewer_delivery \
+  --output-dir /path/to/zebrafish_ccc_plain_language_guide
+```
+
+Start from `START_HERE_CN.md`. The guide adds an evidence map, five stage-wise
+rank-scatter panels, and a concrete sender-to-receiver arrow checklist. It also
+labels every original panel as main evidence, supporting evidence, an audit,
+or a limitation. Its top-20% reconstruction is checked against the formal
+tie-inclusive table in the source bundle before any output is written.
