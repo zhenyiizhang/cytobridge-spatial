@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +59,106 @@ def test_figure_index_separates_evidence_from_audit() -> None:
     assert index.loc["01_reviewer_evidence_map", "recommended_role"] == "新主图"
     assert index.loc["condition_coverage", "recommended_role"] == "质量审计"
     assert index.loc["directionality_concordance", "recommended_role"] == "限制/审计"
+    formal = report.build_figure_index(spatial_audit_available=True).set_index("figure")
+    assert formal.loc["07_spatial_null_sensitivity", "recommended_role"] == "空间主审计"
+    assert "不构成额外独立空间验证" in formal.loc[
+        "07_spatial_null_sensitivity", "plain_conclusion"
+    ]
+
+
+def test_reviewer_reply_without_formal_spatial_audit_does_not_claim_strong_overlap() -> None:
+    text = report.reviewer_reply_text()
+    assert "descriptive only" in text
+    assert "most high-ranked" not in text
+
+
+def test_spatial_audit_loader_rejects_tampered_artifact(tmp_path: Path) -> None:
+    primary = pd.DataFrame(
+        {
+            "example_id": ["a", "b", "c"],
+            "stage_label": ["18hpf"] * 3,
+            "ligand": ["l1", "l2", "l3"],
+            "receptor": ["r1", "r2", "r3"],
+            "top_fraction": [0.2] * 3,
+            "scale_factor": [0.5] * 3,
+            "field_overlap_ovl": [0.1] * 3,
+            "hdr80_dice": [0.1] * 3,
+            "spatial_match_f1": [0.1] * 3,
+        }
+    )
+    primary.to_csv(tmp_path / "spatial_primary_metrics.csv", index=False)
+    pd.DataFrame(
+        {
+            "example_id": ["a", "b", "c"],
+            "top_fraction": [0.2] * 3,
+            "scale_factor": [0.5] * 3,
+            "metric": ["field_overlap_ovl"] * 3,
+            "observed": [0.1] * 3,
+            "null_mean": [0.2] * 3,
+            "null_ci_low": [0.15] * 3,
+            "null_ci_high": [0.25] * 3,
+            "empirical_p_greater_equal": [1.0] * 3,
+            "n_permutations": [20] * 3,
+        }
+    ).to_csv(tmp_path / "spatial_null_sensitivity.csv.gz", index=False)
+    pd.DataFrame(
+        {
+            "example_id": ["a"],
+            "component": ["attention_lr"],
+            "field_overlap_ovl": [0.1],
+            "observed_minus_null_mean": [-0.1],
+            "empirical_p_greater_equal": [1.0],
+            "delta_vs_lr_only": [-0.1],
+        }
+    ).to_csv(tmp_path / "spatial_component_control_metrics.csv", index=False)
+    pd.DataFrame(
+        {
+            "example_id": ["a"],
+            "direction": ["outgoing"],
+            "cell_mass_overlap_ovl": [0.1],
+            "spearman_active_union_cells": [0.0],
+            "positive_cell_support_jaccard": [0.1],
+            "top20_positive_cell_jaccard": [0.1],
+        }
+    ).to_csv(tmp_path / "spatial_sender_receiver_metrics.csv", index=False)
+    pd.DataFrame(
+        {
+            "example_id": ["a"],
+            "analysis": ["primary_score_null"],
+            "method": ["cytobridge"],
+            "coarsening_level": ["fine_type_covariate"],
+            "fraction_edges": [1.0],
+            "n_strata": [1],
+            "min_realized_stratum_size": [10],
+            "movable_edge_fraction_overall": [1.0],
+            "assignment_sha256": ["0" * 64],
+        }
+    ).to_csv(tmp_path / "permutation_strata_diagnostics.csv", index=False)
+    (tmp_path / "README_CN.md").write_text("ok", encoding="utf-8")
+    for name in report.SPATIAL_AUDIT_FIGURES:
+        for suffix in ("png", "pdf"):
+            (tmp_path / f"{name}.{suffix}").write_bytes(b"figure")
+    artifacts = [
+        report.record(path, tmp_path)
+        for path in sorted(tmp_path.iterdir())
+        if path.is_file()
+    ]
+    manifest = {
+        "workflow": "zebrafish_spatial_coordinate_consistency",
+        "parameters": {"permutations": 20, "max_global_fallback_fraction": 0.05},
+        "claims": {
+            "spatial_consistency_not_ground_truth": True,
+            "midpoint_overlap_not_direction_accuracy": True,
+            "component_control_required_for_attention_increment": True,
+            "selected_examples_not_all_lr_axes": True,
+        },
+        "artifacts": artifacts,
+    }
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    report.load_spatial_audit(tmp_path)
+    (tmp_path / "README_CN.md").write_text("tampered", encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA256 mismatch|byte count mismatch"):
+        report.load_spatial_audit(tmp_path)
 
 
 def test_homotypic_type_pair_is_not_mislabeled_as_cell_self_loop() -> None:

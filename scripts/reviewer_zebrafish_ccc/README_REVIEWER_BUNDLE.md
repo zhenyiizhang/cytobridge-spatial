@@ -95,6 +95,35 @@ spatial cutoff, heteromeric `min` rule, and COT iteration budget as the formal
 COMMOT benchmark. It evaluates only the frozen examples and writes every
 positive cell-level flow; it never edits the formal benchmark directory.
 
+## Coordinate-level spatial consistency audit
+
+After the reviewer bundle and aligned cell coordinates are available, replace
+the density-sensitive arrow/nearest-neighbor view with same-coordinate hotspot
+fields, an adaptive fixed-support permutation null, an LR-only component
+control, and separate sender/receiver maps:
+
+```bash
+python scripts/reviewer_zebrafish_ccc/spatial_coordinate_consistency.py \
+  --bundle-dir /path/to/reviewer_delivery \
+  --coordinates-csv /path/to/zebrafish_spatial_coordinates.csv.gz \
+  --output-dir /path/to/spatial_coordinate_consistency \
+  --permutations 1000
+```
+
+The default adaptive null uses five distance/LR quantile bins and requires at
+least ten edges per realized stratum. It retains exact sender→receiver type
+where supported, then explicitly coarsens to covariate-only or distance-only
+strata. The run writes `permutation_strata_diagnostics.csv` and fails if more
+than 5% of any assignment falls back to one global pool or if fewer than 95%
+of edges are movable. For `attention×LR` and `exact-message×LR`, LR activity
+and the observed COMMOT field stay fixed while only the CytoBridge modifier is
+permuted. The script default of 200 permutations is suitable for development;
+use 1,000 for a formal report.
+
+These spatial panels are an audit, not an automatic positive result. Raw
+hotspot overlap must exceed the declared null and `attention×LR` must improve
+over LR-only before claiming attention-specific spatial consistency.
+
 ## Output contract
 
 The bundle contains:
@@ -141,17 +170,21 @@ and direct comparison figures without modifying the bundle:
 ```bash
 python scripts/reviewer_zebrafish_ccc/plain_language_consistency_report.py \
   --bundle-dir /path/to/reviewer_delivery \
+  --spatial-consistency-dir /path/to/spatial_coordinate_consistency \
   --output-dir /path/to/zebrafish_ccc_plain_language_guide
 ```
 
 Start from `START_HERE_CN.md`. The guide first maps every model-native and
 post-hoc interaction quantity to the exact analysis that consumes it. It then
 adds a 2-by-5 direct CytoBridge-versus-COMMOT scatter, an external-consensus
-scatter, a concrete sender-to-receiver checklist, and a quantitative spatial
-location-coverage panel. It labels every original panel as main evidence,
-supporting evidence, an audit, or a limitation. Its top-20% reconstruction is
-checked against the formal tie-inclusive table in the source bundle before any
-output is written.
+scatter and a concrete sender-to-receiver checklist. When
+`--spatial-consistency-dir` is supplied, it verifies every spatial artifact
+hash and incorporates the hotspot, null/sensitivity, LR-only component, and
+sender/receiver panels; the old many-to-one location-coverage panel is retained
+only as a legacy descriptive audit. It labels every original panel as main
+evidence, supporting evidence, an audit, or a limitation. Its top-20%
+reconstruction is checked against the formal tie-inclusive table in the source
+bundle before any output is written.
 
 Pairwise and positive-consistency top-set selection requires strictly positive
 native support before expanding kth-boundary ties. This prevents a method with

@@ -48,10 +48,33 @@ ORIGINAL_FIGURES = [
     "known_lr_temporal_consistency_bubble",
 ]
 
+SPATIAL_AUDIT_FIGURES = {
+    "spatial_hotspot_consistency": "06_spatial_hotspot_consistency",
+    "spatial_null_sensitivity": "07_spatial_null_sensitivity",
+    "spatial_component_control": "08_spatial_component_control",
+    "spatial_sender_receiver_consistency": "09_spatial_sender_receiver_consistency",
+}
+SPATIAL_AUDIT_TABLES = [
+    "permutation_strata_diagnostics.csv",
+    "spatial_primary_metrics.csv",
+    "spatial_null_sensitivity.csv.gz",
+    "spatial_component_control_metrics.csv",
+    "spatial_sender_receiver_metrics.csv",
+]
+
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--bundle-dir", required=True, type=Path)
+    result.add_argument(
+        "--spatial-consistency-dir",
+        type=Path,
+        help=(
+            "Optional output from spatial_coordinate_consistency.py. When supplied, "
+            "its manifest is verified and the density-controlled spatial audit is "
+            "incorporated into the guide."
+        ),
+    )
     result.add_argument("--output-dir", required=True, type=Path)
     result.add_argument("--overwrite", action="store_true")
     return result
@@ -86,6 +109,149 @@ def read_table(bundle: Path, name: str, required: list[str]) -> pd.DataFrame:
     frame = pd.read_csv(path)
     require(frame, required, path)
     return frame
+
+
+def load_spatial_audit(directory: Path) -> dict[str, Any]:
+    """Verify and load a formal coordinate-level spatial-consistency output."""
+    root = directory.expanduser().resolve()
+    manifest_path = root / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Missing spatial audit manifest: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("workflow") != "zebrafish_spatial_coordinate_consistency":
+        raise ValueError("Unexpected spatial audit workflow identity")
+    claims = manifest.get("claims", {})
+    required_claims = {
+        "spatial_consistency_not_ground_truth",
+        "midpoint_overlap_not_direction_accuracy",
+        "component_control_required_for_attention_increment",
+        "selected_examples_not_all_lr_axes",
+    }
+    if any(claims.get(name) is not True for name in required_claims):
+        raise ValueError("Spatial audit manifest is missing required claim guardrails")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        raise ValueError("Spatial audit manifest has no artifact inventory")
+    inventory: dict[str, dict[str, Any]] = {}
+    for artifact in artifacts:
+        relative = Path(str(artifact.get("path", "")))
+        path = (root / relative).resolve()
+        if root != path and root not in path.parents:
+            raise ValueError(f"Spatial artifact path escapes source directory: {relative}")
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        if int(artifact.get("bytes", -1)) != path.stat().st_size:
+            raise ValueError(f"Spatial artifact byte count mismatch: {relative}")
+        if str(artifact.get("sha256", "")) != sha256(path):
+            raise ValueError(f"Spatial artifact SHA256 mismatch: {relative}")
+        inventory[str(relative)] = artifact
+
+    required = set(SPATIAL_AUDIT_TABLES) | {"README_CN.md"}
+    required |= {
+        f"{name}.{suffix}"
+        for name in SPATIAL_AUDIT_FIGURES
+        for suffix in ("png", "pdf")
+    }
+    missing = sorted(required.difference(inventory))
+    if missing:
+        raise ValueError(f"Spatial audit manifest is missing artifacts: {missing}")
+
+    parameters = manifest.get("parameters", {})
+    if int(parameters.get("permutations", 0)) < 1:
+        raise ValueError("Spatial audit must contain at least one permutation")
+    primary = pd.read_csv(root / "spatial_primary_metrics.csv")
+    null = pd.read_csv(root / "spatial_null_sensitivity.csv.gz")
+    components = pd.read_csv(root / "spatial_component_control_metrics.csv")
+    direction = pd.read_csv(root / "spatial_sender_receiver_metrics.csv")
+    strata = pd.read_csv(root / "permutation_strata_diagnostics.csv")
+    require(
+        primary,
+        [
+            "example_id",
+            "stage_label",
+            "ligand",
+            "receptor",
+            "top_fraction",
+            "scale_factor",
+            "field_overlap_ovl",
+            "hdr80_dice",
+            "spatial_match_f1",
+        ],
+        root / "spatial_primary_metrics.csv",
+    )
+    require(
+        null,
+        [
+            "example_id",
+            "top_fraction",
+            "scale_factor",
+            "metric",
+            "observed",
+            "null_mean",
+            "null_ci_low",
+            "null_ci_high",
+            "empirical_p_greater_equal",
+            "n_permutations",
+        ],
+        root / "spatial_null_sensitivity.csv.gz",
+    )
+    require(
+        components,
+        [
+            "example_id",
+            "component",
+            "field_overlap_ovl",
+            "observed_minus_null_mean",
+            "empirical_p_greater_equal",
+            "delta_vs_lr_only",
+        ],
+        root / "spatial_component_control_metrics.csv",
+    )
+    require(
+        direction,
+        [
+            "example_id",
+            "direction",
+            "cell_mass_overlap_ovl",
+            "spearman_active_union_cells",
+            "positive_cell_support_jaccard",
+            "top20_positive_cell_jaccard",
+        ],
+        root / "spatial_sender_receiver_metrics.csv",
+    )
+    require(
+        strata,
+        [
+            "example_id",
+            "analysis",
+            "method",
+            "coarsening_level",
+            "fraction_edges",
+            "n_strata",
+            "min_realized_stratum_size",
+            "movable_edge_fraction_overall",
+            "assignment_sha256",
+        ],
+        root / "permutation_strata_diagnostics.csv",
+    )
+    global_rows = strata.loc[strata["coarsening_level"].eq("global")]
+    max_allowed = float(parameters.get("max_global_fallback_fraction", 0.0))
+    if not global_rows.empty and global_rows["fraction_edges"].max() > max_allowed:
+        raise ValueError("Spatial audit exceeds its declared global-fallback limit")
+    if strata["movable_edge_fraction_overall"].min() < 0.95:
+        raise ValueError("Spatial audit contains a mostly immovable permutation assignment")
+    if primary["example_id"].nunique() != 3:
+        raise ValueError("Expected exactly three frozen LR examples in spatial audit")
+    return {
+        "root": root,
+        "manifest": manifest,
+        "manifest_sha256": sha256(manifest_path),
+        "primary": primary,
+        "null": null,
+        "components": components,
+        "direction": direction,
+        "strata": strata,
+    }
 
 
 def top_set(group: pd.DataFrame, column: str, requested: int) -> set[int]:
@@ -384,7 +550,17 @@ def plot_pair_checklist(checklist: pd.DataFrame, summary: pd.DataFrame, out: Pat
     plt.close(fig)
 
 
-def plot_evidence_map(out: Path) -> None:
+def plot_evidence_map(out: Path, *, spatial_null_audited: bool = False) -> None:
+    if spatial_null_audited:
+        spatial_status = (
+            "PARTIAL",
+            "Raw LR hotspot overlap is visible, but all three examples fall below the fixed-support permutation null; use as a diagnostic, not independent validation.",
+        )
+    else:
+        spatial_status = (
+            "PARTIAL",
+            "Raw asymmetric midpoint coverage is descriptive; no spatial-null or threshold-sensitivity test was supplied.",
+        )
     rows = [
         (
             "Independent methods rank cell-type arrows similarly",
@@ -392,7 +568,7 @@ def plot_evidence_map(out: Path) -> None:
             "External-only consensus vs attention: mean rank correlation = 0.53; all five stages are positive.",
         ),
         (
-            "Direct agreement with a spatial CCC method",
+            "Direct cell-type-pair rank agreement with a spatial CCC method",
             "SUPPORTED",
             "COMMOT is the strongest direct external comparison: mean stage correlation = 0.566.",
         ),
@@ -407,9 +583,9 @@ def plot_evidence_map(out: Path) -> None:
             "CXCL, NOTCH and non-canonical WNT pathways are enriched; NicheNet overlap is 50–100% in tested units.",
         ),
         (
-            "High CytoBridge signals fall inside external spatial neighborhoods",
-            "PARTIAL",
-            "Wnt5b→Fzd7a and Dla→Notch1a show strong asymmetric midpoint coverage, but no spatial-null or threshold-sensitivity test was run.",
+            "LR-specific hotspot maps show raw overlap, not above-null validation",
+            spatial_status[0],
+            spatial_status[1],
         ),
         (
             "The result is not merely 'near cells score higher'",
@@ -612,7 +788,7 @@ def interaction_term_dictionary() -> pd.DataFrame:
     )
 
 
-def result_inventory() -> pd.DataFrame:
+def result_inventory(*, spatial_audit_available: bool = False) -> pd.DataFrame:
     rows = [
         (
             "Direct CCC rank consistency",
@@ -642,9 +818,21 @@ def result_inventory() -> pd.DataFrame:
             "LR spatial examples",
             "LR-compatible attention",
             "COMMOT LR-specific cell flow",
-            "spatial_display_audit.csv",
-            "03_spatial_location_coverage",
-            "Illustrative spatial support, not the direct global test",
+            (
+                "spatial_primary_metrics.csv + spatial_null_sensitivity.csv.gz"
+                if spatial_audit_available
+                else "spatial_display_audit.csv"
+            ),
+            (
+                "06_spatial_hotspot_consistency + 07_spatial_null_sensitivity"
+                if spatial_audit_available
+                else "03_spatial_location_coverage"
+            ),
+            (
+                "Diagnostic/limitation: raw overlap does not exceed fixed-support null"
+                if spatial_audit_available
+                else "Illustrative spatial support; no null-model inference"
+            ),
         ),
         (
             "Pathway enrichment",
@@ -1036,15 +1224,15 @@ def plot_spatial_coverage(audit: pd.DataFrame, out: Path) -> None:
     plt.close(fig)
 
 
-def build_figure_index() -> pd.DataFrame:
+def build_figure_index(*, spatial_audit_available: bool = False) -> pd.DataFrame:
     rows = [
         ("00_computation_to_result_map", "第一张", "CytoBridge 到底计算了哪些 interaction 量，每项分析用了哪一个", "先建立唯一术语和计算主线"),
         ("02_direct_ccc_comparison", "最主要直接证据", "同一个 sender→receiver type pair 在 CytoBridge 与 COMMOT 中的排名是否一致", "attention 平均 rho=0.566；exact message=0.683"),
-        ("03_spatial_location_coverage", "空间补充证据", "三个 LR 轴的高位 interaction locations 是否在相近组织区域", "WNT/NOTCH 非对称覆盖高，CXCL 部分；描述性结果，不是 exact-edge accuracy"),
+        ("03_spatial_location_coverage", "旧空间描述/审计", "一个方法的高位中点附近能否找到另一个方法的点", "受点密度影响，只能描述 raw coverage，不能作一致性推断"),
         ("01_reviewer_evidence_map", "新主图", "审稿人的各项疑问目前分别得到什么答案", "结论总览；先看这一张"),
         ("04_external_consensus_rank_scatter", "稳健性主图", "每个细胞类型箭头在双方排名中是否同时靠前", "外部多方法共识的总体一致性"),
         ("05_top_communication_arrows_checklist", "补充直观图", "具体哪些 sender→receiver 箭头一致，哪些不一致", "把抽象 overlap 还原成具体生物学对象"),
-        ("spatial_lr_interaction_maps", "空间补充证据", "三个已知 LR 轴在真实空间中的箭头分布", "WNT/NOTCH 空间一致，CXCL 部分一致；肉眼箭头不承担主验证"),
+        ("spatial_lr_interaction_maps", "旧空间示意", "三个已知 LR 轴在真实空间中的箭头分布", "只显示组织背景；肉眼箭头不承担一致性验证"),
         ("known_lr_temporal_consistency_bubble", "生物学补充证据", "已知 LR 轴随时间在两种方法中的相对强弱", "同一信号轴是否被双方同时列为高位"),
         ("top_signal_biology", "生物学补充证据", "高 attention 信号富集哪些通路，并与 NicheNet 下游结果重合多少", "支持已知生物通路，但不是因果证据"),
         ("ccc_circle_comparison", "补充证据", "10 和 24 hpf 的高位细胞类型箭头网络", "适合展示整体网络；不适合精确数边"),
@@ -1057,10 +1245,204 @@ def build_figure_index() -> pd.DataFrame:
         ("cytobridge_control_panel", "限制/审计", "距离、状态、度数、初始化和随机化控制", "attention 有部分正证据，但 exact-message 控制混合"),
         ("reviewer_validation_axes", "限制/审计", "内部 LR、方向、空间及虚拟移除测试", "不能把虚拟移除写成实验因果"),
     ]
+    if spatial_audit_available:
+        rows[6:6] = [
+            ("06_spatial_hotspot_consistency", "空间描述", "两种方法在同一坐标上的单位质量热点与 80% 高密度区重合多少", "raw OVL 为 0.278–0.537；只能先说明大区域部分重合"),
+            ("07_spatial_null_sensitivity", "空间主审计", "热点重合是否超过固定 edge-support 的分数置换基线", "三条轴主设置均低于 null 区间，不构成额外独立空间验证"),
+            ("08_spatial_component_control", "空间关键控制", "attention×LR 是否比 LR-only 更接近 COMMOT", "三条轴增量均为负；空间结构不能归因于 attention 增量"),
+            ("09_spatial_sender_receiver_consistency", "方向限制/审计", "双方是否把相同 sender/receiver 细胞排在高位", "active-cell rho 接近零或混合，不能由 midpoint 重合推出方向一致"),
+        ]
     return pd.DataFrame(rows, columns=["figure", "recommended_role", "plain_question", "plain_conclusion"])
 
 
-def report_text(summary: pd.DataFrame, checklist: pd.DataFrame) -> str:
+def spatial_audit_report_section(spatial_audit: dict[str, Any]) -> str:
+    """Build one plain-language, CSV-backed explanation of all spatial panels."""
+    primary = spatial_audit["primary"].copy()
+    null = spatial_audit["null"].copy()
+    components = spatial_audit["components"].copy()
+    direction = spatial_audit["direction"].copy()
+    strata = spatial_audit["strata"].copy()
+    parameters = spatial_audit["manifest"].get("parameters", {})
+
+    null_primary = null.loc[null["metric"].eq("field_overlap_ovl")].merge(
+        primary[["example_id", "top_fraction", "scale_factor"]],
+        on=["example_id", "top_fraction", "scale_factor"],
+        how="inner",
+        validate="one_to_one",
+    )
+    if len(null_primary) != len(primary):
+        raise ValueError("Spatial null table does not contain every primary OVL setting")
+    merged = primary.merge(
+        null_primary[
+            [
+                "example_id",
+                "null_mean",
+                "null_ci_low",
+                "null_ci_high",
+                "observed_minus_null_mean",
+                "empirical_p_greater_equal",
+                "n_permutations",
+            ]
+        ],
+        on="example_id",
+        validate="one_to_one",
+    )
+    primary_rows = "\n".join(
+        (
+            f"| {row.ligand.upper()}→{row.receptor.upper()} ({row.stage_label}) | "
+            f"{row.field_overlap_ovl:.3f} | {row.hdr80_dice:.3f} | "
+            f"{row.spatial_match_f1:.3f} | {int(row.n_cytobridge_top_edges)} / "
+            f"{int(row.n_commot_top_edges)} |"
+        )
+        for row in merged.itertuples(index=False)
+    )
+    null_rows = "\n".join(
+        (
+            f"| {row.ligand.upper()}→{row.receptor.upper()} | {row.field_overlap_ovl:.3f} | "
+            f"{row.null_mean:.3f} [{row.null_ci_low:.3f}, {row.null_ci_high:.3f}] | "
+            f"{row.observed_minus_null_mean:+.3f} | {row.empirical_p_greater_equal:.4f} |"
+        )
+        for row in merged.itertuples(index=False)
+    )
+
+    component_pivot = components.pivot(
+        index="example_id", columns="component", values="field_overlap_ovl"
+    )
+    component_delta = components.loc[
+        components["component"].eq("attention_lr"),
+        ["example_id", "delta_vs_lr_only"],
+    ].set_index("example_id")
+    component_rows = "\n".join(
+        (
+            f"| {row.ligand.upper()}→{row.receptor.upper()} | "
+            f"{component_pivot.loc[row.example_id, 'lr_only']:.3f} | "
+            f"{component_pivot.loc[row.example_id, 'attention_lr']:.3f} | "
+            f"{component_delta.loc[row.example_id, 'delta_vs_lr_only']:+.3f} | "
+            f"{component_pivot.loc[row.example_id, 'exact_message_lr']:.3f} |"
+        )
+        for row in merged.itertuples(index=False)
+    )
+
+    direction_pivot = direction.pivot(
+        index="example_id",
+        columns="direction",
+        values=["spearman_active_union_cells", "cell_mass_overlap_ovl", "top20_positive_cell_jaccard"],
+    )
+    direction_rows = "\n".join(
+        (
+            f"| {row.ligand.upper()}→{row.receptor.upper()} | "
+            f"{direction_pivot.loc[row.example_id, ('spearman_active_union_cells', 'outgoing')]:.3f} | "
+            f"{direction_pivot.loc[row.example_id, ('cell_mass_overlap_ovl', 'outgoing')]:.3f} | "
+            f"{direction_pivot.loc[row.example_id, ('spearman_active_union_cells', 'incoming')]:.3f} | "
+            f"{direction_pivot.loc[row.example_id, ('cell_mass_overlap_ovl', 'incoming')]:.3f} |"
+        )
+        for row in merged.itertuples(index=False)
+    )
+    permutations = int(merged["n_permutations"].min())
+    n_positive_delta = int((component_delta["delta_vs_lr_only"] > 0).sum())
+    exact_positive = components.loc[
+        components["component"].eq("exact_message_lr")
+        & components["observed_minus_null_mean"].gt(0)
+        & components["empirical_p_greater_equal"].lt(0.05)
+    ]
+    if len(exact_positive) == 1:
+        exact_row = exact_positive.iloc[0]
+        exact_message_note = (
+            f"唯一超过 modifier-permutation null 的探索性分量是 "
+            f"{str(exact_row.ligand).upper()}→{str(exact_row.receptor).upper()} 的 "
+            f"exact-message×LR（OVL={exact_row.field_overlap_ovl:.3f}，"
+            f"null mean={exact_row.null_mean:.3f}，未校正单侧 P={exact_row.empirical_p_greater_equal:.4f}）。"
+            "它是 exact-message 的轴特异结果，不能改写成 attention 获得了空间验证。"
+        )
+    elif exact_positive.empty:
+        exact_message_note = "没有 exact-message×LR 轴超过对应 modifier-permutation null。"
+    else:
+        exact_message_note = (
+            f"有 {len(exact_positive)} 条 exact-message×LR 轴超过对应 null；"
+            "这些仍是分量级探索结果，不能替代 attention 的增量检验。"
+        )
+    global_fraction = float(
+        strata.loc[strata["coarsening_level"].eq("global"), "fraction_edges"].max()
+        if strata["coarsening_level"].eq("global").any()
+        else 0.0
+    )
+    movable_fraction = float(strata["movable_edge_fraction_overall"].min())
+    permutation_bins = int(parameters.get("permutation_bins", 0))
+    min_stratum = int(parameters.get("min_permutation_stratum", 0))
+
+    return f"""> **空间部分先读这一句：三条轴都有部分 raw 大区域重合，但 0/3 超过 fixed-support null，attention×LR 也 0/3 优于 LR-only；所以空间图是诊断，不是正向主证据。**
+
+这三条轴不是看完空间图后凭外观挑的。流程先固定 ncWNT、CXCL、NOTCH 三个 pathway family，再在每个 family 内选择 CytoBridge attention×LR 与 COMMOT stage-percentile 均值最高、且双方正分 support 与 `n_active_edges≥10` 的轴；选择发生在 cell-level COMMOT flow 重建之前。这个规则避免“看哪张图漂亮就挑哪张”，但三条轴仍是规则筛选的代表例子，不能代表全部 LR axes。
+
+### 先看旧覆盖图为什么会显得很强
+
+[旧覆盖图](figures/03_spatial_location_coverage.png) 统计“每个点附近是否至少有另一个方法的点”。它允许同一个密集 COMMOT 点被很多 CytoBridge 点重复命中，所以 92.8% 或 99.1% 会随点密度升高。这个数字可以描述位置覆盖，**不能用来推断高分空间排序一致**，也不能证明方向正确。
+
+### 空间图 A：同一坐标上的热点到底重合多少？
+
+![Spatial hotspot consistency](figures/06_spatial_hotspot_consistency.png)
+
+每行是一条预先固定的 LR 轴。前两列分别是 CytoBridge 和 COMMOT 在同一 `spatial_aligned` 坐标上的 top-edge midpoint 热点；第三列叠加双方 50%/80% 高密度区轮廓；第四列直接涂出双方共有、CytoBridge-only 和 COMMOT-only 区域。Raw score 只负责选择 top edges；入选后每条 edge 在 hotspot histogram 中等权计数，不再按两个方法不可比的 raw score 加权。
+
+- `OVL`：两个单位总质量热点场的重叠，0=完全分开，1=完全一样；
+- `Dice80`：双方 80% 高密度区域的面积重叠；
+- `MatchF1`：半径内最大一对一中点匹配，一个 COMMOT 点不能被重复使用。
+
+| LR 轴 | raw OVL | Dice80 | one-to-one MatchF1 | top edges CB / COMMOT |
+|---|---:|---:|---:|---:|
+{primary_rows}
+
+这一步只能说“大组织区域看起来有多少重合”。它还不能回答这种重合是否只是组织形状、可用 edge support 和 LR expression geography 共同造成的。
+
+### 空间图 B：重合有没有超过控制共同 edge support 和坐标的置换基线？
+
+![Spatial null and sensitivity](figures/07_spatial_null_sensitivity.png)
+
+实线是观察值；虚线和淡色带是固定双方正分 edge support、细胞坐标和 top-edge 数量后得到的 null 均值和 95% 区间。置换采用可审计的自适应层级：先尝试保留 sender→receiver type 与 {permutation_bins} 档距离/LR activity；不足 {min_stratum} 条边时逐级合并到 covariate-only、distance-only，最后才允许少量 global fallback。正式结果使用 {permutations} 次置换，并同时改变 top fraction 和空间尺度检查敏感性。本次最大 global fallback 为 {global_fraction:.1%}，最小 movable-edge fraction 为 {movable_fraction:.1%}；完整 realized strata 见 [permutation_strata_diagnostics.csv](tables/permutation_strata_diagnostics.csv)。
+
+| LR 轴 | observed OVL | null mean [95% interval] | observed−null | 单侧 enrichment P |
+|---|---:|---:|---:|---:|
+{null_rows}
+
+三条轴在主设置下都低于 null 区间。因此最直白的解释是：**能看到共同组织区域，但没有证据表明双方对“哪些边最强”的空间排序比共同 support geography 更一致。** 观察值低于这个单侧 enrichment null 也不等于证明生物学关系“相反”；这里只能说没有得到高于基线的空间一致性证据。
+
+### 空间图 C：空间重合来自 attention，还是来自 LR expression 本身？
+
+![Spatial component control](figures/08_spatial_component_control.png)
+
+这张图把同一批 LR-positive CytoBridge edges 分别用 `LR-only`、`attention-only`、`attention×LR` 和 `exact-message×LR` 排序，再与 COMMOT 比。判断 attention 是否带来额外信息，要看 `attention×LR − LR-only`，而不是只看 `attention×LR` 的绝对 OVL。
+
+| LR 轴 | LR-only OVL | attention×LR OVL | 增量 | exact-message×LR OVL |
+|---|---:|---:|---:|---:|
+{component_rows}
+
+attention×LR 相对 LR-only 为正的轴数是 **{n_positive_delta}/3**。因此这三个例子不能支持“attention 在 LR expression geography 之外增加了空间一致性”。{exact_message_note}
+
+### 空间图 D：发送端和接收端细胞也一致吗？
+
+![Spatial sender and receiver consistency](figures/09_spatial_sender_receiver_consistency.png)
+
+midpoint 会把 sender 与 receiver 混在一起。这张图分别把每个细胞的 outgoing 和 incoming 分数求和，并只在双方至少一方 active 的细胞并集中算 Spearman，避免几千个共同零值把相关性人为抬高。
+
+| LR 轴 | outgoing active-cell rho | outgoing mass OVL | incoming active-cell rho | incoming mass OVL |
+|---|---:|---:|---:|---:|
+{direction_rows}
+
+active-cell 排名相关接近零或正负混合，所以不能由 midpoint 的大区域重合推出“相同 sender/receiver 被排高”或“方向一致”。
+
+当前坐标输入只提供 aligned x/y、stage 和 cell type，没有可验证的胚胎前后/背腹方向 landmark；因此这些图回答“两个方法是否占据相似相对区域”，不应擅自把某个热点命名为具体解剖方位。
+
+### 空间部分一句话结论
+
+**raw hotspot 图显示部分共同组织区域；严格 fixed-support null、LR-only control 和 sender/receiver audit 均不支持把它升级为 attention 特异的独立空间验证。** 因此空间图应作为透明的诊断与限制；审稿回复的主要正向证据仍是完整 cell-type-pair 排名与 COMMOT / external-only consensus 的一致性。
+"""
+
+
+def report_text(
+    summary: pd.DataFrame,
+    checklist: pd.DataFrame,
+    spatial_audit: dict[str, Any] | None = None,
+) -> str:
     stage_rows = "\n".join(
         (
             f"| {row.stage_label} | {row.spearman:.3f} | "
@@ -1077,13 +1459,19 @@ def report_text(summary: pd.DataFrame, checklist: pd.DataFrame) -> str:
     ].tolist()
     bullets_10 = "\n".join(f"- {item}" for item in shared_10)
     bullets_24 = "\n".join(f"- {item}" for item in shared_24)
+    spatial_section = (
+        spatial_audit_report_section(spatial_audit)
+        if spatial_audit is not None
+        else """空间正式 null/sensitivity 结果未提供。本报告只能把旧箭头与最近邻覆盖图作为描述，不能据此声称 WNT/NOTCH 空间一致或独立验证。"""
+    )
+    reviewer_paragraph = reviewer_reply_text(spatial_audit).split("\n\n", 1)[1].strip()
     return f"""# 斑马鱼 CCC 结果：一份讲人话的读图说明
 
 ## 先看结论：这些结果能不能回复审稿人？
 
 **能，但必须把论点说准。** 现有结果支持的是：
 
-> CytoBridge attention 捕捉到了与细胞通信相关、具有生物学一致性的 interaction organization；它与独立空间 CCC 方法的整体排序、已知 LR/通路以及若干空间定位信号相一致。
+> CytoBridge attention / exact message 在完整 cell-type-pair 排名上与 COMMOT 及 external-only 多方法共识呈稳定正相关；已知 LR/通路提供补充生物学解释。坐标级空间图则是透明的诊断，而不是额外独立验证。
 
 现有结果**不支持**把 attention 直接写成：
 
@@ -1101,12 +1489,12 @@ def report_text(summary: pd.DataFrame, checklist: pd.DataFrame) -> str:
 
 审稿人担心：高 attention 可能只是因为细胞靠得近、转录状态相似或者模型恰好这样拟合，不一定是真正的 signaling。因此她希望看到至少一种外部或生物学证据：已知 ligand–receptor、空间局部信号，或 perturbation-sensitive communication program。
 
-我们现在给出的不是单一指标，而是四层相互补充的证据：
+我们现在给出三层正向证据和一层空间审计：
 
 1. **总体排序一致：** 不把 CytoBridge 放进共识，三个外部方法仍与 attention 正相关。
 2. **具体高位信号一致：** top 20% 的 cell-type arrows 超过随机预期地重叠。
 3. **生物学内容一致：** 高位信号富集 CXCL、NOTCH、ncWNT 等已知通路，并与 NicheNet 的下游 ligand 排名重合。
-4. **真实空间位置一致：** Wnt5b→Fzd7a 和 Dla→Notch1a 等信号在 CytoBridge 与 COMMOT 中落在相似空间邻域。
+4. **空间审计：** 三条预选 LR 轴在同一坐标上有部分 raw hotspot overlap，但还要经过 fixed-support null、LR-only control 和 sender/receiver audit，不能只靠肉眼认定一致。
 
 ## 四个词先讲明白
 
@@ -1176,31 +1564,9 @@ def report_text(summary: pd.DataFrame, checklist: pd.DataFrame) -> str:
 
 {bullets_24}
 
-## 图 4：已知 LR 轴是否落在相似空间位置？
+## 图 4：同一空间坐标上的结果到底一致到什么程度？
 
-![Spatial LR maps](figures/spatial_lr_interaction_maps.png)
-
-### 这是什么？
-
-同一个胚胎空间中，左列画 CytoBridge 的高位细胞边，右列画 COMMOT 的高位细胞流；三行分别是 18 hpf `Wnt5b→Fzd7a`、18 hpf `Cxcl12a→Cxcr4b` 和 24 hpf `Dla→Notch1a`。
-
-### 怎么画的？
-
-每种方法各自从所有正分、非 self 的细胞边中取 top 80。箭头背景是相同的组织坐标和表达背景。方法分数单位不同，所以比较的是**高位箭头落在哪片空间**，不是线长或颜色数值是否完全相等。
-
-### 怎么看？
-
-看两列高密度箭头区域是否重合。定量上，在半个图构建 cutoff 的匹配半径内：
-
-- WNT：92.8% 的 CytoBridge 高位中点附近存在 COMMOT 高位中点；反向为 47.3%。
-- CXCL：48.6% / 21.9%，属于部分一致。
-- NOTCH：99.1% / 50.0%，空间一致很强。
-
-两个方向不对称，是因为 COMMOT 候选流通常更宽、更密；它不是算错，也不能解读为 ligand→receptor 的方向准确率。
-
-### 结论是什么？
-
-WNT 和 NOTCH 给出了最直观的 spatially localized signaling evidence；CXCL 是较弱但仍为正的例子。建议审稿回复中主打 WNT/NOTCH，把 CXCL 写成 partial consistency。
+{spatial_section}
 
 ## 图 5：已知 LR 信号随时间是否被双方同时认为重要？
 
@@ -1295,7 +1661,7 @@ NicheNet 不直接预测空间 cell–cell communication，它问“哪些 ligan
 - **CellAgentChat** 使用不同的统计和数据库/orthology 路径，project-LR 条件比 official-default 更接近 CytoBridge，但相关仍只有中低水平。
 - **NicheNet** 的目标是 ligand→target gene regulation，而不是当前空间 sender→receiver strength。用它的 raw score 与 attention 做直接排序相关并不公平；它更适合图 6 右侧的 downstream ligand overlap。
 
-因此最有说服力的论证不是“CytoBridge 与所有软件都高度相关”，而是：“与目标最接近的空间方法 COMMOT 有稳定正相关；多个方法组成的 external-only consensus 在五个时点均为正；已知 LR/pathway 和真实空间定位又提供了独立维度的生物学一致性。”
+因此最有说服力的论证不是“CytoBridge 与所有软件都高度相关”，而是：“与目标最接近的空间方法 COMMOT 在完整 type-pair 排名上稳定正相关；多个方法组成的 external-only consensus 在五个时点均为正；已知 LR/pathway 提供补充生物学解释。”坐标级热点审计没有给出超出共同 support geography 的额外正证据，应该如实报告。
 
 ## 哪些证据有一定循环性？
 
@@ -1303,13 +1669,13 @@ CytoBridge 的 LR edge prior 使用了 LR 信息，所以“高 attention 中出
 
 1. 不含 CytoBridge 的 external-only consensus；
 2. 与 COMMOT 的直接空间比较；
-3. 真实空间中的 WNT/NOTCH 局部一致性；
-4. NicheNet 下游 ligand consistency；
+3. NicheNet 下游 ligand consistency；
+4. 将坐标级空间结果明确写为未超过 null 的诊断；
 5. 对方向性与因果性的明确限制。
 
 ## 建议给审稿人的英文回复
 
-> We agree that attention weights should not be interpreted as direct biochemical communication strengths. We therefore revised the manuscript to describe them as interaction-associated gates and added external and biological consistency analyses. We first aligned the complete directed sender-cell-type→receiver-cell-type matrices at each developmental stage and compared within-stage ranks. Against the closest spatial CCC reference, COMMOT, CytoBridge attention was positively concordant at all five stages (mean stage-wise Spearman rho = 0.566); the exactly reconstructed complete message contribution showed stronger concordance (mean rho = 0.683). An external-only consensus built by equally averaging within-stage percentile ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean, without CytoBridge, was also positively concordant with attention (mean rho = 0.530) and exact message (mean rho = 0.633). Top-20% attention interactions overlapped this external consensus above random expectation on average (1.88-fold), although strict top-edge identities varied by stage. In LR-specific spatial examples, most high-ranked CytoBridge Wnt5b–Fzd7a and Dla–Notch1a interaction locations fell within the broader COMMOT high-ranked regions, whereas the reverse coverage was lower; Cxcl12a–Cxcr4b showed partial inclusion. Pathway enrichment and NicheNet ligand overlap provided complementary, but not fully independent, biological support. These results support communication-relevant organization in the learned interaction structure, while we do not interpret attention as a calibrated CCC probability, activating/inhibitory sign, exact ligand-to-receptor direction, or causal perturbation evidence.
+> {reviewer_paragraph}
 
 ## 写稿时可以说 / 不要说
 
@@ -1318,7 +1684,7 @@ CytoBridge 的 LR edge prior 使用了 LR 信息，所以“高 attention 中出
 - `communication-relevant interaction organization`
 - `biologically coherent interaction-associated weights`
 - `consistent with external spatial CCC rankings and known signaling programs`
-- `asymmetric spatial inclusion of high-ranking interaction locations`
+- `partially shared raw tissue regions in descriptive spatial maps`
 
 不要说：
 
@@ -1327,10 +1693,11 @@ CytoBridge 的 LR edge prior 使用了 LR 信息，所以“高 attention 中出
 - `the analysis proves the ligand-to-receptor direction`
 - `virtual ablation proves a causal perturbation response`
 - `all external methods agree strongly with CytoBridge`
+- `LR hotspot maps independently validate attention`
 
 ## 最后给汇报者的一句话
 
-**最强的故事不是“所有方法给出一模一样的网络”，而是“在完全排除自身的外部共识中，CytoBridge 在五个时点都呈正向排序一致；这种一致又能落到具体 cell-type arrows、已知 WNT/NOTCH/CXCL 通路和真实空间位置上，因此 attention 不是纯粹的几何或拟合产物，但它仍不等同于真实生化通信强度。”**
+**最强的故事不是“所有方法给出一模一样的网络”，而是“在完全排除自身的外部共识中，CytoBridge 在五个时点都呈正向排序一致，并能落到具体 cell-type arrows 与已知 WNT/NOTCH/CXCL 通路；坐标级热点审计没有超过 null，所以我们主动把它保留为限制，而不把 attention 等同于真实生化通信强度。”**
 """
 
 
@@ -1339,6 +1706,7 @@ def from_zero_report_text(
     pairwise_summary: pd.DataFrame,
     spatial: pd.DataFrame,
     proximity: pd.DataFrame,
+    spatial_audit: dict[str, Any] | None = None,
 ) -> str:
     direct_rows = "\n".join(
         (
@@ -1417,6 +1785,43 @@ def from_zero_report_text(
         )
         for stage, row in prox.sort_index().iterrows()
     )
+    if spatial_audit is not None:
+        spatial_section = spatial_audit_report_section(spatial_audit)
+        spatial_inventory_role = (
+            "raw hotspot 描述 + fixed-support null / LR-only / direction 审计；"
+            "未形成额外独立正向证据"
+        )
+        spatial_conclusion = (
+            "三条预选 LR 轴的 raw hotspot OVL 为部分重合，但主设置均低于自适应"
+            " fixed-support null；attention×LR 相对 LR-only 的增量为 0/3 个正值，"
+            "active-cell sender/receiver 排名也接近零或混合。因此空间图是诊断与限制，"
+            "不能作为 attention 特异的独立空间验证。"
+        )
+        spatial_reply_point = (
+            "透明报告空间审计：raw 组织区域部分重合，但未超过 fixed-support null，"
+            "所以不把它包装成额外正向证据；"
+        )
+        spatial_short = (
+            "同坐标 hotspot 虽有部分 raw overlap，但三条轴都未超过 fixed-support null，"
+            "attention×LR 也没有优于 LR-only；因此空间图保留为诚实的诊断，而不是主证据。"
+        )
+    else:
+        spatial_section = f"""### 旧覆盖图只能作描述
+
+![Spatial coverage](figures/03_spatial_location_coverage.png)
+
+| LR 轴 | CytoBridge 高位位置附近有 COMMOT | COMMOT 高位位置附近有 CytoBridge |
+|---|---:|---:|
+{spatial_rows}
+
+这是 many-to-one 最近邻覆盖：同一个密集 COMMOT 点可以命中多个 CytoBridge 点，而且没有随机位置基线、阈值敏感性或 LR-only control。它只能说明 raw coverage，不能据此声称 WNT/NOTCH 空间一致很强。若要作空间推断，请用 `spatial_coordinate_consistency.py` 生成正式 fixed-support null。"""
+        spatial_inventory_role = "旧 many-to-one coverage；描述性审计，无 null-model inference"
+        spatial_conclusion = (
+            "旧空间覆盖率受 COMMOT 点密度和 many-to-one 匹配影响；在没有正式 null 时，"
+            "不能把 WNT/NOTCH 的高覆盖写成强空间一致。"
+        )
+        spatial_reply_point = "不把旧空间覆盖率作为正式证据；"
+        spatial_short = "旧空间覆盖图只有描述性意义，不能主张独立空间验证。"
 
     return f"""# 从零开始讲懂斑马鱼 CytoBridge–CCC 分析
 
@@ -1578,7 +1983,7 @@ Direct comparison 的 CytoBridge 原始 type-pair 分数先在 5 个 technical g
 
 这给出一个很清楚的结果：
 
-> **CytoBridge 与最接近的空间 CCC 方法 COMMOT 在五个时点均呈正相关，而且 exact message 的一致性比 attention 更强。**
+> **CytoBridge 与最接近的空间 CCC 方法 COMMOT 在五个时点均呈正相关；在本数据和当前 type-pair 汇总定义下，exact-message 的 rank correlation 高于 attention。**
 
 这应该是汇报和回复审稿人的第一组结果。空间 LR 箭头图只能放在后面作为具体例子。
 
@@ -1630,37 +2035,11 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 
 这个分析是**距离混杂审计**，不是验证结果，也不应放在主结果图中。由于图本身仍由空间 cutoff 构建，我们也不能进一步声称 attention 完全不依赖空间。
 
-## 7. 那张空间箭头图应该怎么看？它是不是不明显？
+## 7. 同一空间坐标上的结果到底一致到什么程度？
 
-是的，肉眼看 top-80 箭头并不明显。这张图把大量细胞和箭头叠在一起，不适合承担“证明 consistency”的主任务。
+{spatial_section}
 
-它正确的地位是：
-
-> 在已经由全矩阵直接比较证明总体一致性以后，展示三个具体 LR 轴是否落在相似组织区域。
-
-为了不再让读者数箭头，我们把结果改成了定量位置覆盖图：
-
-![Spatial coverage](figures/03_spatial_location_coverage.png)
-
-| LR 轴 | CytoBridge 高位位置附近有 COMMOT | COMMOT 高位位置附近有 CytoBridge |
-|---|---:|---:|
-{spatial_rows}
-
-这里的“高位”是各方法所有 **正分、非 `i→i` 的 cell-level edges 中的 top 20%**。每条边用 sender 与 receiver 坐标的中点代表其空间位置；如果一个方法的中点到另一个方法最近的高位中点不超过 **0.048032 个 aligned-coordinate units**，就记作“附近有匹配”。这个半径是冻结 graph cutoff 0.096064 的一半。图上的 `n` 是该方法进入 top 20% 的 cell-level edge 数；每条 edge 贡献一个 midpoint，未把相同或重合 midpoint 去重。
-
-所以它比较的是 top-20% interaction **中点的位置覆盖**，不是要求两种方法给出相同的 cell i→cell j，也不验证同一箭头方向。两个百分比不对称，是因为 COMMOT 通常给出更宽、更密的候选区域；“CytoBridge→COMMOT 92.8%”并不自动推出“COMMOT→CytoBridge 也应为 92.8%”。
-
-把左上条形图当成一个点名册即可：WNT 一共有 208 个 CytoBridge 高位中点，其中约 193 个附近能找到 COMMOT 高位中点，所以是 92.8%。反过来，COMMOT 有 349 个高位中点，只有约 165 个附近能找到 CytoBridge，因此右边是 47.3%。这表示较窄的 CytoBridge hotspot 大多落在较宽的 COMMOT hotspot 内，不表示两者逐箭头相同。
-
-这张图没有随机位置基线、置信区间或 top-fraction/radius 的阈值敏感性；而且 COMMOT 点越密，“附近至少有一个点”的覆盖率天然越容易升高。因此它只能作为**描述性空间补充**，不能单独证明方法一致性。主要证据仍是第 4 节的完整 type-pair 排名比较。
-
-- WNT：CytoBridge 高位区域基本被更宽的 COMMOT 区域包含，是**强 asymmetric spatial inclusion**；
-- NOTCH：同样是强 asymmetric inclusion；
-- CXCL：只有部分一致。
-
-原始箭头图仍保留在 [spatial_lr_interaction_maps.png](figures/spatial_lr_interaction_maps.png)，但建议放补充材料或作为组织背景展示，不要让读者靠肉眼数箭头得结论。
-
-这里还有一个容易混淆的 seed 差异：direct type-pair comparison 使用并平均 5 个 technical grouping seeds；固定的 edge-level confounder/LR-axis audit 主要使用 seed 101；空间 LR 示例重新汇总在 5 个 grouping seeds 中实际出现的相同 cell edges。这三者来自同一 checkpoint，但不是同一张分数表。
+这里还有一个容易混淆的 seed 差异：图 02 的 direct type-pair comparison 对 5 个 technical grouping seeds 的 type-pair 分数逐项平均；图 06–09 对同一 cell edge 在它实际出现的 grouping seeds 中取均值，未出现的 seed 不补零；旧 `reviewer_validation_axes` 的固定 edge-level confounder/LR audit 则主要使用 seed 101。它们来自同一 checkpoint，但不是独立训练重复，也不是同一张分数表；seed 只降低/审计 grouping 计算的技术波动。
 
 ## 8. 现在一共有哪些结果？每个结果回答什么问题？
 
@@ -1669,7 +2048,7 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 | Direct COMMOT consistency | G_AB attention、D_AB exact message | 全部 cell-type arrows 的总体排序像不像 | **最主要直接证据** |
 | External-only consensus | G_AB、D_AB | 不依赖单个工具时是否仍一致 | **主要稳健性证据** |
 | Top-signal overlap | top-20% G_AB/D_AB | 最强一批箭头是否超过随机重合 | 支持证据，且有 stage 差异 |
-| LR spatial examples | LR-compatible attention | WNT/NOTCH/CXCL 是否落在相似空间区域 | 具体生物学例子 |
+| LR spatial examples | LR-compatible attention | WNT/NOTCH/CXCL 的 raw hotspot 与 null/control 结果 | {spatial_inventory_role} |
 | Pathway enrichment | top LR-compatible attention axes | 高位信号是否富集已知通路 | 生物学可解释性；超几何检验以完整 project LR database 为背景，且受 LR prior 影响 |
 | NicheNet overlap | top LR-compatible ligands | receiver 下游 ligand 是否一致 | 不同目标函数的补充支持 |
 | Proximity diagnostic | G_AB/D_AB vs inverse distance | 是否只是“越近越高” | 混杂审计，不是主验证 |
@@ -1683,9 +2062,9 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 把全部结果合起来，最稳妥的结论是：
 
 1. CytoBridge 的 cell-type interaction organization 与外部 CCC 方法存在正向一致性；最强直接对照是 COMMOT。这里的“稳定”只指五个发育时点的相关均为正，不代表独立训练重复或置信区间验证。
-2. 完整 exact message 的一致性高于单独 attention，说明外部 CCC 与“实际模型贡献”的关系比与单个 gate 更紧密。
+2. 在本数据和当前 type-pair 汇总定义下，exact-message 与 COMMOT 的 rank correlation 高于 attention；这是本次实证结果，不等于证明 exact-message 普遍更优或更接近生物学真值。
 3. 高位 LR-compatible signals 富集 CXCL、NOTCH、ncWNT 等已知 pathway。
-4. Wnt5b→Fzd7a 和 Dla→Notch1a 的 CytoBridge 高位 interaction locations 大部分落在更宽的 COMMOT 高位区域内，属于强非对称空间包含；Cxcl12a→Cxcr4b 只有部分一致。
+4. {spatial_conclusion}
 5. attention 与距离的平均相关接近零，说明它不是一个简单的距离排序；但空间 graph 本身仍限制在局部邻居。
 6. 当前结果没有证明精确 ligand→receptor 方向、真实生化通信强度或实验因果性。
 
@@ -1693,28 +2072,61 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 
 ## 10. 这能不能回复审稿人？
 
-**可以，但回复应以直接 type-pair comparison 为主，空间 LR 图为辅。** 推荐论证顺序：
+**可以，但回复应以直接 type-pair comparison 为主，空间坐标结果作为透明审计。** 推荐论证顺序：
 
 1. 先承认 attention 不等于真实 CCC strength；
 2. 给出 attention/exact message 与 COMMOT 的五时点直接相关；
 3. 给出 external-only consensus，排除 self-inclusion；
-4. 给出 WNT/NOTCH 空间位置和 pathway/NicheNet 生物学支持；其中 pathway enrichment 使用完整 project LR database 作超几何背景，但因为训练图已使用 LR-informed edge prior，只能作为补充而非独立验证；
-5. 明确方向性和因果性的边界。
+4. {spatial_reply_point}
+5. 给出 pathway/NicheNet 生物学支持；其中 pathway enrichment 使用完整 project LR database 作超几何背景，但因为训练图已使用 LR-informed edge prior，只能作为补充而非独立验证；
+6. 明确方向性和因果性的边界。
 
 不要把论点写成“CytoBridge 与所有 CCC 方法都高度一致”。准确说法是：
 
-> The learned interaction organization shows consistent positive concordance with the closest spatial CCC reference, COMMOT, and with an external-only multi-method consensus, while LR-specific spatial and pathway analyses provide complementary biological support.
+> The learned interaction organization shows consistent positive concordance with the closest spatial CCC reference, COMMOT, and with an external-only multi-method consensus. LR-specific hotspot maps are reported as descriptive diagnostics because they did not exceed the fixed-support null.
 
 ## 11. 如果只汇报五分钟，可以这样讲
 
-> CytoBridge 本身不是一个传统 LR 打分软件，而是一个空间图动力学模型。它在每条细胞边上给出 attention gate，并且我们可以精确拆出这条边对动力学输出的完整 message。为了和 CCC 软件公平比较，我们把两种模型量按同一时点的 sender cell type→receiver cell type 汇总，再只比较排名。最直接的结果是：attention 与 COMMOT 五时点平均 rho 为 {attention_commot:.3f}，exact message 为 {message_commot:.3f}，五个时点均为正；排除 CytoBridge 本身的外部共识结果也分别为 {direct['attention_vs_external_consensus_rho'].mean():.3f} 和 {direct['exact_message_vs_external_consensus_rho'].mean():.3f}。这说明总体 interaction organization 有稳定一致性，但严格 top-10 并不完全相同。随后我们才把 attention 与 sender ligand、receiver receptor 表达相乘，得到 LR-compatible score，用来查看具体 WNT、NOTCH 和 CXCL 空间位置。WNT 和 NOTCH 与 COMMOT 的空间覆盖很强，CXCL 部分一致。综合起来，这些结果支持 attention/message 捕捉了 communication-relevant organization，但不支持把 attention 解释为真实通信概率、精确 LR 方向或因果信号。
+> CytoBridge 本身不是一个传统 LR 打分软件，而是一个空间图动力学模型。它在每条细胞边上给出 attention gate，并且我们可以精确拆出这条边对动力学输出的完整 message。为了和 CCC 软件公平比较，我们把两种模型量按同一时点的 sender cell type→receiver cell type 汇总，再只比较排名。最直接的结果是：attention 与 COMMOT 五时点平均 rho 为 {attention_commot:.3f}，exact message 为 {message_commot:.3f}，五个时点均为正；排除 CytoBridge 本身的外部共识结果也分别为 {direct['attention_vs_external_consensus_rho'].mean():.3f} 和 {direct['exact_message_vs_external_consensus_rho'].mean():.3f}。这说明总体 interaction organization 有稳定一致性，但严格 top-10 并不完全相同。{spatial_short} 综合起来，正向结论来自 type-pair rank concordance 与已知 pathway/downstream consistency；attention 仍不能解释为真实通信概率、精确 LR 方向或因果信号。
 """
 
 
-def reviewer_reply_text() -> str:
-    return """# Reviewer-response wording (plain and bounded)
+def reviewer_reply_text(spatial_audit: dict[str, Any] | None = None) -> str:
+    if spatial_audit is not None:
+        primary = spatial_audit["primary"]
+        null = spatial_audit["null"]
+        null_primary = null.loc[null["metric"].eq("field_overlap_ovl")].merge(
+            primary[["example_id", "top_fraction", "scale_factor"]],
+            on=["example_id", "top_fraction", "scale_factor"],
+            validate="one_to_one",
+        )
+        merged = primary.merge(
+            null_primary[["example_id", "null_mean", "n_permutations"]],
+            on="example_id",
+            validate="one_to_one",
+        )
+        axis_numbers = ", ".join(
+            f"{row.ligand.upper()}–{row.receptor.upper()} {row.field_overlap_ovl:.3f} "
+            f"(null mean {row.null_mean:.3f})"
+            for row in merged.itertuples(index=False)
+        )
+        spatial_sentence = (
+            " We additionally mapped three preselected LR examples on the same aligned "
+            f"spatial coordinates: {axis_numbers}. None exceeded the audited adaptive "
+            f"fixed-support score-permutation null ({int(merged['n_permutations'].min())} "
+            "permutations), attention×LR did not improve spatial overlap over LR activity "
+            "alone in any example, and sender/receiver rank agreement among active cells "
+            "was low or mixed. We therefore treat these spatial maps as descriptive "
+            "diagnostics rather than independent validation."
+        )
+    else:
+        spatial_sentence = (
+            " LR-specific spatial maps are treated as descriptive only because a formal "
+            "fixed-support null was not supplied to this report."
+        )
+    return f"""# Reviewer-response wording (plain and bounded)
 
-We agree that attention weights should not be interpreted as direct biochemical communication strengths. We therefore revised the manuscript to describe them as interaction-associated gates and added external and biological consistency analyses. We first aligned the complete directed sender-cell-type→receiver-cell-type matrices at each developmental stage and compared within-stage ranks. Against the closest spatial CCC reference, COMMOT, CytoBridge attention was positively concordant at all five stages (mean stage-wise Spearman rho = 0.566); the exactly reconstructed complete message contribution showed stronger concordance (mean rho = 0.683). An external-only consensus built by equally averaging within-stage percentile ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean, without CytoBridge, was also positively concordant with attention (mean rho = 0.530) and exact message (mean rho = 0.633). Top-20% attention interactions overlapped this external consensus above random expectation on average (1.88-fold), although strict top-edge identities varied by stage. In LR-specific spatial examples, most high-ranked CytoBridge Wnt5b–Fzd7a and Dla–Notch1a interaction locations fell within the broader COMMOT high-ranked regions, whereas the reverse coverage was lower; Cxcl12a–Cxcr4b showed partial inclusion. Pathway enrichment and NicheNet ligand overlap provided complementary, but not fully independent, biological support. These results support communication-relevant organization in the learned interaction structure, while we do not interpret attention as a calibrated CCC probability, activating/inhibitory sign, exact ligand-to-receptor direction, or causal perturbation evidence.
+We agree that attention weights should not be interpreted as direct biochemical communication strengths. We therefore revised the manuscript to describe them as interaction-associated gates and added external and biological consistency analyses. We first aligned the complete directed sender-cell-type→receiver-cell-type matrices at each developmental stage and compared within-stage ranks. Against the closest spatial CCC reference, COMMOT, CytoBridge attention was positively concordant at all five stages (mean stage-wise Spearman rho = 0.566); the exactly reconstructed complete message contribution showed stronger concordance (mean rho = 0.683). An external-only consensus built by equally averaging within-stage percentile ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean, without CytoBridge, was also positively concordant with attention (mean rho = 0.530) and exact message (mean rho = 0.633). Top-20% attention interactions overlapped this external consensus above random expectation on average (1.88-fold), although strict top-edge identities varied by stage.{spatial_sentence} Pathway enrichment and NicheNet ligand overlap provided complementary, but not fully independent, biological support. These results support communication-relevant organization in the learned interaction structure, while we do not interpret attention as a calibrated CCC probability, activating/inhibitory sign, exact ligand-to-receptor direction, or causal perturbation evidence.
 """
 
 
@@ -1724,6 +2136,19 @@ def main() -> None:
     output = args.output_dir.expanduser().resolve()
     if not (bundle / "bundle_manifest.json").is_file():
         raise FileNotFoundError(f"Not a reviewer bundle: {bundle}")
+    spatial_audit = (
+        load_spatial_audit(args.spatial_consistency_dir)
+        if args.spatial_consistency_dir is not None
+        else None
+    )
+    if spatial_audit is not None:
+        spatial_bundle = (
+            spatial_audit["manifest"].get("inputs", {}).get("bundle_manifest", {})
+        )
+        if spatial_bundle.get("sha256") != sha256(bundle / "bundle_manifest.json"):
+            raise ValueError(
+                "Spatial audit was not generated from the supplied reviewer bundle manifest"
+            )
     if output.exists() and any(output.iterdir()):
         if not args.overwrite:
             raise FileExistsError(f"Output directory is not empty: {output}")
@@ -1821,15 +2246,22 @@ def main() -> None:
 
     summary.to_csv(tables / "plain_language_stage_summary.csv", index=False)
     checklist.to_csv(tables / "top_pair_checklist.csv", index=False)
-    build_figure_index().to_csv(tables / "figure_reading_index.csv", index=False)
+    build_figure_index(spatial_audit_available=spatial_audit is not None).to_csv(
+        tables / "figure_reading_index.csv", index=False
+    )
     interaction_term_dictionary().to_csv(
         tables / "interaction_term_dictionary.csv", index=False
     )
-    result_inventory().to_csv(tables / "result_inventory.csv", index=False)
+    result_inventory(spatial_audit_available=spatial_audit is not None).to_csv(
+        tables / "result_inventory.csv", index=False
+    )
     direct.to_csv(tables / "direct_ccc_consistency_by_stage.csv", index=False)
 
     plot_computation_map(figures / "00_computation_to_result_map")
-    plot_evidence_map(figures / "01_reviewer_evidence_map")
+    plot_evidence_map(
+        figures / "01_reviewer_evidence_map",
+        spatial_null_audited=spatial_audit is not None,
+    )
     plot_direct_ccc_scatter(scores, direct, figures / "02_direct_ccc_comparison")
     plot_spatial_coverage(spatial, figures / "03_spatial_location_coverage")
     plot_rank_scatter(stage_table, summary, figures / "04_external_consensus_rank_scatter")
@@ -1850,16 +2282,37 @@ def main() -> None:
             }:
                 shutil.copy2(source, figures / source.name)
 
+    if spatial_audit is not None:
+        spatial_root: Path = spatial_audit["root"]
+        for source_name, destination_name in SPATIAL_AUDIT_FIGURES.items():
+            for suffix in ("png", "pdf"):
+                shutil.copy2(
+                    spatial_root / f"{source_name}.{suffix}",
+                    figures / f"{destination_name}.{suffix}",
+                )
+        for name in SPATIAL_AUDIT_TABLES:
+            shutil.copy2(spatial_root / name, tables / name)
+        shutil.copy2(
+            spatial_root / "README_CN.md",
+            output / "SPATIAL_COORDINATE_CONSISTENCY_CN.md",
+        )
+        shutil.copy2(
+            spatial_root / "manifest.json",
+            output / "SPATIAL_AUDIT_MANIFEST.json",
+        )
+
     guide = output / "START_HERE_CN.md"
     guide.write_text(
-        from_zero_report_text(direct, pairwise_summary, spatial, proximity),
+        from_zero_report_text(
+            direct, pairwise_summary, spatial, proximity, spatial_audit
+        ),
         encoding="utf-8",
     )
     (output / "DETAILED_FIGURE_GUIDE_CN.md").write_text(
-        report_text(summary, checklist), encoding="utf-8"
+        report_text(summary, checklist, spatial_audit), encoding="utf-8"
     )
     (output / "REVIEWER_RESPONSE_PLAIN_EN.md").write_text(
-        reviewer_reply_text(), encoding="utf-8"
+        reviewer_reply_text(spatial_audit), encoding="utf-8"
     )
 
     artifacts = [path for path in output.rglob("*") if path.is_file()]
@@ -1867,10 +2320,22 @@ def main() -> None:
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_bundle": str(bundle),
         "source_bundle_manifest_sha256": sha256(bundle / "bundle_manifest.json"),
+        "source_spatial_audit": (
+            str(spatial_audit["root"]) if spatial_audit is not None else None
+        ),
+        "source_spatial_audit_manifest_sha256": (
+            spatial_audit["manifest_sha256"] if spatial_audit is not None else None
+        ),
         "notes": [
             "The frozen source reviewer bundle was not modified.",
             "SUPPORTED/PARTIAL/NOT SHOWN are narrative evidence labels, not statistical scores.",
             "Top-20% sets reproduce the source tie-inclusive formal analysis exactly.",
+            (
+                "The coordinate-level spatial audit was manifest/hash verified and is "
+                "treated as a diagnostic rather than independent positive validation."
+                if spatial_audit is not None
+                else "No formal coordinate-level spatial audit was supplied."
+            ),
         ],
         "artifacts": [record(path, output) for path in sorted(artifacts)],
     }
