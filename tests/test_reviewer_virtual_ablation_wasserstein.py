@@ -217,6 +217,43 @@ def test_cli_rejects_trajectory_time_length_mismatch(tmp_path: Path) -> None:
     assert not output.exists()
 
 
+def test_spatial_plot_autoscales_after_all_variants(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metrics = pd.DataFrame(
+        [
+            {
+                "variant": variant,
+                "time_index": time_index,
+                "time": time,
+                "space": "spatial",
+                "w1": multiplier * time,
+                "w2": multiplier * time,
+            }
+            for variant, multiplier in (("remove_YSL", 1.0), ("remove_EVL", 3.0))
+            for time_index, time in enumerate((0.0, 0.5, 1.0))
+        ]
+    )
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        analysis.plt,
+        "close",
+        lambda figure: captured.setdefault("figure", figure),
+    )
+
+    analysis.plot_spatial_wasserstein(
+        metrics,
+        tmp_path / "plot.png",
+        variant_order=["remove_YSL", "remove_EVL"],
+        title="Plot autoscale regression",
+    )
+
+    figure = captured["figure"]
+    for axis in figure.axes:
+        assert axis.get_ylim()[0] == pytest.approx(0.0)
+        assert axis.get_ylim()[1] > 3.0
+
+
 def test_summary_reports_initial_removal_fraction_as_descriptive_context() -> None:
     rows = []
     for space in ("joint", "spatial", "latent"):

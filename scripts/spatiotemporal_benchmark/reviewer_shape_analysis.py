@@ -1010,7 +1010,11 @@ def _plot_metric(
         .set_index("method")["method_display_name"]
         .to_dict()
     )
-    figure, axes = plt.subplots(1, 3, figsize=(max(12.5, len(method_order) * 1.4), 4.8))
+    figure, axes = plt.subplots(
+        1,
+        3,
+        figsize=(max(12.5, len(method_order) * 1.4), 5.6),
+    )
     for axis, space in zip(axes, SPACE_ORDER):
         frame = metrics[metrics["space"] == space]
         x = np.arange(len(method_order), dtype=np.float64)
@@ -1086,14 +1090,18 @@ def _plot_metric(
             handles[:2],
             labels[:2],
             loc="upper center",
+            bbox_to_anchor=(0.5, 0.925),
             ncol=2,
             frameon=False,
         )
     figure.suptitle(
         f"{METRIC_LABELS[metric]}: paired targets, no method-specific tuning",
-        y=1.03,
+        y=0.985,
     )
-    figure.tight_layout()
+    # Reserve separate figure-level bands for the title and legend.  Calling
+    # ``tight_layout`` over the full canvas lets both artists collapse onto the
+    # same top edge when ``bbox_inches='tight'`` is used for publication.
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.84))
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     stem = _safe_filename(metric)

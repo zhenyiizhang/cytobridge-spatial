@@ -473,13 +473,20 @@ def plot_spatial_wasserstein(
                 markersize=4.2,
                 markevery=mark_every,
             )
-            axis.set_title(f"Spatial {label}")
-            axis.set_xlabel("Model time")
-            axis.set_ylabel(f"{label} distance from baseline")
-            axis.set_ylim(bottom=0)
-            axis.grid(True, color="#d9d9d9", linewidth=0.7, alpha=0.8)
-            axis.spines["top"].set_visible(False)
-            axis.spines["right"].set_visible(False)
+
+    # Set the shared axes only after every variant has been plotted.  Calling
+    # ``set_ylim(bottom=0)`` inside the variant loop disables autoscaling after
+    # the first curve and can clip a later, more divergent ablation.
+    for axis, label in zip(axes, ("W1", "W2"), strict=True):
+        axis.set_title(f"Spatial {label}")
+        axis.set_xlabel("Model time")
+        axis.set_ylabel(f"{label} distance from baseline")
+        axis.relim()
+        axis.autoscale_view()
+        axis.set_ylim(bottom=0)
+        axis.grid(True, color="#d9d9d9", linewidth=0.7, alpha=0.8)
+        axis.spines["top"].set_visible(False)
+        axis.spines["right"].set_visible(False)
 
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(

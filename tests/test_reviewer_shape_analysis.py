@@ -6,6 +6,7 @@ from argparse import Namespace
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,49 @@ def test_centered_metrics_remove_translation_and_preserve_duplicate_mass() -> No
     assert metrics["n_predicted_unique_support"] == 2
     assert metrics["n_predicted_duplicate_rows_collapsed"] == 1
     np.testing.assert_allclose(metrics["predicted_effective_support_size"], 2.0)
+
+
+def test_shape_plot_reserves_separate_title_and_legend_bands(
+    tmp_path: Path, monkeypatch
+) -> None:
+    records = []
+    for space in shape.SPACE_ORDER:
+        for track, value in (("full_data", 0.1), ("loto", 0.2)):
+            for target in (1.0, 2.0, 3.0):
+                records.append(
+                    {
+                        "method": "method",
+                        "method_display_name": "Method",
+                        "space": space,
+                        "track": track,
+                        "target": target,
+                        "centroid_error": value + 0.01 * target,
+                    }
+                )
+    captured: dict[str, object] = {}
+    pyplot = importlib.import_module("matplotlib.pyplot")
+    monkeypatch.setattr(
+        pyplot,
+        "close",
+        lambda figure: captured.setdefault("figure", figure),
+    )
+
+    shape._plot_metric(
+        pd.DataFrame.from_records(records),
+        metric="centroid_error",
+        method_order=["method"],
+        output_dir=tmp_path,
+    )
+
+    figure = captured["figure"]
+    figure.canvas.draw()
+    renderer = figure.canvas.get_renderer()
+    title_box = figure._suptitle.get_window_extent(renderer)
+    legend_box = figure.legends[0].get_window_extent(renderer)
+    assert legend_box.y1 < title_box.y0
+    assert max(axis.get_window_extent(renderer).y1 for axis in figure.axes) < (
+        legend_box.y0
+    )
 
 
 def test_end_to_end_uses_bound_matched_inventory_and_separates_tracks(
