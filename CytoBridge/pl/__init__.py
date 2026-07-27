@@ -44,3 +44,4 @@ from .temporal import (
 )
 from .celltype import plot_celltype_composition
 from .enrichment import plot_enrichment_bar, plot_enrichment_dot
+from .training import plot_training_history, summarize_training_history

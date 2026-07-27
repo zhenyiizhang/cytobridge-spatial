@@ -82,6 +82,12 @@ def _prepare_ot_samples(
             f"Feature mismatch: predicted={predicted.shape[1]}, observed={observed.shape[1]}."
         )
     pred_weights = _normalized_weights(predicted_weights, predicted.shape[0])
+    uniform_predicted_measure = predicted_weights is None or np.allclose(
+        pred_weights,
+        np.full(predicted.shape[0], 1.0 / predicted.shape[0], dtype=np.float64),
+        rtol=1e-12,
+        atol=1e-15,
+    )
 
     if max_ot_points is None:
         cap = max(predicted.shape[0], observed.shape[0])
@@ -91,10 +97,15 @@ def _prepare_ot_samples(
             raise ValueError("max_ot_points must be positive or None.")
 
     if predicted.shape[0] > cap:
-        # Weighted resampling preserves the weighted empirical measure while
-        # keeping the exact EMD problem bounded for large spatial datasets.
+        # Uniform empirical clouds are subsampled without replacement so the
+        # cap cannot manufacture duplicate particles.  A genuinely weighted
+        # predicted measure still uses a weighted bootstrap to approximate its
+        # unequal masses while keeping the exact EMD problem bounded.
         idx_pred = rng.choice(
-            predicted.shape[0], size=cap, replace=True, p=pred_weights
+            predicted.shape[0],
+            size=cap,
+            replace=not uniform_predicted_measure,
+            p=None if uniform_predicted_measure else pred_weights,
         )
         predicted = predicted[idx_pred]
         pred_weights = np.full(cap, 1.0 / cap, dtype=np.float64)
@@ -113,7 +124,12 @@ def compute_distribution_metrics(
     max_ot_points: Optional[int] = 1024,
     random_seed: int = 42,
 ) -> dict[str, float | int]:
-    """Compute weighted Wasserstein-1 and Wasserstein-2 distances."""
+    """Compute weighted Wasserstein-1 and Wasserstein-2 distances.
+
+    The OT problem is exact on the retained empirical support.  If a point cap
+    is active, uniform clouds are sampled without replacement; non-uniform
+    predicted weights use a deterministic weighted bootstrap.
+    """
     import ot
     from scipy.spatial.distance import cdist
 

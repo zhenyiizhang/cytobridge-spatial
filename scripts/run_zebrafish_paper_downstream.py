@@ -2614,7 +2614,7 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             "one active-loading PCA feature universe across all observed/generated "
             "times; center-only subunits excluded globally"
         ),
-        "complex_mode": "min",
+        "complex_mode": str(ctx.args.lr_complex_mode),
         "complex_require_all_subunits": True,
         "preferred_species_tag": ctx.args.preferred_species_tag,
         "lr_n_clusters": int(ctx.args.lr_n_clusters),
@@ -2715,7 +2715,7 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             "loadings_key": "PCs",
             "reference_layer": None,
             "expression_space": "count",
-            "complex_mode": "min",
+            "complex_mode": str(ctx.args.lr_complex_mode),
             "require_all_subunits": True,
             "duplicate_policy": "first",
             "preferred_species_tag": ctx.args.preferred_species_tag,
@@ -3175,6 +3175,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--lr-pair", default="cxcl12a_cxcr4a")
     parser.add_argument("--lr-n-clusters", type=int, default=4)
+    parser.add_argument(
+        "--lr-complex-mode",
+        choices=("min", "geometric_mean", "mean", "product"),
+        default="min",
+        help=(
+            "Aggregation across subunits of a heteromeric ligand or receptor. "
+            "Use geometric_mean for the reviewer sensitivity run; min preserves "
+            "the manuscript AND-gate definition."
+        ),
+    )
     parser.add_argument(
         "--lr-expression-time-policy",
         choices=("all_inverse_pca", "hybrid_exact_observed"),

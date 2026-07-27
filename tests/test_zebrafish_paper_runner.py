@@ -42,6 +42,21 @@ def test_communication_classifier_default_is_direct_prediction():
     )
     assert args.communication_classifier_knn_neighbors == 1
     assert args.lr_expression_time_policy == "all_inverse_pca"
+    assert args.lr_complex_mode == "min"
+
+    sensitivity_args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            "aligned.h5ad",
+            "--model-dir",
+            "model",
+            "--output-dir",
+            "output",
+            "--lr-complex-mode",
+            "geometric_mean",
+        ]
+    )
+    assert sensitivity_args.lr_complex_mode == "geometric_mean"
 
 
 def test_communication_classifier_knn_must_be_positive(tmp_path):

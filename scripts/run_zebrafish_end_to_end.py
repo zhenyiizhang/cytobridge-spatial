@@ -253,7 +253,6 @@ def _resolved_training_config(args, condition: str, training_dir: Path) -> dict:
 
 def _run_train(args, paths: dict[str, Path], condition: str) -> None:
     aligned_h5ad = _require_file(paths["aligned_h5ad"], "aligned zebrafish H5AD")
-    _require_file(paths["edge_path"], "clean-counts zebrafish edge predictor")
     config = _resolved_training_config(args, condition, paths["training_dir"])
     paths["training_dir"].mkdir(parents=True, exist_ok=True)
     launch_manifest = {
@@ -267,6 +266,13 @@ def _run_train(args, paths: dict[str, Path], condition: str) -> None:
         "hostname": socket.gethostname(),
         "pid": os.getpid(),
         "git": _git_revision(),
+        "aligned_h5ad": str(aligned_h5ad),
+        "aligned_h5ad_sha256": _sha256(aligned_h5ad),
+        "training_config": (
+            str(Path(args.training_config).expanduser().resolve())
+            if args.training_config is not None
+            else None
+        ),
     }
     (paths["training_dir"] / "launch_manifest.json").write_text(
         json.dumps(_json_ready(launch_manifest), indent=2, sort_keys=True),
@@ -311,13 +317,14 @@ def _run_downstream(args, paths: dict[str, Path], condition: str, defaults: dict
             f"Expected final score stage {expected_score_stage}, loaded {loaded.score_stage}"
         )
 
-    interaction_cfg = loaded.config["model"]["interaction_net"]
+    interaction_cfg = loaded.config["model"].get("interaction_net", {})
+    interaction_cutoff = float(interaction_cfg.get("cutoff", 0.0))
     components = compute_velocity_components_from_adata(
         adata,
         loaded.model,
         dim=dim,
         interaction_m=int(args.interaction_m),
-        interaction_threshold=float(interaction_cfg["cutoff"]),
+        interaction_threshold=interaction_cutoff,
         device=str(args.device),
         time_key="time_point_processed",
         obsm_key="X_latent",
@@ -376,8 +383,12 @@ def _run_downstream(args, paths: dict[str, Path], condition: str, defaults: dict
             "pid": os.getpid(),
         },
         "git": _git_revision(),
-        "input_h5ad": str(args.h5ad_path),
-        "input_h5ad_sha256": _sha256(args.h5ad_path),
+        "input_h5ad": (
+            str(args.h5ad_path) if args.h5ad_path is not None else None
+        ),
+        "input_h5ad_sha256": (
+            _sha256(args.h5ad_path) if args.h5ad_path is not None else None
+        ),
         "aligned_h5ad": str(aligned_h5ad),
         "aligned_h5ad_sha256": _sha256(aligned_h5ad),
         "preprocess_expression_source": adata.uns.get("preprocess_info", {}).get(
@@ -397,9 +408,24 @@ def _run_downstream(args, paths: dict[str, Path], condition: str, defaults: dict
         "score_stage": loaded.score_stage,
         "score_checkpoint": str(loaded.score_path),
         "score_checkpoint_sha256": _sha256(loaded.score_path),
-        "interaction_cutoff": float(interaction_cfg["cutoff"]),
-        "edge_predictor_path": str(interaction_cfg["edge_predictor_path"]),
-        "edge_predictor_threshold": float(interaction_cfg["edge_predictor_thre"]),
+        "interaction_cutoff": (
+            interaction_cutoff if interaction_cfg else None
+        ),
+        "edge_prior_mode": (
+            str(interaction_cfg.get("edge_prior_mode", "learned"))
+            if interaction_cfg
+            else None
+        ),
+        "edge_predictor_path": (
+            str(interaction_cfg["edge_predictor_path"])
+            if interaction_cfg.get("edge_predictor_path") is not None
+            else None
+        ),
+        "edge_predictor_threshold": (
+            float(interaction_cfg["edge_predictor_thre"])
+            if interaction_cfg.get("edge_predictor_thre") is not None
+            else None
+        ),
         "full_identity_max_error": identity_error,
         "all_finite": bool(
             all(np.isfinite(components[key]).all() for key in ("drift", "interaction", "score", "full"))
@@ -425,8 +451,27 @@ def _run_downstream(args, paths: dict[str, Path], condition: str, defaults: dict
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--h5ad-path", type=Path, required=True)
-    parser.add_argument("--database-path", type=Path, required=True)
+    parser.add_argument(
+        "--h5ad-path",
+        type=Path,
+        default=None,
+        help="Raw source H5AD; required only when preprocessing is requested.",
+    )
+    parser.add_argument(
+        "--database-path",
+        type=Path,
+        default=None,
+        help="LR database; required only when preprocessing is requested.",
+    )
+    parser.add_argument(
+        "--preprocessed-h5ad",
+        type=Path,
+        default=None,
+        help=(
+            "Reuse an existing canonical aligned H5AD for isolated train or "
+            "downstream runs. The source is never copied or modified."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--profile", choices=["smoke", "full"], default="smoke")
     parser.add_argument(
@@ -446,8 +491,24 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
-    args.h5ad_path = _require_file(args.h5ad_path, "zebrafish source H5AD")
-    args.database_path = _require_file(args.database_path, "ligand-receptor database")
+    if args.stage in {"preprocess", "all"}:
+        if args.h5ad_path is None or args.database_path is None:
+            raise ValueError(
+                "--h5ad-path and --database-path are required for preprocessing."
+            )
+        args.h5ad_path = _require_file(args.h5ad_path, "zebrafish source H5AD")
+        args.database_path = _require_file(
+            args.database_path, "ligand-receptor database"
+        )
+    else:
+        if args.h5ad_path is not None:
+            args.h5ad_path = _require_file(
+                args.h5ad_path, "zebrafish source H5AD"
+            )
+        if args.database_path is not None:
+            args.database_path = _require_file(
+                args.database_path, "ligand-receptor database"
+            )
     args.output_dir = args.output_dir.expanduser().resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     if args.stage in {"train", "downstream", "all"} and args.condition is None:
@@ -455,6 +516,14 @@ def main() -> int:
 
     defaults = _profile_defaults(args.profile)
     paths = _paths(args.output_dir, args.condition)
+    if args.preprocessed_h5ad is not None:
+        if args.stage in {"preprocess", "all"}:
+            raise ValueError(
+                "--preprocessed-h5ad is only valid for train/downstream stages."
+            )
+        paths["aligned_h5ad"] = _require_file(
+            args.preprocessed_h5ad, "preprocessed zebrafish H5AD"
+        )
     preprocess_result = None
     downstream_manifest = None
     if args.stage in {"preprocess", "all"}:

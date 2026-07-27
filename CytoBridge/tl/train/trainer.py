@@ -58,6 +58,8 @@ class TrainingPipeline:
         # Get experiment directory from configuration (default to './results' if not specified)
         self.exp_dir = self.config.get('ckpt_dir', './results')
         os.makedirs(self.exp_dir, exist_ok=True)
+        self.training_history = []
+        self._active_stage_index = None
         # Construct DataFrame from input data to fit the format required by train_score_model
         self.df = self._prepare_df(data)
         # Get sorted list of unique time points (grouped by 'samples' column)
@@ -72,6 +74,80 @@ class TrainingPipeline:
                 print(f"[INFO] {msg}")
 
         return SimpleLogger()
+
+    @staticmethod
+    def _history_float(value):
+        if value is None:
+            return float('nan')
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu().item()
+        return float(value)
+
+    def _current_learning_rate(self):
+        optimizer = getattr(self, 'optimizer', None)
+        if optimizer is None or not getattr(optimizer, 'param_groups', None):
+            return float('nan')
+        return float(optimizer.param_groups[0]['lr'])
+
+    def _record_training_epoch(
+        self,
+        *,
+        stage_params,
+        epoch,
+        loss,
+        checkpoint_metric,
+        checkpoint_value,
+        is_best,
+        **metrics,
+    ):
+        """Append one schema-stable, serializable row to the training history."""
+        history = getattr(self, 'training_history', None)
+        if history is None:
+            self.training_history = []
+            history = self.training_history
+        row = {
+            'stage_index': int(
+                getattr(self, '_active_stage_index', 0)
+                if getattr(self, '_active_stage_index', None) is not None
+                else 0
+            ),
+            'stage': str(stage_params['name']),
+            'mode': str(stage_params.get('mode', 'neural_ode')),
+            'epoch': int(epoch),
+            'epochs': int(stage_params['epochs']),
+            'loss': self._history_float(loss),
+            'checkpoint_metric': str(checkpoint_metric),
+            'checkpoint_value': self._history_float(checkpoint_value),
+            'is_best': bool(is_best),
+            'learning_rate': self._current_learning_rate(),
+            'save_strategy': str(stage_params.get('save_strategy', 'best')),
+        }
+        for key, value in metrics.items():
+            row[str(key)] = self._history_float(value)
+        history.append(row)
+
+        flush_every = int(
+            self.config.get('training', {}).get('history_flush_every', 25)
+        )
+        if flush_every > 0 and len(history) % flush_every == 0:
+            self._save_training_history()
+
+    def training_history_frame(self):
+        """Return the complete per-epoch history in training-plan order."""
+        return pd.DataFrame(getattr(self, 'training_history', []))
+
+    def _save_training_history(self):
+        """Atomically persist the accumulated per-epoch history as CSV."""
+        frame = self.training_history_frame()
+        if frame.empty:
+            return None
+        output_dir = self.config.get('ckpt_dir', getattr(self, 'exp_dir', './results'))
+        os.makedirs(output_dir, exist_ok=True)
+        path = os.path.join(output_dir, 'training_history.csv')
+        temporary_path = path + '.tmp'
+        frame.to_csv(temporary_path, index=False)
+        os.replace(temporary_path, path)
+        return path
 
     def _prepare_df(self, data):
         """Construct DataFrame from input data to fit the format required by train_score_model
@@ -232,7 +308,8 @@ class TrainingPipeline:
         base_defaults = self.config['training']['defaults']
 
         # Execute each stage in the training plan
-        for stage_config in training_plan:
+        for stage_index, stage_config in enumerate(training_plan):
+            self._active_stage_index = int(stage_index)
             # Merge base defaults with stage-specific config (stage config takes priority)
             stage_params = base_defaults.copy()
             stage_params.update(stage_config)
@@ -257,7 +334,10 @@ class TrainingPipeline:
                 self.run_score_matching_stage(stage_params, data, time_points)
             else:
                 raise ValueError(f"Unknown training mode: {stage_params['mode']}")
+            self._save_training_history()
 
+        self._active_stage_index = None
+        self._save_training_history()
         return self.model
 
     def run_neural_ode_stage(self, stage_params, data, time_points):
@@ -309,10 +389,28 @@ class TrainingPipeline:
                     "checkpoint_metric must be 'average_loss' or "
                     "'legacy_forward_last_ot'."
                 )
-            if candidate_loss < best_loss:
+            candidate_loss = self._history_float(candidate_loss)
+            is_best = candidate_loss < best_loss
+            if is_best:
                 best_loss = candidate_loss
                 self.logger.info(f"Epoch {epoch:3d} has a lower loss| all_loss {best_loss:.4f}")
                 best_state = copy.deepcopy(candidate_state)
+            epoch_metrics = getattr(self, '_last_neural_ode_epoch', {})
+            self._record_training_epoch(
+                stage_params=stage_params,
+                epoch=epoch,
+                loss=loss,
+                checkpoint_metric=checkpoint_metric,
+                checkpoint_value=candidate_loss,
+                is_best=is_best,
+                forward_last_ot=epoch_metrics.get('forward_last_ot'),
+                mean_ot_loss=epoch_metrics.get('mean_ot_loss'),
+                mean_mass_loss=epoch_metrics.get('mean_mass_loss'),
+                mean_energy_loss=epoch_metrics.get('mean_energy_loss'),
+                mean_density_loss=epoch_metrics.get('mean_density_loss'),
+                mean_pinn_loss=epoch_metrics.get('mean_pinn_loss'),
+                n_intervals=epoch_metrics.get('n_intervals'),
+            )
             if self.scheduler is not None and not stage_params.get('scheduler_step_before_reverse', False):
                 scheduler_metric = stage_params.get('scheduler_metric', 'average_loss')
                 scheduler_value = (
@@ -393,6 +491,13 @@ class TrainingPipeline:
 
         total_loss = 0.0
         valid_intervals = 0
+        component_sums = {
+            'ot_loss': 0.0,
+            'mass_loss': 0.0,
+            'energy_loss': 0.0,
+            'density_loss': 0.0,
+            'pinn_loss': 0.0,
+        }
         expected_intervals = (len(time_points) - 1) * (
             2 if self.config.get('reverse', False) else 1
         )
@@ -468,10 +573,13 @@ class TrainingPipeline:
                     f"forward interval {t0}->{t1}."
                 )
 
-            if use_density_loss:          
+            density_loss_value = 0.0
+            pinn_loss_value = 0.0
+            if use_density_loss:
                 density_loss = density_fn(x1, data_t1, top_k=top_k)
                 density_loss = density_loss.to(loss.device)
                 loss += lambda_density * density_loss
+                density_loss_value = self._history_float(density_loss)
                 # print('density loss')
                 # print(density_loss)
             if use_pinn_loss: 
@@ -485,6 +593,7 @@ class TrainingPipeline:
                 # print("loss_pinn",loss_pinn)
                 # print("loss",loss)
                 loss += lambda_pinn * loss_pinn
+                pinn_loss_value = self._history_float(loss_pinn)
             if not torch.isfinite(loss):
                 raise FloatingPointError(
                     f"Non-finite final loss during {stage_params['name']} "
@@ -509,6 +618,11 @@ class TrainingPipeline:
 
             # Accumulate total loss over all time intervals
             total_loss += loss.item()
+            component_sums['ot_loss'] += self._history_float(loss_ot)
+            component_sums['mass_loss'] += self._history_float(loss_mass)
+            component_sums['energy_loss'] += self._history_float(loss_energy)
+            component_sums['density_loss'] += density_loss_value
+            component_sums['pinn_loss'] += pinn_loss_value
             valid_intervals += 1
 
         # The released DeepRUOT scripts selected intermediate stage checkpoints
@@ -519,11 +633,6 @@ class TrainingPipeline:
         state_after_forward = None
         if stage_params.get('checkpoint_metric') == 'legacy_forward_last_ot':
             state_after_forward = copy.deepcopy(self.model.state_dict())
-        self._last_neural_ode_epoch = {
-            'forward_last_ot': forward_last_ot,
-            'state_after_forward': state_after_forward,
-        }
-
         if self.scheduler is not None and stage_params.get('scheduler_step_before_reverse', False):
             scheduler_metric = stage_params.get('scheduler_metric', 'forward_last_ot')
             scheduler_value = forward_last_ot if scheduler_metric == 'forward_last_ot' else total_loss / valid_intervals
@@ -604,10 +713,13 @@ class TrainingPipeline:
                         f"reverse interval {t0}->{t1}."
                     )
 
+                density_loss_value = 0.0
+                pinn_loss_value = 0.0
                 if use_density_loss:
                     density_loss = density_fn(x1, data_t1, top_k=top_k)
                     density_loss = density_loss.to(loss.device)
                     loss += lambda_density * density_loss
+                    density_loss_value = self._history_float(density_loss)
                 if use_pinn_loss:
                     if 'lambda_pinn'  not in stage_params:
                         raise ValueError(
@@ -624,6 +736,7 @@ class TrainingPipeline:
                         device=self.device,
                     )
                     loss += lambda_pinn * loss_pinn
+                    pinn_loss_value = self._history_float(loss_pinn)
                 if not torch.isfinite(loss):
                     raise FloatingPointError(
                         f"Non-finite final loss during {stage_params['name']} "
@@ -642,6 +755,11 @@ class TrainingPipeline:
                 x0 = x1.clone().detach()
                 lnw0 = lnw1.clone().detach()
                 total_loss += loss.item()
+                component_sums['ot_loss'] += self._history_float(loss_ot)
+                component_sums['mass_loss'] += self._history_float(loss_mass)
+                component_sums['energy_loss'] += self._history_float(loss_energy)
+                component_sums['density_loss'] += density_loss_value
+                component_sums['pinn_loss'] += pinn_loss_value
                 valid_intervals += 1
 
         # Return average loss per time interval (account for reverse pass if used)
@@ -650,7 +768,20 @@ class TrainingPipeline:
                 f"{stage_params['name']} completed only {valid_intervals}/"
                 f"{expected_intervals} expected intervals."
             )
-        return total_loss / expected_intervals
+        average_loss = total_loss / expected_intervals
+        self._last_neural_ode_epoch = {
+            'forward_last_ot': forward_last_ot,
+            'state_after_forward': state_after_forward,
+            'mean_ot_loss': component_sums['ot_loss'] / expected_intervals,
+            'mean_mass_loss': component_sums['mass_loss'] / expected_intervals,
+            'mean_energy_loss': component_sums['energy_loss'] / expected_intervals,
+            'mean_density_loss': (
+                component_sums['density_loss'] / expected_intervals
+            ),
+            'mean_pinn_loss': component_sums['pinn_loss'] / expected_intervals,
+            'n_intervals': int(valid_intervals),
+        }
+        return average_loss
 
 
     def run_flow_matching_stage(self, stage_params, data, time_points):
@@ -699,7 +830,9 @@ class TrainingPipeline:
 
 
         # Training loop over epochs (with tqdm progress bar)
-        for epoch in tqdm(range(stage_params['epochs']), desc='Flow matching'):
+        for epoch in tqdm(
+            range(1, stage_params['epochs'] + 1), desc='Flow matching'
+        ):
             # Calculate loss for one epoch of Flow Matching training
             loss, penalty = self.train_flow_matching_epoch(
                 FM, X, time,
@@ -719,8 +852,12 @@ class TrainingPipeline:
                 break
 
             # Update best model if current loss is lower than previous best
-            if loss < best_loss:
-                best_loss = loss
+            loss_value = self._history_float(loss)
+            penalty_value = self._history_float(penalty)
+            total_loss_value = loss_value + penalty_value
+            is_best = loss_value < best_loss
+            if is_best:
+                best_loss = loss_value
                 best_state_dict = copy.deepcopy(self.model.state_dict())
 
             # Combine loss and penalty for backpropagation
@@ -731,6 +868,16 @@ class TrainingPipeline:
             total_loss.backward()
             # Update optimizer
             self.optimizer.step()
+            self._record_training_epoch(
+                stage_params=stage_params,
+                epoch=epoch,
+                loss=total_loss_value,
+                checkpoint_metric='objective_loss',
+                checkpoint_value=loss_value,
+                is_best=is_best,
+                objective_loss=loss_value,
+                penalty=penalty_value,
+            )
             # Update scheduler if initialized
             if self.scheduler is not None:
                 if isinstance(self.scheduler, ReduceLROnPlateau):
@@ -743,8 +890,8 @@ class TrainingPipeline:
             save_state = best_state_dict
             save_loss = best_loss
         else:  # 'last' strategy
-            save_state = self.model.state_dict()
-            save_loss = loss.item() + penalty.item()
+            save_state = copy.deepcopy(self.model.state_dict())
+            save_loss = total_loss_value
 
         # Load saved state (best or last) back to model
         self.model.load_state_dict(save_state)
@@ -875,7 +1022,9 @@ class TrainingPipeline:
         best_state_dict = None
         last_loss = None
 
-        for epoch in tqdm(range(stage_params['epochs']), desc='Score matching'):
+        for epoch in tqdm(
+            range(1, stage_params['epochs'] + 1), desc='Score matching'
+        ):
             self.optimizer.zero_grad()
             t, xt, _, eps = get_batch_size(FM, X, trajectory, batch_size, time, return_noise=True)
             t = torch.unsqueeze(t, 1).to(self.device)
@@ -894,18 +1043,32 @@ class TrainingPipeline:
             if not torch.isfinite(score_loss):
                 raise FloatingPointError(
                     f"Non-finite score loss during {stage_params['name']} "
-                    f"at epoch {epoch + 1}."
+                    f"at epoch {epoch}."
                 )
 
             penalty = lambda_penalty * torch.max(torch.relu(value_st))
             loss = score_loss + penalty
-            if loss < best_loss:
-                best_loss = loss
+            score_loss_value = self._history_float(score_loss)
+            penalty_value = self._history_float(penalty)
+            loss_value = self._history_float(loss)
+            is_best = loss_value < best_loss
+            if is_best:
+                best_loss = loss_value
                 best_state_dict = copy.deepcopy(self.model.score_net.state_dict())
 
             loss.backward()
             self.optimizer.step()
-            last_loss = float(loss.detach().item())
+            last_loss = loss_value
+            self._record_training_epoch(
+                stage_params=stage_params,
+                epoch=epoch,
+                loss=loss_value,
+                checkpoint_metric='total_loss',
+                checkpoint_value=loss_value,
+                is_best=is_best,
+                score_loss=score_loss_value,
+                penalty=penalty_value,
+            )
 
         save_strategy = stage_params.get('save_strategy', 'best')
         if save_strategy == 'best':

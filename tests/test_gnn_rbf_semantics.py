@@ -46,3 +46,44 @@ def test_gnn_rbf_trainable_is_explicit_opt_in(tmp_path) -> None:
     parameter_names = set(dict(model.named_parameters()))
     assert "rbf_expansion.means" in parameter_names
     assert "rbf_expansion.betas" in parameter_names
+
+
+def test_all_spatial_ablation_removes_only_pretrained_edge_gate() -> None:
+    model = GNNInteraction(
+        in_out_dim=4,
+        hidden_dim=8,
+        num_heads=2,
+        num_layers=1,
+        num_rbf=4,
+        cutoff=0.5,
+        edge_prior_mode="all_spatial",
+        edge_predictor_path=None,
+    )
+    points = torch.tensor(
+        [
+            [0.0, 0.0, 0.2, 0.4],
+            [0.1, 0.0, 0.3, 0.5],
+            [1.0, 0.0, 0.7, 0.9],
+        ],
+        dtype=torch.float32,
+    )
+    log_weights = torch.log(torch.full((3, 1), 1.0 / 3.0))
+    output = model(points, log_weights, torch.zeros(3, 1))
+
+    assert output.shape == points.shape
+    assert not hasattr(model, "link_predictor")
+    assert {
+        tuple(edge)
+        for edge in model.edge_index.t().detach().cpu().tolist()
+    } == {(0, 1), (1, 0)}
+
+
+def test_edge_prior_mode_is_validated_before_loading_predictor() -> None:
+    with pytest.raises(ValueError, match="edge_prior_mode"):
+        GNNInteraction(
+            in_out_dim=4,
+            hidden_dim=8,
+            num_heads=2,
+            num_layers=1,
+            edge_prior_mode="not-a-mode",
+        )

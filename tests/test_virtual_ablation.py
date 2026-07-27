@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import CytoBridge.tl.downstream.ablation as ablation_module
+from CytoBridge.tl.downstream.evaluation import _prepare_ot_samples
 from CytoBridge.tl import (
     VirtualAblationResult,
     compute_virtual_ablation_metrics,
@@ -62,8 +63,29 @@ def test_compute_virtual_ablation_metrics_reports_spaces_counts_and_shifts():
     assert row["count_ratio"] == pytest.approx(1.5)
     # Baseline centroid x=2; ablated centroid x=6.
     assert row["centroid_shift"] == pytest.approx(4.0)
+    assert row["w1"] == pytest.approx(4.0)
+    assert row["w2"] == pytest.approx(np.sqrt(17.0))
+    assert row["ot_ablation_points"] == 3
+    assert row["ot_baseline_points"] == 2
     assert row["baseline_rms_radius"] == pytest.approx(1.0)
     assert row["ablation_rms_radius"] == pytest.approx(np.sqrt(8.0 / 3.0))
+
+
+def test_uniform_ot_clouds_are_capped_without_replacement():
+    predicted = np.arange(20, dtype=float).reshape(-1, 1)
+    observed = np.arange(100, 120, dtype=float).reshape(-1, 1)
+    pred, obs, pred_weights, obs_weights = _prepare_ot_samples(
+        predicted,
+        observed,
+        None,
+        max_ot_points=8,
+        rng=np.random.default_rng(7),
+    )
+
+    assert np.unique(pred, axis=0).shape[0] == 8
+    assert np.unique(obs, axis=0).shape[0] == 8
+    np.testing.assert_allclose(pred_weights, np.full(8, 1.0 / 8.0))
+    np.testing.assert_allclose(obs_weights, np.full(8, 1.0 / 8.0))
 
 
 def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
@@ -126,6 +148,7 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
         "remove_A_and_B": 1,
     }
     assert result.settings["growth_alpha"] == pytest.approx(0.5)
+    assert result.settings["max_ot_points"] == 1024
     assert result.settings["simulation"].endswith("no replacement")
 
     expected = [

@@ -102,9 +102,24 @@ def _combine_complex(
         return values.min(axis=0), missing
     if mode == "mean":
         return values.mean(axis=0), missing
+    if mode == "geometric_mean":
+        if np.any(values < 0):
+            raise ValueError(
+                "geometric_mean complex aggregation requires non-negative "
+                "subunit expression."
+            )
+        result = np.zeros(values.shape[1:], dtype=np.float64)
+        strictly_positive = np.all(values > 0, axis=0)
+        if np.any(strictly_positive):
+            result[strictly_positive] = np.exp(
+                np.mean(np.log(values[:, strictly_positive]), axis=0)
+            )
+        return result, missing
     if mode == "product":
         return values.prod(axis=0), missing
-    raise ValueError("complex_mode must be 'min', 'mean', or 'product'.")
+    raise ValueError(
+        "complex_mode must be 'min', 'geometric_mean', 'mean', or 'product'."
+    )
 
 
 def _communication_record(

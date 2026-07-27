@@ -30,6 +30,7 @@ class GNNInteraction(nn.Module):
         edge_predictor_path: Optional[str] = None,
         edge_predictor_thre: float = 0.5,
         edge_predictor_root: Optional[str] = None,
+        edge_prior_mode: str = "learned",
     ):
         super().__init__()
         if MessagePassing is None:
@@ -56,6 +57,11 @@ class GNNInteraction(nn.Module):
         self.use_spatial = use_spatial
         self.cutoff = cutoff
         self.edge_predictor_thre = edge_predictor_thre
+        self.edge_prior_mode = str(edge_prior_mode).lower()
+        if self.edge_prior_mode not in {"learned", "all_spatial"}:
+            raise ValueError(
+                "edge_prior_mode must be 'learned' or 'all_spatial'."
+            )
 
         # The released ARISTA/DeepRUOT GNN kept the RBF centers and widths
         # fixed. Preserve that behavior by default; a trainable RBF remains an
@@ -67,19 +73,25 @@ class GNNInteraction(nn.Module):
             trainable=self.rbf_trainable,
         )
 
-        if edge_predictor_path is None:
-            raise ValueError("edge_predictor_path must be provided for GNNInteraction.")
-        predictor_path = os.path.expanduser(edge_predictor_path)
-        if edge_predictor_root is not None and not os.path.isabs(predictor_path):
-            predictor_path = os.path.join(edge_predictor_root, predictor_path)
-        if not os.path.isabs(predictor_path):
-            predictor_path = os.path.abspath(predictor_path)
+        if self.edge_prior_mode == "learned":
+            if edge_predictor_path is None:
+                raise ValueError(
+                    "edge_predictor_path must be provided when "
+                    "edge_prior_mode='learned'."
+                )
+            predictor_path = os.path.expanduser(edge_predictor_path)
+            if edge_predictor_root is not None and not os.path.isabs(predictor_path):
+                predictor_path = os.path.join(edge_predictor_root, predictor_path)
+            if not os.path.isabs(predictor_path):
+                predictor_path = os.path.abspath(predictor_path)
 
-        self.link_predictor = LinkPredictorMLP(input_dim=in_out_dim * 2)
-        self.link_predictor.load_state_dict(torch.load(predictor_path, map_location=torch.device("cpu")))
-        for param in self.link_predictor.parameters():
-            param.requires_grad = False
-        self.link_predictor.eval()
+            self.link_predictor = LinkPredictorMLP(input_dim=in_out_dim * 2)
+            self.link_predictor.load_state_dict(
+                torch.load(predictor_path, map_location=torch.device("cpu"))
+            )
+            for param in self.link_predictor.parameters():
+                param.requires_grad = False
+            self.link_predictor.eval()
 
         self.gene_embed = nn.Sequential(
             nn.Linear(in_out_dim - 2, hidden_dim),
@@ -109,12 +121,18 @@ class GNNInteraction(nn.Module):
             mask = (pairwise_distances < self.cutoff).float()
 
         rows, cols = torch.where(mask)
-        features_i = x[rows]
-        features_j = x[cols]
-        pair_features = torch.cat([features_i, features_j], dim=1)
-        pred_probs = self.link_predictor(pair_features)
-        pred_probs = torch.sigmoid(pred_probs).reshape(-1)
-        connected = pred_probs >= self.edge_predictor_thre
+        if self.edge_prior_mode == "learned":
+            features_i = x[rows]
+            features_j = x[cols]
+            pair_features = torch.cat([features_i, features_j], dim=1)
+            pred_probs = self.link_predictor(pair_features)
+            pred_probs = torch.sigmoid(pred_probs).reshape(-1)
+            connected = pred_probs >= self.edge_predictor_thre
+        else:
+            # Matched reviewer ablation: retain the complete interaction GNN,
+            # distance cutoff, RBF features, and trainable attention/readout,
+            # while removing only the pretrained LR-informed edge gate.
+            connected = torch.ones(rows.shape[0], dtype=torch.bool, device=x.device)
 
         edge_index = torch.stack([rows[connected], cols[connected]], dim=0)
         indices = edge_index[0] != edge_index[1]

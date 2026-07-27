@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from CytoBridge.tl.downstream.lr_projection import (
+    _combine_complex,
     project_communication_to_lr_timecourses,
 )
 from CytoBridge.tl.downstream.temporal import (
@@ -102,6 +103,31 @@ def test_inverse_pca_and_gene_aliases() -> None:
     np.testing.assert_allclose(reconstructed[0], [1.2, 2.4, 2.9], atol=1e-6)
     aliases = simplify_gene_names(reference.var_names, preferred_species_tag="hs")
     assert aliases["gene_symbol"].tolist() == ["L1", "R1", "G3"]
+
+
+def test_complex_geometric_mean_is_zero_preserving_and_distinct_from_min() -> None:
+    vectors = {
+        "A": np.asarray([1.0, 4.0, 0.0]),
+        "B": np.asarray([4.0, 9.0, 2.0]),
+    }
+    minimum, missing = _combine_complex(
+        "A_B", vectors, mode="min", require_all_subunits=True
+    )
+    geometric, geometric_missing = _combine_complex(
+        "A_B", vectors, mode="geometric_mean", require_all_subunits=True
+    )
+
+    assert missing == geometric_missing == []
+    np.testing.assert_allclose(minimum, [1.0, 4.0, 0.0])
+    np.testing.assert_allclose(geometric, [2.0, 6.0, 0.0])
+
+    with pytest.raises(ValueError, match="requires non-negative"):
+        _combine_complex(
+            "A_B",
+            {"A": np.asarray([-1.0]), "B": np.asarray([2.0])},
+            mode="geometric_mean",
+            require_all_subunits=True,
+        )
 
 
 def test_persisted_pca_center_survives_reference_population_subsetting() -> None:

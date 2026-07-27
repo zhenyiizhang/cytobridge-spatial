@@ -16,6 +16,7 @@ from .downstream_data import (
     infer_time_key,
     parse_time_value,
 )
+from .evaluation import compute_distribution_metrics
 from .pipeline_utils import set_global_random_seed
 from .runtime import build_dynamical_runtime
 from .simulation import simulate_sde_points_split_from_x0
@@ -125,14 +126,24 @@ def compute_virtual_ablation_metrics(
     time_points: Sequence[float],
     *,
     spatial_dim: int = 2,
+    max_ot_points: Optional[int] = 1024,
+    random_seed: int = 42,
 ) -> pd.DataFrame:
     """Compare ablated split-SDE distributions with their baseline.
 
     Metrics are deliberately model- and dataset-agnostic.  For every variant,
     time, and available feature space (joint, spatial, latent), the table
-    reports particle counts, centroid displacement, and RMS cloud radius.
+    reports Wasserstein-1/Wasserstein-2 distance to the matched baseline,
+    particle counts, centroid displacement, and RMS cloud radius.  W1/W2 use
+    the same empirical optimal-transport implementation as the generic
+    distribution evaluator.  The OT solve is exact on retained support; when
+    either uniform cloud exceeds ``max_ot_points``, it is deterministically
+    subsampled without replacement and the retained counts are recorded.
+
     Particle count is listed on every space row to keep the table tidy and
-    directly groupable by ``variant/time/space``.
+    directly groupable by ``variant/time/space``.  Ablation particles are the
+    ``predicted`` distribution and baseline particles are the ``observed``
+    distribution for the OT call; both receive uniform empirical weights.
     """
 
     times = tuple(float(value) for value in time_points)
@@ -157,7 +168,7 @@ def compute_virtual_ablation_metrics(
         spaces["latent"] = slice(spatial_dim, feature_dim)
 
     rows: list[dict[str, object]] = []
-    for variant, raw_points in ablation_points.items():
+    for variant_index, (variant, raw_points) in enumerate(ablation_points.items()):
         variant_points = _as_trajectory(
             raw_points,
             name=f"ablation_points[{variant!r}]",
@@ -180,7 +191,7 @@ def compute_virtual_ablation_metrics(
                 if n_baseline > 0
                 else float("nan")
             )
-            for space, columns in spaces.items():
+            for space_index, (space, columns) in enumerate(spaces.items()):
                 base_space = base[:, columns]
                 ablated_space = ablated[:, columns]
                 if n_baseline > 0 and n_ablation > 0:
@@ -190,8 +201,32 @@ def compute_virtual_ablation_metrics(
                             - np.mean(base_space, axis=0)
                         )
                     )
+                    ot_seed = (
+                        int(random_seed)
+                        + 100_000 * int(variant_index)
+                        + 100 * int(time_index)
+                        + int(space_index)
+                    )
+                    distribution_metrics = compute_distribution_metrics(
+                        ablated_space,
+                        base_space,
+                        max_ot_points=max_ot_points,
+                        random_seed=ot_seed,
+                    )
                 else:
                     centroid_shift = float("nan")
+                    ot_seed = (
+                        int(random_seed)
+                        + 100_000 * int(variant_index)
+                        + 100 * int(time_index)
+                        + int(space_index)
+                    )
+                    distribution_metrics = {
+                        "w1": float("nan"),
+                        "w2": float("nan"),
+                        "ot_predicted_points": 0,
+                        "ot_observed_points": 0,
+                    }
                 baseline_radius = _rms_radius(base_space)
                 ablation_radius = _rms_radius(ablated_space)
                 rows.append(
@@ -204,6 +239,15 @@ def compute_virtual_ablation_metrics(
                         "n_ablation": n_ablation,
                         "count_delta": int(n_ablation - n_baseline),
                         "count_ratio": count_ratio,
+                        "w1": float(distribution_metrics["w1"]),
+                        "w2": float(distribution_metrics["w2"]),
+                        "ot_ablation_points": int(
+                            distribution_metrics["ot_predicted_points"]
+                        ),
+                        "ot_baseline_points": int(
+                            distribution_metrics["ot_observed_points"]
+                        ),
+                        "ot_random_seed": int(ot_seed),
                         "centroid_shift": centroid_shift,
                         "baseline_rms_radius": baseline_radius,
                         "ablation_rms_radius": ablation_radius,
@@ -466,6 +510,7 @@ def run_virtual_cell_type_ablation(
     spatial_dim: int = 2,
     random_seed: int = 42,
     common_random_seed: bool = True,
+    max_ot_points: Optional[int] = 1024,
     trajectory_labeler: Optional[
         Callable[[np.ndarray, Sequence[float]], Sequence[Sequence[object]]]
     ] = None,
@@ -518,6 +563,10 @@ def run_virtual_cell_type_ablation(
         Optional fail-fast ceiling checked before split-event allocation.  This
         prevents an unexpectedly large learned growth rate from exhausting
         memory; it does not downsample or otherwise alter a valid trajectory.
+    max_ot_points
+        Maximum number of ablation and baseline particles used by each exact
+        W1/W2 calculation.  Larger clouds are deterministically subsampled;
+        pass ``None`` to use every particle.
     """
 
     if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
@@ -545,6 +594,8 @@ def run_virtual_cell_type_ablation(
         raise ValueError("n_samples must be positive or None.")
     if max_particles is not None and int(max_particles) <= 0:
         raise ValueError("max_particles must be positive or None.")
+    if max_ot_points is not None and int(max_ot_points) <= 0:
+        raise ValueError("max_ot_points must be positive or None.")
 
     normalized_ablations: dict[str, tuple[str, ...]] = {}
     file_stems: set[str] = set()
@@ -706,6 +757,8 @@ def run_virtual_cell_type_ablation(
         variant_points,
         times,
         spatial_dim=int(spatial_dim),
+        max_ot_points=max_ot_points,
+        random_seed=int(random_seed),
     )
     label_composition = (
         _compute_label_composition(
@@ -757,6 +810,13 @@ def run_virtual_cell_type_ablation(
         "device": str(device),
         "random_seed": int(random_seed),
         "common_random_seed": bool(common_random_seed),
+        "max_ot_points": (
+            None if max_ot_points is None else int(max_ot_points)
+        ),
+        "distribution_metrics": (
+            "uniform empirical W1/W2 from ablation branch to matched baseline; "
+            "deterministic OT subsampling when max_ot_points is exceeded"
+        ),
         "random_stream_coupling": (
             "same branch-level seed; not cell-ID-matched after cohort removal"
             if common_random_seed

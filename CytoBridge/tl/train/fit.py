@@ -222,6 +222,14 @@ def _apply_runtime_overrides(
     interaction_cfg = model_cfg.get("interaction_net")
     interaction_type = str(model_cfg.get("interaction_type", "potential")).lower()
     is_gnn_interaction = has_interaction and interaction_type == "gnn"
+    edge_prior_mode = (
+        str(interaction_cfg.get("edge_prior_mode", "learned")).lower()
+        if isinstance(interaction_cfg, dict)
+        else "learned"
+    )
+    uses_learned_edge_prior = (
+        is_gnn_interaction and edge_prior_mode == "learned"
+    )
 
     # Explicit fit args always win, but warn if they conflict with adata.uns values.
     _warn_if_explicit_conflicts_with_adata(
@@ -231,20 +239,21 @@ def _apply_runtime_overrides(
         label="interaction_cutoff",
         mode="float",
     )
-    _warn_if_explicit_conflicts_with_adata(
-        explicit_value=edge_predictor_path,
-        adata_overrides=adata_overrides,
-        adata_keys=("edge_predictor_path",),
-        label="edge_predictor_path",
-        mode="path",
-    )
-    _warn_if_explicit_conflicts_with_adata(
-        explicit_value=edge_predictor_threshold,
-        adata_overrides=adata_overrides,
-        adata_keys=("edge_predictor_threshold", "edge_predictor_thre"),
-        label="edge_predictor_threshold",
-        mode="float",
-    )
+    if uses_learned_edge_prior:
+        _warn_if_explicit_conflicts_with_adata(
+            explicit_value=edge_predictor_path,
+            adata_overrides=adata_overrides,
+            adata_keys=("edge_predictor_path",),
+            label="edge_predictor_path",
+            mode="path",
+        )
+        _warn_if_explicit_conflicts_with_adata(
+            explicit_value=edge_predictor_threshold,
+            adata_overrides=adata_overrides,
+            adata_keys=("edge_predictor_threshold", "edge_predictor_thre"),
+            label="edge_predictor_threshold",
+            mode="float",
+        )
     _warn_if_explicit_conflicts_with_adata(
         explicit_value=ckpt_dir,
         adata_overrides=adata_overrides,
@@ -260,11 +269,20 @@ def _apply_runtime_overrides(
         mode="float",
     )
 
-    if (edge_predictor_path is not None or edge_predictor_threshold is not None) and not is_gnn_interaction:
+    if (
+        edge_predictor_path is not None
+        or edge_predictor_threshold is not None
+    ) and not uses_learned_edge_prior:
         if not has_interaction:
             msg = (
                 "[fit][warning] edge predictor arguments were provided, but model has no "
                 "`interaction` component; edge predictor settings will be ignored."
+            )
+        elif is_gnn_interaction and edge_prior_mode != "learned":
+            msg = (
+                "[fit][warning] edge predictor arguments were provided, but "
+                f"edge_prior_mode='{edge_prior_mode}'; edge predictor settings "
+                "will be ignored."
             )
         else:
             msg = (
@@ -294,7 +312,11 @@ def _apply_runtime_overrides(
         adata_overrides,
         ("edge_predictor_path",),
     )
-    if raw_edge_path is not None and is_gnn_interaction and isinstance(interaction_cfg, dict):
+    if (
+        raw_edge_path is not None
+        and uses_learned_edge_prior
+        and isinstance(interaction_cfg, dict)
+    ):
         edge_path = str(pathlib.Path(str(raw_edge_path)).expanduser())
         old_edge_path = interaction_cfg.get("edge_predictor_path")
         interaction_cfg["edge_predictor_path"] = edge_path
@@ -307,7 +329,11 @@ def _apply_runtime_overrides(
         adata_overrides,
         ("edge_predictor_threshold", "edge_predictor_thre"),
     )
-    if raw_edge_thre is not None and is_gnn_interaction and isinstance(interaction_cfg, dict):
+    if (
+        raw_edge_thre is not None
+        and uses_learned_edge_prior
+        and isinstance(interaction_cfg, dict)
+    ):
         edge_thre = _coerce_float(
             raw_edge_thre,
             name="edge_predictor_threshold",
@@ -494,6 +520,22 @@ def _fit_adata(
         seed_already_applied=seed is not None,
     )
     model = trainer.train(data_torch, time_points)
+    training_history = trainer.training_history_frame()
+    training_history_metadata = {
+        "schema_version": 1,
+        "file": "training_history.csv",
+        "n_records": int(training_history.shape[0]),
+        "columns": [str(column) for column in training_history.columns],
+        "stage_record_counts": {
+            str(stage): int(count)
+            for stage, count in training_history["stage"].value_counts(
+                sort=False
+            ).items()
+        }
+        if not training_history.empty
+        else {},
+    }
+    adata.uns["training_history"] = training_history_metadata
 
     # ---------- 5. compute model outputs (component-aware) ----------
     from CytoBridge.tl.core.interaction import cal_interaction
@@ -617,6 +659,13 @@ def _fit_adata(
                 .get("edge_predictor_path")
             )
         ),
+        "edge_prior_mode": (
+            resolved_config.get("model", {})
+            .get("interaction_net", {})
+            .get("edge_prior_mode", "learned")
+            if "interaction" in components
+            else None
+        ),
         "ckpt_dir": (
             str(used_ckpt_dir)
             if used_ckpt_dir is not None
@@ -631,6 +680,7 @@ def _fit_adata(
             "defaults": resolved_config["training"]["defaults"],
             "plan": json.dumps(resolved_config["training"]["plan"]),
         },
+        "training_history": training_history_metadata,
         "model_state_dict": {k: v.cpu().numpy() for k, v in model.state_dict().items()},
     }
 
