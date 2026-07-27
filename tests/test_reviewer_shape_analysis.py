@@ -158,3 +158,38 @@ def test_end_to_end_uses_bound_matched_inventory_and_separates_tracks(
         (shape_output / "shape_analysis_manifest.json").read_text(encoding="utf-8")
     )
     assert published == shape_manifest
+
+
+def test_legacy_manifest_reconstructs_only_missing_scope_audit(
+    tmp_path: Path,
+) -> None:
+    manifest, loto_root, full_root, _ = matched_fixture._build_contract(tmp_path)
+    matched_output = tmp_path / "matched"
+    matched_args = matched_fixture._args(
+        manifest, loto_root, full_root, matched_output
+    )
+    _, _, matched_manifest = matched_fixture.matched.evaluate_matched(matched_args)
+    assert matched_manifest.pop("scope_compatibility_audit", None) is not None
+    matched_manifest_path = matched_output / "matched_evaluation_manifest.json"
+    matched_fixture.matched._write_final_manifest(
+        matched_manifest_path, matched_manifest
+    )
+
+    args = Namespace(
+        matched_manifest=matched_manifest_path,
+        output_dir=tmp_path / "legacy_shape",
+        methods=None,
+        tracks=None,
+        targets=None,
+        n_projections=12,
+        projection_repeats=2,
+        max_ot_points=3,
+        no_plots=True,
+    )
+    _, _, _, shape_manifest = shape.run_analysis(args)
+
+    audit = shape_manifest["scope_compatibility_verification"]
+    assert audit["original_manifest_field_present"] is False
+    assert audit["reconstructed_from_bound_inventory"] is True
+    assert audit["verified"] is True
+    assert audit["n_records"] == 8

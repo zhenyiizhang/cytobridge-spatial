@@ -362,6 +362,62 @@ def _resolve_bound_path(
     return path, observed
 
 
+def _verify_bound_inventory_compatibility(
+    manifest: dict[str, Any],
+) -> dict[str, Any]:
+    """Verify current or legacy matched manifests without weakening hashes.
+
+    Early matched-evaluation manifests bound the prediction inventory and its
+    per-record scope metadata but did not copy the derived
+    ``scope_compatibility_audit`` into the final manifest. For that one
+    historical omission, reconstruct the audit from the SHA-256-bound
+    inventory and run the current verifier on an in-memory augmented manifest.
+    A present but disagreeing audit still fails closed.
+    """
+
+    if "scope_compatibility_audit" in manifest:
+        matched._verify_bound_inventory_from_manifest(manifest)
+        audit = manifest["scope_compatibility_audit"]
+        return {
+            "original_manifest_field_present": True,
+            "verification_source": "matched_manifest",
+            "reconstructed_from_bound_inventory": False,
+            "n_records": int(audit.get("n_records", 0)),
+            "n_legacy_wot_native_state_records": int(
+                audit.get("n_legacy_wot_native_state_records", 0)
+            ),
+            "verified": True,
+        }
+
+    inventory_path = Path(str(manifest.get("prediction_inventory", "")))
+    inventory_sha = str(manifest.get("prediction_inventory_sha256", ""))
+    if not inventory_path.is_file():
+        raise ContractError(
+            "legacy matched manifest prediction inventory is missing"
+        )
+    if primary.sha256_file(inventory_path) != inventory_sha:
+        raise ContractError(
+            "legacy matched manifest prediction inventory SHA-256 mismatch"
+        )
+    inventory = primary._load_json(inventory_path)
+    reconstructed = matched._scope_compatibility_audit(inventory)
+    augmented = dict(manifest)
+    augmented["scope_compatibility_audit"] = reconstructed
+    matched._verify_bound_inventory_from_manifest(augmented)
+    return {
+        "original_manifest_field_present": False,
+        "verification_source": (
+            "deterministically_reconstructed_from_sha256_bound_prediction_inventory"
+        ),
+        "reconstructed_from_bound_inventory": True,
+        "n_records": int(reconstructed["n_records"]),
+        "n_legacy_wot_native_state_records": int(
+            reconstructed["n_legacy_wot_native_state_records"]
+        ),
+        "verified": True,
+    }
+
+
 def _select_values(
     available: Iterable[Any],
     requested: list[Any] | None,
@@ -397,7 +453,7 @@ def _load_context(
         raise ContractError(
             "--matched-manifest must be a completed matched_loto_vs_full_data run"
         )
-    matched._verify_bound_inventory_from_manifest(manifest)
+    scope_verification = _verify_bound_inventory_compatibility(manifest)
 
     input_manifest, input_manifest_sha = _resolve_bound_path(
         manifest,
@@ -482,6 +538,7 @@ def _load_context(
         "tracks": tracks,
         "targets": targets,
         "records": selected,
+        "scope_compatibility_verification": scope_verification,
     }
 
 
@@ -1046,6 +1103,9 @@ def _write_outputs(
         "common_transform": str(context["transform_path"]),
         "common_transform_sha256": context["transform_sha256"],
         "method_registry": context["matched_manifest"]["method_registry"],
+        "scope_compatibility_verification": context[
+            "scope_compatibility_verification"
+        ],
         "dataset": matched._dataset_label(context["input_manifest"]),
         "methods": context["methods"],
         "tracks": {
@@ -1154,7 +1214,13 @@ def _write_outputs(
     }
 
     # Rehash external inputs immediately before final publication.
-    matched._verify_bound_inventory_from_manifest(context["matched_manifest"])
+    final_scope_verification = _verify_bound_inventory_compatibility(
+        context["matched_manifest"]
+    )
+    if final_scope_verification != context["scope_compatibility_verification"]:
+        raise ContractError(
+            "scope compatibility verification changed before publication"
+        )
     for path, expected, label in (
         (
             context["matched_manifest_path"],
