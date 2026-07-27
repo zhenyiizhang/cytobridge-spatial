@@ -160,7 +160,7 @@ def test_end_to_end_uses_bound_matched_inventory_and_separates_tracks(
     assert published == shape_manifest
 
 
-def test_legacy_manifest_reconstructs_only_missing_scope_audit(
+def test_legacy_manifest_reconstructs_missing_scope_metadata(
     tmp_path: Path,
 ) -> None:
     manifest, loto_root, full_root, _ = matched_fixture._build_contract(tmp_path)
@@ -170,6 +170,28 @@ def test_legacy_manifest_reconstructs_only_missing_scope_audit(
     )
     _, _, matched_manifest = matched_fixture.matched.evaluate_matched(matched_args)
     assert matched_manifest.pop("scope_compatibility_audit", None) is not None
+
+    inventory_path = Path(matched_manifest["prediction_inventory"])
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    for record in inventory["records"]:
+        assert record.pop("scope_compatibility", None) is not None
+    inventory_path.write_text(
+        json.dumps(inventory, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    inventory_sha = matched_fixture.matched.primary.sha256_file(inventory_path)
+    matched_manifest["prediction_inventory_sha256"] = inventory_sha
+
+    bound_path = Path(matched_manifest["bound_run_contract"])
+    bound = json.loads(bound_path.read_text(encoding="utf-8"))
+    bound["prediction_inventory_sha256"] = inventory_sha
+    bound_path.write_text(
+        json.dumps(bound, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    matched_manifest["bound_run_contract_sha256"] = (
+        matched_fixture.matched.primary.sha256_file(bound_path)
+    )
     matched_manifest_path = matched_output / "matched_evaluation_manifest.json"
     matched_fixture.matched._write_final_manifest(
         matched_manifest_path, matched_manifest
@@ -190,6 +212,8 @@ def test_legacy_manifest_reconstructs_only_missing_scope_audit(
 
     audit = shape_manifest["scope_compatibility_verification"]
     assert audit["original_manifest_field_present"] is False
+    assert audit["original_inventory_record_field_present"] is False
     assert audit["reconstructed_from_bound_inventory"] is True
+    assert audit["reconstructed_inventory_record_fields"] is True
     assert audit["verified"] is True
     assert audit["n_records"] == 8

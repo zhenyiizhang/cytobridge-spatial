@@ -12,6 +12,7 @@ benchmark outputs.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -364,58 +365,169 @@ def _resolve_bound_path(
 
 def _verify_bound_inventory_compatibility(
     manifest: dict[str, Any],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Verify current or legacy matched manifests without weakening hashes.
 
-    Early matched-evaluation manifests bound the prediction inventory and its
-    per-record scope metadata but did not copy the derived
-    ``scope_compatibility_audit`` into the final manifest. For that one
-    historical omission, reconstruct the audit from the SHA-256-bound
-    inventory and run the current verifier on an in-memory augmented manifest.
-    A present but disagreeing audit still fails closed.
+    Early matched-evaluation manifests predated both the per-record
+    ``scope_compatibility`` field and the derived final-manifest audit. For
+    those omissions only, reconstruct the metadata from the immutable registry
+    binding and the SHA-256-bound prediction inventory. Numerical arrays,
+    summaries, paths, and hashes remain untouched and are verified by the
+    current inventory verifier. A present but disagreeing field still fails
+    closed.
     """
 
     if "scope_compatibility_audit" in manifest:
         matched._verify_bound_inventory_from_manifest(manifest)
         audit = manifest["scope_compatibility_audit"]
-        return {
-            "original_manifest_field_present": True,
-            "verification_source": "matched_manifest",
-            "reconstructed_from_bound_inventory": False,
-            "n_records": int(audit.get("n_records", 0)),
+        inventory = primary._load_json(
+            Path(str(manifest["prediction_inventory"]))
+        )
+        return (
+            {
+                "original_manifest_field_present": True,
+                "original_inventory_record_field_present": True,
+                "verification_source": "matched_manifest",
+                "reconstructed_from_bound_inventory": False,
+                "n_records": int(audit.get("n_records", 0)),
+                "n_legacy_wot_native_state_records": int(
+                    audit.get("n_legacy_wot_native_state_records", 0)
+                ),
+                "verified": True,
+            },
+            inventory,
+        )
+
+    registry_binding = manifest.get("method_registry")
+    if not isinstance(registry_binding, dict):
+        raise ContractError("legacy matched manifest has no method registry")
+    matched._verify_method_registry_file(registry_binding)
+
+    snapshots: dict[str, dict[str, Any]] = {}
+    for path_key, sha_key in (
+        ("run_contract", "run_contract_sha256"),
+        ("prediction_inventory", "prediction_inventory_sha256"),
+        ("bound_run_contract", "bound_run_contract_sha256"),
+    ):
+        path = Path(str(manifest.get(path_key, "")))
+        try:
+            payload_bytes = path.read_bytes()
+        except OSError as exc:
+            raise ContractError(
+                f"cannot read legacy matched-run artifact {path}: {exc}"
+            ) from exc
+        observed_sha = hashlib.sha256(payload_bytes).hexdigest()
+        if observed_sha != str(manifest.get(sha_key, "")):
+            raise ContractError(
+                f"legacy matched-run artifact SHA-256 mismatch: {path}"
+            )
+        try:
+            payload = json.loads(payload_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ContractError(
+                f"cannot parse legacy matched-run artifact {path}: {exc}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise ContractError(
+                f"legacy matched-run artifact must be an object: {path}"
+            )
+        snapshots[path_key] = payload
+
+    bound_contract = snapshots["bound_run_contract"]
+    expected_bound_links = {
+        "base_run_contract": str(manifest["run_contract"]),
+        "base_run_contract_sha256": str(manifest["run_contract_sha256"]),
+        "prediction_inventory": str(manifest["prediction_inventory"]),
+        "prediction_inventory_sha256": str(
+            manifest["prediction_inventory_sha256"]
+        ),
+    }
+    for key, expected in expected_bound_links.items():
+        if str(bound_contract.get(key, "")) != expected:
+            raise ContractError(
+                f"legacy bound run contract {key} differs from final manifest"
+            )
+    for label, payload in (
+        ("base run contract", snapshots["run_contract"]),
+        ("bound run contract", bound_contract),
+        ("prediction inventory", snapshots["prediction_inventory"]),
+    ):
+        if payload.get("method_registry") != registry_binding:
+            raise ContractError(
+                f"legacy {label} method registry differs from final manifest"
+            )
+
+    inventory = copy.deepcopy(snapshots["prediction_inventory"])
+    records = inventory.get("records")
+    if not isinstance(records, list) or not records:
+        raise ContractError("legacy prediction inventory has no records")
+    scope_presence = [
+        isinstance(record, dict) and "scope_compatibility" in record
+        for record in records
+    ]
+    if any(scope_presence) and not all(scope_presence):
+        raise ContractError(
+            "legacy prediction inventory mixes present and missing scope "
+            "compatibility fields"
+        )
+    reconstructed_record_fields = not all(scope_presence)
+    if reconstructed_record_fields:
+        registry_entries = registry_binding.get("raw_to_canonical")
+        if not isinstance(registry_entries, dict):
+            raise ContractError(
+                "legacy method registry has no raw-to-canonical mapping"
+            )
+        for record in records:
+            if not isinstance(record, dict):
+                raise ContractError(
+                    "legacy prediction inventory record must be an object"
+                )
+            raw_method = str(record.get("raw_method", ""))
+            entry = registry_entries.get(raw_method)
+            if not isinstance(entry, dict):
+                raise ContractError(
+                    "legacy prediction inventory method is not registry-bound: "
+                    f"{raw_method!r}"
+                )
+            compatibility = matched._scope_compatibility(
+                canonical_method=str(entry.get("canonical_method", "")),
+                raw_method=raw_method,
+                registry_scope=str(entry.get("scope", "")),
+                output_scope=str(record.get("output_scope", "")),
+                native_vs_adapter=str(record.get("native_vs_adapter", "")),
+                actual_spaces=record.get("actual_output_spaces", []),
+            )
+            if compatibility is None:
+                raise ContractError(
+                    "legacy prediction inventory output scope is incompatible "
+                    f"with registry for {raw_method!r}"
+                )
+            record["scope_compatibility"] = compatibility
+
+    matched._verify_prediction_inventory_files(inventory)
+    reconstructed = matched._scope_compatibility_audit(inventory)
+    return (
+        {
+            "original_manifest_field_present": False,
+            "original_inventory_record_field_present": (
+                not reconstructed_record_fields
+            ),
+            "verification_source": (
+                "deterministically_reconstructed_from_sha256_bound_prediction_"
+                "inventory_and_method_registry"
+            ),
+            "reconstructed_from_bound_inventory": True,
+            "reconstructed_inventory_record_fields": (
+                reconstructed_record_fields
+            ),
+            "n_records": int(reconstructed["n_records"]),
             "n_legacy_wot_native_state_records": int(
-                audit.get("n_legacy_wot_native_state_records", 0)
+                reconstructed["n_legacy_wot_native_state_records"]
             ),
             "verified": True,
-        }
-
-    inventory_path = Path(str(manifest.get("prediction_inventory", "")))
-    inventory_sha = str(manifest.get("prediction_inventory_sha256", ""))
-    if not inventory_path.is_file():
-        raise ContractError(
-            "legacy matched manifest prediction inventory is missing"
-        )
-    if primary.sha256_file(inventory_path) != inventory_sha:
-        raise ContractError(
-            "legacy matched manifest prediction inventory SHA-256 mismatch"
-        )
-    inventory = primary._load_json(inventory_path)
-    reconstructed = matched._scope_compatibility_audit(inventory)
-    augmented = dict(manifest)
-    augmented["scope_compatibility_audit"] = reconstructed
-    matched._verify_bound_inventory_from_manifest(augmented)
-    return {
-        "original_manifest_field_present": False,
-        "verification_source": (
-            "deterministically_reconstructed_from_sha256_bound_prediction_inventory"
-        ),
-        "reconstructed_from_bound_inventory": True,
-        "n_records": int(reconstructed["n_records"]),
-        "n_legacy_wot_native_state_records": int(
-            reconstructed["n_legacy_wot_native_state_records"]
-        ),
-        "verified": True,
-    }
+        },
+        inventory,
+    )
 
 
 def _select_values(
@@ -453,7 +565,9 @@ def _load_context(
         raise ContractError(
             "--matched-manifest must be a completed matched_loto_vs_full_data run"
         )
-    scope_verification = _verify_bound_inventory_compatibility(manifest)
+    scope_verification, verified_inventory = (
+        _verify_bound_inventory_compatibility(manifest)
+    )
 
     input_manifest, input_manifest_sha = _resolve_bound_path(
         manifest,
@@ -474,7 +588,7 @@ def _load_context(
         base=manifest_path.parent,
     )
     root = primary._load_json(input_manifest)
-    inventory = primary._load_json(inventory_path)
+    inventory = verified_inventory
     matched._verify_prediction_inventory_files(inventory)
     transform = FrozenBenchmarkTransform.from_json(
         transform_path.read_text(encoding="utf-8")
@@ -1214,7 +1328,7 @@ def _write_outputs(
     }
 
     # Rehash external inputs immediately before final publication.
-    final_scope_verification = _verify_bound_inventory_compatibility(
+    final_scope_verification, _ = _verify_bound_inventory_compatibility(
         context["matched_manifest"]
     )
     if final_scope_verification != context["scope_compatibility_verification"]:
