@@ -13,7 +13,7 @@ a communication probability, biochemical flux, or a causal effect.
 ## Recommended order
 
 1. Run the generic exact-axis screen with `biology_first_case_studies.py`.
-2. Run the trained/initialization/random audit with
+2. Run the trained/pre-interaction/random audit with
    `jam_trained_init_random_control.py`.
 3. Build the formal Somite case with `jam_myocyte_case_study.py`.
 4. Build the Delta–Notch exact and family audits with
@@ -100,14 +100,22 @@ regional state.
 
 ## Controls and interpretation
 
-The trained/initialization/random audit requires identical selected-stage edge
-keys. It reports complete directed type-pair ranks, Jam-compatible versus other
-edge percentiles, top-versus-bottom-quartile enrichment, and the trained-minus-
-initialization edge-percentile delta.
+The trained/pre-interaction/random audit requires identical selected-stage edge
+keys. Its canonical input is `--pre-interaction-edges`. These edges must be
+attributed from `Refine/best_model.pth`, immediately before interaction-module
+training. They must not come from `Init_interaction/best_model.pth`, which is
+saved after the 50-epoch interaction-initialization stage and is therefore not
+an untrained/pre-interaction checkpoint. `--init-edges` remains only as a
+deprecated CLI alias and the output manifest records whether that alias was
+used.
 
-If initialization retains the biological pattern, describe the contribution
-of architecture, spatial scaffold, and input state. A random control alone is
-not evidence that training learned the pattern.
+The audit reports complete directed type-pair ranks, Jam-compatible versus
+other edge percentiles, top-versus-bottom-quartile enrichment, and the
+trained-minus-pre-interaction edge-percentile delta.
+
+If the pre-interaction checkpoint retains the biological pattern, describe the
+contribution of architecture, spatial scaffold, and input state. A random
+control alone is not evidence that interaction training learned the pattern.
 
 Published perturbations can validate the selected biological axis and tissue
 context. They do not validate a model score unless the perturbed data are

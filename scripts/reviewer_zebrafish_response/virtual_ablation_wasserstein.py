@@ -351,7 +351,16 @@ def _resolve_time_grid(args: argparse.Namespace) -> tuple[np.ndarray, dict[str, 
 
 
 def summarize_wasserstein_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
-    required = {"variant", "time_index", "time", "space", "w1", "w2"}
+    required = {
+        "variant",
+        "time_index",
+        "time",
+        "space",
+        "n_baseline",
+        "n_ablation",
+        "w1",
+        "w2",
+    }
     missing = sorted(required.difference(metrics.columns))
     if missing:
         raise ValueError(f"Metrics table is missing required columns: {missing}")
@@ -366,6 +375,14 @@ def summarize_wasserstein_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
                 f"Duplicate time rows for variant={variant!r}, space={space!r}."
             )
         times = ordered["time"].to_numpy(dtype=float)
+        baseline_n_t0 = int(ordered["n_baseline"].iloc[0])
+        variant_n_t0 = int(ordered["n_ablation"].iloc[0])
+        removed_n_t0 = int(baseline_n_t0 - variant_n_t0)
+        removed_fraction_t0 = (
+            float(removed_n_t0 / baseline_n_t0)
+            if baseline_n_t0 > 0 and removed_n_t0 > 0
+            else float("nan")
+        )
         for metric in ("w1", "w2"):
             values = ordered[metric].to_numpy(dtype=float)
             finite = np.isfinite(values)
@@ -391,6 +408,10 @@ def summarize_wasserstein_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
                     "time_t0": float(times[0]),
                     "time_endpoint": float(times[-1]),
                     "time_span": time_span,
+                    "baseline_n_t0": baseline_n_t0,
+                    "variant_n_t0": variant_n_t0,
+                    "removed_n_t0": removed_n_t0,
+                    "removed_fraction_t0": removed_fraction_t0,
                     "value_t0": t0_value,
                     "value_endpoint": endpoint_value,
                     "endpoint_change_from_t0": float(
@@ -399,6 +420,16 @@ def summarize_wasserstein_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
                     "auc": auc,
                     "auc_change_from_t0": auc_change,
                     "time_average": time_average,
+                    "endpoint_change_per_removed_fraction": (
+                        float((endpoint_value - t0_value) / removed_fraction_t0)
+                        if np.isfinite(removed_fraction_t0)
+                        else float("nan")
+                    ),
+                    "auc_change_per_removed_fraction": (
+                        float(auc_change / removed_fraction_t0)
+                        if np.isfinite(removed_fraction_t0)
+                        else float("nan")
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -597,6 +628,15 @@ def run(args: argparse.Namespace, *, command_argv: Sequence[str]) -> dict[str, A
                 "auc": "trapezoidal integral of the raw distance over model time",
                 "auc_change_from_t0": (
                     "raw AUC minus t0 value multiplied by elapsed model time"
+                ),
+                "removed_fraction_t0": (
+                    "(baseline t0 count minus variant t0 count) divided by "
+                    "baseline t0 count"
+                ),
+                "per_removed_fraction_columns": (
+                    "descriptive scale normalization only; Wasserstein "
+                    "divergence is not assumed to be linear in the removed "
+                    "fraction and these columns are not causal effect estimates"
                 ),
             },
         },

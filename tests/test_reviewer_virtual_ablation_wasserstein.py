@@ -125,6 +125,9 @@ def test_cli_writes_metrics_summary_plot_and_hash_manifest(tmp_path: Path) -> No
     assert ysl_w1["endpoint_change_from_t0"] == pytest.approx(1.0)
     assert ysl_w1["auc"] == pytest.approx(0.5)
     assert ysl_w1["auc_change_from_t0"] == pytest.approx(0.5)
+    assert ysl_w1["removed_n_t0"] == 0
+    assert np.isnan(ysl_w1["removed_fraction_t0"])
+    assert np.isnan(ysl_w1["endpoint_change_per_removed_fraction"])
     assert evl_w2["value_endpoint"] == pytest.approx(2.0)
     assert evl_w2["auc"] == pytest.approx(1.0)
 
@@ -212,3 +215,33 @@ def test_cli_rejects_trajectory_time_length_mismatch(tmp_path: Path) -> None:
             ]
         )
     assert not output.exists()
+
+
+def test_summary_reports_initial_removal_fraction_as_descriptive_context() -> None:
+    rows = []
+    for space in ("joint", "spatial", "latent"):
+        for time_index, (time, value) in enumerate(((0.0, 0.2), (1.0, 0.5))):
+            rows.append(
+                {
+                    "variant": "remove_type",
+                    "time_index": time_index,
+                    "time": time,
+                    "space": space,
+                    "n_baseline": 100,
+                    "n_ablation": 80,
+                    "w1": value,
+                    "w2": 2.0 * value,
+                }
+            )
+    summary = analysis.summarize_wasserstein_metrics(pd.DataFrame(rows))
+    spatial_w1 = summary.query(
+        "variant == 'remove_type' and space == 'spatial' and metric == 'w1'"
+    ).iloc[0]
+    assert spatial_w1["baseline_n_t0"] == 100
+    assert spatial_w1["variant_n_t0"] == 80
+    assert spatial_w1["removed_n_t0"] == 20
+    assert spatial_w1["removed_fraction_t0"] == pytest.approx(0.2)
+    assert spatial_w1["endpoint_change_from_t0"] == pytest.approx(0.3)
+    assert spatial_w1["endpoint_change_per_removed_fraction"] == pytest.approx(
+        1.5
+    )

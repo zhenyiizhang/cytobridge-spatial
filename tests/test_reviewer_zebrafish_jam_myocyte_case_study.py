@@ -278,9 +278,7 @@ def test_external_stage_prefers_internal_stage_over_biological_time() -> None:
     assert basis == "internal_stage"
     assert mask.tolist() == [True, False]
 
-    fallback = pd.DataFrame(
-        {"stage": ["18hpf", "24hpf"], "stage_time": [18.0, 24.0]}
-    )
+    fallback = pd.DataFrame({"stage": ["18hpf", "24hpf"], "stage_time": [18.0, 24.0]})
     fallback_mask, fallback_basis = JAM.normalized_stage(
         fallback,
         "legacy external",
@@ -339,7 +337,10 @@ def test_sparse_external_valid_missing_row_is_zero_unavailable_axis_is_na() -> N
     )
     joined = JAM.join_external_sparse(contexts, scores, availability, spec=spec)
     assert joined["commot_score"].tolist()[:2] == [0.5, 0.0]
-    assert joined["commot_sparse_context_completed_as_zero"].tolist()[:2] == [False, True]
+    assert joined["commot_sparse_context_completed_as_zero"].tolist()[:2] == [
+        False,
+        True,
+    ]
     assert pd.isna(joined["commot_score"].iloc[2])
 
 
@@ -386,7 +387,7 @@ def test_missing_control_metrics_are_explicit_na_not_fabricated() -> None:
     controls = JAM.load_control_artifact(None)
     assert set(controls["control"]) == {
         "trained",
-        "init_interaction",
+        "pre_interaction",
         "randomized_interaction_seed17",
     }
     assert not controls["control_metrics_available"].any()
@@ -397,7 +398,7 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
     source = tmp_path / "controls.csv"
     pd.DataFrame(
         {
-            "condition": ["trained", "init", "random"],
+            "condition": ["trained", "pre_interaction", "random"],
             "jam_compatible_edge_percentile_mean": [0.67, 0.66, 0.57],
         }
     ).to_csv(source, index=False)
@@ -406,8 +407,23 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
 
     assert controls["control"].tolist() == [
         "trained",
-        "init_interaction",
+        "pre_interaction",
         "randomized_interaction_seed17",
     ]
     assert controls["control_metrics_available"].all()
     assert controls["unavailable_reason"].eq("").all()
+
+
+def test_post_interaction_init_label_is_not_silently_recast_as_pre_interaction(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "stale_init_controls.csv"
+    pd.DataFrame(
+        {
+            "condition": ["trained", "init_interaction", "random"],
+            "jam_compatible_edge_percentile_mean": [0.67, 0.66, 0.57],
+        }
+    ).to_csv(source, index=False)
+
+    with pytest.raises(ValueError, match="pre_interaction"):
+        JAM.load_control_artifact(source)

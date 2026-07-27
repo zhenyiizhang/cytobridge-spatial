@@ -232,6 +232,17 @@ supplemental bounded exact W1/W2 plots separately for state, spatial and joint
 spaces. It never constructs a cross-space overall score or rank. Its output
 directory is immutable; use a new directory for a changed input or rerun.
 
+### Optional reviewer centered-shape analysis
+
+To separate global displacement from distribution shape, run
+`reviewer_shape_analysis.py` on the completed matched manifest. It reports
+centroid error, centered sliced-W2, centered exact W1/W2 and covariance Bures
+distance without changing any primary metric. All methods share one fixed
+protocol, repeated bootstrap support is mass-aggregated, and LOTO transductive
+interpolation remains explicitly separate from the full-data in-sample/oracle
+control. See [`REVIEWER_SHAPE_ANALYSIS.md`](REVIEWER_SHAPE_ANALYSIS.md) for the
+command, formulas, output contract and interpretation.
+
 ## Adapting another dataset
 
 Copy the YAML and change the source path/hash, time key and explicit mapping,

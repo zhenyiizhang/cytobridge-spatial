@@ -1372,16 +1372,17 @@ def write_readme(path: Path, external_specs: Sequence[ExternalSpec]) -> None:
         "literature validates the Jam2a/Jam3b heterophilic pair and somite-stage myocyte-fusion "
         "context, but not a polarized sender-to-receiver direction, CytoBridge score magnitude, "
         "direct molecular contact in these cells, or causality. The 24 hpf Fast Muscle table is "
-        "a cross-sectional maturation-state comparison, not lineage tracing. If a trained/init/"
-        "random control table is supplied, it is copied as a hash-verified precomputed artifact; "
+        "a cross-sectional maturation-state comparison, not lineage tracing. If a trained/"
+        "pre-interaction/random control table is supplied, it is copied as a hash-verified "
+        "precomputed artifact; "
         "the present script does not reconstruct those model controls.\n",
         encoding="utf-8",
     )
 
 
 def load_control_artifact(path: Path | None) -> pd.DataFrame:
-    """Expose trained/init/random controls without silently inventing results."""
-    expected = ("trained", "init_interaction", "randomized_interaction_seed17")
+    """Expose trained/pre-interaction/random controls without inventing results."""
+    expected = ("trained", "pre_interaction", "randomized_interaction_seed17")
     if path is None:
         return pd.DataFrame(
             {
@@ -1399,9 +1400,7 @@ def load_control_artifact(path: Path | None) -> pd.DataFrame:
     ).str.strip("_")
     aliases = {
         "trained": "trained",
-        "init": "init_interaction",
-        "init_interaction": "init_interaction",
-        "initial_interaction": "init_interaction",
+        "pre_interaction": "pre_interaction",
         "random": "randomized_interaction_seed17",
         "randomized_interaction": "randomized_interaction_seed17",
         "randomized_interaction_seed17": "randomized_interaction_seed17",

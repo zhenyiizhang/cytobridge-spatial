@@ -319,9 +319,7 @@ def _control_rank_rows(
         raise ValueError("Control rank table requires condition/control")
     aliases = {
         "trained": "trained",
-        "init": "init",
-        "init_interaction": "init",
-        "initial_interaction": "init",
+        "pre_interaction": "pre_interaction",
         "random": "random",
         "randomized_interaction_seed17": "random",
         "random_interaction_seed17": "random",
@@ -377,7 +375,7 @@ def _control_rank_rows(
     if rank_column is None or n_column is None:
         raise ValueError("Control rank table lacks rank-from-top and rank-universe columns")
     result: dict[str, tuple[int, int]] = {}
-    for condition in ("trained", "init", "random"):
+    for condition in ("trained", "pre_interaction", "random"):
         selected = frame.loc[frame["_condition"].eq(condition)]
         if len(selected) != 1:
             raise ValueError(f"Control rank table requires one {condition} Somite row")
@@ -414,7 +412,7 @@ def _resolve_control_rank_source(
         manifest_path = _verify_manifest_artifacts(
             root,
             {"type_pair_raw_attention_ranks": table},
-            label="independent trained/init/random control",
+            label="independent trained/pre-interaction/random control",
         )
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         guardrails = manifest.get("guardrails")
@@ -429,6 +427,21 @@ def _resolve_control_rank_source(
         ):
             if key not in guardrails or _as_bool(guardrails[key]):
                 raise ValueError(f"Control manifest requires guardrails.{key}=false")
+        if guardrails.get("pre_interaction_required_checkpoint") != "Refine/best_model.pth":
+            raise ValueError(
+                "Control manifest must require Refine/best_model.pth for the "
+                "pre-interaction condition"
+            )
+        if (
+            "init_interaction_checkpoint_is_valid_pre_interaction_control" not in guardrails
+            or _as_bool(
+                guardrails["init_interaction_checkpoint_is_valid_pre_interaction_control"]
+            )
+        ):
+            raise ValueError(
+                "Control manifest must declare Init_interaction invalid as a "
+                "pre-interaction control"
+            )
         sources["trained_init_random_control_manifest"] = manifest_path
     return _control_rank_rows(table, stage=stage, somite_label=somite_label), sources
 
@@ -457,8 +470,8 @@ def load_case_statistics(
         "jam3b_myog_fisher_p",
         "trained_somite_attention_rank",
         "trained_somite_attention_n_contexts",
-        "init_somite_attention_rank",
-        "init_somite_attention_n_contexts",
+        "pre_interaction_somite_attention_rank",
+        "pre_interaction_somite_attention_n_contexts",
         "random_somite_attention_rank",
         "random_somite_attention_n_contexts",
         "jam_edge_enrichment_training_specific",
@@ -688,11 +701,8 @@ def load_case_statistics(
         stage=stage,
         somite_label=somite_label,
     )
-    if controls["trained"][0] != controls["init"][0]:
-        raise ValueError(
-            "Current audited JAM claim requires the trained and initialization control ranks "
-            "to match; a changed result needs a new interpretation rather than silent reuse"
-        )
+    trained_rank = int(controls["trained"][0])
+    pre_interaction_rank = int(controls["pre_interaction"][0])
     row = pd.Series(
         {
             "spatial_cutoff": float(spatial_row["spatial_cutoff"]),
@@ -709,10 +719,16 @@ def load_case_statistics(
             "neighbor_permutation_seed": int(spatial_row["permutation_seed"]),
             "jam3b_myog_fisher_or": float(association_row["fisher_odds_ratio"]),
             "jam3b_myog_fisher_p": float(association_row["fisher_two_sided_p"]),
-            "trained_somite_attention_rank": controls["trained"][0],
+            "trained_somite_attention_rank": trained_rank,
             "trained_somite_attention_n_contexts": controls["trained"][1],
-            "init_somite_attention_rank": controls["init"][0],
-            "init_somite_attention_n_contexts": controls["init"][1],
+            "pre_interaction_somite_attention_rank": pre_interaction_rank,
+            "pre_interaction_somite_attention_n_contexts": controls["pre_interaction"][1],
+            "trained_rank_improvement_vs_pre_interaction": (
+                pre_interaction_rank - trained_rank
+            ),
+            "trained_rank_better_than_pre_interaction": (
+                trained_rank < pre_interaction_rank
+            ),
             "random_somite_attention_rank": controls["random"][0],
             "random_somite_attention_n_contexts": controls["random"][1],
             "jam_edge_enrichment_training_specific": False,
@@ -1805,7 +1821,7 @@ def build_claim_ladder(
         first_stage = marker_detection["stage"].min()
         stage18 = marker_detection.loc[np.isclose(marker_detection["stage"], first_stage)].set_index("gene")
     trained = int(case["trained_somite_attention_rank"])
-    initialized = int(case["init_somite_attention_rank"])
+    pre_interaction = int(case["pre_interaction_somite_attention_rank"])
     random_rank = int(case["random_somite_attention_rank"])
     n_neighbors = int(case["n_somite_neighbor_pairs"])
     n_compatible = int(case["n_jam_compatible_neighbor_pairs"])
@@ -1848,7 +1864,8 @@ def build_claim_ladder(
             "status": False,
             "claim": "The JAM pattern is training-specific or LR-causal",
             "evidence": (
-                f"trained/init ranks {trained}/{initialized}; random {random_rank}; "
+                f"trained/pre-interaction ranks {trained}/{pre_interaction}; "
+                f"random {random_rank}; "
                 "no JAM-specific intervention or trajectory rerun"
             ),
         },
@@ -2080,8 +2097,8 @@ def plot_main_figure(
         _panel_title(ax, "C", f"{somite_label}→{somite_label} context ranks\nwithin each stage")
         trained = int(case["trained_somite_attention_rank"])
         trained_n = int(case["trained_somite_attention_n_contexts"])
-        initialized = int(case["init_somite_attention_rank"])
-        initialized_n = int(case["init_somite_attention_n_contexts"])
+        pre_interaction = int(case["pre_interaction_somite_attention_rank"])
+        pre_interaction_n = int(case["pre_interaction_somite_attention_n_contexts"])
         random_rank = int(case["random_somite_attention_rank"])
         random_n = int(case["random_somite_attention_n_contexts"])
         note_lines = [
@@ -2115,8 +2132,8 @@ def plot_main_figure(
         note_lines.extend(
             [
                 "CytoBridge JAM ordering matches LR-only; no attention-specific gain.\n",
-                f"Single-seed control: trained {trained}/{trained_n}; initialization "
-                f"{initialized}/{initialized_n}; random {random_rank}/{random_n}; "
+                f"Single-seed control: trained {trained}/{trained_n}; pre-interaction "
+                f"{pre_interaction}/{pre_interaction_n}; random {random_rank}/{random_n}; "
                 "training specificity not demonstrated.",
             ]
         )
