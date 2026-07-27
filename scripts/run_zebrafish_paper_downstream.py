@@ -1050,7 +1050,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
 def _stage_growth(ctx: RunContext) -> dict[str, object]:
     settings = {
         "observed_times": list(OBSERVED_TIMES),
+        "state_source": "observed_anchor_joint_state(spatial_aligned+X_latent)",
+        "growth_semantics": "frozen_model_growth_head_per_cell_output",
         "normalization": "independent per-time 5th-95th percentile scaling",
+        "cross_stage_display_amplitude_comparable": False,
         "raw_growth_exported": True,
         "composite_layout": {
             "columns": 2,
@@ -1118,6 +1121,8 @@ def _stage_growth(ctx: RunContext) -> dict[str, object]:
         return outputs, {
             "n_panels": len(OBSERVED_TIMES),
             "n_growth_values": int(len(raw)),
+            "state_source": "observed_anchor_joint_state(spatial_aligned+X_latent)",
+            "cross_stage_display_amplitude_comparable": False,
             "composite_outputs": [
                 str(stage_dir / "S23_growth_observed_grid.pdf"),
                 str(stage_dir / "S23_growth_observed_grid.png"),

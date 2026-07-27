@@ -284,13 +284,18 @@ def _resolve_gene(var_names: Sequence[object], requested: str) -> str:
     from CytoBridge.tl.downstream.temporal import simplify_gene_names
 
     names = tuple(str(name) for name in var_names)
-    exact = [name for name in names if name.casefold() == str(requested).casefold()]
+    requested = str(requested)
+    exact = [name for name in names if name.casefold() == requested.casefold()]
     if len(exact) == 1:
         return exact[0]
+    if len(exact) > 1:
+        raise KeyError(
+            f"Axis gene {requested!r} is ambiguous under case-insensitive matching; "
+            f"observed {len(exact)} var_names."
+        )
     simplified = simplify_gene_names(names)
     matches = simplified.loc[
-        simplified["gene_symbol"].astype(str).str.casefold()
-        == str(requested).casefold(),
+        simplified["gene_symbol"].astype(str).str.casefold() == requested.casefold(),
         "var_name",
     ].astype(str)
     if len(matches) != 1:

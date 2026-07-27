@@ -115,13 +115,6 @@ def _as_feature_names(feature_names: Sequence[object]) -> tuple[str, ...]:
     names = tuple(str(value) for value in feature_names)
     if not names:
         raise ValueError("feature_names must be non-empty.")
-    folded = [name.casefold() for name in names]
-    duplicates = sorted(name for name, count in Counter(folded).items() if count > 1)
-    if duplicates:
-        raise ValueError(
-            "feature_names must be unique under case-insensitive matching; "
-            f"duplicates={duplicates[:5]}."
-        )
     return names
 
 
@@ -440,7 +433,11 @@ def match_hvg_sham_genes(
         means = np.mean(dense, axis=0)
     loading_norm = np.linalg.norm(values, axis=1)
     finite = np.isfinite(detected) & np.isfinite(means) & np.isfinite(loading_norm)
-    eligible = hvg & finite & (loading_norm > float(loading_tolerance))
+    folded_counts = Counter(name.casefold() for name in names)
+    unambiguous = np.asarray(
+        [folded_counts[name.casefold()] == 1 for name in names], dtype=bool
+    )
+    eligible = hvg & finite & (loading_norm > float(loading_tolerance)) & unambiguous
 
     target_index = _feature_index(names, target_gene)
     if not eligible[target_index]:
@@ -465,7 +462,9 @@ def match_hvg_sham_genes(
             np.log(np.maximum(loading_norm, float(loading_tolerance))),
         )
     )
-    reference = np.flatnonzero(hvg & finite & (loading_norm > float(loading_tolerance)))
+    reference = np.flatnonzero(
+        hvg & finite & (loading_norm > float(loading_tolerance)) & unambiguous
+    )
     scale = np.std(covariates[reference], axis=0, ddof=0)
     scale[~np.isfinite(scale) | (scale <= 1e-12)] = 1.0
     delta = (covariates[candidates] - covariates[target_index]) / scale
@@ -497,6 +496,10 @@ def match_hvg_sham_genes(
             "target_pca_loading_norm": target_norm,
             "loading_cosine_to_target": cosine,
             "n_matching_cells": n_matching_cells,
+            "n_casefold_ambiguous_feature_rows_excluded": int(np.sum(~unambiguous)),
+            "n_casefold_ambiguous_groups_excluded": int(
+                sum(count > 1 for count in folded_counts.values())
+            ),
             "matched_covariates": "detection_fraction;mean_expression;pca_loading_norm",
         }
     )

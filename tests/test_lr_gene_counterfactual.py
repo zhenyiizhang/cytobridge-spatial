@@ -9,6 +9,7 @@ import sys
 import anndata as ad
 import numpy as np
 import pandas as pd
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,13 @@ def test_cli_defaults_use_five_exact_message_technical_seeds():
         ["--h5ad", "input.h5ad", "--model-dir", "model", "--output-dir", "out"]
     )
     assert args.grouping_seeds == (101, 202, 303, 404, 505)
+
+
+def test_axis_gene_resolution_ignores_unrelated_case_variants_but_fails_ambiguous():
+    names = ("ABCC5", "abcc5", "cxcl12a", "cxcr4a")
+    assert RUNNER._resolve_gene(names, "CXCL12A") == "cxcl12a"
+    with pytest.raises(KeyError, match="ambiguous under case-insensitive matching"):
+        RUNNER._resolve_gene(names, "ABCC5")
 
 
 def _synthetic_adata() -> ad.AnnData:

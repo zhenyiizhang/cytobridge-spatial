@@ -291,6 +291,88 @@ def test_projected_knockdown_receiver_and_matched_hvg_contract():
         )
 
 
+def test_feature_lookup_allows_unrelated_case_variants_but_stays_unambiguous():
+    with loaded_perturbation_modules() as module:
+        genes = ("ABCC5", "abcc5", "cxcl12a", "cxcr4a", "s1")
+        expression = np.array(
+            [[5.0, 7.0, 2.0, 0.0, 1.0], [3.0, 11.0, 0.0, 2.0, 1.0]],
+            dtype=np.float32,
+        )
+        loadings = np.eye(5, dtype=np.float32)
+        points = np.hstack(
+            (
+                np.zeros((expression.shape[0], 2), dtype=np.float32),
+                expression @ loadings,
+            )
+        )
+
+        visibility = module.validate_pca_model_visibility(
+            genes,
+            loadings,
+            ("cxcl12a", "cxcr4a"),
+            highly_variable=np.ones(len(genes), dtype=bool),
+        )
+        assert visibility["gene"].tolist() == ["cxcl12a", "cxcr4a"]
+
+        edit = module.apply_projected_gene_knockdowns(
+            points,
+            expression,
+            genes,
+            loadings,
+            ("cxcl12a",),
+            1.0,
+        )
+        np.testing.assert_allclose(edit.delta_state[:, 2], -expression[:, 2])
+        np.testing.assert_allclose(edit.delta_state[:, :2], 0.0)
+        np.testing.assert_allclose(edit.delta_state[:, 3:], 0.0)
+
+        with pytest.raises(KeyError, match="exactly one feature; observed 2"):
+            module.apply_projected_gene_knockdowns(
+                points,
+                expression,
+                genes,
+                loadings,
+                ("AbCc5",),
+                1.0,
+            )
+        with pytest.raises(KeyError, match="exactly one feature; observed 2"):
+            module.apply_projected_gene_knockdowns(
+                points,
+                expression,
+                genes,
+                loadings,
+                ("ABCC5",),
+                1.0,
+            )
+
+        unrelated_duplicate_visibility = module.validate_pca_model_visibility(
+            ("dup", "dup", "cxcl12a"),
+            np.eye(3, dtype=np.float32),
+            ("cxcl12a",),
+        )
+        assert unrelated_duplicate_visibility["feature_index"].tolist() == [2]
+
+        with pytest.raises(KeyError, match="exactly one feature; observed 2"):
+            module.validate_pca_model_visibility(
+                ("cxcl12a", "cxcl12a"),
+                np.eye(2, dtype=np.float32),
+                ("cxcl12a",),
+            )
+
+        shams = module.match_hvg_sham_genes(
+            expression,
+            genes,
+            loadings,
+            np.ones(len(genes), dtype=bool),
+            target_gene="cxcl12a",
+            n_shams=1,
+            exclude_genes=("cxcr4a",),
+        )
+        assert not {"ABCC5", "abcc5"}.intersection(shams["gene"])
+        assert shams["n_casefold_ambiguous_feature_rows_excluded"].eq(2).all()
+        assert shams["n_casefold_ambiguous_groups_excluded"].eq(1).all()
+
+
 def test_fixed_cohort_counterfactual_recomputes_exact_messages_and_mediation():
     with loaded_perturbation_modules() as module:
         torch.manual_seed(19)
