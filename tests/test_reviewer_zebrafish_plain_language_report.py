@@ -67,9 +67,32 @@ def test_figure_index_separates_evidence_from_audit() -> None:
 
 
 def test_reviewer_reply_without_formal_spatial_audit_does_not_claim_strong_overlap() -> None:
-    text = report.reviewer_reply_text()
+    direct = pd.DataFrame(
+        {
+            "attention_vs_commot_rho": [0.4, 0.6],
+            "exact_message_vs_commot_rho": [0.6, 0.8],
+            "attention_vs_external_consensus_rho": [0.3, 0.5],
+            "exact_message_vs_external_consensus_rho": [0.5, 0.7],
+        }
+    )
+    top = pd.DataFrame(
+        {
+            "target": ["CytoBridge attention", "CytoBridge attention"],
+            "reference": [
+                "External native consensus",
+                "External native consensus",
+            ],
+            "overlap_enrichment_over_random": [1.4, 1.8],
+        }
+    )
+    text = report.reviewer_reply_text(direct, top)
     assert "descriptive only" in text
+    assert "formal fixed-support null was not supplied" in text
+    assert "did not exceed the audited fixed-support null" not in text
     assert "most high-ranked" not in text
+    assert "rho = 0.500" in text
+    assert "rho = 0.700" in text
+    assert "1.60-fold" in text
 
 
 def test_spatial_audit_loader_rejects_tampered_artifact(tmp_path: Path) -> None:

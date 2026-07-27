@@ -1441,6 +1441,11 @@ active-cell 排名相关接近零或正负混合，所以不能由 midpoint 的�
 def report_text(
     summary: pd.DataFrame,
     checklist: pd.DataFrame,
+    direct: pd.DataFrame,
+    pairwise_summary: pd.DataFrame,
+    consensus: pd.DataFrame,
+    top: pd.DataFrame,
+    pathway: pd.DataFrame,
     spatial_audit: dict[str, Any] | None = None,
 ) -> str:
     stage_rows = "\n".join(
@@ -1464,7 +1469,75 @@ def report_text(
         if spatial_audit is not None
         else """空间正式 null/sensitivity 结果未提供。本报告只能把旧箭头与最近邻覆盖图作为描述，不能据此声称 WNT/NOTCH 空间一致或独立验证。"""
     )
-    reviewer_paragraph = reviewer_reply_text(spatial_audit).split("\n\n", 1)[1].strip()
+
+    attention_external = float(
+        direct["attention_vs_external_consensus_rho"].mean()
+    )
+    attention_commot = float(direct["attention_vs_commot_rho"].mean())
+
+    def pairwise_mean(left: str, right_contains: str) -> tuple[float, int]:
+        selected = pairwise_summary.loc[
+            pairwise_summary["display_label_left"].eq(left)
+            & pairwise_summary["display_label_right"].str.contains(
+                right_contains, regex=False, na=False
+            )
+        ]
+        if len(selected) != 1:
+            raise ValueError(
+                f"Expected one pairwise summary for {left!r} vs {right_contains!r}"
+            )
+        row = selected.iloc[0]
+        return (
+            float(row["mean_stage_spearman"]),
+            int(row["n_finite_spearman_stages"]),
+        )
+
+    attention_cag_project, _ = pairwise_mean(
+        "CytoBridge attention", "CellAgentChat | project LR"
+    )
+    attention_cellchat, attention_cellchat_n = pairwise_mean(
+        "CytoBridge attention", "CellChat | project LR"
+    )
+    self_included = consensus.loc[
+        consensus["design"].eq("article_style_all_method_native_primary")
+        & consensus["target"].eq("CytoBridge attention"),
+        "spearman",
+    ]
+    if self_included.empty:
+        raise ValueError("Missing article-style self-included attention consensus")
+    self_included_mean = float(self_included.mean())
+    attention_external_top = top.loc[
+        top["target"].eq("CytoBridge attention")
+        & top["reference"].eq("External native consensus")
+    ]
+    if attention_external_top.empty:
+        raise ValueError("Missing attention versus external-native top-signal rows")
+    attention_external_top_enrichment = float(
+        attention_external_top["overlap_enrichment_over_random"].mean()
+    )
+
+    def pathway_fold(name: str) -> float:
+        selected = pathway.loc[pathway["pathway"].eq(name)]
+        if len(selected) != 1:
+            raise ValueError(f"Expected one pathway enrichment row for {name!r}")
+        return float(selected["fold_enrichment"].iloc[0])
+
+    cxcl_fold = pathway_fold("CXCL")
+    notch_fold = pathway_fold("NOTCH")
+    ncwnt_fold = pathway_fold("ncWNT")
+    reviewer_paragraph = reviewer_reply_text(
+        direct,
+        top,
+        spatial_audit,
+    ).split("\n\n", 1)[1].strip()
+    if spatial_audit is not None:
+        final_spatial_summary = (
+            "坐标级热点审计没有超过 null，所以我们主动把它保留为限制"
+        )
+    else:
+        final_spatial_summary = (
+            "当前未提供 formal fixed-support null，所以空间覆盖图只作为描述"
+        )
     return f"""# 斑马鱼 CCC 结果：一份讲人话的读图说明
 
 ## 先看结论：这些结果能不能回复审稿人？
@@ -1538,7 +1611,7 @@ def report_text(
 |---|---:|---:|---:|---:|
 {stage_rows}
 
-五个时点相关性全部为正，平均约为 **0.53**。10 hpf 和 24 hpf 的 top overlap 最清楚；早期 5.25 hpf 的 top overlap 较弱。因此正确说法是“总体稳定正相关、具体 top signal 的一致性具有阶段差异”，而不是“每个时点都完全一致”。
+五个时点相关性全部为正，平均为 **{attention_external:.3f}**。10 hpf 和 24 hpf 的 top overlap 最清楚；早期 5.25 hpf 的 top overlap 较弱。因此正确说法是“总体稳定正相关、具体 top signal 的一致性具有阶段差异”，而不是“每个时点都完全一致”。
 
 ## 图 3：不要只看数字，具体哪些箭头一致？
 
@@ -1590,7 +1663,7 @@ def report_text(
 
 ### 左图怎么读？
 
-取每个时点 **LR-compatible attention score** 排名前 20 的 LR 轴，用完整 project LR database 作为超几何检验背景。fold enrichment = 1 表示与该背景期望一样；大于 1 表示某通路在高位信号中出现得更多。显著富集包括：CXCL 21.96×、NOTCH 7.68×、ncWNT 5.24×，均通过多重检验。由于训练图本身使用了 LR-informed edge prior，这一结果只能作为补充生物学解释，不能算完全独立验证。
+取每个时点 **LR-compatible attention score** 排名前 20 的 LR 轴，用完整 project LR database 作为超几何检验背景。fold enrichment = 1 表示与该背景期望一样；大于 1 表示某通路在高位信号中出现得更多。显著富集包括：CXCL {cxcl_fold:.2f}×、NOTCH {notch_fold:.2f}×、ncWNT {ncwnt_fold:.2f}×，均通过多重检验。由于训练图本身使用了 LR-informed edge prior，这一结果只能作为补充生物学解释，不能算完全独立验证。
 
 ### 右图怎么读？
 
@@ -1607,14 +1680,14 @@ NicheNet 不直接预测空间 cell–cell communication，它问“哪些 ligan
 ### `positive_consistency_overview`
 
 - **是什么：** 四块统计摘要：各阶段 external-only correlation、把自身放进共识导致的升高、top-20% overlap enrichment，以及与距离的关系。
-- **怎么看：** A 是最重要的；B 告诉读者 self-included consensus 会把均值从 0.53 抬到约 0.78，因此正式结论必须使用 external-only；C 表示 top signals 平均约为随机预期的 1.88 倍；D 表示 attention 原始分数并不是简单“越近越高”。
+- **怎么看：** A 是最重要的；B 告诉读者 self-included consensus 会把均值从 {attention_external:.3f} 抬到 {self_included_mean:.3f}，因此正式结论必须使用 external-only；C 表示 top signals 平均为随机预期的 {attention_external_top_enrichment:.2f} 倍；D 表示 attention 原始分数并不是简单“越近越高”。
 - **结论：** 有用但过于压缩，适合作为补充统计摘要，不适合作为读者第一张图。
 
 ### `rank_concordance`
 
 - **是什么：** 所有方法两两之间的平均 stage-wise Spearman 矩阵。
 - **怎么看：** 红色接近 1 表示两种方法把 cell-type arrows 排得相似，0 表示没稳定关系，负值表示相反。对角线永远是自己和自己，信息量为零。
-- **结论：** attention 与 COMMOT 的直接平均相关最高，为 0.566；与 CellAgentChat project-LR 为 0.208；CellChat 只有两个 stage 有有限分数，均值 0.082。它说明不同 CCC 方法并不等价，不能要求所有格子都红。
+- **结论：** attention 与 COMMOT 的直接平均相关为 {attention_commot:.3f}；与 CellAgentChat project-LR 为 {attention_cag_project:.3f}；CellChat 只有 {attention_cellchat_n} 个 stage 有有限分数，均值 {attention_cellchat:.3f}。它说明不同 CCC 方法并不等价，不能要求所有格子都红。
 - **建议：** 补充材料或方法审计；正文改用图 2 的点云。
 
 ### `top_edge_overlap`
@@ -1697,7 +1770,7 @@ CytoBridge 的 LR edge prior 使用了 LR 信息，所以“高 attention 中出
 
 ## 最后给汇报者的一句话
 
-**最强的故事不是“所有方法给出一模一样的网络”，而是“在完全排除自身的外部共识中，CytoBridge 在五个时点都呈正向排序一致，并能落到具体 cell-type arrows 与已知 WNT/NOTCH/CXCL 通路；坐标级热点审计没有超过 null，所以我们主动把它保留为限制，而不把 attention 等同于真实生化通信强度。”**
+**最强的故事不是“所有方法给出一模一样的网络”，而是“在完全排除自身的外部共识中，CytoBridge 在五个时点都呈正向排序一致，并能落到具体 cell-type arrows 与已知 WNT/NOTCH/CXCL 通路；{final_spatial_summary}，而不把 attention 等同于真实生化通信强度。”**
 """
 
 
@@ -1805,6 +1878,10 @@ def from_zero_report_text(
             "同坐标 hotspot 虽有部分 raw overlap，但三条轴都未超过 fixed-support null，"
             "attention×LR 也没有优于 LR-only；因此空间图保留为诚实的诊断，而不是主证据。"
         )
+        spatial_reviewer_claim = (
+            "LR-specific hotspot maps are reported as descriptive diagnostics "
+            "because they did not exceed the audited fixed-support null."
+        )
     else:
         spatial_section = f"""### 旧覆盖图只能作描述
 
@@ -1822,6 +1899,10 @@ def from_zero_report_text(
         )
         spatial_reply_point = "不把旧空间覆盖率作为正式证据；"
         spatial_short = "旧空间覆盖图只有描述性意义，不能主张独立空间验证。"
+        spatial_reviewer_claim = (
+            "LR-specific hotspot maps are reported as descriptive diagnostics "
+            "because a formal fixed-support null was not supplied for this report."
+        )
 
     return f"""# 从零开始讲懂斑马鱼 CytoBridge–CCC 分析
 
@@ -2083,7 +2164,7 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 
 不要把论点写成“CytoBridge 与所有 CCC 方法都高度一致”。准确说法是：
 
-> The learned interaction organization shows consistent positive concordance with the closest spatial CCC reference, COMMOT, and with an external-only multi-method consensus. LR-specific hotspot maps are reported as descriptive diagnostics because they did not exceed the fixed-support null.
+> The learned interaction organization shows consistent positive concordance with the closest spatial CCC reference, COMMOT, and with an external-only multi-method consensus. {spatial_reviewer_claim}
 
 ## 11. 如果只汇报五分钟，可以这样讲
 
@@ -2091,7 +2172,43 @@ attention 五时点平均为 **{prox['CytoBridge attention'].mean():.3f}**，基
 """
 
 
-def reviewer_reply_text(spatial_audit: dict[str, Any] | None = None) -> str:
+def reviewer_reply_text(
+    direct: pd.DataFrame,
+    top: pd.DataFrame,
+    spatial_audit: dict[str, Any] | None = None,
+) -> str:
+    required_direct = {
+        "attention_vs_commot_rho",
+        "exact_message_vs_commot_rho",
+        "attention_vs_external_consensus_rho",
+        "exact_message_vs_external_consensus_rho",
+    }
+    missing_direct = required_direct.difference(direct.columns)
+    if missing_direct:
+        raise ValueError(
+            "Direct comparison table is missing reviewer-reply columns: "
+            f"{sorted(missing_direct)}"
+        )
+    attention_commot = float(direct["attention_vs_commot_rho"].mean())
+    message_commot = float(direct["exact_message_vs_commot_rho"].mean())
+    attention_external = float(
+        direct["attention_vs_external_consensus_rho"].mean()
+    )
+    message_external = float(
+        direct["exact_message_vs_external_consensus_rho"].mean()
+    )
+    attention_external_top = top.loc[
+        top["target"].eq("CytoBridge attention")
+        & top["reference"].eq("External native consensus")
+    ]
+    if attention_external_top.empty:
+        raise ValueError(
+            "Missing CytoBridge attention versus external-native top-signal rows"
+        )
+    top_enrichment = float(
+        attention_external_top["overlap_enrichment_over_random"].mean()
+    )
+
     if spatial_audit is not None:
         primary = spatial_audit["primary"]
         null = spatial_audit["null"]
@@ -2126,7 +2243,7 @@ def reviewer_reply_text(spatial_audit: dict[str, Any] | None = None) -> str:
         )
     return f"""# Reviewer-response wording (plain and bounded)
 
-We agree that attention weights should not be interpreted as direct biochemical communication strengths. We therefore revised the manuscript to describe them as interaction-associated gates and added external and biological consistency analyses. We first aligned the complete directed sender-cell-type→receiver-cell-type matrices at each developmental stage and compared within-stage ranks. Against the closest spatial CCC reference, COMMOT, CytoBridge attention was positively concordant at all five stages (mean stage-wise Spearman rho = 0.566); the exactly reconstructed complete message contribution showed stronger concordance (mean rho = 0.683). An external-only consensus built by equally averaging within-stage percentile ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean, without CytoBridge, was also positively concordant with attention (mean rho = 0.530) and exact message (mean rho = 0.633). Top-20% attention interactions overlapped this external consensus above random expectation on average (1.88-fold), although strict top-edge identities varied by stage.{spatial_sentence} Pathway enrichment and NicheNet ligand overlap provided complementary, but not fully independent, biological support. These results support communication-relevant organization in the learned interaction structure, while we do not interpret attention as a calibrated CCC probability, activating/inhibitory sign, exact ligand-to-receptor direction, or causal perturbation evidence.
+We agree that attention weights should not be interpreted as direct biochemical communication strengths. We therefore revised the manuscript to describe them as interaction-associated gates and added external and biological consistency analyses. We first aligned the complete directed sender-cell-type→receiver-cell-type matrices at each developmental stage and compared within-stage ranks. Against the closest spatial CCC reference, COMMOT, CytoBridge attention was positively concordant at all five stages (mean stage-wise Spearman rho = {attention_commot:.3f}); the exactly reconstructed complete message contribution showed stronger concordance (mean rho = {message_commot:.3f}). An external-only consensus built by equally averaging within-stage percentile ranks from COMMOT, CellAgentChat CTPS, and CellChat triMean, without CytoBridge, was also positively concordant with attention (mean rho = {attention_external:.3f}) and exact message (mean rho = {message_external:.3f}). Top-20% attention interactions overlapped this external consensus above random expectation on average ({top_enrichment:.2f}-fold), although strict top-edge identities varied by stage.{spatial_sentence} Pathway enrichment and NicheNet ligand overlap provided complementary, but not fully independent, biological support. These results support communication-relevant organization in the learned interaction structure, while we do not interpret attention as a calibrated CCC probability, activating/inhibitory sign, exact ligand-to-receptor direction, or causal perturbation evidence.
 """
 
 
@@ -2194,6 +2311,11 @@ def main() -> None:
             "overlap_enrichment_over_random",
             "bh_q_within_target_reference_family",
         ],
+    )
+    pathway = read_table(
+        bundle,
+        "pathway_enrichment.csv",
+        ["pathway", "fold_enrichment", "bh_q"],
     )
     pairwise = read_table(
         bundle,
@@ -2309,10 +2431,20 @@ def main() -> None:
         encoding="utf-8",
     )
     (output / "DETAILED_FIGURE_GUIDE_CN.md").write_text(
-        report_text(summary, checklist, spatial_audit), encoding="utf-8"
+        report_text(
+            summary,
+            checklist,
+            direct,
+            pairwise_summary,
+            consensus,
+            top,
+            pathway,
+            spatial_audit,
+        ),
+        encoding="utf-8",
     )
     (output / "REVIEWER_RESPONSE_PLAIN_EN.md").write_text(
-        reviewer_reply_text(spatial_audit), encoding="utf-8"
+        reviewer_reply_text(direct, top, spatial_audit), encoding="utf-8"
     )
 
     artifacts = [path for path in output.rglob("*") if path.is_file()]
