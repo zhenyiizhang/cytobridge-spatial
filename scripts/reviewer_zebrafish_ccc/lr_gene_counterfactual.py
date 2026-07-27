@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Run the Reviewer #4 axis-specific LR gene counterfactual.
 
-The fixed primary axis is ``cxcl12a -> cxcr4a``.  The default design uses
-observed anchors 0->1 and 3->4, ligand knockdown fractions 0.25/0.5/1.0,
-receptor and dual sensitivity runs, and 100 model-visible HVG shams matched on
-detection fraction, mean expression, and PCA-loading norm within each anchor's
-baseline ligand-positive fixed-sender compartment.
+The fixed primary axis is ``cxcl12a -> cxcr4a``.  The default design screens
+observed candidate anchors 0->1 and 3->4 using a baseline-only nonzero-support
+rule, analyzes the estimable 3->4 anchor, uses ligand knockdown fractions
+0.25/0.5/1.0, includes receptor and dual sensitivity runs, and matches 100
+model-visible HVG shams within the baseline ligand-positive fixed-sender
+compartment.
 
 This is a trained-model sensitivity analysis.  It does not estimate
 experimental or biological causality.
@@ -31,7 +32,8 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_ANCHORS = ((0.0, 1.0), (3.0, 4.0))
+DEFAULT_ANCHORS = ((3.0, 4.0),)
+DEFAULT_SCREEN_ANCHORS = ((0.0, 1.0), (3.0, 4.0))
 DEFAULT_FRACTIONS = (0.25, 0.5, 1.0)
 DEFAULT_GROUPING_SEEDS = (101, 202, 303, 404, 505)
 
@@ -75,6 +77,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--ligand", default="cxcl12a")
     parser.add_argument("--receptor", default="cxcr4a")
     parser.add_argument("--anchors", type=_anchors, default=DEFAULT_ANCHORS)
+    parser.add_argument(
+        "--screen-anchors",
+        type=_anchors,
+        default=DEFAULT_SCREEN_ANCHORS,
+        help=(
+            "Candidate anchors for the nonzero fixed-support eligibility audit. "
+            "Every analyzed --anchors entry must be included and eligible for "
+            "every technical grouping seed; ineligible candidates remain in "
+            "anchor_support_eligibility.csv rather than being treated as zero effect."
+        ),
+    )
     parser.add_argument("--fractions", type=_csv_floats, default=DEFAULT_FRACTIONS)
     parser.add_argument("--n-shams", type=int, default=100)
     parser.add_argument("--time-key", default="time_point_processed")
@@ -105,6 +118,22 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--pca-contract-rtol", type=float, default=5e-4)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--checkpoint-stage", default="Finetune")
+    parser.add_argument(
+        "--anchor-restriction-post-hoc",
+        action="store_true",
+        help=(
+            "Record that restricting the executed anchors after the baseline "
+            "support audit occurred post hoc in chronology."
+        ),
+    )
+    parser.add_argument(
+        "--technical-smoke-seen-before-formal-run",
+        action="store_true",
+        help=(
+            "Record that a technical smoke on an eligible anchor was observed "
+            "before this formal run."
+        ),
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser
 
@@ -115,6 +144,13 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _stable_anchor_metric_seed(base_seed: int, start: float, end: float) -> int:
+    """Derive an anchor-specific seed that is invariant to anchor ordering."""
+    payload = f"{float(start):.17g}->{float(end):.17g}".encode("ascii")
+    offset = int.from_bytes(sha256(payload).digest()[:8], "big") % (2**32 - 1)
+    return int((int(base_seed) + offset) % (2**32 - 1))
 
 
 def _json_value(value: Any) -> Any:
@@ -257,6 +293,7 @@ def _reproducibility_provenance() -> dict[str, Any]:
             dependency_material.encode("utf-8")
         ).hexdigest(),
         "python_executable": str(Path(sys.executable).resolve()),
+        "invocation_argv": [str(value) for value in sys.argv],
         "git": git,
     }
 
@@ -639,7 +676,7 @@ def _make_reviewer_plots(
     sham_target = target_message.loc[
         target_message["condition_role"].eq("matched_hvg_sham")
     ]
-    fig, axes = plt.subplots(1, 3, figsize=(14.2, 4.2), sharex=True)
+    fig, axes = plt.subplots(1, 3, figsize=(14.2, 4.6), sharex=True)
     for axis, space in zip(axes, ("joint", "spatial", "state")):
         subset = primary_target.loc[primary_target["space"].eq(space)]
         for color_index, (anchor, group) in enumerate(
@@ -699,9 +736,9 @@ def _make_reviewer_plots(
                 alpha=0.55,
             )
         title = {
-            "joint": "Joint generic message\n(scale-dependent; descriptive)",
-            "spatial": "Spatial generic message\n(primary space)",
-            "state": "State generic message\n(primary space)",
+            "joint": "Joint message\n(scale-dependent)",
+            "spatial": "Spatial message\n(primary)",
+            "state": "State message\n(primary)",
         }[space]
         axis.set_title(title)
         axis.set_xlabel("Ligand knockdown fraction")
@@ -713,6 +750,7 @@ def _make_reviewer_plots(
         "(primary points; descriptive matched-HVG central 95% ranges)",
         fontsize=13,
     )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.82))
     paths.extend(_save_figure(fig, output, "dose_response_target_message"))
     plt.close(fig)
 
@@ -749,6 +787,7 @@ def _make_reviewer_plots(
         "(joint W mixes coordinate scales; do not compare it across spaces)",
         fontsize=13,
     )
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.82))
     paths.extend(_save_figure(fig, output, "receiver_wasserstein_dose_response"))
     plt.close(fig)
 
@@ -826,6 +865,7 @@ def _make_reviewer_plots(
     axes[1].legend(frameon=False, fontsize=8)
     axes[1].grid(alpha=0.22)
     fig.suptitle("Matched-sham and interaction-off controls", fontsize=13)
+    fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.92))
     paths.extend(_save_figure(fig, output, "matched_sham_interaction_mediation"))
     plt.close(fig)
     return paths
@@ -837,21 +877,57 @@ def _documentation(
     ligand: str,
     receptor: str,
     anchors: Sequence[tuple[float, float]],
+    screen_anchors: Sequence[tuple[float, float]],
     fractions: Sequence[float],
     n_shams: int,
     grouping_seeds: Sequence[int],
+    anchor_restriction_post_hoc: bool,
+    technical_smoke_seen_before_formal_run: bool,
 ) -> tuple[Path, Path]:
+    chronology_cn = (
+        "本次锚点限制在 baseline support 审计之后确定，时间顺序上属于 "
+        "**post-hoc exploratory/descriptive analysis**，不作为独立确认或跨时点重复。"
+        if anchor_restriction_post_hoc
+        else "锚点限制未标记为 post-hoc。"
+    )
+    smoke_cn = (
+        "正式运行前已经看过一次合格锚点的技术 smoke；正式运行不是该 smoke 的独立验证。"
+        if technical_smoke_seen_before_formal_run
+        else "未标记为正式运行前看过技术 smoke。"
+    )
+    chronology_en = (
+        "The anchor restriction is post hoc in chronology because the baseline "
+        "support audit preceded the formal run. The single-anchor result is "
+        "therefore exploratory and descriptive, not an independent confirmation "
+        "or temporal replication."
+        if anchor_restriction_post_hoc
+        else "The anchor restriction is not marked as post hoc."
+    )
+    smoke_en = (
+        "A technical smoke on an eligible anchor was seen before the formal run; "
+        "the formal run is not an independent validation of that smoke."
+        if technical_smoke_seen_before_formal_run
+        else "No pre-formal technical smoke is recorded."
+    )
     readme = output / "README_CN.md"
     readme.write_text(
         f"""# {ligand} → {receptor} 轴向计算扰动
 
-本目录是 Reviewer #4 所要求的、预先固定设计的模型敏感性分析。锚点为
+本目录是 Reviewer #4 所要求的训练模型敏感性分析。实际估计锚点为
 {", ".join(f"{a:g}→{b:g}" for a, b in anchors)}；敲低比例为
 {", ".join(f"{value:g}" for value in fractions)}。主分析敲低配体 `{ligand}`，
 并分别提供受体 `{receptor}` 及双敲低敏感性分析。
 
+{chronology_cn}
+{smoke_cn}
+
 核心约束：
 
+- 候选锚点 {", ".join(f"{a:g}→{b:g}" for a, b in screen_anchors)} 先接受
+  nonzero fixed-support 资格检查；只有在每个技术分组种子下都至少存在一条
+  baseline ligand-positive sender→fixed receiver gated GNN edge 的锚点才可进入
+  反事实估计。未通过者保留在 `anchor_support_eligibility.csv`，不把“不可估计”
+  误写为零效应。
 - 两个基因都必须是模型可见的 HVG，并在保留的 PCA 分量中具有非零载荷。
 - 在 PCA 训练所用的表达尺度上做基因敲低，再用原始 PCA 载荷投影回模型状态。
 - 每个锚点固定同一批细胞；扩散系数严格为 0，不做生长、分裂或重采样。
@@ -902,13 +978,24 @@ reviewer 图均提供 PNG 与 PDF。
     response.write_text(
         f"""## Reviewer #4: axis-specific computational perturbation
 
-We added a pre-specified `{ligand} -> {receptor}` counterfactual at anchors
+We added a `{ligand} -> {receptor}` trained-model counterfactual at the
+estimable anchor(s)
 {", ".join(f"{a:g}->{b:g}" for a, b in anchors)}. Both genes are required to be
 model-visible HVGs. Ligand knockdown is evaluated at
 {", ".join(f"{100 * value:g}%" for value in fractions)}, with receptor-only and
 dual perturbations as sensitivity analyses. The baseline receptor-positive,
 ligand-negative receiver cohort, cell identities, time grid, and grouping seed
 are held fixed.
+
+Candidate anchors {", ".join(f"{a:g}->{b:g}" for a, b in screen_anchors)} were
+first subjected to a nonzero fixed-support eligibility rule: every technical
+grouping seed had to contain at least one baseline gated GNN edge from a
+ligand-positive sender to the fixed receiver cohort. Ineligible candidates are
+reported in `anchor_support_eligibility.csv` as not estimable and are not
+converted into zero-effect observations.
+
+{chronology_en}
+{smoke_en}
 
 The analysis recomputes the frozen link predictor, signed attention gates, and
 the exact complete one-layer GNN messages after every input edit. The primary
@@ -958,6 +1045,7 @@ def run_analysis(
     ligand: str = "cxcl12a",
     receptor: str = "cxcr4a",
     anchors: Sequence[tuple[float, float]] = DEFAULT_ANCHORS,
+    screen_anchors: Sequence[tuple[float, float]] = DEFAULT_SCREEN_ANCHORS,
     fractions: Sequence[float] = DEFAULT_FRACTIONS,
     n_shams: int = 100,
     time_key: str = "time_point_processed",
@@ -975,6 +1063,8 @@ def run_analysis(
     receiver_threshold: float = 0.0,
     pca_contract_atol: float = 5e-4,
     pca_contract_rtol: float = 5e-4,
+    anchor_restriction_post_hoc: bool = False,
+    technical_smoke_seen_before_formal_run: bool = False,
     device: str = "cpu",
     overwrite: bool = False,
     input_provenance: Optional[Mapping[str, Any]] = None,
@@ -1019,8 +1109,23 @@ def run_analysis(
     ):
         raise ValueError("fractions must be unique values in (0, 1].")
     anchors = tuple((float(start), float(end)) for start, end in anchors)
-    if not anchors or any(end <= start for start, end in anchors):
-        raise ValueError("anchors must contain increasing start/end pairs.")
+    if (
+        not anchors
+        or len(set(anchors)) != len(anchors)
+        or any(end <= start for start, end in anchors)
+    ):
+        raise ValueError("anchors must contain unique increasing start/end pairs.")
+    screen_anchors = tuple((float(start), float(end)) for start, end in screen_anchors)
+    if (
+        not screen_anchors
+        or len(set(screen_anchors)) != len(screen_anchors)
+        or any(end <= start for start, end in screen_anchors)
+    ):
+        raise ValueError(
+            "screen_anchors must contain unique increasing start/end pairs."
+        )
+    if not set(anchors).issubset(set(screen_anchors)):
+        raise ValueError("Every analyzed anchor must be included in screen_anchors.")
     if int(group_size) < 2:
         raise ValueError("group_size must be at least two.")
     if int(n_shams) < 1:
@@ -1067,7 +1172,7 @@ def run_analysis(
     )
     times = _time_values(data, time_key)
     observed_stages = set(np.unique(times).tolist())
-    for start, end in anchors:
+    for start, end in screen_anchors:
         if start not in observed_stages or end not in observed_stages:
             raise ValueError(
                 f"Anchor {start:g}->{end:g} is not fully represented in observed stages "
@@ -1083,6 +1188,219 @@ def run_analysis(
         raise ValueError(
             "Requested group size does not match the trained model: "
             f"requested={group_size}, configured={configured_group_size}."
+        )
+
+    ligand_index = feature_names.index(ligand_feature)
+    receptor_index = feature_names.index(receptor_feature)
+    analyzed_ids = {f"{start:g}_to_{end:g}" for start, end in anchors}
+    baseline_audit_cache: dict[tuple[float, int], Any] = {}
+    support_screen_rows: list[dict[str, Any]] = []
+    for start, end in screen_anchors:
+        anchor_id = f"{start:g}_to_{end:g}"
+        start_mask = np.isclose(times, start, rtol=0.0, atol=1e-12)
+        indices = np.flatnonzero(start_mask)
+        if indices.size < 2:
+            raise ValueError(f"Candidate anchor {anchor_id} has fewer than two cells.")
+        anchor_expression = expression[indices]
+        ligand_positive = _dense_column(anchor_expression, ligand_index) > float(
+            receiver_threshold
+        )
+        receptor_positive = _dense_column(anchor_expression, receptor_index) > float(
+            receiver_threshold
+        )
+        fixed_receiver = receptor_positive & ~ligand_positive
+        points = np.hstack((spatial[indices], state[indices])).astype(np.float32)
+        for grouping_seed in grouping_seeds:
+            audit = audit_spatial_complete_messages(
+                interaction_net,
+                points,
+                time_value=start,
+                group_size=int(group_size),
+                grouping_seed=int(grouping_seed),
+                device=str(device),
+                spatial_dim=2,
+            )
+            if anchor_id in analyzed_ids and int(grouping_seed) == int(
+                grouping_seeds[0]
+            ):
+                baseline_audit_cache[(float(start), int(grouping_seed))] = audit
+            edges = audit.edge_table
+            source = edges["source_index"].to_numpy(dtype=int)
+            target = edges["target_index"].to_numpy(dtype=int)
+            support_mask = ligand_positive[source] & fixed_receiver[target]
+            support_count = int(np.sum(support_mask))
+            supported_senders = np.unique(source[support_mask])
+            supported_receivers = np.unique(target[support_mask])
+
+            spatial_candidate_sources: list[np.ndarray] = []
+            spatial_candidate_targets: list[np.ndarray] = []
+            for group in audit.groups:
+                group = np.asarray(group, dtype=int)
+                group_xy = points[group, :2].astype(np.float64, copy=False)
+                squared_norm = np.einsum("ij,ij->i", group_xy, group_xy)
+                squared_distance = np.maximum(
+                    squared_norm[:, None]
+                    + squared_norm[None, :]
+                    - 2.0 * (group_xy @ group_xy.T),
+                    0.0,
+                )
+                local_source, local_target = np.where(
+                    (squared_distance < float(interaction_net.cutoff) ** 2)
+                    & (squared_distance > 1e-12)
+                )
+                candidate_source = group[local_source]
+                candidate_target = group[local_target]
+                lr_candidate = (
+                    ligand_positive[candidate_source] & fixed_receiver[candidate_target]
+                )
+                spatial_candidate_sources.append(candidate_source[lr_candidate])
+                spatial_candidate_targets.append(candidate_target[lr_candidate])
+            spatial_source = (
+                np.concatenate(spatial_candidate_sources)
+                if spatial_candidate_sources
+                else np.empty(0, dtype=int)
+            )
+            spatial_target = (
+                np.concatenate(spatial_candidate_targets)
+                if spatial_candidate_targets
+                else np.empty(0, dtype=int)
+            )
+
+            grouping_digest = sha256()
+            for group in audit.groups:
+                group_values = np.asarray(group, dtype=np.int64)
+                grouping_digest.update(
+                    np.asarray([group_values.size], dtype=np.int64).tobytes()
+                )
+                grouping_digest.update(group_values.tobytes())
+            support_keys = (
+                edges.loc[
+                    support_mask,
+                    ["group_index", "source_index", "target_index"],
+                ]
+                .sort_values(["group_index", "source_index", "target_index"])
+                .to_numpy(dtype=np.int64)
+            )
+            support_digest = sha256()
+            support_digest.update(
+                np.asarray(support_keys.shape, dtype=np.int64).tobytes()
+            )
+            support_digest.update(support_keys.tobytes())
+            eligible = bool(
+                np.any(ligand_positive) and np.any(fixed_receiver) and support_count > 0
+            )
+            if not np.any(ligand_positive):
+                reason = "no_ligand_positive_sender"
+            elif not np.any(fixed_receiver):
+                reason = "no_fixed_receiver"
+            elif support_count == 0:
+                reason = "no_baseline_gated_edge_on_fixed_lr_support"
+            else:
+                reason = "eligible"
+            support_screen_rows.append(
+                {
+                    "anchor_id": anchor_id,
+                    "anchor_start": float(start),
+                    "anchor_end": float(end),
+                    "grouping_seed": int(grouping_seed),
+                    "n_cells": int(indices.size),
+                    "n_ligand_positive_senders": int(ligand_positive.sum()),
+                    "n_receptor_positive_cells": int(receptor_positive.sum()),
+                    "n_fixed_receivers": int(fixed_receiver.sum()),
+                    "n_baseline_gated_edges": int(len(edges)),
+                    "n_spatial_candidate_lr_pairs_before_predictor": int(
+                        spatial_source.size
+                    ),
+                    "n_fixed_lr_support_edges": support_count,
+                    "n_supported_unique_senders": int(supported_senders.size),
+                    "n_supported_unique_receivers": int(supported_receivers.size),
+                    "supported_sender_fraction": (
+                        float(supported_senders.size / ligand_positive.sum())
+                        if np.any(ligand_positive)
+                        else float("nan")
+                    ),
+                    "supported_receiver_fraction": (
+                        float(supported_receivers.size / fixed_receiver.sum())
+                        if np.any(fixed_receiver)
+                        else float("nan")
+                    ),
+                    "n_spatial_candidate_unique_senders": int(
+                        np.unique(spatial_source).size
+                    ),
+                    "n_spatial_candidate_unique_receivers": int(
+                        np.unique(spatial_target).size
+                    ),
+                    "group_size": int(group_size),
+                    "grouping_sha256": grouping_digest.hexdigest(),
+                    "fixed_support_edge_sha256": support_digest.hexdigest(),
+                    "spatial_cutoff": float(interaction_net.cutoff),
+                    "edge_predictor_threshold": float(
+                        interaction_net.edge_predictor_thre
+                    ),
+                    "expression_positive_threshold": float(receiver_threshold),
+                    "ligand_feature": ligand_feature,
+                    "receptor_feature": receptor_feature,
+                    "ligand_model_visible": True,
+                    "receptor_model_visible": True,
+                    "eligible_for_counterfactual": eligible,
+                    "eligibility_reason": reason,
+                    "selected_for_counterfactual": anchor_id in analyzed_ids,
+                    "counterfactual_status": (
+                        "not_estimable"
+                        if not eligible
+                        else (
+                            "selected_for_formal_counterfactual"
+                            if anchor_id in analyzed_ids
+                            else "eligible_not_selected"
+                        )
+                    ),
+                    "not_estimable_under_fixed_support": not eligible,
+                    "ineligible_candidate_encoded_as_zero_effect": False,
+                    "eligibility_uses_counterfactual_outcomes": False,
+                    "anchor_restriction_post_hoc": bool(anchor_restriction_post_hoc),
+                    "technical_smoke_seen_before_formal_run": bool(
+                        technical_smoke_seen_before_formal_run
+                    ),
+                    "provenance_manifest": "run_manifest.json",
+                    "artifact_checksum_manifest": "checksums.sha256",
+                    "eligibility_rule": (
+                        "at least one baseline gated GNN edge from a "
+                        "ligand-positive sender to a fixed "
+                        "receptor-positive/ligand-negative receiver"
+                    ),
+                }
+            )
+            del audit
+    support_screen = pd.DataFrame(support_screen_rows)
+    del (
+        edges,
+        source,
+        target,
+        support_mask,
+        supported_senders,
+        supported_receivers,
+        spatial_candidate_sources,
+        spatial_candidate_targets,
+        spatial_source,
+        spatial_target,
+        support_keys,
+        squared_distance,
+    )
+    analyzed_screen = support_screen.loc[support_screen["anchor_id"].isin(analyzed_ids)]
+    eligibility_by_anchor = analyzed_screen.groupby("anchor_id", sort=False)[
+        "eligible_for_counterfactual"
+    ].all()
+    if set(eligibility_by_anchor.index.astype(str)) != analyzed_ids or not bool(
+        eligibility_by_anchor.all()
+    ):
+        failed = support_screen.loc[
+            support_screen["anchor_id"].isin(analyzed_ids)
+            & ~support_screen["eligible_for_counterfactual"],
+            ["anchor_id", "grouping_seed", "eligibility_reason"],
+        ]
+        raise ValueError(
+            "Analyzed anchors must pass the nonzero fixed-support screen for "
+            f"every grouping seed:\n{failed.to_string(index=False)}"
         )
 
     base_condition_specs: list[dict[str, Any]] = [
@@ -1130,11 +1448,9 @@ def run_analysis(
     receiver_counts: dict[str, int] = {}
     ot_sampling_seeds: dict[str, int] = {}
 
-    ligand_index = feature_names.index(ligand_feature)
-    receptor_index = feature_names.index(receptor_feature)
-    for anchor_index, (start, end) in enumerate(anchors):
+    for start, end in anchors:
         anchor_id = f"{start:g}_to_{end:g}"
-        anchor_metric_seed = int(metric_seed) + anchor_index * 1_000_000
+        anchor_metric_seed = _stable_anchor_metric_seed(metric_seed, start, end)
         ot_sampling_seeds[anchor_id] = anchor_metric_seed
         start_mask = np.isclose(times, start, rtol=0.0, atol=1e-12)
         indices = np.flatnonzero(start_mask)
@@ -1221,15 +1537,7 @@ def run_analysis(
         )
 
         anchor_grouping_seed = int(grouping_seeds[0])
-        baseline_audit = audit_spatial_complete_messages(
-            interaction_net,
-            points,
-            time_value=start,
-            group_size=int(group_size),
-            grouping_seed=anchor_grouping_seed,
-            device=str(device),
-            spatial_dim=2,
-        )
+        baseline_audit = baseline_audit_cache[(float(start), anchor_grouping_seed)]
         baseline_on = deterministic_fixed_cohort_rollout(
             points,
             model,
@@ -1618,6 +1926,7 @@ def run_analysis(
         return path
 
     write_csv("cohort_cells.csv.gz", cells, gzip=True)
+    support_path = write_csv("anchor_support_eligibility.csv", support_screen)
     write_csv("matched_hvg_shams.csv", shams)
     write_csv("receiver_edit_audit.csv", receiver_edit_audit)
     write_csv("fixed_lr_target_message.csv", target_message)
@@ -1647,14 +1956,36 @@ def run_analysis(
         ligand=str(ligand),
         receptor=str(receptor),
         anchors=anchors,
+        screen_anchors=screen_anchors,
         fractions=fractions,
         n_shams=int(n_shams),
         grouping_seeds=grouping_seeds,
+        anchor_restriction_post_hoc=bool(anchor_restriction_post_hoc),
+        technical_smoke_seen_before_formal_run=bool(
+            technical_smoke_seen_before_formal_run
+        ),
     )
     artifact_paths.extend((readme, response))
 
     checks = {
         "axis_genes_model_visible": bool(visibility["model_visible"].all()),
+        "analyzed_anchors_pass_nonzero_support_screen": bool(
+            analyzed_screen["eligible_for_counterfactual"].all()
+        ),
+        "all_screen_anchors_reported_for_every_grouping_seed": bool(
+            support_screen.groupby("anchor_id", sort=False)
+            .size()
+            .eq(len(grouping_seeds))
+            .all()
+            and set(support_screen["anchor_id"].astype(str))
+            == {f"{start:g}_to_{end:g}" for start, end in screen_anchors}
+        ),
+        "support_eligibility_is_counterfactual_outcome_blind": bool(
+            (~support_screen["eligibility_uses_counterfactual_outcomes"]).all()
+        ),
+        "ineligible_candidates_not_encoded_as_zero_effect": bool(
+            (~support_screen["ineligible_candidate_encoded_as_zero_effect"]).all()
+        ),
         "fixed_receiver_nonempty_every_anchor": all(
             count > 0 for count in receiver_counts.values()
         ),
@@ -1793,8 +2124,37 @@ def run_analysis(
             "primary_condition": "ligand",
             "sensitivity_conditions": ["receptor", "dual"],
         },
+        "eligibility_decision": {
+            "artifact": str(support_path.relative_to(output)),
+            "bound_to_same_run_input_model_and_source": True,
+            "eligibility_uses_counterfactual_outcomes": False,
+            "selected_anchor_ids": sorted(analyzed_ids),
+            "ineligible_candidate_anchor_ids": sorted(
+                support_screen.loc[
+                    support_screen["not_estimable_under_fixed_support"],
+                    "anchor_id",
+                ]
+                .astype(str)
+                .unique()
+                .tolist()
+            ),
+            "ineligible_candidates_encoded_as_zero_effect": False,
+        },
         "design": {
             "anchors": [list(pair) for pair in anchors],
+            "candidate_support_screen_anchors": [list(pair) for pair in screen_anchors],
+            "support_eligibility_rule": (
+                "Every analyzed anchor must contain at least one baseline gated "
+                "GNN edge from a ligand-positive sender to the fixed receiver "
+                "cohort under every exact-message grouping seed."
+            ),
+            "ineligible_candidate_is_zero_effect": False,
+            "eligibility_uses_counterfactual_outcomes": False,
+            "anchor_restriction_post_hoc": bool(anchor_restriction_post_hoc),
+            "technical_smoke_seen_before_formal_run": bool(
+                technical_smoke_seen_before_formal_run
+            ),
+            "single_anchor_is_temporal_replication": False,
             "knockdown_fractions": list(fractions),
             "receiver_cohort": (
                 "baseline receptor-positive and ligand-negative; fixed thereafter"
@@ -1830,6 +2190,10 @@ def run_analysis(
                 "independent trained models."
             ),
             "metric_seed_base": int(metric_seed),
+            "anchor_metric_seed_derivation": (
+                "sha256(start->end)-derived uint32 offset plus metric_seed_base; "
+                "invariant to anchor order and subsetting"
+            ),
             "ot_sampling_seed_by_anchor": ot_sampling_seeds,
             "max_ot_points": max_ot_points,
             "ot_cap_policy": (
@@ -1852,6 +2216,9 @@ def run_analysis(
         },
         "model": {
             "state_dict_sha256": _model_digest(model),
+            "edge_predictor_state_dict_sha256": _model_digest(
+                interaction_net.link_predictor
+            ),
             "components": list(getattr(model, "components", [])),
             "interaction_group_size": configured_group_size,
             "interaction_cutoff": float(interaction_net.cutoff),
@@ -1919,6 +2286,9 @@ def run_analysis(
         },
         "claim_bounds": {
             "trained_model_sensitivity": True,
+            "post_hoc_exploratory_descriptive": bool(anchor_restriction_post_hoc),
+            "temporal_replication": False,
+            "independent_confirmation_of_technical_smoke": False,
             "experimental_perturbation": False,
             "experimental_causality": False,
             "biological_mechanism_proven": False,
@@ -1933,6 +2303,7 @@ def run_analysis(
         "manifest_path": "run_manifest.json",
         "checksums_path": "checksums.sha256",
         "axis_visibility_path": str(visibility_path.relative_to(output)),
+        "support_eligibility_path": str(support_path.relative_to(output)),
         "checksum_contract": (
             "checksums.sha256 binds every artifact above plus run_manifest.json; "
             "the checksum file omits its own recursive hash"
@@ -2009,9 +2380,14 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         grouping_seeds=args.grouping_seeds,
         metric_seed=args.metric_seed,
         max_ot_points=args.max_ot_points,
+        screen_anchors=args.screen_anchors,
         receiver_threshold=args.receiver_threshold,
         pca_contract_atol=args.pca_contract_atol,
         pca_contract_rtol=args.pca_contract_rtol,
+        anchor_restriction_post_hoc=args.anchor_restriction_post_hoc,
+        technical_smoke_seen_before_formal_run=(
+            args.technical_smoke_seen_before_formal_run
+        ),
         device=args.device,
         overwrite=args.overwrite,
         input_provenance={"h5ad": _artifact(h5ad_path)},

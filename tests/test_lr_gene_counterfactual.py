@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+import inspect
 import importlib.util
 import json
 from pathlib import Path
@@ -45,6 +46,12 @@ def test_cli_defaults_use_five_exact_message_technical_seeds():
         ["--h5ad", "input.h5ad", "--model-dir", "model", "--output-dir", "out"]
     )
     assert args.grouping_seeds == (101, 202, 303, 404, 505)
+    assert args.anchors == ((3.0, 4.0),)
+    assert args.screen_anchors == ((0.0, 1.0), (3.0, 4.0))
+    assert (
+        inspect.signature(RUNNER.run_analysis).parameters["screen_anchors"].default
+        == args.screen_anchors
+    )
 
 
 def test_axis_gene_resolution_ignores_unrelated_case_variants_but_fails_ambiguous():
@@ -52,6 +59,12 @@ def test_axis_gene_resolution_ignores_unrelated_case_variants_but_fails_ambiguou
     assert RUNNER._resolve_gene(names, "CXCL12A") == "cxcl12a"
     with pytest.raises(KeyError, match="ambiguous under case-insensitive matching"):
         RUNNER._resolve_gene(names, "ABCC5")
+
+
+def test_anchor_metric_seed_is_invariant_to_anchor_order_and_subsetting():
+    seed = RUNNER._stable_anchor_metric_seed(1701, 3.0, 4.0)
+    assert seed == RUNNER._stable_anchor_metric_seed(1701, 3.0, 4.0)
+    assert seed != RUNNER._stable_anchor_metric_seed(1701, 0.0, 1.0)
 
 
 def _synthetic_adata() -> ad.AnnData:
@@ -128,6 +141,7 @@ def test_synthetic_end_to_end_writes_strict_reviewer_bundle(tmp_path: Path):
             model,
             output_dir=output,
             anchors=((0.0, 1.0),),
+            screen_anchors=((0.0, 1.0),),
             fractions=(0.5, 1.0),
             n_shams=2,
             group_size=4,
@@ -136,6 +150,8 @@ def test_synthetic_end_to_end_writes_strict_reviewer_bundle(tmp_path: Path):
             metric_seed=23,
             max_ot_points=None,
             device="cpu",
+            anchor_restriction_post_hoc=True,
+            technical_smoke_seen_before_formal_run=True,
         )
 
     assert manifest["status"] == "complete"
@@ -156,6 +172,13 @@ def test_synthetic_end_to_end_writes_strict_reviewer_bundle(tmp_path: Path):
     )
     assert disk_manifest["claim_bounds"]["experimental_causality"] is False
     assert disk_manifest["checks"]["attention_lr_expression_collapse_used"] is False
+    assert disk_manifest["checks"]["analyzed_anchors_pass_nonzero_support_screen"]
+    assert disk_manifest["checks"][
+        "all_screen_anchors_reported_for_every_grouping_seed"
+    ]
+    assert disk_manifest["design"]["anchor_restriction_post_hoc"] is True
+    assert disk_manifest["design"]["technical_smoke_seen_before_formal_run"] is True
+    assert disk_manifest["claim_bounds"]["post_hoc_exploratory_descriptive"] is True
     assert disk_manifest["checks"]["every_sham_edits_at_least_one_primary_fixed_sender"]
     assert (
         disk_manifest["evidence_contract"][
@@ -167,6 +190,26 @@ def test_synthetic_end_to_end_writes_strict_reviewer_bundle(tmp_path: Path):
     assert disk_manifest["design"][
         "ot_indices_common_across_conditions_doses_and_on_off"
     ]
+    support = pd.read_csv(output / "anchor_support_eligibility.csv")
+    assert len(support) == 2
+    assert support["eligible_for_counterfactual"].all()
+    assert set(support["grouping_seed"]) == {11, 17}
+    assert support["selected_for_counterfactual"].all()
+    assert (
+        support["counterfactual_status"].eq("selected_for_formal_counterfactual").all()
+    )
+    assert support["n_spatial_candidate_lr_pairs_before_predictor"].gt(0).all()
+    assert support["n_fixed_lr_support_edges"].gt(0).all()
+    assert support["n_supported_unique_senders"].gt(0).all()
+    assert support["n_supported_unique_receivers"].gt(0).all()
+    assert support["fixed_support_edge_sha256"].str.len().eq(64).all()
+    assert support["grouping_sha256"].str.len().eq(64).all()
+    assert support["eligibility_uses_counterfactual_outcomes"].eq(False).all()
+    assert support["anchor_restriction_post_hoc"].all()
+    assert support["technical_smoke_seen_before_formal_run"].all()
+    assert (output / "README_CN.md").read_text(encoding="utf-8").count(
+        "post-hoc exploratory/descriptive analysis"
+    ) == 1
     assert (
         disk_manifest["evidence_contract"]["message_alignment"][
             "same_grouping_plan_as_rollout_driver"

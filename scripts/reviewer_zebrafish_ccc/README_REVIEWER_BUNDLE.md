@@ -146,7 +146,10 @@ python scripts/reviewer_zebrafish_ccc/lr_gene_counterfactual.py \
   --h5ad /path/to/zebrafish_aligned.h5ad \
   --model-dir /path/to/training \
   --output-dir /path/to/cxcl12a_cxcr4a_gene_counterfactual \
-  --anchors 0:1,3:4 \
+  --anchors 3:4 \
+  --screen-anchors 0:1,3:4 \
+  --anchor-restriction-post-hoc \
+  --technical-smoke-seen-before-formal-run \
   --fractions 0.25,0.5,1 \
   --n-shams 100 \
   --grouping-seeds 101,202,303,404,505 \
@@ -154,6 +157,13 @@ python scripts/reviewer_zebrafish_ccc/lr_gene_counterfactual.py \
   --dt 0.05 \
   --device cuda:0
 ```
+
+For the formal zebrafish analysis, `0:1` remains in the baseline-only
+eligibility table but is not encoded as a zero effect: the fixed gated-support
+estimand has no eligible edge there. The executed `3:4` analysis is explicitly
+recorded as post-hoc exploratory/descriptive because the support audit and a
+technical smoke preceded the formal run. It is not a temporal replicate or an
+independent confirmation.
 
 The runner fails closed unless the input PCA state reconstructs from the
 persisted center and loadings and both axis genes are model-visible. It keeps
