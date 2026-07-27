@@ -550,11 +550,74 @@ def plot_pair_checklist(checklist: pd.DataFrame, summary: pd.DataFrame, out: Pat
     plt.close(fig)
 
 
-def plot_evidence_map(out: Path, *, spatial_null_audited: bool = False) -> None:
-    if spatial_null_audited:
+def headline_metrics(
+    direct: pd.DataFrame,
+    top: pd.DataFrame,
+) -> dict[str, float]:
+    required_direct = {
+        "attention_vs_commot_rho",
+        "exact_message_vs_commot_rho",
+        "attention_vs_external_consensus_rho",
+        "exact_message_vs_external_consensus_rho",
+    }
+    missing_direct = required_direct.difference(direct.columns)
+    if missing_direct:
+        raise ValueError(
+            "Direct comparison table is missing headline columns: "
+            f"{sorted(missing_direct)}"
+        )
+    attention_external_top = top.loc[
+        top["target"].eq("CytoBridge attention")
+        & top["reference"].eq("External native consensus")
+    ]
+    if attention_external_top.empty:
+        raise ValueError(
+            "Missing CytoBridge attention versus external-native top-signal rows"
+        )
+    return {
+        "attention_commot": float(direct["attention_vs_commot_rho"].mean()),
+        "exact_message_commot": float(
+            direct["exact_message_vs_commot_rho"].mean()
+        ),
+        "attention_external": float(
+            direct["attention_vs_external_consensus_rho"].mean()
+        ),
+        "exact_message_external": float(
+            direct["exact_message_vs_external_consensus_rho"].mean()
+        ),
+        "top_enrichment": float(
+            attention_external_top["overlap_enrichment_over_random"].mean()
+        ),
+    }
+
+
+def plot_evidence_map(
+    out: Path,
+    *,
+    headline: dict[str, float],
+    spatial_audit: dict[str, Any] | None = None,
+) -> None:
+    if spatial_audit is not None:
+        primary = spatial_audit["primary"]
+        null = spatial_audit["null"]
+        null_primary = null.loc[null["metric"].eq("field_overlap_ovl")].merge(
+            primary[["example_id", "top_fraction", "scale_factor"]],
+            on=["example_id", "top_fraction", "scale_factor"],
+            validate="one_to_one",
+        )
+        audited = primary.merge(
+            null_primary[["example_id", "null_ci_high"]],
+            on="example_id",
+            validate="one_to_one",
+        )
+        n_above = int(
+            (audited["field_overlap_ovl"] > audited["null_ci_high"]).sum()
+        )
         spatial_status = (
             "PARTIAL",
-            "Raw LR hotspot overlap is visible, but all three examples fall below the fixed-support permutation null; use as a diagnostic, not independent validation.",
+            "Raw LR hotspot overlap is visible, but "
+            f"{n_above}/{len(audited)} examples exceed the fixed-support "
+            "permutation-null interval; use as a diagnostic unless this test is positive.",
         )
     else:
         spatial_status = (
@@ -565,17 +628,20 @@ def plot_evidence_map(out: Path, *, spatial_null_audited: bool = False) -> None:
         (
             "Independent methods rank cell-type arrows similarly",
             "SUPPORTED",
-            "External-only consensus vs attention: mean rank correlation = 0.53; all five stages are positive.",
+            "External-only consensus vs attention: mean rank correlation = "
+            f"{headline['attention_external']:.3f}; all five stages are positive.",
         ),
         (
             "Direct cell-type-pair rank agreement with a spatial CCC method",
             "SUPPORTED",
-            "COMMOT is the strongest direct external comparison: mean stage correlation = 0.566.",
+            "COMMOT is the strongest direct external comparison: mean stage "
+            f"correlation = {headline['attention_commot']:.3f}.",
         ),
         (
             "The strongest signals overlap more than random",
             "SUPPORTED",
-            "Top-20% overlap averages 1.88× random expectation, but strength varies by stage.",
+            "Top-20% overlap averages "
+            f"{headline['top_enrichment']:.2f}× random expectation, but strength varies by stage.",
         ),
         (
             "Known signaling biology appears near the top",
@@ -1224,10 +1290,54 @@ def plot_spatial_coverage(audit: pd.DataFrame, out: Path) -> None:
     plt.close(fig)
 
 
-def build_figure_index(*, spatial_audit_available: bool = False) -> pd.DataFrame:
+def build_figure_index(
+    *,
+    spatial_audit_available: bool = False,
+    headline: dict[str, float] | None = None,
+    spatial_audit: dict[str, Any] | None = None,
+) -> pd.DataFrame:
+    if headline is None:
+        direct_conclusion = "从当前结果表动态读取 attention 与 exact-message 的平均相关"
+    else:
+        direct_conclusion = (
+            f"attention 平均 rho={headline['attention_commot']:.3f}；"
+            f"exact message={headline['exact_message_commot']:.3f}"
+        )
+    if spatial_audit is not None:
+        spatial_audit_available = True
+        primary = spatial_audit["primary"]
+        null = spatial_audit["null"]
+        null_primary = null.loc[null["metric"].eq("field_overlap_ovl")].merge(
+            primary[["example_id", "top_fraction", "scale_factor"]],
+            on=["example_id", "top_fraction", "scale_factor"],
+            validate="one_to_one",
+        )
+        audited = primary.merge(
+            null_primary[["example_id", "null_ci_high"]],
+            on="example_id",
+            validate="one_to_one",
+        )
+        ovl_min = float(primary["field_overlap_ovl"].min())
+        ovl_max = float(primary["field_overlap_ovl"].max())
+        n_above = int(
+            (audited["field_overlap_ovl"] > audited["null_ci_high"]).sum()
+        )
+        spatial_description = (
+            f"raw OVL 为 {ovl_min:.3f}–{ovl_max:.3f}；"
+            "只能先说明大区域部分重合"
+        )
+        spatial_null_conclusion = (
+            f"{n_above}/{len(audited)} 条轴高于 null 区间；"
+            "本结果不构成额外独立空间验证"
+        )
+    else:
+        spatial_description = "raw OVL 由正式空间表读取；只能先说明大区域重合"
+        spatial_null_conclusion = (
+            "需结合正式 null 表判断；未通过时不构成额外独立空间验证"
+        )
     rows = [
         ("00_computation_to_result_map", "第一张", "CytoBridge 到底计算了哪些 interaction 量，每项分析用了哪一个", "先建立唯一术语和计算主线"),
-        ("02_direct_ccc_comparison", "最主要直接证据", "同一个 sender→receiver type pair 在 CytoBridge 与 COMMOT 中的排名是否一致", "attention 平均 rho=0.566；exact message=0.683"),
+        ("02_direct_ccc_comparison", "最主要直接证据", "同一个 sender→receiver type pair 在 CytoBridge 与 COMMOT 中的排名是否一致", direct_conclusion),
         ("03_spatial_location_coverage", "旧空间描述/审计", "一个方法的高位中点附近能否找到另一个方法的点", "受点密度影响，只能描述 raw coverage，不能作一致性推断"),
         ("01_reviewer_evidence_map", "新主图", "审稿人的各项疑问目前分别得到什么答案", "结论总览；先看这一张"),
         ("04_external_consensus_rank_scatter", "稳健性主图", "每个细胞类型箭头在双方排名中是否同时靠前", "外部多方法共识的总体一致性"),
@@ -1247,8 +1357,8 @@ def build_figure_index(*, spatial_audit_available: bool = False) -> pd.DataFrame
     ]
     if spatial_audit_available:
         rows[6:6] = [
-            ("06_spatial_hotspot_consistency", "空间描述", "两种方法在同一坐标上的单位质量热点与 80% 高密度区重合多少", "raw OVL 为 0.278–0.537；只能先说明大区域部分重合"),
-            ("07_spatial_null_sensitivity", "空间主审计", "热点重合是否超过固定 edge-support 的分数置换基线", "三条轴主设置均低于 null 区间，不构成额外独立空间验证"),
+            ("06_spatial_hotspot_consistency", "空间描述", "两种方法在同一坐标上的单位质量热点与 80% 高密度区重合多少", spatial_description),
+            ("07_spatial_null_sensitivity", "空间主审计", "热点重合是否超过固定 edge-support 的分数置换基线", spatial_null_conclusion),
             ("08_spatial_component_control", "空间关键控制", "attention×LR 是否比 LR-only 更接近 COMMOT", "三条轴增量均为负；空间结构不能归因于 attention 增量"),
             ("09_spatial_sender_receiver_consistency", "方向限制/审计", "双方是否把相同 sender/receiver 细胞排在高位", "active-cell rho 接近零或混合，不能由 midpoint 重合推出方向一致"),
         ]
@@ -2177,37 +2287,12 @@ def reviewer_reply_text(
     top: pd.DataFrame,
     spatial_audit: dict[str, Any] | None = None,
 ) -> str:
-    required_direct = {
-        "attention_vs_commot_rho",
-        "exact_message_vs_commot_rho",
-        "attention_vs_external_consensus_rho",
-        "exact_message_vs_external_consensus_rho",
-    }
-    missing_direct = required_direct.difference(direct.columns)
-    if missing_direct:
-        raise ValueError(
-            "Direct comparison table is missing reviewer-reply columns: "
-            f"{sorted(missing_direct)}"
-        )
-    attention_commot = float(direct["attention_vs_commot_rho"].mean())
-    message_commot = float(direct["exact_message_vs_commot_rho"].mean())
-    attention_external = float(
-        direct["attention_vs_external_consensus_rho"].mean()
-    )
-    message_external = float(
-        direct["exact_message_vs_external_consensus_rho"].mean()
-    )
-    attention_external_top = top.loc[
-        top["target"].eq("CytoBridge attention")
-        & top["reference"].eq("External native consensus")
-    ]
-    if attention_external_top.empty:
-        raise ValueError(
-            "Missing CytoBridge attention versus external-native top-signal rows"
-        )
-    top_enrichment = float(
-        attention_external_top["overlap_enrichment_over_random"].mean()
-    )
+    headline = headline_metrics(direct, top)
+    attention_commot = headline["attention_commot"]
+    message_commot = headline["exact_message_commot"]
+    attention_external = headline["attention_external"]
+    message_external = headline["exact_message_external"]
+    top_enrichment = headline["top_enrichment"]
 
     if spatial_audit is not None:
         primary = spatial_audit["primary"]
@@ -2365,10 +2450,14 @@ def main() -> None:
     summary = stage_summary(stage_table, consensus, top)
     checklist = make_pair_checklist(stage_table)
     direct = direct_comparison_table(pairwise, consensus, scores)
+    headline = headline_metrics(direct, top)
 
     summary.to_csv(tables / "plain_language_stage_summary.csv", index=False)
     checklist.to_csv(tables / "top_pair_checklist.csv", index=False)
-    build_figure_index(spatial_audit_available=spatial_audit is not None).to_csv(
+    build_figure_index(
+        headline=headline,
+        spatial_audit=spatial_audit,
+    ).to_csv(
         tables / "figure_reading_index.csv", index=False
     )
     interaction_term_dictionary().to_csv(
@@ -2382,7 +2471,8 @@ def main() -> None:
     plot_computation_map(figures / "00_computation_to_result_map")
     plot_evidence_map(
         figures / "01_reviewer_evidence_map",
-        spatial_null_audited=spatial_audit is not None,
+        headline=headline,
+        spatial_audit=spatial_audit,
     )
     plot_direct_ccc_scatter(scores, direct, figures / "02_direct_ccc_comparison")
     plot_spatial_coverage(spatial, figures / "03_spatial_location_coverage")

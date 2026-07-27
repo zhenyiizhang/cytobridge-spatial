@@ -66,6 +66,22 @@ def test_figure_index_separates_evidence_from_audit() -> None:
     ]
 
 
+def test_figure_index_uses_current_metrics_instead_of_hardcoded_values() -> None:
+    index = report.build_figure_index(
+        headline={
+            "attention_commot": 0.1234,
+            "exact_message_commot": 0.5678,
+            "attention_external": 0.2,
+            "exact_message_external": 0.3,
+            "top_enrichment": 1.4,
+        }
+    ).set_index("figure")
+    conclusion = index.loc["02_direct_ccc_comparison", "plain_conclusion"]
+    assert "0.123" in conclusion
+    assert "0.568" in conclusion
+    assert "0.566" not in conclusion
+
+
 def test_reviewer_reply_without_formal_spatial_audit_does_not_claim_strong_overlap() -> None:
     direct = pd.DataFrame(
         {
