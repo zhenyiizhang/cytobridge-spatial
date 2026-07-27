@@ -57,8 +57,45 @@ def _type_rows(score_name: str, values: list[float]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _write_control(directory: Path, *, attention: float, message: float) -> None:
+def _write_control(
+    directory: Path,
+    *,
+    attention: float,
+    message: float,
+    control: str,
+) -> None:
     directory.mkdir(parents=True)
+    stage = "Refine" if control == "pre_interaction" else "Finetune"
+    weight_path = directory / "_model" / stage / "best_model.pth"
+    weight_path.parent.mkdir(parents=True)
+    weight_path.write_bytes(f"{control}-{stage}".encode())
+    randomization = (
+        {
+            "seed": 17,
+            "reset_modules": [
+                "gene_embed",
+                "distance_projection",
+                "gnn_layers",
+                "gene_readout",
+            ],
+            "preserved_modules": ["link_predictor", "rbf_expansion"],
+        }
+        if control == "randomized_interaction_seed17"
+        else None
+    )
+    attribution_path = directory / "_attribution" / "run_manifest.json"
+    _json(
+        attribution_path,
+        {
+            "method": "cytobridge_one_layer_spatial_attention_and_exact_message",
+            "checkpoint": {
+                "requested_stage": stage,
+                "weight_stage": stage,
+                "weight": comparison._file_record(weight_path),
+                "interaction_randomization": randomization,
+            },
+        },
+    )
     permutation_rows = []
     for target, value in (
         ("log1p_attention", attention),
@@ -127,6 +164,9 @@ def _write_control(directory: Path, *, attention: float, message: float) -> None
         directory / "run_manifest.json",
         {
             "schema_version": 1,
+            "input": {
+                "attribution_manifest": comparison._file_record(attribution_path)
+            },
             "artifacts": {
                 "conditional_permutations": comparison._file_record(permutation_path),
                 "nested_grouped_cv": comparison._file_record(nested_path),
@@ -160,16 +200,23 @@ def _build_formal_tree(root: Path) -> None:
     }
     _json(cytobridge / "run_manifest.json", cyto_manifest)
 
-    _write_control(root / "02_attention_controls", attention=0.0284, message=0.0136)
     _write_control(
-        root / "02_attention_controls_init_interaction",
+        root / "02_attention_controls",
+        attention=0.0284,
+        message=0.0136,
+        control="trained",
+    )
+    _write_control(
+        root / "02_attention_controls_pre_interaction",
         attention=0.0332,
         message=0.0260,
+        control="pre_interaction",
     )
     _write_control(
         root / "02_attention_controls_random_seed17",
         attention=0.0059,
         message=0.0625,
+        control="randomized_interaction_seed17",
     )
 
     external = root / "03_external_ccc"
@@ -558,6 +605,7 @@ def _args(
         output_dir=output,
         cytobridge_dir=None,
         controls_trained_dir=None,
+        controls_pre_interaction_dir=None,
         controls_init_dir=None,
         controls_random_dir=None,
         commot_dir=None,
@@ -644,9 +692,20 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
         manifest["primary_score_artifact_hash_verification"]["cytobridge_controls"]
     ) == {
         "trained",
-        "init_interaction",
+        "pre_interaction",
         "randomized_interaction_seed17",
     }
+    checkpoint_audit = manifest["cytobridge_control_checkpoint_verification"]
+    assert set(checkpoint_audit) == {
+        "trained",
+        "pre_interaction",
+        "randomized_interaction_seed17",
+    }
+    assert checkpoint_audit["pre_interaction"]["requested_stage"] == "Refine"
+    assert checkpoint_audit["pre_interaction"]["weight_stage"] == "Refine"
+    assert (
+        checkpoint_audit["pre_interaction"]["interaction_randomization"] is None
+    )
     assert set(manifest["score_view_zero_completion"]) == set(
         manifest["loaded_score_views"]
     )
@@ -689,6 +748,59 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
         assert (output / f"{stem}.pdf").stat().st_size > 1000
 
 
+def test_pre_interaction_control_rejects_post_interaction_checkpoint(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    directory = root / "02_attention_controls_pre_interaction"
+    attribution_path = directory / "_attribution" / "run_manifest.json"
+    attribution = json.loads(attribution_path.read_text())
+    attribution["checkpoint"]["requested_stage"] = "Init_interaction"
+    attribution["checkpoint"]["weight_stage"] = "Init_interaction"
+    _json(attribution_path, attribution)
+    control_path = directory / "run_manifest.json"
+    control = json.loads(control_path.read_text())
+    control["input"]["attribution_manifest"] = comparison._file_record(
+        attribution_path
+    )
+    _json(control_path, control)
+
+    with pytest.raises(ValueError, match="expected 'Refine'"):
+        comparison.run(_args(root, tmp_path / "invalid_pre_interaction"))
+
+
+def test_deprecated_init_cli_alias_retains_pre_interaction_semantics(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "run"
+    _build_formal_tree(root)
+    args = _args(root, tmp_path / "legacy_alias")
+    args.controls_init_dir = root / "02_attention_controls_pre_interaction"
+    manifest = comparison.run(args)
+
+    controls = pd.read_csv(
+        tmp_path / "legacy_alias" / "cytobridge_control_metrics.csv"
+    )
+    assert "pre_interaction" in set(controls["control"])
+    assert "init_interaction" not in set(controls["control"])
+    assert (
+        set(
+            controls.loc[
+                controls["control"] == "pre_interaction", "control_label"
+            ]
+        )
+        == {"Pre-interaction (Refine)"}
+    )
+    assert manifest["deprecated_cli_compatibility"]["deprecated_alias_used"] is True
+    assert (
+        manifest["cytobridge_control_checkpoint_verification"][
+            "pre_interaction"
+        ]["weight_stage"]
+        == "Refine"
+    )
+
+
 @pytest.mark.parametrize(
     "relative_path",
     [
@@ -699,7 +811,7 @@ def test_formal_comparison_writes_all_rank_and_control_artifacts(
             f"{directory}/{filename}"
             for directory in (
                 "02_attention_controls",
-                "02_attention_controls_init_interaction",
+                "02_attention_controls_pre_interaction",
                 "02_attention_controls_random_seed17",
             )
             for filename in (
@@ -896,7 +1008,12 @@ def test_top_k_summary_separates_trivial_all_selected_stages() -> None:
 
 def test_control_loader_selects_strict_stratum_not_row_position(tmp_path: Path) -> None:
     directory = tmp_path / "control"
-    _write_control(directory, attention=0.02, message=0.03)
+    _write_control(
+        directory,
+        attention=0.02,
+        message=0.03,
+        control="trained",
+    )
     path = directory / "conditional_permutation_tests.csv"
     frame = pd.read_csv(path)
     decoy = frame.iloc[[0]].copy()

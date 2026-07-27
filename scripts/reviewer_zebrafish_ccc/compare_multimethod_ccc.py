@@ -63,7 +63,16 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--cytobridge-dir", type=Path)
     parser.add_argument("--controls-trained-dir", type=Path)
-    parser.add_argument("--controls-init-dir", type=Path)
+    parser.add_argument("--controls-pre-interaction-dir", type=Path)
+    parser.add_argument(
+        "--controls-init-dir",
+        type=Path,
+        help=(
+            "Deprecated alias for --controls-pre-interaction-dir. The referenced "
+            "control must still be generated from Refine/best_model.pth; "
+            "Init_interaction/best_model.pth is rejected."
+        ),
+    )
     parser.add_argument("--controls-random-dir", type=Path)
     parser.add_argument("--commot-dir", type=Path)
     parser.add_argument("--cellchat-dir", type=Path)
@@ -2202,6 +2211,87 @@ def load_cytobridge_control(
     directory: Path, *, control: str, display_label: str
 ) -> pd.DataFrame:
     manifest = _read_json(directory / "run_manifest.json")
+    input_block = manifest.get("input")
+    if not isinstance(input_block, Mapping):
+        raise ValueError(f"{directory} control manifest lacks an input object")
+    attribution_record = input_block.get("attribution_manifest")
+    if not isinstance(attribution_record, Mapping):
+        raise ValueError(
+            f"{directory} control manifest lacks input.attribution_manifest"
+        )
+    attribution_path = _verify_recorded_artifact(
+        attribution_record, expected_name="run_manifest.json"
+    )
+    attribution_manifest = _read_json(attribution_path)
+    if (
+        attribution_manifest.get("method")
+        != "cytobridge_one_layer_spatial_attention_and_exact_message"
+    ):
+        raise ValueError(
+            f"{attribution_path} is not a CytoBridge edge-attribution manifest"
+        )
+    checkpoint = attribution_manifest.get("checkpoint")
+    if not isinstance(checkpoint, Mapping):
+        raise ValueError(f"{attribution_path} lacks a checkpoint object")
+    expected_stage = {
+        "trained": "Finetune",
+        "pre_interaction": "Refine",
+        "randomized_interaction_seed17": "Finetune",
+    }.get(control)
+    if expected_stage is None:
+        raise ValueError(f"Unsupported CytoBridge control {control!r}")
+    for field in ("requested_stage", "weight_stage"):
+        if checkpoint.get(field) != expected_stage:
+            raise ValueError(
+                f"{attribution_path}: checkpoint.{field}="
+                f"{checkpoint.get(field)!r}, expected {expected_stage!r} for "
+                f"{control!r}"
+            )
+    weight_record = checkpoint.get("weight")
+    if not isinstance(weight_record, Mapping):
+        raise ValueError(f"{attribution_path} lacks checkpoint.weight")
+    weight_path = _verify_recorded_artifact(
+        weight_record, expected_name="best_model.pth"
+    )
+    if weight_path.parent.name != expected_stage:
+        raise ValueError(
+            f"{attribution_path}: checkpoint weight path {weight_path} does not "
+            f"come from {expected_stage}/best_model.pth"
+        )
+    randomization = checkpoint.get("interaction_randomization")
+    if control in {"trained", "pre_interaction"}:
+        if randomization is not None:
+            raise ValueError(
+                f"{attribution_path}: {control!r} must not randomize interaction "
+                "modules"
+            )
+    else:
+        if not isinstance(randomization, Mapping):
+            raise ValueError(
+                f"{attribution_path}: randomized control lacks interaction "
+                "randomization provenance"
+            )
+        if int(randomization.get("seed", -1)) != 17:
+            raise ValueError(
+                f"{attribution_path}: randomized control must use seed 17"
+            )
+        expected_reset = {
+            "gene_embed",
+            "distance_projection",
+            "gnn_layers",
+            "gene_readout",
+        }
+        expected_preserved = {"link_predictor", "rbf_expansion"}
+        if set(randomization.get("reset_modules", [])) != expected_reset:
+            raise ValueError(
+                f"{attribution_path}: randomized control reset-module contract "
+                "does not match"
+            )
+        if set(randomization.get("preserved_modules", [])) != expected_preserved:
+            raise ValueError(
+                f"{attribution_path}: randomized control preserved-module "
+                "contract does not match"
+            )
     permutation_path, permutation_artifact = _verify_manifest_artifact_key(
         directory,
         manifest,
@@ -2294,6 +2384,16 @@ def load_cytobridge_control(
         nested_artifact,
         reciprocal_artifact,
     ]
+    result.attrs["verified_attribution_checkpoint"] = {
+        "control": control,
+        "expected_stage": expected_stage,
+        "requested_stage": checkpoint["requested_stage"],
+        "weight_stage": checkpoint["weight_stage"],
+        "interaction_randomization": randomization,
+        "attribution_manifest": _file_record(attribution_path),
+        "weight": _file_record(weight_path),
+        "verified": True,
+    }
     return result
 
 
@@ -2750,8 +2850,8 @@ always labelled as a sensitivity and never as primary.
   receiver unit) evaluated-universe, native-row, and zero-completion counts.
 - `method_unavailable_lr_rows.csv`: CellChat-incompatible requested LR rows;
   these are excluded from its method universe and are never zero-filled.
-- `cytobridge_control_metrics.csv`: trained, Init_interaction, and randomized
-  interaction controls.
+- `cytobridge_control_metrics.csv`: trained, true pre-interaction
+  (`Refine/best_model.pth`), and randomized interaction controls.
 - PNG/PDF panels for rank concordance, top-edge overlap, condition coverage,
   reciprocal directionality, stage stability, and CytoBridge controls.
 
@@ -2777,6 +2877,20 @@ available and the script completes without that flag.
 
 def _resolve_paths(args: argparse.Namespace) -> dict[str, Path]:
     root = args.run_root.expanduser().resolve()
+    canonical_pre_interaction = getattr(
+        args, "controls_pre_interaction_dir", None
+    )
+    deprecated_init = getattr(args, "controls_init_dir", None)
+    if canonical_pre_interaction is not None and deprecated_init is not None:
+        raise ValueError(
+            "Use only --controls-pre-interaction-dir; do not also provide "
+            "deprecated --controls-init-dir"
+        )
+    pre_interaction = (
+        canonical_pre_interaction
+        or deprecated_init
+        or root / "02_attention_controls_pre_interaction"
+    )
     return {
         "cytobridge": (args.cytobridge_dir or root / "01_cytobridge")
         .expanduser()
@@ -2784,11 +2898,7 @@ def _resolve_paths(args: argparse.Namespace) -> dict[str, Path]:
         "control_trained": (args.controls_trained_dir or root / "02_attention_controls")
         .expanduser()
         .resolve(),
-        "control_init": (
-            args.controls_init_dir or root / "02_attention_controls_init_interaction"
-        )
-        .expanduser()
-        .resolve(),
+        "control_pre_interaction": pre_interaction.expanduser().resolve(),
         "control_random": (
             args.controls_random_dir or root / "02_attention_controls_random_seed17"
         )
@@ -2892,6 +3002,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     cellchat_lr_universe: Mapping[str, Any] | None = None
     primary_score_artifact_verification: dict[str, list[Mapping[str, Any]]] = {}
     control_artifact_verification: dict[str, list[Mapping[str, Any]]] = {}
+    control_checkpoint_verification: dict[str, Mapping[str, Any]] = {}
 
     loaders: list[tuple[list[str], Callable[[], Sequence[pd.DataFrame]]]] = [
         (
@@ -3123,7 +3234,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
 
     control_specs = [
         ("trained", "Trained", paths["control_trained"]),
-        ("init_interaction", "Init interaction", paths["control_init"]),
+        (
+            "pre_interaction",
+            "Pre-interaction (Refine)",
+            paths["control_pre_interaction"],
+        ),
         (
             "randomized_interaction_seed17",
             "Randomized interaction",
@@ -3151,6 +3266,20 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             control_artifact_verification[control] = [
                 dict(record) for record in verified
             ]
+            checkpoint_verified = control_frame.attrs.get(
+                "verified_attribution_checkpoint"
+            )
+            if (
+                not isinstance(checkpoint_verified, Mapping)
+                or checkpoint_verified.get("verified") is not True
+            ):
+                raise ValueError(
+                    f"CytoBridge control {control!r} lacks verified checkpoint "
+                    "provenance"
+                )
+            control_checkpoint_verification[control] = dict(
+                checkpoint_verified
+            )
             control_frames.append(control_frame)
         except Exception as error:
             if not args.allow_partial:
@@ -3500,7 +3629,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
     )
     controls_contract_ok = bool(
         set(controls["control"].astype(str))
-        == {"trained", "init_interaction", "randomized_interaction_seed17"}
+        == {"trained", "pre_interaction", "randomized_interaction_seed17"}
         and set(controls["target"].astype(str)) == {"attention", "exact message"}
         and set(controls["metric"].astype(str))
         == {
@@ -3579,6 +3708,23 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         "primary_score_artifact_hash_verification": {
             "score_views": primary_score_artifact_verification,
             "cytobridge_controls": control_artifact_verification,
+        },
+        "cytobridge_control_checkpoint_verification": (
+            control_checkpoint_verification
+        ),
+        "deprecated_cli_compatibility": {
+            "canonical_argument": "--controls-pre-interaction-dir",
+            "deprecated_alias": "--controls-init-dir",
+            "deprecated_alias_provided": (
+                getattr(args, "controls_init_dir", None) is not None
+            ),
+            "deprecated_alias_used": (
+                getattr(args, "controls_init_dir", None) is not None
+                and getattr(args, "controls_pre_interaction_dir", None) is None
+            ),
+            "canonical_condition": "pre_interaction",
+            "required_checkpoint": "Refine/best_model.pth",
+            "forbidden_checkpoint": "Init_interaction/best_model.pth",
         },
         "readiness_semantics": {
             "six_condition_execution_complete": (
