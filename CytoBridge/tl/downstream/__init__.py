@@ -77,6 +77,23 @@ from .pipeline_utils import (
     select_evenly_spaced,
     set_global_random_seed,
 )
+from .perturbation import (
+    CompleteMessageAudit,
+    CounterfactualMetricResult,
+    FixedCohortRollout,
+    GeneCounterfactualResult,
+    ProjectedGeneEdit,
+    apply_projected_gene_knockdowns,
+    audit_spatial_complete_messages,
+    compute_counterfactual_metrics,
+    compute_fixed_lr_target_message_metrics,
+    compute_interaction_mediation_metrics,
+    deterministic_fixed_cohort_rollout,
+    match_hvg_sham_genes,
+    run_gene_counterfactual,
+    select_fixed_receiver_cohort,
+    validate_pca_model_visibility,
+)
 from .gene_program import GeneProgramPanelResult, collect_top_variable_heatmaps
 from .lr_panels import (
     LRMultipanelSpec,
@@ -244,4 +261,19 @@ __all__ = [
     "plot_generated_vs_observed",
     "save_distribution_evaluation",
     "save_distribution_metric_comparison",
+    "CompleteMessageAudit",
+    "CounterfactualMetricResult",
+    "FixedCohortRollout",
+    "GeneCounterfactualResult",
+    "ProjectedGeneEdit",
+    "apply_projected_gene_knockdowns",
+    "audit_spatial_complete_messages",
+    "compute_counterfactual_metrics",
+    "compute_fixed_lr_target_message_metrics",
+    "compute_interaction_mediation_metrics",
+    "deterministic_fixed_cohort_rollout",
+    "match_hvg_sham_genes",
+    "run_gene_counterfactual",
+    "select_fixed_receiver_cohort",
+    "validate_pca_model_visibility",
 ]

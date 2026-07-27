@@ -1397,7 +1397,14 @@ def compute_velocity_components(
     interaction_threshold: int = 1000,
     device: str = "cuda",
     spatial_dim: int = 2,
+    include_interaction: bool = True,
 ) -> Dict[str, np.ndarray]:
+    """Evaluate intrinsic, score, and optionally interaction velocities.
+
+    ``include_interaction=False`` avoids evaluating the interaction network and
+    returns a zero ``interaction`` component.  This supports a
+    same-trained-model interaction-off control without mutating model weights.
+    """
     from CytoBridge.tl.core.interaction import cal_interaction
 
     data = np.asarray(data, dtype=np.float32)
@@ -1418,7 +1425,11 @@ def compute_velocity_components(
 
         lnw = torch.log(torch.ones(n_cells, 1, device=device, dtype=torch.float32) / float(n_cells))
         interaction_np = np.zeros_like(drift_np)
-        if "interaction" in components and interaction_net is not None:
+        if (
+            bool(include_interaction)
+            and "interaction" in components
+            and interaction_net is not None
+        ):
             t_scalar = torch.tensor([float(time_value)], dtype=torch.float32, device=device)
             if getattr(interaction_net, "requires_time", False):
                 with torch.no_grad():

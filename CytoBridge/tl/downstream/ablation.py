@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 from pathlib import Path
 import re
@@ -128,6 +129,7 @@ def compute_virtual_ablation_metrics(
     spatial_dim: int = 2,
     max_ot_points: Optional[int] = 1024,
     random_seed: int = 42,
+    paired_ot_support: bool = False,
 ) -> pd.DataFrame:
     """Compare ablated split-SDE distributions with their baseline.
 
@@ -139,6 +141,10 @@ def compute_virtual_ablation_metrics(
     distribution evaluator.  The OT solve is exact on retained support; when
     either uniform cloud exceeds ``max_ot_points``, it is deterministically
     subsampled without replacement and the retained counts are recorded.
+    ``paired_ot_support=True`` is reserved for identity-aligned clouds: it
+    requires equal row counts and applies one shared set of row indices to the
+    baseline and ablation clouds before OT.  This prevents a point cap from
+    manufacturing non-zero distance between identical aligned clouds.
 
     Particle count is listed on every space row to keep the table tidy and
     directly groupable by ``variant/time/space``.  Ablation particles are the
@@ -160,6 +166,8 @@ def compute_virtual_ablation_metrics(
         raise ValueError(
             f"spatial_dim must be in [0, {feature_dim}], got {spatial_dim}."
         )
+    if max_ot_points is not None and int(max_ot_points) <= 0:
+        raise ValueError("max_ot_points must be positive or None.")
 
     spaces: dict[str, slice] = {"joint": slice(0, feature_dim)}
     if spatial_dim > 0:
@@ -191,6 +199,31 @@ def compute_virtual_ablation_metrics(
                 if n_baseline > 0
                 else float("nan")
             )
+            paired_indices: Optional[np.ndarray] = None
+            paired_seed = (
+                int(random_seed)
+                + 100_000 * int(variant_index)
+                + 100 * int(time_index)
+            )
+            if bool(paired_ot_support):
+                if n_baseline != n_ablation:
+                    raise ValueError(
+                        "paired_ot_support=True requires equal baseline and "
+                        "ablation row counts at every time point."
+                    )
+                retained = n_baseline
+                if max_ot_points is not None:
+                    retained = min(retained, int(max_ot_points))
+                if retained < n_baseline:
+                    paired_indices = np.sort(
+                        np.random.default_rng(paired_seed).choice(
+                            n_baseline,
+                            size=retained,
+                            replace=False,
+                        )
+                    )
+                else:
+                    paired_indices = np.arange(n_baseline, dtype=int)
             for space_index, (space, columns) in enumerate(spaces.items()):
                 base_space = base[:, columns]
                 ablated_space = ablated[:, columns]
@@ -202,17 +235,33 @@ def compute_virtual_ablation_metrics(
                         )
                     )
                     ot_seed = (
-                        int(random_seed)
-                        + 100_000 * int(variant_index)
-                        + 100 * int(time_index)
-                        + int(space_index)
+                        paired_seed
+                        if bool(paired_ot_support)
+                        else (
+                            int(random_seed)
+                            + 100_000 * int(variant_index)
+                            + 100 * int(time_index)
+                            + int(space_index)
+                        )
                     )
-                    distribution_metrics = compute_distribution_metrics(
-                        ablated_space,
-                        base_space,
-                        max_ot_points=max_ot_points,
-                        random_seed=ot_seed,
-                    )
+                    if bool(paired_ot_support):
+                        if paired_indices is None:
+                            raise RuntimeError(
+                                "Internal error: paired OT indices were not initialized."
+                            )
+                        distribution_metrics = compute_distribution_metrics(
+                            ablated_space[paired_indices],
+                            base_space[paired_indices],
+                            max_ot_points=None,
+                            random_seed=ot_seed,
+                        )
+                    else:
+                        distribution_metrics = compute_distribution_metrics(
+                            ablated_space,
+                            base_space,
+                            max_ot_points=max_ot_points,
+                            random_seed=ot_seed,
+                        )
                 else:
                     centroid_shift = float("nan")
                     ot_seed = (
@@ -248,6 +297,22 @@ def compute_virtual_ablation_metrics(
                             distribution_metrics["ot_observed_points"]
                         ),
                         "ot_random_seed": int(ot_seed),
+                        "ot_support_is_identity_paired": bool(paired_ot_support),
+                        "ot_sampling_policy": (
+                            "identity_paired_shared_indices"
+                            if bool(paired_ot_support)
+                            else "independent_empirical_support"
+                        ),
+                        "ot_support_index_sha256": (
+                            sha256(
+                                np.asarray(
+                                    paired_indices,
+                                    dtype="<i8",
+                                ).tobytes()
+                            ).hexdigest()
+                            if paired_indices is not None
+                            else None
+                        ),
                         "centroid_shift": centroid_shift,
                         "baseline_rms_radius": baseline_radius,
                         "ablation_rms_radius": ablation_radius,

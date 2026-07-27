@@ -1087,7 +1087,7 @@ def _stage_growth(ctx: RunContext) -> dict[str, object]:
             "lower_quantile": 0.05,
             "upper_quantile": 0.95,
             "scale_mode": "per_time_0_1",
-            "colorbar_label": "g (scaled 5-95%)",
+            "colorbar_label": "model g (within-stage p5-p95 scaled)",
         }
         for time_index, time_value in enumerate(OBSERVED_TIMES):
             path = stage_dir / f"growth_t{time_index}.pdf"
@@ -1109,7 +1109,10 @@ def _stage_growth(ctx: RunContext) -> dict[str, object]:
                 out_path=str(path),
                 n_cols=2,
                 shared_colorbar=True,
-                title="Growth-rate maps across observed zebrafish stages",
+                title=(
+                    "Model-predicted growth output at observed zebrafish stages\n"
+                    "(each stage independently p5-p95 scaled)"
+                ),
             )
             outputs.append(path)
         return outputs, {

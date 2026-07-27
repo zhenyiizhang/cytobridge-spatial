@@ -124,6 +124,55 @@ These spatial panels are an audit, not an automatic positive result. Raw
 hotspot overlap must exceed the declared null and `attention×LR` must improve
 over LR-only before claiming attention-specific spatial consistency.
 
+## Axis-specific gene-input counterfactual
+
+The reusable API is exposed under `CytoBridge.tl`:
+
+- `validate_pca_model_visibility`;
+- `apply_projected_gene_knockdowns`;
+- `deterministic_fixed_cohort_rollout`;
+- `audit_spatial_complete_messages`;
+- `compute_fixed_lr_target_message_metrics`;
+- `compute_counterfactual_metrics`;
+- `compute_interaction_mediation_metrics`;
+- `run_gene_counterfactual`.
+
+The zebrafish reviewer runner binds these generic operations to the
+`cxcl12a -> cxcr4a` axis:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 PYTHONPATH=/path/to/frozen/cytobridge-spatial \
+python scripts/reviewer_zebrafish_ccc/lr_gene_counterfactual.py \
+  --h5ad /path/to/zebrafish_aligned.h5ad \
+  --model-dir /path/to/training \
+  --output-dir /path/to/cxcl12a_cxcr4a_gene_counterfactual \
+  --anchors 0:1,3:4 \
+  --fractions 0.25,0.5,1 \
+  --n-shams 100 \
+  --grouping-seeds 101,202,303,404,505 \
+  --group-size 1024 \
+  --dt 0.05 \
+  --device cuda:0
+```
+
+The runner fails closed unless the input PCA state reconstructs from the
+persisted center and loadings and both axis genes are model-visible. It keeps
+cell identities fixed, uses `sigma=0`, disables growth/resampling, and uses
+one identity-paired OT support within each anchor across conditions, doses,
+and interaction on/off. Matched-HVG shams are selected separately within each
+anchor's baseline ligand-positive fixed-sender compartment and are edited only
+inside that mask; they provide descriptive reference ranks, not formal
+randomization P values.
+
+`D_target` is the generic complete GNN message on a fixed,
+LR-expression-conditioned edge support. It is not an LR-specific biochemical
+message component. Spatial and state Wasserstein results are primary; joint
+Wasserstein mixes coordinate scales and is explicitly descriptive. Only the
+first grouping seed drives the trajectory, Wasserstein, and mediation
+calculation; all listed seeds repeat the exact-message grouping audit. The
+analysis quantifies sensitivity of the trained model and cannot substitute for
+an experimental perturbation or establish causal signaling.
+
 ## Output contract
 
 The bundle contains:

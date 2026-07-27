@@ -193,7 +193,7 @@ def test_growth_grid_robust_scales_each_time_and_uses_shared_colorbar(
         cmap="RdYlBu_r",
         scale_mode="per_time_0_1",
         shared_colorbar=True,
-        colorbar_label="g (scaled 5-95%)",
+        colorbar_label="model g (within-stage p5-p95 scaled)",
     )
 
     assert path.exists() and path.stat().st_size > 0
