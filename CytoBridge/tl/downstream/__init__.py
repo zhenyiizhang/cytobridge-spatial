@@ -70,6 +70,10 @@ from .functional_ablation import (
     save_frozen_checkpoint_ablation_result,
     temporary_lr_gate_mode,
 )
+from .functional_ablation_evaluation import (
+    FrozenAblationDistributionEvaluation,
+    evaluate_frozen_ablation_distributions,
+)
 from .enrichment import (
     GeneSetLibrary,
     load_gmt_gene_sets,
@@ -265,6 +269,7 @@ __all__ = [
     "DistributionMetricComparison",
     "DEFAULT_FROZEN_ABLATION_CONDITIONS",
     "FrozenAblationCondition",
+    "FrozenAblationDistributionEvaluation",
     "FrozenCheckpointAblationResult",
     "LRGateOverride",
     "compare_distribution_metric_tables",
@@ -272,6 +277,7 @@ __all__ = [
     "compute_generated_vs_observed_plot_limits",
     "compute_local_structure_metrics",
     "evaluate_model_distributions",
+    "evaluate_frozen_ablation_distributions",
     "plot_generated_vs_observed",
     "save_distribution_evaluation",
     "save_distribution_metric_comparison",
