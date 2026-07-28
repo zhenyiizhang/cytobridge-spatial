@@ -668,6 +668,7 @@ def _paired_delta_summary(
 
 
 def _save_figure(fig: plt.Figure, root: Path, stem: str) -> list[Path]:
+    root.mkdir(parents=True, exist_ok=True)
     paths = [root / f"{stem}.png", root / f"{stem}.pdf"]
     fig.savefig(paths[0], dpi=260, bbox_inches="tight", facecolor="white")
     fig.savefig(paths[1], bbox_inches="tight", facecolor="white")
