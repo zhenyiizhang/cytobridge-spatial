@@ -6,6 +6,7 @@ for post-hoc visualization only (does not affect training).
 
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
@@ -281,7 +282,7 @@ def plot_velocity_component(
     show_legend: bool = False,
     n_neighbors: int = 30,
 ):
-    """Plot a single velocity field using scVelo streamlines.
+    """Plot a model-derived velocity component in aligned spatial coordinates.
 
     Parameters
     ----------
@@ -289,12 +290,16 @@ def plot_velocity_component(
         Coordinates of shape (N, 2) to plot in.
     velocity
         Velocity vectors.
-        - If `feature_matrix` is None: shape must be (N, 2).
-        - If `feature_matrix` is provided: shape must match `feature_matrix` (e.g., N x 50).
+        - If `feature_matrix` is None: shape must be (N, 2), and the vectors are
+          rendered directly as a locally smoothed aligned-spatial vector field.
+        - If `feature_matrix` is provided: shape must match `feature_matrix`
+          (for example, N x 50 PCA-state derivatives). scVelo constructs the
+          transition graph in that state space and projects it to `coords`.
     feature_matrix
-        Optional high-dimensional feature space used to build velocity graph.
-        When provided, streamlines can be projected to `coords` (spatial basis) while
-        velocity is computed in this high-dimensional space.
+        Optional high-dimensional state space used to build the scVelo
+        transition graph. When provided, the model-derived state derivative is
+        projected to `coords`. This is not splicing-based RNA velocity unless
+        the caller explicitly supplies such a derivative.
     labels
         Optional categorical labels for coloring.
     label_to_color
@@ -304,12 +309,14 @@ def plot_velocity_component(
 
     Notes
     -----
-    scVelo cannot construct a meaningful streamline grid when the raw field is
-    nearly zero or fewer than 50 finite, non-zero embedded velocity vectors are
-    available. In those legitimate edge cases (for example, a small sample
-    with no predicted interaction edges), this function renders a labeled
-    scatter/quiver fallback and records the reason in
-    ``adata.uns["velocity_plot_fallback"]``.
+    Direct 2D model drift and state-to-space projection are intentionally kept
+    separate. scVelo cannot construct a meaningful streamline grid when fewer
+    than 50 finite, non-zero embedded state velocities are available. In those
+    legitimate edge cases, this function renders a labeled quiver fallback and
+    records the reason in ``adata.uns["velocity_plot_fallback"]``. If only the
+    vector PDF/SVG backend rejects an otherwise valid scVelo streamline path,
+    the already-computed scVelo streamlines are rasterized into that container;
+    they are not replaced by per-cell arrows.
     """
     import anndata as ad
     import matplotlib.pyplot as plt
@@ -322,7 +329,8 @@ def plot_velocity_component(
         raise ValueError("n_neighbors must be > 0.")
     if coords.ndim != 2 or coords.shape[1] != 2:
         raise ValueError("coords must be of shape (N, 2)")
-    if feature_matrix is None:
+    direct_spatial = feature_matrix is None
+    if direct_spatial:
         if velocity.shape != coords.shape:
             raise ValueError("velocity must have the same shape as coords when feature_matrix is None")
         graph_X = coords
@@ -339,6 +347,11 @@ def plot_velocity_component(
     adata.obsm[f"X_{basis}"] = coords
     adata.layers["Ms"] = graph_X
     adata.layers["velocity"] = velocity
+    adata.uns["velocity_projection_mode"] = (
+        "direct_aligned_spatial_drift"
+        if direct_spatial
+        else "model_state_velocity_to_aligned_spatial"
+    )
 
     palette_list = None
     if labels is not None:
@@ -421,14 +434,177 @@ def plot_velocity_component(
         plt.close(fig)
         return adata
 
+    def _render_direct_spatial_field():
+        """Render explicit 2D model drift without reinterpreting it via scVelo."""
+        from matplotlib.lines import Line2D
+        from scipy.spatial import cKDTree
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        if labels is None:
+            point_colors = "#b8b8b8"
+        else:
+            point_colors = [
+                label_to_color.get(label, "#b8b8b8") for label in labels_arr
+            ]
+        ax.scatter(
+            coords[:, 0],
+            coords[:, 1],
+            c=point_colors,
+            s=7,
+            linewidths=0,
+            alpha=0.55,
+            rasterized=True,
+        )
+        finite = np.isfinite(coords).all(axis=1) & np.isfinite(velocity).all(axis=1)
+        nonzero = finite & (np.linalg.norm(velocity, axis=1) > 1e-12)
+        if int(nonzero.sum()) >= 2:
+            xy = coords[finite]
+            vv = velocity[finite]
+            grid_size = int(np.clip(np.sqrt(len(xy)) / 2.0, 14, 30))
+            x_grid = np.linspace(
+                float(np.quantile(xy[:, 0], 0.01)),
+                float(np.quantile(xy[:, 0], 0.99)),
+                grid_size,
+            )
+            y_grid = np.linspace(
+                float(np.quantile(xy[:, 1], 0.01)),
+                float(np.quantile(xy[:, 1], 0.99)),
+                grid_size,
+            )
+            grid_x, grid_y = np.meshgrid(x_grid, y_grid)
+            query = np.column_stack((grid_x.ravel(), grid_y.ravel()))
+            tree = cKDTree(xy)
+            k = min(max(3, int(n_neighbors)), len(xy))
+            distances, indices = tree.query(query, k=k)
+            if k == 1:
+                distances = distances[:, None]
+                indices = indices[:, None]
+            positive_distances = distances[np.isfinite(distances) & (distances > 0)]
+            bandwidth = (
+                float(np.median(distances[:, -1]))
+                if positive_distances.size
+                else 1.0
+            )
+            bandwidth = max(bandwidth, np.finfo(float).eps)
+            weights = np.exp(-0.5 * np.square(distances / bandwidth))
+            weight_sum = weights.sum(axis=1)
+            local_velocity = np.divide(
+                np.einsum("ij,ijk->ik", weights, vv[indices]),
+                weight_sum[:, None],
+                out=np.zeros((len(query), 2), dtype=float),
+                where=weight_sum[:, None] > 0,
+            )
+            if len(xy) > 2:
+                cell_spacing = tree.query(xy, k=2)[0][:, 1]
+                support_radius = max(
+                    3.0 * float(np.median(cell_spacing[np.isfinite(cell_spacing)])),
+                    np.finfo(float).eps,
+                )
+            else:
+                support_radius = float("inf")
+            magnitude = np.linalg.norm(local_velocity, axis=1)
+            supported = (
+                np.isfinite(local_velocity).all(axis=1)
+                & (distances[:, 0] <= support_radius)
+                & (magnitude > 1e-12)
+            )
+            if np.any(supported):
+                ax.quiver(
+                    query[supported, 0],
+                    query[supported, 1],
+                    local_velocity[supported, 0],
+                    local_velocity[supported, 1],
+                    angles="xy",
+                    scale_units="xy",
+                    scale=None,
+                    color="#202020",
+                    width=0.0032,
+                    alpha=0.85,
+                    zorder=5,
+                )
+        if labels is not None and show_legend:
+            handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    linestyle="",
+                    markerfacecolor=label_to_color.get(category, "#888888"),
+                    markeredgecolor="none",
+                    label=category,
+                )
+                for category in categories
+            ]
+            ax.legend(
+                handles=handles,
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),
+                frameon=False,
+            )
+        ax.set_title(title)
+        ax.set_aspect("equal")
+        ax.axis("off")
+        adata.uns["velocity_plot_render"] = "direct_smoothed_quiver"
+        if out_path:
+            fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+        return adata
+
+    def _save_scvelo_stream(fig) -> Optional[str]:
+        """Save scVelo streams, rasterizing only when a vector backend rejects NaNs."""
+        if not out_path:
+            return "scvelo_stream_not_saved"
+        try:
+            fig.savefig(out_path, dpi=300, bbox_inches="tight")
+            return "scvelo_stream_vector"
+        except ValueError as exc:
+            if "finite" not in str(exc).lower():
+                raise
+            # Matplotlib's PDF/SVG path writer can reject a non-finite vertex
+            # left by the streamline interpolator even though the Agg renderer
+            # displays the valid streamlines correctly. Preserve that exact
+            # scVelo panel as a high-resolution raster inside the requested
+            # output container.
+            buffer = io.BytesIO()
+            try:
+                fig.savefig(
+                    buffer,
+                    format="png",
+                    dpi=300,
+                    bbox_inches="tight",
+                    facecolor=fig.get_facecolor(),
+                )
+                buffer.seek(0)
+                raster = plt.imread(buffer, format="png")
+                width, height = fig.get_size_inches()
+                raster_fig = plt.figure(figsize=(width, height), dpi=300)
+                raster_ax = raster_fig.add_axes((0, 0, 1, 1))
+                raster_ax.imshow(raster)
+                raster_ax.axis("off")
+                raster_fig.savefig(
+                    out_path,
+                    dpi=300,
+                    bbox_inches="tight",
+                    pad_inches=0,
+                )
+                plt.close(raster_fig)
+                return "scvelo_stream_rasterized"
+            except Exception:
+                return None
+            finally:
+                buffer.close()
+
     valid_vectors = np.isfinite(velocity).all(axis=1) & (
         np.linalg.norm(velocity, axis=1) > 1e-12
     )
     if int(valid_vectors.sum()) < 2:
         return _render_velocity_fallback("near_zero_velocity", valid_vectors)
 
+    if direct_spatial:
+        return _render_direct_spatial_field()
+
     sc.pp.neighbors(adata, n_neighbors=int(n_neighbors), use_rep="X")
-    scv.tl.velocity_graph(adata, vkey="velocity")
+    scv.tl.velocity_graph(adata, vkey="velocity", xkey="Ms")
     scv.tl.velocity_embedding(adata, basis=basis, vkey="velocity")
     embedded_velocity = np.asarray(adata.obsm.get(f"velocity_{basis}"), dtype=float)
     valid_embedded = np.isfinite(embedded_velocity).all(axis=1) & (
@@ -455,24 +631,15 @@ def plot_velocity_component(
         title=title,
         legend_loc=legend_loc,
     )
-    if out_path:
-        try:
-            fig.savefig(out_path, dpi=300, bbox_inches="tight")
-        except ValueError as exc:
-            # scVelo's streamline interpolator can leave a non-finite path in
-            # an otherwise finite embedded field.  The PDF backend rejects
-            # that path at render time.  Preserve the scientifically useful
-            # embedded directions with a finite quiver fallback instead of
-            # emitting a corrupt/missing panel.
-            if "finite" not in str(exc).lower():
-                raise
-            plt.close(fig)
-            return _render_velocity_fallback(
-                "nonfinite_streamline_render",
-                valid_embedded,
-                projected_velocity=embedded_velocity,
-            )
+    render_mode = _save_scvelo_stream(fig)
     plt.close(fig)
+    if render_mode is None:
+        return _render_velocity_fallback(
+            "nonfinite_streamline_raster_render",
+            valid_embedded,
+            projected_velocity=embedded_velocity,
+        )
+    adata.uns["velocity_plot_render"] = render_mode
     return adata
 
 

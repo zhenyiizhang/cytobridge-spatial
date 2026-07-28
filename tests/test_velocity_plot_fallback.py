@@ -5,7 +5,7 @@ import numpy as np
 from CytoBridge.pl.velocity import plot_velocity_component
 
 
-def test_nonfinite_streamline_pdf_render_falls_back_to_quiver(
+def test_nonfinite_streamline_pdf_render_preserves_scvelo_stream_as_raster(
     tmp_path, monkeypatch
 ) -> None:
     import matplotlib.figure
@@ -50,5 +50,29 @@ def test_nonfinite_streamline_pdf_render_falls_back_to_quiver(
     )
 
     assert output.is_file()
-    assert result.uns["velocity_plot_fallback"] == "nonfinite_streamline_render"
-    assert calls["count"] == 2
+    assert "velocity_plot_fallback" not in result.uns
+    assert result.uns["velocity_plot_render"] == "scvelo_stream_rasterized"
+    assert calls["count"] == 3
+
+
+def test_direct_spatial_drift_does_not_call_scvelo_graph(tmp_path, monkeypatch) -> None:
+    import scvelo as scv
+
+    def fail_graph(*args, **kwargs):
+        raise AssertionError("Direct aligned-spatial drift must not use scVelo graph")
+
+    monkeypatch.setattr(scv.tl, "velocity_graph", fail_graph)
+    rng = np.random.default_rng(3)
+    coords = rng.normal(size=(96, 2))
+    velocity = rng.normal(scale=0.05, size=(96, 2))
+    output = tmp_path / "direct.pdf"
+    result = plot_velocity_component(
+        coords=coords,
+        velocity=velocity,
+        feature_matrix=None,
+        out_path=str(output),
+    )
+
+    assert output.is_file()
+    assert result.uns["velocity_projection_mode"] == "direct_aligned_spatial_drift"
+    assert result.uns["velocity_plot_render"] == "direct_smoothed_quiver"

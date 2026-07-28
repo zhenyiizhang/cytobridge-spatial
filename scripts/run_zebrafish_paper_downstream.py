@@ -569,10 +569,15 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
             "full": "full",
         },
         "projection_modes": {
-            "spatial_direct": "component[:, :2], feature_matrix=None",
-            "latent_to_spatial": (
-                "component[:, 2:] with feature_matrix=joint_features[:, 2:], "
-                "projected onto aligned spatial coordinates"
+            "aligned_spatial_drift_supplement": (
+                "direct locally smoothed component[:, :2] vectors; no scVelo "
+                "transition reinterpretation"
+            ),
+            "pca_state_to_aligned_spatial_primary": (
+                "scVelo transition graph from PCA state=joint_features[:, 2:] "
+                "and model-derived PCA-state velocity=component[:, 2:], "
+                "projected onto aligned spatial coordinates; not "
+                "splicing-based RNA velocity"
             ),
         },
         "interaction_m": int(ctx.args.interaction_m),
@@ -609,6 +614,8 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
         )
         outputs: list[Path] = [data_path]
         plot_fallbacks: list[dict[str, str]] = []
+        plot_renders: list[dict[str, str]] = []
+        embedded_outputs: dict[str, np.ndarray] = {}
         labels_all = ctx.adata.obs[ctx.args.annotation_key].astype(str).to_numpy()
         for time_value in settings["time_points"]:
             mask = np.isclose(
@@ -621,7 +628,8 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
             labels = labels_all[mask]
             for name, panel_label in settings["components"].items():
                 direct_path = (
-                    stage_dir / f"spatial_direct_{panel_label}_t{time_value:g}.pdf"
+                    stage_dir
+                    / f"aligned_spatial_drift_{panel_label}_t{time_value:g}.pdf"
                 )
                 direct_plot = cb.pl.plot_velocity_component(
                     coords=coords,
@@ -629,7 +637,10 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                     feature_matrix=None,
                     labels=labels,
                     label_to_color=ctx.label_to_color,
-                    title=f"{panel_label} velocity (spatial direct), t={time_value:g}",
+                    title=(
+                        f"{panel_label.capitalize()} aligned-spatial drift "
+                        f"(direct), t={time_value:g}"
+                    ),
                     out_path=str(direct_path),
                     density=2.0,
                     basis="spatial",
@@ -643,11 +654,25 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                     plot_fallbacks.append(
                         {"file": str(direct_path), "reason": str(direct_reason)}
                     )
+                direct_render = getattr(direct_plot, "uns", {}).get(
+                    "velocity_plot_render"
+                )
+                if direct_render:
+                    plot_renders.append(
+                        {"file": str(direct_path), "render": str(direct_render)}
+                    )
+                embedded_outputs[
+                    f"aligned_spatial_drift_{name}_t{time_value:g}"
+                ] = np.asarray(components[name][mask, :2], dtype=np.float32)
                 plt.close("all")
                 outputs.append(direct_path)
 
                 latent_path = (
-                    stage_dir / f"latent_to_spatial_{panel_label}_t{time_value:g}.pdf"
+                    stage_dir
+                    / (
+                        f"pca_state_to_aligned_spatial_{panel_label}_"
+                        f"t{time_value:g}.pdf"
+                    )
                 )
                 latent_plot = cb.pl.plot_velocity_component(
                     coords=coords,
@@ -656,11 +681,11 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                     labels=labels,
                     label_to_color=ctx.label_to_color,
                     title=(
-                        f"{panel_label} velocity (latent to spatial), "
-                        f"t={time_value:g}"
+                        f"{panel_label.capitalize()} PCA-state velocity -> "
+                        f"aligned spatial (scVelo), t={time_value:g}"
                     ),
                     out_path=str(latent_path),
-                    density=2.0,
+                    density=1.5,
                     basis="spatial",
                     show_legend=False,
                     n_neighbors=int(ctx.args.velocity_neighbors),
@@ -672,8 +697,26 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                     plot_fallbacks.append(
                         {"file": str(latent_path), "reason": str(latent_reason)}
                     )
+                latent_render = getattr(latent_plot, "uns", {}).get(
+                    "velocity_plot_render"
+                )
+                if latent_render:
+                    plot_renders.append(
+                        {"file": str(latent_path), "render": str(latent_render)}
+                    )
+                if latent_plot is not None and hasattr(latent_plot, "obsm"):
+                    embedded_key = "velocity_spatial"
+                    if embedded_key in latent_plot.obsm:
+                        embedded_outputs[
+                            f"pca_state_to_aligned_spatial_{name}_t{time_value:g}"
+                        ] = np.asarray(
+                            latent_plot.obsm[embedded_key], dtype=np.float32
+                        )
                 plt.close("all")
                 outputs.append(latent_path)
+        embedding_path = stage_dir / "velocity_spatial_embeddings.npz"
+        np.savez_compressed(embedding_path, **embedded_outputs)
+        outputs.append(embedding_path)
         identity_error = float(
             np.max(
                 np.abs(
@@ -694,6 +737,11 @@ def _stage_velocity(ctx: RunContext) -> dict[str, object]:
                 )
             ),
             "plot_fallbacks": plot_fallbacks,
+            "plot_renders": plot_renders,
+            "primary_velocity_figure_semantics": (
+                "model-derived PCA-state velocity projected by scVelo onto "
+                "aligned spatial coordinates; not splicing-based RNA velocity"
+            ),
         }
 
     return _execute_stage(ctx, "velocity", settings, action)

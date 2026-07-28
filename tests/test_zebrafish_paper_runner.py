@@ -469,8 +469,14 @@ def test_velocity_stage_emits_direct_and_latent_projection_contracts(
     runner._stage_velocity(context)
 
     assert len(calls) == 3 * 4 * 2
-    direct = [call for call in calls if "spatial_direct" in call["out_path"]]
-    latent = [call for call in calls if "latent_to_spatial" in call["out_path"]]
+    direct = [
+        call for call in calls if "aligned_spatial_drift" in call["out_path"]
+    ]
+    latent = [
+        call
+        for call in calls
+        if "pca_state_to_aligned_spatial" in call["out_path"]
+    ]
     assert all(call["feature_matrix"] is None for call in direct)
     assert all(call["velocity"].shape[1] == 2 for call in direct)
     assert all(call["feature_matrix"].shape[1] == 3 for call in latent)

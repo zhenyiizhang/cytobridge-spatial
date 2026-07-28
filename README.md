@@ -214,6 +214,25 @@ components = compute_velocity_components(
 )
 ```
 
+For spatial visualization, keep two different model quantities separate:
+
+```python
+cb.pl.plot_velocity_component(
+    coords=data_t1[:, :2],
+    feature_matrix=data_t1[:, 2:],
+    velocity=components["full"][:, 2:],
+    title="PCA-state velocity -> aligned spatial (scVelo)",
+)
+```
+
+With `feature_matrix` supplied, CytoBridge builds a scVelo transition graph
+from the model-derived PCA-state derivative and projects that graph onto the
+aligned spatial coordinates. This is a state-to-space visualization, not
+splicing-based RNA velocity or direct evidence of physical cell migration.
+Passing `feature_matrix=None` instead renders `components["full"][:, :2]`
+directly as aligned-spatial model drift; it does not run that 2D drift through
+a second scVelo transition embedding.
+
 The feature table must match the checkpoint contract recorded in
 `params.yml`; the published ARISTA checkpoint expects 52 model dimensions
 (two aligned spatial coordinates followed by 50 expression PCs). The companion

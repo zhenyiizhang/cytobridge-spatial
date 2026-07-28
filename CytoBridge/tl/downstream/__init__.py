@@ -60,6 +60,16 @@ from .evaluation import (
     save_distribution_evaluation,
     save_distribution_metric_comparison,
 )
+from .functional_ablation import (
+    DEFAULT_FROZEN_ABLATION_CONDITIONS,
+    FrozenAblationCondition,
+    FrozenCheckpointAblationResult,
+    LRGateOverride,
+    resolve_frozen_ablation_condition,
+    run_frozen_checkpoint_ablations,
+    save_frozen_checkpoint_ablation_result,
+    temporary_lr_gate_mode,
+)
 from .enrichment import (
     GeneSetLibrary,
     load_gmt_gene_sets,
@@ -253,6 +263,10 @@ __all__ = [
     "validate_spatial_exact_decomposition_model",
     "DistributionEvaluationResult",
     "DistributionMetricComparison",
+    "DEFAULT_FROZEN_ABLATION_CONDITIONS",
+    "FrozenAblationCondition",
+    "FrozenCheckpointAblationResult",
+    "LRGateOverride",
     "compare_distribution_metric_tables",
     "compute_distribution_metrics",
     "compute_generated_vs_observed_plot_limits",
@@ -261,6 +275,10 @@ __all__ = [
     "plot_generated_vs_observed",
     "save_distribution_evaluation",
     "save_distribution_metric_comparison",
+    "resolve_frozen_ablation_condition",
+    "run_frozen_checkpoint_ablations",
+    "save_frozen_checkpoint_ablation_result",
+    "temporary_lr_gate_mode",
     "CompleteMessageAudit",
     "CounterfactualMetricResult",
     "FixedCohortRollout",

@@ -1,0 +1,25 @@
+{
+  "Delta ligands": [
+    "dla",
+    "dld"
+  ],
+  "Notch receptors": [
+    "notch1a",
+    "notch3"
+  ],
+  "Her response": [
+    "her4.1",
+    "her4.3",
+    "her4.4"
+  ],
+  "CXCL12/CXCR4 guidance axis": [
+    "cxcl12a",
+    "cxcr4a",
+    "cxcr4b"
+  ],
+  "Wnt5/Fzd7 developmental axis": [
+    "wnt5b",
+    "fzd7a",
+    "fzd7b"
+  ]
+}

@@ -453,6 +453,23 @@ The aligned H5AD is the primary hand-off artifact. Its important contract is:
 - `layers["counts"]`: count-space expression used by interaction graphs;
 - `obsm["X_latent"]`: PCA representation;
 - `obsm["spatial_aligned"]`: aligned two-dimensional coordinates;
+
+The paper velocity stage exports two explicitly different views:
+
+- `pca_state_to_aligned_spatial_*` is the primary view. For each observed
+  timepoint, scVelo builds its graph from `X_latent` and the corresponding
+  model-derived PCA-state component, then projects the transition directions
+  onto `spatial_aligned`. It is not spliced/unspliced RNA velocity.
+- `aligned_spatial_drift_*` is a supplemental direct view of the first two
+  model-derivative coordinates. It is rendered as a locally smoothed 2D vector
+  field and is not passed through a scVelo transition graph.
+
+The stage also writes `velocity_components.npz`,
+`velocity_spatial_embeddings.npz`, and a manifest that records whether each
+scVelo panel was saved as vector streamlines or as a high-resolution
+rasterization of those same streamlines. A per-cell quiver substitution is
+recorded as a fallback and should not be used silently as a manuscript stream
+panel.
 - `obs["time_point_processed"]`: model time;
 - `obs["Annotation"]`: downstream label;
 - `varm["PCs"]` and `var["pca_center"]`: one consistent inverse-PCA contract;
@@ -614,6 +631,70 @@ The review bundler accepts only `profile=full` native paper roots. It validates
 the root and all seven stage manifests, checks every recorded artifact's byte
 size and SHA-256, and copies only manifest-recorded visual outputs. Unrecorded
 stale figures and state arrays therefore cannot enter the portable panel bundle.
+
+## Two different ablation questions
+
+Do not merge a retrained architecture ablation with a same-checkpoint
+functional ablation; they answer different questions.
+
+- A **retrained ablation** fits a new model after removing the interaction
+  component or LR-informed prior. It tests what representation is learned under
+  the altered architecture and must use a matched training budget.
+- A **frozen-checkpoint functional ablation** keeps every fitted weight, initial
+  cell, time grid, and random seed fixed, then disables one inference-time
+  contribution. It tests whether the fitted full model functionally depends on
+  that contribution.
+
+Run the latter with:
+
+```bash
+python scripts/run_frozen_checkpoint_ablations.py \
+  --adata /path/to/zebrafish_aligned.h5ad \
+  --model-dir /path/to/full/training \
+  --output-dir /path/to/frozen_checkpoint_ablation \
+  --time-index 3 \
+  --end-time 4 \
+  --n-cells 3048 \
+  --seed 101 \
+  --dt 0.05 \
+  --interaction-m 1024 \
+  --device cuda
+```
+
+The three conditions are `full`, `interaction_off`, and `lr_gate_off`.
+`lr_gate_off` has the formal meaning
+`same_checkpoint_all_spatial_gate_counterfactual`: it retains the fitted GNN
+but admits every within-cutoff spatial candidate edge. This changes edge
+density, so it is not equivalent to a retrained no-LR-prior model and does not
+isolate LR identity from edge-density effects. The manifest records that scope
+explicitly.
+
+## Reader-facing held-out spatial comparison
+
+The numerical LOTO benchmark should remain complete, but a biological reader
+also needs to see what each prediction does to the tissue. Generate the
+observed-versus-predicted density, boundary, cell-territory, and gene-program
+maps with:
+
+```bash
+python scripts/spatiotemporal_benchmark/report_zebrafish_loto_spatial.py \
+  --source-h5ad /path/to/zebrafish_aligned.h5ad \
+  --loto-input-root /path/to/benchmark/inputs \
+  --prediction-root /path/to/benchmark/predictions/primary/loto \
+  --linear-method linear_centroid_shift \
+  --cytobridge-method CytoBridge-0.015 \
+  --targets 1 2 3 \
+  --programs-json configs/zebrafish_loto_reader_programs.json \
+  --output-dir /path/to/loto_spatial_reader
+```
+
+The Linear control is labelled **bracket centroid-shift interpolation** because
+it uses both flanking observed anchors and applies one global translation to
+every source cell. It is a strong transductive control, not a forward-only
+forecast and not a cell-level deformation model. Predicted cell-type and
+gene-program maps use one target-removed, train-only kNN readout for both
+methods. These maps are interpretive PCA-state readouts, not direct simulated
+gene expression or perturbation evidence.
 
 ## Adaptation checklist for a new dataset
 
