@@ -481,6 +481,7 @@ def _sensitivity_summary(
                         float(primary.iloc[0]) if len(primary) == 1 else np.nan
                     ),
                     "mean": float(np.mean(values)),
+                    "median": float(np.median(values)),
                     "sd": (
                         float(np.std(values, ddof=1))
                         if len(values) > 1
@@ -544,6 +545,9 @@ def _paired_delta_summary(
                     "space": space,
                     "metric": metric,
                     "mean_delta_vs_full": float(np.mean(values)),
+                    "median_delta_vs_full": float(np.median(values)),
+                    "min_delta_vs_full": float(np.min(values)),
+                    "max_delta_vs_full": float(np.max(values)),
                     "sd_delta_vs_full": (
                         float(np.std(values, ddof=1))
                         if len(values) > 1
@@ -551,6 +555,9 @@ def _paired_delta_summary(
                     ),
                     "mean_percent_change_vs_full": float(
                         np.nanmean(percents)
+                    ),
+                    "median_percent_change_vs_full": float(
+                        np.nanmedian(percents)
                     ),
                     "n_lower_than_full": int(np.sum(values < 0)),
                     "n_higher_than_full": int(np.sum(values > 0)),
@@ -581,6 +588,9 @@ def _paired_delta_summary(
                     "space": space,
                     "metric": metric,
                     "mean_delta_vs_full": float(np.mean(values)),
+                    "median_delta_vs_full": float(np.median(values)),
+                    "min_delta_vs_full": float(np.min(values)),
+                    "max_delta_vs_full": float(np.max(values)),
                     "sd_delta_vs_full": (
                         float(np.std(values, ddof=1))
                         if len(values) > 1
@@ -588,6 +598,9 @@ def _paired_delta_summary(
                     ),
                     "mean_percent_change_vs_full": float(
                         np.nanmean(percents)
+                    ),
+                    "median_percent_change_vs_full": float(
+                        np.nanmedian(percents)
                     ),
                     "n_lower_than_full": int(np.sum(values < 0)),
                     "n_higher_than_full": int(np.sum(values > 0)),
@@ -622,6 +635,9 @@ def _paired_delta_summary(
                 "space": "mass",
                 "metric": "tmv",
                 "mean_delta_vs_full": float(np.mean(values)),
+                "median_delta_vs_full": float(np.median(values)),
+                "min_delta_vs_full": float(np.min(values)),
+                "max_delta_vs_full": float(np.max(values)),
                 "sd_delta_vs_full": (
                     float(np.std(values, ddof=1))
                     if len(values) > 1
@@ -629,6 +645,11 @@ def _paired_delta_summary(
                 ),
                 "mean_percent_change_vs_full": float(
                     np.nanmean(group["percent_change"].to_numpy(dtype=float))
+                ),
+                "median_percent_change_vs_full": float(
+                    np.nanmedian(
+                        group["percent_change"].to_numpy(dtype=float)
+                    )
                 ),
                 "n_lower_than_full": int(np.sum(values < 0)),
                 "n_higher_than_full": int(np.sum(values > 0)),
@@ -651,6 +672,9 @@ def _paired_delta_summary(
                 "space": "mass",
                 "metric": "tmv",
                 "mean_delta_vs_full": float(np.mean(values)),
+                "median_delta_vs_full": float(np.median(values)),
+                "min_delta_vs_full": float(np.min(values)),
+                "max_delta_vs_full": float(np.max(values)),
                 "sd_delta_vs_full": (
                     float(np.std(values, ddof=1))
                     if len(values) > 1
@@ -658,6 +682,11 @@ def _paired_delta_summary(
                 ),
                 "mean_percent_change_vs_full": float(
                     np.nanmean(group["percent_change"].to_numpy(dtype=float))
+                ),
+                "median_percent_change_vs_full": float(
+                    np.nanmedian(
+                        group["percent_change"].to_numpy(dtype=float)
+                    )
                 ),
                 "n_lower_than_full": int(np.sum(values < 0)),
                 "n_higher_than_full": int(np.sum(values > 0)),
@@ -684,7 +713,12 @@ def _plot_wasserstein_curves(
     stem: str,
     log_scale: bool,
     title: str,
+    central_tendency: str = "mean",
 ) -> list[Path]:
+    if central_tendency not in {"mean", "median"}:
+        raise ValueError(
+            "central_tendency must be either 'mean' or 'median'."
+        )
     fig, axes = plt.subplots(2, 3, figsize=(14.2, 7.4), squeeze=False)
     for row, metric in enumerate(("w1", "w2")):
         for column, space in enumerate(SPACE_ORDER):
@@ -694,31 +728,36 @@ def _plot_wasserstein_curves(
                 condition_table = subset.loc[
                     subset["condition"].eq(condition)
                 ]
-                summary = (
-                    condition_table.groupby("time", sort=True)[metric]
-                    .agg(["mean", "std"])
-                    .reset_index()
-                )
+                summary = condition_table.groupby(
+                    "time", sort=True
+                )[metric].agg(["mean", "median", "std"]).reset_index()
                 if summary.empty:
                     continue
                 summary["std"] = summary["std"].fillna(0.0)
                 x = summary["time"].to_numpy(dtype=float)
-                mean = summary["mean"].to_numpy(dtype=float)
+                center = summary[central_tendency].to_numpy(dtype=float)
                 sd = summary["std"].to_numpy(dtype=float)
                 color = _condition_color(condition)
                 axis.plot(
                     x,
-                    mean,
+                    center,
                     marker="o",
                     linewidth=2.0,
                     color=color,
-                    label=_condition_label(condition),
+                    label=(
+                        _condition_label(condition)
+                        + (
+                            " (median)"
+                            if central_tendency == "median"
+                            else ""
+                        )
+                    ),
                 )
-                if not log_scale:
+                if not log_scale and central_tendency == "mean":
                     axis.fill_between(
                         x,
-                        np.maximum(mean - sd, 0.0),
-                        mean + sd,
+                        np.maximum(center - sd, 0.0),
+                        center + sd,
                         color=color,
                         alpha=0.15,
                         linewidth=0,
@@ -769,42 +808,60 @@ def _plot_tmv(
     if not main_conditions:
         main_conditions = list(conditions)
     panels = [
-        ("Primary comparison", main_conditions, False),
-        ("All-spatial stress test", list(conditions), True),
+        ("Primary comparison (mean ± SD)", main_conditions, False),
+        (
+            "All-spatial stress test (median + seeds)",
+            list(conditions),
+            True,
+        ),
     ]
     fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.4), squeeze=False)
     for axis, (title, active, stress) in zip(axes[0], panels):
         for condition in active:
             table = mass.loc[mass["condition"].eq(condition)]
-            summary = (
-                table.groupby("time", sort=True)["tmv"]
-                .agg(["mean", "std"])
-                .reset_index()
-            )
+            summary = table.groupby("time", sort=True)["tmv"].agg(
+                ["mean", "median", "std"]
+            ).reset_index()
             if summary.empty:
                 continue
             summary["std"] = summary["std"].fillna(0.0)
             x = summary["time"].to_numpy(dtype=float)
-            mean = summary["mean"].to_numpy(dtype=float)
+            center_column = "median" if stress else "mean"
+            center = summary[center_column].to_numpy(dtype=float)
             sd = summary["std"].to_numpy(dtype=float)
             color = _condition_color(condition)
             axis.plot(
                 x,
-                mean,
+                center,
                 marker="o",
                 linewidth=2,
                 color=color,
-                label=_condition_label(condition),
+                label=(
+                    _condition_label(condition)
+                    + (" (median)" if stress else "")
+                ),
             )
             if not stress:
                 axis.fill_between(
                     x,
-                    np.maximum(mean - sd, 0.0),
-                    mean + sd,
+                    np.maximum(center - sd, 0.0),
+                    center + sd,
                     color=color,
                     alpha=0.15,
                     linewidth=0,
                 )
+            else:
+                for _, seed_table in table.groupby(
+                    "rollout_seed",
+                    sort=False,
+                ):
+                    axis.plot(
+                        seed_table["time"],
+                        seed_table["tmv"],
+                        color=color,
+                        alpha=0.14,
+                        linewidth=0.7,
+                    )
         if stress:
             axis.set_yscale("symlog", linthresh=1e-4)
         axis.set_title(title)
@@ -823,6 +880,63 @@ def _plot_tmv(
     return _save_figure(fig, output_dir, "tmv_time_curves")
 
 
+def _stress_extreme_markdown(
+    paired: pd.DataFrame | None,
+    paired_mass: pd.DataFrame | None,
+) -> str:
+    if paired is None:
+        return ""
+    stress = paired.loc[
+        paired["condition"].eq("lr_gate_off")
+        & paired["space"].eq("joint")
+    ].copy()
+    if stress.empty:
+        return ""
+    candidates: list[tuple[float, str, Any]] = []
+    for metric in ("w1", "w2"):
+        delta_column = f"{metric}_delta_vs_full"
+        for index, value in stress[delta_column].items():
+            candidates.append((abs(float(value)), metric, index))
+    _, metric, index = max(candidates, key=lambda item: item[0])
+    row = stress.loc[index]
+    value_column = metric
+    full_column = f"full_{metric}"
+    delta_column = f"{metric}_delta_vs_full"
+    same_endpoint = stress.loc[stress["time"].eq(row["time"])]
+    stable = same_endpoint.loc[
+        ~same_endpoint["rollout_seed"].eq(row["rollout_seed"]),
+        value_column,
+    ].to_numpy(dtype=float)
+    stable_text = (
+        "没有其他 seed 可比较"
+        if stable.size == 0
+        else f"其余 seeds 为 [{np.min(stable):.5g}, {np.max(stable):.5g}]"
+    )
+    mass_text = ""
+    if paired_mass is not None:
+        mass_match = paired_mass.loc[
+            paired_mass["condition"].eq("lr_gate_off")
+            & paired_mass["rollout_seed"].eq(row["rollout_seed"])
+            & paired_mass["time"].eq(row["time"])
+        ]
+        if len(mass_match) == 1:
+            mass_row = mass_match.iloc[0]
+            mass_text = (
+                f"；同一 endpoint 的 TMV={float(mass_row['tmv']):.5g}"
+                f"（Full={float(mass_row['full_tmv']):.5g}）"
+            )
+    return (
+        "\n## All-spatial extreme-rollout audit\n\n"
+        "为避免中位数掩盖稳定性问题，自动报告最大的 joint W1/W2 paired "
+        "deviation：rollout seed "
+        f"`{int(row['rollout_seed'])}`、t=`{float(row['time']):g}`、"
+        f"{metric.upper()}=`{float(row[value_column]):.5g}`"
+        f"（Full=`{float(row[full_column]):.5g}`，"
+        f"Δ=`{float(row[delta_column]):+.5g}`）；{stable_text}{mass_text}。"
+        "该 seed 保留在全部汇总中，不作事后删除。\n"
+    )
+
+
 def _interpretation_markdown(
     delta_summary: pd.DataFrame,
     *,
@@ -830,25 +944,36 @@ def _interpretation_markdown(
     seeds: Sequence[int],
     primary_seed: int,
     ot_sampling_seed: int,
+    paired: pd.DataFrame | None = None,
+    paired_mass: pd.DataFrame | None = None,
 ) -> str:
     aggregate = delta_summary.loc[
         delta_summary["time"].eq("mean_t1_to_t4")
         & ~delta_summary["condition"].eq("full")
     ].copy()
     table_lines = [
-        "| Condition | Space | Metric | Mean Δ vs Full | Mean % change | Lower in seeds |",
-        "|---|---|---|---:|---:|---:|",
+        "| Condition | Space | Metric | Mean Δ | Median Δ | Seed-mean range | Median % | Higher in seeds |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
     ]
     for row in aggregate.itertuples(index=False):
+        median_percent = (
+            "—"
+            if str(row.metric) == "tmv"
+            else f"{float(row.median_percent_change_vs_full):+.2f}%"
+        )
         table_lines.append(
             "| "
             f"{_condition_label(str(row.condition))} | {row.space} | "
             f"{str(row.metric).upper()} | {float(row.mean_delta_vs_full):+.5g} | "
-            f"{float(row.mean_percent_change_vs_full):+.2f}% | "
-            f"{int(row.n_lower_than_full)}/{int(row.n_rollout_seeds)} |"
+            f"{float(row.median_delta_vs_full):+.5g} | "
+            f"[{float(row.min_delta_vs_full):+.5g}, "
+            f"{float(row.max_delta_vs_full):+.5g}] | "
+            f"{median_percent} | "
+            f"{int(row.n_higher_than_full)}/{int(row.n_rollout_seeds)} |"
         )
     table = "\n".join(table_lines)
     condition_text = ", ".join(_condition_label(value) for value in conditions)
+    stress_audit = _stress_extreme_markdown(paired, paired_mass)
     return f"""# t0→t4 same-checkpoint functional ablation
 
 ## 这次到底算的是什么
@@ -863,6 +988,11 @@ rollout 到最后一个时间点。真实中间时间点只用于评估，没有
   让空间 cutoff 内的候选边全部通过。它改变了边密度，不能称为纯 LR identity
   ablation，也不能简称为 “LR OFF”。
 
+这个 runner 评价一个固定 checkpoint 的 inference-time functional dependence；
+该 checkpoint 是 full-data、held-out 还是其他训练协议，属于外部训练 metadata，
+不能由本报告自动推断。它从 source time 选取的细胞出发，始终追踪同一批
+non-split weighted particles；后续增殖由 growth mass 表示，不是增加粒子数。
+
 ## 指标定义
 
 每个生成细胞携带模型原生的未归一化 growth mass `w_i`。
@@ -870,6 +1000,8 @@ rollout 到最后一个时间点。真实中间时间点只用于评估，没有
 - W1/W2：先将 `w_i` 归一化为概率，再与真实细胞的均匀经验分布做 exact EMD。
   因此 W1/W2 评价“质量在状态/空间中的位置”，不评价总质量是否正确。
 - TMV：`abs(sum(w) - N_t/N_0) / (N_t/N_0)`，单独评价总质量。
+  当 Full TMV 接近零时，百分比变化会被小分母放大，因此 TMV 应优先报告绝对
+  delta，而不是把百分比作为 headline。
 - Joint 是未经标准化的 `[2D aligned spatial, 50D PCA state]`。它通常受 PCA
   state 主导，因此必须同时报告 State 和 Spatial，不能把 Joint 当成两块等权。
 - 三个空间单位不同，Joint/State/Spatial 的绝对数值不能横向比较。
@@ -878,6 +1010,9 @@ rollout 到最后一个时间点。真实中间时间点只用于评估，没有
 
 - checkpoint 的训练 seed 没有变化；这不是多次独立训练。
 - rollout seeds：`{list(seeds)}`，primary seed：`{primary_seed}`。
+- primary seed 只用于保存一套可逐粒子检查的 trajectory；主比较曲线仍汇总所有
+  rollout seeds，文件名中的 `primary` 指不含 all-spatial stress condition 的
+  主比较 panel。
 - 同一个 rollout seed 内，各条件使用相同 Brownian increments，所以可做 paired
   delta。
 - exact-OT support seed 固定为 `{ot_sampling_seed}`（并按 time/space 做确定性
@@ -887,15 +1022,21 @@ rollout 到最后一个时间点。真实中间时间点只用于评估，没有
 ## t1–t4 平均结果
 
 负的 Δ 或百分比表示该 counterfactual 的数值低于 Full；这只是终点分布更接近，
-不自动等于该生物学模块“更好”或“更坏”。
+不自动等于该生物学模块“更好”或“更坏”。Mean、median 和 seed-mean range
+必须一起读；若 all-spatial 的均值被单个发散 seed 支配，应以中位数描述典型
+rollout，并把该发散明确报告为稳定性结果，不能只报均值或删除该 seed。
 
 {table}
+{stress_audit}
 
 ## 如何解读
 
 1. 先看逐时间点曲线，判断差异是持续存在，还是只由 t4 的累计误差驱动。
-2. 再看 paired delta 及 `Lower in seeds`。5/5 同方向比单个 seed 的 barplot
-   更可靠，但这些 seed 仍只是固定 checkpoint 的随机 rollout，不是训练重复。
+   主比较粗线是 mean；all-spatial stress 图粗线是 median，淡色细线是每个 seed。
+2. 再看 paired delta 及 `Higher in seeds`。如果这里显示
+   `{len(seeds)}/{len(seeds)}`，表示 counterfactual 误差在所有 rollout seeds
+   中都高于 Full；全 seeds 同方向比单个 seed 的 barplot 更可靠，但这些 seed
+   仍只是固定 checkpoint 的随机 rollout，不是训练重复。
 3. All-spatial 若显著恶化，最多说明训练好的 gate 对限制过多 message passing 和
    稳定动力学重要；由于边数同时改变，不能据此单独声称 LR identity 因果成立。
 4. 这套 whole-trajectory weighted-SDE 结果是 same-checkpoint functional
@@ -907,7 +1048,9 @@ rollout 到最后一个时间点。真实中间时间点只用于评估，没有
 旧结果应标为 **late-stage deterministic fixed-cohort sensitivity
 (t3→t4 only)**。它没有 growth、噪声、resampling 或真实组成变化，只适合说明
 晚期局部开关会怎样改变固定细胞；不得作为 t0→t4 主性能 benchmark，也不得把其
-绝对 W1/W2 与本报告混算。
+绝对 W1/W2 与本报告混算。旧局部结果与连续结果方向不同并非矛盾：前者从
+measured t3 重新初始化并绕过 t0→t3 的累计误差，后者测量从 t0 开始累计的
+whole-trajectory distribution performance。
 """
 
 
@@ -1117,7 +1260,11 @@ def run(
         output_dir=output_dir,
         stem="w1_w2_time_curves_all_spatial_stress_log",
         log_scale=True,
-        title="All-spatial gate stress test (log scale)",
+        title=(
+            "All-spatial gate stress test — median + individual seeds "
+            "(log scale)"
+        ),
+        central_tendency="median",
     )
     tmv_figures = _plot_tmv(
         mass,
@@ -1141,6 +1288,8 @@ def run(
             seeds=seeds,
             primary_seed=primary_seed,
             ot_sampling_seed=int(args.ot_sampling_seed),
+            paired=paired,
+            paired_mass=paired_mass,
         ),
         encoding="utf-8",
     )
