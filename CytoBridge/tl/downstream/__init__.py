@@ -61,12 +61,15 @@ from .evaluation import (
     save_distribution_metric_comparison,
 )
 from .functional_ablation import (
+    ContinuousFrozenCheckpointAblationResult,
     DEFAULT_FROZEN_ABLATION_CONDITIONS,
     FrozenAblationCondition,
     FrozenCheckpointAblationResult,
     LRGateOverride,
     resolve_frozen_ablation_condition,
+    run_continuous_frozen_checkpoint_ablations,
     run_frozen_checkpoint_ablations,
+    save_continuous_frozen_checkpoint_ablation_result,
     save_frozen_checkpoint_ablation_result,
     temporary_lr_gate_mode,
 )
@@ -268,6 +271,7 @@ __all__ = [
     "DistributionEvaluationResult",
     "DistributionMetricComparison",
     "DEFAULT_FROZEN_ABLATION_CONDITIONS",
+    "ContinuousFrozenCheckpointAblationResult",
     "FrozenAblationCondition",
     "FrozenAblationDistributionEvaluation",
     "FrozenCheckpointAblationResult",
@@ -282,7 +286,9 @@ __all__ = [
     "save_distribution_evaluation",
     "save_distribution_metric_comparison",
     "resolve_frozen_ablation_condition",
+    "run_continuous_frozen_checkpoint_ablations",
     "run_frozen_checkpoint_ablations",
+    "save_continuous_frozen_checkpoint_ablation_result",
     "save_frozen_checkpoint_ablation_result",
     "temporary_lr_gate_mode",
     "CompleteMessageAudit",

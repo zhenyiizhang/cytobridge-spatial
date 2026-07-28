@@ -250,6 +250,8 @@ def evaluate_model_distributions(
     random_seed: int = 42,
     include_initial_time: bool = False,
     verbose: bool = True,
+    include_interaction: bool = True,
+    noise_seed: Optional[int] = None,
 ) -> DistributionEvaluationResult:
     """Simulate a fitted model and evaluate W1, W2, and TMV at observed times.
 
@@ -306,7 +308,9 @@ def evaluate_model_distributions(
         dt=float(dt),
         sigma=float(sigma),
         include_score=bool(include_score),
+        include_interaction=bool(include_interaction),
         interaction_m=int(interaction_m),
+        noise_seed=None if noise_seed is None else int(noise_seed),
         device=device,
         time_key=resolved_time_key,
         obsm_key=obsm_key,
@@ -373,12 +377,14 @@ def evaluate_model_distributions(
         "dt": float(dt),
         "sigma": float(sigma),
         "include_score": bool(include_score),
+        "include_interaction": bool(include_interaction),
         "interaction_m": int(interaction_m),
         "max_ot_points": None if max_ot_points is None else int(max_ot_points),
         "structure_max_points": (
             None if structure_max_points is None else int(structure_max_points)
         ),
         "random_seed": int(random_seed),
+        "noise_seed": None if noise_seed is None else int(noise_seed),
         "time_key": resolved_time_key,
         "obsm_key": obsm_key,
         "spatial_key": spatial_key,

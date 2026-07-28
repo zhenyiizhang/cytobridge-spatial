@@ -179,7 +179,14 @@ def _restore_model_after_inference(state: Optional[list[tuple[torch.nn.Parameter
         param.requires_grad_(requires_grad)
 
 
-def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
+def _euler_sdeint(
+    sde: nn.Module,
+    initial_state,
+    dt: float,
+    ts: torch.Tensor,
+    *,
+    noise_generator: Optional[torch.Generator] = None,
+):
     import math
 
     device = initial_state[0].device
@@ -192,24 +199,38 @@ def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
     ts_list = [float(x) for x in ts.tolist()]
     next_output_idx = 0
 
-    while current_time <= tf + 1e-8:
-        if current_time >= ts_list[next_output_idx] - 1e-8:
+    while next_output_idx < len(ts_list):
+        next_output_time = ts_list[next_output_idx]
+        if current_time >= next_output_time - 1e-8:
             output_states.append(current_state)
             next_output_idx += 1
-            if next_output_idx >= len(ts_list):
-                break
+            continue
+
+        remaining = next_output_time - current_time
+        # Keep the historical step exactly when the next requested boundary is
+        # at least one full step away.  Only shorten the final step that would
+        # otherwise overshoot an output time.
+        step_dt = float(dt) if remaining >= float(dt) - 1e-12 else remaining
 
         t_tensor = torch.tensor([current_time], device=device, dtype=torch.float32)
         f_z, f_lnw = sde.f(t_tensor, current_state)
-        noise_z = torch.randn_like(current_state[0]) * math.sqrt(dt)
+        if noise_generator is None:
+            # Preserve the historical global-RNG path bit-for-bit when the
+            # caller does not request common random numbers.
+            noise_z = torch.randn_like(current_state[0])
+        else:
+            noise_z = torch.randn(
+                current_state[0].shape,
+                dtype=current_state[0].dtype,
+                device=current_state[0].device,
+                generator=noise_generator,
+            )
+        noise_z = noise_z * math.sqrt(step_dt)
         g_z = sde.g(t_tensor, current_state[0])
-        new_z = current_state[0] + f_z * dt + g_z * noise_z
-        new_lnw = current_state[1] + f_lnw * dt
+        new_z = current_state[0] + f_z * step_dt + g_z * noise_z
+        new_lnw = current_state[1] + f_lnw * step_dt
         current_state = (new_z, new_lnw)
-        current_time += dt
-
-    while len(output_states) < len(ts_list):
-        output_states.append(current_state)
+        current_time += step_dt
 
     traj_z = torch.stack([state[0] for state in output_states], dim=0)
     traj_lnw = torch.stack([state[1] for state in output_states], dim=0)
@@ -1015,6 +1036,8 @@ def simulate_sde_points(
     f_net=None,
     score_net=None,
     verbose: bool = True,
+    include_interaction: bool = True,
+    noise_seed: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     from CytoBridge.tl.core.interaction import cal_interaction
 
@@ -1059,13 +1082,16 @@ def simulate_sde_points(
                 with torch.no_grad():
                     drift = self.drift(t, z)
                     dlnw = self.g_net(t, z)
-                    net_forces = cal_interaction(
-                        z=z,
-                        lnw=lnw,
-                        interaction_potential=self.interaction,
-                        m=interaction_m,
-                        t=t,
-                    )
+                    if include_interaction:
+                        net_forces = cal_interaction(
+                            z=z,
+                            lnw=lnw,
+                            interaction_potential=self.interaction,
+                            m=interaction_m,
+                            t=t,
+                        )
+                    else:
+                        net_forces = torch.zeros_like(z)
                 if include_score:
                     t_expand = t.expand(z.shape[0], 1)
                     with torch.enable_grad():
@@ -1092,7 +1118,17 @@ def simulate_sde_points(
 
         sde = SDE(f_net.v_net, f_net.g_net, score_net, f_net.interaction_net, sigma=sigma)
         ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
-        sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
+        noise_generator = None
+        if noise_seed is not None:
+            noise_generator = torch.Generator(device=x0.device)
+            noise_generator.manual_seed(int(noise_seed))
+        sde_point, traj_lnw = _euler_sdeint(
+            sde,
+            initial_state,
+            dt=dt,
+            ts=ts_tensor,
+            noise_generator=noise_generator,
+        )
         weight = torch.exp(traj_lnw)
         weight_normed = weight / weight.sum(dim=1, keepdim=True)
         sde_point_np = [p.detach().cpu().numpy() for p in sde_point]
@@ -1162,7 +1198,11 @@ def simulate_sde_points(
                     dlnw = torch.zeros_like(lnw)
 
             net_forces = torch.zeros_like(z)
-            if "interaction" in components and interaction_net is not None:
+            if (
+                include_interaction
+                and "interaction" in components
+                and interaction_net is not None
+            ):
                 if getattr(interaction_net, "requires_time", False):
                     with torch.no_grad():
                         net_forces = cal_interaction(
@@ -1202,7 +1242,17 @@ def simulate_sde_points(
     try:
         sde = SDE(sigma_val=sigma)
         ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
-        sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
+        noise_generator = None
+        if noise_seed is not None:
+            noise_generator = torch.Generator(device=x0.device)
+            noise_generator.manual_seed(int(noise_seed))
+        sde_point, traj_lnw = _euler_sdeint(
+            sde,
+            initial_state,
+            dt=dt,
+            ts=ts_tensor,
+            noise_generator=noise_generator,
+        )
         weight = torch.exp(traj_lnw)
         sde_point_np = [p.detach().cpu().numpy() for p in sde_point]
         return np.array(sde_point_np, dtype=object), weight.detach().cpu().numpy()
