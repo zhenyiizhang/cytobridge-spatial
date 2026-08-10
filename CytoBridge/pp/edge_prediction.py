@@ -1,4 +1,3 @@
-
 import os
 import gzip
 import pickle
@@ -18,6 +17,7 @@ from typing import Dict, List, Tuple
 
 # --- Helper Classes ---
 
+
 class LinkPredictorMLP(nn.Module):
     def __init__(self, input_dim, hidden_dim=256):
         super(LinkPredictorMLP, self).__init__()
@@ -26,7 +26,7 @@ class LinkPredictorMLP(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.LeakyReLU(),
-            nn.Linear(hidden_dim // 2, 1)
+            nn.Linear(hidden_dim // 2, 1),
         )
 
     def forward(self, x):
@@ -53,10 +53,12 @@ class LinkPredictionDataset(Dataset):
         v_features = self.node_features[time_idx][v_idx]
 
         combined_features = torch.cat([u_features, v_features])
-        
+
         return combined_features, torch.tensor(label, dtype=torch.float32)
 
+
 # --- Core Functionality ---
+
 
 def vectorized_negative_sampling(
     positive_edges,
@@ -93,8 +95,8 @@ def vectorized_negative_sampling(
         if vs_arr.size == 0:
             continue
         n = int(vs_arr.size)
-        cand_u[cursor:cursor + n] = u
-        cand_v[cursor:cursor + n] = vs_arr
+        cand_u[cursor : cursor + n] = u
+        cand_v[cursor : cursor + n] = vs_arr
         cursor += n
 
     if cursor == 0:
@@ -128,7 +130,9 @@ def vectorized_negative_sampling(
     return sampled.astype(np.int32, copy=False)
 
 
-def _resolve_spatial_key_from_adata(adata, preferred_key: str = "spatial_aligned") -> str:
+def _resolve_spatial_key_from_adata(
+    adata, preferred_key: str = "spatial_aligned"
+) -> str:
     if preferred_key in adata.obsm:
         return preferred_key
     if "spatial_aligned" in adata.obsm:
@@ -136,7 +140,9 @@ def _resolve_spatial_key_from_adata(adata, preferred_key: str = "spatial_aligned
     if "spatial" in adata.obsm:
         return "spatial"
     if "spatial_x" in adata.obs and "spatial_y" in adata.obs:
-        adata.obsm["spatial"] = np.column_stack((adata.obs["spatial_x"], adata.obs["spatial_y"]))
+        adata.obsm["spatial"] = np.column_stack(
+            (adata.obs["spatial_x"], adata.obs["spatial_y"])
+        )
         return "spatial"
     raise KeyError(
         "No spatial coordinates found in adata.obsm['spatial_aligned'] or "
@@ -232,21 +238,29 @@ def _resolve_graph_path_candidates(
     candidates: list[str] = []
     # Canonical naming: use time order index (t0, t1, ...)
     slice_name_idx = f"{data_name}_t{time_idx}"
-    candidates.append(os.path.join(graph_input_dir, slice_name_idx, f"{slice_name_idx}_adjacency_records"))
+    candidates.append(
+        os.path.join(
+            graph_input_dir, slice_name_idx, f"{slice_name_idx}_adjacency_records"
+        )
+    )
 
     # Backward compatibility: integer-like time value naming.
     t_float = float(t_val)
     t_int = int(round(t_float))
     if np.isclose(t_float, t_int):
         slice_name_int = f"{data_name}_t{t_int}"
-        path_int = os.path.join(graph_input_dir, slice_name_int, f"{slice_name_int}_adjacency_records")
+        path_int = os.path.join(
+            graph_input_dir, slice_name_int, f"{slice_name_int}_adjacency_records"
+        )
         if path_int not in candidates:
             candidates.append(path_int)
 
     # Backward compatibility: raw float/string value naming.
     t_str = str(t_val)
     slice_name_raw = f"{data_name}_t{t_str}"
-    path_raw = os.path.join(graph_input_dir, slice_name_raw, f"{slice_name_raw}_adjacency_records")
+    path_raw = os.path.join(
+        graph_input_dir, slice_name_raw, f"{slice_name_raw}_adjacency_records"
+    )
     if path_raw not in candidates:
         candidates.append(path_raw)
     return candidates
@@ -281,9 +295,14 @@ def _load_adjacency_with_compatibility(
         if not os.path.exists(path):
             failure_reasons.append(f"{path} [missing]")
             continue
-        with gzip.open(path, 'rb') as f:
+        with gzip.open(path, "rb") as f:
             adjacency_records = pickle.load(f)
         edges = np.asarray(adjacency_records[0], dtype=np.int32)
+        # ``np.asarray([])`` has shape ``(0,)`` whereas non-empty edge lists
+        # have shape ``(E, 2)``.  Keep an empty slice in the canonical edge
+        # shape so it can be safely stacked with non-empty time slices.
+        if edges.size == 0:
+            edges = np.empty((0, 2), dtype=np.int32)
         ok, reason = _validate_edges_with_features(edges, num_nodes_features)
         if ok:
             return edges, path
@@ -362,7 +381,7 @@ def _build_combined_edge_features(
     out = torch.empty((edges.shape[0], feat_dim * 2), dtype=torch.float32)
     unique_t = np.unique(time_indices)
     for t in unique_t:
-        mask = (time_indices == t)
+        mask = time_indices == t
         idx = np.flatnonzero(mask)
         if idx.size == 0:
             continue
@@ -393,6 +412,8 @@ def train_edge_predictor(
     max_train_edges_per_epoch: int | None = None,
     num_workers: int = 4,
     pin_memory: bool | None = None,
+    random_seed: int = 42,
+    edge_predictor_threshold: float | None = None,
 ) -> dict:
     """
     Train an edge predictor MLP using interaction graph + node features.
@@ -413,12 +434,34 @@ def train_edge_predictor(
         Number of DataLoader worker processes.
     pin_memory
         Whether to pin CPU memory in DataLoader. If None, auto-enable on CUDA.
+    random_seed
+        Seed for negative sampling, train-epoch sampling, model initialization,
+        and DataLoader shuffling.
+    edge_predictor_threshold
+        Optional fixed decision threshold for a published or externally
+        calibrated analysis. The validation-optimal threshold is still
+        calculated and recorded for comparison.
     """
+    np.random.seed(int(random_seed))
+    torch.manual_seed(int(random_seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(random_seed))
     device = torch.device(device if torch.cuda.is_available() else "cpu")
     if pin_memory is None:
         pin_memory = device.type == "cuda"
     if device.type == "cuda":
-        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    if edge_predictor_threshold is not None:
+        edge_predictor_threshold = float(edge_predictor_threshold)
+        if (
+            not np.isfinite(edge_predictor_threshold)
+            or not 0 < edge_predictor_threshold < 1
+        ):
+            raise ValueError(
+                "edge_predictor_threshold must lie strictly between 0 and 1 or be None, "
+                f"got {edge_predictor_threshold}."
+            )
     print(f"--- Using device: {device} ---")
 
     # 1. Load Data
@@ -491,10 +534,10 @@ def train_edge_predictor(
     for time_idx in range(len(all_node_features)):
         num_pos_edges = len(all_positive_edges[time_idx])
         spatial_coords = all_node_features[time_idx][:, :spatial_dim].numpy()
-        
+
         negative_edges = vectorized_negative_sampling(
-            all_positive_edges[time_idx], 
-            all_node_features[time_idx].shape[0], 
+            all_positive_edges[time_idx],
+            all_node_features[time_idx].shape[0],
             num_pos_edges,
             spatial_coords,
             distance_threshold=distance_threshold,
@@ -507,21 +550,30 @@ def train_edge_predictor(
 
     all_edges = np.vstack([positive_edges, negative_edges])
     all_labels = np.hstack([positive_labels, negative_labels])
-    full_time_indices = np.array(all_time_indices + all_negative_time_indices) # local variable renamed to avoid conflict
+    full_time_indices = np.array(
+        all_time_indices + all_negative_time_indices
+    )  # local variable renamed to avoid conflict
 
     # Split Data
     train_idx, test_idx = train_test_split(
         np.arange(len(all_edges)), test_size=0.2, random_state=42, stratify=all_labels
     )
     train_idx, val_idx = train_test_split(
-        train_idx, test_size=0.125, random_state=42, stratify=all_labels[train_idx] # 0.1 / (1 - 0.2) = 0.125
+        train_idx,
+        test_size=0.125,
+        random_state=42,
+        stratify=all_labels[train_idx],  # 0.1 / (1 - 0.2) = 0.125
     )
 
     train_pool_idx = np.asarray(train_idx, dtype=np.int64)
     val_edges = all_edges[val_idx]
     val_time_idx = full_time_indices[val_idx]
-    val_features = _build_combined_edge_features(val_edges, val_time_idx, all_node_features)
-    val_labels_tensor = torch.from_numpy(all_labels[val_idx].astype(np.float32, copy=False))
+    val_features = _build_combined_edge_features(
+        val_edges, val_time_idx, all_node_features
+    )
+    val_labels_tensor = torch.from_numpy(
+        all_labels[val_idx].astype(np.float32, copy=False)
+    )
     val_dataset = TensorDataset(val_features, val_labels_tensor)
     val_loader = DataLoader(
         val_dataset,
@@ -538,7 +590,7 @@ def train_edge_predictor(
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    best_val_auc = -float('inf')
+    best_val_auc = -float("inf")
     patience = 5
     epochs_no_improve = 0
     model_dir = os.path.dirname(output_model_path)
@@ -558,8 +610,12 @@ def train_edge_predictor(
         )
         train_edges = all_edges[epoch_train_idx]
         train_time_idx = full_time_indices[epoch_train_idx]
-        train_features = _build_combined_edge_features(train_edges, train_time_idx, all_node_features)
-        train_labels_tensor = torch.from_numpy(all_labels[epoch_train_idx].astype(np.float32, copy=False))
+        train_features = _build_combined_edge_features(
+            train_edges, train_time_idx, all_node_features
+        )
+        train_labels_tensor = torch.from_numpy(
+            all_labels[epoch_train_idx].astype(np.float32, copy=False)
+        )
         train_dataset = TensorDataset(train_features, train_labels_tensor)
         train_loader = DataLoader(
             train_dataset,
@@ -572,10 +628,12 @@ def train_edge_predictor(
 
         model.train()
         total_loss = 0
-        for features, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [train]", leave=False):
+        for features, labels in tqdm(
+            train_loader, desc=f"Epoch {epoch+1}/{epochs} [train]", leave=False
+        ):
             features = features.to(device)
             labels = labels.to(device).unsqueeze(1)
-            
+
             optimizer.zero_grad()
             outputs = model(features)
             loss = criterion(outputs, labels)
@@ -588,22 +646,26 @@ def train_edge_predictor(
         all_preds = []
         all_labels_val = []
         with torch.no_grad():
-            for features, labels in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [val]", leave=False):
+            for features, labels in tqdm(
+                val_loader, desc=f"Epoch {epoch+1}/{epochs} [val]", leave=False
+            ):
                 features = features.to(device)
                 outputs = model(features)
                 preds = torch.sigmoid(outputs).cpu()
                 all_preds.append(preds)
                 all_labels_val.append(labels)
-        
+
         val_preds = torch.cat(all_preds).numpy()
         val_labels_flat = torch.cat(all_labels_val).numpy()
-        val_best_threshold, val_best_f1, val_best_acc = _find_best_threshold(val_labels_flat, val_preds)
-        
+        val_best_threshold, val_best_f1, val_best_acc = _find_best_threshold(
+            val_labels_flat, val_preds
+        )
+
         try:
             val_auc = roc_auc_score(val_labels_flat, val_preds)
         except ValueError:
             val_auc = 0.5
-            
+
         avg_train_loss = total_loss / max(1, len(train_loader))
         epoch_iter.set_postfix(
             loss=f"{avg_train_loss:.4f}",
@@ -633,9 +695,18 @@ def train_edge_predictor(
                 print("Early stopping triggered.")
                 break
 
+    selected_threshold = float(best_threshold)
+    effective_threshold = (
+        selected_threshold
+        if edge_predictor_threshold is None
+        else float(edge_predictor_threshold)
+    )
     meta = {
-        "edge_predictor_threshold": float(best_threshold),
-        "selection_source": "validation",
+        "edge_predictor_threshold": effective_threshold,
+        "edge_predictor_threshold_selected": selected_threshold,
+        "selection_source": (
+            "validation" if edge_predictor_threshold is None else "user_override"
+        ),
         "selection_metric": "f1",
         "best_val_auc": float(best_val_auc),
         "best_val_f1": float(best_val_f1),
@@ -652,6 +723,7 @@ def train_edge_predictor(
         ),
         "num_workers": int(num_workers),
         "pin_memory": bool(pin_memory),
+        "random_seed": int(random_seed),
     }
     meta_path = f"{output_model_path}.meta.json"
     with open(meta_path, "w", encoding="utf-8") as fp:
@@ -659,21 +731,38 @@ def train_edge_predictor(
 
     if adata_or_h5ad is not None and not isinstance(adata_or_h5ad, str):
         adata_or_h5ad.uns.setdefault("interaction_graph", {})
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_threshold"] = float(best_threshold)
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_path"] = os.path.abspath(output_model_path)
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_model_path"] = os.path.abspath(output_model_path)
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_meta_path"] = os.path.abspath(meta_path)
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_best_val_auc"] = float(best_val_auc)
-        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_best_val_f1"] = float(best_val_f1)
+        adata_or_h5ad.uns["interaction_graph"][
+            "edge_predictor_threshold"
+        ] = effective_threshold
+        adata_or_h5ad.uns["interaction_graph"][
+            "edge_predictor_threshold_selected"
+        ] = selected_threshold
+        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_path"] = os.path.abspath(
+            output_model_path
+        )
+        adata_or_h5ad.uns["interaction_graph"][
+            "edge_predictor_model_path"
+        ] = os.path.abspath(output_model_path)
+        adata_or_h5ad.uns["interaction_graph"][
+            "edge_predictor_meta_path"
+        ] = os.path.abspath(meta_path)
+        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_best_val_auc"] = float(
+            best_val_auc
+        )
+        adata_or_h5ad.uns["interaction_graph"]["edge_predictor_best_val_f1"] = float(
+            best_val_f1
+        )
 
     print(
         f"Training complete. Best Val AUC={best_val_auc:.4f}, "
-        f"best threshold={best_threshold:.2f} (saved: {meta_path})"
+        f"validation threshold={selected_threshold:.2f}, "
+        f"effective threshold={effective_threshold:.2f} (saved: {meta_path})"
     )
     return {
         "model_path": output_model_path,
         "meta_path": meta_path,
-        "edge_predictor_threshold": float(best_threshold),
+        "edge_predictor_threshold": effective_threshold,
+        "edge_predictor_threshold_selected": selected_threshold,
         "best_val_auc": float(best_val_auc),
         "best_val_f1": float(best_val_f1),
         "best_val_acc": float(best_val_acc),

@@ -25,6 +25,8 @@ class LoadedModel:
     config: dict
     weight_stage: str
     score_stage: Optional[str]
+    weight_path: Path
+    score_path: Optional[Path]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -55,6 +57,66 @@ def _iter_stage_names_from_config(cfg: dict) -> Iterable[str]:
         name = stage.get("name")
         if name:
             yield str(name)
+
+
+def _resolve_stage_checkpoint(
+    model_dir: Path,
+    stage: str,
+    cfg: Optional[dict] = None,
+) -> Optional[Path]:
+    """Resolve the configured checkpoint, with legacy filename fallback."""
+    stage_dir = model_dir / str(stage)
+    configured_strategy = None
+    if cfg is not None:
+        for stage_config in cfg.get("training", {}).get("plan", []):
+            if str(stage_config.get("name")) == str(stage):
+                configured_strategy = str(
+                    stage_config.get("save_strategy", "best")
+                ).lower()
+                break
+    preferred_filename = {
+        "best": "best_model.pth",
+        "last": "last_model.pth",
+    }.get(configured_strategy)
+    filenames = (
+        (preferred_filename,) if preferred_filename is not None else ()
+    ) + tuple(
+        name
+        for name in ("last_model.pth", "best_model.pth")
+        if name != preferred_filename
+    )
+    for filename in filenames:
+        candidate = stage_dir / filename
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _score_stage_candidates(
+    cfg: dict,
+    explicit_preference: Optional[Sequence[str]],
+) -> list[str]:
+    """Return score-checkpoint stages in downstream loading priority order."""
+    if explicit_preference is not None:
+        return list(dict.fromkeys(str(stage) for stage in explicit_preference))
+
+    configured: list[str] = []
+    for stage in cfg.get("training", {}).get("plan", []):
+        name = stage.get("name")
+        mode = str(stage.get("mode", "")).lower()
+        strategy = str(stage.get("train_strategy", "")).lower()
+        if name and (mode == "score_matching" or strategy == "s"):
+            configured.append(str(name))
+
+    # Later configured score stages supersede earlier ones. Conventional names
+    # remain fallbacks for older configs that did not record stage modes.
+    candidates = [
+        *reversed(configured),
+        "Train_Score_Final",
+        "Score_Refine",
+        "Train_Score",
+    ]
+    return list(dict.fromkeys(candidates))
 
 
 def _build_legacy_model_config(
@@ -118,7 +180,7 @@ def load_dynamical_model_from_dir(
     dim: int,
     device: str | torch.device = "cpu",
     stage: str = "Finetune",
-    score_stage_prefer: Sequence[str] = ("Train_Score_Final", "Train_Score"),
+    score_stage_prefer: Optional[Sequence[str]] = None,
 ) -> LoadedModel:
     """Load a trained DynamicalModel (+ optional score net) from a results directory.
 
@@ -126,14 +188,21 @@ def load_dynamical_model_from_dir(
     ----------
     model_dir
         Training output directory containing ``config.yaml`` and stage subfolders.
+        Both ``last_model.pth`` and ``best_model.pth`` stage checkpoints are
+        supported.
     dim
         Feature dimension of the aligned latent space (x1..x_dim).
     device
         Torch device.
     stage
-        Preferred stage folder to load ``last_model.pth`` from (default: ``Finetune``).
+        Preferred stage folder to load (default: ``Finetune``). The stage's
+        configured ``save_strategy`` selects ``best_model.pth`` or
+        ``last_model.pth`` when both are present.
     score_stage_prefer
-        Ordered list of stage folders to look for ``score_model.pth``.
+        Optional ordered list of stage folders to look for ``score_model.pth``.
+        By default, score-matching stages are inferred from the training plan
+        and searched in reverse execution order, so a final score-refinement
+        stage supersedes the initial score fit.
 
     Returns
     -------
@@ -156,8 +225,10 @@ def load_dynamical_model_from_dir(
     # ---- choose weight stage ----
     candidate_stages: list[str] = []
     preferred = str(stage)
-    if (model_dir / preferred / "last_model.pth").exists():
+    preferred_path = _resolve_stage_checkpoint(model_dir, preferred, cfg)
+    if preferred_path is not None:
         weight_stage = preferred
+        weight_path = preferred_path
     else:
         candidate_stages = list(_iter_stage_names_from_config(cfg))
         if not candidate_stages:
@@ -165,31 +236,42 @@ def load_dynamical_model_from_dir(
             candidate_stages = sorted([p.name for p in model_dir.iterdir() if p.is_dir()])
         weight_stage = None
         for st in reversed(candidate_stages):
-            if (model_dir / st / "last_model.pth").exists():
+            candidate_path = _resolve_stage_checkpoint(model_dir, st, cfg)
+            if candidate_path is not None:
                 weight_stage = st
+                weight_path = candidate_path
                 break
         if weight_stage is None:
             raise FileNotFoundError(
-                f"Could not find any '*/*last_model.pth' under model_dir: {model_dir}"
+                "Could not find any stage checkpoint named 'last_model.pth' or "
+                f"'best_model.pth' under model_dir: {model_dir}"
             )
 
-    weight_path = model_dir / weight_stage / "last_model.pth"
     state_dict = _load_state_dict(weight_path, device=device)
     model.load_state_dict(state_dict, strict=True)
 
     # ---- optional score stage ----
     score_stage_used: Optional[str] = None
+    score_path_used: Optional[Path] = None
     if hasattr(model, "score_net") and model.score_net is not None and "score" in getattr(model, "components", []):
-        for st in score_stage_prefer:
+        for st in _score_stage_candidates(cfg, score_stage_prefer):
             score_path = model_dir / str(st) / "score_model.pth"
             if score_path.exists():
                 score_state = _load_state_dict(score_path, device=device)
                 model.score_net.load_state_dict(score_state, strict=True)
                 score_stage_used = str(st)
+                score_path_used = score_path
                 break
 
     model.eval()
-    return LoadedModel(model=model, config=cfg, weight_stage=weight_stage, score_stage=score_stage_used)
+    return LoadedModel(
+        model=model,
+        config=cfg,
+        weight_stage=weight_stage,
+        score_stage=score_stage_used,
+        weight_path=weight_path,
+        score_path=score_path_used,
+    )
 
 
 def load_legacy_dynamical_model_from_dir(
@@ -248,4 +330,6 @@ def load_legacy_dynamical_model_from_dir(
         config={"legacy": legacy_cfg, "model": model_cfg},
         weight_stage=f"legacy:{model_name}",
         score_stage=f"legacy:{score_name}",
+        weight_path=model_path,
+        score_path=score_path,
     )

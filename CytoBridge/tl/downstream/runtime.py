@@ -29,7 +29,10 @@ class _ScoreGradientAdapter:
         self.model = model
 
     def compute_gradient(self, t, z):
-        _, grad = self.model.compute_score(t=t, x=z, create_graph=True)
+        # Downstream integration never backpropagates through the score field.
+        # Keeping the higher-order graph here retains every Euler step and can
+        # exhaust GPU memory during full split-SDE trajectories.
+        _, grad = self.model.compute_score(t=t, x=z, create_graph=False)
         return grad
 
 

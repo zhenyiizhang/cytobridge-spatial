@@ -142,6 +142,19 @@ def _combine_subunit_vectors(vectors: list[np.ndarray], mode: str) -> np.ndarray
         return arr.min(axis=0)
     if mode == "mean":
         return arr.mean(axis=0)
+    if mode == "geometric_mean":
+        if np.any(arr < 0):
+            raise ValueError(
+                "geometric_mean complex aggregation requires non-negative "
+                "subunit expression."
+            )
+        result = np.zeros(arr.shape[1:], dtype=float)
+        strictly_positive = np.all(arr > 0, axis=0)
+        if np.any(strictly_positive):
+            result[strictly_positive] = np.exp(
+                np.mean(np.log(arr[:, strictly_positive]), axis=0)
+            )
+        return result
     if mode == "product":
         return arr.prod(axis=0)
     raise ValueError(f"Unsupported complex mode: {mode}")

@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0.0",
+  "primary_representation": "shared signed state PCA plus aligned spatial coordinates",
+  "methods": [
+    {
+      "method": "CytoBridge-0.015",
+      "display_name": "CytoBridge",
+      "aliases": ["cytobridge", "cytobridge-0.015", "CytoBridge alpha_express=0.015"],
+      "scope": "native_joint",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#1f77b4"
+    },
+    {
+      "method": "stVCR",
+      "display_name": "stVCR",
+      "aliases": ["stvcr"],
+      "scope": "native_joint",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#ff7f0e"
+    },
+    {
+      "method": "STORIES",
+      "display_name": "STORIES",
+      "aliases": ["stories"],
+      "scope": "native_state",
+      "spaces": ["state"],
+      "status": "evaluated",
+      "color": "#2ca02c"
+    },
+    {
+      "method": "MOSCOT",
+      "display_name": "MOSCOT",
+      "aliases": ["moscot"],
+      "scope": "coupling_barycenter_adapter",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#d62728"
+    },
+    {
+      "method": "MIOFlow",
+      "display_name": "MIOFlow",
+      "aliases": ["mioflow"],
+      "scope": "native_state",
+      "spaces": ["state"],
+      "status": "evaluated",
+      "color": "#9467bd"
+    },
+    {
+      "method": "PASTE",
+      "display_name": "PASTE",
+      "aliases": ["paste"],
+      "scope": "coupling_barycenter_adapter",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#8c564b"
+    },
+    {
+      "method": "Spateo",
+      "display_name": "Spateo",
+      "aliases": ["spateo"],
+      "scope": "coupling_barycenter_adapter",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#e377c2"
+    },
+    {
+      "method": "Waddington-OT",
+      "display_name": "Waddington-OT",
+      "aliases": ["wot", "WOT", "waddington_ot"],
+      "scope": "state_coupling_barycenter_adapter",
+      "spaces": ["state"],
+      "status": "evaluated",
+      "color": "#7f7f7f"
+    },
+    {
+      "method": "SpaTrack",
+      "display_name": "SpaTrack",
+      "aliases": ["spatrack", "spaTrack"],
+      "scope": "native_gene_sensitivity_only",
+      "spaces": [],
+      "status": "sensitivity_only",
+      "reason": "The official matched interface hard-codes KL gene distance; signed shared PCs are not a legal primary input.",
+      "color": "#bcbd22"
+    },
+    {
+      "method": "Linear interpolation",
+      "display_name": "Linear interpolation",
+      "aliases": ["linear", "linear_centroid_shift"],
+      "scope": "explicit_control",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#17becf"
+    },
+    {
+      "method": "Random interpolation",
+      "display_name": "Random interpolation",
+      "aliases": ["random", "random_independent_pairs"],
+      "scope": "explicit_control",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#aec7e8"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+model:
+  components: ['velocity', 'growth', 'score', 'interaction']
+  interaction_type: 'gnn'
+  interaction_group_size: 256
+  velocity_net:
+    hidden_dim: 64
+    n_layers: 1
+    residual: false
+    activation: 'leaky_relu'
+  growth_net:
+    hidden_dim: 64
+    n_layers: 1
+    residual: false
+    activation: 'leaky_relu'
+  score_net:
+    hidden_dim: 64
+    n_layers: 1
+    activation: 'leaky_relu'
+  interaction_net:
+    hidden_dim: 64
+    num_heads: 4
+    num_layers: 1
+    activation: 'leakyrelu'
+    num_rbf: 8
+    cutoff: 0.06
+    use_spatial: true
+    edge_predictor_path: 'edge_classifier/mosta.pt'
+    edge_predictor_thre: 0.45
+
+ckpt_dir: 'results/st_spatial_smoke_mosta'
+
+training:
+  defaults:
+    lr: 0.0005
+    lambda_ot: 1.0
+    lambda_mass: 1.0
+    lambda_energy: 0.01
+    sigma: 0.03
+    batch_size: 128
+
+  plan:
+    - name: "Pretrain"
+      mode: "neural_ode"
+      epochs: 2
+      OT_loss: 'sinkhorn'
+      train_strategy: "v+g"
+
+    - name: "Train_FM"
+      mode: "flow_matching"
+      epochs: 2
+      score_use: true
+      train_strategy: "s"
+      flow_matching:
+        lambda_penalty: 0
+
+    - name: "Finetune"
+      mode: "neural_ode"
+      epochs: 2
+      OT_loss: 'sinkhorn_detach'
+      train_strategy: "v+g+i+s"

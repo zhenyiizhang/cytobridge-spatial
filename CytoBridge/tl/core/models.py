@@ -273,9 +273,11 @@ class DynamicalModel(nn.Module):
                         num_rbf=comp_config.get('num_rbf', 8),
                         cutoff=comp_config.get('cutoff', 0.2),
                         use_spatial=comp_config.get('use_spatial', True),
+                        rbf_trainable=comp_config.get('rbf_trainable', False),
                         edge_predictor_path=comp_config.get('edge_predictor_path'),
                         edge_predictor_thre=comp_config.get('edge_predictor_thre', 0.5),
                         edge_predictor_root=comp_config.get('edge_predictor_root'),
+                        edge_prior_mode=comp_config.get('edge_prior_mode', 'learned'),
                     )
                 else:
                     network = InteractionModel(self.latent_dim, **comp_config)
