@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Run the canonical clean-counts zebrafish preprocessing/training/evaluation workflow.
 
-The preprocessing output is shared by both alpha_express conditions.  Training
-conditions differ only in ``training.defaults.alpha_express`` so their metrics
-form a controlled comparison.
+The manuscript-selected condition uses ``alpha_express=0.015``. The optional
+``alpha_express=0.05`` sensitivity comparator shares the same preprocessing and
+differs only in ``training.defaults.alpha_express``.
 """
 
 from __future__ import annotations

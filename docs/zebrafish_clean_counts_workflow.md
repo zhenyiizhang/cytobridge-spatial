@@ -3,8 +3,9 @@
 This guide documents the native CytoBridge workflow represented by
 `scripts/run_zebrafish_end_to_end.py`. It has two purposes:
 
-1. reproduce the clean-counts zebrafish preprocessing, paired training, and
-   quantitative evaluation; and
+1. reproduce the manuscript-selected `alpha_express=0.015` clean-counts
+   zebrafish preprocessing, training, and quantitative evaluation, with an
+   optional `alpha_express=0.05` sensitivity comparator; and
 2. show which parts can be reused for another spatial-temporal dataset and
    which parts must remain in a small dataset adapter.
 
@@ -238,10 +239,12 @@ The number of coordinate columns, coordinate finiteness, and
 it selects the aligned coordinate representation used later for neighborhood
 and interaction-graph construction.
 
-## Reproduce the paired zebrafish run
+## Reproduce the canonical zebrafish run and optional sensitivity comparator
 
-Use a new run root rather than writing into a repository checkout. Both alpha
-conditions must use the same completed preprocessing directory and seed.
+Use a new run root rather than writing into a repository checkout. The canonical
+release condition is `alpha_express_0015`. If the optional
+`alpha_express_005` sensitivity comparator is run, both conditions must use the
+same completed preprocessing directory and seed.
 
 ```bash
 cd /path/to/cytobridge-spatial
@@ -268,11 +271,12 @@ python scripts/run_zebrafish_end_to_end.py \
 Before training, inspect the aligned H5AD, the selected neighborhood threshold,
 the edge-predictor metadata, and the five retained time counts.
 
-### 2. Train both alpha-expression conditions
+### 2. Train the canonical condition and, optionally, the comparator
 
 The two provided full configs have the same six-stage schedule and
-`alpha_spatial=10`; only `alpha_express` differs. Run these in separate shells
-and on separate free GPUs if training them concurrently.
+`alpha_spatial=10`; only `alpha_express` differs. The first command below is the
+canonical release fit. The second is an optional sensitivity run. Use separate
+shells and free GPUs if running them concurrently.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 CYTOBRIDGE_ASSIGNED_GPU=0 \
@@ -306,7 +310,10 @@ checkpoint directory, spatial dimension, `alpha_spatial`, and
 condition-specific `alpha_express`; the resolved `training/config.yaml` is the
 authoritative record of what ran.
 
-### 3. Run native quantitative downstream evaluation for both models
+### 3. Run native quantitative downstream evaluation
+
+Always evaluate the canonical `.015` model. Run the second command only when
+including the optional `.05` sensitivity comparison.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 CYTOBRIDGE_ASSIGNED_GPU=0 \
@@ -361,7 +368,7 @@ python scripts/compare_zebrafish_conditions.py \
   --output-dir "$BUNDLE" \
   --conditions alpha_express_0015 alpha_express_005 \
   --baseline alpha_express_0015 \
-  --winner auto \
+  --winner alpha_express_0015 \
   --bundle-mode copy \
   --selected-panels "alpha_express_0015=$RUN/conditions/alpha_express_0015/paper_downstream_final_DATE" \
   --selected-panels "alpha_express_005=$RUN/conditions/alpha_express_005/paper_downstream_final_DATE" \
@@ -380,12 +387,12 @@ sibling directory instead of the default `paper_downstream` path. Paper roots
 are filtered to visual file types, so canonical state arrays and classifier
 caches are not copied into the portable bundle.
 
-Use `--winner alpha_express_0015` or `--winner alpha_express_005` only after an
-explicit biological and visual review. `auto` applies the documented numerical
-screening score; it is not a biological conclusion. Both condition panel sets
-are always retained under `02_condition_panels/`. For compatibility with older
-review tooling, the selected condition is also copied to
-`02_selected_manuscript_panels/`.
+The current release fixes `--winner alpha_express_0015`. `auto` remains
+available only for an explicitly labelled historical/sensitivity screening and
+must not be interpreted as a biological conclusion. When both conditions are
+provided, both panel sets remain under `02_condition_panels/`; the selected
+release condition is also copied to `02_selected_manuscript_panels/` for
+compatibility with older review tooling.
 
 The bundle includes:
 

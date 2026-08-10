@@ -81,7 +81,9 @@ The main preprocessing pipeline expects an input `.h5ad` file with:
 - spatial coordinates in `adata.obsm["spatial"]` or `adata.obs["spatial_x"]`, `adata.obs["spatial_y"]`
 - a time annotation column in `adata.obs[time_key]`
 
-For interaction graph construction, the pipeline also expects a ligand-receptor database CSV, by default:
+For interaction graph construction, the pipeline also expects a user-supplied
+ligand-receptor database CSV. The CLI retains the following historical default
+path, but the database itself is not bundled:
 
 ```text
 database/CellNEST_database.csv
@@ -110,29 +112,75 @@ This step produces:
 - metadata files in `metadata/`
 - a trained edge predictor checkpoint in `edge_classifier/`
 
-### 2. Train the CytoBridge dynamical model
-
-```bash
-python scripts/run_spatial_training.py \
-  --preset mosta \
-  --h5ad_path /path/to/input.h5ad \
-  --output_csv ./results/mosta/aligned.csv \
-  --output_h5ad ./results/mosta/aligned.h5ad \
-  --train_config CytoBridge/configs/st_spatial.yaml \
-  --device cuda
-```
-
-Alternatively, if preprocessing has already been completed, you can train directly with the package API:
+### 2. Train the CytoBridge dynamical model from the completed preprocessing output
 
 ```python
 import CytoBridge as cb
 
 cb.tl.fit(
-    "/path/to/aligned.h5ad",
+    "./results/mosta_preprocess/mosta_aligned.h5ad",
     config="CytoBridge/configs/st_spatial.yaml",
+    ckpt_dir="./results/mosta_model",
     device="cuda",
 )
 ```
+
+The aligned H5AD records the interaction cutoff, trained edge-predictor path,
+and decision threshold produced in step 1. `cb.tl.fit(...)` resolves those
+dataset-specific values from the H5AD rather than silently returning to the
+example paths in a generic YAML file. `scripts/run_spatial_training.py` remains
+available for legacy preset workflows, but it is not the canonical continuation
+of `scripts/preprocess_pipeline.py`.
+
+## Canonical zebrafish training release
+
+The manuscript-selected zebrafish full-data profile is
+[`CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml`](CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml).
+It fixes `alpha_spatial=10`, `alpha_express=0.015`, seed 42, reverse-time
+training, and the six-stage epoch schedule
+`100/100/50/2001/1000/2001` (5,252 epochs in total).
+
+Run the clean-counts preprocessing, full training, and bounded native evaluation
+through the dataset adapter:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/run_zebrafish_end_to_end.py \
+  --h5ad-path /path/to/spatial_sixtime_slice_stereoseq.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.zebrafish.csv \
+  --output-dir /path/to/runs/zebrafish-clean-counts \
+  --profile full \
+  --stage all \
+  --condition alpha_express_0015 \
+  --device cuda \
+  --random-seed 42
+```
+
+This workflow explicitly reads raw integer-like values from
+`layers['counts']`, performs median-library-size normalization and one `log1p`,
+fits 2,000 HVGs and 50 PCs, and records preprocessing, graph, configuration,
+checkpoint, and runtime provenance. See
+[`docs/zebrafish_clean_counts_workflow.md`](docs/zebrafish_clean_counts_workflow.md)
+for staged commands and the reusable-versus-dataset-specific API boundary.
+
+The `alpha_express=0.05` full profile is retained only as the paired sensitivity
+condition. `CytoBridge/configs/zebrafish_training.yaml` is a legacy shortened
+verification profile and must not be used to reproduce the formal full-data or
+LOTO results. `scripts/train_zebrafish.py` is only a compatibility alias for the
+canonical runner.
+
+For held-out evaluation, use the physically excluded LOTO adapter documented in
+[`scripts/spatiotemporal_benchmark/cytobridge/README.md`](scripts/spatiotemporal_benchmark/cytobridge/README.md).
+It rebuilds the graph and edge classifier and performs a fresh six-stage fit in
+each fold. The matched retraining controls use:
+
+- `zebrafish_spatial_full_alpha_express_0015.yaml` (full model)
+- `zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml`
+- `zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml`
+
+All three matched conditions are trained from scratch with separate output
+directories. The no-LR-prior condition retains the trainable interaction GNN
+but exposes all within-cutoff spatial neighbors (`edge_prior_mode=all_spatial`);
+it is distinct from removing the interaction module.
 
 ## Package API
 
@@ -567,6 +615,8 @@ environment or results directory.
 
 - `scripts/preprocess_pipeline.py`: end-to-end preprocessing, alignment, graph generation, and edge predictor training
 - `scripts/run_spatial_training.py`: preset-based spatial training entry point
+- `scripts/run_zebrafish_end_to_end.py`: canonical clean-counts zebrafish full-data runner
+- `scripts/spatiotemporal_benchmark/cytobridge/run_cytobridge.py`: audited full-data and LOTO adapter
 - `scripts/run_arista_end_to_end.py`: canonical ARISTA preprocess/train/evaluate entry point
 - `scripts/run_spatiotemporal_downstream.py`: dataset-configured interpolation/lineage/communication/3D entry point
 - `scripts/convert_legacy_weights_to_ckpt.py`: convert legacy checkpoints into the current checkpoint format

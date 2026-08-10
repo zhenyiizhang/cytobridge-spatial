@@ -1,4 +1,6 @@
-# Canonical clean-counts zebrafish six-stage training profile.
+# Optional clean-counts alpha_express=0.05 sensitivity comparator.
+# The manuscript-selected release profile is
+# zebrafish_spatial_full_alpha_express_0015.yaml.
 #
 # Dataset-specific interaction cutoff, edge-classifier path, and edge threshold
 # are supplied from the preprocessed AnnData by scripts/run_zebrafish_end_to_end.py.

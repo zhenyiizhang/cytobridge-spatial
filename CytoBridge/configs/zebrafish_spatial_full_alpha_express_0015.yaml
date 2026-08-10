@@ -1,5 +1,6 @@
-# Paired clean-counts zebrafish alpha_express ablation.
-# Identical to zebrafish_spatial_full.yaml except for alpha_express=0.015.
+# Canonical manuscript-selected clean-counts zebrafish full-data profile.
+# The optional zebrafish_spatial_full.yaml sensitivity comparator is identical
+# in training budget but uses alpha_express=0.05.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn

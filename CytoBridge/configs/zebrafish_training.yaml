@@ -1,5 +1,14 @@
-# Zebrafish Training Configuration
-# Based on st_spatial.yaml but with reduced epochs for faster verification
+# LEGACY ZEBRAFISH VERIFICATION CONFIGURATION.
+# This shortened alpha_express=0.05 profile is retained for backward
+# compatibility only. It is not the manuscript-selected full-data, LOTO, or
+# matched-ablation training contract. Use
+# zebrafish_spatial_full_alpha_express_0015.yaml and
+# scripts/run_zebrafish_end_to_end.py for the canonical release workflow.
+
+release:
+  status: legacy_verification_only
+  canonical_config: zebrafish_spatial_full_alpha_express_0015.yaml
+  canonical_runner: scripts/run_zebrafish_end_to_end.py
 
 model:
   components: ['velocity', 'growth', 'score', 'interaction']
@@ -28,10 +37,10 @@ model:
     num_rbf: 4
     cutoff: 0.12
     use_spatial: true
-    edge_predictor_path: '/lustre/home/2501111653/CytoBridge-ST-package/CytoBridge/edge_classifier/zebrafish.pt'
+    edge_predictor_path: edge_classifier/zebrafish.pt
     edge_predictor_thre: 0.63
 
-ckpt_dir: '/lustre/home/2501111653/CytoBridge-ST-package/results/zebrafish_training'
+ckpt_dir: results/zebrafish_training_legacy_alpha_express_005
 reverse: true
 seed: 42
 
