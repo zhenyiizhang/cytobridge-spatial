@@ -74,6 +74,35 @@ If needed:
 pip install cellrank
 ```
 
+### Verify an installed package
+
+The installed command reports the package version without importing the
+scientific or plotting stacks:
+
+```bash
+cytobridge --version
+cytobridge doctor
+cytobridge doctor --json
+```
+
+`doctor` is read-only. It reports Python, package metadata, and whether common
+dependency modules are available; it does not import those dependencies or
+modify caches, data, or configuration.
+
+Release maintainers can build and test an installed wheel in a new private
+workspace with:
+
+```bash
+python scripts/smoke_installed_wheel.py --work-dir /path/to/new-empty-workspace
+```
+
+The workspace path must not already exist. The smoke test keeps pip's resolver
+offline, installs the wheel without dependencies into a clean virtual
+environment, runs installed-only contract tests, and retains
+`wheel-smoke-evidence.json` with source, wheel, command, and test checksums.
+This is local checksum evidence, not authenticated provenance or a general
+network sandbox.
+
 ## Input Requirements
 
 The main preprocessing pipeline expects an input `.h5ad` file with:
