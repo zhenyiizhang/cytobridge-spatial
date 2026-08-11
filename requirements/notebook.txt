@@ -1,0 +1,3 @@
+# Tutorial and exploratory notebook environment.
+ipywidgets>=7.6,<9
+phate>=1,<2

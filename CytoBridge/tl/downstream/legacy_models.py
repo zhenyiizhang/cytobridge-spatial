@@ -261,7 +261,8 @@ class LegacyGraphAttentionLayer(_MessagePassingBase):
     def __init__(self, hidden_dim, num_heads, activation="Tanh"):
         if MessagePassing is None:
             raise ImportError(
-                "torch_geometric is required for legacy GNN interaction loading."
+                "torch_geometric is required for legacy GNN interaction loading. "
+                "Install it with: pip install 'CytoBridge[graph]'"
             ) from _TORCH_GEOMETRIC_ERROR
         super().__init__(node_dim=0)
         self.hidden_dim = hidden_dim
@@ -378,7 +379,8 @@ class LegacyGNNInteraction(nn.Module):
         super().__init__()
         if MessagePassing is None:
             raise ImportError(
-                "torch_geometric is required for legacy GNN interaction loading."
+                "torch_geometric is required for legacy GNN interaction loading. "
+                "Install it with: pip install 'CytoBridge[graph]'"
             ) from _TORCH_GEOMETRIC_ERROR
 
         self.activation = _legacy_activation(activation)

@@ -1392,7 +1392,7 @@ def analyze_terminal_states(adata, classified_type="cell_type", terminal_states=
     except ImportError as exc:
         raise ImportError(
             "cellrank is required for `analyze_terminal_states`. "
-            "Install it separately if you need terminal-state analysis."
+            "Install it with: pip install 'CytoBridge[velocity]'"
         ) from exc
 
     # Check if classified_type exists in adata.obs

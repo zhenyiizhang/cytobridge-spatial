@@ -251,7 +251,8 @@ def _ot_loss_mini_batch(
 ):
     if ot is None:
         raise ImportError(
-            "POT (ot) is required for spatial alignment."
+            "POT (ot) is required for spatial alignment. "
+            "Install it with: pip install 'CytoBridge[preprocess]'"
         ) from _OT_IMPORT_ERROR
     n0 = spatial0.shape[0]
     n1 = spatial1.shape[0]

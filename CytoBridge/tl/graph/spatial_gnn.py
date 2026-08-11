@@ -12,6 +12,8 @@ except ImportError as exc:  # pragma: no cover - handled at runtime
     MessagePassing = None
     _TORCH_GEOMETRIC_ERROR = exc
 
+_MessagePassingBase = MessagePassing if MessagePassing is not None else nn.Module
+
 
 class GNNInteraction(nn.Module):
     requires_time = True
@@ -36,7 +38,7 @@ class GNNInteraction(nn.Module):
         if MessagePassing is None:
             raise ImportError(
                 "torch_geometric is required for GNNInteraction. "
-                "Install torch-geometric to use the spatial interaction model."
+                "Install it with: pip install 'CytoBridge[graph]'"
             ) from _TORCH_GEOMETRIC_ERROR
 
         if activation.lower() == "tanh":
@@ -160,8 +162,13 @@ class GNNInteraction(nn.Module):
         return x_out
 
 
-class GraphAttentionLayer(MessagePassing):
+class GraphAttentionLayer(_MessagePassingBase):
     def __init__(self, hidden_dim: int, num_heads: int, activation: str = "Tanh"):
+        if MessagePassing is None:
+            raise ImportError(
+                "torch_geometric is required for GNNInteraction. "
+                "Install it with: pip install 'CytoBridge[graph]'"
+            ) from _TORCH_GEOMETRIC_ERROR
         super().__init__(node_dim=0)
         self.hidden_dim = int(hidden_dim)
         self.num_heads = int(num_heads)

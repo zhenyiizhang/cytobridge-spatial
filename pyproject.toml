@@ -7,7 +7,22 @@ name = "CytoBridge"
 description = "CytoBridge package for spatiotemporal single-cell and spatial transcriptomics analysis."
 readme = "README.md"
 requires-python = ">=3.10"
-dynamic = ["dependencies", "version"]
+keywords = [
+  "single-cell",
+  "spatial-transcriptomics",
+  "spatiotemporal-modeling",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dynamic = ["dependencies", "optional-dependencies", "version"]
 
 [project.scripts]
 cytobridge = "CytoBridge.cli:main"
@@ -19,8 +34,18 @@ include-package-data = true
 include = ["CytoBridge*"]
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
+dependencies = { file = ["requirements/core.txt"] }
 version = { attr = "CytoBridge._version.__version__" }
+
+[tool.setuptools.dynamic.optional-dependencies]
+all = { file = ["requirements/all.txt"] }
+graph = { file = ["requirements/graph.txt"] }
+notebook = { file = ["requirements/notebook.txt"] }
+plot = { file = ["requirements/plot.txt"] }
+preprocess = { file = ["requirements/preprocess.txt"] }
+spatial = { file = ["requirements/spatial.txt"] }
+train = { file = ["requirements/train.txt"] }
+velocity = { file = ["requirements/velocity.txt"] }
 
 [tool.setuptools.package-data]
 CytoBridge = ["configs/*.yaml"]

@@ -11,7 +11,8 @@ This repository contains:
 - the installable Python package `CytoBridge/`
 - preprocessing and training scripts in `scripts/`
 - training configuration files in `CytoBridge/configs/`
-- bundled edge-predictor checkpoints in `edge_classifier/`
+- repository-scoped edge-predictor checkpoints in `edge_classifier/` (these
+  files are not installed into the wheel)
 
 This repository does not aim to store:
 
@@ -62,16 +63,55 @@ cd /path/to/cytobridge-spatial
 pip install -e .
 ```
 
-### Optional dependencies
+### Wheel dependency profiles
 
-Some plotting utilities rely on optional packages that are not required for the core preprocessing and training workflow.
+The base wheel installs the stable array, table, AnnData, configuration, and
+metric dependencies.  Heavy scientific stacks are explicit extras:
 
-- `cellrank`: only needed for terminal-state analysis utilities
+```bash
+# Raw-count preprocessing and interaction-graph construction
+pip install 'CytoBridge[preprocess]'
+
+# Dynamical-model training
+pip install 'CytoBridge[train]'
+
+# Complete spatial preprocessing/training/graph workflow
+pip install 'CytoBridge[spatial]'
+
+# Plotting, velocity/terminal-state, or notebook support
+pip install 'CytoBridge[plot]'
+pip install 'CytoBridge[velocity]'
+pip install 'CytoBridge[notebook]'
+
+# Every supported optional feature
+pip install 'CytoBridge[all]'
+```
+
+The `graph` extra installs the optional PyTorch Geometric interaction models.
+Kaleido is confined to the `plot`, `velocity`, and `all` profiles for the
+repository's static Plotly export path. TorchVision, TorchAudio, TorchSDE, and
+ImageIO are no longer installed because neither the package nor its current
+workflow scripts import them. GPU-specific Torch wheels remain an environment
+decision; choose the CPU or CUDA index appropriate for the target system before
+installing a Torch-dependent extra.
+
+`requirements.txt` remains a compatibility entry point for development
+checkouts and installs the same base plus `all` union.  The individual
+dependency contracts live in `requirements/*.txt` and use bounded major/minor
+ranges; they are not CPU/CUDA environment locks.
+
+### Additional optional dependency
+
+Some plotting utilities rely on packages that are not required for the core
+preprocessing and training workflow.
+
+- `cellrank` is included by the `velocity` and `all` extras and is only needed
+  for terminal-state analysis utilities.
 
 If needed:
 
 ```bash
-pip install cellrank
+pip install 'CytoBridge[velocity]'
 ```
 
 ### Verify an installed package

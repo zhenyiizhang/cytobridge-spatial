@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 import pytest
+from packaging.requirements import Requirement
 
 try:
     import tomllib
@@ -20,6 +21,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_MODULES = ("pl", "pp", "tl", "utils")
 HEAVY_MODULES = ("matplotlib", "scanpy")
 INSTALLED_SMOKE_RUNNER = PROJECT_ROOT / "scripts" / "smoke_installed_wheel.py"
+EXTRA_NAMES = {
+    "all",
+    "graph",
+    "notebook",
+    "plot",
+    "preprocess",
+    "spatial",
+    "train",
+    "velocity",
+}
 
 
 def _source_environment() -> dict[str, str]:
@@ -149,6 +160,84 @@ print(json.dumps([module.__name__ for module in (pl, pp, tl, utils)]))
     ]
 
 
+def test_plot_namespace_is_monotonic_and_legacy_exports_are_lazy() -> None:
+    result = _run_source_python(
+        """
+import json
+import sys
+import CytoBridge.pl as pl
+
+print(json.dumps({
+    "legacy_in_dir": "plot_growth" in dir(pl),
+    "legacy_module_loaded": "CytoBridge.pl.plot" in sys.modules,
+    "training_namespace_loaded": "CytoBridge.tl" in sys.modules,
+}))
+"""
+    )
+    assert json.loads(result.stdout) == {
+        "legacy_in_dir": True,
+        "legacy_module_loaded": False,
+        "training_namespace_loaded": False,
+    }
+
+    actionable = _run_source_python(
+        """
+import CytoBridge.pl as pl
+
+def missing_legacy_stack(_name):
+    raise ModuleNotFoundError("blocked optional dependency", name="torchdiffeq")
+
+pl._import_module = missing_legacy_stack
+try:
+    pl.plot_growth
+except ModuleNotFoundError as exc:
+    print(str(exc))
+else:
+    raise AssertionError("legacy plotting access unexpectedly succeeded")
+"""
+    )
+    assert "pip install 'CytoBridge[velocity]'" in actionable.stdout
+
+
+def test_graph_api_remains_actionable_without_torch_geometric() -> None:
+    result = _run_source_python(
+        """
+import builtins
+import os
+import tempfile
+
+real_import = builtins.__import__
+
+def block_torch_geometric(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == "torch_geometric" or name.startswith("torch_geometric."):
+        raise ModuleNotFoundError(
+            "blocked optional dependency", name="torch_geometric"
+        )
+    return real_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = block_torch_geometric
+with tempfile.TemporaryDirectory(prefix="cytobridge-numba-") as cache_dir:
+    os.environ["NUMBA_CACHE_DIR"] = cache_dir
+    from CytoBridge.tl.graph import GNNInteraction
+
+assert callable(GNNInteraction)
+try:
+    GNNInteraction(
+        in_out_dim=4,
+        hidden_dim=4,
+        num_heads=1,
+        num_layers=1,
+        edge_prior_mode="all_spatial",
+    )
+except ImportError as exc:
+    print(str(exc))
+else:
+    raise AssertionError("GNNInteraction unexpectedly loaded without torch_geometric")
+"""
+    )
+    assert "pip install 'CytoBridge[graph]'" in result.stdout
+
+
 def test_cli_entry_point_version_and_read_only_doctor(tmp_path: Path) -> None:
     pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["project"]["scripts"] == {
@@ -176,14 +265,19 @@ def test_cli_entry_point_version_and_read_only_doctor(tmp_path: Path) -> None:
     report = json.loads(doctor.stdout)
     assert report["package"]["version"] == _authoritative_version()
     assert report["package"]["distribution"] == "CytoBridge"
-    assert set(report["dependencies"]) == {
-        "anndata",
-        "matplotlib",
-        "numpy",
-        "pandas",
-        "scanpy",
-        "torch",
-    }
+    assert {"anndata", "matplotlib", "numpy", "pandas", "scanpy", "torch"} <= set(
+        report["dependencies"]
+    )
+    assert set(report["profiles"]) == {"core", *EXTRA_NAMES}
+    for profile_name, profile in report["profiles"].items():
+        assert isinstance(profile["available"], bool)
+        assert isinstance(profile["missing_modules"], list)
+        expected_install = (
+            "pip install CytoBridge"
+            if profile_name == "core"
+            else f"pip install 'CytoBridge[{profile_name}]'"
+        )
+        assert profile["install"] == expected_install
     assert list(tmp_path.iterdir()) == []
 
     import_probe = _run_source_python(
@@ -200,6 +294,124 @@ print(json.dumps(sorted(
 """
     )
     assert json.loads(import_probe.stdout) == []
+
+
+def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
+    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    project = pyproject["project"]
+    dynamic = pyproject["tool"]["setuptools"]["dynamic"]
+
+    assert set(project["dynamic"]) == {
+        "dependencies",
+        "optional-dependencies",
+        "version",
+    }
+    assert dynamic["dependencies"] == {"file": ["requirements/core.txt"]}
+    optional = dynamic["optional-dependencies"]
+    assert set(optional) == EXTRA_NAMES
+    assert optional == {
+        name: {"file": [f"requirements/{name}.txt"]}
+        for name in EXTRA_NAMES
+    }
+
+    def load_requirements(name: str) -> dict[str, Requirement]:
+        requirements: dict[str, Requirement] = {}
+        for raw_line in (PROJECT_ROOT / "requirements" / f"{name}.txt").read_text(
+            encoding="utf-8"
+        ).splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parsed = Requirement(line)
+            assert parsed.name not in requirements
+            specifiers = {specifier.operator for specifier in parsed.specifier}
+            bounded_range = (
+                any(operator in specifiers for operator in {">", ">="})
+                and any(operator in specifiers for operator in {"<", "<="})
+            )
+            assert bounded_range or specifiers == {"=="}
+            requirements[parsed.name] = parsed
+        return requirements
+
+    core = load_requirements("core")
+    groups = {
+        name: load_requirements(name)
+        for name in EXTRA_NAMES
+        if name not in {"all", "spatial"}
+    }
+    all_requirements = load_requirements("all")
+    expected_all = {
+        requirement.name: requirement
+        for requirements in groups.values()
+        for requirement in requirements.values()
+    }
+    assert set(all_requirements) == set(expected_all)
+    for name, requirement in expected_all.items():
+        assert str(all_requirements[name].specifier) == str(requirement.specifier)
+
+    spatial = load_requirements("spatial")
+    expected_spatial_names = {
+        requirement.name
+        for group_name in ("preprocess", "train", "graph")
+        for requirement in groups[group_name].values()
+    }
+    assert set(spatial) == expected_spatial_names
+
+    compatibility_lines = {
+        line.strip()
+        for line in (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    assert compatibility_lines == {
+        "-r requirements/core.txt",
+        "-r requirements/all.txt",
+    }
+    forbidden = {"torchvision", "torchaudio", "torchsde", "imageio"}
+    assert forbidden.isdisjoint(core)
+    assert forbidden.isdisjoint(all_requirements)
+
+    distribution_to_module = {
+        "anndata": "anndata",
+        "cellrank": "cellrank",
+        "geomloss": "geomloss",
+        "ipywidgets": "ipywidgets",
+        "joblib": "joblib",
+        "kaleido": "kaleido",
+        "matplotlib": "matplotlib",
+        "numpy": "numpy",
+        "pandas": "pandas",
+        "phate": "phate",
+        "Pillow": "PIL",
+        "plotly": "plotly",
+        "POT": "ot",
+        "PyYAML": "yaml",
+        "qnorm": "qnorm",
+        "scanpy": "scanpy",
+        "scikit-learn": "sklearn",
+        "scipy": "scipy",
+        "scvelo": "scvelo",
+        "seaborn": "seaborn",
+        "torch": "torch",
+        "torch-geometric": "torch_geometric",
+        "torchdiffeq": "torchdiffeq",
+        "tqdm": "tqdm",
+        "umap-learn": "umap",
+    }
+    profile_probe = _run_source_python(
+        """
+import json
+from CytoBridge.cli import _DEPENDENCY_PROFILES
+print(json.dumps(_DEPENDENCY_PROFILES, sort_keys=True))
+"""
+    )
+    dependency_profiles = json.loads(profile_probe.stdout)
+    requirement_groups = {"core": core, **groups}
+    for profile_name, modules in dependency_profiles.items():
+        expected_modules = {
+            distribution_to_module[requirement.name]
+            for requirement in requirement_groups[profile_name].values()
+        }
+        assert set(modules) == expected_modules
 
 
 def test_installed_wheel_smoke_runner_contract(tmp_path: Path) -> None:
@@ -337,6 +549,9 @@ def _write_minimal_package_source(root: Path) -> None:
     package = root / "CytoBridge"
     package.mkdir()
     (package / "__init__.py").write_text("__version__ = 'test'\n", encoding="utf-8")
+    requirements = root / "requirements"
+    requirements.mkdir()
+    (requirements / "core.txt").write_text("numpy>=1.24,<2\n", encoding="utf-8")
 
 
 def test_installed_wheel_smoke_rejects_source_symlinks_and_special_files(
@@ -354,6 +569,24 @@ def test_installed_wheel_smoke_rejects_source_symlinks_and_special_files(
     with pytest.raises(RuntimeError, match="symbolic link"):
         runner["_stage_source"](source, tmp_path / "stage-package-link")
     package_link.unlink()
+
+    requirements_link = source / "requirements" / "linked.txt"
+    requirements_link.symlink_to(external)
+    with pytest.raises(RuntimeError, match="symbolic link"):
+        runner["_stage_source"](source, tmp_path / "stage-requirements-link")
+    requirements_link.unlink()
+
+    requirements_directory = source / "requirements"
+    original_requirements = source / "requirements-original"
+    external_requirements = tmp_path / "external-requirements"
+    external_requirements.mkdir()
+    (external_requirements / "core.txt").write_text("external\n", encoding="utf-8")
+    requirements_directory.rename(original_requirements)
+    requirements_directory.symlink_to(external_requirements, target_is_directory=True)
+    with pytest.raises(RuntimeError, match="symbolic link: requirements"):
+        runner["_stage_source"](source, tmp_path / "stage-requirements-root-link")
+    requirements_directory.unlink()
+    original_requirements.rename(requirements_directory)
 
     special = source / "CytoBridge" / "special.fifo"
     os.mkfifo(special)

@@ -44,6 +44,7 @@ _STAGED_ROOT_FILES = (
     "requirements.txt",
     "setup.py",
 )
+_STAGED_ROOT_DIRECTORIES = ("CytoBridge", "requirements")
 _EVIDENCE_FILENAME = "wheel-smoke-evidence.json"
 _REQUIRED_COMMAND_PHASES = (
     "wheel_build",
@@ -455,36 +456,41 @@ def _inventory_held_source_root(
             )
         )
 
-    package_status = _relative_status(source_root_fd, "CytoBridge", label="CytoBridge")
-    if stat.S_ISLNK(package_status.st_mode):
-        raise RuntimeError("Source tree contains a symbolic link: CytoBridge")
-    if not stat.S_ISDIR(package_status.st_mode):
-        raise RuntimeError("Expected an ordinary package directory: CytoBridge")
-    source_package_fd = _open_child_directory(
-        source_root_fd,
-        "CytoBridge",
-        package_status,
-        label="CytoBridge",
-    )
-    destination_package_fd: int | None = None
-    try:
-        if destination_root_fd is not None:
-            destination_package_fd = _create_destination_directory(
-                destination_root_fd,
-                "CytoBridge",
-                label="CytoBridge",
-            )
-        _walk_held_package_directory(
-            source_package_fd,
-            relative_directory=Path("CytoBridge"),
-            destination_directory_fd=destination_package_fd,
-            include=True,
-            inventory=inventory,
+    for directory_name in _STAGED_ROOT_DIRECTORIES:
+        directory_status = _relative_status(
+            source_root_fd,
+            directory_name,
+            label=directory_name,
         )
-    finally:
-        if destination_package_fd is not None:
-            os.close(destination_package_fd)
-        os.close(source_package_fd)
+        if stat.S_ISLNK(directory_status.st_mode):
+            raise RuntimeError(f"Source tree contains a symbolic link: {directory_name}")
+        if not stat.S_ISDIR(directory_status.st_mode):
+            raise RuntimeError(f"Expected an ordinary source directory: {directory_name}")
+        source_directory_fd = _open_child_directory(
+            source_root_fd,
+            directory_name,
+            directory_status,
+            label=directory_name,
+        )
+        destination_directory_fd: int | None = None
+        try:
+            if destination_root_fd is not None:
+                destination_directory_fd = _create_destination_directory(
+                    destination_root_fd,
+                    directory_name,
+                    label=directory_name,
+                )
+            _walk_held_package_directory(
+                source_directory_fd,
+                relative_directory=Path(directory_name),
+                destination_directory_fd=destination_directory_fd,
+                include=True,
+                inventory=inventory,
+            )
+        finally:
+            if destination_directory_fd is not None:
+                os.close(destination_directory_fd)
+            os.close(source_directory_fd)
     return sorted(inventory, key=lambda item: str(item["path"]))
 
 

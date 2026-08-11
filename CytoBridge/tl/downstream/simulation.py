@@ -1702,7 +1702,8 @@ def compute_umap_embedding(
         import umap
     except ImportError as exc:
         raise ImportError(
-            "umap-learn is required for UMAP embedding. Install with: pip install umap-learn"
+            "umap-learn is required for UMAP embedding. "
+            "Install it with: pip install 'CytoBridge[plot]'"
         ) from exc
 
     reducer = umap.UMAP(n_neighbors=n_neighbors, min_dist=min_dist, random_state=seed)

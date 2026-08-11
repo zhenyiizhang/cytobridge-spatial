@@ -31,6 +31,31 @@ class InstalledPackageContractTests(unittest.TestCase):
         self.assertEqual(distribution.metadata["Requires-Python"], ">=3.10")
         self.assertEqual(distribution.version, CytoBridge.__version__)
         self.assertNotIn(PROJECT_ROOT, Path(CytoBridge.__file__).resolve().parents)
+        self.assertEqual(
+            set(distribution.metadata.get_all("Provides-Extra") or []),
+            {
+                "all",
+                "graph",
+                "notebook",
+                "plot",
+                "preprocess",
+                "spatial",
+                "train",
+                "velocity",
+            },
+        )
+        requirements = distribution.requires or []
+        normalized_requirements = [item.replace(" ", "").lower() for item in requirements]
+        self.assertTrue(any(item.startswith("numpy<2,>=1.24") for item in normalized_requirements))
+        self.assertTrue(
+            any(
+                "torch-geometric<3,>=2.4" in item
+                and "extra=='graph'" in item
+                for item in normalized_requirements
+            )
+        )
+        self.assertFalse(any("torchvision" in item for item in normalized_requirements))
+        self.assertFalse(any("torchaudio" in item for item in normalized_requirements))
 
         entry_points = {
             entry_point.name: entry_point.value
@@ -69,6 +94,23 @@ class InstalledPackageContractTests(unittest.TestCase):
         self.assertEqual(report["package"]["installed_version"], CytoBridge.__version__)
         self.assertTrue(report["package"]["version_match"])
         self.assertTrue(all(value is False for value in report["dependencies"].values()))
+        self.assertEqual(
+            set(report["profiles"]),
+            {
+                "all",
+                "core",
+                "graph",
+                "notebook",
+                "plot",
+                "preprocess",
+                "spatial",
+                "train",
+                "velocity",
+            },
+        )
+        self.assertTrue(
+            all(profile["available"] is False for profile in report["profiles"].values())
+        )
 
     def test_config_package_data_is_present(self) -> None:
         config = resources.files("CytoBridge").joinpath(
