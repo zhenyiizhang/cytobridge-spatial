@@ -2,12 +2,19 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
+import torch
+
+import CytoBridge.tl.downstream.classification as classification
 
 from CytoBridge.tl.downstream.classification import (
     ResidualMLP,
-    _prepare_classifier_arrays,
     _classifier_cache_fingerprint,
+    _classifier_state_sha1,
+    _prepare_classifier_arrays,
+    _split_classifier_indices,
     _train_mlp_classifier_arrays_detailed,
+    train_cached_mlp_classifier_from_adata,
 )
 
 import anndata as ad
@@ -105,3 +112,184 @@ def test_classifier_can_select_leading_joint_dimensions() -> None:
     assert X.shape == (3, 5)
     np.testing.assert_array_equal(X[0], [0.0, 10.0, 11.0, 1.0, 2.0])
     np.testing.assert_array_equal(labels, ["A", "B", "A"])
+
+
+def test_phase_a_split_is_disjoint_and_its_union_covers_every_row():
+    encoded = np.repeat(np.arange(3, dtype=np.int64), 10)
+
+    train_indices, validation_indices, metadata = _split_classifier_indices(
+        encoded,
+        test_size=0.2,
+        seed=42,
+        stratify_split=True,
+        strict_stratification=True,
+        train_on_full_data=False,
+    )
+
+    assert metadata["strategy"] == "held_out_train_validation"
+    assert metadata["stratify_used"] is True
+    assert set(train_indices).isdisjoint(set(validation_indices))
+    assert set(train_indices) | set(validation_indices) == set(range(30))
+    assert np.bincount(encoded[validation_indices], minlength=3).tolist() == [2, 2, 2]
+
+
+def test_stratification_fallback_is_recorded_and_strict_mode_fails_closed():
+    encoded = np.asarray([0, 0, 0, 1], dtype=np.int64)
+
+    _, _, metadata = _split_classifier_indices(
+        encoded,
+        test_size=0.5,
+        seed=42,
+        stratify_split=True,
+        strict_stratification=False,
+        train_on_full_data=False,
+    )
+    assert metadata["stratify_used"] is False
+    assert "class_with_fewer_than_two_rows" in metadata[
+        "stratification_fallback_reason"
+    ]
+
+    with pytest.raises(ValueError, match="Strict stratification could not be honored"):
+        _split_classifier_indices(
+            encoded,
+            test_size=0.5,
+            seed=42,
+            stratify_split=True,
+            strict_stratification=True,
+            train_on_full_data=False,
+        )
+
+
+def test_phase_a_refit_uses_fresh_model_all_rows_and_selection_scheduler_horizon(
+    monkeypatch,
+):
+    original_model = classification.ResidualMLP
+    original_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
+    instances = []
+    scheduler_horizons = []
+
+    class TrackingResidualMLP(original_model):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.forward_batch_sizes = []
+            instances.append(self)
+
+        def forward(self, values):
+            self.forward_batch_sizes.append(int(values.shape[0]))
+            return super().forward(values)
+
+    class TrackingScheduler(original_scheduler):
+        def __init__(self, optimizer, T_max, *args, **kwargs):
+            scheduler_horizons.append(int(T_max))
+            super().__init__(optimizer, T_max, *args, **kwargs)
+
+    monkeypatch.setattr(classification, "ResidualMLP", TrackingResidualMLP)
+    monkeypatch.setattr(
+        torch.optim.lr_scheduler,
+        "CosineAnnealingLR",
+        TrackingScheduler,
+    )
+
+    rng = np.random.default_rng(9)
+    X = rng.normal(size=(30, 4)).astype(np.float32)
+    y = np.asarray(["A"] * 10 + ["B"] * 10 + ["C"] * 10)
+    model, _, accuracy, bacc, evaluation = _train_mlp_classifier_arrays_detailed(
+        X,
+        y,
+        hidden_size=8,
+        epochs=3,
+        test_size=0.2,
+        seed=42,
+        device="cpu",
+        best_epoch_metric="bacc",
+        refit_on_full_data_after_selection=True,
+        strict_stratification=True,
+    )
+
+    assert len(instances) == 2
+    assert model is instances[1]
+    assert scheduler_horizons == [3, 3]
+    assert evaluation["selection"]["uses_validation_for_epoch_selection"] is True
+    assert evaluation["selection"]["scheduler_t_max"] == 3
+    assert accuracy == evaluation["selection"]["validation_accuracy"]
+    assert bacc == evaluation["selection"]["validation_balanced_accuracy"]
+    assert evaluation["split_contract"]["disjoint"] is True
+    assert evaluation["split_contract"]["covers_all_rows"] is True
+
+    refit = evaluation["refit"]
+    assert refit["performed"] is True
+    assert refit["fresh_model_instantiated"] is True
+    assert refit["n_train"] == len(X)
+    assert refit["epochs"] == evaluation["best_epoch"]
+    assert refit["optimizer_steps"] == evaluation["best_epoch"]
+    assert refit["scheduler_t_max"] == 3
+    assert refit["scheduler_last_epoch"] == evaluation["best_epoch"]
+    assert instances[1].forward_batch_sizes[: refit["epochs"]] == [len(X)] * refit[
+        "epochs"
+    ]
+    assert refit["initial_state_sha1"] == evaluation["selection"][
+        "initial_state_sha1"
+    ]
+    assert evaluation["returned_model_state_sha1"] == _classifier_state_sha1(model)
+    assert evaluation["returned_model_state_sha1"] == refit["final_state_sha1"]
+
+
+def test_legacy_full_data_mode_conflicts_with_post_selection_refit(tmp_path):
+    X = np.zeros((6, 2), dtype=np.float32)
+    y = np.asarray(["A", "A", "A", "B", "B", "B"])
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        _train_mlp_classifier_arrays_detailed(
+            X,
+            y,
+            epochs=1,
+            device="cpu",
+            train_on_full_data=True,
+            refit_on_full_data_after_selection=True,
+        )
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        train_cached_mlp_classifier_from_adata(
+            None,
+            cache_path=tmp_path / "classifier.pt",
+            train_on_full_data=True,
+            refit_on_full_data_after_selection=True,
+        )
+
+
+def test_cached_refit_persists_protocol_and_keeps_phase_a_metrics(tmp_path):
+    rng = np.random.default_rng(13)
+    adata = ad.AnnData(X=np.zeros((30, 1), dtype=np.float32))
+    adata.obs["time"] = np.repeat([0.0, 1.0, 2.0], 10)
+    adata.obs["Annotation"] = np.asarray(
+        ["A"] * 10 + ["B"] * 10 + ["C"] * 10
+    )
+    adata.obsm["X_latent"] = rng.normal(size=(30, 4)).astype(np.float32)
+
+    cached, cache_path = train_cached_mlp_classifier_from_adata(
+        adata,
+        cache_path=tmp_path / "classifier.pt",
+        time_key="time",
+        concat_spatial=False,
+        hidden_size=8,
+        epochs=2,
+        test_size=0.2,
+        device="cpu",
+        refit_on_full_data_after_selection=True,
+        strict_stratification=True,
+    )
+
+    assert cache_path.exists()
+    assert cached.metadata["version"] == 6
+    assert cached.metadata["selection_scope"] == "held_out_validation_phase_a"
+    assert cached.metadata["refit_on_full_data_after_selection"] is True
+    assert cached.metadata["strict_stratification"] is True
+    assert cached.accuracy == cached.evaluation["selection"]["validation_accuracy"]
+    assert cached.balanced_accuracy == cached.evaluation["selection"][
+        "validation_balanced_accuracy"
+    ]
+    assert cached.evaluation["refit"]["performed"] is True
+    assert cached.evaluation["refit"]["n_train"] == adata.n_obs
+    assert cached.evaluation["returned_model_state_sha1"] == _classifier_state_sha1(
+        cached.model
+    )

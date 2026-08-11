@@ -468,7 +468,7 @@ def _compute_spatial_warp_displacements(
     k: int,
     eps: float,
 ) -> np.ndarray:
-    from sklearn.neighbors import NearestNeighbors
+    from scipy.spatial import cKDTree
 
     query_xy = np.asarray(query_xy, dtype=np.float32)
     anchor_source_xy = np.asarray(anchor_source_xy, dtype=np.float32)
@@ -482,16 +482,65 @@ def _compute_spatial_warp_displacements(
         raise ValueError("anchor_target_xy must have shape (m, 2)")
     if anchor_source_xy.shape[0] == 0 or anchor_target_xy.shape[0] == 0:
         return np.zeros((query_xy.shape[0], 2), dtype=np.float32)
+    if not (
+        np.isfinite(query_xy[:, :2]).all()
+        and np.isfinite(anchor_source_xy).all()
+        and np.isfinite(anchor_target_xy).all()
+    ):
+        raise ValueError("Spatial warp coordinates must contain only finite values")
+    if not np.isfinite(float(eps)) or float(eps) <= 0.0:
+        raise ValueError("eps must be finite and positive")
 
-    target_nn = NearestNeighbors(n_neighbors=1)
-    target_nn.fit(anchor_target_xy)
-    _, target_idx = target_nn.kneighbors(anchor_source_xy)
+    def _stable_query(
+        tree: cKDTree,
+        reference: np.ndarray,
+        points: np.ndarray,
+        n_neighbors: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Query exact neighbors with index-stable kth-boundary ties."""
+        query_k = min(int(n_neighbors), int(reference.shape[0]))
+        initial_distances, initial_indices = tree.query(
+            points,
+            k=query_k,
+            workers=1,
+        )
+        if query_k == 1:
+            initial_distances = np.asarray(initial_distances)[:, None]
+            initial_indices = np.asarray(initial_indices)[:, None]
+        distances_out = np.empty((points.shape[0], query_k), dtype=np.float64)
+        indices_out = np.empty((points.shape[0], query_k), dtype=np.int64)
+        for row in range(points.shape[0]):
+            cutoff = float(initial_distances[row, query_k - 1])
+            candidates = np.asarray(
+                tree.query_ball_point(points[row], np.nextafter(cutoff, np.inf)),
+                dtype=np.int64,
+            )
+            candidate_distances = np.linalg.norm(
+                reference[candidates] - points[row],
+                axis=1,
+            )
+            order = np.lexsort((candidates, candidate_distances))[:query_k]
+            distances_out[row] = candidate_distances[order]
+            indices_out[row] = candidates[order]
+        return distances_out, indices_out
+
+    target_tree = cKDTree(anchor_target_xy)
+    _, target_idx = _stable_query(
+        target_tree,
+        anchor_target_xy,
+        anchor_source_xy,
+        1,
+    )
     anchor_disp = anchor_target_xy[target_idx[:, 0]] - anchor_source_xy
 
     k_eff = max(1, min(int(k), anchor_source_xy.shape[0]))
-    source_nn = NearestNeighbors(n_neighbors=k_eff)
-    source_nn.fit(anchor_source_xy)
-    dists, src_idx = source_nn.kneighbors(query_xy[:, :2])
+    source_tree = cKDTree(anchor_source_xy)
+    dists, src_idx = _stable_query(
+        source_tree,
+        anchor_source_xy,
+        query_xy[:, :2],
+        k_eff,
+    )
 
     weights = 1.0 / np.maximum(dists, float(eps))
     weights /= weights.sum(axis=1, keepdims=True)

@@ -99,8 +99,74 @@ python scripts/preprocess_pipeline.py \
   --h5ad-path /path/to/input.h5ad \
   --time-key timepoint \
   --output-dir ./results/mosta_preprocess \
-  --database-path /path/to/database/CellNEST_database.csv \
+  --database-path /path/to/database/CellChatDB.ligrec.mouse.csv \
+  --batch-indices 3,4,5,6 \
+  --time-mapping '{"E9.5":-3,"E10.5":-2,"E11.5":-1,"E12.5":0,"E13.5":1,"E14.5":2,"E15.5":3,"E16.5":4}' \
+  --expression-layer count \
+  --counts-layer count \
+  --raw-count-validation strict \
+  --normalization-target-sum 10000 \
+  --auto-scale-from-centered-x-max 0 \
+  --center-x 1 --center-y 0 \
+  --scale-x 0.01 --scale-y 0.01 --flip-y 1 \
   --device cuda
+```
+
+For the published MOSTA schema, prefer the audited dataset adapter. It also
+forces mouse CellChat ligand/receptor subunits that are present in the source
+data into the PCA feature mask, writes PCA/loadings/center contracts, trains a
+fresh edge predictor, and records the canonical E12.5--E15.5 model-time axis:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
+  --h5ad-path /path/to/Mouse_embryo_all_stage.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.mouse.csv \
+  --output-dir ./results/mosta_corrected_counts_alpha0015 \
+  --profile full \
+  --stage all \
+  --alpha-spatial 10 \
+  --alpha-express 0.015 \
+  --device cuda
+```
+
+`Mouse_embryo_all_stage.h5ad.X` is already transformed. Its authoritative raw
+UMI matrix is the singular `layers['count']`; omitting the explicit layer would
+reproduce the historical double transformation. The corrected adapter uses
+`raw count -> normalize_total(target_sum=10000) -> log1p` exactly once.
+`--alpha-spatial` and `--alpha-express` are explicit run parameters and are
+recorded in both the training and evaluation manifests. For a paired
+expression-weight sensitivity run, keep every other argument and the random
+seed fixed, change only `--alpha-express 0.05`, and use a fresh output
+directory. Reuse the audited preprocessing without copying or recomputing it:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 python scripts/run_mosta_end_to_end.py \
+  --h5ad-path /path/to/Mouse_embryo_all_stage.h5ad \
+  --database-path /path/to/CellChatDB.ligrec.mouse.csv \
+  --output-dir ./results/mosta_corrected_counts_alpha005 \
+  --reuse-preprocess-dir ./results/mosta_corrected_counts_alpha0015/preprocess \
+  --profile full \
+  --stage train-evaluate \
+  --alpha-spatial 10 \
+  --alpha-express 0.05 \
+  --random-seed 42 \
+  --device cuda
+```
+
+This mode treats the shared aligned H5AD, PCA contract, graph, and edge
+predictor as read-only inputs and records their path/identity in the new run
+manifest.
+
+On a shared GPU server, the repository also provides a guarded launcher that
+uses a per-GPU file lock, refuses an occupied GPU or non-clean code snapshot,
+and keeps the paired run's logs, caches, status, training, and evaluation in a
+fresh output directory:
+
+```bash
+scripts/launch_mosta_paired_alpha.sh \
+  7 0.05 \
+  ./results/mosta_corrected_counts_alpha0015 \
+  ./results/mosta_corrected_counts_alpha005
 ```
 
 This step produces:
@@ -118,7 +184,7 @@ python scripts/run_spatial_training.py \
   --h5ad_path /path/to/input.h5ad \
   --output_csv ./results/mosta/aligned.csv \
   --output_h5ad ./results/mosta/aligned.h5ad \
-  --train_config CytoBridge/configs/st_spatial.yaml \
+  --train_config CytoBridge/configs/mosta_spatial_full_alpha_express_0015.yaml \
   --device cuda
 ```
 
@@ -134,6 +200,18 @@ cb.tl.fit(
 )
 ```
 
+Each new training run writes `training_history.csv` and
+`training_run_summary.json`. The history distinguishes the lowest-loss epoch
+from the checkpoint actually selected by each stage and records learning-rate
+endpoints, optimizer steps, and synchronized elapsed time. The summary records
+the device/software contract, parameter and input dimensions, wall time,
+process peak RSS, and native PyTorch CUDA peak allocated/reserved memory; an
+unavailable measurement remains null instead of being inferred. Run
+`scripts/summarize_training_history.py` to generate reviewer-facing curves and
+`training_resource_summary.json`. Older schema-v1 histories can still be read,
+but values absent from those files are explicitly marked as inferred or
+unavailable.
+
 ## Package API
 
 The main package-level entry points are:
@@ -145,6 +223,8 @@ The main package-level entry points are:
 - `CytoBridge.tl.fit`
 - `CytoBridge.tl.evaluate_model_distributions`
 - `CytoBridge.tl.train_cached_mlp_classifier_from_adata`
+- `CytoBridge.tl.smooth_spatial_labels`
+- `CytoBridge.tl.analyze_spatial_label_sensitivity`
 - `CytoBridge.tl.run_interpolation_workflow`
 - `CytoBridge.tl.compute_timepoint_communications`
 - `CytoBridge.tl.load_gmt_gene_sets`
@@ -434,9 +514,43 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
 
 - `summarize_temporal_gene_patterns` uses either the PCA contract retained in
   processed AnnData or an explicit `PCAReconstructionSpec`, inverse-projects
-  simulated PCA states, and clusters the resulting gene trajectories;
+  simulated PCA states, and clusters the resulting gene trajectories. Its
+  optional `candidate_features` argument freezes the exact original PCA-feature
+  universe eligible for temporal-variance ranking; missing, duplicate, or
+  center-only candidates are strict errors, and the requested/used sets and
+  hashes are recorded in the result settings. Its default `clip_min=None`
+  preserves the signed linear inverse-PCA estimator used by formal MOSTA;
+  formal zebrafish callers explicitly request `clip_min=0.0`, which clips each
+  reconstructed cell before taking the time-point mean and retains the signed
+  pre-clip table and diagnostics;
+- `evaluate_pca_anchor_reconstruction` checks observed log1p anchors against
+  their exact-center inverse-PCA reconstruction in bounded cell chunks. It
+  expects a caller-supplied view restricted to the intended biological cells
+  and active PCA candidates (for MOSTA, Brain cells and the original 2,000
+  HVGs), rejects center-only features by default, and strictly validates
+  feature order. It returns per-time aggregate errors plus per-feature
+  RMSE/MAE, mean, population standard deviation, bias, correlation, and scale
+  ratio together with effective observation/feature and PCA-contract hashes,
+  without constructing the full cells-by-features reconstruction;
 - `project_communication_to_lr_timecourses` combines those reconstructed
-  expression values with per-timepoint `M_per_source` communication matrices;
+  expression values with per-timepoint `M_per_source` communication matrices.
+  Hybrid observed/generated runs use one all-times universe of LR subunits with
+  active retained-PC loadings, require every retained pair and pair-by-cell-type
+  trajectory to cover the full requested time grid, and return explicit
+  `trajectory_coverage` and `dropped_trajectories` audits instead of silently
+  zero-filling missing times. Pair identity is the structured
+  `(ligand, receptor)` tuple and a reversible JSON `pair_id`; the historical
+  underscore-joined `pair` is display-only because complex names can collide.
+  `complex_mode="geometric_mean"` is zero-preserving and available alongside
+  the historical minimum rule. Unsupported cell types stay unavailable/NaN,
+  never an invented zero;
+- `compute_focal_lr_type_hotspots` implements the article-style focal-panel
+  estimand `mean_sender(ligand) * mean_receiver(receptor_complex) *
+  M_per_source(sender, receiver)`. It exports the sender-by-receiver type
+  matrix, type-level incoming/outgoing/total scores, a cell mapping with one
+  identical value per time/type, and a formula/subunit/cohort audit. A capped
+  compute cohort and full display cohort may be supplied separately, with both
+  sizes and ordered cell-ID hashes recorded;
 - `load_pca_reconstruction_spec` loads historical loading/center tables through
   a generic, validated feature-alignment contract rather than dataset-local
   parsing;
@@ -447,6 +561,93 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   dataset-independent gene-set contract with an explicit expression or
   library-wide background, while `plot_enrichment_bar` and
   `plot_enrichment_dot` render the standardized result table.
+
+Two additional public APIs cover the numerical steps that were previously
+embedded in figure notebooks. `analyze_developmental_wave` takes any
+feature-by-time table, selects rows by temporal variance, performs row-wise
+standardization and deterministic peak-time ordering, and uses exact dynamic
+programming to divide the ordered cascade into contiguous phases subject to a
+hard minimum phase size. `plot_developmental_wave_heatmap` displays that stored
+ordering and those phase boundaries without recomputing them.
+
+`cluster_temporal_profiles` uses an exact merge-count tree cut, so duplicate or
+zero-distance profiles still yield the requested number of clusters (bounded by
+the number of input profiles). Diagnostics record the chosen cluster count,
+cut strategy, and number of zero-distance merges.
+
+```python
+from CytoBridge.tl import analyze_developmental_wave
+from CytoBridge.pl import plot_developmental_wave_heatmap
+
+wave = analyze_developmental_wave(
+    gene_by_time,
+    n_top_profiles=250,
+    n_phases=3,
+    min_phase_size=5,
+)
+wave.assignments.to_csv("wave_assignments.csv", index=False)
+wave.prototypes.to_csv("wave_phase_prototypes.csv", index=False)
+plot_developmental_wave_heatmap(wave, out_path="developmental_wave.pdf")
+```
+
+`project_velocity_to_embedding` provides a dependency-light, auditable
+alternative to constructing a temporary scVelo object. It builds (or accepts)
+a k-nearest-neighbor graph in the complete latent feature space, converts the
+cosines between latent velocities and latent neighbor displacements to
+softmax transition probabilities, and applies the centered probabilities to
+2D target-embedding displacements. The embedding is only the projection
+target; it is never substituted for the high-dimensional neighborhood state.
+
+```python
+from CytoBridge.tl import project_velocity_to_embedding
+
+projection = project_velocity_to_embedding(
+    latent_coordinates,
+    latent_velocity,
+    embedding_2d,
+    n_neighbors=30,
+    temperature=1.0,
+)
+velocity_2d = projection.projected_velocity
+```
+
+Virtual perturbations are also exposed as dataset-independent APIs.
+`run_virtual_cell_type_ablation` takes caller-defined annotation keys and label
+sets; it never embeds MOSTA label names.  Its default uses one shared initial
+cohort, while `mass_control=True` independently samples the baseline and one
+post-removal pool without replacement to the same initial size.  The latter is
+the audited contract used for the historical MOSTA equal-mass experiments.
+`run_virtual_interaction_ablation` instead accepts one explicit `x0` array and
+runs an exact-input, common-seed interaction-on versus interaction-off pair.
+Both workflows save numerical trajectories, comparison metrics, cohort or
+input provenance, and a machine-readable manifest; plotting remains a separate
+package call.
+
+```python
+from CytoBridge.tl import (
+    run_virtual_cell_type_ablation,
+    run_virtual_interaction_ablation,
+)
+
+celltype_result = run_virtual_cell_type_ablation(
+    adata,
+    runtime,
+    ablations={"remove_target": ["Target cell type"]},
+    time_points=time_grid,
+    annotation_key="cell_type",
+    time_key="model_time",
+    mass_control=True,
+    n_samples=40_000,
+    output_dir="results/remove_target",
+)
+
+interaction_result = run_virtual_interaction_ablation(
+    initial_states,
+    runtime,
+    time_points=time_grid,
+    output_dir="results/interaction_off",
+)
+```
 
 The enrichment API does not download or silently select a database. Callers
 provide a versioned GMT file and record its hash in the run manifest:
@@ -466,6 +667,13 @@ plot_enrichment_dot(
     out_path="pattern_go.svg",
 )
 ```
+
+The backward-compatible multiple-testing scope is `"reported"`, where terms
+below `min_overlap` are removed before BH correction. For a preregistered
+library-wide family, use `multiple_testing_scope="all_eligible"`: every term
+passing the explicit set-size gates is retained in one BH family, including
+zero-overlap terms with p-value 1. The result records both the eligible and
+actually corrected test counts in columns and `DataFrame.attrs`.
 
 The default, prospective workflow requires a package-processed reference H5AD
 that retains PCA loadings. An older H5AD containing only `X_pca` coordinates is
@@ -503,6 +711,29 @@ The classifier cache is now created through
 metadata match. The downstream command produces observed/generated snapshots,
 lineage Sankey, per-timepoint attention-based interactions, and the focus-anchor
 3D plot as HTML plus static SVG/PDF/PNG when Plotly image export is available.
+
+For new classifier runs, `--classifier-refit-on-full-data-after-selection`
+keeps model selection and final fitting distinct: it chooses the best epoch on
+the held-out validation split, initializes a fresh model, and refits on all
+rows for exactly that epoch count. Selection and refit metrics, split and state
+hashes, scheduler horizons, seeds, and row scopes remain separate in the cache
+evaluation record. `--classifier-strict-stratification` makes an impossible
+stratified split a hard error instead of using the documented fallback. The
+legacy `--classifier-train-on-full-data` behavior remains available for replay
+but cannot be combined with the new refit mode.
+
+Classifier prediction and spatial smoothing are separate operations.
+`smooth_spatial_labels` accepts the raw MLP labels and explicit spatial
+coordinates, records the requested/effective k, forces or excludes the query
+cell according to `include_self`, and resolves exact-distance boundaries
+deterministically. `analyze_spatial_label_sensitivity` reuses one raw prediction
+for k=1/5/10/20/50 and reports label flips, composition total variation,
+maximum percentage-point change, per-type abundance/retention, and
+boundary/interior flip rates. This avoids retraining the MLP while studying k.
+Historical formal runs remain dataset-specific: ARISTA used held-out
+balanced-accuracy selection with k=1, whereas the focused MOSTA cache selected
+in-sample on the full training population with k=10; they share an architecture
+family, not one identical validation protocol.
 
 The ARISTA formal-analysis config is no-warp: split-SDE coordinates are used
 directly for communication and the 3D rendering. Piecewise warp has two
@@ -567,6 +798,7 @@ environment or results directory.
 
 - `scripts/preprocess_pipeline.py`: end-to-end preprocessing, alignment, graph generation, and edge predictor training
 - `scripts/run_spatial_training.py`: preset-based spatial training entry point
+- `scripts/summarize_training_history.py`: training-curve and measured-resource summary entry point
 - `scripts/run_arista_end_to_end.py`: canonical ARISTA preprocess/train/evaluate entry point
 - `scripts/run_spatiotemporal_downstream.py`: dataset-configured interpolation/lineage/communication/3D entry point
 - `scripts/convert_legacy_weights_to_ckpt.py`: convert legacy checkpoints into the current checkpoint format

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import pickle
 import shutil
@@ -101,15 +102,29 @@ def _load_lr_db(path: str | Path) -> pd.DataFrame:
     out["ligand"] = out["ligand"].astype(str).str.strip()
     out["receptor"] = out["receptor"].astype(str).str.strip()
     out["lr_pair"] = out["ligand"] + "_" + out["receptor"]
-    return out.drop_duplicates(subset=["lr_pair"]).reset_index(drop=True)
+    out["pair_id"] = [
+        json.dumps([ligand, receptor], ensure_ascii=False, separators=(",", ":"))
+        for ligand, receptor in zip(out["ligand"], out["receptor"])
+    ]
+    return out.drop_duplicates(subset=["ligand", "receptor"]).reset_index(drop=True)
 
 
 def _parse_lr_tokens(lr_pair: str, lr_db: pd.DataFrame | None) -> tuple[str, str]:
     if lr_db is not None:
+        encoded_hit = lr_db[lr_db["pair_id"] == lr_pair]
+        if len(encoded_hit) == 1:
+            row = encoded_hit.iloc[0]
+            return str(row["ligand"]), str(row["receptor"])
         hit = lr_db[lr_db["lr_pair"] == lr_pair]
         if len(hit) == 1:
             row = hit.iloc[0]
             return str(row["ligand"]), str(row["receptor"])
+        if len(hit) > 1:
+            pair_ids = hit["pair_id"].astype(str).tolist()
+            raise ValueError(
+                f"Ambiguous legacy LR pair label '{lr_pair}'. Use one of the "
+                f"structured pair_id values: {pair_ids}."
+            )
     if "_" not in lr_pair:
         raise ValueError(f"Invalid lr_pair '{lr_pair}', expected 'Ligand_Receptor'")
     ligand = lr_pair.split("_", 1)[0]
@@ -136,8 +151,21 @@ def _extract_gene_vector(adata_t: ad.AnnData, gene: str, x_space: str) -> np.nda
     return vec
 
 
+def _normalize_complex_mode(mode: str) -> str:
+    normalized = str(mode).strip().lower().replace("-", "_")
+    aliases = {
+        "geomean": "geometric_mean",
+        "geometric": "geometric_mean",
+        "geometric_mean": "geometric_mean",
+    }
+    return aliases.get(normalized, normalized)
+
+
 def _combine_subunit_vectors(vectors: list[np.ndarray], mode: str) -> np.ndarray:
     arr = np.stack(vectors, axis=0)
+    if not np.isfinite(arr).all():
+        raise ValueError("Complex aggregation requires finite subunit expression.")
+    mode = _normalize_complex_mode(mode)
     if mode == "min":
         return arr.min(axis=0)
     if mode == "mean":
@@ -226,6 +254,7 @@ def render_lr_expression_panels(
     alpha_bg: float = 0.30,
     alpha_fg: float = 1.0,
 ) -> tuple[Path, Path]:
+    complex_mode = _normalize_complex_mode(complex_mode)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     adata = ad.read_h5ad(h5ad_path)

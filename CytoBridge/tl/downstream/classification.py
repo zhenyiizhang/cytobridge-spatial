@@ -24,10 +24,362 @@ __all__ = [
     "train_cached_mlp_classifier_from_adata",
     "load_cached_mlp_classifier",
     "predict_cached_mlp_classifier_from_adata",
+    "smooth_spatial_labels",
+    "analyze_spatial_label_sensitivity",
     "predict_labels_for_points",
     "predict_labels_for_trajectories",
     "MLP",
 ]
+
+
+def _validate_spatial_smoothing_inputs(
+    labels: Sequence[str],
+    spatial_coords: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return defensive arrays for the pure spatial-smoothing utilities."""
+
+    label_array = np.asarray(labels)
+    if label_array.ndim != 1:
+        raise ValueError("labels must be a one-dimensional sequence.")
+
+    coords = np.asarray(spatial_coords, dtype=np.float64)
+    if coords.ndim != 2:
+        raise ValueError("spatial_coords must be a two-dimensional array.")
+    if coords.shape[0] != label_array.shape[0]:
+        raise ValueError(
+            "labels and spatial_coords must contain the same number of rows "
+            f"({label_array.shape[0]} != {coords.shape[0]})."
+        )
+    if coords.shape[1] == 0:
+        raise ValueError("spatial_coords must contain at least one coordinate column.")
+    if not np.all(np.isfinite(coords)):
+        raise ValueError("spatial_coords must contain only finite values.")
+    return label_array.copy(), coords.copy()
+
+
+def _normalize_requested_k(k: int) -> int:
+    if isinstance(k, (bool, np.bool_)):
+        raise TypeError("k must be an integer, not a boolean.")
+    requested = int(k)
+    if float(requested) != float(k):
+        raise ValueError("k must be an integer.")
+    return requested
+
+
+def _stable_spatial_neighbors(
+    spatial_coords: np.ndarray,
+    *,
+    k: int,
+    include_self: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return exact neighbors with explicit self and index-stable boundary ties."""
+    from scipy.spatial import cKDTree
+
+    coords = np.asarray(spatial_coords, dtype=np.float64)
+    n_samples = int(coords.shape[0])
+    requested_other = int(k) - (1 if include_self else 0)
+    requested_other = max(0, requested_other)
+    other_indices = np.empty((n_samples, requested_other), dtype=np.int64)
+    other_distances = np.empty((n_samples, requested_other), dtype=np.float64)
+    if requested_other:
+        tree = cKDTree(coords)
+        query_k = min(n_samples, requested_other + 1)
+        initial_distances, initial_indices = tree.query(
+            coords,
+            k=query_k,
+            workers=1,
+        )
+        if query_k == 1:
+            initial_distances = np.asarray(initial_distances)[:, None]
+            initial_indices = np.asarray(initial_indices)[:, None]
+        for row in range(n_samples):
+            keep = initial_indices[row] != row
+            candidates = initial_indices[row, keep].astype(np.int64, copy=False)
+            candidate_distances = initial_distances[row, keep]
+            if candidates.size < requested_other:  # pragma: no cover - defensive
+                raise RuntimeError("Could not resolve enough non-self spatial neighbors.")
+            order = np.lexsort((candidates, candidate_distances))
+            cutoff = float(candidate_distances[order[requested_other - 1]])
+            candidates = np.asarray(
+                [
+                    index
+                    for index in tree.query_ball_point(
+                        coords[row], np.nextafter(cutoff, np.inf)
+                    )
+                    if index != row
+                ],
+                dtype=np.int64,
+            )
+            candidate_distances = np.linalg.norm(
+                coords[candidates] - coords[row],
+                axis=1,
+            )
+            order = np.lexsort((candidates, candidate_distances))[:requested_other]
+            other_indices[row] = candidates[order]
+            other_distances[row] = candidate_distances[order]
+
+    if include_self:
+        indices = np.column_stack(
+            (np.arange(n_samples, dtype=np.int64), other_indices)
+        )
+        distances = np.column_stack(
+            (np.zeros(n_samples, dtype=np.float64), other_distances)
+        )
+        return distances, indices
+    return other_distances, other_indices
+
+
+def _smooth_spatial_labels_detailed(
+    labels: Sequence[str],
+    spatial_coords: np.ndarray,
+    *,
+    k: int = 10,
+    include_self: bool = True,
+    weights: str = "uniform",
+    tie_policy: str = "sklearn_legacy",
+) -> tuple[np.ndarray, dict]:
+    """Implementation shared by smoothing and reviewer sensitivity reporting."""
+
+    label_array, coords = _validate_spatial_smoothing_inputs(labels, spatial_coords)
+    requested_k = _normalize_requested_k(k)
+    weights_normalized = str(weights).strip().lower()
+    tie_policy_normalized = str(tie_policy).strip().lower()
+    if weights_normalized not in {"uniform", "distance"}:
+        raise ValueError("weights must be one of {'uniform', 'distance'}.")
+    if tie_policy_normalized != "sklearn_legacy":
+        raise ValueError("tie_policy currently supports only 'sklearn_legacy'.")
+
+    n_samples = int(label_array.shape[0])
+    maximum_k = n_samples if include_self else max(0, n_samples - 1)
+    effective_k = min(maximum_k, max(0, requested_k))
+    metadata = {
+        "requested_k": int(requested_k),
+        "effective_k": int(effective_k),
+        "include_self": bool(include_self),
+        "weights": weights_normalized,
+        "tie_policy": tie_policy_normalized,
+        "neighbor_algorithm": "scipy.spatial.cKDTree_exact_boundary_ties",
+        "self_inclusion_contract": (
+            "forced_query_row" if include_self else "excluded_query_row"
+        ),
+        "even_effective_k": bool(effective_k > 0 and effective_k % 2 == 0),
+        "n_vote_ties": 0,
+    }
+
+    # Historical classifier code bypassed k-NN when k <= 1. Keeping that
+    # behavior also makes k=1 a transparent raw-prediction reference point.
+    if requested_k <= 1 or effective_k <= 1 or n_samples <= 1:
+        return label_array.copy(), metadata
+
+    # np.unique supplies the same ordered-class tie resolution used by the
+    # historical sklearn KNeighborsClassifier: the lowest sorted class wins.
+    try:
+        classes, encoded = np.unique(label_array, return_inverse=True)
+    except TypeError as exc:
+        raise TypeError(
+            "labels must have one mutually comparable dtype for "
+            "tie_policy='sklearn_legacy'."
+        ) from exc
+
+    distances, neighbor_indices = _stable_spatial_neighbors(
+        coords,
+        k=effective_k,
+        include_self=include_self,
+    )
+
+    refined_encoded = np.empty(n_samples, dtype=np.int64)
+    n_ties = 0
+    for row in range(n_samples):
+        row_indices = neighbor_indices[row]
+        row_distances = distances[row]
+        if row_indices.shape[0] < effective_k:
+            # This is only reachable for pathological neighbor backends. Fail
+            # closed instead of silently changing the requested vote size.
+            raise RuntimeError(
+                f"Could only resolve {row_indices.shape[0]} of {effective_k} neighbors."
+            )
+
+        if weights_normalized == "uniform":
+            vote_weights = np.ones(effective_k, dtype=np.float64)
+        else:
+            zero_distance = row_distances == 0.0
+            if np.any(zero_distance):
+                vote_weights = zero_distance.astype(np.float64)
+            else:
+                vote_weights = 1.0 / row_distances
+
+        scores = np.bincount(
+            encoded[row_indices],
+            weights=vote_weights,
+            minlength=len(classes),
+        )
+        winners = np.flatnonzero(
+            np.isclose(scores, scores.max(), rtol=1e-12, atol=1e-15)
+        )
+        if winners.shape[0] > 1:
+            n_ties += 1
+        refined_encoded[row] = int(winners[0])
+
+    metadata["n_vote_ties"] = int(n_ties)
+    return np.asarray(classes[refined_encoded]).copy(), metadata
+
+
+def smooth_spatial_labels(
+    labels: Sequence[str],
+    spatial_coords: np.ndarray,
+    *,
+    k: int = 10,
+    include_self: bool = True,
+    weights: str = "uniform",
+    tie_policy: str = "sklearn_legacy",
+) -> np.ndarray:
+    """Smooth precomputed labels by an explicit spatial k-nearest-neighbor vote.
+
+    This function is deliberately independent of classifier feature order. It
+    never mutates ``labels`` or ``spatial_coords`` and returns raw labels
+    unchanged for ``k <= 1``. Requests larger than the available neighborhood
+    are deterministically clamped.
+    """
+
+    refined, _ = _smooth_spatial_labels_detailed(
+        labels,
+        spatial_coords,
+        k=k,
+        include_self=include_self,
+        weights=weights,
+        tie_policy=tie_policy,
+    )
+    return refined
+
+
+def _infer_nearest_neighbor_boundary(
+    labels: np.ndarray,
+    spatial_coords: np.ndarray,
+) -> np.ndarray:
+    """Mark a point as boundary when its nearest *other* point has another label."""
+
+    n_samples = int(labels.shape[0])
+    if n_samples <= 1:
+        return np.zeros(n_samples, dtype=bool)
+    _, indices = _stable_spatial_neighbors(
+        spatial_coords,
+        k=1,
+        include_self=False,
+    )
+    return np.asarray(labels[indices[:, 0]] != labels, dtype=bool)
+
+
+def analyze_spatial_label_sensitivity(
+    labels: Sequence[str],
+    spatial_coords: np.ndarray,
+    *,
+    k_values: Sequence[int] = (1, 5, 10, 20, 50),
+    include_self: bool = True,
+    weights: str = "uniform",
+    tie_policy: str = "sklearn_legacy",
+    boundary_mask: Optional[Sequence[bool]] = None,
+) -> dict:
+    """Evaluate spatial-label smoothing across k without rerunning the MLP.
+
+    The returned records compare each smoothed result with the same raw label
+    vector. Composition changes are fractions (TV) and percentage points
+    (``max_absolute_change_pp`` / per-type ``abundance_change_pp``).
+    """
+
+    raw_labels, coords = _validate_spatial_smoothing_inputs(labels, spatial_coords)
+    resolved_k_values = tuple(_normalize_requested_k(value) for value in k_values)
+    if boundary_mask is None:
+        resolved_boundary = _infer_nearest_neighbor_boundary(raw_labels, coords)
+        boundary_source = "nearest_other_label_disagreement"
+    else:
+        resolved_boundary = np.asarray(boundary_mask, dtype=bool)
+        if resolved_boundary.ndim != 1 or resolved_boundary.shape[0] != raw_labels.shape[0]:
+            raise ValueError("boundary_mask must be one-dimensional and match labels.")
+        resolved_boundary = resolved_boundary.copy()
+        boundary_source = "provided"
+
+    classes = np.unique(raw_labels)
+    n_samples = int(raw_labels.shape[0])
+    raw_counts = {value: int(np.sum(raw_labels == value)) for value in classes}
+    raw_fraction = {
+        value: (float(count) / n_samples if n_samples else 0.0)
+        for value, count in raw_counts.items()
+    }
+
+    results = []
+    for requested_k in resolved_k_values:
+        refined, smoothing_metadata = _smooth_spatial_labels_detailed(
+            raw_labels,
+            coords,
+            k=requested_k,
+            include_self=include_self,
+            weights=weights,
+            tie_policy=tie_policy,
+        )
+        changed = np.asarray(refined != raw_labels, dtype=bool)
+        refined_counts = {value: int(np.sum(refined == value)) for value in classes}
+        refined_fraction = {
+            value: (float(count) / n_samples if n_samples else 0.0)
+            for value, count in refined_counts.items()
+        }
+        absolute_changes = np.asarray(
+            [abs(refined_fraction[value] - raw_fraction[value]) for value in classes],
+            dtype=np.float64,
+        )
+        per_type = {}
+        for value in classes:
+            original_mask = raw_labels == value
+            retained = int(np.sum(refined[original_mask] == value))
+            raw_count = raw_counts[value]
+            per_type[str(value)] = {
+                "raw_count": int(raw_count),
+                "smoothed_count": int(refined_counts[value]),
+                "raw_fraction": float(raw_fraction[value]),
+                "smoothed_fraction": float(refined_fraction[value]),
+                "abundance_change_pp": float(
+                    100.0 * (refined_fraction[value] - raw_fraction[value])
+                ),
+                "retained_count": int(retained),
+                "retention_fraction": (
+                    float(retained) / raw_count if raw_count else None
+                ),
+            }
+
+        boundary_count = int(np.sum(resolved_boundary))
+        interior_mask = ~resolved_boundary
+        interior_count = int(np.sum(interior_mask))
+        results.append(
+            {
+                **smoothing_metadata,
+                "changed_count": int(np.sum(changed)),
+                "changed_fraction": float(np.mean(changed)) if n_samples else 0.0,
+                "composition_total_variation": (
+                    float(0.5 * np.sum(absolute_changes)) if absolute_changes.size else 0.0
+                ),
+                "max_absolute_change_pp": (
+                    float(100.0 * np.max(absolute_changes)) if absolute_changes.size else 0.0
+                ),
+                "per_type": per_type,
+                "boundary_flip_rate": (
+                    float(np.mean(changed[resolved_boundary])) if boundary_count else None
+                ),
+                "interior_flip_rate": (
+                    float(np.mean(changed[interior_mask])) if interior_count else None
+                ),
+            }
+        )
+
+    return {
+        "n_samples": n_samples,
+        "k_values_requested": list(resolved_k_values),
+        "include_self": bool(include_self),
+        "weights": str(weights).strip().lower(),
+        "tie_policy": str(tie_policy).strip().lower(),
+        "boundary_definition": boundary_source,
+        "n_boundary": int(np.sum(resolved_boundary)),
+        "n_interior": int(np.sum(~resolved_boundary)),
+        "results": results,
+    }
 
 
 class ResidualBlock(nn.Module):
@@ -289,6 +641,79 @@ def predict_cached_mlp_classifier_from_adata(
     return cached.label_encoder.inverse_transform(pred_idx)
 
 
+def _normalize_column_indices(
+    indices: Sequence[int],
+    *,
+    n_columns: int,
+    name: str,
+) -> np.ndarray:
+    resolved = np.asarray(tuple(indices), dtype=np.int64)
+    if resolved.ndim != 1 or resolved.size == 0:
+        raise ValueError(f"{name} must contain at least one column index.")
+    if np.any(resolved < 0) or np.any(resolved >= int(n_columns)):
+        raise IndexError(
+            f"{name}={tuple(int(value) for value in resolved)} is outside "
+            f"the available point columns [0, {int(n_columns) - 1}]."
+        )
+    if np.unique(resolved).size != resolved.size:
+        raise ValueError(f"{name} must not contain duplicate column indices.")
+    return resolved
+
+
+def _resolve_prediction_arrays(
+    points: np.ndarray,
+    *,
+    feature_dim: int,
+    feature_indices: Optional[Sequence[int]],
+    spatial_coords: Optional[np.ndarray],
+    spatial_indices: Sequence[int],
+) -> tuple[np.ndarray, np.ndarray]:
+    pts = np.asarray(points, dtype=np.float32)
+    if pts.ndim != 2:
+        raise ValueError("points must be a two-dimensional array.")
+    if int(feature_dim) <= 0:
+        raise ValueError("feature_dim must be > 0.")
+
+    if feature_indices is None:
+        if int(feature_dim) > pts.shape[1]:
+            raise ValueError(
+                f"feature_dim={feature_dim} exceeds the {pts.shape[1]} available point columns."
+            )
+        resolved_features = np.arange(int(feature_dim), dtype=np.int64)
+    else:
+        resolved_features = _normalize_column_indices(
+            feature_indices,
+            n_columns=pts.shape[1],
+            name="feature_indices",
+        )
+        if resolved_features.size != int(feature_dim):
+            raise ValueError(
+                f"feature_indices contains {resolved_features.size} columns, "
+                f"but feature_dim={feature_dim}."
+            )
+
+    if spatial_coords is None:
+        resolved_spatial = _normalize_column_indices(
+            spatial_indices,
+            n_columns=pts.shape[1],
+            name="spatial_indices",
+        )
+        coords = pts[:, resolved_spatial].astype(np.float64, copy=True)
+    else:
+        coords = np.asarray(spatial_coords, dtype=np.float64)
+        if coords.ndim != 2 or coords.shape[0] != pts.shape[0]:
+            raise ValueError(
+                "spatial_coords must be two-dimensional and have one row per point."
+            )
+        if coords.shape[1] == 0 or not np.all(np.isfinite(coords)):
+            raise ValueError(
+                "spatial_coords must have at least one column and contain only finite values."
+            )
+        coords = coords.copy()
+
+    return pts[:, resolved_features].astype(np.float32, copy=True), coords
+
+
 def predict_labels_for_points(
     *,
     points: np.ndarray,
@@ -299,40 +724,49 @@ def predict_labels_for_points(
     device: str = "cuda",
     knn_neighbors: int = 50,
     include_time_feature: bool = True,
+    feature_indices: Optional[Sequence[int]] = None,
+    spatial_coords: Optional[np.ndarray] = None,
+    spatial_indices: Sequence[int] = (0, 1),
 ) -> np.ndarray:
-    from sklearn.neighbors import KNeighborsClassifier
-
     pts = np.asarray(points, dtype=np.float32)
+    if pts.ndim != 2:
+        raise ValueError("points must be a two-dimensional array.")
     n = int(pts.shape[0])
     if n == 0:
         return np.asarray([], dtype=str)
+
+    classifier_features, resolved_spatial_coords = _resolve_prediction_arrays(
+        pts,
+        feature_dim=feature_dim,
+        feature_indices=feature_indices,
+        spatial_coords=spatial_coords,
+        spatial_indices=spatial_indices,
+    )
 
     dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
     model.eval()
     model.to(dev)
 
-    feature_t = torch.tensor(pts[:, :feature_dim], dtype=torch.float32)
+    feature_t = torch.tensor(classifier_features, dtype=torch.float32)
     if include_time_feature:
         samples_t = torch.full((n, 1), fill_value=float(time_value), dtype=torch.float32)
         input_t = torch.cat((samples_t, feature_t), dim=1)
-        spatial_start = 1
     else:
         input_t = feature_t
-        spatial_start = 0
 
     with torch.no_grad():
         outputs = model(input_t.float().to(dev))
         _, predicted = torch.max(outputs, 1)
         predicted_labels = label_encoder.inverse_transform(predicted.detach().cpu().numpy())
 
-    coords = input_t[:, spatial_start:spatial_start + 2].cpu().numpy()
-    k = int(min(knn_neighbors, max(1, len(coords))))
-    if k <= 1:
-        return np.asarray(predicted_labels).astype(str)
-
-    knn = KNeighborsClassifier(n_neighbors=k)
-    knn.fit(coords, predicted_labels)
-    refined_labels = knn.predict(coords)
+    refined_labels = smooth_spatial_labels(
+        predicted_labels,
+        resolved_spatial_coords,
+        k=knn_neighbors,
+        include_self=True,
+        weights="uniform",
+        tie_policy="sklearn_legacy",
+    )
     return np.asarray(refined_labels).astype(str)
 
 
@@ -410,8 +844,12 @@ def _train_mlp_classifier_arrays(
     test_size: float = 0.1,
     seed: int = 42,
     device: str = "cuda",
+    train_on_full_data: bool = False,
+    refit_on_full_data_after_selection: bool = False,
+    stratify_split: bool = True,
+    strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float]:
-    model, label_encoder, accuracy, _, _ = _train_mlp_classifier_arrays_detailed(
+    model, label_encoder, accuracy, _, evaluation = _train_mlp_classifier_arrays_detailed(
         X=X,
         y=y,
         hidden_size=hidden_size,
@@ -421,9 +859,117 @@ def _train_mlp_classifier_arrays(
         seed=seed,
         device=device,
         best_epoch_metric="accuracy",
-        train_on_full_data=False,
+        train_on_full_data=train_on_full_data,
+        refit_on_full_data_after_selection=refit_on_full_data_after_selection,
+        stratify_split=stratify_split,
+        strict_stratification=strict_stratification,
     )
+    # Preserve the historical three-value return while exposing the detailed
+    # Phase-A/refit provenance to callers that do not use the cache wrapper.
+    model.classifier_evaluation_ = evaluation
     return model, label_encoder, accuracy
+
+
+def _split_classifier_indices(
+    y_encoded: np.ndarray,
+    *,
+    test_size: float,
+    seed: int,
+    stratify_split: bool,
+    strict_stratification: bool,
+    train_on_full_data: bool,
+) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Resolve the historical full-data scope or a reproducible Phase-A split."""
+
+    from sklearn.model_selection import train_test_split
+
+    encoded = np.asarray(y_encoded, dtype=np.int64)
+    if encoded.ndim != 1:
+        raise ValueError("y_encoded must be one-dimensional.")
+    all_indices = np.arange(encoded.shape[0], dtype=np.int64)
+    if train_on_full_data:
+        return all_indices.copy(), all_indices.copy(), {
+            "strategy": "legacy_full_data_training_scope",
+            "stratify_requested": bool(stratify_split),
+            "strict_stratification": bool(strict_stratification),
+            "stratify_used": False,
+            "stratification_fallback_reason": "not_applicable_train_on_full_data",
+        }
+
+    if strict_stratification and not stratify_split:
+        raise ValueError(
+            "strict_stratification=True requires stratify_split=True."
+        )
+
+    n_classes = int(np.max(encoded) + 1) if encoded.size else 0
+    class_counts = np.bincount(encoded, minlength=n_classes)
+    n_validation = int(np.ceil(float(test_size) * encoded.shape[0]))
+    n_train = int(encoded.shape[0] - n_validation)
+    fallback_reasons = []
+    if stratify_split:
+        if np.any(class_counts < 2):
+            fallback_reasons.append("class_with_fewer_than_two_rows")
+        if n_validation < n_classes:
+            fallback_reasons.append("validation_smaller_than_number_of_classes")
+        if n_train < n_classes:
+            fallback_reasons.append("training_smaller_than_number_of_classes")
+    can_stratify = bool(stratify_split and not fallback_reasons)
+    if strict_stratification and not can_stratify:
+        reason = ", ".join(fallback_reasons) or "unknown_stratification_constraint"
+        raise ValueError(
+            "Strict stratification could not be honored: "
+            f"{reason}; class_counts={class_counts.tolist()}, "
+            f"n_train={n_train}, n_validation={n_validation}."
+        )
+
+    train_indices, validation_indices = train_test_split(
+        all_indices,
+        test_size=test_size,
+        random_state=seed,
+        stratify=encoded if can_stratify else None,
+    )
+    return (
+        np.asarray(train_indices, dtype=np.int64),
+        np.asarray(validation_indices, dtype=np.int64),
+        {
+            "strategy": "held_out_train_validation",
+            "stratify_requested": bool(stratify_split),
+            "strict_stratification": bool(strict_stratification),
+            "stratify_used": bool(can_stratify),
+            "stratification_fallback_reason": (
+                None
+                if can_stratify
+                else (
+                    "disabled_by_request"
+                    if not stratify_split
+                    else ", ".join(fallback_reasons)
+                )
+            ),
+        },
+    )
+
+
+def _seed_classifier_training(seed: int) -> None:
+    torch.manual_seed(int(seed))
+    np.random.seed(int(seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(seed))
+
+
+def _classifier_state_sha1(model: nn.Module) -> str:
+    digest = sha1()
+    for name, value in sorted(model.state_dict().items()):
+        tensor = value.detach().cpu().contiguous()
+        digest.update(str(name).encode("utf-8"))
+        digest.update(str(tensor.dtype).encode("utf-8"))
+        digest.update(str(tuple(tensor.shape)).encode("utf-8"))
+        digest.update(tensor.numpy().tobytes())
+    return digest.hexdigest()
+
+
+def _indices_sha1(indices: np.ndarray) -> str:
+    values = np.ascontiguousarray(indices, dtype=np.int64)
+    return sha1(values.tobytes()).hexdigest()
 
 
 def _train_mlp_classifier_arrays_detailed(
@@ -437,7 +983,9 @@ def _train_mlp_classifier_arrays_detailed(
     device: str = "cuda",
     best_epoch_metric: str = "accuracy",
     train_on_full_data: bool = False,
+    refit_on_full_data_after_selection: bool = False,
     stratify_split: bool = True,
+    strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float, float, dict]:
     import copy
 
@@ -447,7 +995,6 @@ def _train_mlp_classifier_arrays_detailed(
         classification_report,
         confusion_matrix,
     )
-    from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import LabelEncoder
 
     metric = str(best_epoch_metric).strip().lower()
@@ -457,40 +1004,30 @@ def _train_mlp_classifier_arrays_detailed(
         raise ValueError("epochs must be > 0.")
     if not 0.0 < float(test_size) < 1.0:
         raise ValueError("test_size must be in (0, 1).")
+    if train_on_full_data and refit_on_full_data_after_selection:
+        raise ValueError(
+            "train_on_full_data=True is the legacy training-scope evaluation mode "
+            "and cannot be combined with refit_on_full_data_after_selection=True."
+        )
 
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    X = np.asarray(X, dtype=np.float32)
+    if X.ndim != 2:
+        raise ValueError("X must be a two-dimensional array.")
+    if X.shape[0] != len(y):
+        raise ValueError("X and y must contain the same number of rows.")
 
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
-    all_indices = np.arange(len(y_encoded), dtype=np.int64)
-    stratify_used = False
-    if train_on_full_data:
-        train_indices = all_indices
-        test_indices = all_indices
-        X_train, y_train = X, y_encoded
-        X_test, y_test = X, y_encoded
-    else:
-        class_counts = np.bincount(y_encoded, minlength=len(label_encoder.classes_))
-        n_test = int(np.ceil(float(test_size) * len(y_encoded)))
-        n_train = len(y_encoded) - n_test
-        can_stratify = (
-            bool(stratify_split)
-            and bool(np.all(class_counts >= 2))
-            and n_test >= len(label_encoder.classes_)
-            and n_train >= len(label_encoder.classes_)
-        )
-        train_indices, test_indices = train_test_split(
-            all_indices,
-            test_size=test_size,
-            random_state=seed,
-            stratify=y_encoded if can_stratify else None,
-        )
-        stratify_used = bool(can_stratify)
-        X_train, X_test = X[train_indices], X[test_indices]
-        y_train, y_test = y_encoded[train_indices], y_encoded[test_indices]
+    train_indices, test_indices, split_metadata = _split_classifier_indices(
+        y_encoded,
+        test_size=test_size,
+        seed=seed,
+        stratify_split=stratify_split,
+        strict_stratification=strict_stratification,
+        train_on_full_data=train_on_full_data,
+    )
+    X_train, X_test = X[train_indices], X[test_indices]
+    y_train, y_test = y_encoded[train_indices], y_encoded[test_indices]
 
     dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=dev)
@@ -499,7 +1036,9 @@ def _train_mlp_classifier_arrays_detailed(
 
     input_size = X_train_t.shape[1]
     num_classes = int(len(label_encoder.classes_))
+    _seed_classifier_training(seed)
     model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes).to(dev)
+    selection_initial_state_sha1 = _classifier_state_sha1(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(epochs), eta_min=1e-5)
@@ -530,6 +1069,7 @@ def _train_mlp_classifier_arrays_detailed(
 
     model.load_state_dict(best_model_wts)
     model.eval()
+    selection_model_state_sha1 = _classifier_state_sha1(model)
     with torch.no_grad():
         test_preds = torch.argmax(model(X_test_t), dim=1).detach().cpu().numpy()
         train_preds = torch.argmax(model(X_train_t), dim=1).detach().cpu().numpy()
@@ -549,6 +1089,105 @@ def _train_mlp_classifier_arrays_detailed(
     split_digest = sha1()
     split_digest.update(np.asarray(train_indices, dtype=np.int64).tobytes())
     split_digest.update(np.asarray(test_indices, dtype=np.int64).tobytes())
+    overlap = np.intersect1d(train_indices, test_indices, assume_unique=False)
+    union = np.union1d(train_indices, test_indices)
+
+    returned_model = model
+    refit_evaluation = {
+        "requested": bool(refit_on_full_data_after_selection),
+        "performed": False,
+        "fresh_model_instantiated": False,
+        "scope": None,
+        "seed": None,
+        "n_train": 0,
+        "epochs": 0,
+        "optimizer_steps": 0,
+        "scheduler_t_max": None,
+        "scheduler_last_epoch": None,
+        "data_indices_sha1": None,
+        "initial_state_sha1": None,
+        "final_state_sha1": None,
+        "train_accuracy": None,
+        "train_balanced_accuracy": None,
+        "initial_loss": None,
+        "final_loss": None,
+    }
+    if refit_on_full_data_after_selection:
+        all_indices = np.arange(len(y_encoded), dtype=np.int64)
+        X_full_t = torch.tensor(X, dtype=torch.float32, device=dev)
+        y_full_t = torch.tensor(y_encoded, dtype=torch.long, device=dev)
+
+        # Deliberately recreate the model after reseeding. Phase A selected only
+        # the epoch count; no fitted weights or optimizer state cross into refit.
+        _seed_classifier_training(seed)
+        refit_model = ResidualMLP(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_classes=num_classes,
+        ).to(dev)
+        refit_initial_state_sha1 = _classifier_state_sha1(refit_model)
+        refit_optimizer = torch.optim.Adam(refit_model.parameters(), lr=lr)
+        # Preserve the Phase-A scheduler horizon rather than compressing the
+        # cosine schedule to the selected best_epoch.
+        refit_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            refit_optimizer,
+            T_max=int(epochs),
+            eta_min=1e-5,
+        )
+        refit_losses = []
+        for _ in range(int(best_epoch)):
+            refit_model.train()
+            refit_optimizer.zero_grad()
+            refit_outputs = refit_model(X_full_t)
+            refit_loss = criterion(refit_outputs, y_full_t)
+            refit_loss.backward()
+            refit_optimizer.step()
+            refit_scheduler.step()
+            refit_losses.append(float(refit_loss.detach().cpu().item()))
+
+        refit_model.eval()
+        with torch.no_grad():
+            refit_preds = torch.argmax(refit_model(X_full_t), dim=1).detach().cpu().numpy()
+        refit_evaluation = {
+            "requested": True,
+            "performed": True,
+            "fresh_model_instantiated": True,
+            "scope": "all rows after held-out Phase-A model selection",
+            "seed": int(seed),
+            "n_train": int(len(all_indices)),
+            "epochs": int(best_epoch),
+            "optimizer_steps": int(best_epoch),
+            "scheduler_t_max": int(epochs),
+            "scheduler_last_epoch": int(refit_scheduler.last_epoch),
+            "data_indices_sha1": _indices_sha1(all_indices),
+            "initial_state_sha1": refit_initial_state_sha1,
+            "final_state_sha1": _classifier_state_sha1(refit_model),
+            "train_accuracy": float(accuracy_score(y_encoded, refit_preds)),
+            "train_balanced_accuracy": float(
+                balanced_accuracy_score(y_encoded, refit_preds)
+            ),
+            "initial_loss": refit_losses[0] if refit_losses else None,
+            "final_loss": refit_losses[-1] if refit_losses else None,
+        }
+        returned_model = refit_model
+
+    split_contract = {
+        "strategy": split_metadata["strategy"],
+        "n_total": int(len(y_encoded)),
+        "n_train": int(len(train_indices)),
+        "n_validation": int(len(test_indices)),
+        "n_overlap": int(len(overlap)),
+        "n_union": int(len(union)),
+        "disjoint": bool(len(overlap) == 0),
+        "covers_all_rows": bool(len(union) == len(y_encoded)),
+        "train_indices_sha1": _indices_sha1(train_indices),
+        "validation_indices_sha1": _indices_sha1(test_indices),
+    }
+    selection_scope = (
+        "training data used for model selection (legacy full-data mode)"
+        if train_on_full_data
+        else "held-out validation split used for Phase-A model selection"
+    )
     evaluation = {
         "metric_scope": "training data" if train_on_full_data else "held-out validation split",
         "validation_is_independent_test": False,
@@ -559,15 +1198,44 @@ def _train_mlp_classifier_arrays_detailed(
         "train_balanced_accuracy": float(train_balanced_accuracy),
         "validation_accuracy": float(accuracy),
         "validation_balanced_accuracy": float(balanced_accuracy),
-        "stratify_requested": bool(stratify_split),
-        "stratify_used": bool(stratify_used),
+        "selection_scope": selection_scope,
+        "returned_model_scope": (
+            refit_evaluation["scope"]
+            if refit_evaluation["performed"]
+            else "Phase-A selected model"
+        ),
+        "stratify_requested": split_metadata["stratify_requested"],
+        "stratify_used": split_metadata["stratify_used"],
+        "strict_stratification": split_metadata["strict_stratification"],
+        "stratification_fallback_reason": split_metadata[
+            "stratification_fallback_reason"
+        ],
         "split_indices_sha1": split_digest.hexdigest(),
         "n_train": int(len(train_indices)),
         "n_validation": int(len(test_indices)),
+        "split_contract": split_contract,
+        "selection": {
+            "scope": selection_scope,
+            "seed": int(seed),
+            "uses_validation_for_epoch_selection": bool(not train_on_full_data),
+            "epochs_run": int(epochs),
+            "scheduler_t_max": int(epochs),
+            "best_epoch": int(best_epoch),
+            "metric": metric,
+            "best_score": float(best_score),
+            "initial_state_sha1": selection_initial_state_sha1,
+            "selected_state_sha1": selection_model_state_sha1,
+            "train_accuracy": float(train_accuracy),
+            "train_balanced_accuracy": float(train_balanced_accuracy),
+            "validation_accuracy": float(accuracy),
+            "validation_balanced_accuracy": float(balanced_accuracy),
+        },
+        "refit": refit_evaluation,
+        "returned_model_state_sha1": _classifier_state_sha1(returned_model),
         "per_class": per_class,
         "confusion_matrix": confusion_matrix(y_test, test_preds, labels=labels).tolist(),
     }
-    return model, label_encoder, float(accuracy), float(balanced_accuracy), evaluation
+    return returned_model, label_encoder, float(accuracy), float(balanced_accuracy), evaluation
 
 
 def _classifier_cache_fingerprint(
@@ -619,7 +1287,9 @@ def train_cached_mlp_classifier_from_adata(
     n_features: Optional[int] = None,
     best_epoch_metric: str = "bacc",
     train_on_full_data: bool = False,
+    refit_on_full_data_after_selection: bool = False,
     stratify_split: bool = True,
+    strict_stratification: bool = False,
 ) -> tuple[LoadedClassifierCache, Path]:
     """Train, persist, and reload a trajectory-label classifier from AnnData.
 
@@ -633,6 +1303,11 @@ def train_cached_mlp_classifier_from_adata(
     """
     if cache_path is None and cache_dir is None:
         raise ValueError("Provide cache_path or cache_dir.")
+    if train_on_full_data and refit_on_full_data_after_selection:
+        raise ValueError(
+            "train_on_full_data=True cannot be combined with "
+            "refit_on_full_data_after_selection=True."
+        )
 
     X, y = _prepare_classifier_arrays(
         adata,
@@ -651,7 +1326,7 @@ def train_cached_mlp_classifier_from_adata(
     ]
     classes = sorted({str(v) for v in y})
     metadata = {
-        "version": 5,
+        "version": 6,
         "cache_tag": str(cache_tag or ""),
         "feature_cols": feature_cols,
         "label_col": str(label_col),
@@ -664,7 +1339,16 @@ def train_cached_mlp_classifier_from_adata(
         "classes": classes,
         "best_epoch_metric": str(best_epoch_metric).strip().lower(),
         "train_on_full_data": bool(train_on_full_data),
+        "refit_on_full_data_after_selection": bool(
+            refit_on_full_data_after_selection
+        ),
         "stratify_split": bool(stratify_split),
+        "strict_stratification": bool(strict_stratification),
+        "selection_scope": (
+            "legacy_full_data_training_scope"
+            if train_on_full_data
+            else "held_out_validation_phase_a"
+        ),
         "include_time_feature": bool(include_time_feature),
         "feature_selection": {
             "kind": "leading_joint_dimensions",
@@ -725,7 +1409,9 @@ def train_cached_mlp_classifier_from_adata(
                 device=device,
                 best_epoch_metric=best_epoch_metric,
                 train_on_full_data=train_on_full_data,
+                refit_on_full_data_after_selection=refit_on_full_data_after_selection,
                 stratify_split=stratify_split,
+                strict_stratification=strict_stratification,
             )
         )
         payload = {
@@ -764,8 +1450,17 @@ def train_mlp_classifier(
     device: str = "cuda",
     include_time_feature: bool = True,
     n_features: Optional[int] = None,
+    train_on_full_data: bool = False,
+    refit_on_full_data_after_selection: bool = False,
+    stratify_split: bool = True,
+    strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float]:
     """Train downstream MLP classifier from AnnData."""
+    if train_on_full_data and refit_on_full_data_after_selection:
+        raise ValueError(
+            "train_on_full_data=True cannot be combined with "
+            "refit_on_full_data_after_selection=True."
+        )
     X, y = _prepare_classifier_arrays(
         adata,
         label_col=label_col,
@@ -786,6 +1481,10 @@ def train_mlp_classifier(
         test_size=test_size,
         seed=seed,
         device=device,
+        train_on_full_data=train_on_full_data,
+        refit_on_full_data_after_selection=refit_on_full_data_after_selection,
+        stratify_split=stratify_split,
+        strict_stratification=strict_stratification,
     )
 
 
@@ -806,6 +1505,10 @@ def train_mlp_classifier_from_adata(
     device: str = "cuda",
     include_time_feature: bool = True,
     n_features: Optional[int] = None,
+    train_on_full_data: bool = False,
+    refit_on_full_data_after_selection: bool = False,
+    stratify_split: bool = True,
+    strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float]:
     return train_mlp_classifier(
         adata,
@@ -823,6 +1526,10 @@ def train_mlp_classifier_from_adata(
         device=device,
         include_time_feature=include_time_feature,
         n_features=n_features,
+        train_on_full_data=train_on_full_data,
+        refit_on_full_data_after_selection=refit_on_full_data_after_selection,
+        stratify_split=stratify_split,
+        strict_stratification=strict_stratification,
     )
 
 
@@ -835,43 +1542,71 @@ def predict_labels_for_trajectories(
     device: str = "cuda",
     knn_neighbors: int = 50,
     include_time_feature: bool = True,
+    feature_indices: Optional[Sequence[int]] = None,
+    spatial_coords: Optional[Sequence[np.ndarray] | np.ndarray] = None,
+    spatial_indices: Sequence[int] = (0, 1),
 ) -> Sequence[np.ndarray]:
-    from sklearn.neighbors import KNeighborsClassifier
-
     dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
     model.eval()
     model.to(dev)
+
+    if len(sde_points) != len(ts_points):
+        raise ValueError(
+            "sde_points and ts_points must contain the same number of time slices."
+        )
+
+    spatial_coords_by_time: Optional[list[np.ndarray]] = None
+    if spatial_coords is not None:
+        if isinstance(spatial_coords, np.ndarray) and spatial_coords.ndim == 2:
+            if len(ts_points) != 1:
+                raise ValueError(
+                    "A two-dimensional spatial_coords array is only valid for one time slice."
+                )
+            spatial_coords_by_time = [spatial_coords]
+        else:
+            spatial_coords_by_time = [np.asarray(value) for value in spatial_coords]
+            if len(spatial_coords_by_time) != len(ts_points):
+                raise ValueError(
+                    "spatial_coords must contain one coordinate array per time slice."
+                )
 
     predicted_labels_list = []
     for i, t in enumerate(ts_points):
         traj_t = np.asarray(sde_points[i], dtype=float)
         if traj_t.ndim == 1:
             traj_t = traj_t.reshape(1, -1)
-        traj_t_tensor = torch.tensor(traj_t, dtype=torch.float32)
-        n_samples = int(traj_t_tensor.shape[0])
+        explicit_spatial_coords = (
+            None if spatial_coords_by_time is None else spatial_coords_by_time[i]
+        )
+        classifier_features, resolved_spatial_coords = _resolve_prediction_arrays(
+            traj_t,
+            feature_dim=feature_dim,
+            feature_indices=feature_indices,
+            spatial_coords=explicit_spatial_coords,
+            spatial_indices=spatial_indices,
+        )
+        feature_t = torch.tensor(classifier_features, dtype=torch.float32)
+        n_samples = int(feature_t.shape[0])
 
-        feature_t = traj_t_tensor[:, :feature_dim]
         if include_time_feature:
             samples_t = torch.full((n_samples, 1), fill_value=float(t), dtype=torch.float32)
             input_t = torch.cat((samples_t, feature_t), dim=1)
-            spatial_start = 1
         else:
             input_t = feature_t
-            spatial_start = 0
 
         with torch.no_grad():
             outputs = model(input_t.float().to(dev))
             _, predicted = torch.max(outputs, 1)
             predicted_labels = label_encoder.inverse_transform(predicted.detach().cpu().numpy())
 
-        coords = input_t[:, spatial_start:spatial_start + 2].cpu().numpy()
-        k = int(min(knn_neighbors, max(1, len(coords))))
-        if k <= 1:
-            refined_labels = predicted_labels
-        else:
-            knn = KNeighborsClassifier(n_neighbors=k)
-            knn.fit(coords, predicted_labels)
-            refined_labels = knn.predict(coords)
+        refined_labels = smooth_spatial_labels(
+            predicted_labels,
+            resolved_spatial_coords,
+            k=knn_neighbors,
+            include_self=True,
+            weights="uniform",
+            tie_policy="sklearn_legacy",
+        )
 
         predicted_labels_list.append(refined_labels)
 

@@ -100,9 +100,13 @@ def run_interpolation_workflow(
     classifier_lr: float = 1e-3,
     classifier_test_size: float = 0.1,
     classifier_train_on_full_data: bool = False,
+    classifier_refit_on_full_data_after_selection: bool = False,
+    classifier_strict_stratification: bool = False,
     classifier_best_metric: str = "accuracy",
     classifier_n_pcs: Optional[int] = None,
     classifier_knn_neighbors: int = 10,
+    classifier_feature_indices: Optional[Sequence[int]] = None,
+    classifier_spatial_indices: Sequence[int] = (0, 1),
     sde_n_samples: Optional[int] = None,
     skip_nonsplit_sde: bool = False,
     sde_dt: float = 0.05,
@@ -230,6 +234,10 @@ def run_interpolation_workflow(
                 device=device,
                 best_epoch_metric=classifier_best_metric,
                 train_on_full_data=bool(classifier_train_on_full_data),
+                refit_on_full_data_after_selection=bool(
+                    classifier_refit_on_full_data_after_selection
+                ),
+                strict_stratification=bool(classifier_strict_stratification),
                 n_features=(
                     None if classifier_n_pcs is None else int(classifier_n_pcs)
                 ),
@@ -247,6 +255,21 @@ def run_interpolation_workflow(
         classifier_accuracy = cached_classifier.accuracy
         classifier_balanced_accuracy = cached_classifier.balanced_accuracy
         classifier_metadata = dict(cached_classifier.metadata)
+        classifier_metadata["prediction_smoothing"] = {
+            "api": "smooth_spatial_labels",
+            "requested_k": int(classifier_knn_neighbors),
+            "include_self": True,
+            "weights": "uniform",
+            "tie_policy": "sklearn_legacy",
+            "neighbor_algorithm": "scipy.spatial.cKDTree_exact_boundary_ties",
+            "spatial_source": "explicit_point_columns",
+            "spatial_indices": [int(value) for value in classifier_spatial_indices],
+            "feature_indices": (
+                None
+                if classifier_feature_indices is None
+                else [int(value) for value in classifier_feature_indices]
+            ),
+        }
         classifier_evaluation = dict(cached_classifier.evaluation)
         _ = (
             cached_classifier.balanced_accuracy
@@ -464,6 +487,8 @@ def run_interpolation_workflow(
                 device=device,
                 knn_neighbors=int(classifier_knn_neighbors),
                 include_time_feature=cached_classifier.include_time_feature,
+                feature_indices=classifier_feature_indices,
+                spatial_indices=classifier_spatial_indices,
             )
 
         predicted_labels_split = predict_labels_for_trajectories(
@@ -475,6 +500,8 @@ def run_interpolation_workflow(
             device=device,
             knn_neighbors=int(classifier_knn_neighbors),
             include_time_feature=cached_classifier.include_time_feature,
+            feature_indices=classifier_feature_indices,
+            spatial_indices=classifier_spatial_indices,
         )
         if sde_points_split_prewarp is not None:
             predicted_labels_split_prewarp = predict_labels_for_trajectories(
@@ -486,6 +513,8 @@ def run_interpolation_workflow(
                 device=device,
                 knn_neighbors=int(classifier_knn_neighbors),
                 include_time_feature=cached_classifier.include_time_feature,
+                feature_indices=classifier_feature_indices,
+                spatial_indices=classifier_spatial_indices,
             )
 
     adata_dict = {}

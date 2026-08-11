@@ -29,11 +29,13 @@ __all__ = [
     "AblationGifResult",
     "AblationPanelSeriesResult",
     "VirtualAblationResult",
+    "VirtualInteractionAblationResult",
     "compute_virtual_ablation_metrics",
     "crop_ablation_panel",
     "export_ablation_gifs",
     "export_ablation_panel_series",
     "run_virtual_cell_type_ablation",
+    "run_virtual_interaction_ablation",
     "trim_white",
 ]
 
@@ -72,6 +74,51 @@ class VirtualAblationResult:
     output_dir: Optional[Path]
     files: tuple[Path, ...]
     settings: Mapping[str, object]
+
+
+@dataclass(frozen=True)
+class VirtualInteractionAblationResult:
+    """Paired trajectories from an interaction-on versus interaction-off run."""
+
+    time_points: tuple[float, ...]
+    baseline_points: np.ndarray
+    ablated_points: np.ndarray
+    metrics: pd.DataFrame
+    output_dir: Optional[Path]
+    files: tuple[Path, ...]
+    settings: Mapping[str, object]
+
+
+class _ZeroInteractionForceAdapter:
+    """Return zero interaction while retaining ``cal_interaction`` grouping.
+
+    ``cal_interaction`` performs its stochastic particle permutation before it
+    calls the interaction potential.  Matching the wrapped potential's
+    ``requires_time`` contract therefore keeps that permutation/RNG pathway in
+    the ablated branch instead of silently skipping it.
+    """
+
+    def __init__(self, wrapped):
+        self.requires_time = bool(getattr(wrapped, "requires_time", False))
+        self.wrapped_class = type(wrapped).__name__
+
+    def __call__(self, x, *args, **kwargs):
+        if self.requires_time:
+            return x * 0.0
+        # The pair-potential path differentiates a scalar potential with
+        # respect to each displacement.  Keep a zero-valued dependency on x so
+        # autograd returns an exact zero gradient rather than raising because
+        # the output is disconnected.
+        return (x * 0.0).sum(dim=-1, keepdim=True)
+
+
+class _InteractionOffFNetAdapter:
+    def __init__(self, f_net):
+        if getattr(f_net, "interaction_net", None) is None:
+            raise TypeError("f_net is missing interaction_net.")
+        self.v_net = f_net.v_net
+        self.g_net = f_net.g_net
+        self.interaction_net = _ZeroInteractionForceAdapter(f_net.interaction_net)
 
 
 def _as_trajectory(points, *, name: str, n_times: int) -> np.ndarray:
@@ -511,6 +558,7 @@ def run_virtual_cell_type_ablation(
     random_seed: int = 42,
     common_random_seed: bool = True,
     max_ot_points: Optional[int] = 1024,
+    mass_control: bool = False,
     trajectory_labeler: Optional[
         Callable[[np.ndarray, Sequence[float]], Sequence[Sequence[object]]]
     ] = None,
@@ -526,9 +574,16 @@ def run_virtual_cell_type_ablation(
 ) -> VirtualAblationResult:
     """Run reproducible split-SDE baseline and virtual cell-type removals.
 
-    The initial cohort is selected once from ``time_index``.  Every ablation
-    branch is an exact subset of that cohort after removing one or more labels;
-    removed cells are never replaced.  The workflow does not re-anchor or warp
+    By default, the initial cohort is selected once from ``time_index`` and
+    every ablation branch is an exact subset of that cohort.  With
+    ``mass_control=True``, the baseline and ablated cohorts are instead sampled
+    independently, without replacement, to the same initial particle count:
+    ``min(n_samples, baseline_pool_size, ablated_pool_size)`` (with the
+    ``n_samples`` term omitted when it is ``None``).  The matched mode accepts
+    exactly one ablation per call so the single returned baseline has an
+    unambiguous control cohort.
+
+    Removed cells are never replaced.  The workflow does not re-anchor or warp
     trajectories.  This makes the API suitable for virtual sensitivity
     diagnostics across datasets while leaving label names and classifier choice
     to callers; it is not, by itself, a causal intervention estimate.
@@ -547,10 +602,16 @@ def run_virtual_cell_type_ablation(
         validated, exported, and used for composition metrics/snapshots.
     common_random_seed
         If true, every branch starts from the same SDE seed.  If false, branch
-        seeds are ``random_seed + branch_index``.  The exact selected starting
-        cohort is shared under either setting.  Because removals change tensor
-        shape and row order, equal branch seeds do not provide cell-ID-matched
-        Brownian increments; use multiple seeds for inferential uncertainty.
+        seeds are ``random_seed + branch_index``.  In the default mode the
+        ablated cohort is a subset of the selected baseline cohort.  In matched
+        mass-control mode the two cohorts are independently sampled.  Equal
+        branch seeds therefore do not provide cell-ID-matched Brownian
+        increments; use multiple seeds for inferential uncertainty.
+    mass_control
+        Match the baseline and ablated initial particle counts by independently
+        sampling their respective pools without replacement.  This reproduces
+        the equal-mass control used by the historical MOSTA virtual-ablation
+        experiments.  Exactly one ablation must be supplied in this mode.
     growth_alpha
         Multiplier applied to the learned growth rate during split events.
         It is forwarded unchanged to
@@ -575,6 +636,12 @@ def run_virtual_cell_type_ablation(
         raise KeyError(f"adata.obs['{annotation_key}'] is missing.")
     if not ablations:
         raise ValueError("ablations must contain at least one variant.")
+    mass_control = bool(mass_control)
+    if mass_control and len(ablations) != 1:
+        raise ValueError(
+            "mass_control=True requires exactly one ablation per call so the "
+            "returned baseline is the matched control for that ablation."
+        )
     times = tuple(float(value) for value in time_points)
     if not times:
         raise ValueError("time_points must be non-empty.")
@@ -639,39 +706,112 @@ def run_virtual_cell_type_ablation(
             f"got {times[0]}."
         )
 
-    initial_positions = np.flatnonzero(
+    start_pool_positions = np.flatnonzero(
         np.isclose(observed_times, start_time, rtol=0.0, atol=1e-9)
     )
-    if initial_positions.size == 0:
+    if start_pool_positions.size == 0:
         raise ValueError(f"No cells found at selected start time {start_time}.")
     rng = np.random.default_rng(int(random_seed))
-    if n_samples is not None and initial_positions.size > int(n_samples):
-        initial_positions = np.sort(
-            rng.choice(initial_positions, size=int(n_samples), replace=False)
-        )
-
-    initial_labels = (
-        adata.obs.iloc[initial_positions][annotation_key].astype(str).to_numpy()
-    )
-    available_labels = set(initial_labels.tolist())
     requested_labels = {
         label for labels in normalized_ablations.values() for label in labels
     }
-    missing_labels = sorted(requested_labels - available_labels)
-    if missing_labels:
-        raise ValueError(
-            f"Ablation labels are absent at start time {start_time}: {missing_labels}. "
-            f"Available labels: {sorted(available_labels)}."
-        )
-
     branch_positions: dict[str, np.ndarray] = {}
-    for name, labels in normalized_ablations.items():
-        keep = ~np.isin(initial_labels, np.asarray(labels, dtype=str))
+    start_pool_labels = (
+        adata.obs.iloc[start_pool_positions][annotation_key].astype(str).to_numpy()
+    )
+    sampling_draw_order: list[str] = []
+
+    if mass_control:
+        available_labels = set(start_pool_labels.tolist())
+        missing_labels = sorted(requested_labels - available_labels)
+        if missing_labels:
+            raise ValueError(
+                f"Ablation labels are absent at start time {start_time}: "
+                f"{missing_labels}. Available labels: {sorted(available_labels)}."
+            )
+
+        name, labels = next(iter(normalized_ablations.items()))
+        # Historical MOSTA first drew every target-label index without
+        # replacement, even for a complete removal.  Drawing the full set is a
+        # permutation and does not change the ablated pool, but it does advance
+        # the seeded Generator.  Preserve that consumption before the baseline
+        # and ablation cohort draws so identical inputs reproduce the old
+        # initialization exactly, not merely its equal-mass semantics.
+        removed_local: list[np.ndarray] = []
+        for label in labels:
+            label_local = np.flatnonzero(start_pool_labels == label)
+            removed_local.append(
+                np.asarray(
+                    rng.choice(label_local, size=label_local.size, replace=False),
+                    dtype=np.int64,
+                )
+            )
+            sampling_draw_order.append(f"remove_pool_label:{label}")
+        removed_local_indices = np.concatenate(removed_local)
+        keep = np.ones(start_pool_positions.size, dtype=bool)
+        keep[removed_local_indices] = False
         if not np.any(keep):
             raise ValueError(
                 f"Ablation {name!r} removes every cell in the selected initial cohort."
             )
-        branch_positions[name] = initial_positions[keep]
+        ablated_pool_positions = start_pool_positions[keep]
+        matched_n = min(start_pool_positions.size, ablated_pool_positions.size)
+        if n_samples is not None:
+            matched_n = min(matched_n, int(n_samples))
+        if matched_n <= 0:
+            raise ValueError(
+                "mass_control produced a non-positive matched initial cohort size: "
+                f"baseline_pool={start_pool_positions.size}, "
+                f"ablated_pool={ablated_pool_positions.size}, n_samples={n_samples}."
+            )
+
+        # These are deliberately two independent no-replacement draws from
+        # different pools.  A single seeded Generator makes the result fully
+        # deterministic while preserving the historical draw order.
+        initial_positions = np.asarray(
+            rng.choice(start_pool_positions, size=matched_n, replace=False),
+            dtype=np.int64,
+        )
+        sampling_draw_order.append("baseline")
+        branch_positions[name] = np.asarray(
+            rng.choice(ablated_pool_positions, size=matched_n, replace=False),
+            dtype=np.int64,
+        )
+        sampling_draw_order.append(name)
+        variant_pool_sizes = {name: int(ablated_pool_positions.size)}
+    else:
+        initial_positions = start_pool_positions.copy()
+        if n_samples is not None and initial_positions.size > int(n_samples):
+            initial_positions = np.sort(
+                rng.choice(initial_positions, size=int(n_samples), replace=False)
+            )
+            sampling_draw_order.append("baseline_cap")
+
+        selected_labels = (
+            adata.obs.iloc[initial_positions][annotation_key].astype(str).to_numpy()
+        )
+        available_labels = set(selected_labels.tolist())
+        missing_labels = sorted(requested_labels - available_labels)
+        if missing_labels:
+            raise ValueError(
+                f"Ablation labels are absent at start time {start_time}: "
+                f"{missing_labels}. Available labels: {sorted(available_labels)}."
+            )
+
+        for name, labels in normalized_ablations.items():
+            keep = ~np.isin(selected_labels, np.asarray(labels, dtype=str))
+            if not np.any(keep):
+                raise ValueError(
+                    f"Ablation {name!r} removes every cell in the selected initial cohort."
+                )
+            branch_positions[name] = initial_positions[keep]
+        variant_pool_sizes = {
+            name: int(len(positions)) for name, positions in branch_positions.items()
+        }
+
+    initial_labels = (
+        adata.obs.iloc[initial_positions][annotation_key].astype(str).to_numpy()
+    )
 
     aligned_frame, aligned_time_key = adata_to_aligned_dataframe(
         adata,
@@ -793,7 +933,30 @@ def run_virtual_cell_type_ablation(
         "concat_spatial": concat_spatial,
         "spatial_dim": int(spatial_dim),
         "n_initial": int(initial_positions.size),
+        "n_start_time_pool": int(start_pool_positions.size),
         "n_samples_cap": None if n_samples is None else int(n_samples),
+        "mass_control": mass_control,
+        "cohort_sampling_mode": (
+            "matched_independent_no_replacement"
+            if mass_control
+            else "shared_baseline_subset"
+        ),
+        "baseline_pool_size": int(start_pool_positions.size),
+        "variant_pool_sizes": variant_pool_sizes,
+        "matched_initial_particle_count": (
+            int(initial_positions.size) if mass_control else None
+        ),
+        "sampling_rng": "numpy.random.Generator(PCG64)",
+        "sampling_seed": int(random_seed),
+        "sampling_draw_order": sampling_draw_order,
+        "sampling_without_replacement": True,
+        "baseline_and_ablation_sampled_independently": mass_control,
+        "ablation_pool_construction": (
+            "full target-label removal; seeded full-set no-replacement "
+            "permutation preserves historical RNG consumption"
+            if mass_control
+            else "exact label exclusion from selected baseline cohort"
+        ),
         "dt": float(dt),
         "resample_dt": None if resample_dt is None else float(resample_dt),
         "sigma": float(sigma),
@@ -818,9 +981,17 @@ def run_virtual_cell_type_ablation(
             "deterministic OT subsampling when max_ot_points is exceeded"
         ),
         "random_stream_coupling": (
-            "same branch-level seed; not cell-ID-matched after cohort removal"
-            if common_random_seed
-            else "independent deterministic branch seeds"
+            (
+                "same SDE branch-level seed and equal initial tensor shape; "
+                "Brownian rows are coupled by row order, not cell ID, because "
+                "baseline and ablation cohorts are independently sampled"
+            )
+            if common_random_seed and mass_control
+            else (
+                "same SDE branch-level seed; not cell-ID-matched after cohort removal"
+                if common_random_seed
+                else "independent deterministic SDE branch seeds"
+            )
         ),
         "simulation_seeds": simulation_seeds,
         "ablations": {
@@ -830,10 +1001,35 @@ def run_virtual_cell_type_ablation(
             str(label): int(np.sum(initial_labels == label))
             for label in sorted(available_labels)
         },
+        "baseline_sample_counts": {
+            str(label): int(np.sum(initial_labels == label))
+            for label in sorted(available_labels)
+        },
+        "start_pool_counts": {
+            str(label): int(np.sum(start_pool_labels == label))
+            for label in sorted(set(start_pool_labels.tolist()))
+        },
         "variant_initial_counts": {
             name: int(len(positions)) for name, positions in branch_positions.items()
         },
-        "simulation": "continuous split-SDE; no re-anchoring; no spatial warp; no replacement",
+        "variant_sample_counts": {
+            name: {
+                str(label): int(np.sum(
+                    adata.obs.iloc[positions][annotation_key]
+                    .astype(str)
+                    .to_numpy()
+                    == label
+                ))
+                for label in sorted(available_labels)
+            }
+            for name, positions in branch_positions.items()
+        },
+        "simulation": (
+            "continuous split-SDE; no re-anchoring; no spatial warp; "
+            "independent equal-mass cohort draws without replacement"
+            if mass_control
+            else "continuous split-SDE; no re-anchoring; no spatial warp; no replacement"
+        ),
     }
 
     out_path = Path(output_dir) if output_dir is not None else None
@@ -876,19 +1072,67 @@ def run_virtual_cell_type_ablation(
                 label_composition.to_csv(composition_path, index=False)
                 files.append(composition_path)
 
-            cohort = pd.DataFrame(
-                {
-                    "obs_name": np.asarray(adata.obs_names.astype(str))[initial_positions],
-                    "initial_label": initial_labels,
-                }
-            )
-            for name, labels in normalized_ablations.items():
-                cohort[f"kept__{_slugify(name)}"] = ~np.isin(
-                    initial_labels, np.asarray(labels, dtype=str)
+            if mass_control:
+                cohort = pd.DataFrame(
+                    {
+                        "obs_name": np.asarray(adata.obs_names.astype(str))[
+                            start_pool_positions
+                        ],
+                        "initial_label": start_pool_labels,
+                        "selected_in_baseline": np.isin(
+                            start_pool_positions, initial_positions
+                        ),
+                    }
                 )
+                for name, labels in normalized_ablations.items():
+                    cohort[f"eligible_after_removal__{_slugify(name)}"] = ~np.isin(
+                        start_pool_labels, np.asarray(labels, dtype=str)
+                    )
+                    cohort[f"selected_in__{_slugify(name)}"] = np.isin(
+                        start_pool_positions, branch_positions[name]
+                    )
+            else:
+                cohort = pd.DataFrame(
+                    {
+                        "obs_name": np.asarray(adata.obs_names.astype(str))[
+                            initial_positions
+                        ],
+                        "initial_label": initial_labels,
+                    }
+                )
+                for name, labels in normalized_ablations.items():
+                    cohort[f"kept__{_slugify(name)}"] = ~np.isin(
+                        initial_labels, np.asarray(labels, dtype=str)
+                    )
             cohort_path = out_path / "initial_cohort.csv"
             cohort.to_csv(cohort_path, index=False)
             files.append(cohort_path)
+
+            obs_names = np.asarray(adata.obs_names.astype(str))
+            sampling_rows: list[pd.DataFrame] = []
+            for branch, positions in {
+                "baseline": initial_positions,
+                **branch_positions,
+            }.items():
+                branch_labels = (
+                    adata.obs.iloc[positions][annotation_key].astype(str).to_numpy()
+                )
+                sampling_rows.append(
+                    pd.DataFrame(
+                        {
+                            "branch": str(branch),
+                            "draw_index": np.arange(len(positions), dtype=np.int64),
+                            "obs_position": np.asarray(positions, dtype=np.int64),
+                            "obs_name": obs_names[positions],
+                            "initial_label": branch_labels,
+                        }
+                    )
+                )
+            cohort_sampling_path = out_path / "cohort_sampling.csv"
+            pd.concat(sampling_rows, ignore_index=True).to_csv(
+                cohort_sampling_path, index=False
+            )
+            files.append(cohort_sampling_path)
 
             manifest_path = out_path / "manifest.json"
             manifest = {
@@ -945,6 +1189,238 @@ def run_virtual_cell_type_ablation(
         ablation_labels=variant_labels,
         metrics=metrics,
         label_composition=label_composition,
+        output_dir=out_path,
+        files=tuple(files),
+        settings=settings,
+    )
+
+
+def run_virtual_interaction_ablation(
+    x0: np.ndarray,
+    model,
+    *,
+    time_points: Sequence[float],
+    output_dir: Optional[str | Path] = None,
+    variant_name: str = "interaction_off",
+    dt: float = 0.05,
+    resample_dt: Optional[float] = None,
+    sigma: float = 0.03,
+    sigma_by_dim: Optional[Sequence[float]] = None,
+    growth_alpha: float = 1.0,
+    interaction_m: int = 1024,
+    max_particles: Optional[int] = None,
+    spatial_dim: int = 2,
+    device: str = "cuda",
+    random_seed: int = 42,
+    save_data: bool = True,
+    save_snapshots: bool = False,
+    snapshot_times: Optional[Sequence[float]] = None,
+    snapshot_plot_dims: tuple[int, int] = (0, 1),
+    snapshot_point_size: float = 4.0,
+    snapshot_alpha: float = 0.85,
+    snapshot_formats: Sequence[str] = ("png", "pdf"),
+    verbose: bool = True,
+) -> VirtualInteractionAblationResult:
+    """Run a paired interaction-on versus zero-interaction split-SDE.
+
+    Both branches use the exact same ``x0``, time grid, numerical options, and
+    branch-level random seed.  The ablated branch replaces only the learned
+    interaction potential with a zero-force adapter.  It still traverses
+    :func:`CytoBridge.tl.core.interaction.cal_interaction`, including its
+    stochastic grouping permutation, so the intervention does not shift the
+    random stream merely by skipping the interaction call.
+
+    The two streams are common-random-number controls, not cell-ID Brownian
+    couplings after population sizes diverge.  Learned growth depends on the
+    evolving state, so later split/extinction events can make branch shapes and
+    subsequent RNG consumption differ.  The returned settings record this
+    limitation explicitly.
+    """
+
+    initial = np.asarray(x0, dtype=np.float32)
+    if initial.ndim != 2 or initial.shape[0] < 2 or initial.shape[1] == 0:
+        raise ValueError(
+            "x0 must be a two-dimensional array with at least two rows and one column."
+        )
+    if not np.isfinite(initial).all():
+        raise ValueError("x0 must contain only finite values.")
+    times = tuple(float(value) for value in time_points)
+    if not times:
+        raise ValueError("time_points must be non-empty.")
+    if any(not np.isfinite(value) for value in times):
+        raise ValueError("time_points must contain only finite values.")
+    if any(b <= a for a, b in zip(times[:-1], times[1:])):
+        raise ValueError("time_points must be strictly increasing.")
+    if not np.isfinite(float(dt)) or float(dt) <= 0:
+        raise ValueError("dt must be finite and > 0.")
+    if resample_dt is not None and (
+        not np.isfinite(float(resample_dt)) or float(resample_dt) <= 0
+    ):
+        raise ValueError("resample_dt must be finite and > 0 when provided.")
+    if not np.isfinite(float(sigma)) or float(sigma) < 0:
+        raise ValueError("sigma must be finite and >= 0.")
+    if not np.isfinite(float(growth_alpha)):
+        raise ValueError("growth_alpha must be finite.")
+    if int(interaction_m) < 2:
+        raise ValueError("interaction_m must be at least 2.")
+    if max_particles is not None and int(max_particles) <= 0:
+        raise ValueError("max_particles must be positive or None.")
+    spatial_dim = int(spatial_dim)
+    if spatial_dim < 0 or spatial_dim > initial.shape[1]:
+        raise ValueError(
+            f"spatial_dim must be in [0, {initial.shape[1]}], got {spatial_dim}."
+        )
+    variant_name = str(variant_name).strip()
+    if not variant_name:
+        raise ValueError("variant_name must be non-empty.")
+
+    if hasattr(model, "f_net") and hasattr(model, "score_net"):
+        runtime = model
+    else:
+        runtime = build_dynamical_runtime(model)
+    runtime_model = getattr(runtime, "model", model)
+    if hasattr(runtime_model, "to"):
+        runtime_model.to(device)
+    if hasattr(runtime_model, "eval"):
+        runtime_model.eval()
+    ablated_f_net = _InteractionOffFNetAdapter(runtime.f_net)
+
+    def simulate(f_net, *, name: str) -> np.ndarray:
+        set_global_random_seed(int(random_seed))
+        points = simulate_sde_points_split_from_x0(
+            x0=initial,
+            f_net=f_net,
+            score_net=runtime.score_net,
+            ts_points=times,
+            dt=float(dt),
+            sigma=float(sigma),
+            sigma_by_dim=sigma_by_dim,
+            growth_alpha=float(growth_alpha),
+            interaction_m=int(interaction_m),
+            device=device,
+            verbose=bool(verbose),
+            resample_dt=resample_dt,
+            max_particles=max_particles,
+        )
+        return _as_trajectory(points, name=name, n_times=len(times))
+
+    baseline_points = simulate(runtime.f_net, name="interaction_on")
+    ablated_points = simulate(ablated_f_net, name=variant_name)
+    metrics = compute_virtual_ablation_metrics(
+        baseline_points,
+        {variant_name: ablated_points},
+        times,
+        spatial_dim=spatial_dim,
+    )
+
+    settings: dict[str, object] = {
+        "intervention": "interaction_force_zero",
+        "variant_name": variant_name,
+        "baseline_interaction_scale": 1.0,
+        "ablated_interaction_scale": 0.0,
+        "interaction_adapter": "zero-force; preserves wrapped requires_time contract",
+        "wrapped_interaction_class": ablated_f_net.interaction_net.wrapped_class,
+        "wrapped_interaction_requires_time": bool(
+            ablated_f_net.interaction_net.requires_time
+        ),
+        "same_initial_state": True,
+        "n_initial": int(initial.shape[0]),
+        "feature_dim": int(initial.shape[1]),
+        "spatial_dim": spatial_dim,
+        "dt": float(dt),
+        "resample_dt": None if resample_dt is None else float(resample_dt),
+        "sigma": float(sigma),
+        "sigma_by_dim": (
+            None
+            if sigma_by_dim is None
+            else [float(value) for value in sigma_by_dim]
+        ),
+        "growth_alpha": float(growth_alpha),
+        "interaction_m": int(interaction_m),
+        "max_particles": None if max_particles is None else int(max_particles),
+        "device": str(device),
+        "random_seed": int(random_seed),
+        "simulation_seeds": {
+            "interaction_on": int(random_seed),
+            variant_name: int(random_seed),
+        },
+        "random_stream_control": (
+            "same branch-level seed; both branches execute cal_interaction and "
+            "its grouping permutation; streams may diverge after state-dependent "
+            "population split/extinction changes particle counts"
+        ),
+        "simulation": "continuous split-SDE; no re-anchoring; no spatial warp",
+    }
+
+    out_path = Path(output_dir) if output_dir is not None else None
+    files: list[Path] = []
+    if out_path is not None:
+        out_path.mkdir(parents=True, exist_ok=True)
+        if save_data:
+            trajectories_dir = out_path / "trajectories"
+            trajectories_dir.mkdir(parents=True, exist_ok=True)
+            initial_path = trajectories_dir / "initial_x0.npy"
+            baseline_path = trajectories_dir / "interaction_on_points.npy"
+            ablated_path = trajectories_dir / f"{_slugify(variant_name)}_points.npy"
+            np.save(initial_path, initial)
+            np.save(baseline_path, baseline_points, allow_pickle=True)
+            np.save(ablated_path, ablated_points, allow_pickle=True)
+            files.extend([initial_path, baseline_path, ablated_path])
+
+            metrics_path = out_path / "interaction_ablation_metrics.csv"
+            metrics.to_csv(metrics_path, index=False)
+            files.append(metrics_path)
+            manifest_path = out_path / "manifest.json"
+            manifest = {
+                "schema_version": 1,
+                "time_points": list(times),
+                "settings": settings,
+                "trajectory_shapes": {
+                    "interaction_on": [
+                        list(np.asarray(frame).shape) for frame in baseline_points
+                    ],
+                    variant_name: [
+                        list(np.asarray(frame).shape) for frame in ablated_points
+                    ],
+                },
+            }
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            files.append(manifest_path)
+
+        if save_snapshots:
+            if len(snapshot_plot_dims) != 2 or min(snapshot_plot_dims) < 0:
+                raise ValueError(
+                    "snapshot_plot_dims must contain two non-negative dimensions."
+                )
+            if max(snapshot_plot_dims) >= initial.shape[1]:
+                raise ValueError(
+                    f"snapshot_plot_dims={snapshot_plot_dims} exceeds feature "
+                    f"dimension {initial.shape[1]}."
+                )
+            files.extend(
+                _render_virtual_ablation_snapshots(
+                    baseline_points=baseline_points,
+                    ablation_points={variant_name: ablated_points},
+                    time_points=times,
+                    baseline_labels=None,
+                    ablation_labels={},
+                    label_to_color=None,
+                    snapshot_times=snapshot_times,
+                    plot_dims=tuple(int(value) for value in snapshot_plot_dims),
+                    point_size=float(snapshot_point_size),
+                    point_alpha=float(snapshot_alpha),
+                    formats=snapshot_formats,
+                    out_dir=out_path / "snapshots",
+                )
+            )
+
+    return VirtualInteractionAblationResult(
+        time_points=times,
+        baseline_points=baseline_points,
+        ablated_points=ablated_points,
+        metrics=metrics,
         output_dir=out_path,
         files=tuple(files),
         settings=settings,

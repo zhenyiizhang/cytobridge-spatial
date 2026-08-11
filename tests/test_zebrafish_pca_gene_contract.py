@@ -133,6 +133,7 @@ def test_observed_and_generated_states_share_one_inverse_pca_map() -> None:
         reference,
         n_top_genes=2,
         n_clusters=1,
+        clip_min=0.0,
     )
 
     expected_columns = []
@@ -172,6 +173,7 @@ def test_temporal_summary_clips_per_cell_and_reports_signed_diagnostics() -> Non
         reference,
         n_top_genes=2,
         n_clusters=1,
+        clip_min=0.0,
         reconstruction_batch_size=1,
     )
 

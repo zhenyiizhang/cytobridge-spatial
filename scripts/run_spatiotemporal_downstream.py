@@ -89,6 +89,21 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
     )
     parser.add_argument(
+        "--classifier-refit-on-full-data-after-selection",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Select the epoch on the held-out validation split, then initialize "
+            "a fresh classifier and refit it on all rows for exactly that many epochs."
+        ),
+    )
+    parser.add_argument(
+        "--classifier-strict-stratification",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Fail instead of falling back when a stratified split is impossible.",
+    )
+    parser.add_argument(
         "--use-real-for-observed",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -317,6 +332,24 @@ def main() -> None:
                 config,
                 "classifier",
                 "train_on_full_data",
+                False,
+            )
+        ),
+        classifier_refit_on_full_data_after_selection=bool(
+            _resolve(
+                args.classifier_refit_on_full_data_after_selection,
+                config,
+                "classifier",
+                "refit_on_full_data_after_selection",
+                False,
+            )
+        ),
+        classifier_strict_stratification=bool(
+            _resolve(
+                args.classifier_strict_stratification,
+                config,
+                "classifier",
+                "strict_stratification",
                 False,
             )
         ),

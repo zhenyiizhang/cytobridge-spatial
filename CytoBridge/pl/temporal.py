@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+if TYPE_CHECKING:
+    from CytoBridge.tl.downstream.temporal import DevelopmentalWaveResult
+
 __all__ = [
+    "plot_developmental_wave_heatmap",
     "plot_temporal_gene_heatmap",
     "plot_temporal_pattern_prototypes",
     "plot_temporal_profile_small_multiples",
@@ -20,6 +24,162 @@ def _output_path(value: str | Path) -> Path:
     path = Path(value).expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def plot_developmental_wave_heatmap(
+    result: "DevelopmentalWaveResult",
+    *,
+    out_path: Optional[str | Path] = None,
+    ax=None,
+    cmap: str = "RdBu_r",
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    phase_colors: Optional[Mapping[int, object] | Sequence[object]] = None,
+    show_colorbar: bool = True,
+    title: Optional[str] = "Developmental gene wave",
+):
+    """Render a peak-ordered wave with explicit contiguous phase annotations.
+
+    The numerical ordering and segmentation are taken verbatim from
+    :func:`CytoBridge.tl.analyze_developmental_wave`; plotting never reclusters
+    or reorders features. If ``out_path`` is supplied, the figure is saved and
+    the resolved :class:`~pathlib.Path` is returned. Otherwise the Matplotlib
+    axes is returned for caller-side composition.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+
+    if not hasattr(result, "ordered_profiles") or not hasattr(
+        result, "assignments"
+    ):
+        raise TypeError(
+            "result must be a DevelopmentalWaveResult from "
+            "analyze_developmental_wave."
+        )
+    profiles = pd.DataFrame(result.ordered_profiles).copy()
+    assignments = pd.DataFrame(result.assignments).copy()
+    if profiles.empty or profiles.shape[1] < 2:
+        raise ValueError("result.ordered_profiles must be a non-empty time matrix.")
+    required = {"profile", "wave_rank", "phase"}
+    missing = sorted(required.difference(assignments.columns))
+    if missing:
+        raise KeyError(f"result.assignments is missing columns: {missing}")
+    assignments = assignments.sort_values("wave_rank", kind="mergesort")
+    expected_names = profiles.index.astype(str).tolist()
+    if assignments["profile"].astype(str).tolist() != expected_names:
+        raise ValueError(
+            "assignments ordered by wave_rank must match ordered_profiles rows."
+        )
+    phases = assignments["phase"].to_numpy(dtype=int)
+    if np.any(phases <= 0) or np.any(np.diff(phases) < 0):
+        raise ValueError("assignments phases must be positive and contiguous in order.")
+    values = profiles.to_numpy(dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError("result.ordered_profiles contains non-finite values.")
+    if vmin is None and vmax is None:
+        magnitude = float(np.quantile(np.abs(values), 0.99))
+        magnitude = max(magnitude, np.finfo(float).eps)
+        vmin, vmax = -magnitude, magnitude
+    elif vmin is None:
+        vmax = float(vmax)
+        vmin = -abs(vmax)
+    elif vmax is None:
+        vmin = float(vmin)
+        vmax = abs(vmin)
+    else:
+        vmin, vmax = float(vmin), float(vmax)
+    if not np.isfinite([vmin, vmax]).all() or not float(vmin) < float(vmax):
+        raise ValueError("vmin and vmax must be finite with vmin < vmax.")
+
+    created_figure = ax is None
+    if created_figure:
+        height = max(4.5, min(12.0, 0.035 * len(profiles) + 2.5))
+        _, ax = plt.subplots(figsize=(8.2, height), facecolor="white")
+    figure = ax.figure
+    image = ax.imshow(
+        values,
+        aspect="auto",
+        interpolation="nearest",
+        origin="upper",
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+    )
+    try:
+        times = np.asarray(profiles.columns, dtype=float)
+        time_labels = [f"{value:g}" for value in times]
+    except (TypeError, ValueError):
+        time_labels = list(map(str, profiles.columns))
+    ax.set_xticks(np.arange(len(time_labels)))
+    ax.set_xticklabels(time_labels, rotation=45, ha="right")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Peak-ordered profiles / phases")
+    if title:
+        ax.set_title(str(title))
+
+    unique_phases = np.unique(phases)
+    if phase_colors is None:
+        palette = plt.get_cmap("Set2")
+        color_lookup = {
+            int(phase): palette(index % palette.N)
+            for index, phase in enumerate(unique_phases)
+        }
+    elif isinstance(phase_colors, Mapping):
+        missing_colors = [
+            int(phase) for phase in unique_phases if int(phase) not in phase_colors
+        ]
+        if missing_colors:
+            raise KeyError(f"phase_colors is missing phases: {missing_colors}")
+        color_lookup = {
+            int(phase): phase_colors[int(phase)] for phase in unique_phases
+        }
+    else:
+        supplied = list(phase_colors)
+        if len(supplied) < len(unique_phases):
+            raise ValueError("phase_colors does not contain enough colors.")
+        color_lookup = {
+            int(phase): supplied[index]
+            for index, phase in enumerate(unique_phases)
+        }
+
+    phase_centers: list[float] = []
+    phase_labels: list[str] = []
+    n_profiles = int(len(profiles))
+    for phase in unique_phases:
+        positions = np.flatnonzero(phases == phase)
+        start, end = int(positions[0]), int(positions[-1]) + 1
+        if not np.array_equal(positions, np.arange(start, end)):
+            raise ValueError(f"Phase {int(phase)} is not a contiguous row segment.")
+        if start:
+            ax.axhline(start - 0.5, color="white", linewidth=1.1)
+        phase_centers.append((start + end - 1) / 2.0)
+        phase_labels.append(f"Phase {int(phase)} (n={end - start})")
+        # A narrow strip outside the left spine preserves every heatmap column.
+        ax.add_patch(
+            Rectangle(
+                (-0.045, 1.0 - end / n_profiles),
+                0.025,
+                (end - start) / n_profiles,
+                transform=ax.transAxes,
+                facecolor=color_lookup[int(phase)],
+                edgecolor="none",
+                clip_on=False,
+            )
+        )
+    ax.set_yticks(phase_centers)
+    ax.set_yticklabels(phase_labels)
+    if bool(show_colorbar):
+        colorbar = figure.colorbar(image, ax=ax, pad=0.02, fraction=0.035)
+        colorbar.set_label("Row-standardized value")
+    figure.tight_layout()
+
+    if out_path is not None:
+        path = _output_path(out_path)
+        figure.savefig(path, bbox_inches="tight", facecolor="white")
+        if created_figure:
+            plt.close(figure)
+        return path
+    return ax
 
 
 def plot_temporal_pattern_prototypes(

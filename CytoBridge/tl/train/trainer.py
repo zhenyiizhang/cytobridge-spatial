@@ -1,5 +1,6 @@
 import torch
 import copy
+import json
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -13,6 +14,9 @@ from CytoBridge.tl.core.flow_matching import SchrodingerBridgeConditionalFlowMat
 from CytoBridge.tl.downstream.analysis import simulate_trajectory
 import math
 import os
+import platform
+import sys
+import time as wallclock
 import ot
 from torchdiffeq import odeint
 from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau  # Import StepLR scheduler
@@ -26,6 +30,7 @@ class TrainingPipeline:
         data,
         *,
         seed_already_applied: bool = False,
+        run_context: dict | None = None,
     ):  # Added 'data' parameter for initialization
         self.model = model
         self.config = config
@@ -60,6 +65,25 @@ class TrainingPipeline:
         os.makedirs(self.exp_dir, exist_ok=True)
         self.training_history = []
         self._active_stage_index = None
+        self._optimizer_step_count = 0
+        self._stage_summaries = []
+        self._training_run_summary = {}
+        self._run_context = dict(run_context or {})
+        self._initial_batch_size = int(batch_size)
+        self._model_parameter_count = int(
+            sum(parameter.numel() for parameter in self.model.parameters())
+        )
+        self._model_trainable_parameter_count_at_start = int(
+            sum(
+                parameter.numel()
+                for parameter in self.model.parameters()
+                if parameter.requires_grad
+            )
+        )
+        self._data_sample_counts = [int(value.shape[0]) for value in data]
+        self._input_dimension = (
+            int(data[0].shape[1]) if data and data[0].ndim >= 2 else None
+        )
         # Construct DataFrame from input data to fit the format required by train_score_model
         self.df = self._prepare_df(data)
         # Get sorted list of unique time points (grouped by 'samples' column)
@@ -89,6 +113,303 @@ class TrainingPipeline:
             return float('nan')
         return float(optimizer.param_groups[0]['lr'])
 
+    @staticmethod
+    def _nullable_float(value):
+        """Return a finite JSON float, or ``None`` when unavailable."""
+        try:
+            converted = float(value)
+        except (TypeError, ValueError):
+            return None
+        return converted if math.isfinite(converted) else None
+
+    @staticmethod
+    def _cpu_max_rss_mib():
+        """Return the process-lifetime RSS high-water mark when supported."""
+        try:
+            import resource
+
+            rss = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        except (ImportError, AttributeError, OSError, TypeError, ValueError):
+            return None
+        # macOS reports bytes; Linux and the BSDs report KiB.
+        divisor = 1024.0**2 if sys.platform == 'darwin' else 1024.0
+        value = rss / divisor
+        return value if math.isfinite(value) else None
+
+    def _cuda_device(self):
+        device = getattr(self, 'device', None)
+        try:
+            parsed = device if isinstance(device, torch.device) else torch.device(device)
+        except (TypeError, ValueError, RuntimeError):
+            return None
+        if parsed.type != 'cuda' or not torch.cuda.is_available():
+            return None
+        return parsed
+
+    def _reset_cuda_peak_memory(self):
+        device = self._cuda_device()
+        if device is None:
+            return
+        try:
+            torch.cuda.reset_peak_memory_stats(device)
+        except (RuntimeError, AssertionError):
+            return
+
+    def _synchronize_device(self):
+        """Synchronize CUDA so wall-clock intervals include queued kernels."""
+        device = self._cuda_device()
+        if device is None:
+            return
+        try:
+            torch.cuda.synchronize(device)
+        except (RuntimeError, AssertionError):
+            return
+
+    def _wall_time_start(self):
+        self._synchronize_device()
+        return wallclock.perf_counter()
+
+    def _wall_time_elapsed(self, started_at):
+        self._synchronize_device()
+        return max(0.0, wallclock.perf_counter() - started_at)
+
+    def _cuda_peak_memory_mib(self):
+        device = self._cuda_device()
+        if device is None:
+            return {"allocated": None, "reserved": None}
+        try:
+            divisor = 1024.0**2
+            return {
+                "allocated": float(torch.cuda.max_memory_allocated(device)) / divisor,
+                "reserved": float(torch.cuda.max_memory_reserved(device)) / divisor,
+            }
+        except (RuntimeError, AssertionError):
+            return {"allocated": None, "reserved": None}
+
+    def _optimizer_step(self):
+        """Perform and count one optimizer update owned by this pipeline."""
+        self.optimizer.step()
+        if hasattr(self, '_optimizer_step_count'):
+            self._optimizer_step_count += 1
+
+    def _mark_selected_checkpoint(self, selected_epoch):
+        """Separate the selected checkpoint from record-setting ``is_best`` rows."""
+        stage_index = int(
+            getattr(self, '_active_stage_index', 0)
+            if getattr(self, '_active_stage_index', None) is not None
+            else 0
+        )
+        for row in getattr(self, 'training_history', []):
+            if int(row.get('stage_index', -1)) != stage_index:
+                continue
+            row['is_selected_checkpoint'] = (
+                selected_epoch is not None and int(row['epoch']) == int(selected_epoch)
+            )
+
+    def _finalize_active_stage(
+        self,
+        *,
+        stage_params,
+        stage_started_at,
+        learning_rate_start,
+        optimizer_steps_start,
+    ):
+        """Attach measured stage totals to history and the run-level summary."""
+        stage_index = int(self._active_stage_index)
+        stage_wall_time = self._wall_time_elapsed(stage_started_at)
+        learning_rate_end = self._nullable_float(self._current_learning_rate())
+        optimizer_steps = (
+            int(self._optimizer_step_count - optimizer_steps_start)
+            if hasattr(self, '_optimizer_step_count')
+            else None
+        )
+        cuda_peak = self._cuda_peak_memory_mib()
+        stage_rows = [
+            row
+            for row in self.training_history
+            if int(row.get('stage_index', -1)) == stage_index
+        ]
+        for row in stage_rows:
+            row['stage_wall_time_seconds'] = float(stage_wall_time)
+            row['stage_learning_rate_start'] = learning_rate_start
+            row['stage_learning_rate_end'] = learning_rate_end
+            row['stage_optimizer_steps'] = optimizer_steps
+
+        selected = next(
+            (
+                int(row['epoch'])
+                for row in stage_rows
+                if bool(row.get('is_selected_checkpoint', False))
+            ),
+            None,
+        )
+        self._stage_summaries.append(
+            {
+                'stage_index': stage_index,
+                'stage': str(stage_params['name']),
+                'mode': str(stage_params.get('mode', 'neural_ode')),
+                'configured_epochs': int(stage_params['epochs']),
+                'recorded_epochs': len(stage_rows),
+                'batch_size': int(stage_params.get('batch_size', self.batch_size)),
+                'learning_rate_start': learning_rate_start,
+                'learning_rate_end': learning_rate_end,
+                'optimizer_step_count': optimizer_steps,
+                'wall_time_seconds': float(stage_wall_time),
+                'cuda_peak_allocated_mib': cuda_peak['allocated'],
+                'cuda_peak_reserved_mib': cuda_peak['reserved'],
+                'trainable_parameter_count': int(
+                    sum(
+                        parameter.numel()
+                        for parameter in self.model.parameters()
+                        if parameter.requires_grad
+                    )
+                ),
+                'save_strategy': str(stage_params.get('save_strategy', 'best')),
+                'selected_checkpoint_epoch': selected,
+            }
+        )
+
+    def _build_training_run_summary(self, run_wall_time_seconds):
+        stage_allocated = [
+            value
+            for value in (
+                stage['cuda_peak_allocated_mib'] for stage in self._stage_summaries
+            )
+            if value is not None
+        ]
+        stage_reserved = [
+            value
+            for value in (
+                stage['cuda_peak_reserved_mib'] for stage in self._stage_summaries
+            )
+            if value is not None
+        ]
+        cuda_device = self._cuda_device()
+        try:
+            cuda_device_name = (
+                torch.cuda.get_device_name(cuda_device)
+                if cuda_device is not None
+                else None
+            )
+        except (RuntimeError, AssertionError):
+            cuda_device_name = None
+        try:
+            cuda_device_index = (
+                int(cuda_device.index)
+                if cuda_device is not None and cuda_device.index is not None
+                else (
+                    int(torch.cuda.current_device())
+                    if cuda_device is not None
+                    else None
+                )
+            )
+        except (RuntimeError, AssertionError):
+            cuda_device_index = None
+        try:
+            cudnn_version = torch.backends.cudnn.version()
+        except (AttributeError, RuntimeError):
+            cudnn_version = None
+        context = dict(self._run_context)
+        context.setdefault('model_input_dim', self._input_dimension)
+        context.setdefault('n_observations', int(sum(self._data_sample_counts)))
+        context.setdefault('n_timepoints', len(self._data_sample_counts))
+        context.setdefault('sample_counts_by_timepoint', self._data_sample_counts)
+        batch_sizes = [int(stage['batch_size']) for stage in self._stage_summaries]
+        return {
+            'schema_version': 1,
+            'scope': (
+                'TrainingPipeline.train only; excludes post-training inference, '
+                'evaluation, and AnnData serialization.'
+            ),
+            'timing_scope': (
+                'Stage time includes optimizer setup, stage-specific preparation, '
+                'epochs, checkpoint selection, and checkpoint write. Epoch time '
+                'covers one training iteration through its optimizer update. CUDA '
+                'is synchronized at timing boundaries. Run time ends after the '
+                'final history write and excludes summary serialization.'
+            ),
+            'memory_scope': (
+                'CPU max RSS is the process-lifetime high-water mark sampled after '
+                'training. CUDA peaks are per-stage allocator high-water marks; the '
+                'run value is the maximum across stages.'
+            ),
+            'timing': {
+                'run_wall_time_seconds': float(run_wall_time_seconds),
+                'stage_wall_time_seconds_sum': float(
+                    sum(stage['wall_time_seconds'] for stage in self._stage_summaries)
+                ),
+                'epoch_wall_time_seconds_sum': float(
+                    sum(
+                        self._nullable_float(row.get('epoch_wall_time_seconds')) or 0.0
+                        for row in self.training_history
+                    )
+                ),
+            },
+            'resources': {
+                'cpu_max_rss_mib': self._cpu_max_rss_mib(),
+                'cuda_peak_allocated_mib': (
+                    float(max(stage_allocated)) if stage_allocated else None
+                ),
+                'cuda_peak_reserved_mib': (
+                    float(max(stage_reserved)) if stage_reserved else None
+                ),
+            },
+            'environment': {
+                'device': str(getattr(self, 'device', 'unknown')),
+                'device_type': (
+                    str(getattr(self.device, 'type', self.device))
+                    if hasattr(self, 'device')
+                    else None
+                ),
+                'torch_version': str(torch.__version__),
+                'cuda_compiled_version': (
+                    str(torch.version.cuda) if torch.version.cuda is not None else None
+                ),
+                'cuda_available': bool(torch.cuda.is_available()),
+                'cuda_device_name': cuda_device_name,
+                'cuda_device_index': cuda_device_index,
+                'cudnn_version': (
+                    int(cudnn_version) if cudnn_version is not None else None
+                ),
+                'python_version': platform.python_version(),
+                'platform': platform.platform(),
+            },
+            'model': {
+                'parameter_count': int(self._model_parameter_count),
+                'trainable_parameter_count_at_start': int(
+                    self._model_trainable_parameter_count_at_start
+                ),
+            },
+            'data': context,
+            'training': {
+                'initial_batch_size': int(self._initial_batch_size),
+                'stage_batch_sizes': batch_sizes,
+                'optimizer_step_count': int(self._optimizer_step_count),
+                'optimizer_step_count_scope': (
+                    'Successful optimizer.step calls executed by TrainingPipeline.'
+                ),
+            },
+            'stages': list(self._stage_summaries),
+        }
+
+    def training_run_summary(self):
+        """Return the measured training-only run summary."""
+        return copy.deepcopy(getattr(self, '_training_run_summary', {}))
+
+    def _save_training_run_summary(self):
+        summary = self.training_run_summary()
+        if not summary:
+            return None
+        output_dir = self.config.get('ckpt_dir', getattr(self, 'exp_dir', './results'))
+        os.makedirs(output_dir, exist_ok=True)
+        path = os.path.join(output_dir, 'training_run_summary.json')
+        temporary_path = path + '.tmp'
+        with open(temporary_path, 'w', encoding='utf-8') as handle:
+            json.dump(summary, handle, indent=2, sort_keys=True, allow_nan=False)
+            handle.write('\n')
+        os.replace(temporary_path, path)
+        return path
+
     def _record_training_epoch(
         self,
         *,
@@ -98,6 +419,8 @@ class TrainingPipeline:
         checkpoint_metric,
         checkpoint_value,
         is_best,
+        epoch_wall_time_seconds=None,
+        optimizer_steps_epoch=None,
         **metrics,
     ):
         """Append one schema-stable, serializable row to the training history."""
@@ -105,6 +428,9 @@ class TrainingPipeline:
         if history is None:
             self.training_history = []
             history = self.training_history
+        effective_batch_size = stage_params.get(
+            'batch_size', getattr(self, 'batch_size', None)
+        )
         row = {
             'stage_index': int(
                 getattr(self, '_active_stage_index', 0)
@@ -119,8 +445,23 @@ class TrainingPipeline:
             'checkpoint_metric': str(checkpoint_metric),
             'checkpoint_value': self._history_float(checkpoint_value),
             'is_best': bool(is_best),
+            'is_selected_checkpoint': False,
             'learning_rate': self._current_learning_rate(),
             'save_strategy': str(stage_params.get('save_strategy', 'best')),
+            'batch_size': (
+                int(effective_batch_size)
+                if effective_batch_size is not None
+                else float('nan')
+            ),
+            'epoch_wall_time_seconds': self._history_float(epoch_wall_time_seconds),
+            'optimizer_steps_epoch': self._history_float(optimizer_steps_epoch),
+            'optimizer_steps_cumulative': self._history_float(
+                getattr(self, '_optimizer_step_count', None)
+            ),
+            'stage_wall_time_seconds': float('nan'),
+            'stage_learning_rate_start': float('nan'),
+            'stage_learning_rate_end': float('nan'),
+            'stage_optimizer_steps': float('nan'),
         }
         for key, value in metrics.items():
             row[str(key)] = self._history_float(value)
@@ -303,6 +644,7 @@ class TrainingPipeline:
         Returns:
             DynamicalModel: Trained model
         """
+        run_started_at = self._wall_time_start()
         # Get training plan and base default parameters from configuration
         training_plan = self.config['training']['plan']
         base_defaults = self.config['training']['defaults']
@@ -310,6 +652,9 @@ class TrainingPipeline:
         # Execute each stage in the training plan
         for stage_index, stage_config in enumerate(training_plan):
             self._active_stage_index = int(stage_index)
+            stage_started_at = self._wall_time_start()
+            optimizer_steps_start = int(self._optimizer_step_count)
+            self._reset_cuda_peak_memory()
             # Merge base defaults with stage-specific config (stage config takes priority)
             stage_params = base_defaults.copy()
             stage_params.update(stage_config)
@@ -324,6 +669,9 @@ class TrainingPipeline:
 
             # Setup optimizer, scheduler, and trainable parameters for current stage
             self._setup_stage(stage_params)
+            learning_rate_start = self._nullable_float(
+                self._current_learning_rate()
+            )
 
             # Execute stage training based on mode
             if stage_params['mode'] == 'neural_ode':
@@ -334,10 +682,20 @@ class TrainingPipeline:
                 self.run_score_matching_stage(stage_params, data, time_points)
             else:
                 raise ValueError(f"Unknown training mode: {stage_params['mode']}")
+            self._finalize_active_stage(
+                stage_params=stage_params,
+                stage_started_at=stage_started_at,
+                learning_rate_start=learning_rate_start,
+                optimizer_steps_start=optimizer_steps_start,
+            )
             self._save_training_history()
 
         self._active_stage_index = None
         self._save_training_history()
+        self._training_run_summary = self._build_training_run_summary(
+            self._wall_time_elapsed(run_started_at)
+        )
+        self._save_training_run_summary()
         return self.model
 
     def run_neural_ode_stage(self, stage_params, data, time_points):
@@ -362,7 +720,12 @@ class TrainingPipeline:
         # Training loop over epochs
         # Run training loop for the specified number of epochs
         checkpoint_metric = stage_params.get('checkpoint_metric', 'average_loss')
+        best_epoch = None
         for epoch in range(1, epochs + 1):
+            epoch_started_at = self._wall_time_start()
+            optimizer_steps_before_epoch = getattr(
+                self, '_optimizer_step_count', None
+            )
             loss = self.train_neural_ode_epoch(stage_params, data, time_points, self.ode_func)
 
             # Print progress every 10 epochs
@@ -393,6 +756,7 @@ class TrainingPipeline:
             is_best = candidate_loss < best_loss
             if is_best:
                 best_loss = candidate_loss
+                best_epoch = int(epoch)
                 self.logger.info(f"Epoch {epoch:3d} has a lower loss| all_loss {best_loss:.4f}")
                 best_state = copy.deepcopy(candidate_state)
             epoch_metrics = getattr(self, '_last_neural_ode_epoch', {})
@@ -403,6 +767,12 @@ class TrainingPipeline:
                 checkpoint_metric=checkpoint_metric,
                 checkpoint_value=candidate_loss,
                 is_best=is_best,
+                epoch_wall_time_seconds=self._wall_time_elapsed(epoch_started_at),
+                optimizer_steps_epoch=(
+                    int(self._optimizer_step_count - optimizer_steps_before_epoch)
+                    if optimizer_steps_before_epoch is not None
+                    else None
+                ),
                 forward_last_ot=epoch_metrics.get('forward_last_ot'),
                 mean_ot_loss=epoch_metrics.get('mean_ot_loss'),
                 mean_mass_loss=epoch_metrics.get('mean_mass_loss'),
@@ -427,12 +797,14 @@ class TrainingPipeline:
         if save_strategy == 'best':
             save_state = best_state
             save_loss = best_loss
+            selected_epoch = best_epoch
         else:  # 'last' strategy
             # Snapshot the state produced by the declared number of epochs.
             # Calling train_neural_ode_epoch here used to perform an undocumented
             # extra optimizer update (e.g. 1001 updates for a 1000-epoch stage).
             save_state = copy.deepcopy(self.model.state_dict())
             save_loss = loss
+            selected_epoch = int(epoch)
 
         # Load saved state (best or last) back to model
         self.model.load_state_dict(save_state)
@@ -443,6 +815,7 @@ class TrainingPipeline:
         ckpt_filename = 'best_model.pth' if save_strategy == 'best' else 'last_model.pth'
         save_path = os.path.join(ckpt_dir, ckpt_filename)
         torch.save(save_state, save_path)
+        self._mark_selected_checkpoint(selected_epoch)
         print(f"  {save_strategy.capitalize()} model (loss={save_loss:.4f}) saved → {save_path}")
 
     def train_neural_ode_epoch(self, stage_params, data, time_points, ode_func):
@@ -610,7 +983,7 @@ class TrainingPipeline:
                     max_norm=float(max_grad_norm),
                     error_if_nonfinite=True,
                 )
-            self.optimizer.step()
+            self._optimizer_step()
 
             # Update initial state for next time interval (detach to avoid gradient accumulation)
             x0 = x1.clone().detach()
@@ -750,7 +1123,7 @@ class TrainingPipeline:
                         max_norm=float(max_grad_norm),
                         error_if_nonfinite=True,
                     )
-                self.optimizer.step()
+                self._optimizer_step()
 
                 x0 = x1.clone().detach()
                 lnw0 = lnw1.clone().detach()
@@ -823,6 +1196,8 @@ class TrainingPipeline:
         # Initialize variables for tracking best model
         best_loss = float('inf')
         best_state_dict = None
+        best_epoch = None
+        last_recorded_epoch = None
         
         # Get batch size from stage parameters
         batch_size = stage_params['batch_size']
@@ -833,6 +1208,10 @@ class TrainingPipeline:
         for epoch in tqdm(
             range(1, stage_params['epochs'] + 1), desc='Flow matching'
         ):
+            epoch_started_at = self._wall_time_start()
+            optimizer_steps_before_epoch = getattr(
+                self, '_optimizer_step_count', None
+            )
             # Calculate loss for one epoch of Flow Matching training
             loss, penalty = self.train_flow_matching_epoch(
                 FM, X, time,
@@ -859,6 +1238,7 @@ class TrainingPipeline:
             if is_best:
                 best_loss = loss_value
                 best_state_dict = copy.deepcopy(self.model.state_dict())
+                best_epoch = int(epoch)
 
             # Combine loss and penalty for backpropagation
             total_loss = loss + penalty
@@ -867,7 +1247,8 @@ class TrainingPipeline:
 
             total_loss.backward()
             # Update optimizer
-            self.optimizer.step()
+            self._optimizer_step()
+            last_recorded_epoch = int(epoch)
             self._record_training_epoch(
                 stage_params=stage_params,
                 epoch=epoch,
@@ -875,6 +1256,12 @@ class TrainingPipeline:
                 checkpoint_metric='objective_loss',
                 checkpoint_value=loss_value,
                 is_best=is_best,
+                epoch_wall_time_seconds=self._wall_time_elapsed(epoch_started_at),
+                optimizer_steps_epoch=(
+                    int(self._optimizer_step_count - optimizer_steps_before_epoch)
+                    if optimizer_steps_before_epoch is not None
+                    else None
+                ),
                 objective_loss=loss_value,
                 penalty=penalty_value,
             )
@@ -889,15 +1276,18 @@ class TrainingPipeline:
         if save_strategy == 'best':
             save_state = best_state_dict
             save_loss = best_loss
+            selected_epoch = best_epoch
         else:  # 'last' strategy
             save_state = copy.deepcopy(self.model.state_dict())
             save_loss = total_loss_value
+            selected_epoch = last_recorded_epoch
 
         # Load saved state (best or last) back to model
         self.model.load_state_dict(save_state)
         # Define checkpoint filename based on save strategy
         ckpt_filename = 'best_model.pth' if save_strategy == 'best' else 'last_model.pth'
         torch.save(save_state, os.path.join(ckpt_dir, ckpt_filename))
+        self._mark_selected_checkpoint(selected_epoch)
         print(f"  {save_strategy.capitalize()} model (loss={save_loss:.4f}) "
               f"saved → {ckpt_dir}/{save_strategy}_model.pth")
 
@@ -1020,11 +1410,16 @@ class TrainingPipeline:
 
         best_loss = float('inf')
         best_state_dict = None
+        best_epoch = None
         last_loss = None
 
         for epoch in tqdm(
             range(1, stage_params['epochs'] + 1), desc='Score matching'
         ):
+            epoch_started_at = self._wall_time_start()
+            optimizer_steps_before_epoch = getattr(
+                self, '_optimizer_step_count', None
+            )
             self.optimizer.zero_grad()
             t, xt, _, eps = get_batch_size(FM, X, trajectory, batch_size, time, return_noise=True)
             t = torch.unsqueeze(t, 1).to(self.device)
@@ -1055,9 +1450,10 @@ class TrainingPipeline:
             if is_best:
                 best_loss = loss_value
                 best_state_dict = copy.deepcopy(self.model.score_net.state_dict())
+                best_epoch = int(epoch)
 
             loss.backward()
-            self.optimizer.step()
+            self._optimizer_step()
             last_loss = loss_value
             self._record_training_epoch(
                 stage_params=stage_params,
@@ -1066,6 +1462,12 @@ class TrainingPipeline:
                 checkpoint_metric='total_loss',
                 checkpoint_value=loss_value,
                 is_best=is_best,
+                epoch_wall_time_seconds=self._wall_time_elapsed(epoch_started_at),
+                optimizer_steps_epoch=(
+                    int(self._optimizer_step_count - optimizer_steps_before_epoch)
+                    if optimizer_steps_before_epoch is not None
+                    else None
+                ),
                 score_loss=score_loss_value,
                 penalty=penalty_value,
             )
@@ -1074,15 +1476,18 @@ class TrainingPipeline:
         if save_strategy == 'best':
             save_state = best_state_dict
             save_loss = best_loss
+            selected_epoch = best_epoch
         elif save_strategy == 'last':
             save_state = copy.deepcopy(self.model.score_net.state_dict())
             save_loss = last_loss
+            selected_epoch = int(epoch) if last_loss is not None else None
         else:
             raise ValueError("score-matching save_strategy must be 'best' or 'last'.")
         if save_state is None or save_loss is None:
             raise RuntimeError(f"{stage_params['name']} produced no finite score checkpoint.")
         self.model.score_net.load_state_dict(save_state)
         torch.save(save_state, os.path.join(ckpt_dir, 'score_model.pth'))
+        self._mark_selected_checkpoint(selected_epoch)
         print(
             f"  {save_strategy.capitalize()} score model (loss={save_loss:.4f}) "
             f"saved → {ckpt_dir}/score_model.pth"

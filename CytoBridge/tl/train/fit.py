@@ -518,14 +518,33 @@ def _fit_adata(
         device,
         data=data_torch,
         seed_already_applied=seed is not None,
+        run_context={
+            "n_observations": int(adata.n_obs),
+            "n_timepoints": int(len(time_points)),
+            "model_input_dim": int(model_input.shape[1]),
+            "spatial_dim": int(spatial_dim),
+            "latent_dim": int(model_input.shape[1] - spatial_dim),
+            "sample_counts_by_timepoint": [
+                int(values.shape[0]) for values in data_torch
+            ],
+        },
     )
     model = trainer.train(data_torch, time_points)
     training_history = trainer.training_history_frame()
+    training_run_summary = trainer.training_run_summary()
     training_history_metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "file": "training_history.csv",
         "n_records": int(training_history.shape[0]),
         "columns": [str(column) for column in training_history.columns],
+        "checkpoint_flags": {
+            "is_best": "record-setting checkpoint metric at this epoch",
+            "is_selected_checkpoint": "checkpoint state selected for the stage output",
+        },
+        "timing_scope": (
+            "Epoch time covers one training iteration through its optimizer update; "
+            "stage time also includes setup, stage preparation, and checkpoint write."
+        ),
         "stage_record_counts": {
             str(stage): int(count)
             for stage, count in training_history["stage"].value_counts(
@@ -535,7 +554,17 @@ def _fit_adata(
         if not training_history.empty
         else {},
     }
+    training_run_summary_metadata = {
+        "schema_version": int(training_run_summary.get("schema_version", 1)),
+        "file": "training_run_summary.json",
+        "summary_json": json.dumps(
+            training_run_summary, sort_keys=True, allow_nan=False
+        ),
+    }
     adata.uns["training_history"] = training_history_metadata
+    # Store the structured report as JSON so explicit null resource values remain
+    # serializable in AnnData/HDF5. The same content is written as a standalone JSON.
+    adata.uns["training_run_summary"] = training_run_summary_metadata
 
     # ---------- 5. compute model outputs (component-aware) ----------
     from CytoBridge.tl.core.interaction import cal_interaction
@@ -681,6 +710,7 @@ def _fit_adata(
             "plan": json.dumps(resolved_config["training"]["plan"]),
         },
         "training_history": training_history_metadata,
+        "training_run_summary": training_run_summary_metadata,
         "model_state_dict": {k: v.cpu().numpy() for k, v in model.state_dict().items()},
     }
 

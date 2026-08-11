@@ -52,6 +52,15 @@ def _git_state() -> dict[str, object]:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--history", type=Path, required=True)
+    parser.add_argument(
+        "--run-summary",
+        type=Path,
+        default=None,
+        help=(
+            "Optional training_run_summary.json. If omitted, use the file next "
+            "to --history when present."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--title", default="CytoBridge training history")
     args = parser.parse_args(argv)
@@ -59,12 +68,33 @@ def main(argv=None) -> int:
     history = args.history.expanduser().resolve()
     if not history.is_file():
         raise FileNotFoundError(history)
+    run_summary_source = (
+        args.run_summary.expanduser().resolve()
+        if args.run_summary is not None
+        else history.with_name("training_run_summary.json")
+    )
+    if args.run_summary is not None and not run_summary_source.is_file():
+        raise FileNotFoundError(run_summary_source)
+    run_summary = None
+    run_summary_sha256 = None
+    if run_summary_source.is_file():
+        run_summary_sha256 = _sha256(run_summary_source)
+        run_summary = json.loads(run_summary_source.read_text(encoding="utf-8"))
+        if not isinstance(run_summary, dict):
+            raise ValueError("Training run summary must contain a JSON object.")
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     summary = cb.pl.summarize_training_history(history)
     summary_path = output_dir / "training_stage_summary.csv"
     summary.to_csv(summary_path, index=False)
+    resource_summary_path = None
+    if run_summary is not None:
+        resource_summary_path = output_dir / "training_resource_summary.json"
+        resource_summary_path.write_text(
+            json.dumps(run_summary, indent=2, sort_keys=True, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
     figures = []
     for suffix in ("png", "pdf"):
         figures.append(
@@ -88,9 +118,20 @@ def main(argv=None) -> int:
                 "- `optimization loss` is the scalar differentiated in that epoch.",
                 "- `checkpoint` is the metric used to select a best checkpoint; "
                 "it may differ from the optimization loss.",
-                "- The star follows the configured `best` or `last` save strategy.",
+                "- `is_best` means the epoch set a new metric record; "
+                "`is_selected_checkpoint` is the one state actually retained.",
+                "- The star marks `is_selected_checkpoint` and therefore follows "
+                "the configured `best` or `last` save strategy.",
                 "- `training_stage_summary.csv` reports start/end/minimum loss and "
-                "the checkpoint actually selected for every stage.",
+                "the checkpoint, learning-rate endpoints, measured wall time, "
+                "batch size, and optimizer-step count for every stage.",
+                "- For schema-v1 histories, selected checkpoints are explicitly "
+                "labeled as inferred and learning-rate endpoints are limited to "
+                "the first/last recorded epoch; missing resource values stay empty.",
+                "- `training_resource_summary.json` is emitted when measured run "
+                "metadata is available. CPU RSS is a process-lifetime high-water "
+                "mark; CUDA peaks are allocator high-water marks. Unavailable "
+                "measurements remain JSON `null`.",
                 "",
             ]
         ),
@@ -98,6 +139,8 @@ def main(argv=None) -> int:
     )
 
     outputs = [summary_path, *figures, readme]
+    if resource_summary_path is not None:
+        outputs.append(resource_summary_path)
     manifest = {
         "schema_version": 1,
         "command": [str(value) for value in sys.argv],
@@ -105,6 +148,14 @@ def main(argv=None) -> int:
         "input": {
             "path": str(history),
             "sha256": _sha256(history),
+            "training_run_summary": (
+                {
+                    "path": str(run_summary_source),
+                    "sha256": run_summary_sha256,
+                }
+                if run_summary is not None
+                else None
+            ),
         },
         "parameters": {"title": str(args.title)},
         "outputs": [

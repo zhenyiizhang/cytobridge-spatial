@@ -580,6 +580,41 @@ def plot_trajectory_comparison_grid(
     return fig
 
 
+def _opaque_full_frame_pillow_writer(*, fps: int):
+    """Return a Pillow writer that emits opaque, independently cleared frames."""
+    from PIL import Image
+    from matplotlib.animation import PillowWriter
+
+    class _OpaqueFullFramePillowWriter(PillowWriter):
+        def grab_frame(self, **savefig_kwargs):
+            # A white, non-transparent canvas keeps GIF palette transparency from
+            # turning unchanged title pixels into overlays in later frames.
+            super().grab_frame(
+                **{
+                    **savefig_kwargs,
+                    "facecolor": "white",
+                    "transparent": False,
+                }
+            )
+            rgba = self._frames[-1].convert("RGBA")
+            opaque = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+            opaque.alpha_composite(rgba)
+            self._frames[-1] = opaque.convert("RGB")
+
+        def finish(self):
+            self._frames[0].save(
+                self.outfile,
+                save_all=True,
+                append_images=self._frames[1:],
+                duration=int(1000 / self.fps),
+                loop=0,
+                disposal=2,
+                optimize=False,
+            )
+
+    return _OpaqueFullFramePillowWriter(fps=fps)
+
+
 def plot_trajectory_gif(
     sde_points: np.ndarray,
     time_values: Sequence[float],
@@ -599,7 +634,7 @@ def plot_trajectory_gif(
     import os
 
     import matplotlib.pyplot as plt
-    from matplotlib.animation import FFMpegWriter, FuncAnimation, PillowWriter
+    from matplotlib.animation import FFMpegWriter, FuncAnimation
 
     d1, d2 = int(dim_pair[0]), int(dim_pair[1])
     frames = [np.asarray(sde_points[i], dtype=float) for i in range(len(time_values))]
@@ -681,7 +716,7 @@ def plot_trajectory_gif(
             os.makedirs(out_dir, exist_ok=True)
         suffix = os.path.splitext(str(out_path))[1].lower()
         if suffix == ".gif":
-            writer = PillowWriter(fps=max(1, int(fps)))
+            writer = _opaque_full_frame_pillow_writer(fps=max(1, int(fps)))
         elif suffix == ".mp4":
             writer = FFMpegWriter(
                 fps=max(1, int(fps)),
@@ -690,7 +725,14 @@ def plot_trajectory_gif(
             )
         else:
             raise ValueError("Animation out_path must end in .gif or .mp4.")
-        anim.save(out_path, writer=writer)
+        if suffix == ".gif":
+            anim.save(
+                out_path,
+                writer=writer,
+                savefig_kwargs={"facecolor": "white", "transparent": False},
+            )
+        else:
+            anim.save(out_path, writer=writer)
         plt.close(fig)
         return out_path
     return anim

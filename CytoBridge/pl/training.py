@@ -35,16 +35,85 @@ def _history_frame(history: str | Path | pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         raise ValueError("Training history is empty.")
     numeric = ["stage_index", "epoch", "loss", "checkpoint_value"]
+    optional_numeric = [
+        "learning_rate",
+        "batch_size",
+        "epoch_wall_time_seconds",
+        "optimizer_steps_epoch",
+        "optimizer_steps_cumulative",
+        "stage_wall_time_seconds",
+        "stage_learning_rate_start",
+        "stage_learning_rate_end",
+        "stage_optimizer_steps",
+    ]
     for column in numeric:
         frame[column] = pd.to_numeric(frame[column], errors="raise")
-    frame["is_best"] = frame["is_best"].map(
-        lambda value: (
-            value
-            if isinstance(value, (bool, np.bool_))
-            else str(value).strip().lower() in {"true", "1", "yes"}
-        )
+    for column in optional_numeric:
+        if column in frame:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    to_bool = lambda value: (  # noqa: E731
+        value
+        if isinstance(value, (bool, np.bool_))
+        else str(value).strip().lower() in {"true", "1", "yes"}
     )
+    frame["is_best"] = frame["is_best"].map(
+        to_bool
+    )
+    if "is_selected_checkpoint" in frame:
+        frame["is_selected_checkpoint"] = frame["is_selected_checkpoint"].map(
+            to_bool
+        )
+        frame["_checkpoint_selection_source"] = "explicit_history_flag"
+    else:
+        # Backward-compatible inference for schema-v1 histories. New histories
+        # persist this flag explicitly so record-setting and selected epochs differ.
+        frame["is_selected_checkpoint"] = False
+        frame["_checkpoint_selection_source"] = (
+            "inferred_from_legacy_save_strategy_and_is_best"
+        )
+        for _, subset in frame.groupby(["stage_index", "stage"], sort=False):
+            ordered = subset.sort_values("epoch")
+            save_strategy = str(
+                ordered.iloc[0].get("save_strategy", "best")
+            ).lower()
+            if save_strategy == "last":
+                selected_index = ordered.index[-1]
+            else:
+                record_setters = ordered.loc[ordered["is_best"]]
+                finite = ordered.loc[
+                    np.isfinite(ordered["checkpoint_value"].to_numpy(dtype=float))
+                ]
+                if not record_setters.empty:
+                    selected_index = record_setters.index[-1]
+                elif not finite.empty:
+                    selected_index = finite["checkpoint_value"].idxmin()
+                else:
+                    continue
+            frame.loc[selected_index, "is_selected_checkpoint"] = True
+    selected_counts = frame.groupby(["stage_index", "stage"], sort=False)[
+        "is_selected_checkpoint"
+    ].sum()
+    if (selected_counts > 1).any():
+        invalid = [
+            f"{stage_index}:{stage}"
+            for (stage_index, stage), count in selected_counts.items()
+            if int(count) > 1
+        ]
+        raise ValueError(
+            "Training history marks multiple selected checkpoints for stage(s): "
+            f"{invalid}."
+        )
     return frame.sort_values(["stage_index", "epoch"]).reset_index(drop=True)
+
+
+def _finite_endpoint(subset: pd.DataFrame, column: str, *, last: bool) -> float:
+    if column not in subset:
+        return np.nan
+    values = pd.to_numeric(subset[column], errors="coerce")
+    finite = values.loc[np.isfinite(values.to_numpy(dtype=float))]
+    if finite.empty:
+        return np.nan
+    return float(finite.iloc[-1] if last else finite.iloc[0])
 
 
 def summarize_training_history(
@@ -58,20 +127,10 @@ def summarize_training_history(
     ):
         subset = subset.sort_values("epoch")
         finite_loss = subset.loc[np.isfinite(subset["loss"].to_numpy(dtype=float))]
-        finite_checkpoint = subset.loc[
-            np.isfinite(subset["checkpoint_value"].to_numpy(dtype=float))
-        ]
         save_strategy = str(
             subset.iloc[0].get("save_strategy", "best")
         ).lower()
-        if save_strategy == "last":
-            selected = subset.tail(1)
-        else:
-            selected = subset.loc[subset["is_best"]]
-            if selected.empty and not finite_checkpoint.empty:
-                selected = finite_checkpoint.loc[
-                    [finite_checkpoint["checkpoint_value"].idxmin()]
-                ]
+        selected = subset.loc[subset["is_selected_checkpoint"]]
         best_row = selected.iloc[-1] if not selected.empty else None
         start_loss = (
             float(finite_loss.iloc[0]["loss"]) if not finite_loss.empty else np.nan
@@ -79,6 +138,39 @@ def summarize_training_history(
         end_loss = (
             float(finite_loss.iloc[-1]["loss"]) if not finite_loss.empty else np.nan
         )
+        stage_learning_rate_start = _finite_endpoint(
+            subset, "stage_learning_rate_start", last=False
+        )
+        stage_learning_rate_end = _finite_endpoint(
+            subset, "stage_learning_rate_end", last=True
+        )
+        learning_rate_start = stage_learning_rate_start
+        if not np.isfinite(stage_learning_rate_start):
+            learning_rate_start = _finite_endpoint(
+                subset, "learning_rate", last=False
+            )
+        learning_rate_end = stage_learning_rate_end
+        if not np.isfinite(stage_learning_rate_end):
+            learning_rate_end = _finite_endpoint(subset, "learning_rate", last=True)
+        learning_rate_endpoint_scope = (
+            "optimizer_state_before_and_after_stage"
+            if np.isfinite(stage_learning_rate_start)
+            and np.isfinite(stage_learning_rate_end)
+            else "first_and_last_recorded_epoch; post_stage_endpoint_unavailable"
+        )
+        optimizer_step_count = _finite_endpoint(
+            subset, "stage_optimizer_steps", last=True
+        )
+        if not np.isfinite(optimizer_step_count):
+            optimizer_step_count = (
+                float(
+                    pd.to_numeric(
+                        subset["optimizer_steps_epoch"], errors="coerce"
+                    ).sum(min_count=1)
+                )
+                if "optimizer_steps_epoch" in subset
+                else np.nan
+            )
         rows.append(
             {
                 "stage_index": int(stage_index),
@@ -102,6 +194,9 @@ def summarize_training_history(
                 ),
                 "checkpoint_metric": str(subset.iloc[0]["checkpoint_metric"]),
                 "save_strategy": save_strategy,
+                "checkpoint_selection_source": str(
+                    subset.iloc[0]["_checkpoint_selection_source"]
+                ),
                 "selected_checkpoint_epoch": (
                     int(best_row["epoch"]) if best_row is not None else np.nan
                 ),
@@ -110,17 +205,25 @@ def summarize_training_history(
                     if best_row is not None
                     else np.nan
                 ),
-                "final_learning_rate": (
-                    float(subset.iloc[-1]["learning_rate"])
-                    if "learning_rate" in subset
-                    and np.isfinite(
+                "start_learning_rate": learning_rate_start,
+                "end_learning_rate": learning_rate_end,
+                "learning_rate_endpoint_scope": learning_rate_endpoint_scope,
+                # Backward-compatible alias retained for existing report consumers.
+                "final_learning_rate": learning_rate_end,
+                "batch_size": _finite_endpoint(subset, "batch_size", last=False),
+                "stage_wall_time_seconds": _finite_endpoint(
+                    subset, "stage_wall_time_seconds", last=True
+                ),
+                "epoch_wall_time_seconds_sum": (
+                    float(
                         pd.to_numeric(
-                            pd.Series([subset.iloc[-1]["learning_rate"]]),
-                            errors="coerce",
-                        ).iloc[0]
+                            subset["epoch_wall_time_seconds"], errors="coerce"
+                        ).sum(min_count=1)
                     )
+                    if "epoch_wall_time_seconds" in subset
                     else np.nan
                 ),
+                "optimizer_step_count": optimizer_step_count,
             }
         )
     return pd.DataFrame(rows)
@@ -188,14 +291,7 @@ def plot_training_history(
                 label="mean OT component",
             )
 
-        save_strategy = str(
-            subset.iloc[0].get("save_strategy", "best")
-        ).lower()
-        selected = (
-            subset.tail(1)
-            if save_strategy == "last"
-            else subset.loc[subset["is_best"]]
-        )
+        selected = subset.loc[subset["is_selected_checkpoint"]]
         if not selected.empty:
             selected_row = selected.iloc[-1]
             axis.scatter(

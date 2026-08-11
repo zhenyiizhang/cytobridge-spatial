@@ -8,7 +8,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import qnorm
 import scanpy as sc
 from scipy import sparse
 from scipy.spatial import cKDTree
@@ -277,6 +276,14 @@ def generate_interaction_graph(
     When `neighborhood_threshold <= 0` and `auto_neighborhood_threshold=True`,
     threshold is estimated from aligned NN distance statistics.
     """
+    try:
+        import qnorm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "generate_interaction_graph requires the optional 'qnorm' package. "
+            "Install the full CytoBridge requirements before graph construction."
+        ) from exc
+
     data_to = _resolve_output_dir(data_to, data_name, default_root="input_graph")
     metadata_to = _resolve_output_dir(metadata_to, data_name, default_root="metadata")
 

@@ -211,3 +211,23 @@ def test_visualization_only_warp_uses_one_global_model_trajectory(monkeypatch):
         np.asarray([[1.5, 3.0], [1.5, 3.0]], dtype=np.float32),
     )
     assert not np.array_equal(warped[1], prewarp[1])
+
+
+def test_spatial_warp_breaks_exact_anchor_ties_by_anchor_index() -> None:
+    displacement = simulation._compute_spatial_warp_displacements(
+        np.asarray([[0.0, 0.0]], dtype=np.float32),
+        np.asarray([[-1.0, 0.0], [1.0, 0.0]], dtype=np.float32),
+        np.asarray([[-2.0, 0.0], [3.0, 0.0]], dtype=np.float32),
+        k=1,
+        eps=1e-6,
+    )
+
+    np.testing.assert_allclose(displacement, [[-1.0, 0.0]])
+    with pytest.raises(ValueError, match="eps must be finite and positive"):
+        simulation._compute_spatial_warp_displacements(
+            np.asarray([[0.0, 0.0]], dtype=np.float32),
+            np.asarray([[-1.0, 0.0]], dtype=np.float32),
+            np.asarray([[-2.0, 0.0]], dtype=np.float32),
+            k=1,
+            eps=0.0,
+        )
