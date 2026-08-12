@@ -49,7 +49,11 @@ class InstalledPackageContractTests(unittest.TestCase):
             },
         )
         requirements = distribution.requires or []
-        normalized_requirements = [item.replace(" ", "").lower() for item in requirements]
+        # Core Metadata permits either quote style around marker values.
+        normalized_requirements = [
+            item.replace(" ", "").replace('"', "'").lower()
+            for item in requirements
+        ]
         self.assertTrue(any(item.startswith("numpy<2,>=1.24") for item in normalized_requirements))
         self.assertTrue(
             any(
