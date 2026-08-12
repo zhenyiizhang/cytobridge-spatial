@@ -8,6 +8,7 @@ This module exposes two stable entrypoints:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
@@ -181,6 +182,7 @@ def load_dynamical_model_from_dir(
     device: str | torch.device = "cpu",
     stage: str = "Finetune",
     score_stage_prefer: Optional[Sequence[str]] = None,
+    edge_predictor_path: Optional[str | Path] = None,
 ) -> LoadedModel:
     """Load a trained DynamicalModel (+ optional score net) from a results directory.
 
@@ -203,6 +205,11 @@ def load_dynamical_model_from_dir(
         By default, score-matching stages are inferred from the training plan
         and searched in reverse execution order, so a final score-refinement
         stage supersedes the initial score fit.
+    edge_predictor_path
+        Optional replacement for a recorded edge-predictor path. Current
+        CytoBridge checkpoints normally embed the predictor weights, so copied
+        model directories remain loadable even when the original absolute path
+        no longer exists.
 
     Returns
     -------
@@ -218,9 +225,6 @@ def load_dynamical_model_from_dir(
     cfg = _load_yaml(cfg_path)
     if "model" not in cfg:
         raise KeyError("config.yaml missing required top-level key: 'model'")
-
-    model = DynamicalModel(int(dim), cfg["model"])
-    model = model.to(device)
 
     # ---- choose weight stage ----
     candidate_stages: list[str] = []
@@ -248,6 +252,34 @@ def load_dynamical_model_from_dir(
             )
 
     state_dict = _load_state_dict(weight_path, device=device)
+    model_config = deepcopy(cfg["model"])
+    interaction_config = model_config.get("interaction_net", {})
+    model_config["interaction_net"] = interaction_config
+    if edge_predictor_path is not None:
+        interaction_config["edge_predictor_path"] = str(
+            Path(edge_predictor_path).expanduser().resolve()
+        )
+    embedded_predictor = any(
+        ".link_predictor." in str(key) for key in state_dict
+    )
+    if embedded_predictor:
+        interaction_config["load_edge_predictor_from_path"] = False
+
+    model = DynamicalModel(int(dim), model_config)
+    model = model.to(device)
+    if not embedded_predictor and edge_predictor_path is not None:
+        # Older current-format checkpoints stored predictor weights only in the
+        # separate predictor file. The constructor has just loaded that file;
+        # merge only those parameters so every other checkpoint key remains
+        # subject to strict validation.
+        state_dict = dict(state_dict)
+        state_dict.update(
+            {
+                key: value
+                for key, value in model.state_dict().items()
+                if ".link_predictor." in str(key)
+            }
+        )
     model.load_state_dict(state_dict, strict=True)
 
     # ---- optional score stage ----

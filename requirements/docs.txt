@@ -1,0 +1,7 @@
+# Documentation build dependencies used by Read the Docs and local release checks.
+sphinx>=7,<9
+furo>=2024.8.6,<2027
+myst-parser>=3,<5
+nbsphinx>=0.9,<1
+sphinx-copybutton>=0.5,<1
+sphinx-design>=0.6,<1

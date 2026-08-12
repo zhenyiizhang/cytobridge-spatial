@@ -1,0 +1,21 @@
+:root {
+  --cytobridge-teal: #08786b;
+  --cytobridge-coral: #b24834;
+}
+
+.sidebar-brand-text {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.admonition.note {
+  border-color: var(--cytobridge-teal);
+}
+
+.admonition.warning {
+  border-color: var(--cytobridge-coral);
+}
+
+table.docutils td,
+table.docutils th {
+  white-space: normal;
+}

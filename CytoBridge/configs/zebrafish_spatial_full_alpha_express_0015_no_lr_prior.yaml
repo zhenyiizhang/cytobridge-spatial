@@ -26,7 +26,7 @@ model:
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 0.12
+    cutoff: 0.09606367405591873
     use_spatial: true
     rbf_trainable: false
     edge_prior_mode: all_spatial

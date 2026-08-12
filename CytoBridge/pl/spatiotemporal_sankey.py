@@ -823,10 +823,6 @@ def plot_3d_spatial_sankey_style(
         for layer_idx, (tk, z_val) in enumerate(zip(time_keys, z_values)):
             if tk not in all_time_communications:
                 continue
-            ad = adata_dict[tk]
-            ann_col = _resolve_annotation_col(ad)
-            curr_coords = np.asarray(ad.obsm[spatial_key])
-            curr_labels = ad.obs[ann_col].values
             comm_data = all_time_communications[tk]
             M_comm, types = comm_data["M_per_source"], comm_data["types"]
             type_to_idx = {t: i for i, t in enumerate(types)}
@@ -1101,7 +1097,8 @@ def plot_3d_spatial_sankey_style(
         if flow_normalize_mode not in (None, "source", "global"):
             raise ValueError("flow_normalize_mode must be None, 'source', or 'global'")
 
-        for t_idx in range(len(time_keys) - 1):
+        flow_pairs = range(len(time_keys) - 1) if ribbon_render_mode != "none" else ()
+        for t_idx in flow_pairs:
             t1_key = time_keys[t_idx]
             t2_key = time_keys[t_idx + 1]
             labels_t = labels_flow[t_idx] if labels_flow else predicted_labels_list[t_idx]
@@ -1165,8 +1162,6 @@ def plot_3d_spatial_sankey_style(
                 ribbon_cut = None
             if ribbon_top_k is not None:
                 transitions = transitions.sort_values("count", ascending=False).head(int(ribbon_top_k))
-            if ribbon_render_mode == "none":
-                continue
             for _, row in transitions.iterrows():
                 anc = row["ancestor"] if (lineage_anchor_mode and "ancestor" in row) else None
                 src, tgt, count = row["source"], row["target"], row["count"]

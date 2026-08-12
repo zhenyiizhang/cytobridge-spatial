@@ -278,6 +278,9 @@ class DynamicalModel(nn.Module):
                         edge_predictor_thre=comp_config.get('edge_predictor_thre', 0.5),
                         edge_predictor_root=comp_config.get('edge_predictor_root'),
                         edge_prior_mode=comp_config.get('edge_prior_mode', 'learned'),
+                        load_edge_predictor_from_path=comp_config.get(
+                            'load_edge_predictor_from_path', True
+                        ),
                     )
                 else:
                     network = InteractionModel(self.latent_dim, **comp_config)

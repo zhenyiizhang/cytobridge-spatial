@@ -433,7 +433,6 @@ def generate_interaction_graph(
         verbose,
     )
 
-    spatial_dim = coordinates.shape[1]
     barcode_info: list[list[Any]] = []
     if save_metadata:
         for i, cell_code in enumerate(cell_barcode):
@@ -523,6 +522,7 @@ def generate_interaction_graph(
         expr_by_gene[gene_name] = gene_expr
         active_mask_by_gene[gene_name] = gene_expr >= cell_percentile
 
+    quantile_matrix_to_save = cell_vs_gene if save_quantile_matrix else None
     del cell_vs_gene
     gc.collect()
 
@@ -786,7 +786,7 @@ def generate_interaction_graph(
     if save_quantile_matrix:
         def _write_quantile_matrix() -> None:
             with gzip.open(os.path.join(data_to, f"{data_name}_cell_vs_gene_quantile_transformed"), "wb") as fp:
-                pickle.dump(cell_vs_gene, fp)
+                pickle.dump(quantile_matrix_to_save, fp)
 
         write_tasks.append(
             (

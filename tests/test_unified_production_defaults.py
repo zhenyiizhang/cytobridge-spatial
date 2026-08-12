@@ -133,6 +133,7 @@ def test_training_pipeline_materializes_missing_seed_and_ot_weights(
 
 def test_released_spatial_configs_share_weights_but_keep_graph_thresholds() -> None:
     production_configs = (
+        "admouse_spatial_full_alpha_express_0015.yaml",
         "arista_spatial_full.yaml",
         "arista_spatial_smoke.yaml",
         "mosta_spatial_full_alpha_express_0015.yaml",
@@ -155,13 +156,55 @@ def test_released_spatial_configs_share_weights_but_keep_graph_thresholds() -> N
         assert defaults["alpha_express"] == 0.015, name
 
     expected_graph_contracts = {
-        "arista_spatial_full.yaml": (0.05, 0.45),
-        "mosta_spatial_full_alpha_express_0015.yaml": (0.06, 0.45),
-        "zebrafish_spatial_full.yaml": (0.12, 0.63),
+        "admouse_spatial_full_alpha_express_0015.yaml": (
+            0.012106042891492197,
+            0.32999998331069946,
+        ),
+        "arista_spatial_full.yaml": (
+            0.03154105148551745,
+            0.23999999463558197,
+        ),
+        "mosta_spatial_full_alpha_express_0015.yaml": (
+            0.02400244047956264,
+            0.44999998807907104,
+        ),
+        "zebrafish_spatial_full.yaml": (
+            0.09606367405591873,
+            0.4999999701976776,
+        ),
     }
     for name, expected in expected_graph_contracts.items():
         interaction = _load_config(name)["model"]["interaction_net"]
         assert (interaction["cutoff"], interaction["edge_predictor_thre"]) == expected
+
+
+def test_admouse_profile_preserves_the_resolved_six_stage_schedule() -> None:
+    config = _load_config("admouse_spatial_full_alpha_express_0015.yaml")
+
+    assert config["model"]["interaction_group_size"] == 1024
+    assert config["model"]["score_net"] == {
+        "hidden_dim": 256,
+        "n_layers": 5,
+        "activation": "leaky_relu",
+    }
+    assert [stage["name"] for stage in config["training"]["plan"]] == [
+        "Pretrain",
+        "Refine",
+        "Init_interaction",
+        "Train_Score",
+        "Finetune",
+        "Score_Refine",
+    ]
+    assert [stage["epochs"] for stage in config["training"]["plan"]] == [
+        100,
+        100,
+        50,
+        3001,
+        1000,
+        3001,
+    ]
+    assert config["training"]["plan"][3]["batch_size"] == 256
+    assert config["training"]["plan"][5]["batch_size"] == 256
 
 
 def test_shared_downstream_config_uses_the_classifier_production_defaults() -> None:

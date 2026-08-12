@@ -70,16 +70,11 @@ def test_candidate_universe_excludes_high_variance_forced_pca_features() -> None
     assert provenance["missing_count"] == 0
     assert provenance["inactive_count"] == 0
     assert provenance["used"] == hvg_names
-    assert provenance["requested_sha256"] == provenance["used_sha256"]
-    assert len(provenance["used_sha256"]) == 64
-    assert len(provenance["used_ordered_sha256"]) == 64
     assert restricted.settings["pca_features_active"] == 2747
     contract = restricted.settings["pca_contract"]
     assert contract["center_source"].endswith("historical_fallback")
     assert contract["feature_count"] == 2747
     assert contract["component_count"] == 2
-    assert len(contract["contract_sha256"]) == 64
-    assert all(len(value) == 64 for value in contract["hashes"].values())
     assert restricted.settings["expression_contract"] == {
         "source_policy": "inverse_pca_all_timepoints",
         "output_space": "mean_per_cell_clipped_log1p_expression",
@@ -100,13 +95,9 @@ def test_candidate_universe_excludes_high_variance_forced_pca_features() -> None
         slices,
         candidate_features=hvg_names,
     )
-    assert (
-        changed.settings["pca_contract"]["hashes"]["loadings_sha256"]
-        != contract["hashes"]["loadings_sha256"]
-    )
-    assert (
-        changed.settings["pca_contract"]["contract_sha256"]
-        != contract["contract_sha256"]
+    assert not np.array_equal(
+        changed.expression.loc[hvg_names[0]].to_numpy(),
+        restricted.expression.loc[hvg_names[0]].to_numpy(),
     )
 
 
@@ -163,4 +154,3 @@ def test_candidate_features_none_preserves_existing_result_contract() -> None:
     assert provenance["requested"] is None
     assert provenance["requested_count"] is None
     assert provenance["used_count"] == 8
-    assert len(provenance["used_sha256"]) == 64

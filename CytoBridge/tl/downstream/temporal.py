@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from hashlib import sha256
-import json
 from pathlib import Path
 import re
 from typing import Mapping, Optional, Sequence
@@ -456,52 +454,6 @@ def _row_normalize(values: np.ndarray, method: str) -> np.ndarray:
     raise ValueError("normalization must be 'zscore', 'minmax', or 'none'.")
 
 
-def _feature_name_set_sha256(feature_names: Sequence[str]) -> str:
-    """Hash a feature set independently of caller ordering."""
-    payload = json.dumps(
-        sorted(set(map(str, feature_names))),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(payload).hexdigest()
-
-
-def _ordered_feature_names_sha256(feature_names: Sequence[str]) -> str:
-    """Hash feature names in positional order for PCA contracts."""
-    payload = json.dumps(
-        list(map(str, feature_names)),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(payload).hexdigest()
-
-
-def _numeric_array_sha256(values: np.ndarray) -> str:
-    """Hash numeric values in a dtype-independent canonical float64 layout."""
-    array = np.ascontiguousarray(np.asarray(values, dtype="<f8"))
-    header = json.dumps(
-        {"dtype": "float64_le", "shape": list(array.shape)},
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("ascii")
-    digest = sha256()
-    digest.update(header)
-    digest.update(b"\0")
-    digest.update(array.tobytes(order="C"))
-    return digest.hexdigest()
-
-
-def _canonical_json_sha256(payload: Mapping[str, object]) -> str:
-    """Hash a JSON-compatible mapping with stable key ordering."""
-    encoded = json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return sha256(encoded).hexdigest()
-
-
 def _json_scalar(value):
     """Convert a time label to a deterministic JSON-compatible scalar."""
     if isinstance(value, np.generic):
@@ -681,42 +633,6 @@ def evaluate_pca_anchor_reconstruction(
         return (1, type(converted).__name__, str(converted))
 
     unique_time_values.sort(key=_time_sort_key)
-    obs_name_order_sha256 = _ordered_feature_names_sha256(
-        tuple(map(str, adata.obs_names))
-    )
-    feature_name_set_sha256 = _feature_name_set_sha256(observed_feature_names)
-    time_assignment_sha256 = sha256(
-        json.dumps(
-            [_json_scalar(value) for value in raw_time_values],
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    ).hexdigest()
-    feature_order_sha256 = _ordered_feature_names_sha256(observed_feature_names)
-    loadings_sha256 = _numeric_array_sha256(loadings)
-    center_sha256 = _numeric_array_sha256(center)
-    pca_hashes = {
-        "feature_name_order_sha256": feature_order_sha256,
-        "loadings_sha256": loadings_sha256,
-        "center_sha256": center_sha256,
-    }
-    pca_contract_sha256 = _canonical_json_sha256(pca_hashes)
-    analysis_input_sha256 = _canonical_json_sha256(
-        {
-            "obs_name_order_sha256": obs_name_order_sha256,
-            "feature_name_set_sha256": feature_name_set_sha256,
-            "feature_name_order_sha256": feature_order_sha256,
-            "time_assignment_sha256": time_assignment_sha256,
-            "pca_contract_sha256": pca_contract_sha256,
-        }
-    )
-    audit_hashes = {
-        **pca_hashes,
-        "obs_name_order_sha256": obs_name_order_sha256,
-        "feature_name_set_sha256": feature_name_set_sha256,
-        "time_assignment_sha256": time_assignment_sha256,
-        "analysis_input_sha256": analysis_input_sha256,
-    }
 
     aggregate_rows: list[dict[str, object]] = []
     per_feature_tables: list[pd.DataFrame] = []
@@ -861,7 +777,6 @@ def evaluate_pca_anchor_reconstruction(
                 ),
                 "minimum_reconstructed_log1p": reconstructed_min,
                 "scale": "log1p",
-                "pca_contract_sha256": pca_contract_sha256,
             }
         )
         per_feature_tables.append(
@@ -940,18 +855,6 @@ def evaluate_pca_anchor_reconstruction(
         "negative_reconstructed_fraction_definition": (
             "fraction_of_unclipped_inverse_pca_log1p_values_below_zero"
         ),
-        "hashes": audit_hashes,
-        "pca_contract_sha256": pca_contract_sha256,
-        "analysis_input_sha256": analysis_input_sha256,
-        "hash_contracts": {
-            "feature_name_order": "sha256_ordered_json_utf8",
-            "feature_name_set": "sha256_sorted_json_utf8",
-            "obs_name_order": "sha256_ordered_json_utf8",
-            "time_assignment": "sha256_ordered_json_utf8",
-            "numeric_array": "sha256_json_shape_float64_le_null_c_order_bytes",
-            "pca_contract": "sha256_canonical_json_utf8",
-            "analysis_input": "sha256_canonical_json_utf8",
-        },
     }
     return PCAAnchorReconstructionQCResult(
         aggregate_metrics=aggregate_metrics,
@@ -1088,12 +991,6 @@ def analyze_developmental_wave(
     if not np.isfinite(values).all():
         raise ValueError("profiles contains non-finite values.")
     table = pd.DataFrame(values, index=profile_names, columns=time_values)
-    canonical_input_order = np.argsort(
-        profile_names.to_numpy(dtype=str), kind="mergesort"
-    )
-    input_profile_names_sha256 = _feature_name_set_sha256(profile_names.tolist())
-    input_profile_matrix_sha256 = _numeric_array_sha256(values[canonical_input_order])
-    time_points_sha256 = _numeric_array_sha256(time_values)
 
     n_input = int(table.shape[0])
     if n_top_profiles is None:
@@ -1138,14 +1035,6 @@ def analyze_developmental_wave(
         ordered_peak_times,
         n_segments=int(n_phases),
         min_segment_size=int(min_phase_size),
-    )
-    selected_profile_names = selected.index.astype(str).tolist()
-    selected_profile_set_sha256 = _feature_name_set_sha256(selected_profile_names)
-    selected_profile_order_sha256 = _ordered_feature_names_sha256(
-        selected_profile_names
-    )
-    selected_profile_matrix_sha256 = _numeric_array_sha256(
-        selected.to_numpy(dtype=np.float64)
     )
     phases = np.empty(n_selected, dtype=int)
     diagnostic_rows: list[dict[str, object]] = []
@@ -1219,19 +1108,6 @@ def analyze_developmental_wave(
                 for start, end in boundaries
             ],
             "total_within_peak_sse": float(total_objective),
-            "hashes": {
-                "input_profile_name_set_sha256": input_profile_names_sha256,
-                "input_profile_matrix_sha256": input_profile_matrix_sha256,
-                "time_points_sha256": time_points_sha256,
-                "selected_profile_name_set_sha256": selected_profile_set_sha256,
-                "selected_profile_name_order_sha256": selected_profile_order_sha256,
-                "selected_profile_matrix_sha256": selected_profile_matrix_sha256,
-                "name_set_contract": "sha256_canonical_sorted_json_utf8",
-                "name_order_contract": "sha256_ordered_json_utf8",
-                "numeric_array_contract": (
-                    "sha256_json_shape_float64_le_null_c_order_bytes"
-                ),
-            },
         },
     )
 
@@ -1466,21 +1342,6 @@ def summarize_temporal_gene_patterns(
         relative_tolerance=pca_active_relative_tolerance,
     )
     active_mask = feature_coverage["active"].to_numpy(dtype=bool)
-    active_feature_names = (
-        feature_coverage.loc[active_mask, "feature_name"].astype(str).tolist()
-    )
-    pca_hashes = {
-        "feature_name_order_sha256": _ordered_feature_names_sha256(feature_names),
-        "loadings_sha256": _numeric_array_sha256(loadings),
-        "center_sha256": _numeric_array_sha256(effective_center),
-        "active_feature_name_set_sha256": _feature_name_set_sha256(
-            active_feature_names
-        ),
-        "active_feature_name_order_sha256": _ordered_feature_names_sha256(
-            active_feature_names
-        ),
-    }
-    pca_contract_sha256 = _canonical_json_sha256(pca_hashes)
     if bool(active_features_only) and not active_mask.any():
         raise ValueError(
             "No active PCA features remain at the requested loading tolerance."
@@ -1701,18 +1562,6 @@ def summarize_temporal_gene_patterns(
             "used_count": len(used_candidate_features),
             "missing_count": len(candidate_missing),
             "inactive_count": len(candidate_inactive),
-            "requested_sha256": (
-                None
-                if candidate_requested is None
-                else _feature_name_set_sha256(candidate_requested)
-            ),
-            "used_sha256": _feature_name_set_sha256(used_candidate_features),
-            "used_ordered_sha256": _ordered_feature_names_sha256(
-                used_candidate_features
-            ),
-            "hash_contract": "sha256_canonical_sorted_json_utf8",
-            "set_hash_contract": "sha256_canonical_sorted_json_utf8",
-            "order_hash_contract": "sha256_ordered_json_utf8",
         },
         "preferred_species_tag": preferred_species_tag,
         "pca_reconstruction": (
@@ -1751,14 +1600,6 @@ def summarize_temporal_gene_patterns(
             "feature_count": int(len(feature_names)),
             "component_count": int(loadings.shape[1]),
             "active_feature_count": int(active_mask.sum()),
-            "hashes": pca_hashes,
-            "contract_sha256": pca_contract_sha256,
-            "contract_hash_contract": "sha256_canonical_json_utf8",
-            "name_set_hash_contract": "sha256_canonical_sorted_json_utf8",
-            "name_order_hash_contract": "sha256_ordered_json_utf8",
-            "numeric_array_hash_contract": (
-                "sha256_json_shape_float64_le_null_c_order_bytes"
-            ),
         },
         "expression_contract": (
             {

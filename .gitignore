@@ -12,6 +12,7 @@ htmlcov/
 build/
 dist/
 site/
+docs/_build/
 *.egg-info/
 .eggs/
 
@@ -37,7 +38,7 @@ extracted_evaluation.py
 spatial.ipynb
 
 # Data / training outputs
-data/
+/data/
 results/
 logs/
 input_graph/

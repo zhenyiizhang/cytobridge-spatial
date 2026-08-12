@@ -37,7 +37,7 @@ def test_offline_overrepresentation_uses_explicit_background() -> None:
     assert result.loc[0, "multiple_testing_scope"] == "reported"
 
 
-def test_load_gmt_records_hash_and_deduplicates_genes(tmp_path) -> None:
+def test_load_gmt_records_source_and_deduplicates_genes(tmp_path) -> None:
     path = tmp_path / "library.gmt"
     path.write_text(
         "Term A (GO:0000001)\tdescription\tA\tB\tB\n"
@@ -48,7 +48,7 @@ def test_load_gmt_records_hash_and_deduplicates_genes(tmp_path) -> None:
     assert library.gene_sets["Term A (GO:0000001)"] == frozenset({"A", "B"})
     assert library.descriptions["Term A (GO:0000001)"] == "description"
     assert library.metadata["format"] == "gmt"
-    assert len(str(library.metadata["sha256"])) == 64
+    assert library.metadata["source"] == str(path.resolve())
 
 
 def test_empty_overlap_returns_declared_schema() -> None:

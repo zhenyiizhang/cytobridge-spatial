@@ -22,6 +22,7 @@ HEAVY_MODULES = ("matplotlib", "scanpy")
 INSTALLED_SMOKE_RUNNER = PROJECT_ROOT / "scripts" / "smoke_installed_wheel.py"
 EXTRA_NAMES = {
     "all",
+    "docs",
     "graph",
     "notebook",
     "plot",
@@ -161,6 +162,13 @@ print(json.dumps([module.__name__ for module in (pl, pp, tl, utils)]))
         "CytoBridge.tl",
         "CytoBridge.utils",
     ]
+
+
+def test_config_submodule_import_is_independent_of_training_import_order() -> None:
+    result = _run_source_python(
+        "from CytoBridge.utils.config import load_config; print(load_config.__name__)"
+    )
+    assert result.stdout.strip() == "load_config"
 
 
 def test_plot_namespace_is_monotonic_and_legacy_exports_are_lazy() -> None:
@@ -378,9 +386,12 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "cellrank": "cellrank",
         "geomloss": "geomloss",
         "ipywidgets": "ipywidgets",
+        "jupyterlab": "jupyterlab",
         "joblib": "joblib",
         "kaleido": "kaleido",
         "matplotlib": "matplotlib",
+        "myst-parser": "myst_parser",
+        "nbsphinx": "nbsphinx",
         "numpy": "numpy",
         "pandas": "pandas",
         "phate": "phate",
@@ -394,6 +405,10 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "scipy": "scipy",
         "scvelo": "scvelo",
         "seaborn": "seaborn",
+        "sphinx": "sphinx",
+        "sphinx-copybutton": "sphinx_copybutton",
+        "sphinx-design": "sphinx_design",
+        "furo": "furo",
         "torch": "torch",
         "torch-geometric": "torch_geometric",
         "torchdiffeq": "torchdiffeq",

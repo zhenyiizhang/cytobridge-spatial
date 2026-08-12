@@ -366,10 +366,6 @@ def test_lr_pair_identity_does_not_collapse_ambiguous_display_labels() -> None:
     assert contract["database_unique_pairs"] == 2
     assert contract["retained_complete_nonzero_pairs"] == 2
     assert contract["pair_identity"]["internal"] == "structured_tuple_ligand_receptor"
-    assert (
-        contract["retained_pair_id_set_sha256"]
-        == contract["retained_pair_set_sha256"]
-    )
 
 
 def test_hybrid_lr_projection_uses_observed_expression_only_at_declared_times() -> None:
@@ -976,8 +972,11 @@ def test_focal_lr_type_hotspot_uses_article_estimand_and_constant_type_mapping()
     assert result.audit["within_type_cell_scores_constant"].all()
     assert result.audit["n_compute_cells"].tolist() == [4, 4, 4]
     assert result.audit["n_display_cells"].tolist() == [8, 8, 8]
-    assert result.audit["compute_cell_id_order_sha256"].str.len().eq(64).all()
-    assert result.audit["display_cell_id_order_sha256"].str.len().eq(64).all()
+    for key, display in display_slices.items():
+        observed_ids = result.cell_mapping.loc[
+            np.isclose(result.cell_mapping["time"], float(key)), "cell_id"
+        ].tolist()
+        assert observed_ids == display.obs_names.astype(str).tolist()
     assert result.settings["aggregation_level"] == "cell_type"
     assert result.settings["per_edge_attention_hotspot"] is False
     assert result.settings["strict_all_subunit_corrected_reanalysis"] is True

@@ -10,7 +10,6 @@ import CytoBridge.tl.downstream.classification as classification
 from CytoBridge.tl.downstream.classification import (
     ResidualMLP,
     _classifier_cache_fingerprint,
-    _classifier_state_sha1,
     _prepare_classifier_arrays,
     _split_classifier_indices,
     _train_mlp_classifier_arrays_detailed,
@@ -171,6 +170,10 @@ def test_phase_a_refit_uses_fresh_model_all_rows_and_selection_scheduler_horizon
     class TrackingResidualMLP(original_model):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            self.initial_state = {
+                name: value.detach().clone()
+                for name, value in self.state_dict().items()
+            }
             self.forward_batch_sizes = []
             instances.append(self)
 
@@ -227,11 +230,11 @@ def test_phase_a_refit_uses_fresh_model_all_rows_and_selection_scheduler_horizon
     assert instances[1].forward_batch_sizes[: refit["epochs"]] == [len(X)] * refit[
         "epochs"
     ]
-    assert refit["initial_state_sha1"] == evaluation["selection"][
-        "initial_state_sha1"
-    ]
-    assert evaluation["returned_model_state_sha1"] == _classifier_state_sha1(model)
-    assert evaluation["returned_model_state_sha1"] == refit["final_state_sha1"]
+    for name in instances[0].initial_state:
+        torch.testing.assert_close(
+            instances[0].initial_state[name],
+            instances[1].initial_state[name],
+        )
 
 
 def test_legacy_full_data_mode_conflicts_with_post_selection_refit(tmp_path):
@@ -290,6 +293,3 @@ def test_cached_refit_persists_protocol_and_keeps_phase_a_metrics(tmp_path):
     ]
     assert cached.evaluation["refit"]["performed"] is True
     assert cached.evaluation["refit"]["n_train"] == adata.n_obs
-    assert cached.evaluation["returned_model_state_sha1"] == _classifier_state_sha1(
-        cached.model
-    )

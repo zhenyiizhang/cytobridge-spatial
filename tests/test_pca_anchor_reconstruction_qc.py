@@ -206,9 +206,6 @@ def test_anchor_reconstruction_qc_is_chunked_exact_and_auditable() -> None:
     assert settings["require_active_features"] is True
     assert settings["subset_policy"] == "caller_supplied_adata_view"
     assert settings["n_chunks_evaluated"] == 4
-    assert len(settings["pca_contract_sha256"]) == 64
-    assert len(settings["analysis_input_sha256"]) == 64
-    assert all(len(value) == 64 for value in settings["hashes"].values())
 
 
 def test_anchor_reconstruction_qc_strict_feature_and_center_contracts() -> None:

@@ -10,6 +10,7 @@
   },
   "scientific": {
     "seed": 42,
+    "alpha_spatial": 10.0,
     "alpha_express": 0.015,
     "classifier_k": 10
   },
@@ -59,23 +60,24 @@
   },
   "train": {
     "config": "mosta_spatial_full_alpha_express_0015.yaml",
+    "interaction_cutoff": 0.02400244047956264,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.45,
+    "edge_predictor_threshold": 0.44999998807907104,
     "evaluate_after_training": false
   },
   "downstream": {
     "enabled": true,
     "model_format": "current",
     "observed": [0.0, 1.0, 2.0, 3.0],
-    "interpolated": [0.5, 1.5, 2.5],
+    "interpolated": [0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2.25, 2.5, 2.75],
     "classifier_epochs": 500,
     "classifier_hidden_size": 128,
     "classifier_lr": 0.001,
     "classifier_best_metric": "bacc",
     "classifier_strict_stratification": true,
-    "sde_n_samples": 5000,
+    "sde_n_samples": 12000,
     "sde_dt": 0.05,
-    "split_sde_dt": 0.01,
+    "split_sde_dt": 0.05,
     "split_sigma": 0.03,
     "split_growth_alpha": 1.0
   }

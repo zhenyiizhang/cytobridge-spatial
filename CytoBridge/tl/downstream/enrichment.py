@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from hashlib import sha256
 from pathlib import Path
 import re
 from typing import Mapping, Optional, Sequence
@@ -31,14 +30,6 @@ class GeneSetLibrary:
 def _normalize_gene(value: object, *, uppercase: bool) -> str:
     text = str(value).strip()
     return text.upper() if uppercase else text
-
-
-def _sha256(path: Path) -> str:
-    digest = sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def make_gene_set_library(
@@ -120,7 +111,6 @@ def load_gmt_gene_sets(
         metadata={
             "format": "gmt",
             "source": str(source),
-            "sha256": _sha256(source),
         },
         uppercase=uppercase,
     )

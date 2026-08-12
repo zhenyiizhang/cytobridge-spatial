@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from hashlib import sha256
-import json
 from typing import Mapping, Optional, Sequence
 
 import numpy as np
@@ -36,27 +34,6 @@ def _validate_matrix(name: str, values: np.ndarray) -> np.ndarray:
     return matrix
 
 
-def _numeric_array_sha256(values: np.ndarray) -> str:
-    """Hash numeric arrays in a stable little-endian canonical layout."""
-    raw = np.asarray(values)
-    if np.issubdtype(raw.dtype, np.integer):
-        array = np.ascontiguousarray(raw, dtype="<i8")
-        dtype_label = "int64_le"
-    else:
-        array = np.ascontiguousarray(raw, dtype="<f8")
-        dtype_label = "float64_le"
-    header = json.dumps(
-        {"dtype": dtype_label, "shape": list(array.shape)},
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("ascii")
-    digest = sha256()
-    digest.update(header)
-    digest.update(b"\0")
-    digest.update(array.tobytes(order="C"))
-    return digest.hexdigest()
-
-
 def _knn_indices(coordinates: np.ndarray, n_neighbors: int) -> np.ndarray:
     from scipy.spatial import cKDTree
 
@@ -78,7 +55,7 @@ def _knn_indices(coordinates: np.ndarray, n_neighbors: int) -> np.ndarray:
             )
         # Query every point tied at the kth boundary. cKDTree may otherwise
         # choose an arbitrary subset of equidistant candidates, which would
-        # make downstream velocity hashes dependent on library internals.
+        # make the downstream velocity result depend on library internals.
         provisional_order = np.lexsort((candidates, candidate_distances))
         cutoff = float(candidate_distances[provisional_order[int(n_neighbors) - 1]])
         radius = np.nextafter(cutoff, np.inf)
@@ -258,17 +235,6 @@ def project_velocity_to_embedding(
     # zero rather than a graph-density artifact even when centering is disabled.
     projected[~valid_velocity] = 0.0
 
-    hashes = {
-        "latent_coordinates_sha256": _numeric_array_sha256(coordinates),
-        "latent_velocity_sha256": _numeric_array_sha256(velocity),
-        "embedding_sha256": _numeric_array_sha256(target),
-        "neighbor_indices_sha256": _numeric_array_sha256(indices),
-        "transition_probabilities_sha256": _numeric_array_sha256(probabilities),
-        "transition_weights_sha256": _numeric_array_sha256(weights),
-        "cosine_similarities_sha256": _numeric_array_sha256(cosine),
-        "projected_velocity_sha256": _numeric_array_sha256(projected),
-    }
-
     diagnostics = {
         "algorithm": "latent_knn_cosine_softmax_embedding_displacement",
         "n_observations": n_observations,
@@ -291,10 +257,6 @@ def project_velocity_to_embedding(
         "n_rows_without_transition": int((~rows_with_transitions).sum()),
         "n_zero_embedding_displacements": int(zero_embedding_displacements.sum()),
         "epsilon": epsilon,
-        "hashes": hashes,
-        "numeric_array_hash_contract": (
-            "sha256_json_shape_canonical_little_endian_null_c_order_bytes"
-        ),
     }
     return VelocityEmbeddingProjectionResult(
         projected_velocity=projected,

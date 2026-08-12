@@ -2,6 +2,8 @@ import torch
 from torchdiffeq import odeint
 import torch.nn as nn
 
+from .interaction import cal_interaction
+
 __all__ = ['ODEFunc', 'ODEFunc2InteractionEnergy']
 
 

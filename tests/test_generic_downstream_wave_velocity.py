@@ -96,11 +96,6 @@ def test_developmental_wave_is_deterministic_under_row_and_time_permutation() ->
     pd.testing.assert_frame_equal(expected.diagnostics, actual.diagnostics)
     assert expected.settings == actual.settings
     assert len(expected.settings["phase_boundaries"]) == 3
-    assert all(
-        len(value) == 64
-        for key, value in expected.settings["hashes"].items()
-        if key.endswith("_sha256")
-    )
 
 
 def test_developmental_wave_dp_objective_is_globally_optimal() -> None:
@@ -207,7 +202,6 @@ def test_velocity_projection_matches_cosine_softmax_definition() -> None:
     )
     assert result.diagnostics["neighbor_source"] == "caller_supplied"
     assert result.diagnostics["n_neighbors_parameter_used"] is False
-    assert all(len(value) == 64 for value in result.diagnostics["hashes"].values())
 
 
 def test_velocity_projection_scale_translation_and_rotation_invariants() -> None:

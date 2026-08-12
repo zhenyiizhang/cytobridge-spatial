@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
 import json
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
@@ -54,24 +53,6 @@ class FocalLRTypeHotspotResult:
     cell_mapping: pd.DataFrame
     audit: pd.DataFrame
     settings: Mapping[str, object]
-
-
-def _canonical_string_set_sha256(values: Sequence[str]) -> str:
-    payload = json.dumps(
-        sorted(set(map(str, values))),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _canonical_string_order_sha256(values: Sequence[str]) -> str:
-    payload = json.dumps(
-        list(map(str, values)),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
 
 
 def _canonical_time_json(values: Sequence[float]) -> str:
@@ -1715,16 +1696,6 @@ def project_communication_to_lr_timecourses(
             "retained_complete_pair_celltype_trajectories": (n_pair_celltype_retained),
             "dropped_incomplete_pair_celltype_trajectories": (n_pair_celltype_dropped),
             "active_lr_subunit_symbols": active_lr_symbols,
-            "active_lr_subunit_symbol_set_sha256": _canonical_string_set_sha256(
-                active_lr_symbols
-            ),
-            "retained_pair_set_sha256": _canonical_string_set_sha256(
-                retained_pair_ids
-            ),
-            "retained_pair_id_set_sha256": _canonical_string_set_sha256(
-                retained_pair_ids
-            ),
-            "hash_contract": "sha256_canonical_sorted_unique_json_utf8",
         },
         "pca_center_source": (
             "explicit_reconstruction"
@@ -1814,8 +1785,8 @@ def compute_focal_lr_type_hotspots(
     ``cell_mapping_adata_dict`` may provide a larger display cohort than the
     audited compute cohort in ``adata_dict``. Type matrices and means are still
     calculated exclusively from ``adata_dict``; only the final type-score
-    lookup uses the display cohort. Both cohort sizes and ordered cell-ID hashes
-    are recorded in ``audit``.
+    lookup uses the display cohort. Both cohort sizes are recorded in ``audit``;
+    display cell identities remain explicit in ``cell_mapping``.
     """
     ligand = str(ligand).strip()
     receptor = str(receptor).strip()
@@ -2026,12 +1997,6 @@ def compute_focal_lr_type_hotspots(
                 "n_state_cells": int(len(display_labels)),
                 "n_compute_cells": int(len(compute_labels)),
                 "n_display_cells": int(len(display_labels)),
-                "compute_cell_id_order_sha256": _canonical_string_order_sha256(
-                    compute_state.obs_names.astype(str).tolist()
-                ),
-                "display_cell_id_order_sha256": _canonical_string_order_sha256(
-                    display_state.obs_names.astype(str).tolist()
-                ),
                 "n_expression_cells": int(coverage_row["n_expression_cells"]),
                 "n_cell_types": int(len(cell_types)),
                 "type_matrix_rows": int(len(matrix_at_time)),

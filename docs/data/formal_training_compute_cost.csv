@@ -1,0 +1,6 @@
+dataset,cells,features,total_stage_epochs,wall_time_seconds,wall_time_evidence,peak_cpu_rss_mib,peak_gpu_vram_mib
+Zebrafish,11999,26628,5252,1400.264,filesystem_span,NA,NA
+MOSTA,344603,23761,5252,1830.191,filesystem_span,NA,NA
+ARISTA,46189,2000,5252,1308.484,filesystem_span,NA,NA
+AD,172092,347,7252,917.0,recorded_run_timer,NA,NA
+Heart,NA,52,3501,NA,no_reliable_timer,NA,NA

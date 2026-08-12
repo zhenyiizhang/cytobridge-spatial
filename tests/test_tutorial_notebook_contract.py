@@ -62,12 +62,20 @@ def test_synthetic_preprocessing_notebook_has_explicit_scientific_contracts() ->
         "Path(CytoBridge.__file__).resolve()",
         'processed.uns["preprocess_info"]',
         '"double-transform"',
-        "array_sha256",
+        '"latent_shape"',
+        '"latent_all_finite"',
+        '"mapped_times"',
+        '"required_features_in_pca"',
+        'np.isfinite(processed.obsm["X_latent"]).all()',
+        'processed.obsm["X_latent"].mean(axis=0)',
         "python -m pip install -e '.[preprocess]'",
         "synthetic data only",
     }
     missing = {fragment for fragment in required_fragments if fragment not in text}
     assert not missing
+    assert "sha256" not in text.casefold()
+    assert "sha-256" not in text.casefold()
+    assert "hash-verified" not in text.casefold()
 
     forbidden_fragments = {
         "read_h5ad(",
@@ -86,11 +94,8 @@ def test_synthetic_preprocessing_notebook_has_explicit_scientific_contracts() ->
 
 def test_readme_scopes_tutorial_to_a_source_checkout() -> None:
     readme = README.read_text(encoding="utf-8")
-    assert "Run the source-checkout preprocessing tutorial" in readme
-    tutorial = readme.split(
-        "### Run the source-checkout preprocessing tutorial", 1
-    )[1].split("\n### ", 1)[0]
-    assert "From a source checkout" in tutorial
+    assert "### Run the tutorials" in readme
+    tutorial = readme.split("### Run the tutorials", 1)[1].split("\n## ", 1)[0]
     assert "python -m pip install -e '.[preprocess]'" in tutorial
     assert "pip install 'CytoBridge[preprocess]'" not in tutorial
     assert "notebooks/01_synthetic_preprocessing_contract.ipynb" in tutorial

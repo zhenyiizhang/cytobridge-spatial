@@ -1,9 +1,8 @@
 # Canonical clean-counts zebrafish six-stage training profile.
 #
-# Dataset-specific interaction cutoff, edge-classifier path, and edge threshold
-# are supplied from the preprocessed AnnData by scripts/run_zebrafish_end_to_end.py.
-# This schedule mirrors the recovered full legacy-duration workflow while using
-# the current CytoBridge API and explicit six-stage checkpoints.
+# The graph settings below are the resolved values from the formal run. The
+# edge-classifier path remains replaceable by the dataset runner or fit API.
+# This schedule uses the current API and explicit six-stage checkpoints.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
@@ -29,11 +28,11 @@ model:
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 0.12
+    cutoff: 0.09606367405591873
     use_spatial: true
     rbf_trainable: false
     edge_predictor_path: edge_classifier/zebrafish.pt
-    edge_predictor_thre: 0.63
+    edge_predictor_thre: 0.4999999701976776
 
 ckpt_dir: results/zebrafish_spatial_full
 reverse: true

@@ -10,6 +10,7 @@
   },
   "scientific": {
     "seed": 42,
+    "alpha_spatial": 10.0,
     "alpha_express": 0.015,
     "classifier_k": 10
   },
@@ -54,8 +55,9 @@
   },
   "train": {
     "config": "zebrafish_spatial_full_alpha_express_0015.yaml",
+    "interaction_cutoff": 0.09606367405591873,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.63,
+    "edge_predictor_threshold": 0.4999999701976776,
     "evaluate_after_training": false
   },
   "downstream": {
@@ -68,9 +70,9 @@
     "classifier_lr": 0.001,
     "classifier_best_metric": "bacc",
     "classifier_strict_stratification": true,
-    "sde_n_samples": 5000,
+    "sde_n_samples": null,
     "sde_dt": 0.05,
-    "split_sde_dt": 0.01,
+    "split_sde_dt": 0.05,
     "split_sigma": 0.03,
     "split_growth_alpha": 1.0
   }

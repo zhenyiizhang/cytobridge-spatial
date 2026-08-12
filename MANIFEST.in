@@ -1,0 +1,45 @@
+include .readthedocs.yaml
+include CITATION.cff
+include LICENSE
+include Makefile
+include README.md
+include requirements.txt
+
+recursive-include docs *.css *.csv *.md *.py *.rst
+recursive-include notebooks *.ipynb *.md
+recursive-include requirements *.txt
+recursive-include CytoBridge/configs *.yaml
+
+# Ship the maintained source-release entry points. Historical machine-specific
+# research scripts remain in Git but are not presented as supported package
+# interfaces.
+include scripts/README.md
+include scripts/README_downstream_workflow.md
+include scripts/compare_zebrafish_conditions.py
+include scripts/complete_downstream.py
+include scripts/convert_legacy_model_input_csv.py
+include scripts/convert_legacy_weights_to_ckpt.py
+include scripts/launch_mosta_alignment_sensitivity.sh
+include scripts/launch_mosta_formal_full_alignment.sh
+include scripts/launch_mosta_paired_alpha.sh
+include scripts/preprocess_pipeline.py
+include scripts/run_arista_end_to_end.py
+include scripts/run_downstream_workflow_example.py
+include scripts/run_mosta_alignment_sensitivity.py
+include scripts/run_mosta_end_to_end.py
+include scripts/run_spatial_training.py
+include scripts/run_spatiotemporal_downstream.py
+include scripts/run_zebrafish_end_to_end.py
+include scripts/run_zebrafish_paper_downstream.py
+include scripts/smoke_dataset_notebooks.py
+include scripts/smoke_installed_wheel.py
+include scripts/summarize_release_evidence.py
+include scripts/summarize_training_history.py
+recursive-include scripts/reviewer_zebrafish_ccc *.R *.csv *.md *.py
+recursive-include scripts/reviewer_zebrafish_response *.py
+recursive-include scripts/spatiotemporal_benchmark *.json *.md *.py
+
+prune docs/_build
+global-exclude .DS_Store
+global-exclude *.py[cod]
+global-exclude __pycache__

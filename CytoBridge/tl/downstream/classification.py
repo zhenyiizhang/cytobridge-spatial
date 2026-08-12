@@ -1091,22 +1091,6 @@ def _seed_classifier_training(seed: int) -> None:
         torch.cuda.manual_seed_all(int(seed))
 
 
-def _classifier_state_sha1(model: nn.Module) -> str:
-    digest = sha1()
-    for name, value in sorted(model.state_dict().items()):
-        tensor = value.detach().cpu().contiguous()
-        digest.update(str(name).encode("utf-8"))
-        digest.update(str(tensor.dtype).encode("utf-8"))
-        digest.update(str(tuple(tensor.shape)).encode("utf-8"))
-        digest.update(tensor.numpy().tobytes())
-    return digest.hexdigest()
-
-
-def _indices_sha1(indices: np.ndarray) -> str:
-    values = np.ascontiguousarray(indices, dtype=np.int64)
-    return sha1(values.tobytes()).hexdigest()
-
-
 def _train_mlp_classifier_arrays_detailed(
     X: np.ndarray,
     y: Sequence[str],
@@ -1173,7 +1157,6 @@ def _train_mlp_classifier_arrays_detailed(
     num_classes = int(len(label_encoder.classes_))
     _seed_classifier_training(seed)
     model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes).to(dev)
-    selection_initial_state_sha1 = _classifier_state_sha1(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(epochs), eta_min=1e-5)
@@ -1204,7 +1187,6 @@ def _train_mlp_classifier_arrays_detailed(
 
     model.load_state_dict(best_model_wts)
     model.eval()
-    selection_model_state_sha1 = _classifier_state_sha1(model)
     with torch.no_grad():
         test_preds = torch.argmax(model(X_test_t), dim=1).detach().cpu().numpy()
         train_preds = torch.argmax(model(X_train_t), dim=1).detach().cpu().numpy()
@@ -1221,9 +1203,6 @@ def _train_mlp_classifier_arrays_detailed(
         output_dict=True,
         zero_division=0,
     )
-    split_digest = sha1()
-    split_digest.update(np.asarray(train_indices, dtype=np.int64).tobytes())
-    split_digest.update(np.asarray(test_indices, dtype=np.int64).tobytes())
     overlap = np.intersect1d(train_indices, test_indices, assume_unique=False)
     union = np.union1d(train_indices, test_indices)
 
@@ -1239,9 +1218,6 @@ def _train_mlp_classifier_arrays_detailed(
         "optimizer_steps": 0,
         "scheduler_t_max": None,
         "scheduler_last_epoch": None,
-        "data_indices_sha1": None,
-        "initial_state_sha1": None,
-        "final_state_sha1": None,
         "train_accuracy": None,
         "train_balanced_accuracy": None,
         "initial_loss": None,
@@ -1260,7 +1236,6 @@ def _train_mlp_classifier_arrays_detailed(
             hidden_size=hidden_size,
             num_classes=num_classes,
         ).to(dev)
-        refit_initial_state_sha1 = _classifier_state_sha1(refit_model)
         refit_optimizer = torch.optim.Adam(refit_model.parameters(), lr=lr)
         # Preserve the Phase-A scheduler horizon rather than compressing the
         # cosine schedule to the selected best_epoch.
@@ -1294,9 +1269,6 @@ def _train_mlp_classifier_arrays_detailed(
             "optimizer_steps": int(best_epoch),
             "scheduler_t_max": int(epochs),
             "scheduler_last_epoch": int(refit_scheduler.last_epoch),
-            "data_indices_sha1": _indices_sha1(all_indices),
-            "initial_state_sha1": refit_initial_state_sha1,
-            "final_state_sha1": _classifier_state_sha1(refit_model),
             "train_accuracy": float(accuracy_score(y_encoded, refit_preds)),
             "train_balanced_accuracy": float(
                 balanced_accuracy_score(y_encoded, refit_preds)
@@ -1315,8 +1287,6 @@ def _train_mlp_classifier_arrays_detailed(
         "n_union": int(len(union)),
         "disjoint": bool(len(overlap) == 0),
         "covers_all_rows": bool(len(union) == len(y_encoded)),
-        "train_indices_sha1": _indices_sha1(train_indices),
-        "validation_indices_sha1": _indices_sha1(test_indices),
     }
     selection_scope = (
         "training data used for model selection (legacy full-data mode)"
@@ -1345,7 +1315,6 @@ def _train_mlp_classifier_arrays_detailed(
         "stratification_fallback_reason": split_metadata[
             "stratification_fallback_reason"
         ],
-        "split_indices_sha1": split_digest.hexdigest(),
         "n_train": int(len(train_indices)),
         "n_validation": int(len(test_indices)),
         "split_contract": split_contract,
@@ -1358,15 +1327,12 @@ def _train_mlp_classifier_arrays_detailed(
             "best_epoch": int(best_epoch),
             "metric": metric,
             "best_score": float(best_score),
-            "initial_state_sha1": selection_initial_state_sha1,
-            "selected_state_sha1": selection_model_state_sha1,
             "train_accuracy": float(train_accuracy),
             "train_balanced_accuracy": float(train_balanced_accuracy),
             "validation_accuracy": float(accuracy),
             "validation_balanced_accuracy": float(balanced_accuracy),
         },
         "refit": refit_evaluation,
-        "returned_model_state_sha1": _classifier_state_sha1(returned_model),
         "per_class": per_class,
         "confusion_matrix": confusion_matrix(y_test, test_preds, labels=labels).tolist(),
     }

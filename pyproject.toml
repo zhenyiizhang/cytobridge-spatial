@@ -6,14 +6,21 @@ build-backend = "setuptools.build_meta"
 name = "CytoBridge"
 description = "CytoBridge package for spatiotemporal single-cell and spatial transcriptomics analysis."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
+authors = [
+  { name = "Zhenyi Zhang" },
+  { name = "Zihan Wang" },
+  { name = "Jiantao Shen" },
+  { name = "Peijie Zhou" },
+]
+license = { file = "LICENSE" }
 keywords = [
   "single-cell",
   "spatial-transcriptomics",
   "spatiotemporal-modeling",
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   "Operating System :: OS Independent",
@@ -24,11 +31,16 @@ classifiers = [
 ]
 dynamic = ["dependencies", "optional-dependencies", "version"]
 
+[project.urls]
+Documentation = "https://cytobridge.readthedocs.io/"
+Issues = "https://github.com/zhenyiizhang/cytobridge-spatial/issues"
+Repository = "https://github.com/zhenyiizhang/cytobridge-spatial"
+
 [project.scripts]
 cytobridge = "CytoBridge.cli:main"
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["CytoBridge*"]
@@ -39,6 +51,7 @@ version = { attr = "CytoBridge._version.__version__" }
 
 [tool.setuptools.dynamic.optional-dependencies]
 all = { file = ["requirements/all.txt"] }
+docs = { file = ["requirements/docs.txt"] }
 graph = { file = ["requirements/graph.txt"] }
 notebook = { file = ["requirements/notebook.txt"] }
 plot = { file = ["requirements/plot.txt"] }
@@ -48,4 +61,10 @@ train = { file = ["requirements/train.txt"] }
 velocity = { file = ["requirements/velocity.txt"] }
 
 [tool.setuptools.package-data]
-CytoBridge = ["configs/*.yaml", "workflow_configs/*.json"]
+CytoBridge = [
+  "configs/admouse_spatial_full_alpha_express_0015.yaml",
+  "configs/arista_spatial_full.yaml",
+  "configs/mosta_spatial_full_alpha_express_0015.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015.yaml",
+  "workflow_configs/*.json",
+]

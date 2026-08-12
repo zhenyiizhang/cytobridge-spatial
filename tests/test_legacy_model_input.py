@@ -61,7 +61,7 @@ def test_legacy_model_input_h5ad_round_trip(tmp_path) -> None:
     assert output.is_file()
     assert written.n_obs == 3
     assert loaded.n_obs == 3
-    assert loaded.uns["legacy_model_input"]["source_sha256"]
+    assert loaded.uns["legacy_model_input"]["source_csv"] == str(source.resolve())
 
 
 def test_legacy_model_input_accepts_table_without_annotation(tmp_path) -> None:

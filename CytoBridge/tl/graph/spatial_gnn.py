@@ -33,6 +33,7 @@ class GNNInteraction(nn.Module):
         edge_predictor_thre: float = 0.5,
         edge_predictor_root: Optional[str] = None,
         edge_prior_mode: str = "learned",
+        load_edge_predictor_from_path: bool = True,
     ):
         super().__init__()
         if MessagePassing is None:
@@ -76,21 +77,21 @@ class GNNInteraction(nn.Module):
         )
 
         if self.edge_prior_mode == "learned":
-            if edge_predictor_path is None:
-                raise ValueError(
-                    "edge_predictor_path must be provided when "
-                    "edge_prior_mode='learned'."
-                )
-            predictor_path = os.path.expanduser(edge_predictor_path)
-            if edge_predictor_root is not None and not os.path.isabs(predictor_path):
-                predictor_path = os.path.join(edge_predictor_root, predictor_path)
-            if not os.path.isabs(predictor_path):
-                predictor_path = os.path.abspath(predictor_path)
-
             self.link_predictor = LinkPredictorMLP(input_dim=in_out_dim * 2)
-            self.link_predictor.load_state_dict(
-                torch.load(predictor_path, map_location=torch.device("cpu"))
-            )
+            if load_edge_predictor_from_path:
+                if edge_predictor_path is None:
+                    raise ValueError(
+                        "edge_predictor_path must be provided when "
+                        "edge_prior_mode='learned'."
+                    )
+                predictor_path = os.path.expanduser(edge_predictor_path)
+                if edge_predictor_root is not None and not os.path.isabs(predictor_path):
+                    predictor_path = os.path.join(edge_predictor_root, predictor_path)
+                if not os.path.isabs(predictor_path):
+                    predictor_path = os.path.abspath(predictor_path)
+                self.link_predictor.load_state_dict(
+                    torch.load(predictor_path, map_location=torch.device("cpu"))
+                )
             for param in self.link_predictor.parameters():
                 param.requires_grad = False
             self.link_predictor.eval()

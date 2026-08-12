@@ -1,7 +1,7 @@
 {
   "dataset": {
     "name": "arista",
-    "display_name": "ARISTA human brain organoid",
+    "display_name": "ARISTA salamander brain regeneration",
     "annotation_key": "Annotation",
     "time_key": "time_point_processed",
     "obsm_key": "X_latent",
@@ -10,6 +10,7 @@
   },
   "scientific": {
     "seed": 42,
+    "alpha_spatial": 10.0,
     "alpha_express": 0.015,
     "classifier_k": 10
   },
@@ -44,8 +45,9 @@
   },
   "train": {
     "config": "arista_spatial_full.yaml",
+    "interaction_cutoff": 0.03154105148551745,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.45,
+    "edge_predictor_threshold": 0.23999999463558197,
     "evaluate_after_training": false
   },
   "downstream": {
@@ -58,7 +60,7 @@
     "classifier_lr": 0.001,
     "classifier_best_metric": "bacc",
     "classifier_strict_stratification": true,
-    "sde_n_samples": 5000,
+    "sde_n_samples": 7668,
     "sde_dt": 0.05,
     "split_sde_dt": 0.01,
     "split_sigma": 0.03,

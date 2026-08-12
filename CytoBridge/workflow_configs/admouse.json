@@ -2,7 +2,7 @@
   "dataset": {
     "name": "admouse",
     "display_name": "AD mouse brain",
-    "annotation_key": "Annotation",
+    "annotation_key": "major_annotation",
     "time_key": "time_point_processed",
     "obsm_key": "X_latent",
     "spatial_key": "spatial_aligned",
@@ -10,6 +10,7 @@
   },
   "scientific": {
     "seed": 42,
+    "alpha_spatial": 10.0,
     "alpha_express": 0.015,
     "classifier_k": 1
   },
@@ -18,25 +19,30 @@
   },
   "preprocess": {
     "enabled": false,
-    "note": "The released AD workflow starts from the package-processed aligned H5AD; supply it with --aligned-h5ad."
+    "note": "The matched alpha_express=0.015 formal run reused the released aligned H5AD and edge model. Supply that aligned H5AD with --aligned-h5ad; raw preprocessing is not part of this exact formal preset."
   },
   "train": {
-    "config": null,
+    "config": "admouse_spatial_full_alpha_express_0015.yaml",
+    "interaction_cutoff": 0.012106042891492197,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.69,
+    "edge_predictor_threshold": 0.32999998331069946,
     "evaluate_after_training": false
   },
   "downstream": {
     "enabled": true,
-    "model_format": "legacy",
+    "model_format": "current",
     "observed": [0.0, 1.0, 2.0],
-    "interpolated": [0.5, 1.5],
+    "interpolated": [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+      1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+      2.1, 2.2, 2.3, 2.4, 2.5
+    ],
     "classifier_epochs": 500,
     "classifier_hidden_size": 128,
     "classifier_lr": 0.001,
     "classifier_best_metric": "bacc",
     "classifier_strict_stratification": true,
-    "sde_n_samples": 5000,
+    "sde_n_samples": null,
     "sde_dt": 0.05,
     "split_sde_dt": 0.01,
     "split_sigma": 0.03,

@@ -8,7 +8,6 @@ reconstruct unavailable gene counts.
 
 from __future__ import annotations
 
-import hashlib
 import re
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -19,14 +18,6 @@ from anndata import AnnData
 
 
 _TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def _map_time_values(
@@ -183,7 +174,6 @@ def legacy_model_input_csv_to_adata(
     }
     adata.uns["legacy_model_input"] = {
         "source_csv": str(source),
-        "source_sha256": _sha256(source),
         "n_rows": int(len(frame)),
         "time_column": time_column,
         "time_mapping": mapping_used if mapping_used is not None else "numeric_values_preserved",

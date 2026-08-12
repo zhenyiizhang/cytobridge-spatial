@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 import random
 import torch
 import numpy as np
 import math
 import os
-from anndata import AnnData
-from torchdiffeq import odeint
-from sklearn.decomposition import PCA
+from typing import TYPE_CHECKING
 
-from ..tl.core.models import DynamicalModel
+from anndata import AnnData
+
+if TYPE_CHECKING:
+    from ..tl.core.models import DynamicalModel
 
 def trace_df_dz(f, z):
     sum_diag = 0.0
@@ -70,6 +73,8 @@ def check_submodules(model):
     return growth_net_exists, score_net_exists, interaction_net_exists
 
 def load_model_from_adata(adata: AnnData) -> torch.nn.Module:
+    from ..tl.core.models import DynamicalModel
+
     if 'all_model' not in adata.uns or 'model_config' not in adata.uns['all_model']:
         raise ValueError("CytoBridge model information not found. Please fit the model first.")
 
@@ -92,12 +97,6 @@ def load_model_from_adata(adata: AnnData) -> torch.nn.Module:
 
     print("Model loaded successfully.")
     return model
-
-#%%
-import torch
-from anndata import AnnData
-from CytoBridge.tl.core.models import DynamicalModel
-import os
 
 def save_model_to_adata(adata: AnnData, model: DynamicalModel) -> None:
     """
@@ -149,6 +148,8 @@ def load_model_from_file(load_path: str, latent_dim: int) -> DynamicalModel:
     Returns:
         DynamicalModel instance with loaded weights
     """
+    from ..tl.core.models import DynamicalModel
+
     checkpoint = torch.load(load_path)
     model = DynamicalModel(latent_dim, checkpoint['model_config'])
     model.load_state_dict(checkpoint['state_dict'])

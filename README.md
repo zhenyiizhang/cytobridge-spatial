@@ -1,8 +1,19 @@
 # CytoBridge Spatial
 
-CytoBridge Spatial is the core codebase for preprocessing, spatial alignment, interaction graph construction, and dynamical model training on spatial transcriptomics time-series data.
+CytoBridge Spatial is the complete Python codebase for preprocessing, spatial
+alignment, interaction graph construction, dynamical model fitting, downstream
+analysis, benchmarking, and visualization of spatial transcriptomics time
+series.
 
-This repository is intended to be the main methods and package repository for manuscript submission and code release. Downstream figure notebooks can live in a separate companion repository. Large raw datasets and ligand-receptor databases are not bundled here.
+This is the release-candidate package and methods repository. New analyses and datasets should
+extend these public APIs rather than copy training or downstream pipelines into
+separate code trees. Large raw datasets, trained checkpoints, and external
+ligand-receptor databases are not bundled here.
+
+Raw-data accessions, aligned-AnnData keys, checkpoint layout, LR-table format,
+and the downstream output tree are documented in
+[`docs/data_checkpoints.md`](docs/data_checkpoints.md). The processed formal
+H5ADs/checkpoints still need a public archive DOI before the 1.5 stable release.
 
 ## Scope
 
@@ -10,7 +21,9 @@ This repository contains:
 
 - the installable Python package `CytoBridge/`
 - preprocessing and training scripts in `scripts/`
-- a small synthetic, non-manuscript tutorial in `notebooks/`
+- four dataset tutorials plus one small synthetic preprocessing tutorial in
+  `notebooks/`
+- ReadTheDocs source in `docs/`
 - training configuration files in `CytoBridge/configs/`
 - repository-scoped edge-predictor checkpoints in `edge_classifier/` (these
   files are not installed into the wheel)
@@ -18,7 +31,7 @@ This repository contains:
 This repository does not aim to store:
 
 - large raw or processed datasets
-- manuscript-specific downstream notebooks
+- large generated manuscript artifacts and raw result bundles
 - external ligand-receptor databases beyond user-supplied resources
 
 ## Repository Layout
@@ -31,23 +44,27 @@ cytobridge-spatial/
 │   ├── pl/        # visualization helpers
 │   └── configs/   # YAML training configs
 ├── scripts/       # end-to-end preprocessing / training / evaluation scripts
-├── notebooks/     # synthetic tutorials; no manuscript result inputs
+├── notebooks/     # four dataset workflows + one synthetic tutorial
+├── docs/          # ReadTheDocs user guide, tutorials, and API reference
 ├── edge_classifier/
 ├── environment.yml
 ├── requirements.txt
 └── README.md
 ```
 
-## Tested Environment
+## Supported Python versions
 
-The current codebase has been validated in the `cb_pipeline` Conda environment with Python 3.10. The provided `environment.yml` recreates that environment. Existing environments such as `DeepRUOTv2` can also be used after installing every package in `requirements.txt`, including `qnorm`.
+CytoBridge 1.5 supports Python 3.10 and 3.11. The release checks exercise both
+versions. The provided `environment.yml` remains a convenient development
+environment, while the wheel extras below are the supported installation
+interface.
 
 ## Installation
 
 ### Option 1: Reproducible Conda environment
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
 
 conda env create -f environment.yml
@@ -80,7 +97,7 @@ pip install 'CytoBridge[train]'
 # Complete spatial preprocessing/training/graph workflow
 pip install 'CytoBridge[spatial]'
 
-# Plotting, velocity/terminal-state, or notebook support
+# Plotting, velocity/terminal-state, or the executable dataset notebooks
 pip install 'CytoBridge[plot]'
 pip install 'CytoBridge[velocity]'
 pip install 'CytoBridge[notebook]'
@@ -134,7 +151,8 @@ modify caches, data, or configuration.
 ### Package-native workflow command
 
 The installed wheel includes readable presets for Zebrafish, MOSTA, ARISTA,
-and AD mouse. Inspect a complete plan before supplying large inputs:
+and AD mouse. Install `CytoBridge[all]` for the complete model, graph, and
+figure stack, then inspect a complete plan before supplying large inputs:
 
 ```bash
 cytobridge workflow --list-configs
@@ -143,9 +161,17 @@ cytobridge workflow --config admouse --dry-run --json
 ```
 
 The plan prints the dataset policy, scientific parameters, steps, compute
-requirements, and any missing input. The formal defaults are seed 42 and
-`alpha_express=0.015`; generated-cell annotations use `k=10` for Zebrafish,
-MOSTA, and ARISTA, and `k=1` for AD mouse.
+requirements, and any missing input. The primary settings are seed 42,
+`alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
+`k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse. The packaged
+training profiles use the graph values resolved in the accepted runs:
+
+| preset | interaction cutoff | edge threshold |
+|---|---:|---:|
+| MOSTA | 0.02400244047956264 | 0.44999998807907104 |
+| ARISTA | 0.03154105148551745 | 0.23999999463558197 |
+| Zebrafish | 0.09606367405591873 | 0.4999999701976776 |
+| AD mouse | 0.012106042891492197 | 0.32999998331069946 |
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:
@@ -157,13 +183,60 @@ cytobridge workflow --config zebrafish --step preprocess \
   --output-dir /runs/zebrafish \
   --device cuda
 
-# Interpolation and generated-slice annotation from an existing model
+# Complete shared downstream chain from an existing model
 cytobridge workflow --config zebrafish --step downstream \
   --aligned-h5ad /runs/zebrafish/preprocess/zebrafish_aligned.h5ad \
   --model-dir /runs/zebrafish/training \
   --output-dir /runs/zebrafish \
   --device cuda
 ```
+
+Current CytoBridge checkpoints contain the learned edge-predictor weights, so
+copied model directories do not depend on the original training-machine path.
+For an older current-format checkpoint that lacks those embedded weights, add
+`--edge-predictor-path /path/to/edge_model.pt` when running downstream.
+
+The downstream step now executes the common quantitative chain, rather than
+stopping after interpolation. It writes generated H5AD slices, classifier
+scores, observed-slice velocity components, per-cell growth, cell-type
+composition, sparse model-edge communication, and readable CSV tables. It also
+renders the shared white-background snapshot/mosaic, velocity, growth,
+composition, and 3D communication figures. Lineage is emitted only when the
+dataset config explicitly declares a persistent fixed-particle identity
+contract; the current generic presets conservatively omit it. The package
+workflow does not apply spatial warping, and communication, growth, gene,
+LR, and reconstruction diagnostics all use the unwarped model states.
+
+The packaged downstream profiles also keep the formal simulation scope:
+Zebrafish uses every observed t0 cell on its nine analysis slices; MOSTA uses
+12,000 starting particles on 13 slices; ARISTA uses 7,668 particles on nine
+slices; and AD mouse uses all 53,615 observed t0 cells on the 26-point grid
+from model time 0 to 2.5. These are production analyses, not compact examples.
+
+Temporal gene reconstruction and ligand-receptor projection are explicit
+because they need data beyond a model checkpoint. The reference H5AD must keep
+the exact fitted PCA loadings in `varm['PCs']` and center in
+`var['pca_center']`; LR analysis also requires an explicit database. Complexes
+are strict by default: every subunit must be present and the minimum subunit
+expression is used. The geometric mean is available only as an explicit
+sensitivity setting:
+
+```bash
+cytobridge workflow --config zebrafish --step downstream \
+  --aligned-h5ad /runs/zebrafish/preprocess/zebrafish_aligned.h5ad \
+  --model-dir /runs/zebrafish/training \
+  --output-dir /runs/zebrafish \
+  --gene-dynamics \
+  --lr-database /data/ligand_receptor.csv \
+  --lr-complex-mode min \
+  --device cuda
+```
+
+`--reconstruction-diagnostic` adds W2 comparisons between the fitted model's
+generated population and later observed slices. The output is deliberately
+named a fitted-model reconstruction diagnostic: it is not a training holdout
+and not a cross-method benchmark. Use the matched benchmark pipeline for those
+claims.
 
 Training never runs implicitly. Add `--train`, the aligned H5AD, and the
 dataset's edge-predictor checkpoint to enable it:
@@ -177,15 +250,37 @@ cytobridge workflow --config mosta --train --step downstream \
 ```
 
 Use `--training-config /path/to/config.yaml` to replace a packaged training
-preset. AD mouse intentionally starts from the released aligned H5AD and legacy
-model bundle; its preset reports those required inputs rather than inventing a
-new raw-data preprocessing or training recipe.
+preset. The AD mouse preset now includes the resolved six-stage
+`100/100/50/3001/1000/3001` profile. The formal matched 0.015 run reused the
+released aligned H5AD and edge model, so the exact preset deliberately does not
+rerun raw preprocessing. Pass those two artifacts with `--aligned-h5ad` and
+`--edge-predictor-path` to reproduce the formal training input.
 
-### Run the source-checkout preprocessing tutorial
+### Run the tutorials
 
-From a source checkout, install the preprocessing dependencies in the
-environment that provides your Jupyter frontend, then open the checked-in
-tutorial:
+The four dataset notebooks are package-facing walkthroughs for Zebrafish,
+MOSTA, ARISTA, and AD mouse. They read the wheel-bundled presets, keep training
+explicit, and cover interpolation/classification, time-slice velocity, growth,
+sparse communication, strict ligand-receptor analysis, and pre-warp evaluation:
+
+```bash
+python -m pip install -e '.[all]'
+jupyter lab notebooks/01_zebrafish.ipynb
+```
+
+That path is a source-checkout command. Wheel users can download each notebook
+from the ReadTheDocs tutorial page or GitHub, then open the downloaded file;
+the `notebook` and `all` extras install its runtime but do not copy notebooks
+into the current directory.
+
+Zebrafish, MOSTA, and ARISTA use the formal spatial-domain label setting
+`k=10`; AD uses `k=1`. The notebooks are committed without outputs. Their
+release smoke uses synthetic data and verifies package wiring; the formal
+scientific results come from the corresponding full-data runs.
+
+For a focused source-checkout preprocessing tutorial, install only the
+preprocessing dependencies in the environment that provides your Jupyter
+frontend, then open the checked-in tutorial:
 
 ```bash
 python -m pip install -e '.[preprocess]'
@@ -292,10 +387,9 @@ This mode treats the shared aligned H5AD, PCA contract, graph, and edge
 predictor as read-only inputs and records their path/identity in the new run
 manifest.
 
-On a shared GPU server, the repository also provides a guarded launcher that
-uses a per-GPU file lock, refuses an occupied GPU or non-clean code snapshot,
-and keeps the paired run's logs, caches, status, training, and evaluation in a
-fresh output directory:
+For a paired expression-weight sensitivity run, the repository also provides a
+small launcher that keeps the baseline and candidate outputs in separate
+directories:
 
 ```bash
 scripts/launch_mosta_paired_alpha.sh \
@@ -431,8 +525,8 @@ components = compute_velocity_components(
 
 The feature table must match the checkpoint contract recorded in
 `params.yml`; the published ARISTA checkpoint expects 52 model dimensions
-(two aligned spatial coordinates followed by 50 expression PCs). The companion
-`cb_reproducibility` repository contains the canonical executable notebook.
+(two aligned spatial coordinates followed by 50 expression PCs). The checked-in
+`notebooks/03_arista.ipynb` provides the package-facing executable tutorial.
 
 ## Canonical ARISTA reproduction
 
@@ -599,8 +693,10 @@ nearly identical scale (median nearest-neighbor distance `0.003160` versus
 `0.003142`; coordinate correlations `0.9977` and `0.9900`). The historical
 `0.05` cutoff is therefore not explained by a coordinate rescaling: it spans
 about `15.8` historical median-neighbor distances, whereas the full-data
-preprocessing cutoff `0.031543` spans about `10.0`. The current edge threshold
-is `0.35` (validation-selected), compared with the historical `0.45`.
+preprocessing cutoff `0.031543` spans about `10.0`. The intermediate
+clean-counts audit selected an edge threshold of `0.35`, compared with the
+historical `0.45`. The later formal alpha-0.015 package preset resolved the
+threshold to `0.23999999463558197`; that formal value is the shipped default.
 
 The formal full-data comparison uses mean metrics across the five observed
 times. The strict threshold control reuses the exact same aligned H5AD and edge
@@ -634,8 +730,8 @@ Additional shared ARISTA panel APIs include
 interpolated cell-type composition table and stacked fraction panel used for
 S14b; `evaluate_growth_by_timepoint` and `plot_growth_timepoint_grid` produce
 the S13 per-cell table and dense observed/generated spatial grid. Their inputs are
-generic AnnData keys and model components; the companion notebooks contain only
-the ARISTA timepoint, annotation, and reaEGC ROI choices.
+generic AnnData keys and model components; the ARISTA dataset tutorial contains
+only the timepoint, annotation, and reaEGC ROI choices.
 
 For manuscript-style layouts, `plot_trajectory_grid` can wrap time points into
 multiple rows with one shared legend, while `plot_trajectory_comparison_grid`
@@ -654,11 +750,10 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   optional `candidate_features` argument freezes the exact original PCA-feature
   universe eligible for temporal-variance ranking; missing, duplicate, or
   center-only candidates are strict errors, and the requested/used sets are
-  recorded in the result settings. Its default `clip_min=None`
-  preserves the signed linear inverse-PCA estimator used by formal MOSTA;
-  formal zebrafish callers explicitly request `clip_min=0.0`, which clips each
-  reconstructed cell before taking the time-point mean and retains the signed
-  pre-clip table and diagnostics;
+  recorded in the result settings. Its default `clip_min=0.0` clips every
+  reconstructed cell before taking the time-point mean, matching a
+  non-negative log1p expression scale. `clip_min=None` remains available only
+  for a separately labelled legacy signed diagnostic;
 - `evaluate_pca_anchor_reconstruction` checks observed log1p anchors against
   their exact-center inverse-PCA reconstruction in bounded cell chunks. It
   expects a caller-supplied view restricted to the intended biological cells
@@ -677,8 +772,9 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   zero-filling missing times. Pair identity is the structured
   `(ligand, receptor)` tuple and a reversible JSON `pair_id`; the historical
   underscore-joined `pair` is display-only because complex names can collide.
-  `complex_mode="geometric_mean"` is zero-preserving and available alongside
-  the historical minimum rule. Unsupported cell types stay unavailable/NaN,
+  The formal rule is `complex_mode="min"` with every subunit required;
+  `complex_mode="geometric_mean"` is a separately labelled sensitivity.
+  Unsupported cell types stay unavailable/NaN,
   never an invented zero;
 - `compute_focal_lr_type_hotspots` implements the article-style focal-panel
   estimand `mean_sender(ligand) * mean_receiver(receptor_complex) *
@@ -957,14 +1053,26 @@ Typical training and preprocessing outputs include:
 - staged training checkpoints under a results directory
 - figures and downstream artifacts generated by analysis scripts
 
-## Companion Resources
+## External Resources
 
-For a clean code release, we recommend keeping the following resources separate from this repository:
+The following large or redistribution-restricted resources stay outside the
+Git repository and are supplied explicitly by users:
 
-- a companion repository containing downstream notebooks for figure generation
 - dataset download instructions or accession numbers
 - the ligand-receptor database files used for preprocessing, if redistribution is restricted
 
-## Citation
+## Documentation and citation
 
-If you use this repository in academic work, please cite the associated manuscript once available.
+The complete user guide, four dataset tutorials, and API reference are built
+from `docs/` and published through Read the Docs. To preview only the
+documentation pages locally, install the base package plus the documentation
+tools; install `.[all]` when you also want to execute the scientific examples:
+
+```bash
+python -m pip install -e '.[docs]'
+make docs
+```
+
+If you use CytoBridge in academic work, cite the software metadata in
+`CITATION.cff` and the associated manuscript once its final citation is
+available.

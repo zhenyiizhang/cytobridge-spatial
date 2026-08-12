@@ -151,8 +151,12 @@ def test_cli_writes_metrics_summary_plot_and_hash_manifest(tmp_path: Path) -> No
     assert len(
         manifest["inputs"]["time_grid"]["values_sha256_float64_le"]
     ) == 64
-    assert len(manifest["code"]["git"]["commit"]) == 40
-    assert isinstance(manifest["code"]["git"]["dirty"], bool)
+    git_commit = manifest["code"]["git"]["commit"]
+    # Source distributions intentionally do not contain a .git directory.
+    # Reporting that boundary as null is more accurate than inventing an ID.
+    assert git_commit is None or len(git_commit) == 40
+    git_dirty = manifest["code"]["git"]["dirty"]
+    assert git_dirty is None or isinstance(git_dirty, bool)
     assert "--variant" in manifest["command"]["argv"]
     for key, path in (
         ("metrics", metrics_path),

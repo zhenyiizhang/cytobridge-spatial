@@ -28,13 +28,17 @@ class InstalledPackageContractTests(unittest.TestCase):
 
         distribution = metadata.distribution("CytoBridge")
         self.assertEqual(distribution.metadata["Name"], "CytoBridge")
-        self.assertEqual(distribution.metadata["Requires-Python"], ">=3.10")
+        self.assertEqual(
+            {part.strip() for part in distribution.metadata["Requires-Python"].split(",")},
+            {">=3.10", "<3.12"},
+        )
         self.assertEqual(distribution.version, CytoBridge.__version__)
         self.assertNotIn(PROJECT_ROOT, Path(CytoBridge.__file__).resolve().parents)
         self.assertEqual(
             set(distribution.metadata.get_all("Provides-Extra") or []),
             {
                 "all",
+                "docs",
                 "graph",
                 "notebook",
                 "plot",
@@ -99,6 +103,7 @@ class InstalledPackageContractTests(unittest.TestCase):
             {
                 "all",
                 "core",
+                "docs",
                 "graph",
                 "notebook",
                 "plot",
@@ -113,10 +118,16 @@ class InstalledPackageContractTests(unittest.TestCase):
         )
 
     def test_config_package_data_is_present(self) -> None:
-        config = resources.files("CytoBridge").joinpath(
-            "configs", "simulation_config.yaml"
+        configs = resources.files("CytoBridge").joinpath("configs")
+        self.assertEqual(
+            {path.name for path in configs.iterdir() if path.suffix == ".yaml"},
+            {
+                "admouse_spatial_full_alpha_express_0015.yaml",
+                "arista_spatial_full.yaml",
+                "mosta_spatial_full_alpha_express_0015.yaml",
+                "zebrafish_spatial_full_alpha_express_0015.yaml",
+            },
         )
-        self.assertTrue(config.is_file())
         workflow_configs = resources.files("CytoBridge").joinpath("workflow_configs")
         self.assertEqual(
             {path.name for path in workflow_configs.iterdir() if path.suffix == ".json"},

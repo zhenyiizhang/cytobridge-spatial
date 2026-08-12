@@ -63,7 +63,29 @@ _DEPENDENCY_PROFILES = {
         "torch_geometric",
         "torchdiffeq",
     ),
-    "notebook": ("ipywidgets", "phate"),
+    "notebook": (
+        "geomloss",
+        "ipywidgets",
+        "jupyterlab",
+        "matplotlib",
+        "ot",
+        "phate",
+        "PIL",
+        "qnorm",
+        "scanpy",
+        "seaborn",
+        "torch",
+        "torch_geometric",
+        "torchdiffeq",
+    ),
+    "docs": (
+        "furo",
+        "myst_parser",
+        "nbsphinx",
+        "sphinx",
+        "sphinx_copybutton",
+        "sphinx_design",
+    ),
 }
 _PROFILE_INCLUDES = {
     "core": ("core",),
@@ -73,6 +95,7 @@ _PROFILE_INCLUDES = {
     "velocity": ("core", "velocity"),
     "graph": ("core", "graph"),
     "notebook": ("core", "notebook"),
+    "docs": ("core", "docs"),
     "spatial": ("core", "preprocess", "train", "graph"),
     "all": tuple(_DEPENDENCY_PROFILES),
 }
@@ -177,10 +200,13 @@ def _parser() -> argparse.ArgumentParser:
         prog="cytobridge",
         description="CytoBridge package diagnostics and scientific workflows.",
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     commands = parser.add_subparsers(dest="command")
     doctor = commands.add_parser(
-        "doctor", help="report package and dependency availability without importing them"
+        "doctor",
+        help="report package and dependency availability without importing them",
     )
     doctor.add_argument("--json", action="store_true", dest="as_json")
     workflow = commands.add_parser(
@@ -210,11 +236,52 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument("--model-dir", type=Path)
     workflow.add_argument("--output-dir", type=Path)
     workflow.add_argument("--training-config")
+    workflow.add_argument(
+        "--interaction-cutoff",
+        type=float,
+        help="override the packaged formal spatial interaction cutoff",
+    )
     workflow.add_argument("--edge-predictor-path", type=Path)
     workflow.add_argument("--edge-predictor-threshold", type=float)
     workflow.add_argument("--edge-predictor-root", type=Path)
     workflow.add_argument("--device", default="cuda")
     workflow.add_argument("--model-format", choices=("current", "legacy"))
+    workflow.add_argument(
+        "--reference-h5ad",
+        type=Path,
+        help=(
+            "reference expression/PCA AnnData for optional gene and ligand-receptor "
+            "analyses; defaults to --aligned-h5ad"
+        ),
+    )
+    workflow.add_argument(
+        "--gene-dynamics",
+        action="store_true",
+        help="reconstruct and plot temporal gene programs using exact retained PCA metadata",
+    )
+    workflow.add_argument(
+        "--lr-database",
+        type=Path,
+        help="run strict ligand-receptor projection with this database",
+    )
+    workflow.add_argument(
+        "--lr-complex-mode",
+        choices=("min", "geometric_mean"),
+        default="min",
+        help="multi-subunit LR aggregation rule (default: strict minimum)",
+    )
+    workflow.add_argument(
+        "--preferred-species-tag",
+        help="optional exact species tag used when simplifying reference gene names",
+    )
+    workflow.add_argument(
+        "--reconstruction-diagnostic",
+        action="store_true",
+        help=(
+            "report fitted-model future-slice W2 reconstruction diagnostics; "
+            "this is explicitly not a training holdout benchmark"
+        ),
+    )
     return parser
 
 
@@ -233,7 +300,10 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
         print("\n".join(available_workflow_configs()))
         return 0
     if not args.config:
-        print("cytobridge workflow requires --config (or use --list-configs)", file=sys.stderr)
+        print(
+            "cytobridge workflow requires --config (or use --list-configs)",
+            file=sys.stderr,
+        )
         return 2
 
     options = WorkflowOptions(
@@ -242,11 +312,18 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
         model_dir=args.model_dir,
         output_dir=args.output_dir,
         training_config=args.training_config,
+        interaction_cutoff=args.interaction_cutoff,
         edge_predictor_path=args.edge_predictor_path,
         edge_predictor_threshold=args.edge_predictor_threshold,
         edge_predictor_root=args.edge_predictor_root,
         device=args.device,
         model_format=args.model_format,
+        reference_h5ad=args.reference_h5ad,
+        gene_dynamics=bool(args.gene_dynamics),
+        lr_database=args.lr_database,
+        lr_complex_mode=args.lr_complex_mode,
+        preferred_species_tag=args.preferred_species_tag,
+        reconstruction_diagnostic=bool(args.reconstruction_diagnostic),
         steps=tuple(args.step or ()),
         train=bool(args.train),
     )
@@ -282,6 +359,8 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
         for name, value in result["outputs"].items():
             if isinstance(value, str):
                 print(f"  {name}: {value}")
+            elif isinstance(value, dict) and value.get("summary_file"):
+                print(f"  {name} summary: {value['summary_file']}")
     return 0
 
 

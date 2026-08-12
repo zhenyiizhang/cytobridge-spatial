@@ -168,11 +168,11 @@ MODEL_PROFILE: dict[str, Any] = {
         "num_layers": 1,
         "activation": "leakyrelu",
         "num_rbf": 8,
-        "cutoff": 0.12,
+        "cutoff": 0.09606367405591873,
         "use_spatial": True,
         "rbf_trainable": False,
         "edge_predictor_path": "edge_classifier/zebrafish.pt",
-        "edge_predictor_thre": 0.63,
+        "edge_predictor_thre": 0.4999999701976776,
     },
 }
 
