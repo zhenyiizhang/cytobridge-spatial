@@ -10,6 +10,7 @@ This repository contains:
 
 - the installable Python package `CytoBridge/`
 - preprocessing and training scripts in `scripts/`
+- a small synthetic, non-manuscript tutorial in `notebooks/`
 - training configuration files in `CytoBridge/configs/`
 - repository-scoped edge-predictor checkpoints in `edge_classifier/` (these
   files are not installed into the wheel)
@@ -30,6 +31,7 @@ cytobridge-spatial/
 │   ├── pl/        # visualization helpers
 │   └── configs/   # YAML training configs
 ├── scripts/       # end-to-end preprocessing / training / evaluation scripts
+├── notebooks/     # synthetic tutorials; no manuscript result inputs
 ├── edge_classifier/
 ├── environment.yml
 ├── requirements.txt
@@ -128,6 +130,22 @@ cytobridge doctor --json
 `doctor` is read-only. It reports Python, package metadata, and whether common
 dependency modules are available; it does not import those dependencies or
 modify caches, data, or configuration.
+
+### Run the source-checkout preprocessing tutorial
+
+From a source checkout, install the preprocessing dependencies in the
+environment that provides your Jupyter frontend, then open the checked-in
+tutorial:
+
+```bash
+python -m pip install -e '.[preprocess]'
+jupyter lab notebooks/01_synthetic_preprocessing_contract.ipynb
+```
+
+The notebook creates its own deterministic count matrix and records the
+normalization, log transformation, time mapping, latent-feature, and PCA
+contracts. It intentionally contains no manuscript dataset, result, benchmark,
+or machine-specific path.
 
 Release maintainers can build and test an installed wheel in a new private
 workspace with:
