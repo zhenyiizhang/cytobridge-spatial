@@ -147,6 +147,38 @@ def execute(commands, required, timeout, log_path):
     return status, reason
 
 
+def target_output_is_complete(root, method, track, target):
+    """Return whether one target has both prediction data and its readable summary."""
+
+    target_dir = root / "predictions" / track / method / f"t{target}"
+    return (target_dir / "prediction.npz").is_file() and (
+        target_dir / "summary.json"
+    ).is_file()
+
+
+def merge_status_rows(path, rows):
+    """Update method/track/target rows without erasing separately run methods."""
+
+    columns = ("track", "target", "method", "status", "reason", "elapsed_seconds")
+    merged = {}
+    if path.is_file():
+        with path.open(newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                merged[(row["track"], int(row["target"]), row["method"])] = row
+    for row in rows:
+        merged[(row["track"], int(row["target"]), row["method"])] = row
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(
+            sorted(
+                merged.values(),
+                key=lambda row: (row["track"], int(row["target"]), row["method"]),
+            )
+        )
+
+
 def run_or_print(commands, dry_run):
     for item in commands:
         print(shlex.join(item))
@@ -165,6 +197,7 @@ def prepare(name, _cfg, args):
 
 
 def run_dataset(name, cfg, args, pythons, sources):
+    root = args.run_root / name
     rows = []
     for method, track, targets, commands, required, fixed in jobs_for_dataset(name, cfg, args, pythons, sources):
         run_or_print(commands, True)
@@ -173,14 +206,19 @@ def run_dataset(name, cfg, args, pythons, sources):
         log = args.run_root / name / "logs" / f"{track}_{method}_{targets[0]}.log"
         status, reason = ((fixed, "matched signed-PC benchmark is not applicable") if fixed
                           else execute(commands, required, args.timeout, log))
+        elapsed = round(time.monotonic() - started, 3)
         for target in targets:
-            rows.append({"track": track, "target": target, "method": METHOD_NAME[method], "status": status,
-                         "reason": reason, "elapsed_seconds": round(time.monotonic() - started, 3)})
+            target_complete = target_output_is_complete(root, method, track, target)
+            target_status = "completed" if target_complete else status
+            target_reason = "" if target_complete else reason
+            if target_status == "completed" and not target_complete:
+                target_status = "failed"
+                target_reason = "job exited without prediction.npz and summary.json"
+            rows.append({"track": track, "target": target, "method": METHOD_NAME[method], "status": target_status,
+                         "reason": target_reason, "elapsed_seconds": elapsed})
     if not args.dry_run:
         path = args.run_root / name / "status" / "method_target_status.csv"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=rows[0]); writer.writeheader(); writer.writerows(rows)
+        merge_status_rows(path, rows)
 
 
 def evaluate(name, cfg, args):

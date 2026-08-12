@@ -62,9 +62,9 @@ def test_not_applicable_rows_are_written_without_running_a_job(tmp_path):
     with path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     assert [(row["track"], row["target"]) for row in rows] == [
-        ("loto", "1"),
         ("full_data", "1"),
         ("full_data", "2"),
+        ("loto", "1"),
     ]
     assert {row["status"] for row in rows} == {"not_applicable"}
 
@@ -118,3 +118,76 @@ def test_execute_maps_missing_timeout_oom_and_failure(tmp_path):
         assert (
             runner.execute([["job"]], [], 1, tmp_path / "timeout.log")[0] == "timeout"
         )
+
+
+def test_partial_full_run_keeps_completed_target_and_failed_later_target(
+    tmp_path, monkeypatch
+):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    args = SimpleNamespace(
+        run_root=tmp_path,
+        formal_root=tmp_path / "formal",
+        methods=["stories"],
+        tracks=["full_data"],
+        software_root=tmp_path / "software",
+        device="cpu",
+        timeout=1,
+        dry_run=False,
+    )
+    completed = tmp_path / "admouse/predictions/full_data/stories/t1"
+    completed.mkdir(parents=True)
+    (completed / "prediction.npz").write_bytes(b"prediction")
+    (completed / "summary.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        runner, "execute", lambda *unused: ("timeout", "timeout after t1")
+    )
+
+    runner.run_dataset("admouse", cfg, args, {}, {"stories": tmp_path})
+
+    rows = list(
+        csv.DictReader(
+            (tmp_path / "admouse/status/method_target_status.csv").open(
+                newline="", encoding="utf-8"
+            )
+        )
+    )
+    assert [(row["target"], row["status"]) for row in rows] == [
+        ("1", "completed"),
+        ("2", "timeout"),
+    ]
+
+
+def test_status_updates_merge_instead_of_erasing_other_methods(tmp_path):
+    path = tmp_path / "status.csv"
+    runner.merge_status_rows(
+        path,
+        [
+            {
+                "track": "loto",
+                "target": 1,
+                "method": "stvcr",
+                "status": "completed",
+                "reason": "",
+                "elapsed_seconds": 2.0,
+            }
+        ],
+    )
+    runner.merge_status_rows(
+        path,
+        [
+            {
+                "track": "loto",
+                "target": 1,
+                "method": "stories",
+                "status": "timeout",
+                "reason": "budget",
+                "elapsed_seconds": 3600.0,
+            }
+        ],
+    )
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert {(row["method"], row["status"]) for row in rows} == {
+        ("stvcr", "completed"),
+        ("stories", "timeout"),
+    }
