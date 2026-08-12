@@ -1,12 +1,29 @@
 from __future__ import annotations
 
 import csv
+import multiprocessing
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
 from scripts.spatiotemporal_benchmark import run_unified_benchmark as runner
+
+
+def _merge_one_status(path, method):
+    runner.merge_status_rows(
+        path,
+        [
+            {
+                "track": "loto",
+                "target": 1,
+                "method": method,
+                "status": "completed",
+                "reason": "",
+                "elapsed_seconds": 1.0,
+            }
+        ],
+    )
 
 
 def test_dataset_matrix_has_the_complete_target_plan():
@@ -190,4 +207,25 @@ def test_status_updates_merge_instead_of_erasing_other_methods(tmp_path):
     assert {(row["method"], row["status"]) for row in rows} == {
         ("stvcr", "completed"),
         ("stories", "timeout"),
+    }
+
+
+def test_parallel_status_updates_do_not_drop_methods(tmp_path):
+    path = tmp_path / "status.csv"
+    processes = [
+        multiprocessing.Process(target=_merge_one_status, args=(path, method))
+        for method in ("stvcr", "stories", "mioflow", "moscot")
+    ]
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join(timeout=10)
+        assert process.exitcode == 0
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert {row["method"] for row in rows} == {
+        "stvcr",
+        "stories",
+        "mioflow",
+        "moscot",
     }

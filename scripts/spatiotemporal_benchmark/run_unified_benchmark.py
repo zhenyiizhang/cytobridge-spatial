@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fcntl
+import os
 import shlex
 import subprocess
 import sys
@@ -160,23 +162,36 @@ def merge_status_rows(path, rows):
     """Update method/track/target rows without erasing separately run methods."""
 
     columns = ("track", "target", "method", "status", "reason", "elapsed_seconds")
-    merged = {}
-    if path.is_file():
-        with path.open(newline="", encoding="utf-8") as handle:
-            for row in csv.DictReader(handle):
-                merged[(row["track"], int(row["target"]), row["method"])] = row
-    for row in rows:
-        merged[(row["track"], int(row["target"]), row["method"])] = row
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
-        writer.writeheader()
-        writer.writerows(
-            sorted(
-                merged.values(),
-                key=lambda row: (row["track"], int(row["target"]), row["method"]),
-            )
-        )
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    with lock_path.open("a+", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        merged = {}
+        if path.is_file():
+            with path.open(newline="", encoding="utf-8") as handle:
+                for row in csv.DictReader(handle):
+                    merged[(row["track"], int(row["target"]), row["method"])] = row
+        for row in rows:
+            merged[(row["track"], int(row["target"]), row["method"])] = row
+        temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            with temporary.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=columns)
+                writer.writeheader()
+                writer.writerows(
+                    sorted(
+                        merged.values(),
+                        key=lambda row: (
+                            row["track"],
+                            int(row["target"]),
+                            row["method"],
+                        ),
+                    )
+                )
+            os.replace(temporary, path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
 
 
 def run_or_print(commands, dry_run):
