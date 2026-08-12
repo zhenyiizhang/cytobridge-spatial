@@ -63,6 +63,149 @@ def test_preprocess_existing_x_behavior_remains_explicit() -> None:
     assert result.uns["preprocess_info"]["expression_layer"] == "none"
 
 
+def test_preprocess_requires_declared_identity_for_duplicate_names() -> None:
+    adata = AnnData(
+        X=np.ones((4, 2), dtype=np.float32),
+        obs={
+            "time": ["t0", "t0", "t1", "t1"],
+            "Batch": ["a", "b", "a", "b"],
+            "CellID": ["cell", "cell", "other", "third"],
+        },
+    )
+    adata.obs_names = ["cell", "cell", "other", "third"]
+
+    with pytest.raises(ValueError, match="observation_id_keys"):
+        preprocess(
+            adata.copy(),
+            time_key="time",
+            normalization=False,
+            log1p=False,
+            dim_reduction="none",
+            select_hvg=False,
+        )
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        dim_reduction="none",
+        select_hvg=False,
+        observation_id_keys=("Batch", "CellID"),
+    )
+
+    assert result.obs_names.is_unique
+    assert result.obs_names.tolist() == [
+        "Batch=a|CellID=cell",
+        "Batch=b|CellID=cell",
+        "Batch=a|CellID=other",
+        "Batch=b|CellID=third",
+    ]
+    assert result.obs["original_obs_name"].tolist() == [
+        "cell",
+        "cell",
+        "other",
+        "third",
+    ]
+    assert result.uns["preprocess_info"]["observation_names"] == {
+        "input_names_unique": False,
+        "duplicate_rows": 2,
+        "duplicate_values": 1,
+        "strategy": "composite_obs_columns",
+        "identity_keys": ["Batch", "CellID"],
+        "original_name_column": "original_obs_name",
+    }
+
+
+def test_preprocess_leaves_unique_observation_names_unchanged() -> None:
+    adata = _example_adata()
+    adata.obs_names = ["cell-a", "cell-b", "cell-c"]
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        dim_reduction="none",
+        select_hvg=False,
+    )
+
+    assert result.obs_names.tolist() == ["cell-a", "cell-b", "cell-c"]
+    assert "original_obs_name" not in result.obs
+    assert result.uns["preprocess_info"]["observation_names"] == {
+        "input_names_unique": True,
+        "duplicate_rows": 0,
+        "duplicate_values": 0,
+        "strategy": "existing_index",
+        "identity_keys": [],
+        "original_name_column": "none",
+    }
+
+
+def test_composite_observation_identity_is_stable_under_row_reordering() -> None:
+    adata = AnnData(
+        X=np.ones((3, 1), dtype=np.float32),
+        obs={
+            "time": ["t0", "t0", "t1"],
+            "sample": ["sample|a", "sample|a", "sample=b"],
+            "cell_id": ["cell=1", "cell|2", "cell\\3"],
+        },
+    )
+    adata.obs_names = ["cell", "cell", "cell"]
+
+    first = preprocess(
+        adata.copy(),
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        dim_reduction="none",
+        select_hvg=False,
+        observation_id_keys=("sample", "cell_id"),
+    )
+    reordered = preprocess(
+        adata[[2, 0, 1]].copy(),
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        dim_reduction="none",
+        select_hvg=False,
+        observation_id_keys=("sample", "cell_id"),
+    )
+
+    assert set(first.obs_names) == set(reordered.obs_names)
+    assert all("%" in name for name in first.obs_names)
+
+
+@pytest.mark.parametrize(
+    ("sample_values", "match"),
+    ((["s", None], "is missing"), (["s", "s"], "do not form a unique")),
+)
+def test_composite_observation_identity_rejects_invalid_columns(
+    sample_values,
+    match,
+) -> None:
+    adata = AnnData(
+        X=np.ones((2, 1), dtype=np.float32),
+        obs={
+            "time": ["t0", "t1"],
+            "sample": sample_values,
+            "cell_id": ["cell", "cell"],
+        },
+    )
+    adata.obs_names = ["cell", "cell"]
+
+    with pytest.raises(ValueError, match=match):
+        preprocess(
+            adata,
+            time_key="time",
+            normalization=False,
+            log1p=False,
+            dim_reduction="none",
+            select_hvg=False,
+            observation_id_keys=("sample", "cell_id"),
+        )
+
+
 def test_preprocess_blocks_silent_double_log() -> None:
     adata = _example_adata()
 
@@ -113,7 +256,12 @@ def test_counts_source_clears_stale_log1p_marker() -> None:
         "near_log1p_of_counts",
         "transformed_from_metadata",
     }
-    assert result.uns["preprocess_info"]["selected_expression_stats"]["integer_like_fraction"] == 1.0
+    assert (
+        result.uns["preprocess_info"]["selected_expression_stats"][
+            "integer_like_fraction"
+        ]
+        == 1.0
+    )
 
 
 def test_preprocess_rejects_missing_expression_layer() -> None:
@@ -231,8 +379,12 @@ def test_explicit_raw_layer_remains_canonical_when_counts_layer_is_stale() -> No
         expression_layer="raw_counts",
     )
 
-    np.testing.assert_array_equal(result.layers["counts"].toarray(), stale_counts.toarray())
-    np.testing.assert_array_equal(result.layers["raw_counts"].toarray(), raw_counts.toarray())
+    np.testing.assert_array_equal(
+        result.layers["counts"].toarray(), stale_counts.toarray()
+    )
+    np.testing.assert_array_equal(
+        result.layers["raw_counts"].toarray(), raw_counts.toarray()
+    )
     info = result.uns["preprocess_info"]
     assert info["raw_counts_layer"] == "raw_counts"
     assert info["counts_layer"] == "raw_counts"

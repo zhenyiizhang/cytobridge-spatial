@@ -28,6 +28,8 @@
       "normalization_target_sum": null,
       "expression_layer": "counts",
       "counts_layer": "counts",
+      "raw_count_validation": "strict",
+      "spatial_obs_keys": ["spatial_x", "spatial_y"],
       "spatial_dim": 2,
       "shared_scale": 500.0,
       "center_x": true,

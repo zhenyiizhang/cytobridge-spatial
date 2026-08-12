@@ -343,6 +343,10 @@ The main preprocessing pipeline expects an input `.h5ad` file with:
 
 - spatial coordinates in `adata.obsm["spatial"]` or `adata.obs["spatial_x"]`, `adata.obs["spatial_y"]`
 - a time annotation column in `adata.obs[time_key]`
+- unique `adata.obs_names`, or preset-declared observation columns that form a
+  stable composite identity. The ARISTA preset uses `Batch` plus `CellID`, and
+  AD mouse uses `sample` plus `cell_id`; neither invents row-order suffixes for
+  repeated local IDs.
 
 For interaction graph construction, the repository script also expects a
 ligand-receptor database CSV, by default:

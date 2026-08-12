@@ -253,6 +253,25 @@ def test_arista_preprocessing_uses_raw_counts_layer():
     assert align["expression_layer"] == "counts"
     assert align["counts_layer"] == "counts"
     assert align["raw_count_validation"] == "strict"
+    assert align["observation_id_keys"] == ["Batch", "CellID"]
+
+
+def test_admouse_preprocessing_uses_stable_sample_cell_identity():
+    config, _ = load_workflow_config("admouse")
+
+    assert config["preprocess"]["align"]["observation_id_keys"] == [
+        "sample",
+        "cell_id",
+    ]
+
+
+def test_zebrafish_preprocessing_declares_observation_coordinate_columns():
+    config, _ = load_workflow_config("zebrafish")
+
+    assert config["preprocess"]["align"]["spatial_obs_keys"] == [
+        "spatial_x",
+        "spatial_y",
+    ]
 
 
 def test_training_is_skipped_until_explicitly_enabled():

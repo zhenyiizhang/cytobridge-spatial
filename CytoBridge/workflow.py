@@ -1099,6 +1099,11 @@ def _run_preprocess(
         and align_values["spatial_obs_keys"] is not None
     ):
         align_values["spatial_obs_keys"] = tuple(align_values["spatial_obs_keys"])
+    if (
+        "observation_id_keys" in align_values
+        and align_values["observation_id_keys"] is not None
+    ):
+        align_values["observation_id_keys"] = tuple(align_values["observation_id_keys"])
 
     dataset_name = str(config["dataset"]["name"])
     train_config = config.get("train", {})

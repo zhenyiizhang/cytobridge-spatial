@@ -6,12 +6,28 @@ both formal interaction-graph construction and the packaged default strict LR
 projection; `--lr-database` remains an explicit downstream override. Raw study
 data are public:
 
-| Application | Raw-data source | Required label key | Model time key |
+| Application | Raw-data source | Raw time / label keys | Raw expression / coordinates |
 | --- | --- | --- | --- |
-| Zebrafish | [CNGB STDS0000057](https://db.cngb.org/stomics/datasets/STDS0000057/data) | `Annotation` | `time_point_processed` |
-| MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `Annotation` | `time_point_processed` |
-| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Annotation` | `time_point_processed` |
-| AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `major_annotation` | `time_point_processed` |
+| Zebrafish | [CNGB STDS0000057](https://db.cngb.org/stomics/datasets/STDS0000057/data) | `time` / `bin_annotation` | `layers['counts']` / `obs[['spatial_x', 'spatial_y']]` |
+| MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
+| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `time` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
+| AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
+
+These are the raw-input keys consumed by the four packaged presets. The
+preprocessing output standardizes them to `time_point_processed`, the preset's
+public annotation key, `obsm['X_latent']`, and `obsm['spatial_aligned']` for the
+shared training and downstream APIs. Raw observation names must be unique unless
+the preset declares stable identity columns. ARISTA reuses local `CellID` values
+across batches, so its preset constructs a reversible `Batch` + `CellID`
+identity; it does not assign identities from row order.
+AD mouse similarly uses `sample` plus `cell_id`, so the original and the
+notebook-deduplicated handoff H5ADs resolve to the same stable identity scheme.
+
+The currently documented ARISTA package input is the released counts-source,
+fixed-2,000-gene H5AD. The upstream 16,379-gene study object does not contain the
+formal `time` field or the documented 20-cell exclusion rule, so it is not
+silently treated as an equivalent raw input. That additional adapter will be
+published only with a reproducible source-to-formal rule.
 
 The processed aligned H5ADs and formal 0.015 checkpoints are currently project
 artifacts and do not yet have a public archive DOI. They must be deposited and

@@ -75,6 +75,9 @@ class AlignConfig:
     # to the statistically selected HVGs.  Keeping this in the generic config
     # avoids hard-coding dataset gene names in package internals.
     required_latent_features: Optional[Tuple[str, ...]] = None
+    # Columns that jointly identify an observation when the source index is
+    # reused across sections or batches.
+    observation_id_keys: Optional[Tuple[str, ...]] = None
 
 
 def _h5ad_uns_safe(value, *, path: str = "config"):
@@ -690,6 +693,7 @@ def preprocess_and_align(
         raw_count_validation=cfg.raw_count_validation,
         raw_count_integer_tolerance=cfg.raw_count_integer_tolerance,
         required_latent_features=cfg.required_latent_features,
+        observation_id_keys=cfg.observation_id_keys,
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,

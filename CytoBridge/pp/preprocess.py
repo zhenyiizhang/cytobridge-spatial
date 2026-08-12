@@ -5,11 +5,103 @@ import numpy as np
 import logging
 import json
 import re
+from urllib.parse import quote
 from collections.abc import Mapping
 from typing import Optional, Dict, Sequence
 from scipy import sparse
 
 _TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _resolve_observation_names(
+    adata: AnnData,
+    identity_keys: Optional[Sequence[str]],
+) -> Dict[str, object]:
+    """Require stable cell IDs, optionally building them from named columns.
+
+    AnnData permits duplicate index values, but joins and dictionaries do not.
+    A dataset that reuses local cell IDs across sections must therefore declare
+    the columns that form its stable identity (for example ``Batch`` and
+    ``CellID``).  We intentionally do not invent row-order suffixes: those IDs
+    change when the same input is reordered.
+    """
+
+    source_names = pd.Index(adata.obs_names.astype(str))
+    duplicate_rows = int(source_names.duplicated(keep=False).sum())
+    duplicate_values = int(source_names[source_names.duplicated()].nunique())
+    resolved_keys = tuple(str(key).strip() for key in (identity_keys or ()))
+    if any(not key for key in resolved_keys):
+        raise ValueError("observation_id_keys cannot contain empty column names.")
+    if len(set(resolved_keys)) != len(resolved_keys):
+        raise ValueError("observation_id_keys must not contain duplicate columns.")
+
+    if not resolved_keys and duplicate_rows == 0:
+        return {
+            "input_names_unique": True,
+            "duplicate_rows": 0,
+            "duplicate_values": 0,
+            "strategy": "existing_index",
+            "identity_keys": [],
+            "original_name_column": "none",
+        }
+
+    if not resolved_keys:
+        raise ValueError(
+            "Input observation names are not unique. Declare stable "
+            "preprocess.align.observation_id_keys (for example ['Batch', "
+            "'CellID']) instead of relying on input row order."
+        )
+
+    missing_keys = [key for key in resolved_keys if key not in adata.obs]
+    if missing_keys:
+        raise KeyError(
+            "observation_id_keys contains columns that are absent from adata.obs: "
+            f"{missing_keys}. Available columns: {list(adata.obs.columns)}"
+        )
+
+    composite_names = []
+    for row_index, values in enumerate(
+        adata.obs.loc[:, list(resolved_keys)].itertuples(index=False, name=None)
+    ):
+        parts = []
+        for key, value in zip(resolved_keys, values):
+            if pd.isna(value):
+                raise ValueError(
+                    f"observation identity column {key!r} is missing at row "
+                    f"{row_index}."
+                )
+            parts.append(f"{key}={quote(str(value), safe='-_.~')}")
+        composite_names.append("|".join(parts))
+
+    composite_index = pd.Index(composite_names)
+    if not composite_index.is_unique:
+        duplicate_examples = composite_index[composite_index.duplicated()].unique()[:5]
+        raise ValueError(
+            "observation_id_keys do not form a unique cell identity. Duplicate "
+            f"examples: {duplicate_examples.tolist()}"
+        )
+
+    original_column = "original_obs_name"
+    if original_column in adata.obs:
+        recorded = adata.obs[original_column].astype(str).to_numpy()
+        if not np.array_equal(recorded, source_names.to_numpy()):
+            raise ValueError(
+                "Duplicate observation names require preserving their source IDs in "
+                f"obs[{original_column!r}], but that reserved column already contains "
+                "different values. Rename the existing column before preprocessing."
+            )
+    else:
+        adata.obs[original_column] = source_names.to_numpy()
+
+    adata.obs_names = composite_index
+    return {
+        "input_names_unique": duplicate_rows == 0,
+        "duplicate_rows": duplicate_rows,
+        "duplicate_values": duplicate_values,
+        "strategy": "composite_obs_columns",
+        "identity_keys": list(resolved_keys),
+        "original_name_column": original_column,
+    }
 
 
 def _sample_dense_rows(matrix, n_rows: int = 256) -> np.ndarray:
@@ -360,6 +452,7 @@ def preprocess(
     raw_count_validation: str = "auto",
     raw_count_integer_tolerance: float = 1e-6,
     required_latent_features: Optional[Sequence[str]] = None,
+    observation_id_keys: Optional[Sequence[str]] = None,
 ) -> AnnData:
     """
     Preprocess step for dynamical optimal transport analysis.
@@ -429,6 +522,9 @@ def preprocess(
         addition to the statistically selected HVGs.  This is intended for
         dataset adapters that need reconstructable marker or ligand/receptor
         genes. Missing names raise instead of being silently ignored.
+    observation_id_keys
+        Optional ``adata.obs`` columns that jointly define a stable cell ID.
+        Required when input observation names are duplicated.
     Returns
     -------
     AnnData
@@ -443,6 +539,13 @@ def preprocess(
             f"Available keys are: {list(adata.obs.keys())}"
         )
     print(f"Using '{time_key}' as the time point identifier.")
+    observation_name_info = _resolve_observation_names(adata, observation_id_keys)
+    if observation_name_info["strategy"] == "composite_obs_columns":
+        print(
+            "Built stable observation names from obs columns "
+            f"{observation_name_info['identity_keys']} while preserving source IDs "
+            "in obs['original_obs_name']."
+        )
 
     dim_reduction_name = (
         "none" if dim_reduction is None else str(dim_reduction).strip().lower()
@@ -758,6 +861,7 @@ def preprocess(
         "counts_layer": resolved_counts_layer,
         "time_mapping_source": time_mapping_source,
         "time_mapping_json": _time_mapping_json(resolved_time_mapping),
+        "observation_names": observation_name_info,
     }
     adata.uns["preprocess_info"] = preprocess_info
     original_gene_info = {

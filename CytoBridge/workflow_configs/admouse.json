@@ -29,6 +29,7 @@
       "expression_layer": "counts",
       "counts_layer": "counts",
       "raw_count_validation": "strict",
+      "observation_id_keys": ["sample", "cell_id"],
       "input_spatial_key": "spatial",
       "spatial_dim": 2,
       "auto_scale_from_centered_x_max": true,

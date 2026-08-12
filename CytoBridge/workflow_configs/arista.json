@@ -29,6 +29,7 @@
       "expression_layer": "counts",
       "counts_layer": "counts",
       "raw_count_validation": "strict",
+      "observation_id_keys": ["Batch", "CellID"],
       "spatial_dim": 2,
       "shared_scale": 3000.0,
       "center_x": true,
