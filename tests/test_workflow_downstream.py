@@ -170,6 +170,91 @@ def test_canonical_current_checkpoint_configs_match_requested_preset(name):
     )
 
 
+def _zebrafish_checkpoint_config(*, threshold: float, edge_path: str) -> dict:
+    import CytoBridge.workflow as workflow
+
+    config, _ = load_workflow_config("zebrafish")
+    checkpoint = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    checkpoint["ckpt_dir"] = "/runs/zebrafish/training"
+    checkpoint["spatial_dim"] = 2
+    checkpoint["model"]["spatial_dim"] = 2
+    interaction = checkpoint["model"]["interaction_net"]
+    interaction["edge_predictor_path"] = edge_path
+    interaction["edge_predictor_thre"] = threshold
+    return checkpoint
+
+
+def test_standalone_downstream_accepts_validation_selected_checkpoint_threshold():
+    config, _ = load_workflow_config("zebrafish")
+    selected_threshold = 0.6063615679740906
+    loaded = SimpleNamespace(
+        config=_zebrafish_checkpoint_config(
+            threshold=selected_threshold,
+            edge_path="/runs/zebrafish/preprocess/edge_classifier/zebrafish_edge_model.pt",
+        ),
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(),
+    )
+
+    assert contract["edge_predictor_threshold"] == selected_threshold
+    assert contract["edge_predictor_threshold_check"] == (
+        "loaded checkpoint recorded effective threshold"
+    )
+
+
+def test_standalone_downstream_rejects_conflicting_explicit_threshold():
+    config, _ = load_workflow_config("zebrafish")
+    loaded = SimpleNamespace(
+        config=_zebrafish_checkpoint_config(
+            threshold=0.6063615679740906,
+            edge_path="/runs/zebrafish/preprocess/edge_classifier/zebrafish_edge_model.pt",
+        ),
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    with pytest.raises(ValueError, match="edge_predictor_thre") as error:
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(edge_predictor_threshold=0.42),
+        )
+
+    message = str(error.value)
+    assert (
+        "loaded model.interaction_net.edge_predictor_thre=0.6063615679740906"
+        in message
+    )
+    assert "expected model.interaction_net.edge_predictor_thre=0.42" in message
+
+
+def test_standalone_downstream_accepts_historical_preset_threshold():
+    config, _ = load_workflow_config("zebrafish")
+    historical_threshold = config["train"]["edge_predictor_threshold"]
+    loaded = SimpleNamespace(
+        config=_zebrafish_checkpoint_config(
+            threshold=historical_threshold,
+            edge_path="edge_classifier/zebrafish.pt",
+        ),
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(),
+    )
+
+    assert contract["edge_predictor_threshold"] == historical_threshold
+
+
 @pytest.mark.parametrize(
     ("path", "replacement"),
     (

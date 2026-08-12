@@ -484,18 +484,23 @@ def _loaded_model_scientific_contract(
     threshold_source = None
     if requested_threshold is not None:
         threshold_source = "explicit workflow override"
-    elif not options.train:
-        requested_threshold = config.get("train", {}).get("edge_predictor_threshold")
-        threshold_source = (
-            "artifact-reuse preset"
-            if requested_threshold is not None
-            else "requested training config"
-        )
     else:
+        # A de novo run selects this value on its edge-predictor validation
+        # split, then records the effective value in the checkpoint config.
+        # That recorded value is the scientific contract for later standalone
+        # downstream runs; the packaged preset threshold describes only the
+        # historical released artifact.
         requested_threshold = actual_interaction.get("edge_predictor_thre")
-        threshold_source = "validation-selected during this training run"
+        if requested_threshold is not None:
+            threshold_source = "loaded checkpoint recorded effective threshold"
     if requested_threshold is not None:
-        expected_interaction["edge_predictor_thre"] = float(requested_threshold)
+        requested_threshold = float(requested_threshold)
+        if not math.isfinite(requested_threshold) or not 0 < requested_threshold < 1:
+            raise ValueError(
+                "Loaded model edge predictor threshold must lie strictly between "
+                f"0 and 1; got {requested_threshold!r}."
+            )
+        expected_interaction["edge_predictor_thre"] = requested_threshold
 
     actual_spatial_dims = {
         "spatial_dim": source.get("spatial_dim"),
