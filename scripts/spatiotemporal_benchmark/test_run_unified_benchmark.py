@@ -69,6 +69,29 @@ def test_not_applicable_rows_are_written_without_running_a_job(tmp_path):
     assert {row["status"] for row in rows} == {"not_applicable"}
 
 
+def test_primary_evaluation_uses_the_shared_registry_and_excludes_sensitivity_only(
+    tmp_path, capsys
+):
+    runner.main(
+        [
+            "--datasets",
+            "admouse",
+            "--run-root",
+            str(tmp_path),
+            "--dry-run",
+            "evaluate",
+            "--tracks",
+            "loto",
+        ]
+    )
+    output = capsys.readouterr().out
+    assert "--method-registry" in output
+    assert str(runner.METHOD_REGISTRY) in output
+    assert "CytoBridge-0.015" in output
+    assert "random_independent_pairs" in output
+    assert "spatrack" not in output.lower()
+
+
 def test_execute_maps_missing_timeout_oom_and_failure(tmp_path):
     missing = tmp_path / "missing"
     assert (

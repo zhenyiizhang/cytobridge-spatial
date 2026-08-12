@@ -19,9 +19,11 @@ CONFIG_DIR = REPO / "configs" / "unified_benchmark"
 DATASETS = ("zebrafish", "mosta", "arista", "admouse")
 DYNAMIC = ("stvcr", "stories", "mioflow")
 STATIC = ("moscot", "wot", "paste", "spateo", "linear_centroid_shift", "random_independent_pairs")
-METHODS = ("cytobridge", *DYNAMIC, *STATIC, "spatrack")
+PRIMARY_METHODS = ("cytobridge", *DYNAMIC, *STATIC)
+METHODS = (*PRIMARY_METHODS, "spatrack")
 METHOD_NAME = {"cytobridge": "CytoBridge-0.015", **{name: name for name in METHODS[1:]}}
 EXTERNAL_STATIC = {"moscot", "wot", "paste", "spateo"}
+METHOD_REGISTRY = REPO / "scripts" / "spatiotemporal_benchmark" / "method_registry.json"
 
 
 def load_datasets(names):
@@ -189,10 +191,12 @@ def evaluate(name, cfg, args):
         score = command("scripts.spatiotemporal_benchmark.evaluate_predictions", sys.executable,
                         "--input-manifest", root / "inputs" / "manifest.json", "--predictions-root", root / "predictions",
                         "--status-table", root / "status" / "method_target_status.csv", "--track", track,
-                        "--targets", *targets, "--output-dir", output)
+                        "--targets", *targets, "--methods", *(METHOD_NAME[method] for method in PRIMARY_METHODS),
+                        "--output-dir", output)
         report = command("scripts.spatiotemporal_benchmark.summarize_results", sys.executable,
                          "--metrics-long", output / f"{track}_metrics_long.csv",
                          "--evaluation-manifest", output / f"{track}_evaluation_manifest.json",
+                         "--method-registry", METHOD_REGISTRY,
                          "--output-dir", root / "reports" / track)
         run_or_print([score, report], args.dry_run)
 
@@ -206,7 +210,7 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true")
     sub = parser.add_subparsers(dest="action", required=True)
     prep = sub.add_parser("prepare"); prep.add_argument("--overwrite", action="store_true")
-    run = sub.add_parser("run"); run.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))
+    run = sub.add_parser("run"); run.add_argument("--methods", nargs="+", choices=METHODS, default=list(PRIMARY_METHODS))
     run.add_argument("--tracks", nargs="+", choices=("loto", "full_data"), default=["loto", "full_data"])
     run.add_argument("--timeout", type=int, default=3600); run.add_argument("--device", default="cuda")
     run.add_argument("--python", action="append", default=[]); run.add_argument("--source", action="append", default=[])
