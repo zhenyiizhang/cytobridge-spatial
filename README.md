@@ -7,8 +7,10 @@ series.
 
 This is the release-candidate package and methods repository. New analyses and datasets should
 extend these public APIs rather than copy training or downstream pipelines into
-separate code trees. Large raw datasets, trained checkpoints, and external
-ligand-receptor databases are not bundled here.
+separate code trees. Large raw datasets and trained checkpoints are not bundled
+here. The wheel does include the small species-matched CellChatDB tables used
+by its four supported workflow presets; users can override them with another
+compatible database.
 
 Raw-data accessions, aligned-AnnData keys, checkpoint layout, LR-table format,
 and the downstream output tree are documented in
@@ -25,14 +27,15 @@ This repository contains:
   `notebooks/`
 - ReadTheDocs source in `docs/`
 - training configuration files in `CytoBridge/configs/`
-- repository-scoped edge-predictor checkpoints in `edge_classifier/` (these
-  files are not installed into the wheel)
+- legacy repository-scoped edge-predictor checkpoints in `edge_classifier/`
+  (these files are not installed into the wheel)
 
 This repository does not aim to store:
 
 - large raw or processed datasets
 - large generated manuscript artifacts and raw result bundles
-- external ligand-receptor databases beyond user-supplied resources
+- large or custom ligand-receptor databases beyond the four bundled preset
+  tables
 
 ## Repository Layout
 
@@ -164,9 +167,10 @@ The plan prints the dataset policy, scientific parameters, steps, compute
 requirements, and any missing input. The primary settings are seed 42,
 `alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
 `k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse. The packaged
-training profiles use the graph values resolved in the accepted runs:
+training profiles retain the fixed interaction cutoffs and historical matched
+edge thresholds resolved in the accepted runs:
 
-| preset | interaction cutoff | edge threshold |
+| preset | interaction cutoff | historical matched edge threshold |
 |---|---:|---:|
 | MOSTA | 0.02400244047956264 | 0.44999998807907104 |
 | ARISTA | 0.03154105148551745 | 0.23999999463558197 |
@@ -213,20 +217,25 @@ Zebrafish uses every observed t0 cell on its nine analysis slices; MOSTA uses
 slices; and AD mouse uses all 53,615 observed t0 cells on the 26-point grid
 from model time 0 to 2.5. These are production analyses, not compact examples.
 
-Temporal gene reconstruction and ligand-receptor projection are explicit
-because they need data beyond a model checkpoint. The reference H5AD must keep
-the exact fitted PCA loadings in `varm['PCs']` and center in
-`var['pca_center']`; LR analysis also requires an explicit database. Complexes
-are strict by default: every subunit must be present and the minimum subunit
-expression is used. The geometric mean is available only as an explicit
-sensitivity setting:
+Temporal gene reconstruction and strict ligand-receptor projection run by
+default in all four packaged downstream presets. Package preprocessing retains
+the fitted PCA loadings in `varm['PCs']`, the fitted center in
+`var['pca_center']`, and the matching gene order, so the aligned H5AD produced
+earlier in the same command is the default reference. LR projection reuses the
+same bundled species-matched CellChatDB used to construct the interaction
+graph. Complexes require every subunit and use minimum subunit expression. The
+CLI options remain available for an explicit reference, database, species tag,
+or geometric-mean sensitivity override. Historical references missing
+`var['pca_center']` fail closed unless
+`--allow-complete-reference-pca-center-fallback` explicitly declares that the
+file is the complete original PCA-fit population; its mean must still
+reproduce saved PCA coordinates:
 
 ```bash
 cytobridge workflow --config zebrafish --step downstream \
   --aligned-h5ad /runs/zebrafish/preprocess/zebrafish_aligned.h5ad \
   --model-dir /runs/zebrafish/training \
   --output-dir /runs/zebrafish \
-  --gene-dynamics \
   --lr-database /data/ligand_receptor.csv \
   --lr-complex-mode min \
   --device cuda
@@ -238,23 +247,47 @@ named a fitted-model reconstruction diagnostic: it is not a training holdout
 and not a cross-method benchmark. Use the matched benchmark pipeline for those
 claims.
 
-Training never runs implicitly. Add `--train`, the aligned H5AD, and the
-dataset's edge-predictor checkpoint to enable it:
+Training never runs implicitly. For all four packaged raw-data
+presets, adding `--train` to the normal preprocessing workflow now builds the
+per-timepoint interaction graphs, trains the edge predictor, and passes the
+generated model and its validation-selected decision threshold directly into
+model training. `--edge-predictor-threshold` is an explicit fixed-threshold
+override:
 
 ```bash
-cytobridge workflow --config mosta --train --step downstream \
-  --aligned-h5ad /runs/mosta/preprocess/mosta_aligned.h5ad \
-  --edge-predictor-path /models/mosta_edge_model.pt \
+cytobridge workflow --config mosta --train \
+  --input-h5ad /data/mosta.h5ad \
   --output-dir /runs/mosta \
   --device cuda
 ```
 
+Each preset uses its species-matched formal CellChatDB resource bundled in the
+wheel: zebrafish for Zebrafish, mouse for MOSTA and AD mouse, and human for
+ARISTA. The same resource is used for graph construction and downstream strict
+LR projection; no database download or repository checkout is needed. Pass
+`--graph-database /path/to/database.csv` to override graph construction, or
+`--lr-database /path/to/database.csv` to override only the downstream LR
+projection. An existing edge predictor may be supplied only with the aligned
+H5AD and main model that were fitted in the same feature space. A raw-H5AD
+`--train` run always builds new interaction graphs and fits a new edge
+predictor; it rejects `--edge-predictor-path` rather than mixing an old
+predictor with a newly fitted PCA basis.
+The bundled tables come from the GPL-3.0
+[CellChat project](https://github.com/jinworks/CellChat); cite CellChatDB when
+reporting results derived from them.
+
 Use `--training-config /path/to/config.yaml` to replace a packaged training
 preset. The AD mouse preset now includes the resolved six-stage
-`100/100/50/3001/1000/3001` profile. The formal matched 0.015 run reused the
-released aligned H5AD and edge model, so the exact preset deliberately does not
-rerun raw preprocessing. Pass those two artifacts with `--aligned-h5ad` and
-`--edge-predictor-path` to reproduce the formal training input.
+`100/100/50/3001/1000/3001` profile. Its default is now a corrected de novo
+raw-H5AD workflow: `obs['Timepoint']` values 1/2/3 map to model times 0/1/2,
+`layers['counts']` is normalized to 10,000 and log1p transformed, all three
+batches are aligned, and the bundled mouse CellChatDB trains a fresh edge
+predictor at the fixed formal cutoff with a validation-selected threshold. This
+is distinct from the
+historical matched 0.015 run, which reused released aligned H5AD and edge-model
+artifacts. To audit that historical path, select `--step downstream` and pass
+the released `--aligned-h5ad` and `--model-dir`; older checkpoints without
+embedded edge weights also need `--edge-predictor-path`.
 
 ### Run the tutorials
 
@@ -311,13 +344,16 @@ The main preprocessing pipeline expects an input `.h5ad` file with:
 - spatial coordinates in `adata.obsm["spatial"]` or `adata.obs["spatial_x"]`, `adata.obs["spatial_y"]`
 - a time annotation column in `adata.obs[time_key]`
 
-For interaction graph construction, the pipeline also expects a ligand-receptor database CSV, by default:
+For interaction graph construction, the repository script also expects a
+ligand-receptor database CSV, by default:
 
 ```text
 database/CellNEST_database.csv
 ```
 
 If your database lives elsewhere, pass it explicitly with `--database-path`.
+The installed `cytobridge workflow` command instead selects the preset's
+species-matched bundled formal database automatically as described above.
 
 ## Quick Start
 

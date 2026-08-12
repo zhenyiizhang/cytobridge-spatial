@@ -23,6 +23,11 @@ def _candidate_fixture(
     # Keep the second PC non-degenerate while the test trajectory varies PC1.
     loadings[:, 1] = 0.001
     reference.varm["PCs"] = loadings
+    reference.var["pca_center"] = np.zeros(
+        n_hvg + n_forced,
+        dtype=np.float32,
+    )
+    reference.var["pca_center"] = np.zeros(n_hvg + n_forced, dtype=np.float32)
 
     slices: dict[str, ad.AnnData] = {}
     for time in (0.0, 1.0, 2.0):
@@ -72,7 +77,7 @@ def test_candidate_universe_excludes_high_variance_forced_pca_features() -> None
     assert provenance["used"] == hvg_names
     assert restricted.settings["pca_features_active"] == 2747
     contract = restricted.settings["pca_contract"]
-    assert contract["center_source"].endswith("historical_fallback")
+    assert contract["center_source"] == "reference_adata.var['pca_center']"
     assert contract["feature_count"] == 2747
     assert contract["component_count"] == 2
     assert restricted.settings["expression_contract"] == {

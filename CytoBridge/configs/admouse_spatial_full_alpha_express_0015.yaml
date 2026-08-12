@@ -2,8 +2,9 @@
 #
 # The graph cutoff, edge threshold, network sizes, batch sizes, optimizer
 # choices, and stage durations below are the resolved values from that run.
-# Supply the edge-classifier checkpoint with --edge-predictor-path so the
-# workflow never depends on the historical machine-specific path.
+# A raw-H5AD workflow fits a new edge predictor in the newly aligned feature
+# space. The historical matched artifacts remain available through a separate
+# downstream-only compatibility path.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn

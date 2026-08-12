@@ -8,7 +8,11 @@ include requirements.txt
 recursive-include docs *.css *.csv *.md *.py *.rst
 recursive-include notebooks *.ipynb *.md
 recursive-include requirements *.txt
-recursive-include CytoBridge/configs *.yaml
+recursive-exclude CytoBridge/configs *.yaml
+include CytoBridge/configs/admouse_spatial_full_alpha_express_0015.yaml
+include CytoBridge/configs/arista_spatial_full.yaml
+include CytoBridge/configs/mosta_spatial_full_alpha_express_0015.yaml
+include CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml
 
 # Ship the maintained source-release entry points. Historical machine-specific
 # research scripts remain in Git but are not presented as supported package
@@ -19,6 +23,7 @@ include scripts/compare_zebrafish_conditions.py
 include scripts/complete_downstream.py
 include scripts/convert_legacy_model_input_csv.py
 include scripts/convert_legacy_weights_to_ckpt.py
+include scripts/historical_artifact_compatibility.example.json
 include scripts/launch_mosta_alignment_sensitivity.sh
 include scripts/launch_mosta_formal_full_alignment.sh
 include scripts/launch_mosta_paired_alpha.sh
@@ -35,6 +40,7 @@ include scripts/smoke_dataset_notebooks.py
 include scripts/smoke_installed_wheel.py
 include scripts/summarize_release_evidence.py
 include scripts/summarize_training_history.py
+include scripts/verify_historical_artifact_compatibility.py
 recursive-include scripts/reviewer_zebrafish_ccc *.R *.csv *.md *.py
 recursive-include scripts/reviewer_zebrafish_response *.py
 recursive-include scripts/spatiotemporal_benchmark *.json *.md *.py

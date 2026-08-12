@@ -28,6 +28,7 @@ class GNNInteraction(nn.Module):
         num_rbf: int = 8,
         cutoff: float = 0.2,
         use_spatial: bool = True,
+        spatial_dim: int = 2,
         rbf_trainable: bool = False,
         edge_predictor_path: Optional[str] = None,
         edge_predictor_thre: float = 0.5,
@@ -58,13 +59,22 @@ class GNNInteraction(nn.Module):
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.use_spatial = use_spatial
+        self.spatial_dim = int(spatial_dim)
+        if self.spatial_dim < 0 or self.spatial_dim >= int(in_out_dim):
+            raise ValueError(
+                "spatial_dim must be non-negative and smaller than in_out_dim, "
+                f"got spatial_dim={self.spatial_dim}, in_out_dim={in_out_dim}."
+            )
+        if self.use_spatial and self.spatial_dim == 0:
+            raise ValueError(
+                "GNNInteraction use_spatial=True requires spatial coordinates; "
+                "the actual model input has spatial_dim=0."
+            )
         self.cutoff = cutoff
         self.edge_predictor_thre = edge_predictor_thre
         self.edge_prior_mode = str(edge_prior_mode).lower()
         if self.edge_prior_mode not in {"learned", "all_spatial"}:
-            raise ValueError(
-                "edge_prior_mode must be 'learned' or 'all_spatial'."
-            )
+            raise ValueError("edge_prior_mode must be 'learned' or 'all_spatial'.")
 
         # The released ARISTA/DeepRUOT GNN kept the RBF centers and widths
         # fixed. Preserve that behavior by default; a trainable RBF remains an
@@ -85,7 +95,9 @@ class GNNInteraction(nn.Module):
                         "edge_prior_mode='learned'."
                     )
                 predictor_path = os.path.expanduser(edge_predictor_path)
-                if edge_predictor_root is not None and not os.path.isabs(predictor_path):
+                if edge_predictor_root is not None and not os.path.isabs(
+                    predictor_path
+                ):
                     predictor_path = os.path.join(edge_predictor_root, predictor_path)
                 if not os.path.isabs(predictor_path):
                     predictor_path = os.path.abspath(predictor_path)
@@ -97,24 +109,34 @@ class GNNInteraction(nn.Module):
             self.link_predictor.eval()
 
         self.gene_embed = nn.Sequential(
-            nn.Linear(in_out_dim - 2, hidden_dim),
+            nn.Linear(in_out_dim - self.spatial_dim, hidden_dim),
             self.activation,
             nn.Linear(hidden_dim, hidden_dim),
         )
 
         self.distance_projection = nn.Linear(num_rbf, hidden_dim)
         self.gnn_layers = nn.ModuleList(
-            [GraphAttentionLayer(hidden_dim, num_heads, activation=activation) for _ in range(num_layers)]
+            [
+                GraphAttentionLayer(hidden_dim, num_heads, activation=activation)
+                for _ in range(num_layers)
+            ]
         )
 
         self.gene_readout = nn.Sequential(
-            nn.Linear(hidden_dim, in_out_dim - 2),
+            nn.Linear(hidden_dim, in_out_dim - self.spatial_dim),
         )
 
-    def forward(self, x: torch.Tensor, lnw: torch.Tensor, t: torch.Tensor, return_attn: bool = False) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        lnw: torch.Tensor,
+        t: torch.Tensor,
+        return_attn: bool = False,
+    ) -> torch.Tensor:
         if self.use_spatial:
-            x_expanded = x[:, :2].unsqueeze(1)
-            x_expanded_t = x[:, :2].unsqueeze(0)
+            spatial = x[:, : self.spatial_dim]
+            x_expanded = spatial.unsqueeze(1)
+            x_expanded_t = spatial.unsqueeze(0)
             pairwise_distances = torch.norm(x_expanded - x_expanded_t, dim=2)
             mask = (pairwise_distances < self.cutoff).float()
         else:
@@ -146,15 +168,32 @@ class GNNInteraction(nn.Module):
         # Cache for downstream attention/communication analysis (does not affect forward output).
         self.edge_index = edge_index.detach()
 
-        x_embed = self.gene_embed(x[:, 2:])
-        vec = torch.zeros(x_embed.size(0), 2, x_embed.size(1), device=x.device)
+        x_embed = self.gene_embed(x[:, self.spatial_dim :])
+        vec = torch.zeros(
+            x_embed.size(0),
+            self.spatial_dim,
+            x_embed.size(1),
+            device=x.device,
+        )
 
-        vec_ij = (x[edge_index[0], :2] - x[edge_index[1], :2]) / r_ij.unsqueeze(1)
+        vec_ij = (
+            x[edge_index[0], : self.spatial_dim] - x[edge_index[1], : self.spatial_dim]
+        ) / r_ij.unsqueeze(1)
         rbf_ij = self.rbf_expansion(r_ij)
-        edge_attr = (x_embed[edge_index[0]] + x_embed[edge_index[1]]) * self.distance_projection(rbf_ij)
+        edge_attr = (
+            x_embed[edge_index[0]] + x_embed[edge_index[1]]
+        ) * self.distance_projection(rbf_ij)
 
         for layer in self.gnn_layers:
-            x_embed, vec = layer(x_embed, vec, lnw, edge_index, edge_attr, vec_ij, return_attn=return_attn)
+            x_embed, vec = layer(
+                x_embed,
+                vec,
+                lnw,
+                edge_index,
+                edge_attr,
+                vec_ij,
+                return_attn=return_attn,
+            )
 
         x_spatial = vec.mean(dim=-1)
         x_gene = self.gene_readout(x_embed)
@@ -201,7 +240,9 @@ class GraphAttentionLayer(_MessagePassingBase):
             nn.Linear(hidden_dim, hidden_dim // num_heads),
         )
 
-    def forward(self, x, vec, lnw, edge_index, edge_attr, edge_vec, return_attn: bool = False):
+    def forward(
+        self, x, vec, lnw, edge_index, edge_attr, edge_vec, return_attn: bool = False
+    ):
         x_res = self.res_proj(x).reshape(-1, self.num_heads, self.head_dim)
         x = self.layernorm(x)
         q = self.q_proj(x).reshape(-1, self.num_heads, self.head_dim)
@@ -244,7 +285,14 @@ class GraphAttentionLayer(_MessagePassingBase):
         vec_j = vec_j * w_j.unsqueeze(1)
         return v_j, vec_j, w_j
 
-    def manual_scatter_mean(self, src: torch.Tensor, weight: torch.Tensor, index: torch.Tensor, dim: int, output_size: int) -> torch.Tensor:
+    def manual_scatter_mean(
+        self,
+        src: torch.Tensor,
+        weight: torch.Tensor,
+        index: torch.Tensor,
+        dim: int,
+        output_size: int,
+    ) -> torch.Tensor:
         output_shape = list(src.shape)
         output_shape[dim] = output_size
 
@@ -264,11 +312,21 @@ class GraphAttentionLayer(_MessagePassingBase):
         count_safe[count_safe == 0] = 1
         return output_sum / count_safe
 
-    def aggregate(self, features: Tuple[torch.Tensor, torch.Tensor], index: torch.Tensor, ptr, dim_size: Optional[int]):
+    def aggregate(
+        self,
+        features: Tuple[torch.Tensor, torch.Tensor],
+        index: torch.Tensor,
+        ptr,
+        dim_size: Optional[int],
+    ):
         x, vec, w = features
         aggregation_dim = self.node_dim
-        aggregated_x = self.manual_scatter_mean(x, w, index, dim=aggregation_dim, output_size=dim_size)
-        aggregated_vec = self.manual_scatter_mean(vec, w, index, dim=aggregation_dim, output_size=dim_size)
+        aggregated_x = self.manual_scatter_mean(
+            x, w, index, dim=aggregation_dim, output_size=dim_size
+        )
+        aggregated_vec = self.manual_scatter_mean(
+            vec, w, index, dim=aggregation_dim, output_size=dim_size
+        )
         return aggregated_x, aggregated_vec
 
     def update(self, inputs: Tuple[torch.Tensor, torch.Tensor]):

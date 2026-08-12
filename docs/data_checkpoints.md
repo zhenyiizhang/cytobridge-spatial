@@ -1,7 +1,10 @@
 # Data and checkpoints
 
-CytoBridge does not bundle multi-gigabyte datasets, trained checkpoints, or
-third-party ligand–receptor databases in the wheel. Raw study data are public:
+CytoBridge does not bundle multi-gigabyte datasets or trained checkpoints in
+the wheel. It does bundle the small species-matched CellChatDB tables used by
+both formal interaction-graph construction and the packaged default strict LR
+projection; `--lr-database` remains an explicit downstream override. Raw study
+data are public:
 
 | Application | Raw-data source | Required label key | Model time key |
 | --- | --- | --- | --- |
@@ -28,7 +31,12 @@ Every downstream workflow requires:
 - finite arrays and the same row order across `.obs` and both `.obsm` arrays.
 
 Gene dynamics and LR projection additionally require the fitted gene-space
-reference: `.varm['PCs']`, `.var['pca_center']`, and matching `.var_names`.
+reference: `.varm['PCs']` and matching `.var_names`. Current preprocessing
+persists `.var['pca_center']`; complete historical aligned H5AD objects that
+predate it fail closed by default. Only when the file is known to be the
+complete original PCA-fit population may the workflow use its `.X` column
+mean via `--allow-complete-reference-pca-center-fallback`; the inferred center
+must still reproduce the saved PCA coordinates.
 Formal expression summaries clip inverse-PCA log1p values to non-negative
 values per cell.
 
@@ -45,12 +53,14 @@ model_dir/
     └── score_model.pth       # optional final score stage
 ```
 
-The loader follows the training plan in `config.yaml`. Current checkpoints
+The workflow loader follows the training plan in `config.yaml`. Current checkpoints
 embed learned edge-predictor weights and are portable between machines. Older
 current-format checkpoints without those embedded weights need an explicit
 `--edge-predictor-path`. Legacy ST-1104 checkpoints use `params.yml`,
-`model_final`, and `score_model` and must be selected with `--model-format
-legacy`.
+`model_final`, and `score_model`; load those through
+`cb.tl.load_legacy_dynamical_model_from_dir` for an explicitly labelled
+historical analysis. The formal package workflow does not relabel them as the
+current resolved six-stage run.
 
 ## Ligand–receptor input
 
@@ -58,8 +68,9 @@ Supply a species-appropriate CSV with `ligand` and `receptor` columns. Common
 aliases such as `ligand_symbol`/`receptor_symbol` and two-column tables are
 accepted. Join complex subunits with underscores. Formal scoring requires all
 subunits and uses their minimum expression; geometric mean is an explicit
-sensitivity setting. Database licensing and redistribution remain the user's
-responsibility.
+sensitivity setting. The graph-building CellChatDB resources bundled with
+CytoBridge are GPL-3.0 and documented under `CytoBridge/workflow_databases/`;
+licensing of a custom downstream database remains the user's responsibility.
 
 ## Main downstream output tree
 
@@ -74,8 +85,8 @@ downstream/
 ├── communication/communication_by_celltype.csv
 ├── communication/sparse_attention/
 ├── figures/
-├── gene_dynamics/             # only with --gene-dynamics
-├── ligand_receptor/           # only with --lr-database
+├── gene_dynamics/             # default for the four packaged presets
+├── ligand_receptor/           # default, using the preset species database
 └── reconstruction_diagnostic/ # only when requested; not a holdout benchmark
 ```
 

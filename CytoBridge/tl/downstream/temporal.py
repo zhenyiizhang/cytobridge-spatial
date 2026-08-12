@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
+
+from ...graph_database import selected_feature_symbol
 
 __all__ = [
     "DevelopmentalWaveResult",
@@ -108,15 +109,18 @@ def infer_pca_center(
     *,
     layer: Optional[str] = None,
     center_var_key: str = "pca_center",
+    allow_complete_reference_pca_center_fallback: bool = False,
 ) -> np.ndarray:
     """Return the feature mean used by a zero-centered PCA fit.
 
     Clean CytoBridge preprocessing persists the fit-time center in
     ``adata.var[center_var_key]``.  This is important when PCA is fitted on a
     reference population and the AnnData is later subset to training time
-    points.  Historical objects without that field fall back to the column
-    mean of the requested matrix. ``layer`` controls only that historical
-    fallback; it never overrides a persisted fit-time center.
+    points. Historical objects without that field fail closed unless the caller
+    explicitly declares that the object is the complete original PCA-fit
+    reference. Even then, the inferred mean must reproduce a saved PCA
+    representation. ``layer`` controls only that explicit verified fallback;
+    it never overrides a persisted fit-time center.
     """
     from scipy import sparse
 
@@ -134,6 +138,41 @@ def infer_pca_center(
             raise ValueError("The persisted PCA center contains non-finite values.")
         return center.astype(np.float32, copy=False)
 
+    if not allow_complete_reference_pca_center_fallback:
+        raise ValueError(
+            "Reference H5AD is missing var['pca_center']. Inferring a PCA center "
+            "from an arbitrary object can silently use a subset mean. Supply the "
+            "original reference with a persisted center, or explicitly set "
+            "allow_complete_reference_pca_center_fallback=True only when this is "
+            "the complete original PCA-fit reference."
+        )
+
+    if "PCs" not in adata.varm:
+        raise KeyError(
+            "Cannot verify a historical PCA center without adata.varm['PCs']."
+        )
+    loadings = np.asarray(adata.varm["PCs"], dtype=np.float64)
+    if loadings.ndim != 2 or loadings.shape[0] != adata.n_vars:
+        raise ValueError(
+            "adata.varm['PCs'] must have one row per reference feature before "
+            "a historical PCA center can be verified."
+        )
+    latent_key = None
+    for candidate in ("X_pca", "X_latent"):
+        if candidate not in adata.obsm:
+            continue
+        latent = np.asarray(adata.obsm[candidate])
+        if latent.ndim == 2 and latent.shape == (adata.n_obs, loadings.shape[1]):
+            latent_key = candidate
+            break
+    if latent_key is None:
+        raise ValueError(
+            "Reference H5AD has no persisted pca_center and no compatible saved "
+            "obsm['X_pca'] or obsm['X_latent'] to verify an inferred center. "
+            "Supply the original complete reference H5AD or persist "
+            "var['pca_center']."
+        )
+
     matrix = _matrix(adata, layer)
     if sparse.issparse(matrix):
         center = np.asarray(matrix.mean(axis=0)).reshape(-1)
@@ -141,6 +180,40 @@ def infer_pca_center(
         center = np.asarray(matrix, dtype=np.float64).mean(axis=0)
     if not np.isfinite(center).all():
         raise ValueError("The inferred PCA center contains non-finite values.")
+
+    saved_latent = np.asarray(adata.obsm[latent_key], dtype=np.float64)
+    maximum_error = 0.0
+    squared_error = 0.0
+    value_count = 0
+    for start in range(0, adata.n_obs, 4096):
+        stop = min(start + 4096, adata.n_obs)
+        expression = matrix[start:stop]
+        if sparse.issparse(expression):
+            expression = expression.toarray()
+        expression = np.asarray(expression, dtype=np.float64)
+        reconstructed_latent = (expression - center[None, :]) @ loadings
+        difference = reconstructed_latent - saved_latent[start:stop]
+        if not np.isfinite(difference).all():
+            raise ValueError(
+                "Historical PCA-center verification produced non-finite values."
+            )
+        maximum_error = max(
+            maximum_error,
+            float(np.max(np.abs(difference), initial=0.0)),
+        )
+        squared_error += float(np.square(difference).sum())
+        value_count += int(difference.size)
+    rmse = float(np.sqrt(squared_error / max(1, value_count)))
+    saved_scale = float(np.max(np.abs(saved_latent), initial=0.0))
+    tolerance = max(1e-5, 1e-5 * saved_scale)
+    if maximum_error > tolerance:
+        raise ValueError(
+            "The X column mean is inconsistent with the saved PCA coordinates "
+            f"in obsm['{latent_key}'] (max_abs_error={maximum_error:.6g}, "
+            f"rmse={rmse:.6g}, tolerance={tolerance:.6g}). The reference may be "
+            "a subset of the PCA-fit population. Supply the original complete "
+            "reference H5AD or persist var['pca_center']."
+        )
     return center.astype(np.float32, copy=False)
 
 
@@ -346,6 +419,7 @@ def inverse_pca_states(
     loadings_key: str = "PCs",
     center: Optional[np.ndarray] = None,
     layer: Optional[str] = None,
+    allow_complete_reference_pca_center_fallback: bool = False,
     clip_min: Optional[float] = None,
     reconstruction: Optional[PCAReconstructionSpec] = None,
 ) -> np.ndarray:
@@ -377,7 +451,13 @@ def inverse_pca_states(
             f"and {n_pcs} PCA columns are required."
         )
     if center is None:
-        center = infer_pca_center(adata, layer=layer)
+        center = infer_pca_center(
+            adata,
+            layer=layer,
+            allow_complete_reference_pca_center_fallback=(
+                allow_complete_reference_pca_center_fallback
+            ),
+        )
     center = np.asarray(center, dtype=np.float32).reshape(-1)
     if center.shape[0] != loadings.shape[0]:
         raise ValueError(
@@ -390,41 +470,19 @@ def inverse_pca_states(
     return reconstructed.astype(np.float32, copy=False)
 
 
-def _gene_candidates(label: str) -> list[tuple[str, Optional[str]]]:
-    candidates = []
-    for raw in str(label).split("|"):
-        token = raw.strip()
-        if not token or token.lower() == "nan" or token.upper().startswith("AMEX"):
-            continue
-        match = re.match(r"^(.*?)(?:\[([^\]]+)\])?$", token)
-        if match is None:
-            continue
-        symbol = match.group(1).strip()
-        species = match.group(2)
-        if symbol:
-            candidates.append((symbol, species.lower() if species else None))
-    return candidates
-
-
 def simplify_gene_names(
     var_names: Sequence[str],
     *,
     preferred_species_tag: Optional[str] = None,
 ) -> pd.DataFrame:
     """Create stable display/LR symbols from compound cross-species gene names."""
-    preferred = preferred_species_tag.lower() if preferred_species_tag else None
     rows = []
     used: dict[str, int] = {}
     for raw in map(str, var_names):
-        candidates = _gene_candidates(raw)
-        selected = None
-        if preferred is not None:
-            selected = next(
-                (symbol for symbol, species in candidates if species == preferred),
-                None,
-            )
-        if selected is None and candidates:
-            selected = candidates[0][0]
+        selected = selected_feature_symbol(
+            raw,
+            preferred_species_tag=preferred_species_tag,
+        )
         if selected is None:
             selected = str(raw).strip()
         used[selected] = used.get(selected, 0) + 1
@@ -1248,6 +1306,7 @@ def summarize_temporal_gene_patterns(
     spatial_dim: int = 2,
     loadings_key: str = "PCs",
     reference_layer: Optional[str] = None,
+    allow_complete_reference_pca_center_fallback: bool = False,
     n_top_genes: int = 250,
     n_cluster_genes: Optional[int] = None,
     n_clusters: int = 2,
@@ -1299,7 +1358,13 @@ def summarize_temporal_gene_patterns(
         raise ValueError("reconstruction_batch_size must be positive.")
 
     center = (
-        infer_pca_center(reference_adata, layer=reference_layer)
+        infer_pca_center(
+            reference_adata,
+            layer=reference_layer,
+            allow_complete_reference_pca_center_fallback=(
+                allow_complete_reference_pca_center_fallback
+            ),
+        )
         if pca_reconstruction is None
         else None
     )
@@ -1546,6 +1611,9 @@ def summarize_temporal_gene_patterns(
         "spatial_dim": int(spatial_dim),
         "loadings_key": loadings_key,
         "reference_layer": reference_layer,
+        "allow_complete_reference_pca_center_fallback": bool(
+            allow_complete_reference_pca_center_fallback
+        ),
         "n_top_genes": int(top_n),
         "n_cluster_genes": int(cluster_n),
         "n_clusters": int(n_clusters),
@@ -1617,8 +1685,7 @@ def summarize_temporal_gene_patterns(
                 "source_policy": "inverse_pca_all_timepoints",
                 "output_space": "mean_log1p_expression",
                 "aggregation_identity": (
-                    "inverse_pca(mean_latent_pca) == "
-                    "mean(inverse_pca(latent_pca))"
+                    "inverse_pca(mean_latent_pca) == " "mean(inverse_pca(latent_pca))"
                 ),
                 "count_space_conversion": "not_applied",
             }

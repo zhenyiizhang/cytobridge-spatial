@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from CytoBridge.workflow import (
     WorkflowOptions,
+    _effective_downstream_analyses,
+    _loaded_model_scientific_contract,
     _require_pca_reference,
+    _run_downstream,
     _write_communication_outputs,
     _write_composition_outputs,
     _write_lr_outputs,
@@ -51,8 +56,12 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     analyses = {item["name"]: item for item in downstream["analyses"]}
     assert analyses["time-slice velocity"]["status"] == "enabled"
     assert analyses["sparse communication"]["status"] == "enabled"
-    assert analyses["gene dynamics"]["status"] == "requested"
-    assert analyses["strict ligand-receptor projection"]["status"] == "requested"
+    assert analyses["gene dynamics"]["status"] == "enabled"
+    assert analyses["gene dynamics"]["source"] == "explicit --gene-dynamics"
+    assert analyses["strict ligand-receptor projection"]["status"] == "enabled"
+    assert analyses["strict ligand-receptor projection"]["source"] == (
+        "explicit --lr-database override"
+    )
     assert (
         "not a training holdout"
         in analyses["fitted-model reconstruction diagnostic"]["note"]
@@ -60,6 +69,364 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     assert plan_missing_inputs(plan) == [
         f"strict ligand-receptor projection: LR database file not found: {missing_lr}"
     ]
+
+
+def test_packaged_downstream_defaults_share_the_graph_database():
+    expected_species_tags = {
+        "zebrafish": "zebrafish",
+        "mosta": "mouse",
+        "arista": "hs",
+        "admouse": "mouse",
+    }
+    for name, species_tag in expected_species_tags.items():
+        config, source = load_workflow_config(name)
+        effective = _effective_downstream_analyses(config, WorkflowOptions())
+        plan = build_workflow_plan(
+            config,
+            source=source,
+            options=WorkflowOptions(
+                aligned_h5ad=Path("aligned.h5ad"),
+                model_dir=Path("model"),
+                output_dir=Path("output"),
+                steps=("downstream",),
+            ),
+        )
+        downstream = next(
+            step for step in plan["steps"] if step["name"] == "downstream"
+        )
+        analyses = {item["name"]: item for item in downstream["analyses"]}
+
+        assert effective["gene_dynamics"] is True
+        assert effective["lr_enabled"] is True
+        assert effective["preferred_species_tag"] == species_tag
+        assert Path(effective["lr_database"]).name == config["train"]["graph_database"]
+        assert analyses["gene dynamics"]["status"] == "enabled"
+        assert analyses["gene dynamics"]["source"] == "packaged preset default"
+        assert analyses["strict ligand-receptor projection"]["status"] == "enabled"
+        assert analyses["strict ligand-receptor projection"]["database"].endswith(
+            config["train"]["graph_database"]
+        )
+        assert analyses["strict ligand-receptor projection"]["missing"] == []
+
+
+def test_downstream_cli_database_and_species_overrides_take_precedence(tmp_path: Path):
+    config, _ = load_workflow_config("arista")
+    custom_database = tmp_path / "custom_lr.csv"
+    custom_database.write_text("ligand,receptor\nL,R\n", encoding="utf-8")
+
+    effective = _effective_downstream_analyses(
+        config,
+        WorkflowOptions(
+            lr_database=custom_database,
+            preferred_species_tag="nr",
+        ),
+    )
+
+    assert effective["lr_database"] == custom_database
+    assert effective["lr_database_source"] == "explicit --lr-database override"
+    assert effective["preferred_species_tag"] == "nr"
+
+
+def test_packaged_downstream_can_skip_pca_dependent_outputs_for_old_artifacts():
+    config, _ = load_workflow_config("arista")
+    effective = _effective_downstream_analyses(
+        config,
+        WorkflowOptions(skip_gene_dynamics=True, skip_lr=True),
+    )
+
+    assert effective["gene_dynamics"] is False
+    assert effective["lr_enabled"] is False
+    assert effective["lr_database"] is None
+
+
+@pytest.mark.parametrize("name", ("zebrafish", "mosta", "arista", "admouse"))
+def test_canonical_current_checkpoint_configs_match_requested_preset(name):
+    config, _ = load_workflow_config(name)
+    import CytoBridge.workflow as workflow
+
+    expected_training = workflow._read_training_config(config["train"]["config"])
+    expected_training["ckpt_dir"] = "/copied/canonical/model"
+    expected_training["spatial_dim"] = 2
+    expected_training["model"]["spatial_dim"] = 2
+    expected_training["model"]["interaction_net"][
+        "edge_predictor_path"
+    ] = "/copied/canonical/edge.pt"
+    loaded = SimpleNamespace(
+        config=expected_training,
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(),
+    )
+
+    assert contract["status"] == "matches requested preset"
+    assert contract["alpha_express"] == 0.015
+    assert (
+        contract["edge_predictor_threshold"]
+        == config["train"]["edge_predictor_threshold"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("path", "replacement"),
+    (
+        (("training", "defaults", "lambda_mass"), 999.0),
+        (("training", "defaults", "lambda_energy"), 999.0),
+        (("training", "defaults", "global_mass"), False),
+        (("reverse",), False),
+        (("model", "velocity_net", "hidden_dim"), 17),
+        (("training", "plan", 0, "OT_loss"), "sinkhorn"),
+        (("training", "plan", 0, "lambda_ot"), 999.0),
+        (("training", "plan", 0, "lambda_mass"), 999.0),
+        (("training", "plan", 0, "lambda_energy"), 999.0),
+        (("training", "plan", 0, "reverse_mass_norm"), False),
+        (("training", "plan", 3, "optimizer_type"), "sgd"),
+        (("training", "plan", 3, "scheduler_type"), "steplr"),
+        (("training", "plan", 0, "mode"), "score_matching"),
+        (("training", "plan", 0, "epochs"), 17),
+        (("training", "plan", 0, "batch_size"), 17),
+        (("training", "plan", 0, "train_strategy"), "v"),
+    ),
+)
+def test_artifact_reuse_rejects_readable_scientific_config_mismatch(
+    path,
+    replacement,
+):
+    config, _ = load_workflow_config("admouse")
+    import CytoBridge.workflow as workflow
+
+    altered = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    target = altered
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = replacement
+    loaded = SimpleNamespace(
+        config=altered,
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    with pytest.raises(ValueError) as error:
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(),
+        )
+
+    readable_path = ""
+    for key in path:
+        readable_path += (
+            f"[{key}]"
+            if isinstance(key, int)
+            else (("." if readable_path else "") + key)
+        )
+    message = str(error.value)
+    assert readable_path in message
+    assert f"loaded {readable_path}={replacement!r}" in message
+
+
+def test_artifact_reuse_ignores_only_operational_locations():
+    config, _ = load_workflow_config("admouse")
+    import CytoBridge.workflow as workflow
+
+    altered = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    altered["ckpt_dir"] = "/copied/model"
+    altered["device"] = "cpu"
+    altered["training"]["history_flush_every"] = 1
+    altered["model"]["interaction_net"]["edge_predictor_path"] = "/copied/edge.pt"
+    loaded = SimpleNamespace(
+        config=altered,
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(),
+    )
+    assert contract["status"] == "matches requested preset"
+
+
+def test_artifact_reuse_validates_derived_nondefault_spatial_dimension(tmp_path):
+    config, _ = load_workflow_config("admouse")
+    config = deepcopy(config)
+    config["preprocess"]["align"]["spatial_dim"] = 3
+    import CytoBridge.workflow as workflow
+
+    training = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    training["spatial_dim"] = 3
+    training["model"]["spatial_dim"] = 3
+    training_path = tmp_path / "three_dimensional.yaml"
+    import yaml
+
+    training_path.write_text(yaml.safe_dump(training), encoding="utf-8")
+    options = WorkflowOptions(training_config=str(training_path))
+    loaded = SimpleNamespace(
+        config=deepcopy(training),
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+    assert (
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=options,
+        )["status"]
+        == "matches requested preset"
+    )
+
+    loaded.config["spatial_dim"] = 2
+    with pytest.raises(ValueError, match="conflicting derived spatial dimensions"):
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=options,
+        )
+
+
+@pytest.mark.parametrize("expected_spatial_dim", (0, 3))
+def test_historical_checkpoint_default_two_dimensional_semantics_are_not_reused_as_nondefault(
+    tmp_path,
+    expected_spatial_dim,
+):
+    config, _ = load_workflow_config("admouse")
+    config = deepcopy(config)
+    config["dataset"]["concat_spatial"] = bool(expected_spatial_dim)
+    config["preprocess"]["align"]["spatial_dim"] = expected_spatial_dim
+    import CytoBridge.workflow as workflow
+    import yaml
+
+    training = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    training_path = tmp_path / f"spatial_{expected_spatial_dim}.yaml"
+    training_path.write_text(yaml.safe_dump(training), encoding="utf-8")
+    loaded = SimpleNamespace(
+        config=deepcopy(training),
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
+    )
+
+    with pytest.raises(ValueError, match="derived spatial dimension"):
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(training_config=str(training_path)),
+        )
+
+
+@pytest.mark.parametrize("spatial_dim", (0, 3))
+def test_package_downstream_fails_closed_before_non_two_dimensional_analysis(
+    monkeypatch,
+    tmp_path,
+    spatial_dim,
+):
+    import anndata as ad
+
+    adata = ad.AnnData(X=np.zeros((2, 1), dtype=np.float32))
+    adata.obsm["X_latent"] = np.zeros((2, 1), dtype=np.float32)
+    if spatial_dim:
+        adata.obsm["spatial_aligned"] = np.zeros((2, spatial_dim), dtype=np.float32)
+    adata.obs["time_point_processed"] = [0.0, 1.0]
+    adata.obs["Annotation"] = ["A", "A"]
+    config, _ = load_workflow_config("admouse")
+    config = deepcopy(config)
+    config["dataset"]["concat_spatial"] = bool(spatial_dim)
+    monkeypatch.setattr("anndata.read_h5ad", lambda _path: adata)
+
+    with pytest.raises(ValueError, match=f"got {spatial_dim}"):
+        _run_downstream(
+            config,
+            WorkflowOptions(),
+            aligned_h5ad=tmp_path / "aligned.h5ad",
+            model_dir=tmp_path / "model",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_loaded_checkpoint_requires_the_complete_six_stage_contract():
+    config, _ = load_workflow_config("admouse")
+    import CytoBridge.workflow as workflow
+
+    incomplete = workflow._read_training_config(config["train"]["config"])
+    incomplete["training"]["plan"] = incomplete["training"]["plan"][:-1]
+    loaded = SimpleNamespace(
+        config=incomplete,
+        weight_stage="Finetune",
+        score_stage=None,
+    )
+    with pytest.raises(ValueError, match="training stages do not match"):
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(),
+        )
+
+
+def _historical_pca_reference(*, consistent: bool = True):
+    import anndata as ad
+
+    expression = np.asarray(
+        [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
+        dtype=np.float32,
+    )
+    reference = ad.AnnData(X=expression)
+    reference.var_names = ["GeneA", "GeneB"]
+    reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+    reference.obsm["X_pca"] = expression - expression.mean(axis=0, keepdims=True)
+    if not consistent:
+        reference.obsm["X_pca"][0, 0] += 1.0
+    return reference
+
+
+def test_historical_reference_accepts_verified_complete_x_center():
+    reference = _historical_pca_reference()
+    _require_pca_reference(
+        reference,
+        allow_complete_reference_pca_center_fallback=True,
+    )
+
+
+def test_historical_reference_without_center_fails_closed_by_default():
+    with pytest.raises(
+        ValueError,
+        match="allow_complete_reference_pca_center_fallback=True",
+    ):
+        _require_pca_reference(_historical_pca_reference())
+
+
+def test_historical_reference_rejects_subset_or_inconsistent_center():
+    complete = _historical_pca_reference()
+    subset = complete[:2].copy()
+    for reference in (subset, _historical_pca_reference(consistent=False)):
+        with pytest.raises(ValueError, match="original complete reference H5AD"):
+            _require_pca_reference(
+                reference,
+                allow_complete_reference_pca_center_fallback=True,
+            )
+
+
+def test_missing_center_nullspace_ambiguity_still_fails_closed_by_default():
+    import anndata as ad
+
+    # The third feature lies in the loading nullspace. Its subset mean can move
+    # by 50 while reconstructed PCA scores remain identical, so score residuals
+    # alone cannot prove that an arbitrary object is the complete fit reference.
+    expression = np.asarray([[1.0, 2.0, 0.0], [3.0, 4.0, 100.0]], dtype=np.float32)
+    reference = ad.AnnData(X=expression)
+    reference.varm["PCs"] = np.asarray(
+        [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]], dtype=np.float32
+    )
+    center = expression.mean(axis=0, keepdims=True)
+    reference.obsm["X_pca"] = (expression - center) @ reference.varm["PCs"]
+
+    with pytest.raises(
+        ValueError,
+        match="allow_complete_reference_pca_center_fallback=True",
+    ):
+        _require_pca_reference(reference)
 
 
 def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: Path):

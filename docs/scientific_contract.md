@@ -17,16 +17,21 @@
 ## What may differ by dataset
 
 Biological scale and data availability require explicit differences in time
-maps, interaction cutoff, edge threshold, particle count, annotation key,
+maps, interaction cutoff, historical matched edge threshold, particle count, annotation key,
 species database, and whether persistent particle identities exist. These are
 stored in small workflow presets rather than copied implementations.
 
-| Dataset | Interaction cutoff | Edge threshold | Formal k | Particle scope |
+| Dataset | Interaction cutoff | Historical matched edge threshold | Formal k | Particle scope |
 | --- | ---: | ---: | ---: | --- |
 | Zebrafish | 0.0960636741 | 0.4999999702 | 10 | all available t0 cells |
 | MOSTA | 0.0240024405 | 0.4499999881 | 10 | 12,000 |
 | ARISTA | 0.0315410515 | 0.2399999946 | 10 | 7,668 |
 | AD | 0.0121060429 | 0.3299999833 | 1 | all 53,615 observed t0 cells |
+
+Corrected de novo workflows keep the preset interaction cutoff but train a new
+edge predictor and use its validation-selected threshold. The threshold in the
+table is retained for historical predictor reuse or an explicit fixed-threshold
+override; it is not silently imposed on a newly trained predictor.
 
 The accuracy sweep selected `k=1` for all four datasets. Z/M/A retain `k=10`
 as the manuscript spatial-domain estimand; AD uses `k=1` because larger votes

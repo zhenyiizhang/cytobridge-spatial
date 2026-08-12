@@ -7,11 +7,21 @@ the public preprocessing, training, and downstream APIs.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from importlib import resources
 import json
+import math
+from numbers import Real
 from pathlib import Path
 from typing import Any, Mapping
+
+from .graph_database import (
+    FORMAL_GRAPH_DATABASES,
+    bundled_graph_database_path,
+    match_graph_database_features,
+    resolve_graph_database,
+)
 
 
 WORKFLOW_PRESETS = ("zebrafish", "mosta", "arista", "admouse")
@@ -32,6 +42,7 @@ class WorkflowOptions:
     output_dir: Path | None = None
     training_config: str | None = None
     interaction_cutoff: float | None = None
+    graph_database: Path | None = None
     edge_predictor_path: Path | None = None
     edge_predictor_threshold: float | None = None
     edge_predictor_root: Path | None = None
@@ -39,12 +50,30 @@ class WorkflowOptions:
     model_format: str | None = None
     reference_h5ad: Path | None = None
     gene_dynamics: bool = False
+    skip_gene_dynamics: bool = False
     lr_database: Path | None = None
+    skip_lr: bool = False
     lr_complex_mode: str = "min"
     preferred_species_tag: str | None = None
     reconstruction_diagnostic: bool = False
+    allow_complete_reference_pca_center_fallback: bool = False
     steps: tuple[str, ...] = ()
     train: bool = False
+
+
+def _resolve_workflow_options(
+    config: Mapping[str, Any], options: WorkflowOptions
+) -> WorkflowOptions:
+    """Resolve cross-step options once before planning or execution."""
+
+    species_tag = options.preferred_species_tag
+    if species_tag is None:
+        species_tag = config.get("downstream", {}).get("preferred_species_tag")
+    if species_tag is not None:
+        species_tag = str(species_tag).strip() or None
+    if species_tag == options.preferred_species_tag:
+        return options
+    return replace(options, preferred_species_tag=species_tag)
 
 
 def available_workflow_configs() -> tuple[str, ...]:
@@ -111,14 +140,43 @@ def _selected_steps(
     if options.steps:
         selected = list(options.steps)
     else:
-        selected = list(
-            config.get("steps", {}).get("default", ("preprocess", "downstream"))
-        )
+        selected = list(config.get("steps", {}).get("default", ("downstream",)))
+        # A de novo training command starts from raw data unless the caller
+        # explicitly supplies an aligned H5AD. Artifact reuse stays downstream
+        # only, so newly fitted PCA coordinates can never be paired silently
+        # with an unrelated existing checkpoint.
+        if (
+            options.train
+            and options.aligned_h5ad is None
+            and config.get("preprocess", {}).get("enabled", True)
+            and "preprocess" not in selected
+        ):
+            selected.insert(0, "preprocess")
     if options.train and "train" not in selected:
         insert_at = (
             selected.index("downstream") if "downstream" in selected else len(selected)
         )
         selected.insert(insert_at, "train")
+    if (
+        options.train
+        and "preprocess" in selected
+        and config.get("preprocess", {}).get("enabled", True)
+        and options.edge_predictor_path is not None
+    ):
+        raise ValueError(
+            "A preprocess+train run must fit a new edge predictor from the newly "
+            "aligned PCA features and interaction graphs. Do not pass "
+            "--edge-predictor-path for a raw-data run. Reuse an existing edge "
+            "predictor only with its matched --aligned-h5ad and without the "
+            "preprocess step."
+        )
+    if not options.train and {"preprocess", "downstream"}.issubset(selected):
+        raise ValueError(
+            "Preprocessing and downstream inference cannot share one command "
+            "without --train: a newly fitted PCA/alignment must not be paired "
+            "with an existing checkpoint. Run preprocessing alone, add --train "
+            "for a de novo workflow, or run downstream from matched artifacts."
+        )
     return tuple(dict.fromkeys(str(step) for step in selected))
 
 
@@ -137,10 +195,427 @@ def _output_paths(
     model_dir = options.model_dir
     if model_dir is None and output_dir is not None and options.train:
         model_dir = output_dir / "training"
+    edge_predictor = options.edge_predictor_path
+    if (
+        edge_predictor is None
+        and output_dir is not None
+        and options.train
+        and "preprocess" in _selected_steps(config, options)
+        and config.get("preprocess", {}).get("enabled", True)
+        and config.get("train", {}).get("requires_edge_predictor", False)
+    ):
+        edge_predictor = (
+            output_dir
+            / "preprocess"
+            / "edge_classifier"
+            / f"{dataset_name}_edge_model.pt"
+        )
     return {
         "output_dir": output_dir,
         "aligned_h5ad": aligned,
         "model_dir": model_dir,
+        "edge_predictor_path": edge_predictor,
+    }
+
+
+def _effective_downstream_analyses(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+) -> dict[str, Any]:
+    """Resolve optional downstream analyses after preset and CLI overrides.
+
+    Packaged presets can make gene dynamics and strict LR projection part of
+    their standard workflow.  Existing command-line flags remain explicit
+    overrides, and the LR default deliberately reuses the same species-matched
+    database as interaction-graph construction.
+    """
+
+    downstream = config.get("downstream", {})
+    gene_default = bool(downstream.get("gene_dynamics_enabled", False))
+    gene_dynamics = bool(
+        not options.skip_gene_dynamics and (options.gene_dynamics or gene_default)
+    )
+    gene_source = None
+    if options.gene_dynamics:
+        gene_source = "explicit --gene-dynamics"
+    elif gene_default:
+        gene_source = "packaged preset default"
+
+    lr_default = bool(downstream.get("lr_enabled", False))
+    lr_enabled = bool(
+        not options.skip_lr and (options.lr_database is not None or lr_default)
+    )
+    lr_database = None if options.skip_lr else options.lr_database
+    lr_source = None
+    if lr_enabled and options.lr_database is not None:
+        lr_source = "explicit --lr-database override"
+    elif lr_enabled and lr_default:
+        lr_database = bundled_graph_database_path(
+            str(config["dataset"]["name"]),
+            filename=config.get("train", {}).get("graph_database"),
+        )
+        lr_source = "bundled species-matched CellChatDB used for graph construction"
+
+    preferred_species_tag = options.preferred_species_tag
+    if preferred_species_tag is None:
+        configured_tag = downstream.get("preferred_species_tag")
+        preferred_species_tag = None if configured_tag is None else str(configured_tag)
+
+    return {
+        "gene_dynamics": gene_dynamics,
+        "gene_dynamics_source": gene_source,
+        "lr_enabled": lr_enabled,
+        "lr_database": lr_database,
+        "lr_database_source": lr_source,
+        "preferred_species_tag": preferred_species_tag,
+    }
+
+
+_OPERATIONAL_TRAINING_CONFIG_PATHS = frozenset(
+    {
+        ("ckpt_dir",),
+        ("checkpoint_dir",),
+        ("device",),
+        ("log_dir",),
+        ("output_dir",),
+        ("spatial_dim",),
+        ("training", "history_flush_every"),
+        ("model", "interaction_net", "edge_predictor_path"),
+        ("model", "interaction_net", "edge_predictor_model_path"),
+        ("model", "interaction_net", "load_edge_predictor_from_path"),
+        ("model", "spatial_dim"),
+    }
+)
+_OPERATIONAL_TRAINING_CONFIG_KEYS = frozenset(
+    {
+        "checkpoint_dir",
+        "ckpt_dir",
+        "device",
+        "history_flush_every",
+        "log_dir",
+        "output_dir",
+    }
+)
+_OMIT_CONFIG_VALUE = object()
+_MISSING_CONFIG_VALUE = object()
+
+
+def _scientific_training_config(
+    value: Any,
+    *,
+    path: tuple[str | int, ...] = (),
+) -> Any:
+    """Remove only runtime locations and reporting controls from a config."""
+
+    string_path = tuple(str(part) for part in path)
+    if string_path in _OPERATIONAL_TRAINING_CONFIG_PATHS or (
+        string_path and string_path[-1] in _OPERATIONAL_TRAINING_CONFIG_KEYS
+    ):
+        return _OMIT_CONFIG_VALUE
+    if isinstance(value, Mapping):
+        projected = {}
+        for key, child in value.items():
+            child_value = _scientific_training_config(
+                child,
+                path=(*path, str(key)),
+            )
+            if child_value is not _OMIT_CONFIG_VALUE:
+                projected[str(key)] = child_value
+        return projected
+    if isinstance(value, (list, tuple)):
+        return [
+            _scientific_training_config(child, path=(*path, index))
+            for index, child in enumerate(value)
+        ]
+    return value
+
+
+def _config_path_text(path: tuple[str | int, ...]) -> str:
+    text = ""
+    for part in path:
+        if isinstance(part, int):
+            text += f"[{part}]"
+        else:
+            text += ("." if text else "") + part
+    return text or "<root>"
+
+
+def _config_values_match(actual: Any, expected: Any) -> bool:
+    if isinstance(actual, bool) or isinstance(expected, bool):
+        return (
+            isinstance(actual, bool)
+            and isinstance(expected, bool)
+            and actual == expected
+        )
+    if isinstance(actual, Real) and isinstance(expected, Real):
+        return math.isclose(
+            float(actual),
+            float(expected),
+            rel_tol=1e-9,
+            abs_tol=1e-12,
+        )
+    if (
+        isinstance(actual, str)
+        and isinstance(expected, Real)
+        and not isinstance(expected, bool)
+    ):
+        try:
+            numeric_actual = float(actual)
+        except ValueError:
+            return False
+        return math.isfinite(numeric_actual) and math.isclose(
+            numeric_actual,
+            float(expected),
+            rel_tol=1e-9,
+            abs_tol=1e-12,
+        )
+    if (
+        isinstance(expected, str)
+        and isinstance(actual, Real)
+        and not isinstance(actual, bool)
+    ):
+        try:
+            numeric_expected = float(expected)
+        except ValueError:
+            return False
+        return math.isfinite(numeric_expected) and math.isclose(
+            float(actual),
+            numeric_expected,
+            rel_tol=1e-9,
+            abs_tol=1e-12,
+        )
+    return type(actual) is type(expected) and actual == expected
+
+
+def _scientific_config_mismatches(
+    actual: Any,
+    expected: Any,
+    *,
+    path: tuple[str | int, ...] = (),
+) -> list[tuple[tuple[str | int, ...], Any, Any]]:
+    """Return every structural or scalar difference with its readable path."""
+
+    if isinstance(actual, Mapping) and isinstance(expected, Mapping):
+        differences = []
+        for key in sorted(set(actual).union(expected)):
+            differences.extend(
+                _scientific_config_mismatches(
+                    actual.get(key, _MISSING_CONFIG_VALUE),
+                    expected.get(key, _MISSING_CONFIG_VALUE),
+                    path=(*path, str(key)),
+                )
+            )
+        return differences
+    if isinstance(actual, list) and isinstance(expected, list):
+        differences = []
+        for index in range(max(len(actual), len(expected))):
+            actual_value = (
+                actual[index] if index < len(actual) else _MISSING_CONFIG_VALUE
+            )
+            expected_value = (
+                expected[index] if index < len(expected) else _MISSING_CONFIG_VALUE
+            )
+            differences.extend(
+                _scientific_config_mismatches(
+                    actual_value,
+                    expected_value,
+                    path=(*path, index),
+                )
+            )
+        return differences
+    if (
+        actual is _MISSING_CONFIG_VALUE
+        or expected is _MISSING_CONFIG_VALUE
+        or not _config_values_match(actual, expected)
+    ):
+        return [(path, actual, expected)]
+    return []
+
+
+def _display_config_value(value: Any) -> str:
+    return "<missing>" if value is _MISSING_CONFIG_VALUE else repr(value)
+
+
+def _loaded_model_scientific_contract(
+    loaded,
+    *,
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+) -> dict[str, Any]:
+    """Verify that a loaded checkpoint matches the requested scientific run.
+
+    This check is intentionally about interpretable model parameters, not file
+    identity. It prevents an existing baseline checkpoint from being labelled
+    as an alpha=0.015 run merely because a workflow preset requested 0.015.
+    """
+
+    loaded_config = loaded.config
+    if "legacy" in loaded_config:
+        raise ValueError(
+            "Legacy params.yml does not record the resolved alpha=0.015 "
+            "six-stage contract. Use a dedicated historical compatibility "
+            "comparison; do not label a legacy checkpoint as a formal packaged run."
+        )
+    source = loaded_config
+    expected_config = deepcopy(
+        _read_training_config(options.training_config or str(config["train"]["config"]))
+    )
+    requested_scientific = config["scientific"]
+    expected_config["seed"] = int(requested_scientific["seed"])
+    expected_defaults = expected_config.setdefault("training", {}).setdefault(
+        "defaults", {}
+    )
+    expected_defaults["alpha_express"] = float(requested_scientific["alpha_express"])
+    expected_defaults["alpha_spatial"] = float(
+        requested_scientific.get("alpha_spatial", 10.0)
+    )
+    expected_interaction = expected_config.setdefault("model", {}).setdefault(
+        "interaction_net", {}
+    )
+    actual_interaction = source.get("model", {}).get("interaction_net", {})
+
+    requested_cutoff = options.interaction_cutoff
+    if requested_cutoff is None:
+        requested_cutoff = config.get("train", {}).get("interaction_cutoff")
+    if requested_cutoff is not None:
+        expected_interaction["cutoff"] = float(requested_cutoff)
+
+    requested_threshold = options.edge_predictor_threshold
+    threshold_source = None
+    if requested_threshold is not None:
+        threshold_source = "explicit workflow override"
+    elif not options.train:
+        requested_threshold = config.get("train", {}).get("edge_predictor_threshold")
+        threshold_source = (
+            "artifact-reuse preset"
+            if requested_threshold is not None
+            else "requested training config"
+        )
+    else:
+        requested_threshold = actual_interaction.get("edge_predictor_thre")
+        threshold_source = "validation-selected during this training run"
+    if requested_threshold is not None:
+        expected_interaction["edge_predictor_thre"] = float(requested_threshold)
+
+    actual_spatial_dims = {
+        "spatial_dim": source.get("spatial_dim"),
+        "model.spatial_dim": source.get("model", {}).get("spatial_dim"),
+    }
+    recorded_spatial_dims = {
+        int(value) for value in actual_spatial_dims.values() if value is not None
+    }
+    if len(recorded_spatial_dims) > 1:
+        raise ValueError(
+            "Loaded model records conflicting derived spatial dimensions: "
+            + ", ".join(
+                f"{path}={value!r}" for path, value in actual_spatial_dims.items()
+            )
+        )
+    actual_spatial_dim = (
+        next(iter(recorded_spatial_dims)) if recorded_spatial_dims else 2
+    )
+    expected_spatial_dim = expected_config.get("model", {}).get("spatial_dim")
+    if expected_spatial_dim is None:
+        uses_spatial = config.get("dataset", {}).get("concat_spatial", True)
+        if uses_spatial:
+            expected_spatial_dim = (
+                config.get("preprocess", {}).get("align", {}).get("spatial_dim")
+            )
+        elif uses_spatial is False:
+            expected_spatial_dim = 0
+    if actual_spatial_dim is not None and expected_spatial_dim is not None:
+        if int(actual_spatial_dim) != int(expected_spatial_dim):
+            raise ValueError(
+                "Loaded model derived spatial dimension does not match the "
+                "requested workflow: "
+                f"loaded model.spatial_dim={actual_spatial_dim!r}; "
+                f"expected model.spatial_dim={int(expected_spatial_dim)!r}."
+            )
+
+    configured_stage_names = [
+        str(stage.get("name"))
+        for stage in source.get("training", {}).get("plan", [])
+        if stage.get("name")
+    ]
+    expected_plan = expected_config.get("training", {}).get("plan", [])
+    expected_stage_names = [
+        str(stage.get("name")) for stage in expected_plan if stage.get("name")
+    ]
+    if configured_stage_names != expected_stage_names:
+        raise ValueError(
+            "Loaded model training stages do not match the requested packaged "
+            f"plan: loaded={configured_stage_names}, expected={expected_stage_names}."
+        )
+
+    actual_scientific_config = _scientific_training_config(source)
+    expected_scientific_config = _scientific_training_config(expected_config)
+    mismatches = _scientific_config_mismatches(
+        actual_scientific_config,
+        expected_scientific_config,
+    )
+    if mismatches:
+        shown = mismatches[:12]
+        lines = [
+            "Loaded model scientific config does not match the requested training config:"
+        ]
+        for path, actual, expected in shown:
+            name = _config_path_text(path)
+            lines.append(
+                f"- loaded {name}={_display_config_value(actual)}; "
+                f"expected {name}={_display_config_value(expected)}"
+            )
+        if len(mismatches) > len(shown):
+            lines.append(f"- ... and {len(mismatches) - len(shown)} more differences")
+        raise ValueError(
+            "\n".join(lines)
+            + "\nOnly runtime path, output, device, and history-flush fields are ignored."
+        )
+
+    expected_weight_stages = [
+        str(stage["name"])
+        for stage in expected_plan
+        if stage.get("name")
+        and str(stage.get("mode", "")).lower() != "score_matching"
+        and str(stage.get("train_strategy", "")).lower() != "s"
+    ]
+    expected_weight_stage = (
+        expected_weight_stages[-1] if expected_weight_stages else None
+    )
+    if expected_weight_stage and str(loaded.weight_stage) != expected_weight_stage:
+        raise ValueError(
+            f"Loaded model used weight stage {loaded.weight_stage!r}; "
+            f"the requested training config requires {expected_weight_stage!r}."
+        )
+    expected_score_stages = [
+        str(stage["name"])
+        for stage in expected_plan
+        if stage.get("name")
+        if str(stage.get("mode", "")).lower() == "score_matching"
+        or str(stage.get("train_strategy", "")).lower() == "s"
+    ]
+    if expected_score_stages and str(loaded.score_stage) != expected_score_stages[-1]:
+        raise ValueError(
+            f"Loaded score stage {loaded.score_stage!r} does not match the formal "
+            f"final score stage {expected_score_stages[-1]!r}."
+        )
+
+    defaults = source.get("training", {}).get("defaults", {})
+    interaction = source.get("model", {}).get("interaction_net", {})
+    alpha_express = float(defaults["alpha_express"])
+    alpha_spatial = float(defaults["alpha_spatial"])
+    seed = int(source["seed"])
+    cutoff = interaction.get("cutoff")
+    threshold = interaction.get("edge_predictor_thre")
+    return {
+        "status": "matches requested preset",
+        "alpha_express": alpha_express,
+        "alpha_spatial": alpha_spatial,
+        "seed": int(seed),
+        "interaction_cutoff": None if cutoff is None else float(cutoff),
+        "edge_predictor_threshold": (None if threshold is None else float(threshold)),
+        "edge_predictor_threshold_check": threshold_source,
+        "weight_stage": loaded.weight_stage,
+        "score_stage": loaded.score_stage,
     }
 
 
@@ -152,6 +627,7 @@ def build_workflow_plan(
 ) -> dict[str, Any]:
     """Build the concise execution plan shown by ``--dry-run``."""
 
+    options = _resolve_workflow_options(config, options)
     selected = _selected_steps(config, options)
     paths = _output_paths(config, options)
     dataset = config["dataset"]
@@ -159,6 +635,7 @@ def build_workflow_plan(
     preprocess_config = config.get("preprocess", {})
     train_config = config.get("train", {})
     downstream_config = config.get("downstream", {})
+    downstream_analyses = _effective_downstream_analyses(config, options)
 
     steps: list[dict[str, Any]] = []
 
@@ -185,6 +662,25 @@ def build_workflow_plan(
             missing.append("--input-h5ad")
         if options.output_dir is None:
             missing.append("--output-dir")
+        auto_edge_predictor = (
+            train_config.get("requires_edge_predictor", False)
+            and options.train
+            and options.edge_predictor_path is None
+            and "preprocess" in selected
+            and preprocess_config.get("enabled", True)
+        )
+        bundled_database = None
+        if auto_edge_predictor and options.graph_database is None:
+            bundled_database = bundled_graph_database_path(
+                str(dataset["name"]),
+                filename=train_config.get("graph_database"),
+            )
+        if (
+            auto_edge_predictor
+            and options.graph_database is not None
+            and not options.graph_database.expanduser().is_file()
+        ):
+            missing.append(f"graph database not found: {options.graph_database}")
         steps.append(
             {
                 "name": "preprocess",
@@ -194,6 +690,43 @@ def build_workflow_plan(
                 "output": None
                 if paths["aligned_h5ad"] is None
                 else str(paths["aligned_h5ad"]),
+                "edge_predictor": (
+                    {
+                        "status": "will be trained automatically",
+                        "graph_database": (
+                            str(options.graph_database)
+                            if options.graph_database is not None
+                            else str(bundled_database)
+                        ),
+                        "database_source": (
+                            "custom --graph-database override"
+                            if options.graph_database is not None
+                            else "bundled formal CellChatDB resource"
+                        ),
+                        "interaction_cutoff": (
+                            float(options.interaction_cutoff)
+                            if options.interaction_cutoff is not None
+                            else train_config.get("interaction_cutoff")
+                        ),
+                        "decision_threshold": (
+                            float(options.edge_predictor_threshold)
+                            if options.edge_predictor_threshold is not None
+                            else None
+                        ),
+                        "decision_threshold_source": (
+                            "explicit --edge-predictor-threshold"
+                            if options.edge_predictor_threshold is not None
+                            else "validation-selected during de novo training"
+                        ),
+                        "output": None
+                        if paths["edge_predictor_path"] is None
+                        else str(paths["edge_predictor_path"]),
+                    }
+                    if auto_edge_predictor
+                    else {
+                        "status": "not requested during preprocessing",
+                    }
+                ),
                 "note": preprocess_config.get("note"),
             }
         )
@@ -215,11 +748,32 @@ def build_workflow_plan(
         training_preset = options.training_config or train_config.get("config")
         if not training_preset:
             missing.append("--training-config")
-        if (
+        auto_edge_predictor = (
             train_config.get("requires_edge_predictor", False)
             and options.edge_predictor_path is None
+            and "preprocess" in selected
+            and preprocess_config.get("enabled", True)
+        )
+        if train_config.get("requires_edge_predictor", False) and not (
+            options.edge_predictor_path is not None or auto_edge_predictor
         ):
             missing.append("--edge-predictor-path")
+        if (
+            options.edge_predictor_path is not None
+            and not options.edge_predictor_path.expanduser().is_file()
+        ):
+            missing.append(f"edge predictor not found: {options.edge_predictor_path}")
+        planned_edge_threshold = None
+        if options.edge_predictor_threshold is not None:
+            planned_edge_threshold = float(options.edge_predictor_threshold)
+            threshold_source = "explicit --edge-predictor-threshold"
+        elif auto_edge_predictor:
+            threshold_source = "validation-selected during preprocessing"
+        elif train_config.get("requires_edge_predictor", False):
+            planned_edge_threshold = train_config.get("edge_predictor_threshold")
+            threshold_source = "packaged historical matched threshold"
+        else:
+            threshold_source = None
         steps.append(
             {
                 "name": "train",
@@ -232,10 +786,17 @@ def build_workflow_plan(
                     if options.interaction_cutoff is not None
                     else train_config.get("interaction_cutoff")
                 ),
-                "edge_predictor_threshold": (
-                    float(options.edge_predictor_threshold)
-                    if options.edge_predictor_threshold is not None
-                    else train_config.get("edge_predictor_threshold")
+                "edge_predictor_threshold": planned_edge_threshold,
+                "edge_predictor_threshold_source": threshold_source,
+                "edge_predictor_path": None
+                if paths["edge_predictor_path"] is None
+                else str(paths["edge_predictor_path"]),
+                "edge_predictor_source": (
+                    "explicit --edge-predictor-path"
+                    if options.edge_predictor_path is not None
+                    else "generated by preprocessing"
+                    if auto_edge_predictor
+                    else None
                 ),
                 "output": None
                 if paths["model_dir"] is None
@@ -285,26 +846,45 @@ def build_workflow_plan(
             },
             {
                 "name": "gene dynamics",
-                "status": "requested" if options.gene_dynamics else "not requested",
+                "status": (
+                    "enabled"
+                    if downstream_analyses["gene_dynamics"]
+                    else "not requested"
+                ),
+                "source": downstream_analyses["gene_dynamics_source"],
+                "preferred_species_tag": downstream_analyses["preferred_species_tag"],
                 "note": (
-                    "requires exact PCA loadings in varm['PCs'] and center in "
-                    "var['pca_center'] of --reference-h5ad or the aligned H5AD"
+                    "requires PCA loadings in varm['PCs']; new preprocessing "
+                    "persists var['pca_center']; missing centers fail closed unless "
+                    "--allow-complete-reference-pca-center-fallback explicitly "
+                    "declares a complete original PCA-fit reference, whose mean "
+                    "must still reproduce saved PCA coordinates"
                 ),
             },
             {
                 "name": "strict ligand-receptor projection",
-                "status": "requested"
-                if options.lr_database is not None
-                else "not requested",
+                "status": (
+                    "enabled" if downstream_analyses["lr_enabled"] else "not requested"
+                ),
+                "database": (
+                    None
+                    if downstream_analyses["lr_database"] is None
+                    else str(downstream_analyses["lr_database"])
+                ),
+                "source": downstream_analyses["lr_database_source"],
+                "preferred_species_tag": downstream_analyses["preferred_species_tag"],
                 "missing": (
-                    [f"LR database file not found: {options.lr_database}"]
-                    if options.lr_database is not None
-                    and not options.lr_database.expanduser().is_file()
+                    [
+                        "LR database file not found: "
+                        f"{downstream_analyses['lr_database']}"
+                    ]
+                    if downstream_analyses["lr_database"] is not None
+                    and not downstream_analyses["lr_database"].expanduser().is_file()
                     else []
                 ),
                 "note": (
                     "uses all required complex subunits and the selected min/geometric-mean rule; "
-                    "requires exact PCA metadata for generated slices"
+                    "requires PCA loadings and the matching complete reference H5AD"
                 ),
             },
             {
@@ -413,6 +993,15 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
             lines.append(
                 f"    edge predictor threshold: {step['edge_predictor_threshold']}"
             )
+        if step.get("edge_predictor_threshold_source"):
+            lines.append(
+                "    edge predictor threshold source: "
+                f"{step['edge_predictor_threshold_source']}"
+            )
+        if step.get("edge_predictor_path"):
+            lines.append(f"    edge predictor: {step['edge_predictor_path']}")
+        if step.get("edge_predictor_source"):
+            lines.append(f"    edge predictor source: {step['edge_predictor_source']}")
         if step.get("model_format"):
             lines.append(f"    model format: {step['model_format']}")
         if step.get("output"):
@@ -429,8 +1018,35 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
                 f"dt={simulation['split_dt']:g}, sigma={simulation['sigma']:g}, "
                 f"growth alpha={simulation['growth_alpha']:g}"
             )
+        if step.get("edge_predictor"):
+            edge = step["edge_predictor"]
+            lines.append(f"    edge predictor: {edge['status']}")
+            if edge.get("graph_database"):
+                lines.append(f"      graph database: {edge['graph_database']}")
+            if edge.get("database_source"):
+                lines.append(f"      database source: {edge['database_source']}")
+            if edge.get("interaction_cutoff") is not None:
+                lines.append(f"      interaction cutoff: {edge['interaction_cutoff']}")
+            if edge.get("decision_threshold") is not None:
+                lines.append(f"      decision threshold: {edge['decision_threshold']}")
+            if edge.get("decision_threshold_source"):
+                lines.append(
+                    "      decision threshold source: "
+                    f"{edge['decision_threshold_source']}"
+                )
+            if edge.get("output"):
+                lines.append(f"      output: {edge['output']}")
         for analysis in step.get("analyses", []):
             lines.append(f"    {analysis['name']}: {analysis['status']}")
+            if analysis.get("database"):
+                lines.append(f"      database: {analysis['database']}")
+            if analysis.get("source"):
+                lines.append(f"      source: {analysis['source']}")
+            if analysis.get("preferred_species_tag"):
+                lines.append(
+                    "      preferred species tag: "
+                    f"{analysis['preferred_species_tag']}"
+                )
             if analysis.get("missing"):
                 lines.append(f"      missing: {', '.join(analysis['missing'])}")
             if analysis.get("note"):
@@ -472,6 +1088,8 @@ def _run_preprocess(
     *,
     aligned_h5ad: Path,
 ) -> Path:
+    import anndata as ad
+
     from CytoBridge.pp import AlignConfig, preprocess_align_to_files
 
     preprocess_config = config["preprocess"]
@@ -481,25 +1099,217 @@ def _run_preprocess(
         and align_values["spatial_obs_keys"] is not None
     ):
         align_values["spatial_obs_keys"] = tuple(align_values["spatial_obs_keys"])
+
+    dataset_name = str(config["dataset"]["name"])
+    train_config = config.get("train", {})
+    lr_feature_coverage = None
+    should_match_lr_features = bool(
+        options.graph_database is not None
+        or train_config.get("graph_database")
+        or dataset_name in FORMAL_GRAPH_DATABASES
+    )
+    if should_match_lr_features:
+        graph_database = resolve_graph_database(
+            dataset_name,
+            options.graph_database,
+            bundled_filename=train_config.get("graph_database"),
+        )
+        raw_adata = ad.read_h5ad(str(options.input_h5ad), backed="r")
+        try:
+            var_names = tuple(str(name) for name in raw_adata.var_names)
+        finally:
+            raw_adata.file.close()
+        lr_features, lr_feature_coverage = match_graph_database_features(
+            graph_database,
+            var_names,
+            preferred_species_tag=options.preferred_species_tag,
+        )
+        configured_required = tuple(
+            str(name) for name in (align_values.get("required_latent_features") or ())
+        )
+        align_values["required_latent_features"] = tuple(
+            dict.fromkeys((*configured_required, *lr_features))
+        )
+        lr_feature_coverage["database_source"] = (
+            "custom --graph-database override"
+            if options.graph_database is not None
+            else "bundled formal CellChatDB resource"
+        )
+        print(
+            "LR latent-feature coverage before HVG/PCA: "
+            f"matched={lr_feature_coverage['n_matched_features']}/"
+            f"{lr_feature_coverage['n_unique_database_subunits']}, "
+            f"missing={lr_feature_coverage['n_missing_database_subunits']}, "
+            f"ambiguous_skipped="
+            f"{lr_feature_coverage['n_ambiguous_database_subunits']}."
+        )
+
     cfg = AlignConfig(**align_values)
     output_csv = aligned_h5ad.with_suffix(".csv")
     adata = preprocess_align_to_files(
         h5ad_path=str(options.input_h5ad),
         time_key=str(preprocess_config["time_key"]),
         output_csv=str(output_csv),
-        output_h5ad=str(aligned_h5ad),
+        output_h5ad=None,
         cfg=cfg,
         batch_indices=preprocess_config.get("batch_indices"),
         device=options.device,
     )
+    if lr_feature_coverage is not None:
+        preprocess_info = dict(adata.uns.get("preprocess_info", {}))
+        preprocess_info["lr_latent_feature_coverage"] = lr_feature_coverage
+        adata.uns["preprocess_info"] = preprocess_info
     annotation_source = preprocess_config.get("annotation_source")
     annotation_key = str(config["dataset"].get("annotation_key", "Annotation"))
     if annotation_source and annotation_source in adata.obs:
         adata.obs[annotation_key] = (
             adata.obs[str(annotation_source)].astype(str).to_numpy()
         )
-        adata.write_h5ad(aligned_h5ad)
+    adata.write_h5ad(aligned_h5ad)
     return aligned_h5ad
+
+
+def _interaction_expression_layer(adata) -> str:
+    """Return the raw expression layer selected by package preprocessing."""
+
+    preprocess_info = adata.uns.get("preprocess_info", {})
+    layer = str(
+        preprocess_info.get(
+            "raw_counts_layer",
+            preprocess_info.get("counts_layer", "counts"),
+        )
+    )
+    if layer not in adata.layers:
+        raise KeyError(
+            "The raw-expression layer recorded by preprocessing is "
+            f"{layer!r}, but the aligned H5AD contains {list(adata.layers)}."
+        )
+    return layer
+
+
+def _run_edge_predictor(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+    *,
+    aligned_h5ad: Path,
+    edge_predictor_path: Path,
+) -> dict[str, Any]:
+    """Build per-time interaction graphs and train their shared edge predictor."""
+
+    import anndata as ad
+    import pandas as pd
+
+    import CytoBridge as cb
+
+    dataset = config["dataset"]
+    preprocess_config = config["preprocess"]
+    train_config = config["train"]
+    edge_config = dict(preprocess_config.get("edge_predictor", {}))
+    data_name = str(dataset["name"])
+    time_key = str(dataset.get("time_key", "time_point_processed"))
+    spatial_key = str(dataset.get("spatial_key", "spatial_aligned"))
+    latent_key = str(dataset.get("obsm_key", "X_latent"))
+    interaction_cutoff = options.interaction_cutoff
+    if interaction_cutoff is None:
+        interaction_cutoff = train_config.get("interaction_cutoff")
+    if interaction_cutoff is None:
+        raise ValueError(
+            "Automatic edge prediction requires train.interaction_cutoff or "
+            "--interaction-cutoff."
+        )
+    decision_threshold = options.edge_predictor_threshold
+
+    adata = ad.read_h5ad(aligned_h5ad)
+    if time_key not in adata.obs:
+        raise KeyError(f"Aligned H5AD is missing time column {time_key!r}.")
+    time_points = sorted(
+        pd.to_numeric(adata.obs[time_key], errors="raise").astype(float).unique()
+    )
+    expression_layer = _interaction_expression_layer(adata)
+    graph_database = resolve_graph_database(
+        data_name,
+        options.graph_database,
+        bundled_filename=train_config.get("graph_database"),
+    )
+    preprocess_dir = aligned_h5ad.parent
+    graph_input_dir = preprocess_dir / "input_graph"
+    metadata_dir = preprocess_dir / "metadata"
+    graph_results = []
+    spot_diameter = float(edge_config.get("spot_diameter", interaction_cutoff / 4.0))
+    for time_index, time_value in enumerate(time_points):
+        slice_name = f"{data_name}_t{time_index}"
+        graph_results.append(
+            cb.pp.generate_interaction_graph(
+                data_name=slice_name,
+                data_from=adata,
+                data_to=str(graph_input_dir / slice_name),
+                metadata_to=str(metadata_dir / slice_name),
+                database_path=str(graph_database),
+                split=int(edge_config.get("split", 0)),
+                time_key=time_key,
+                time_value=float(time_value),
+                neighborhood_threshold=float(interaction_cutoff),
+                spot_diameter=spot_diameter,
+                spatial_key=spatial_key,
+                expression_layer=expression_layer,
+                auto_neighborhood_threshold=False,
+                save_metadata=bool(edge_config.get("save_metadata", False)),
+                save_quantile_matrix=bool(
+                    edge_config.get("save_quantile_matrix", False)
+                ),
+                verbose=bool(edge_config.get("verbose", True)),
+                use_tqdm=bool(edge_config.get("use_tqdm", True)),
+                preferred_species_tag=options.preferred_species_tag,
+            )
+        )
+
+    edge_predictor_path.parent.mkdir(parents=True, exist_ok=True)
+    edge_result = cb.pp.train_edge_predictor(
+        data_name=data_name,
+        adata_or_h5ad=adata,
+        graph_input_dir=str(graph_input_dir),
+        output_model_path=str(edge_predictor_path),
+        epochs=int(edge_config.get("epochs", 100)),
+        batch_size=int(edge_config.get("batch_size", 1024)),
+        learning_rate=float(edge_config.get("learning_rate", 1e-3)),
+        spatial_dim=int(preprocess_config.get("align", {}).get("spatial_dim", 2)),
+        distance_threshold=float(interaction_cutoff),
+        device=options.device,
+        time_key=time_key,
+        latent_key=latent_key,
+        spatial_key=spatial_key,
+        train_sample_ratio_per_epoch=float(
+            edge_config.get("train_sample_ratio_per_epoch", 1.0)
+        ),
+        max_train_edges_per_epoch=edge_config.get("max_train_edges_per_epoch"),
+        num_workers=int(edge_config.get("num_workers", 4)),
+        random_seed=int(config["scientific"]["seed"]),
+        edge_predictor_threshold=(
+            None if decision_threshold is None else float(decision_threshold)
+        ),
+        split_strategy=str(edge_config.get("split_strategy", "node_disjoint")),
+    )
+    cb.pp.sanitize_interaction_graph_uns(adata)
+    adata.write_h5ad(aligned_h5ad)
+    return {
+        "model_path": str(edge_predictor_path),
+        "meta_path": str(edge_result["meta_path"]),
+        "graph_input_dir": str(graph_input_dir),
+        "metadata_dir": str(metadata_dir),
+        "graph_database": str(graph_database),
+        "graph_database_source": (
+            "custom --graph-database override"
+            if options.graph_database is not None
+            else "bundled formal CellChatDB resource"
+        ),
+        "time_points": [float(value) for value in time_points],
+        "graph_slices": graph_results,
+        "interaction_cutoff": float(interaction_cutoff),
+        "edge_predictor_threshold": float(edge_result["edge_predictor_threshold"]),
+        "edge_predictor_threshold_selected": float(
+            edge_result["edge_predictor_threshold_selected"]
+        ),
+    }
 
 
 def _run_train(
@@ -508,6 +1318,8 @@ def _run_train(
     *,
     aligned_h5ad: Path,
     model_dir: Path,
+    edge_predictor_path: Path | None = None,
+    edge_predictor_threshold: float | None = None,
 ) -> Path:
     import CytoBridge as cb
 
@@ -522,11 +1334,14 @@ def _run_train(
     defaults["alpha_spatial"] = float(scientific.get("alpha_spatial", 10.0))
     defaults["alpha_express"] = float(scientific["alpha_express"])
     interaction = resolved.setdefault("model", {}).setdefault("interaction_net", {})
-    if options.edge_predictor_path is not None:
+    effective_edge_path = edge_predictor_path or options.edge_predictor_path
+    if effective_edge_path is not None:
         interaction["edge_predictor_path"] = str(
-            options.edge_predictor_path.expanduser().resolve()
+            effective_edge_path.expanduser().resolve()
         )
-    threshold = options.edge_predictor_threshold
+    threshold = edge_predictor_threshold
+    if threshold is None:
+        threshold = options.edge_predictor_threshold
     if threshold is None:
         threshold = train_config.get("edge_predictor_threshold")
     if threshold is not None:
@@ -552,8 +1367,8 @@ def _run_train(
         interaction_cutoff=None if cutoff is None else float(cutoff),
         edge_predictor_path=(
             None
-            if options.edge_predictor_path is None
-            else str(options.edge_predictor_path.expanduser().resolve())
+            if effective_edge_path is None
+            else str(effective_edge_path.expanduser().resolve())
         ),
         edge_predictor_threshold=(None if threshold is None else float(threshold)),
         evaluate_after_training=bool(
@@ -878,15 +1693,35 @@ def _write_standard_figures(
     return outputs
 
 
-def _require_pca_reference(reference_adata) -> None:
-    """Require the exact inverse-PCA transform used by gene and LR analyses."""
+def _require_pca_reference(
+    reference_adata,
+    *,
+    allow_complete_reference_pca_center_fallback: bool = False,
+) -> None:
+    """Require PCA loadings needed by gene and LR reconstruction.
+
+    New preprocessing persists ``var['pca_center']``. A historical object is
+    accepted only with an explicit declaration that it is the complete
+    original PCA-fit reference, followed by a saved-score consistency check.
+    """
 
     if "PCs" not in reference_adata.varm:
         raise KeyError("Reference H5AD must contain exact PCA loadings in varm['PCs'].")
     if "pca_center" not in reference_adata.var:
-        raise KeyError(
-            "Reference H5AD must contain the fitted PCA center in var['pca_center']."
+        from CytoBridge.tl.downstream.temporal import infer_pca_center
+
+        infer_pca_center(
+            reference_adata,
+            allow_complete_reference_pca_center_fallback=(
+                allow_complete_reference_pca_center_fallback
+            ),
         )
+
+
+def _pca_center_source(reference_adata) -> str:
+    if "pca_center" in reference_adata.var:
+        return "reference var['pca_center']"
+    return "explicit complete-reference X column mean matching saved PCA coordinates"
 
 
 def _write_gene_dynamics_outputs(
@@ -898,10 +1733,16 @@ def _write_gene_dynamics_outputs(
     preferred_species_tag: str | None,
     output_dir: Path,
     downstream: Mapping[str, Any],
+    allow_complete_reference_pca_center_fallback: bool = False,
 ) -> dict[str, Any]:
     """Reconstruct temporal gene programs from the retained PCA transform."""
 
-    _require_pca_reference(reference_adata)
+    _require_pca_reference(
+        reference_adata,
+        allow_complete_reference_pca_center_fallback=(
+            allow_complete_reference_pca_center_fallback
+        ),
+    )
     gene_config = dict(downstream.get("gene_dynamics", {}))
     output_dir.mkdir(parents=True, exist_ok=True)
     gene_result = cb.tl.summarize_temporal_gene_patterns(
@@ -909,6 +1750,9 @@ def _write_gene_dynamics_outputs(
         reference_adata,
         time_points=result.ts_points,
         spatial_dim=spatial_dim,
+        allow_complete_reference_pca_center_fallback=(
+            allow_complete_reference_pca_center_fallback
+        ),
         n_top_genes=int(gene_config.get("n_top_genes", 250)),
         n_cluster_genes=gene_config.get("n_cluster_genes"),
         n_clusters=int(gene_config.get("n_clusters", 2)),
@@ -937,7 +1781,7 @@ def _write_gene_dynamics_outputs(
     return {
         "status": "completed",
         "pca_loadings_key": "varm['PCs']",
-        "pca_center_key": "var['pca_center']",
+        "pca_center_source": _pca_center_source(reference_adata),
         "clip_min": gene_config.get("clip_min", 0.0),
         "preferred_species_tag": preferred_species_tag,
         "expression": str(output_dir / "mean_expression.csv"),
@@ -959,10 +1803,16 @@ def _write_lr_outputs(
     resolved_time_key: str,
     spatial_dim: int,
     output_dir: Path,
+    allow_complete_reference_pca_center_fallback: bool = False,
 ) -> dict[str, Any]:
     """Project sparse communication through a strict, fully supported LR database."""
 
-    _require_pca_reference(reference_adata)
+    _require_pca_reference(
+        reference_adata,
+        allow_complete_reference_pca_center_fallback=(
+            allow_complete_reference_pca_center_fallback
+        ),
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     lr_result = cb.tl.project_communication_to_lr_timecourses(
         result.communication_adata_dict,
@@ -972,6 +1822,9 @@ def _write_lr_outputs(
         time_points=result.ts_points,
         annotation_key=annotation_key,
         spatial_dim=spatial_dim,
+        allow_complete_reference_pca_center_fallback=(
+            allow_complete_reference_pca_center_fallback
+        ),
         complex_mode=lr_complex_mode,
         expression_space="log1p",
         require_all_subunits=True,
@@ -1001,7 +1854,7 @@ def _write_lr_outputs(
         "complex_mode": lr_complex_mode,
         "require_all_subunits": True,
         "pca_loadings_key": "varm['PCs']",
-        "pca_center_key": "var['pca_center']",
+        "pca_center_source": _pca_center_source(reference_adata),
         "preferred_species_tag": preferred_species_tag,
         "tables": paths,
     }
@@ -1090,6 +1943,7 @@ def _run_downstream(
     dataset = config["dataset"]
     scientific = config["scientific"]
     downstream = config["downstream"]
+    downstream_analyses = _effective_downstream_analyses(config, options)
     adata = ad.read_h5ad(aligned_h5ad)
     annotation_key = str(dataset.get("annotation_key", "Annotation"))
     dataframe, resolved_time_key = cb.tl.adata_to_aligned_dataframe(
@@ -1100,6 +1954,26 @@ def _run_downstream(
         concat_spatial=dataset.get("concat_spatial", True),
         annotation_key=annotation_key,
     )
+    spatial_key = str(dataset.get("spatial_key", "spatial_aligned"))
+    concat_spatial = dataset.get("concat_spatial", True)
+    use_spatial = (
+        bool(concat_spatial)
+        if concat_spatial is not None
+        else spatial_key in adata.obsm
+    )
+    spatial_dim = (
+        int(adata.obsm[spatial_key].shape[1])
+        if use_spatial and spatial_key in adata.obsm
+        else 0
+    )
+    if spatial_dim != 2:
+        raise ValueError(
+            "CytoBridge training records the actual spatial_dim, but the current "
+            "package workflow's interpolation, snapshots, and communication "
+            f"downstream require exactly 2 spatial dimensions; got {spatial_dim}. "
+            "Use the training API without this downstream workflow for non-2D "
+            "or nonspatial inputs."
+        )
     feature_columns = cb.tl.infer_feature_columns(
         dataframe,
         annotation_column=annotation_key,
@@ -1120,6 +1994,11 @@ def _run_downstream(
             device=options.device,
             edge_predictor_path=options.edge_predictor_path,
         )
+    model_contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=options,
+    )
     runtime = cb.tl.build_dynamical_runtime(loaded)
     observed = [float(value) for value in downstream["observed"]]
     interpolated = [float(value) for value in downstream.get("interpolated", [])]
@@ -1230,51 +2109,48 @@ def _run_downstream(
         lineage_enabled=bool(downstream.get("lineage_enabled", False)),
     )
 
-    spatial_key = str(dataset.get("spatial_key", "spatial_aligned"))
-    concat_spatial = dataset.get("concat_spatial", True)
-    use_spatial = (
-        bool(concat_spatial)
-        if concat_spatial is not None
-        else spatial_key in adata.obsm
-    )
-    spatial_dim = (
-        int(adata.obsm[spatial_key].shape[1])
-        if use_spatial and spatial_key in adata.obsm
-        else 0
-    )
     reference_adata = None
-    if options.gene_dynamics or options.lr_database is not None:
+    if downstream_analyses["gene_dynamics"] or downstream_analyses["lr_enabled"]:
         reference_adata = (
             adata
             if options.reference_h5ad is None
             else ad.read_h5ad(options.reference_h5ad.expanduser())
         )
-    if options.gene_dynamics:
+    if downstream_analyses["gene_dynamics"]:
         analyses["gene_dynamics"] = _write_gene_dynamics_outputs(
             cb=cb,
             result=result,
             reference_adata=reference_adata,
             spatial_dim=spatial_dim,
-            preferred_species_tag=options.preferred_species_tag,
+            preferred_species_tag=downstream_analyses["preferred_species_tag"],
             output_dir=output_dir / "gene_dynamics",
             downstream=downstream,
+            allow_complete_reference_pca_center_fallback=(
+                options.allow_complete_reference_pca_center_fallback
+            ),
         )
     else:
         analyses["gene_dynamics"] = {"status": "not requested"}
 
-    if options.lr_database is not None:
+    if downstream_analyses["lr_enabled"]:
+        lr_database = downstream_analyses["lr_database"]
+        if lr_database is None:
+            raise ValueError("Strict LR projection is enabled without an LR database.")
         analyses["ligand_receptor"] = _write_lr_outputs(
             cb=cb,
             result=result,
             reference_adata=reference_adata,
             communications=communications,
-            lr_database=options.lr_database.expanduser().resolve(),
+            lr_database=lr_database.expanduser().resolve(),
             lr_complex_mode=options.lr_complex_mode,
-            preferred_species_tag=options.preferred_species_tag,
+            preferred_species_tag=downstream_analyses["preferred_species_tag"],
             annotation_key=annotation_key,
             resolved_time_key=resolved_time_key,
             spatial_dim=spatial_dim,
             output_dir=output_dir / "ligand_receptor",
+            allow_complete_reference_pca_center_fallback=(
+                options.allow_complete_reference_pca_center_fallback
+            ),
         )
     else:
         analyses["ligand_receptor"] = {"status": "not requested"}
@@ -1307,6 +2183,7 @@ def _run_downstream(
             "directory": str(model_dir),
             "weight_stage": loaded.weight_stage,
             "score_stage": loaded.score_stage,
+            "scientific_contract": model_contract,
         },
         "time_points": [float(value) for value in result.ts_points],
         "simulation": {
@@ -1340,13 +2217,16 @@ def run_workflow(
 ) -> dict[str, Any]:
     """Execute selected steps after the caller has checked the dry-run plan."""
 
+    options = _resolve_workflow_options(config, options)
     selected = _selected_steps(config, options)
     paths = _output_paths(config, options)
     output_dir = paths["output_dir"]
     aligned_h5ad = paths["aligned_h5ad"]
     model_dir = paths["model_dir"]
+    edge_predictor_path = paths["edge_predictor_path"]
     completed: list[str] = []
     outputs: dict[str, Any] = {}
+    generated_edge_threshold: float | None = None
 
     if "preprocess" in selected and config.get("preprocess", {}).get("enabled", True):
         assert aligned_h5ad is not None
@@ -1354,6 +2234,21 @@ def run_workflow(
         aligned_h5ad = _run_preprocess(config, options, aligned_h5ad=aligned_h5ad)
         completed.append("preprocess")
         outputs["aligned_h5ad"] = str(aligned_h5ad)
+        if (
+            options.train
+            and options.edge_predictor_path is None
+            and config.get("train", {}).get("requires_edge_predictor", False)
+        ):
+            assert edge_predictor_path is not None
+            edge_result = _run_edge_predictor(
+                config,
+                options,
+                aligned_h5ad=aligned_h5ad,
+                edge_predictor_path=edge_predictor_path,
+            )
+            generated_edge_threshold = float(edge_result["edge_predictor_threshold"])
+            completed.append("edge_predictor")
+            outputs["edge_predictor"] = edge_result
 
     if options.train:
         assert aligned_h5ad is not None and model_dir is not None
@@ -1363,6 +2258,8 @@ def run_workflow(
             options,
             aligned_h5ad=aligned_h5ad,
             model_dir=model_dir,
+            edge_predictor_path=edge_predictor_path,
+            edge_predictor_threshold=generated_edge_threshold,
         )
         completed.append("train")
         outputs["model_dir"] = str(model_dir)

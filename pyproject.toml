@@ -67,4 +67,6 @@ CytoBridge = [
   "configs/mosta_spatial_full_alpha_express_0015.yaml",
   "configs/zebrafish_spatial_full_alpha_express_0015.yaml",
   "workflow_configs/*.json",
+  "workflow_databases/*.csv",
+  "workflow_databases/README.md",
 ]

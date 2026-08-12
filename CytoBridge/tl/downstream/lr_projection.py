@@ -470,8 +470,7 @@ def _add_pair_identity_to_clustering(
 
     normalized_profiles = clustering.normalized_profiles.copy()
     display_labels = [
-        str(lookup.loc[str(pair_id), "pair"])
-        for pair_id in normalized_profiles.index
+        str(lookup.loc[str(pair_id), "pair"]) for pair_id in normalized_profiles.index
     ]
     # Historical callers see the same display index for ordinary databases.
     # When display labels collide, retain pair_id as the only safe row index.
@@ -703,6 +702,7 @@ def project_communication_to_lr_timecourses(
     spatial_dim: int = 2,
     loadings_key: str = "PCs",
     reference_layer: Optional[str] = None,
+    allow_complete_reference_pca_center_fallback: bool = False,
     expression_space: str = "count",
     complex_mode: str = "min",
     require_all_subunits: bool = True,
@@ -794,11 +794,6 @@ def project_communication_to_lr_timecourses(
     time_points = _validate_requested_time_grid(time_points)
 
     lr_table = load_ligand_receptor_database(lr_database)
-    center = (
-        infer_pca_center(reference_adata, layer=reference_layer)
-        if pca_reconstruction is None
-        else np.asarray(pca_reconstruction.center, dtype=np.float32)
-    )
     feature_names = tuple(
         map(
             str,
@@ -809,13 +804,6 @@ def project_communication_to_lr_timecourses(
             ),
         )
     )
-    center = np.asarray(center, dtype=np.float32).reshape(-1)
-    if center.shape[0] != len(feature_names):
-        raise ValueError(
-            f"PCA center has {center.shape[0]} genes, expected {len(feature_names)}."
-        )
-    if not np.isfinite(center).all():
-        raise ValueError("PCA center contains non-finite values.")
     full_gene_name_map = simplify_gene_names(
         feature_names,
         preferred_species_tag=preferred_species_tag,
@@ -890,6 +878,28 @@ def project_communication_to_lr_timecourses(
         if not observed_mask.any() and observed_missing_time_policy == "generated":
             generated_time_points.append(float(time_value))
     uses_inverse_pca = bool(generated_time_points)
+
+    if pca_reconstruction is not None:
+        center = np.asarray(pca_reconstruction.center, dtype=np.float32)
+    elif uses_inverse_pca:
+        center = infer_pca_center(
+            reference_adata,
+            layer=reference_layer,
+            allow_complete_reference_pca_center_fallback=(
+                allow_complete_reference_pca_center_fallback
+            ),
+        )
+    else:
+        # Fully observed LR trajectories never invert PCA, so a PCA center is
+        # scientifically irrelevant and should not be required.
+        center = np.zeros(len(feature_names), dtype=np.float32)
+    center = np.asarray(center, dtype=np.float32).reshape(-1)
+    if center.shape[0] != len(feature_names):
+        raise ValueError(
+            f"PCA center has {center.shape[0]} genes, expected {len(feature_names)}."
+        )
+    if not np.isfinite(center).all():
+        raise ValueError("PCA center contains non-finite values.")
 
     requested_lr_symbols = {
         token
@@ -1158,9 +1168,7 @@ def project_communication_to_lr_timecourses(
 
         scored: dict[PairKey, np.ndarray] = {}
         scored_support: dict[PairKey, np.ndarray] = {}
-        scored_components: dict[
-            PairKey, Optional[tuple[np.ndarray, np.ndarray]]
-        ] = {}
+        scored_components: dict[PairKey, Optional[tuple[np.ndarray, np.ndarray]]] = {}
         skipped_missing = 0
         skipped_unreconstructable = 0
         partial_complexes = 0
@@ -1571,6 +1579,9 @@ def project_communication_to_lr_timecourses(
         "spatial_dim": int(spatial_dim),
         "loadings_key": loadings_key,
         "reference_layer": reference_layer,
+        "allow_complete_reference_pca_center_fallback": bool(
+            allow_complete_reference_pca_center_fallback
+        ),
         "expression_space": expression_space,
         "complex_mode": complex_mode,
         "require_all_subunits": bool(require_all_subunits),
@@ -1749,6 +1760,7 @@ def compute_focal_lr_type_hotspots(
     spatial_dim: int = 2,
     loadings_key: str = "PCs",
     reference_layer: Optional[str] = None,
+    allow_complete_reference_pca_center_fallback: bool = False,
     expression_space: str = "count",
     complex_mode: str = "min",
     require_all_subunits: bool = True,
@@ -1804,6 +1816,9 @@ def compute_focal_lr_type_hotspots(
         spatial_dim=spatial_dim,
         loadings_key=loadings_key,
         reference_layer=reference_layer,
+        allow_complete_reference_pca_center_fallback=(
+            allow_complete_reference_pca_center_fallback
+        ),
         expression_space=expression_space,
         complex_mode=complex_mode,
         require_all_subunits=require_all_subunits,
@@ -1878,12 +1893,12 @@ def compute_focal_lr_type_hotspots(
         # ``min_count=1`` preserves an entirely unsupported type as unavailable
         # (NaN). The pandas default would collapse an all-NaN group to zero and
         # falsely imply measured absence of communication.
-        incoming = matrix_at_time.groupby("receiver_type", sort=False)[
-            "lr_score"
-        ].sum(min_count=1)
-        outgoing = matrix_at_time.groupby("sender_type", sort=False)[
-            "lr_score"
-        ].sum(min_count=1)
+        incoming = matrix_at_time.groupby("receiver_type", sort=False)["lr_score"].sum(
+            min_count=1
+        )
+        outgoing = matrix_at_time.groupby("sender_type", sort=False)["lr_score"].sum(
+            min_count=1
+        )
         ligand_means = matrix_at_time.groupby("sender_type", sort=False)[
             "ligand_mean"
         ].first()

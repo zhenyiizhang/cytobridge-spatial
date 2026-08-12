@@ -46,6 +46,11 @@ def _reference_adata() -> ad.AnnData:
         ],
         dtype=np.float32,
     )
+    center = np.asarray(reference.X).mean(axis=0, keepdims=True)
+    reference.var["pca_center"] = center.reshape(-1)
+    reference.obsm["X_pca"] = (
+        (np.asarray(reference.X) - center) @ reference.varm["PCs"]
+    ).astype(np.float32)
     return reference
 
 
@@ -293,6 +298,7 @@ def test_temporal_gene_and_lr_projection() -> None:
 def test_lr_pair_identity_does_not_collapse_ambiguous_display_labels() -> None:
     reference = ad.AnnData(X=np.zeros((1, 3), dtype=np.float32))
     reference.var_names = ["A", "B", "C"]
+    reference.var["pca_center"] = np.zeros(3, dtype=np.float32)
     slices = {}
     communications = {}
     for time in (0.0, 1.0):
@@ -340,9 +346,7 @@ def test_lr_pair_identity_does_not_collapse_ambiguous_display_labels() -> None:
         .drop_duplicates()
         .itertuples(index=False, name=None)
     ) == {("A_B", "C"), ("A", "B_C")}
-    scores = result.pair_timecourse.set_index(["ligand", "receptor", "time"])[
-        "score"
-    ]
+    scores = result.pair_timecourse.set_index(["ligand", "receptor", "time"])["score"]
     assert scores.loc[("A_B", "C", 0.0)] == pytest.approx(np.sqrt(6.0) * 5.0)
     assert scores.loc[("A", "B_C", 0.0)] == pytest.approx(2.0 * np.sqrt(15.0))
     assert scores.loc[("A_B", "C", 1.0)] == pytest.approx(96.0)
@@ -580,6 +584,7 @@ def _count_aggregation_fixture():
     reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
     reference.var_names = ["Lig", "Rec"]
     reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+    reference.var["pca_center"] = np.zeros(2, dtype=np.float32)
 
     log_states = np.asarray(
         [
@@ -661,6 +666,7 @@ def test_generated_log1p_lr_clips_negative_inverse_pca_expression_per_cell() -> 
     reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
     reference.var_names = ["Lig", "Rec"]
     reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+    reference.var["pca_center"] = np.zeros(2, dtype=np.float32)
     current = ad.AnnData(
         X=np.asarray(
             [
@@ -1006,9 +1012,7 @@ def test_focal_lr_type_hotspot_strict_complex_never_omits_requested_subunit() ->
 
 def test_focal_lr_type_hotspot_keeps_missing_type_unavailable_not_zero() -> None:
     reference = _reference_adata()
-    compute = ad.AnnData(
-        X=np.asarray([[0.0, 0.0, 1.0, 1.0]], dtype=np.float32)
-    )
+    compute = ad.AnnData(X=np.asarray([[0.0, 0.0, 1.0, 1.0]], dtype=np.float32))
     compute.obs["Annotation"] = ["A"]
     compute.obs_names = ["compute_a"]
     display = ad.AnnData(

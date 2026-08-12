@@ -50,6 +50,7 @@ installation
 data_checkpoints
 quickstart
 scientific_contract
+historical_artifact_compatibility
 downstream
 benchmarks
 training_compute

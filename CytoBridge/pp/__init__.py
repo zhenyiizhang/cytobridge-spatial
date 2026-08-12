@@ -5,7 +5,17 @@ from .interaction_graph import (
     sanitize_interaction_graph_uns,
 )
 from .edge_prediction import train_edge_predictor
-from .spatial_align import AlignConfig, align_spatial, preprocess_align_to_files, preprocess_and_align
+from ..graph_database import (
+    FORMAL_GRAPH_DATABASES,
+    bundled_graph_database_path,
+    resolve_graph_database,
+)
+from .spatial_align import (
+    AlignConfig,
+    align_spatial,
+    preprocess_align_to_files,
+    preprocess_and_align,
+)
 from .legacy_model_input import (
     legacy_model_input_csv_to_adata,
     write_legacy_model_input_h5ad,
@@ -21,6 +31,9 @@ __all__ = [
     "generate_interaction_graph",
     "sanitize_interaction_graph_uns",
     "train_edge_predictor",
+    "FORMAL_GRAPH_DATABASES",
+    "bundled_graph_database_path",
+    "resolve_graph_database",
     "legacy_model_input_csv_to_adata",
     "write_legacy_model_input_h5ad",
 ]

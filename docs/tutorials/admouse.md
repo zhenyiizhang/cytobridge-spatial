@@ -4,9 +4,10 @@
 
 The notebook is an inspectable walkthrough of interpolation, classification,
 composition, velocity, growth, sparse communication, strict ligand-receptor
-projection, and unwarped distribution evaluation. It expects the released
-aligned H5AD, a trained checkpoint unless training is explicitly enabled, and
-an LR table.
+projection, and unwarped distribution evaluation. The package workflow can now
+start from the raw H5AD; the notebook's compact downstream walkthrough can also
+use an existing aligned H5AD and trained checkpoint. LR analysis uses the
+bundled mouse CellChatDB unless `--lr-database` explicitly overrides it.
 
 ## Compact and formal scope
 
@@ -27,8 +28,11 @@ cytobridge workflow --config admouse --dry-run
 jupyter lab notebooks/04_admouse.ipynb
 ```
 
-The formal preset deliberately starts from the released aligned H5AD and edge
-model; it is not a raw-data preprocessing recipe. The notebook records the t1
+The preset now provides a corrected de novo raw-H5AD recipe: raw Timepoint
+values 1/2/3 map to model times 0/1/2, all three batches are aligned, and a new
+edge predictor uses the bundled mouse CellChatDB. This is distinct from the
+historical matched run that reused released aligned and edge-model artifacts.
+The notebook records the t1
 holdout protocol in prose but does not fit the holdout model, run cross-method
 baselines, or execute whole-tissue and Microglia-only perturbations. Those are
 separate analyses, and the two perturbation scopes are different estimands that

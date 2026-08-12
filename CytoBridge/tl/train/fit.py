@@ -43,7 +43,9 @@ def _to_dense_float32(x):
     return np.asarray(x, dtype=np.float32)
 
 
-def _freeze_model_params(model: torch.nn.Module) -> list[tuple[torch.nn.Parameter, bool]]:
+def _freeze_model_params(
+    model: torch.nn.Module,
+) -> list[tuple[torch.nn.Parameter, bool]]:
     state: list[tuple[torch.nn.Parameter, bool]] = []
     for p in model.parameters():
         state.append((p, bool(p.requires_grad)))
@@ -141,7 +143,9 @@ def _collect_adata_fit_overrides(adata: sc.AnnData) -> Dict[str, Any]:
             merged.setdefault("interaction_cutoff", ig["neighborhood_threshold"])
             merged.setdefault("cutoff", ig["neighborhood_threshold"])
         if ig.get("edge_predictor_threshold", None) is not None:
-            merged.setdefault("edge_predictor_threshold", ig["edge_predictor_threshold"])
+            merged.setdefault(
+                "edge_predictor_threshold", ig["edge_predictor_threshold"]
+            )
             merged.setdefault("edge_predictor_thre", ig["edge_predictor_threshold"])
         if ig.get("edge_predictor_path", None) is not None:
             merged.setdefault("edge_predictor_path", ig["edge_predictor_path"])
@@ -278,9 +282,7 @@ def _apply_runtime_overrides(
         if isinstance(interaction_cfg, dict)
         else "learned"
     )
-    uses_learned_edge_prior = (
-        is_gnn_interaction and edge_prior_mode == "learned"
-    )
+    uses_learned_edge_prior = is_gnn_interaction and edge_prior_mode == "learned"
 
     # Explicit fit args always win, but warn if they conflict with adata.uns values.
     _warn_if_explicit_conflicts_with_adata(
@@ -321,8 +323,7 @@ def _apply_runtime_overrides(
     )
 
     if (
-        edge_predictor_path is not None
-        or edge_predictor_threshold is not None
+        edge_predictor_path is not None or edge_predictor_threshold is not None
     ) and not uses_learned_edge_prior:
         if not has_interaction:
             msg = (
@@ -355,7 +356,9 @@ def _apply_runtime_overrides(
         old_cutoff = interaction_cfg.get("cutoff")
         interaction_cfg["cutoff"] = cutoff
         used["interaction_cutoff"] = cutoff
-        print(f"[fit] interaction cutoff override ({cutoff_source}): {old_cutoff} -> {cutoff}")
+        print(
+            f"[fit] interaction cutoff override ({cutoff_source}): {old_cutoff} -> {cutoff}"
+        )
 
     # edge predictor path
     raw_edge_path, edge_path_source = _resolve_override(
@@ -372,7 +375,9 @@ def _apply_runtime_overrides(
         old_edge_path = interaction_cfg.get("edge_predictor_path")
         interaction_cfg["edge_predictor_path"] = edge_path
         used["edge_predictor_path"] = edge_path
-        print(f"[fit] edge predictor path override ({edge_path_source}): {old_edge_path} -> {edge_path}")
+        print(
+            f"[fit] edge predictor path override ({edge_path_source}): {old_edge_path} -> {edge_path}"
+        )
 
     # edge predictor threshold
     raw_edge_thre, edge_thre_source = _resolve_override(
@@ -400,7 +405,9 @@ def _apply_runtime_overrides(
         )
 
     # ckpt_dir
-    raw_ckpt_dir, ckpt_source = _resolve_override(ckpt_dir, adata_overrides, ("ckpt_dir",))
+    raw_ckpt_dir, ckpt_source = _resolve_override(
+        ckpt_dir, adata_overrides, ("ckpt_dir",)
+    )
     if raw_ckpt_dir is not None:
         out_ckpt = str(pathlib.Path(str(raw_ckpt_dir)).expanduser())
         old_ckpt = resolved_config.get("ckpt_dir")
@@ -426,7 +433,9 @@ def _apply_runtime_overrides(
                 if isinstance(stage_cfg, dict):
                     stage_cfg["sigma"] = sigma_val
         used["sigma"] = sigma_val
-        print(f"[fit] sigma override ({sigma_source}): {old_sigma} -> {sigma_val} (applied to defaults + plan)")
+        print(
+            f"[fit] sigma override ({sigma_source}): {old_sigma} -> {sigma_val} (applied to defaults + plan)"
+        )
 
     return used
 
@@ -443,7 +452,9 @@ def _ensure_time_point_processed(adata: sc.AnnData, *, time_key: str) -> sc.AnnD
         adata.obs["time_point_processed"] = raw_time.astype(float)
     else:
         mapping = _auto_time_mapping(raw_time)
-        adata.obs["time_point_processed"] = pd.Series(raw_time).map(mapping).to_numpy().astype(float)
+        adata.obs["time_point_processed"] = (
+            pd.Series(raw_time).map(mapping).to_numpy().astype(float)
+        )
     return adata
 
 
@@ -491,6 +502,41 @@ def _build_model_input(
     return np.hstack((spatial, latent)).astype(np.float32), spatial_dim
 
 
+def _resolve_spatial_dim_config(
+    resolved_config: Dict[str, Any],
+    spatial_dim: int,
+) -> int:
+    """Bind model and OT spatial dimensions to the actual model input."""
+
+    spatial_dim = int(spatial_dim)
+    if spatial_dim < 0:
+        raise ValueError(f"spatial_dim must be non-negative, got {spatial_dim}.")
+    model_config = resolved_config.setdefault("model", {})
+    if not isinstance(model_config, dict):
+        raise ValueError("config['model'] must be a dict.")
+    declared = {
+        "spatial_dim": resolved_config.get("spatial_dim"),
+        "model.spatial_dim": model_config.get("spatial_dim"),
+    }
+    for path, value in declared.items():
+        if value is None:
+            continue
+        try:
+            configured = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"config {path} must be an integer, got {value!r}."
+            ) from exc
+        if configured != spatial_dim:
+            raise ValueError(
+                f"config {path}={configured} conflicts with spatial_dim={spatial_dim} "
+                "derived from the actual model input."
+            )
+    resolved_config["spatial_dim"] = spatial_dim
+    model_config["spatial_dim"] = spatial_dim
+    return spatial_dim
+
+
 def _fit_adata(
     adata: sc.AnnData,
     config: Dict[str, Any] | str,
@@ -526,6 +572,7 @@ def _fit_adata(
     used_edge_predictor_path = used_overrides.get("edge_predictor_path")
     used_ckpt_dir = used_overrides.get("ckpt_dir")
     used_sigma = used_overrides.get("sigma")
+    spatial_dim = _resolve_spatial_dim_config(resolved_config, spatial_dim)
     device = torch.device(device)
     model_input = np.asarray(model_input, dtype=np.float32)
     if model_input.shape[0] != adata.n_obs:
@@ -539,7 +586,7 @@ def _fit_adata(
     time_values = adata.obs[time_key].to_numpy()
     data_torch = []
     for t in time_points:
-        mask = (time_values == t)
+        mask = time_values == t
         tens = torch.tensor(model_input[mask], dtype=torch.float32, device=device)
         data_torch.append(tens)
 
@@ -547,7 +594,9 @@ def _fit_adata(
 
     # ---------- 3. auto batch-size ----------
     if batch_size is None:
-        config_batch = resolved_config.get("training", {}).get("defaults", {}).get("batch_size")
+        config_batch = (
+            resolved_config.get("training", {}).get("defaults", {}).get("batch_size")
+        )
         if config_batch is not None:
             batch_size = int(config_batch)
         else:
@@ -599,9 +648,9 @@ def _fit_adata(
         ),
         "stage_record_counts": {
             str(stage): int(count)
-            for stage, count in training_history["stage"].value_counts(
-                sort=False
-            ).items()
+            for stage, count in training_history["stage"]
+            .value_counts(sort=False)
+            .items()
         }
         if not training_history.empty
         else {},
@@ -619,7 +668,9 @@ def _fit_adata(
     adata.uns["training_run_summary"] = training_run_summary_metadata
 
     # ---------- 5. compute model outputs (component-aware) ----------
-    all_times = torch.tensor(adata.obs[time_key].values, dtype=torch.float32, device=device).unsqueeze(1)
+    all_times = torch.tensor(
+        adata.obs[time_key].values, dtype=torch.float32, device=device
+    ).unsqueeze(1)
     all_data = torch.tensor(model_input, dtype=torch.float32, device=device)
     components = set(getattr(model, "components", []))
     n_obs = all_data.shape[0]
@@ -708,12 +759,20 @@ def _fit_adata(
         "interaction_cutoff": (
             float(used_interaction_cutoff)
             if used_interaction_cutoff is not None
-            else float(getattr(getattr(model, "interaction_net", None), "cutoff", np.nan))
+            else float(
+                getattr(getattr(model, "interaction_net", None), "cutoff", np.nan)
+            )
         ),
         "edge_predictor_threshold": (
             float(used_edge_predictor_threshold)
             if used_edge_predictor_threshold is not None
-            else float(getattr(getattr(model, "interaction_net", None), "edge_predictor_thre", np.nan))
+            else float(
+                getattr(
+                    getattr(model, "interaction_net", None),
+                    "edge_predictor_thre",
+                    np.nan,
+                )
+            )
         ),
         "edge_predictor_path": (
             str(used_edge_predictor_path)
@@ -773,6 +832,7 @@ def _fit_adata(
         trainer.evaluate(adata, data_torch, time_points)  # TODO handle hold-out
 
     return adata
+
 
 def fit(
     adata: sc.AnnData | str,

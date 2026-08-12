@@ -241,11 +241,27 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         help="override the packaged formal spatial interaction cutoff",
     )
+    workflow.add_argument(
+        "--graph-database",
+        type=Path,
+        help=(
+            "ligand-receptor database used to build interaction graphs when "
+            "preprocessing automatically trains an edge predictor; overrides "
+            "the species-matched formal database bundled with each preset"
+        ),
+    )
     workflow.add_argument("--edge-predictor-path", type=Path)
     workflow.add_argument("--edge-predictor-threshold", type=float)
     workflow.add_argument("--edge-predictor-root", type=Path)
     workflow.add_argument("--device", default="cuda")
-    workflow.add_argument("--model-format", choices=("current", "legacy"))
+    workflow.add_argument(
+        "--model-format",
+        choices=("current",),
+        help=(
+            "formal workflows use the current six-stage checkpoint format; "
+            "use the dedicated legacy loader API for historical models"
+        ),
+    )
     workflow.add_argument(
         "--reference-h5ad",
         type=Path,
@@ -257,12 +273,28 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--gene-dynamics",
         action="store_true",
-        help="reconstruct and plot temporal gene programs using exact retained PCA metadata",
+        help=(
+            "enable temporal gene reconstruction for a custom config; packaged "
+            "dataset presets already enable it"
+        ),
+    )
+    workflow.add_argument(
+        "--skip-gene-dynamics",
+        action="store_true",
+        help="skip preset gene dynamics, for example when inspecting an old artifact without its PCA reference",
     )
     workflow.add_argument(
         "--lr-database",
         type=Path,
-        help="run strict ligand-receptor projection with this database",
+        help=(
+            "override the species-matched database used by packaged presets for "
+            "strict ligand-receptor projection"
+        ),
+    )
+    workflow.add_argument(
+        "--skip-lr",
+        action="store_true",
+        help="skip preset ligand-receptor projection while retaining graph attention outputs",
     )
     workflow.add_argument(
         "--lr-complex-mode",
@@ -273,6 +305,15 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--preferred-species-tag",
         help="optional exact species tag used when simplifying reference gene names",
+    )
+    workflow.add_argument(
+        "--allow-complete-reference-pca-center-fallback",
+        action="store_true",
+        help=(
+            "explicitly declare that a historical reference without pca_center "
+            "is the complete original PCA-fit population; its inferred mean must "
+            "still reproduce saved PCA coordinates"
+        ),
     )
     workflow.add_argument(
         "--reconstruction-diagnostic",
@@ -313,6 +354,7 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
         output_dir=args.output_dir,
         training_config=args.training_config,
         interaction_cutoff=args.interaction_cutoff,
+        graph_database=args.graph_database,
         edge_predictor_path=args.edge_predictor_path,
         edge_predictor_threshold=args.edge_predictor_threshold,
         edge_predictor_root=args.edge_predictor_root,
@@ -320,10 +362,15 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
         model_format=args.model_format,
         reference_h5ad=args.reference_h5ad,
         gene_dynamics=bool(args.gene_dynamics),
+        skip_gene_dynamics=bool(args.skip_gene_dynamics),
         lr_database=args.lr_database,
+        skip_lr=bool(args.skip_lr),
         lr_complex_mode=args.lr_complex_mode,
         preferred_species_tag=args.preferred_species_tag,
         reconstruction_diagnostic=bool(args.reconstruction_diagnostic),
+        allow_complete_reference_pca_center_fallback=bool(
+            args.allow_complete_reference_pca_center_fallback
+        ),
         steps=tuple(args.step or ()),
         train=bool(args.train),
     )
