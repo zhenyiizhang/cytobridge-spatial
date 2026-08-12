@@ -321,10 +321,10 @@ def _validate_metrics(metrics: pd.DataFrame, *, track_hint: str | None = None) -
 
 def _target_summary(
     metrics: pd.DataFrame,
-    registry: list[dict[str, Any]],
-    track: str,
-    targets: list[int],
-    statuses: list[dict[str, Any]],
+    registry: list[dict[str, Any]] | None = None,
+    track: str | None = None,
+    targets: list[int] | None = None,
+    statuses: list[dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
     grouping = [
         "track",
@@ -359,6 +359,15 @@ def _target_summary(
         )
         numeric["sliced_w2_projection_sd"] = numeric["sliced_w2_projection_sd"].fillna(
             0.0
+        )
+    # Keep the small, long-standing helper API useful for callers that only
+    # need projection repeats collapsed.  Registry/status expansion is an
+    # optional reporting layer used by the public status-aware summary path.
+    if registry is None and track is None and targets is None and statuses is None:
+        return numeric
+    if registry is None or track is None or targets is None or statuses is None:
+        raise TypeError(
+            "registry, track, targets, and statuses must be provided together"
         )
     numeric_index = {
         (str(row.method), int(row.target), str(row.space)): row._asdict()
