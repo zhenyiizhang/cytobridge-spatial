@@ -266,12 +266,17 @@ def evaluate_model_distributions(
         [parse_time_value(value) for value in adata.obs[resolved_time_key]],
         dtype=np.float64,
     )
+    observed_grid = sorted(float(value) for value in np.unique(observed_times))
     if time_points is None:
-        time_points = sorted(float(value) for value in np.unique(observed_times))
+        time_points = observed_grid
     else:
-        time_points = [float(value) for value in time_points]
+        time_points = sorted(set(float(value) for value in time_points))
     if not time_points:
         raise ValueError("time_points must be non-empty.")
+    initial_time = observed_grid[0]
+    simulation_time_points = list(time_points)
+    if simulation_time_points[0] > initial_time:
+        simulation_time_points.insert(0, initial_time)
 
     latent = np.asarray(adata.obsm[obsm_key], dtype=np.float32)
     use_spatial = (
@@ -302,7 +307,7 @@ def evaluate_model_distributions(
         dim=int(features.shape[1]),
         time_index=0,
         n_samples=int(n_samples),
-        ts_points=time_points,
+        ts_points=simulation_time_points,
         dt=float(dt),
         sigma=float(sigma),
         include_score=bool(include_score),
@@ -319,12 +324,17 @@ def evaluate_model_distributions(
     predicted_weights_by_time: dict[float, np.ndarray] = {}
     observed_points: dict[float, np.ndarray] = {}
     rows: list[dict[str, float | int | str]] = []
-    initial_count = int(np.isclose(observed_times, time_points[0]).sum())
+    initial_count = int(np.isclose(observed_times, initial_time).sum())
     spaces = _feature_spaces(spatial_dim, int(features.shape[1]))
+    simulation_index = {
+        float(time_value): index
+        for index, time_value in enumerate(simulation_time_points)
+    }
 
     for time_idx, time_value in enumerate(time_points):
-        pred = np.asarray(points[time_idx], dtype=np.float32)
-        pred_w = np.asarray(weights[time_idx], dtype=np.float64).reshape(-1)
+        point_index = simulation_index[float(time_value)]
+        pred = np.asarray(points[point_index], dtype=np.float32)
+        pred_w = np.asarray(weights[point_index], dtype=np.float64).reshape(-1)
         observed = features[np.isclose(observed_times, float(time_value))]
         if observed.shape[0] == 0:
             raise ValueError(f"No observed cells found at time {time_value}.")
@@ -336,7 +346,7 @@ def evaluate_model_distributions(
         observed_mass_relative = float(observed.shape[0] / initial_count)
         tmv_absolute = float(abs(predicted_mass - observed_mass_relative))
         tmv = float(tmv_absolute / observed_mass_relative)
-        if time_idx == 0 and not include_initial_time:
+        if np.isclose(time_value, initial_time) and not include_initial_time:
             continue
 
         for space_idx, (space_name, columns) in enumerate(spaces.items()):
@@ -382,6 +392,8 @@ def evaluate_model_distributions(
         "time_key": resolved_time_key,
         "obsm_key": obsm_key,
         "spatial_key": spatial_key,
+        "simulation_initial_time": initial_time,
+        "requested_evaluation_times": list(time_points),
     }
     return DistributionEvaluationResult(
         time_points=tuple(time_points),

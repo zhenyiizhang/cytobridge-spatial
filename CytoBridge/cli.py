@@ -175,7 +175,7 @@ def _render_doctor_text(report: dict[str, object]) -> str:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cytobridge",
-        description="CytoBridge package information and read-only diagnostics.",
+        description="CytoBridge package diagnostics and scientific workflows.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command")
@@ -183,7 +183,106 @@ def _parser() -> argparse.ArgumentParser:
         "doctor", help="report package and dependency availability without importing them"
     )
     doctor.add_argument("--json", action="store_true", dest="as_json")
+    workflow = commands.add_parser(
+        "workflow",
+        help="plan or run a package-native dataset workflow",
+    )
+    workflow.add_argument(
+        "--config",
+        help="packaged preset (zebrafish, mosta, arista, admouse) or JSON/YAML path",
+    )
+    workflow.add_argument("--list-configs", action="store_true")
+    workflow.add_argument("--dry-run", action="store_true")
+    workflow.add_argument("--json", action="store_true", dest="as_json")
+    workflow.add_argument(
+        "--step",
+        action="append",
+        choices=("preprocess", "downstream"),
+        help="run only this step; repeat to select both",
+    )
+    workflow.add_argument(
+        "--train",
+        action="store_true",
+        help="explicitly enable model training between preprocessing and downstream",
+    )
+    workflow.add_argument("--input-h5ad", type=Path)
+    workflow.add_argument("--aligned-h5ad", type=Path)
+    workflow.add_argument("--model-dir", type=Path)
+    workflow.add_argument("--output-dir", type=Path)
+    workflow.add_argument("--training-config")
+    workflow.add_argument("--edge-predictor-path", type=Path)
+    workflow.add_argument("--edge-predictor-threshold", type=float)
+    workflow.add_argument("--edge-predictor-root", type=Path)
+    workflow.add_argument("--device", default="cuda")
+    workflow.add_argument("--model-format", choices=("current", "legacy"))
     return parser
+
+
+def _run_workflow_command(args: argparse.Namespace) -> int:
+    from .workflow import (
+        WorkflowOptions,
+        available_workflow_configs,
+        build_workflow_plan,
+        load_workflow_config,
+        plan_missing_inputs,
+        render_workflow_plan,
+        run_workflow,
+    )
+
+    if args.list_configs:
+        print("\n".join(available_workflow_configs()))
+        return 0
+    if not args.config:
+        print("cytobridge workflow requires --config (or use --list-configs)", file=sys.stderr)
+        return 2
+
+    options = WorkflowOptions(
+        input_h5ad=args.input_h5ad,
+        aligned_h5ad=args.aligned_h5ad,
+        model_dir=args.model_dir,
+        output_dir=args.output_dir,
+        training_config=args.training_config,
+        edge_predictor_path=args.edge_predictor_path,
+        edge_predictor_threshold=args.edge_predictor_threshold,
+        edge_predictor_root=args.edge_predictor_root,
+        device=args.device,
+        model_format=args.model_format,
+        steps=tuple(args.step or ()),
+        train=bool(args.train),
+    )
+    try:
+        config, source = load_workflow_config(args.config)
+        plan = build_workflow_plan(config, source=source, options=options)
+    except (FileNotFoundError, ModuleNotFoundError, ValueError) as error:
+        print(f"CytoBridge workflow config error: {error}", file=sys.stderr)
+        return 2
+
+    if args.dry_run:
+        if args.as_json:
+            print(json.dumps(plan, indent=2))
+        else:
+            print(render_workflow_plan(plan))
+            print("dry-run: no work executed")
+        return 0
+
+    missing = plan_missing_inputs(plan)
+    if missing:
+        print(render_workflow_plan(plan), file=sys.stderr)
+        print("Cannot run until these inputs are supplied:", file=sys.stderr)
+        for item in missing:
+            print(f"  {item}", file=sys.stderr)
+        return 2
+
+    result = run_workflow(config, options=options)
+    if args.as_json:
+        print(json.dumps(result, indent=2))
+    else:
+        completed = ", ".join(result["completed"]) or "none"
+        print(f"CytoBridge workflow completed: {completed}")
+        for name, value in result["outputs"].items():
+            if isinstance(value, str):
+                print(f"  {name}: {value}")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -191,6 +290,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = _parser()
     args = parser.parse_args(argv)
+    if args.command == "workflow":
+        return _run_workflow_command(args)
     if args.command != "doctor":
         parser.print_help()
         return 0

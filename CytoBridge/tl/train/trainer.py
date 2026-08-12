@@ -38,8 +38,15 @@ class TrainingPipeline:
         self.optimizer = None
         self.scheduler = None  # Initialize scheduler variable
         self.device = device
-        seed = self.config.get('seed')
-        if seed is not None and not seed_already_applied:
+        raw_seed = self.config.get('seed', 42)
+        seed = 42 if raw_seed is None else int(raw_seed)
+        self.config['seed'] = seed
+        training_defaults = self.config['training']['defaults']
+        if training_defaults.get('alpha_spatial') is None:
+            training_defaults['alpha_spatial'] = 10.0
+        if training_defaults.get('alpha_express') is None:
+            training_defaults['alpha_express'] = 0.015
+        if not seed_already_applied:
             set_seed(seed)
         self.model.to(device)
         # Determine if mass component is used based on model configuration
@@ -836,8 +843,8 @@ class TrainingPipeline:
         lambda_energy = stage_params['lambda_energy']
         
         OT_loss_type = stage_params['OT_loss']
-        alpha_spatial = stage_params.get('alpha_spatial', 1.0)
-        alpha_express = stage_params.get('alpha_express', 1.0)
+        alpha_spatial = stage_params['alpha_spatial']
+        alpha_express = stage_params['alpha_express']
         use_density_loss = stage_params.get('use_density_loss', False)
         use_pinn_loss = stage_params.get('use_pinn_loss', False)
 

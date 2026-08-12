@@ -503,7 +503,7 @@ def _main_classifier_settings(ctx: RunContext) -> dict[str, object]:
         "epochs": epochs,
         "learning_rate": 1e-3,
         "test_size": 0.1,
-        "best_epoch_metric": "accuracy",
+        "best_epoch_metric": "bacc",
         "train_on_full_data": False,
         "seed": int(ctx.args.random_seed),
         "cache_dir": str(ctx.shared_cache_dir / "trajectory_classifier"),
@@ -738,7 +738,7 @@ def _run_interpolation(
         classifier_lr=float(classifier_settings["learning_rate"]),
         classifier_test_size=float(classifier_settings["test_size"]),
         classifier_train_on_full_data=False,
-        classifier_best_metric="accuracy",
+        classifier_best_metric="bacc",
         classifier_n_pcs=12,
         classifier_knn_neighbors=10,
         sde_n_samples=(
@@ -826,9 +826,9 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             "eps": 1e-6,
         },
         "classifier": _main_classifier_settings(ctx),
-        "generated_display_label_knn_neighbors": 10,
-        "generated_display_label_policy": (
-            "legacy spatial kNN smoothing used by S22 display outputs only"
+        "generated_label_knn_neighbors": 10,
+        "generated_label_policy": (
+            "shared Zebrafish annotation policy for every generated frame"
         ),
         "video_fps": int(ctx.args.video_fps),
         "video_formats": formats,
@@ -1156,7 +1156,7 @@ def _ablation_classifier(ctx: RunContext, stage_dir: Path):
         time_key=ctx.args.time_key,
         obsm_key="X_ablation_classifier",
         concat_spatial=False,
-        hidden_size=256,
+        hidden_size=128,
         epochs=epochs,
         lr=1e-3,
         test_size=0.1,
@@ -1230,7 +1230,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
         },
         "classifier": {
             "contract": "time + spatial2 + fresh PCA10(original latent50)",
-            "hidden_size": 256,
+            "hidden_size": 128,
             "epochs": (
                 2
                 if ctx.args.profile == "smoke"
@@ -1468,8 +1468,8 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         "cell_type_filter": ctx.args.ysl_label,
         "target_classifier_knn_neighbors": int(ctx.args.s25_classifier_knn_neighbors),
         "target_classifier_policy": (
-            "direct classifier labels at generated half-times; spatial kNN smoothing "
-            "is configurable separately from the S22 display-label policy"
+            "same k=10 spatially smoothed classifier labels used by the generated "
+            "trajectory, composition, and communication analyses"
         ),
         "top_variable_genes": top_n,
         "gene_expression_space": (
@@ -2587,8 +2587,8 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             ),
             "knn_neighbors": communication_knn,
             "default_semantics": (
-                "k=1 is direct MLP prediction; k=10 is available only as an "
-                "explicit legacy manuscript-parity sensitivity"
+                "k=10 is the production default; k=1/5/20/50 are explicit "
+                "reviewer sensitivity conditions"
             ),
             "cache_path": str(classifier_cache),
             "cache_sha256": _sha256(classifier_cache),
@@ -3126,7 +3126,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--velocity-neighbors", type=int, default=30)
 
     parser.add_argument("--ablation-step", type=float, default=0.05)
-    parser.add_argument("--ablation-classifier-epochs", type=int, default=800)
+    parser.add_argument("--ablation-classifier-epochs", type=int, default=500)
     parser.add_argument("--ysl-label", default="Yolk Syncytial Layer")
     parser.add_argument("--evl-label", default="EVL")
 
@@ -3146,11 +3146,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--s25-classifier-knn-neighbors",
         type=int,
-        default=1,
+        default=10,
         help=(
-            "Spatial label-smoothing k used only to select the rare target cell "
-            "type at generated S25 half-times. Default 1 keeps direct classifier "
-            "labels; S22 display labels retain their separate k=10 policy."
+            "Spatial label-smoothing k used for every generated Zebrafish cell-type "
+            "annotation, including the S25 target-cell analysis. Default: 10."
         ),
     )
     parser.add_argument("--preferred-species-tag", default=None)
@@ -3159,11 +3158,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--communication-classifier-knn-neighbors",
         type=int,
-        default=1,
+        default=10,
         help=(
-            "Generated-frame label policy for communication/LR. Default 1 is "
-            "direct MLP prediction; pass 10 explicitly for legacy manuscript "
-            "label-smoothing sensitivity. Observed annotations are unchanged."
+            "Generated-frame label policy for communication/LR. It must match the "
+            "generated-cell annotation policy; default: 10. Observed annotations "
+            "are unchanged."
         ),
     )
     parser.add_argument("--communication-winsor-quantile", type=float, default=0.995)

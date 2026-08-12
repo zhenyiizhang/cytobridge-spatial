@@ -48,4 +48,4 @@ train = { file = ["requirements/train.txt"] }
 velocity = { file = ["requirements/velocity.txt"] }
 
 [tool.setuptools.package-data]
-CytoBridge = ["configs/*.yaml"]
+CytoBridge = ["configs/*.yaml", "workflow_configs/*.json"]

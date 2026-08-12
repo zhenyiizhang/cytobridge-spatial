@@ -386,6 +386,8 @@ def _mean_inverse_pca_expression_by_type(
             reconstructed += center_values[None, :]
             if target_space == "count":
                 reconstructed = np.clip(np.expm1(reconstructed), 0.0, None)
+            else:
+                reconstructed = np.clip(reconstructed, 0.0, None)
             if not np.isfinite(reconstructed).all():
                 raise ValueError(
                     "Inverse-PCA expression conversion produced non-finite values."
@@ -722,7 +724,7 @@ def project_communication_to_lr_timecourses(
     reference_layer: Optional[str] = None,
     expression_space: str = "count",
     complex_mode: str = "min",
-    require_all_subunits: bool = False,
+    require_all_subunits: bool = True,
     duplicate_policy: str = "first",
     preferred_species_tag: Optional[str] = None,
     n_clusters: int = 2,
@@ -747,6 +749,12 @@ def project_communication_to_lr_timecourses(
     ``mean_A(ligand) * mean_B(receptor) * communication(A, B)``. Simulated
     PCA states are inverted with loadings and the center recovered from the
     reference AnnData, making the computation reusable across datasets.
+
+    Multi-subunit complexes use a strict minimum gate by default: every
+    subunit must be present, and the least-expressed subunit determines the
+    complex activity. ``geometric_mean`` is available as a sensitivity
+    analysis, while permissive partial-complex scoring must be requested
+    explicitly with ``require_all_subunits=False``.
 
     ``observed_adata`` enables a hybrid expression contract: requested times listed in
     ``observed_time_points`` use real expression from the matching rows of

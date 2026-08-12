@@ -72,6 +72,57 @@ def _store_vector_component(
         adata.obsm[f"{name}_latent"] = values
 
 
+def _compute_interaction_by_time(
+    data: torch.Tensor,
+    times: torch.Tensor,
+    interaction_net: torch.nn.Module,
+    *,
+    group_size: int,
+    cutoff: float,
+    use_mass: bool,
+) -> torch.Tensor:
+    """Evaluate interaction within each observed time slice."""
+    from CytoBridge.tl.core.interaction import cal_interaction
+
+    flat_times = times.reshape(-1)
+    interaction = torch.zeros_like(data)
+    for time_value in torch.unique(flat_times, sorted=True):
+        mask = flat_times == time_value
+        slice_data = data[mask]
+        if slice_data.shape[0] < 2:
+            continue
+        slice_lnw = torch.full(
+            (slice_data.shape[0], 1),
+            -float(np.log(slice_data.shape[0])),
+            dtype=data.dtype,
+            device=data.device,
+        )
+        time_scalar = time_value.reshape(1)
+        if getattr(interaction_net, "requires_time", False):
+            with torch.no_grad():
+                slice_interaction = cal_interaction(
+                    z=slice_data,
+                    lnw=slice_lnw,
+                    interaction_potential=interaction_net,
+                    m=group_size,
+                    cutoff=cutoff,
+                    use_mass=use_mass,
+                    t=time_scalar,
+                )
+        else:
+            slice_interaction = cal_interaction(
+                z=slice_data,
+                lnw=slice_lnw,
+                interaction_potential=interaction_net,
+                m=group_size,
+                cutoff=cutoff,
+                use_mass=use_mass,
+                t=time_scalar,
+            )
+        interaction[mask] = slice_interaction
+    return interaction.float()
+
+
 def _collect_adata_fit_overrides(adata: sc.AnnData) -> Dict[str, Any]:
     """Collect optional dataset-specific runtime parameters from adata.uns."""
     merged: Dict[str, Any] = {}
@@ -507,9 +558,10 @@ def _fit_adata(
     # Model construction consumes random numbers.  Seeding only inside the
     # trainer makes data sampling repeatable but leaves the initial weights
     # process-dependent, so seed once before constructing the model as well.
-    seed = resolved_config.get("seed")
-    if seed is not None:
-        set_seed(int(seed))
+    raw_seed = resolved_config.get("seed", 42)
+    seed = 42 if raw_seed is None else int(raw_seed)
+    resolved_config["seed"] = seed
+    set_seed(seed)
     model = DynamicalModel(dim, resolved_config["model"])
     trainer = TrainingPipeline(
         model,
@@ -517,7 +569,7 @@ def _fit_adata(
         batch_size,
         device,
         data=data_torch,
-        seed_already_applied=seed is not None,
+        seed_already_applied=True,
         run_context={
             "n_observations": int(adata.n_obs),
             "n_timepoints": int(len(time_points)),
@@ -567,8 +619,6 @@ def _fit_adata(
     adata.uns["training_run_summary"] = training_run_summary_metadata
 
     # ---------- 5. compute model outputs (component-aware) ----------
-    from CytoBridge.tl.core.interaction import cal_interaction
-
     all_times = torch.tensor(adata.obs[time_key].values, dtype=torch.float32, device=device).unsqueeze(1)
     all_data = torch.tensor(model_input, dtype=torch.float32, device=device)
     components = set(getattr(model, "components", []))
@@ -623,28 +673,14 @@ def _fit_adata(
             )
 
         if "interaction" in components and interaction_net is not None:
-            lnw = torch.log(torch.ones(n_obs, 1, device=device, dtype=torch.float32) / float(n_obs))
-            if getattr(interaction_net, "requires_time", False):
-                with torch.no_grad():
-                    interaction = cal_interaction(
-                        z=all_data.detach(),
-                        lnw=lnw,
-                        interaction_potential=interaction_net,
-                        m=interaction_group_size,
-                        cutoff=interaction_cutoff_model,
-                        use_mass=use_mass,
-                        t=all_times,
-                    ).float()
-            else:
-                interaction = cal_interaction(
-                    z=all_data.detach(),
-                    lnw=lnw,
-                    interaction_potential=interaction_net,
-                    m=interaction_group_size,
-                    cutoff=interaction_cutoff_model,
-                    use_mass=use_mass,
-                    t=all_times,
-                ).float()
+            interaction = _compute_interaction_by_time(
+                all_data.detach(),
+                all_times,
+                interaction_net,
+                group_size=interaction_group_size,
+                cutoff=interaction_cutoff_model,
+                use_mass=use_mass,
+            )
             interaction_np = interaction.detach().cpu().numpy()
             _store_vector_component(
                 adata,

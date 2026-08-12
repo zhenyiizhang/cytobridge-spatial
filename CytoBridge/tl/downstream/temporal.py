@@ -1384,7 +1384,7 @@ def summarize_temporal_gene_patterns(
     active_features_only: bool = True,
     pca_active_absolute_tolerance: float = 1e-12,
     pca_active_relative_tolerance: float = 1e-7,
-    clip_min: Optional[float] = None,
+    clip_min: Optional[float] = 0.0,
     reconstruction_batch_size: int = 4096,
 ) -> TemporalGenePatternResult:
     """Reconstruct mean gene profiles from simulated PCA states and cluster them.
@@ -1392,11 +1392,10 @@ def summarize_temporal_gene_patterns(
     Observed and generated states are compared in the same retained-PCA
     reconstruction space.  By default, center-only features are excluded
     because their zero loadings make them invariant to every simulated state.
-    The default preserves the historical signed inverse-PCA mean used by the
-    formal MOSTA pipeline.  Set ``clip_min=0.0`` to request the formal zebrafish
-    contract, which clips each reconstructed cell before the temporal mean.
-    Signed pre-clip means and diagnostics are always returned so truncation
-    artifacts remain auditable.
+    The default clips every reconstructed cell at zero before the temporal
+    mean, matching the non-negative log1p expression scale. Set
+    ``clip_min=None`` only for a legacy signed inverse-PCA score. Signed
+    pre-clip means and diagnostics are always returned separately.
 
     ``candidate_features`` optionally freezes the universe eligible for
     temporal-variance ranking. Names are matched exactly against the original

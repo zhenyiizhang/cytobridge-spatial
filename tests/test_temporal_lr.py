@@ -661,6 +661,77 @@ def test_count_space_converts_each_cell_before_arithmetic_celltype_mean() -> Non
     )
 
 
+def test_generated_log1p_lr_clips_negative_inverse_pca_expression_per_cell() -> None:
+    reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
+    reference.var_names = ["Lig", "Rec"]
+    reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+    current = ad.AnnData(
+        X=np.asarray(
+            [
+                [0.0, 0.0, -2.0, 0.0],
+                [0.0, 0.0, 2.0, 0.0],
+                [0.0, 0.0, 0.0, 3.0],
+            ],
+            dtype=np.float32,
+        )
+    )
+    current.obs["Annotation"] = ["A", "A", "B"]
+    slices = {str(time): current.copy() for time in (0.0, 1.0)}
+    communications = {
+        str(time): {
+            "types": np.asarray(["A", "B"], dtype=object),
+            "M_per_source": np.asarray([[0.0, 1.0], [0.0, 0.0]]),
+        }
+        for time in (0.0, 1.0)
+    }
+
+    result = project_communication_to_lr_timecourses(
+        slices,
+        reference,
+        communications,
+        pd.DataFrame({"ligand": ["Lig"], "receptor": ["Rec"]}),
+        expression_space="log1p",
+        n_clusters=1,
+        return_type_matrices=True,
+    )
+
+    edge = result.type_matrix.query(
+        "time == 0.0 and sender_type == 'A' and receiver_type == 'B'"
+    ).iloc[0]
+    assert edge["ligand_mean"] == pytest.approx(1.0)
+    assert edge["receptor_mean"] == pytest.approx(3.0)
+    assert edge["lr_score"] == pytest.approx(3.0)
+
+
+def test_temporal_gene_default_clips_negative_log1p_per_cell() -> None:
+    reference = ad.AnnData(X=np.zeros((2, 2), dtype=np.float32))
+    reference.var_names = ["G1", "G2"]
+    reference.varm["PCs"] = np.eye(2, dtype=np.float32)
+    reference.var["pca_center"] = np.zeros(2, dtype=np.float32)
+    slices = {}
+    for time, values in (
+        (0.0, [[-2.0, 0.0], [2.0, 3.0]]),
+        (1.0, [[-4.0, 1.0], [4.0, 5.0]]),
+    ):
+        state = np.column_stack((np.zeros((2, 2)), np.asarray(values)))
+        slices[str(time)] = ad.AnnData(X=state.astype(np.float32))
+
+    result = summarize_temporal_gene_patterns(
+        slices,
+        reference,
+        n_top_genes=2,
+        n_cluster_genes=2,
+        n_clusters=1,
+    )
+
+    np.testing.assert_allclose(result.expression.loc["G1"], [1.0, 2.0])
+    np.testing.assert_allclose(result.signed_expression.loc["G1"], [0.0, 0.0])
+    np.testing.assert_allclose(
+        result.clustering.normalized_profiles.loc["G1"], [-1.0, 1.0]
+    )
+    assert result.settings["clip_min"] == 0.0
+
+
 def test_strict_lr_complex_reports_missing_and_center_only_subunits() -> None:
     reference = ad.AnnData(X=np.ones((2, 3), dtype=np.float32))
     reference.var_names = ["Wnt3a", "Fzd7", "CenterOnly"]
@@ -700,7 +771,6 @@ def test_strict_lr_complex_reports_missing_and_center_only_subunits() -> None:
             }
         ),
         n_clusters=1,
-        require_all_subunits=True,
     )
     assert result.pair_timecourse["pair"].unique().tolist() == ["Wnt3a_Fzd7"]
     assert result.coverage["n_lr_pairs_scored"].tolist() == [1, 1]

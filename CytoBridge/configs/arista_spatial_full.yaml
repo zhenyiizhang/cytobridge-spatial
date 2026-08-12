@@ -1,11 +1,12 @@
-# Recovered CytoBridge six-stage ARISTA full-training profile.
+# Unified production ARISTA full-training profile.
 #
 # This encodes the six-stage spatial-package sequence: 100 pretrain, 100 refine,
 # 50 interaction initialization, 2001 score matching, 1000 finetune, and 2001
 # score refinement. The released checkpoint's params.yml records the older
 # top-level 500/2001/1000 DeepRUOT fields but not the interaction-stage driver or
 # execution log, so this profile must not be described as a byte-for-byte replay
-# of that historical run.
+# of that historical run. Its OT weights use the cross-dataset production
+# defaults; the recovered schedule and stage semantics remain ARISTA-specific.
 # Dataset-specific graph thresholds and edge-model paths are supplied from the
 # preprocessed H5AD by scripts/run_arista_end_to_end.py / cb.tl.fit.
 model:
@@ -52,7 +53,7 @@ training:
     sigma: 0.03
     batch_size: 512
     alpha_spatial: 10.0
-    alpha_express: 0.05
+    alpha_express: 0.015
     global_mass: true
 
   plan:

@@ -122,7 +122,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--n-samples", type=int, default=5000, help="Simulation sample size.")
     p.add_argument("--sigma", type=float, default=0.03, help="SDE sigma.")
     p.add_argument("--dt", type=float, default=0.01, help="SDE dt.")
-    p.add_argument("--classifier-epochs", type=int, default=120, help="Classifier training epochs.")
+    p.add_argument("--classifier-epochs", type=int, default=500, help="Classifier training epochs.")
+    p.add_argument("--classifier-lr", type=float, default=1e-3, help="Classifier learning rate.")
     p.add_argument("--seed", type=int, default=42, help="Random seed.")
     p.add_argument("--device", default=None, help="cpu/cuda. Default auto.")
     p.add_argument(
@@ -207,6 +208,7 @@ def main() -> None:
         concat_spatial=True,
         epochs=int(args.classifier_epochs),
         hidden_size=128,
+        lr=float(args.classifier_lr),
         seed=int(args.seed),
         device=device,
         include_time_feature=True,
@@ -237,7 +239,7 @@ def main() -> None:
         label_encoder=le,
         feature_dim=dim,
         device=device,
-        knn_neighbors=50,
+        knn_neighbors=10,
         include_time_feature=True,
     )
 
@@ -273,7 +275,7 @@ def main() -> None:
             label_encoder=le,
             feature_dim=dim,
             device=device,
-            knn_neighbors=50,
+            knn_neighbors=10,
             include_time_feature=True,
         )
 

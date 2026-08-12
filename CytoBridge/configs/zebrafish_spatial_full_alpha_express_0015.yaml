@@ -1,5 +1,5 @@
-# Paired clean-counts zebrafish alpha_express ablation.
-# Identical to zebrafish_spatial_full.yaml except for alpha_express=0.015.
+# Compatibility-named clean-counts zebrafish production profile.
+# Its scientific defaults match zebrafish_spatial_full.yaml.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn

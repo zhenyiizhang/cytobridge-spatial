@@ -235,7 +235,7 @@ try:
             spatial_key='spatial_aligned',
             concat_spatial=True,
             hidden_size=128,
-            epochs=50,
+            epochs=500,
             device=device,
         )
         print(f"    - Classifier accuracy: {accuracy:.2%}")

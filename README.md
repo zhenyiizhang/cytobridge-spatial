@@ -131,6 +131,56 @@ cytobridge doctor --json
 dependency modules are available; it does not import those dependencies or
 modify caches, data, or configuration.
 
+### Package-native workflow command
+
+The installed wheel includes readable presets for Zebrafish, MOSTA, ARISTA,
+and AD mouse. Inspect a complete plan before supplying large inputs:
+
+```bash
+cytobridge workflow --list-configs
+cytobridge workflow --config zebrafish --dry-run
+cytobridge workflow --config admouse --dry-run --json
+```
+
+The plan prints the dataset policy, scientific parameters, steps, compute
+requirements, and any missing input. The formal defaults are seed 42 and
+`alpha_express=0.015`; generated-cell annotations use `k=10` for Zebrafish,
+MOSTA, and ARISTA, and `k=1` for AD mouse.
+
+Preprocessing and downstream inference can be selected independently. These
+commands call the public package APIs and do not depend on repository scripts:
+
+```bash
+# Expression preprocessing plus spatial alignment
+cytobridge workflow --config zebrafish --step preprocess \
+  --input-h5ad /data/zebrafish.h5ad \
+  --output-dir /runs/zebrafish \
+  --device cuda
+
+# Interpolation and generated-slice annotation from an existing model
+cytobridge workflow --config zebrafish --step downstream \
+  --aligned-h5ad /runs/zebrafish/preprocess/zebrafish_aligned.h5ad \
+  --model-dir /runs/zebrafish/training \
+  --output-dir /runs/zebrafish \
+  --device cuda
+```
+
+Training never runs implicitly. Add `--train`, the aligned H5AD, and the
+dataset's edge-predictor checkpoint to enable it:
+
+```bash
+cytobridge workflow --config mosta --train --step downstream \
+  --aligned-h5ad /runs/mosta/preprocess/mosta_aligned.h5ad \
+  --edge-predictor-path /models/mosta_edge_model.pt \
+  --output-dir /runs/mosta \
+  --device cuda
+```
+
+Use `--training-config /path/to/config.yaml` to replace a packaged training
+preset. AD mouse intentionally starts from the released aligned H5AD and legacy
+model bundle; its preset reports those required inputs rather than inventing a
+new raw-data preprocessing or training recipe.
+
 ### Run the source-checkout preprocessing tutorial
 
 From a source checkout, install the preprocessing dependencies in the
@@ -154,12 +204,10 @@ workspace with:
 python scripts/smoke_installed_wheel.py --work-dir /path/to/new-empty-workspace
 ```
 
-The workspace path must not already exist. The smoke test keeps pip's resolver
-offline, installs the wheel without dependencies into a clean virtual
-environment, runs installed-only contract tests, and retains
-`wheel-smoke-evidence.json` with source, wheel, command, and test checksums.
-This is local checksum evidence, not authenticated provenance or a general
-network sandbox.
+The workspace path must not already exist. The script builds the current source
+tree, installs the wheel without dependencies into a clean virtual environment,
+and runs the installed-package contract tests. Pip index access is disabled, so
+missing local build tools fail clearly instead of being downloaded implicitly.
 
 ## Input Requirements
 
@@ -410,9 +458,10 @@ The full profile uses the recovered CytoBridge six-stage spatial schedule in
 `CytoBridge/configs/arista_spatial_full.yaml`: 100 pretraining epochs, 100
 refinement epochs, 50 interaction-initialization epochs, 2,001 score-matching
 epochs, 1,000 finetuning epochs, and a final 2,001-epoch score refinement. It
-preserves the recovered weighted-OT objective (`alpha_spatial=10`,
-`alpha_express=0.05`), stage-specific mass conventions, forward-OT checkpoint
-selection for intermediate stages, and the finetuning plateau scheduler.
+uses the unified production weighted-OT defaults (`alpha_spatial=10`,
+`alpha_express=0.015`) while preserving the recovered stage-specific mass
+conventions, forward-OT checkpoint selection for intermediate stages, and the
+finetuning plateau scheduler.
 Finetuning also restores the historical checkpoint rule: the best forward
 last-interval OT state is captured before reverse-time updates, rather than
 unconditionally using epoch 1,000's final weights.
@@ -471,7 +520,7 @@ The run writes:
 - joint, spatial, and PCA W1/W2 metrics plus TMV and local-structure diagnostics
 - compressed generated/observed sample arrays used to calculate the figures
 - a machine-readable `downstream/run_manifest.json`, including the exact
-  weight/score checkpoint paths and SHA-256 hashes
+  weight and score checkpoint paths
 
 Use `--profile smoke` only to test wiring. Its per-timepoint subsampling changes
 nearest-neighbor distances, so its automatically estimated spatial cutoff is not
@@ -495,7 +544,7 @@ python scripts/convert_legacy_model_input_csv.py \
 The generic `legacy_model_input_csv_to_adata` API maps `x1,x2` to
 `obsm['spatial_aligned']`, the remaining numeric columns to
 `obsm['X_latent']`, and preserves numeric time values and optional annotation.
-The source path/hash, column order, and interaction settings are written into
+The source path, column order, and interaction settings are written into
 AnnData provenance. Because the CSV contains no gene-level expression, this is
 an audit/migration input—not a substitute for the full H5AD preprocessing
 workflow. It is useful for separating training-code changes from preprocessing
@@ -537,8 +586,8 @@ python scripts/run_arista_end_to_end.py \
 ```
 
 The resolved `training/config.yaml` records the effective values and edge-model
-path. A defensible paired control must also verify identical aligned-H5AD and
-edge-model hashes before training.
+path. A paired control should reuse the same aligned H5AD and edge-model files
+before changing the thresholds.
 
 Raw cutoff values should be interpreted together with coordinate scale. For
 cross-run comparisons, report the coordinate range/standard deviation, median
@@ -604,8 +653,8 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   simulated PCA states, and clusters the resulting gene trajectories. Its
   optional `candidate_features` argument freezes the exact original PCA-feature
   universe eligible for temporal-variance ranking; missing, duplicate, or
-  center-only candidates are strict errors, and the requested/used sets and
-  hashes are recorded in the result settings. Its default `clip_min=None`
+  center-only candidates are strict errors, and the requested/used sets are
+  recorded in the result settings. Its default `clip_min=None`
   preserves the signed linear inverse-PCA estimator used by formal MOSTA;
   formal zebrafish callers explicitly request `clip_min=0.0`, which clips each
   reconstructed cell before taking the time-point mean and retains the signed
@@ -617,7 +666,7 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   HVGs), rejects center-only features by default, and strictly validates
   feature order. It returns per-time aggregate errors plus per-feature
   RMSE/MAE, mean, population standard deviation, bias, correlation, and scale
-  ratio together with effective observation/feature and PCA-contract hashes,
+  ratio together with the effective observation, feature, and PCA contracts,
   without constructing the full cells-by-features reconstruction;
 - `project_communication_to_lr_timecourses` combines those reconstructed
   expression values with per-timepoint `M_per_source` communication matrices.
@@ -637,7 +686,7 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   matrix, type-level incoming/outgoing/total scores, a cell mapping with one
   identical value per time/type, and a formula/subunit/cohort audit. A capped
   compute cohort and full display cohort may be supplied separately, with both
-  sizes and ordered cell-ID hashes recorded;
+  cohort definitions and sizes recorded;
 - `load_pca_reconstruction_spec` loads historical loading/center tables through
   a generic, validated feature-alignment contract rather than dataset-local
   parsing;
@@ -737,7 +786,7 @@ interaction_result = run_virtual_interaction_ablation(
 ```
 
 The enrichment API does not download or silently select a database. Callers
-provide a versioned GMT file and record its hash in the run manifest:
+provide a versioned GMT file and record its name and version in the run manifest:
 
 ```python
 from CytoBridge.tl import load_gmt_gene_sets, overrepresentation_analysis
@@ -766,10 +815,11 @@ The default, prospective workflow requires a package-processed reference H5AD
 that retains PCA loadings. An older H5AD containing only `X_pca` coordinates is
 not sufficient by itself. For a declared historical reproduction, callers may
 instead load the archived PCA components and center with
-`load_pca_reconstruction_spec`; both source paths and hashes should be recorded
-in the run manifest. `preferred_species_tag` makes cross-species symbol choice
-explicit, while `profile_linkage_method` and `profile_cluster_order` expose the
-clustering contract. For ARISTA, the paper's 68 LR pairs arise from the
+`load_pca_reconstruction_spec`; record both source paths and the ordered feature
+contract in the run manifest. `preferred_species_tag` makes cross-species
+symbol choice explicit, while `profile_linkage_method` and
+`profile_cluster_order` expose the clustering contract. For ARISTA, the paper's
+68 LR pairs arise from the
 historical first-symbol mapping (`preferred_species_tag=None`); preferring
 `[hs]` yields 89 pairs. Ward linkage with dendrogram cluster ordering reproduces
 the paper's clustering rule.
@@ -787,7 +837,7 @@ CUDA_VISIBLE_DEVICES=7 python scripts/run_spatiotemporal_downstream.py \
   --model-dir /path/to/runs/arista-full/training \
   --model-format current \
   --output-dir /path/to/runs/arista-full/spatiotemporal \
-  --classifier-knn-neighbors 1 \
+  --classifier-knn-neighbors 10 \
   --classifier-cache-dir /path/to/runs/arista-full/classifier_cache \
   --device cuda
 ```
@@ -798,13 +848,16 @@ The classifier cache is now created through
 metadata match. The downstream command produces observed/generated snapshots,
 lineage Sankey, per-timepoint attention-based interactions, and the focus-anchor
 3D plot as HTML plus static SVG/PDF/PNG when Plotly image export is available.
+New production classifiers use hidden size 128, 500 selection epochs, Adam
+initialized at `1e-3`, cosine annealing over the 500-epoch selection horizon to
+`1e-5`, seed 42, and held-out balanced accuracy for checkpoint selection.
 
 For new classifier runs, `--classifier-refit-on-full-data-after-selection`
 keeps model selection and final fitting distinct: it chooses the best epoch on
 the held-out validation split, initializes a fresh model, and refits on all
-rows for exactly that epoch count. Selection and refit metrics, split and state
-hashes, scheduler horizons, seeds, and row scopes remain separate in the cache
-evaluation record. `--classifier-strict-stratification` makes an impossible
+rows for exactly that epoch count. Selection and refit metrics, split
+definitions, scheduler horizons, seeds, and row scopes remain separate in the
+cache evaluation record. `--classifier-strict-stratification` makes an impossible
 stratified split a hard error instead of using the documented fallback. The
 legacy `--classifier-train-on-full-data` behavior remains available for replay
 but cannot be combined with the new refit mode.
@@ -813,14 +866,17 @@ Classifier prediction and spatial smoothing are separate operations.
 `smooth_spatial_labels` accepts the raw MLP labels and explicit spatial
 coordinates, records the requested/effective k, forces or excludes the query
 cell according to `include_self`, and resolves exact-distance boundaries
-deterministically. `analyze_spatial_label_sensitivity` reuses one raw prediction
-for k=1/5/10/20/50 and reports label flips, composition total variation,
+deterministically. The held-out sweep remains reported as sensitivity evidence.
+For the formal dataset workflows, AD mouse explicitly passes `k=1`, while
+Zebrafish, MOSTA, and ARISTA explicitly pass `k=10` for all generated-cell
+annotations and label-dependent analyses.
+`analyze_spatial_label_sensitivity` reuses one raw prediction to compare
+k=1/5/10/20/50 sensitivity settings and reports label
+flips, composition total variation,
 maximum percentage-point change, per-type abundance/retention, and
 boundary/interior flip rates. This avoids retraining the MLP while studying k.
-Historical formal runs remain dataset-specific: ARISTA used held-out
-balanced-accuracy selection with k=1, whereas the focused MOSTA cache selected
-in-sample on the full training population with k=10; they share an architecture
-family, not one identical validation protocol.
+Historical full-training-scope classifier variants remain available only as
+explicitly requested replay/sensitivity settings.
 
 The ARISTA formal-analysis config is no-warp: split-SDE coordinates are used
 directly for communication and the 3D rendering. Piecewise warp has two

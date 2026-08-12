@@ -541,20 +541,19 @@ single-seed virtual sensitivity analysis, not causal knockout estimates.
 
 S25 follows the manuscript wording "observed and interpolated time points":
 integer stages use the actual observed cells and annotations, while half-time
-stages reuse S22's canonical generated pre-warp states. S22 keeps its historical
-`k=10` spatial label smoothing for the display trajectory. Rare YSL selection
-at generated S25 half-times defaults to the direct classifier (`k=1`), because
-majority smoothing can erase a biologically present rare class. The two label
-policies and every per-timepoint YSL count are recorded separately; a full run
-still fails rather than fabricating cells if the direct classifier predicts no
-target cells.
+stages reuse S22's canonical generated pre-warp states. Every generated
+Zebrafish annotation uses the formal `k=10` spatial-majority policy, including
+the S22 trajectory, the S25 target-cell analysis, and communication/LR. The
+direct classifier (`k=1`) is retained as a separately labeled sensitivity
+setting; every per-timepoint YSL count is recorded and a full run still fails
+rather than fabricating cells if no target cells are predicted.
 
 Communication/LR does not inherit the labels stored in the S22/S25 trajectory
 bundle. It explicitly applies the same cached classifier to every generated
-pre-warp frame and defaults to direct prediction (`k=1`); the corresponding CLI
-setting is `--communication-classifier-knn-neighbors 1`. Observed times keep
-their actual annotations. Pass `10` only to create a separate legacy
-manuscript-parity sensitivity result. The stage records the classifier cache
+pre-warp frame with the formal `k=10` label policy; the corresponding CLI
+setting is `--communication-classifier-knn-neighbors 10`. Observed times keep
+their actual annotations. Use k=1/5/20/50 only for separate sensitivity
+results. The stage records the classifier cache
 hash and fingerprint, per-cell inherited versus analysis labels, per-time label
 counts, and the fraction changed, so display smoothing cannot silently alter
 biological communication scores.
@@ -631,9 +630,11 @@ do not fork generic preprocessing, training, or downstream implementations.
    columns. Preserve stable cell IDs through every conversion.
 5. **Graph:** provide a species-appropriate interaction database; estimate the
    spatial neighborhood cutoff and train/validate a new edge predictor.
-6. **Training:** start from a versioned YAML. Treat both alignment weights and
-   dynamical `alpha_spatial`/`alpha_express` as tunable data-scale-dependent
-   parameters, not zebrafish constants.
+6. **Training:** start from a versioned YAML. Use the production dynamical
+   weights `alpha_spatial=10` and `alpha_express=0.015`; place any alternative
+   weights in explicitly labeled sensitivity runs. Keep spatial graph cutoffs
+   and edge-predictor thresholds dataset-specific and estimate them from the
+   aligned dataset.
 7. **Evaluation:** run the same W1/W2/TMV and support diagnostics at observed
    times with fixed seeds and sample caps across candidate models.
 8. **Downstream biology:** define classifiers, target LR pairs, ablation labels,

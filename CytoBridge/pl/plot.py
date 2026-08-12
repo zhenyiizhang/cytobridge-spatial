@@ -1506,11 +1506,12 @@ def process_sde_classification(
     sigma: float = 0.05,
     n_time_steps: int = 10,
     sample_traj_num: int = 1000,
-    train_mlp_classifier_epoches=400,
+    train_mlp_classifier_epoches=500,
     init_time: Optional[int] = None,
     device: str = 'cuda',
     dim_reduction="none",
-    hidden_size: int = 128  # Add hidden_size parameter to ensure consistency during loading and training
+    hidden_size: int = 128,
+    seed: int = 42,
 ):
     """
     Complete workflow: Train classifier → Process SDE data → Classification prediction → Visualization
@@ -1527,6 +1528,7 @@ def process_sde_classification(
         init_time: Initial time point (uses the earliest time point in adata by default)
         device: Computing device
         hidden_size: MLP hidden layer dimension, used to maintain consistency when loading the model
+        seed: Random seed for classifier splitting, initialization, and training
     """
     model_path = os.path.join(output_path, 'mlp_classifier.pth')
     encoder_path = os.path.join(output_path, 'label_encoder.pkl')
@@ -1549,7 +1551,8 @@ def process_sde_classification(
             classifyed_type=classifyed_type,
             hidden_size=hidden_size,  
             device=device,
-            train_mlp_classifier_epoches=train_mlp_classifier_epoches
+            train_mlp_classifier_epoches=train_mlp_classifier_epoches,
+            seed=seed,
         )
         # Save classifier
         os.makedirs(output_path, exist_ok=True)

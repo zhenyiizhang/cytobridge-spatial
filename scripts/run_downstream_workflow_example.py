@@ -181,9 +181,15 @@ def _build_argparser() -> argparse.ArgumentParser:
     )
 
     # Classifier
-    p.add_argument("--classifier-epochs", type=int, default=200, help="Classifier epochs.")
+    p.add_argument("--classifier-epochs", type=int, default=500, help="Classifier epochs.")
     p.add_argument("--classifier-hidden", type=int, default=128, help="Classifier hidden size (kept for API parity).")
-    p.add_argument("--knn-neighbors", type=int, default=50, help="KNN refinement neighbors.")
+    p.add_argument("--classifier-lr", type=float, default=1e-3, help="Classifier learning rate.")
+    p.add_argument(
+        "--knn-neighbors",
+        type=int,
+        default=10,
+        help="Spatial label-smoothing neighbors for generated-cell annotations.",
+    )
 
     # 3D
     p.add_argument("--skip-3d", action="store_true", help="Skip 3D spatiotemporal plot.")
@@ -340,6 +346,7 @@ def main() -> None:
             concat_spatial=args.concat_spatial,
             hidden_size=int(args.classifier_hidden),
             epochs=int(args.classifier_epochs),
+            lr=float(args.classifier_lr),
             seed=int(args.seed),
             device=device,
         )

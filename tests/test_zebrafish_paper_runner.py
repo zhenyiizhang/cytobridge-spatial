@@ -29,7 +29,7 @@ def test_time_grid_and_stage_parser_are_strict():
     assert runner._parse_stages("all") == list(runner.ALL_STAGES)
 
 
-def test_communication_classifier_default_is_direct_prediction():
+def test_production_classifier_defaults_use_balanced_accuracy_and_k10():
     args = runner._build_parser().parse_args(
         [
             "--aligned-h5ad",
@@ -40,7 +40,10 @@ def test_communication_classifier_default_is_direct_prediction():
             "output",
         ]
     )
-    assert args.communication_classifier_knn_neighbors == 1
+    assert args.classifier_epochs == 500
+    assert args.ablation_classifier_epochs == 500
+    assert args.s25_classifier_knn_neighbors == 10
+    assert args.communication_classifier_knn_neighbors == 10
     assert args.lr_expression_time_policy == "all_inverse_pca"
     assert args.lr_complex_mode == "min"
 

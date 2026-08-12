@@ -8,6 +8,7 @@ from CytoBridge.tl.downstream.classification import (
     analyze_spatial_label_sensitivity,
     predict_labels_for_points,
     predict_labels_for_trajectories,
+    select_spatial_smoothing_k,
     smooth_spatial_labels,
 )
 
@@ -79,6 +80,77 @@ def test_even_k_ties_are_deterministic_and_report_legacy_policy_metadata():
     assert record["max_absolute_change_pp"] == 50.0
     assert record["boundary_flip_rate"] == 1.0
     assert record["interior_flip_rate"] == 0.0
+
+
+def test_k_selection_reuses_predictions_and_prefers_smaller_exact_ties():
+    predicted = np.asarray(["A", "B", "A", "B"])
+    observed = predicted.copy()
+    coords = np.arange(4, dtype=np.float64).reshape(-1, 1)
+
+    selection = select_spatial_smoothing_k(
+        predicted,
+        observed,
+        coords,
+        k_values=(5, 1),
+    )
+
+    assert selection.selected_k == 1
+    np.testing.assert_array_equal(selection.selected_labels, predicted)
+    assert [record["k"] for record in selection.scores] == [1, 5]
+
+
+def test_k_selection_uses_exact_tie_rule_without_preferred_default():
+    predicted = np.asarray(["A"] * 10 + ["B"] * 10)
+    observed = predicted.copy()
+    coords = np.concatenate((np.arange(10), np.arange(100, 110))).reshape(-1, 1)
+
+    selection = select_spatial_smoothing_k(
+        predicted,
+        observed,
+        coords,
+        k_values=(1, 10),
+    )
+
+    assert selection.selected_k == 1
+
+
+def test_k_selection_smooths_full_groups_but_scores_only_masked_rows():
+    predicted = np.asarray(["A", "A", "B", "B", "B", "A"])
+    observed = predicted.copy()
+    coords = np.asarray([[0.0], [0.1], [0.2], [0.0], [0.1], [0.2]])
+    groups = np.asarray([0, 0, 0, 1, 1, 1])
+    score_mask = np.asarray([False, False, True, False, False, True])
+
+    selection = select_spatial_smoothing_k(
+        predicted,
+        observed,
+        coords,
+        k_values=(3,),
+        score_mask=score_mask,
+        groups=groups,
+    )
+
+    np.testing.assert_array_equal(
+        selection.selected_labels,
+        ["A", "A", "A", "B", "B", "B"],
+    )
+    assert selection.scores[0]["n_scored"] == 2
+
+
+def test_k_selection_never_uses_truth_labels_as_neighbor_votes():
+    predicted = np.asarray(["pred_A", "pred_B", "pred_A", "pred_B"])
+    observed = np.asarray(["truth_X", "truth_Y", "truth_X", "truth_Y"])
+    coords = np.arange(4, dtype=np.float64).reshape(-1, 1)
+
+    selection = select_spatial_smoothing_k(
+        predicted,
+        observed,
+        coords,
+        k_values=(1, 3),
+    )
+
+    assert set(selection.selected_labels).issubset(set(predicted))
+    assert not set(selection.selected_labels).intersection(set(observed))
 
 
 class _SignClassifier(torch.nn.Module):

@@ -11,8 +11,8 @@ def calc_ot_loss(
     lnw1,
     method='emd_detach',
     return_pi=False,
-    alpha_spatial: float = 1.0,
-    alpha_express: float = 1.0,
+    alpha_spatial: float = 10.0,
+    alpha_express: float = 0.015,
     spatial_dim: int = 2,
 ):
     '''

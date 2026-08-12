@@ -1,0 +1,67 @@
+{
+  "dataset": {
+    "name": "arista",
+    "display_name": "ARISTA human brain organoid",
+    "annotation_key": "Annotation",
+    "time_key": "time_point_processed",
+    "obsm_key": "X_latent",
+    "spatial_key": "spatial_aligned",
+    "concat_spatial": true
+  },
+  "scientific": {
+    "seed": 42,
+    "alpha_express": 0.015,
+    "classifier_k": 10
+  },
+  "steps": {
+    "default": ["preprocess", "downstream"]
+  },
+  "preprocess": {
+    "enabled": true,
+    "time_key": "time",
+    "annotation_source": "Annotation",
+    "batch_indices": null,
+    "align": {
+      "n_top_genes": 2000,
+      "n_pcs": 50,
+      "normalization_target_sum": null,
+      "spatial_dim": 2,
+      "shared_scale": 3000.0,
+      "center_x": true,
+      "center_y": false,
+      "flip_y": false,
+      "phase1_epochs": 10000,
+      "phase2_epochs": 500,
+      "alpha": 5.0,
+      "beta": 0.01,
+      "lambda_local": 30.0,
+      "lambda_ot": 1.0,
+      "batch_size": 1024,
+      "distance_pairs": 10000,
+      "learning_rate": 0.001,
+      "random_seed": 42
+    }
+  },
+  "train": {
+    "config": "arista_spatial_full.yaml",
+    "requires_edge_predictor": true,
+    "edge_predictor_threshold": 0.45,
+    "evaluate_after_training": false
+  },
+  "downstream": {
+    "enabled": true,
+    "model_format": "current",
+    "observed": [0.0, 1.0, 2.0, 3.0, 4.0],
+    "interpolated": [0.5, 1.5, 2.5, 3.5],
+    "classifier_epochs": 500,
+    "classifier_hidden_size": 128,
+    "classifier_lr": 0.001,
+    "classifier_best_metric": "bacc",
+    "classifier_strict_stratification": true,
+    "sde_n_samples": 5000,
+    "sde_dt": 0.05,
+    "split_sde_dt": 0.01,
+    "split_sigma": 0.03,
+    "split_growth_alpha": 1.0
+  }
+}

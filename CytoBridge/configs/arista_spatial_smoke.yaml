@@ -39,6 +39,8 @@ training:
     lambda_energy: 0.01
     sigma: 0.03
     batch_size: 128
+    alpha_spatial: 10.0
+    alpha_express: 0.015
 
   plan:
     - name: Pretrain

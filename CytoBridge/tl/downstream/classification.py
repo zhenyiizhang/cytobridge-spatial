@@ -25,6 +25,8 @@ __all__ = [
     "load_cached_mlp_classifier",
     "predict_cached_mlp_classifier_from_adata",
     "smooth_spatial_labels",
+    "SpatialSmoothingSelection",
+    "select_spatial_smoothing_k",
     "analyze_spatial_label_sensitivity",
     "predict_labels_for_points",
     "predict_labels_for_trajectories",
@@ -250,6 +252,139 @@ def smooth_spatial_labels(
         tie_policy=tie_policy,
     )
     return refined
+
+
+@dataclass(frozen=True)
+class SpatialSmoothingSelection:
+    """Held-out result for choosing the spatial label-vote neighborhood."""
+
+    selected_k: int
+    selected_labels: np.ndarray
+    scores: tuple[dict, ...]
+    selection_rule: str
+
+
+def select_spatial_smoothing_k(
+    predicted_labels: Sequence[str],
+    true_labels: Sequence[str],
+    spatial_coords: np.ndarray,
+    *,
+    k_values: Sequence[int] = (1, 5, 10, 20, 50),
+    score_mask: Optional[Sequence[bool]] = None,
+    groups: Optional[Sequence[object]] = None,
+    include_self: bool = True,
+    weights: str = "uniform",
+    tie_policy: str = "sklearn_legacy",
+) -> SpatialSmoothingSelection:
+    """Select spatial smoothing on a fixed classifier holdout.
+
+    ``predicted_labels`` and ``spatial_coords`` should contain each complete
+    observed slice so held-out rows retain their real spatial context.
+    ``score_mask`` limits metrics to the fixed held-out rows, while ``groups``
+    keeps voting within real time slices. Ground truth is never used as a
+    neighbor vote.
+
+    The highest balanced accuracy wins. An exact balanced-accuracy tie is
+    resolved by macro-F1; an exact tie in both metrics keeps the smaller k.
+    """
+    from sklearn.metrics import balanced_accuracy_score, f1_score
+
+    predicted, coords = _validate_spatial_smoothing_inputs(
+        predicted_labels, spatial_coords
+    )
+    observed = np.asarray(true_labels)
+    if observed.ndim != 1 or observed.shape[0] != predicted.shape[0]:
+        raise ValueError(
+            "true_labels must be one-dimensional and match predicted_labels."
+        )
+
+    if score_mask is None:
+        evaluated = np.ones(predicted.shape[0], dtype=bool)
+    else:
+        evaluated = np.asarray(score_mask, dtype=bool)
+        if evaluated.ndim != 1 or evaluated.shape[0] != predicted.shape[0]:
+            raise ValueError(
+                "score_mask must be one-dimensional and match predicted_labels."
+            )
+        if not np.any(evaluated):
+            raise ValueError("score_mask must select at least one row.")
+
+    if groups is None:
+        group_values = None
+    else:
+        group_values = np.asarray(groups)
+        if group_values.ndim != 1 or group_values.shape[0] != predicted.shape[0]:
+            raise ValueError(
+                "groups must be one-dimensional and match predicted_labels."
+            )
+
+    candidates = tuple(sorted({_normalize_requested_k(value) for value in k_values}))
+    if not candidates:
+        raise ValueError("k_values must contain at least one candidate.")
+
+    records: list[dict] = []
+    labels_by_k: dict[int, np.ndarray] = {}
+
+    for candidate in candidates:
+        if group_values is None:
+            smoothed, _ = _smooth_spatial_labels_detailed(
+                predicted,
+                coords,
+                k=candidate,
+                include_self=include_self,
+                weights=weights,
+                tie_policy=tie_policy,
+            )
+        else:
+            smoothed = predicted.copy()
+            for group in np.unique(group_values):
+                in_group = group_values == group
+                smoothed[in_group], _ = _smooth_spatial_labels_detailed(
+                    predicted[in_group],
+                    coords[in_group],
+                    k=candidate,
+                    include_self=include_self,
+                    weights=weights,
+                    tie_policy=tie_policy,
+                )
+
+        scored_truth = observed[evaluated]
+        scored_prediction = smoothed[evaluated]
+        balanced_accuracy = float(
+            balanced_accuracy_score(scored_truth, scored_prediction)
+        )
+        macro_f1 = float(
+            f1_score(scored_truth, scored_prediction, average="macro", zero_division=0)
+        )
+        records.append(
+            {
+                "k": int(candidate),
+                "balanced_accuracy": balanced_accuracy,
+                "macro_f1": macro_f1,
+                "n_scored": int(np.sum(evaluated)),
+            }
+        )
+        labels_by_k[candidate] = smoothed
+
+    best_record = min(
+        records,
+        key=lambda record: (
+            -record["balanced_accuracy"],
+            -record["macro_f1"],
+            record["k"],
+        ),
+    )
+    best_k = int(best_record["k"])
+
+    return SpatialSmoothingSelection(
+        selected_k=int(best_k),
+        selected_labels=labels_by_k[best_k].copy(),
+        scores=tuple(records),
+        selection_rule=(
+            "maximum balanced accuracy; exact tie: maximum macro-F1; "
+            "exact tie again: smaller k"
+        ),
+    )
 
 
 def _infer_nearest_neighbor_boundary(
@@ -722,7 +857,7 @@ def predict_labels_for_points(
     label_encoder,
     feature_dim: int,
     device: str = "cuda",
-    knn_neighbors: int = 50,
+    knn_neighbors: int = 10,
     include_time_feature: bool = True,
     feature_indices: Optional[Sequence[int]] = None,
     spatial_coords: Optional[np.ndarray] = None,
@@ -839,7 +974,7 @@ def _train_mlp_classifier_arrays(
     X: np.ndarray,
     y: Sequence[str],
     hidden_size: int = 128,
-    epochs: int = 50,
+    epochs: int = 500,
     lr: float = 1e-3,
     test_size: float = 0.1,
     seed: int = 42,
@@ -858,7 +993,7 @@ def _train_mlp_classifier_arrays(
         test_size=test_size,
         seed=seed,
         device=device,
-        best_epoch_metric="accuracy",
+        best_epoch_metric="bacc",
         train_on_full_data=train_on_full_data,
         refit_on_full_data_after_selection=refit_on_full_data_after_selection,
         stratify_split=stratify_split,
@@ -976,12 +1111,12 @@ def _train_mlp_classifier_arrays_detailed(
     X: np.ndarray,
     y: Sequence[str],
     hidden_size: int = 128,
-    epochs: int = 50,
+    epochs: int = 500,
     lr: float = 1e-3,
     test_size: float = 0.1,
     seed: int = 42,
     device: str = "cuda",
-    best_epoch_metric: str = "accuracy",
+    best_epoch_metric: str = "bacc",
     train_on_full_data: bool = False,
     refit_on_full_data_after_selection: bool = False,
     stratify_split: bool = True,
@@ -1443,7 +1578,7 @@ def train_mlp_classifier(
     concat_spatial: Optional[bool] = None,
     samples_column: str = "samples",
     hidden_size: int = 128,
-    epochs: int = 50,
+    epochs: int = 500,
     lr: float = 1e-3,
     test_size: float = 0.1,
     seed: int = 42,
@@ -1455,7 +1590,13 @@ def train_mlp_classifier(
     stratify_split: bool = True,
     strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float]:
-    """Train downstream MLP classifier from AnnData."""
+    """Train a downstream MLP classifier from AnnData.
+
+    The production protocol uses a 128-unit residual MLP, 500 selection
+    epochs, Adam at ``1e-3``, seed 42, and held-out balanced accuracy for
+    checkpoint selection. Choose spatial label smoothing separately on the
+    same fixed holdout with :func:`select_spatial_smoothing_k`.
+    """
     if train_on_full_data and refit_on_full_data_after_selection:
         raise ValueError(
             "train_on_full_data=True cannot be combined with "
@@ -1498,7 +1639,7 @@ def train_mlp_classifier_from_adata(
     concat_spatial: Optional[bool] = None,
     samples_column: str = "samples",
     hidden_size: int = 128,
-    epochs: int = 50,
+    epochs: int = 500,
     lr: float = 1e-3,
     test_size: float = 0.1,
     seed: int = 42,
@@ -1540,7 +1681,7 @@ def predict_labels_for_trajectories(
     label_encoder,
     feature_dim: int,
     device: str = "cuda",
-    knn_neighbors: int = 50,
+    knn_neighbors: int = 10,
     include_time_feature: bool = True,
     feature_indices: Optional[Sequence[int]] = None,
     spatial_coords: Optional[Sequence[np.ndarray] | np.ndarray] = None,

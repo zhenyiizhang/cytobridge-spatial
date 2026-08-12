@@ -102,7 +102,7 @@ def run_interpolation_workflow(
     classifier_train_on_full_data: bool = False,
     classifier_refit_on_full_data_after_selection: bool = False,
     classifier_strict_stratification: bool = False,
-    classifier_best_metric: str = "accuracy",
+    classifier_best_metric: str = "bacc",
     classifier_n_pcs: Optional[int] = None,
     classifier_knn_neighbors: int = 10,
     classifier_feature_indices: Optional[Sequence[int]] = None,
@@ -155,6 +155,12 @@ def run_interpolation_workflow(
 
     interp_points = [] if no_interp else [float(t) for t in interp_time_points]
     interp_points = [float(t) for t in interp_points if float(t) not in observed_time_points]
+
+    # Spatial anchoring is a rendering transform. Keep the model trajectory,
+    # classifier labels, lineage, attention, LR scores, and other quantitative
+    # analyses on the unwarped state.
+    if spatial_warp_to_observed or spatial_warp_to_observed_piecewise:
+        spatial_warp_visualization_only = True
 
     if split_sde_piecewise and len(interp_points) == 0:
         print("[warn] split_sde_piecewise has no effect without interpolation points; disabling it.")

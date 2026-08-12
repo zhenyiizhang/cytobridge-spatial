@@ -1,8 +1,8 @@
 """Wheel-install contract tests.
 
-These tests are skipped in a source-tree suite.  ``smoke_installed_wheel.py``
-runs this file directly inside a clean no-dependencies virtual environment with
-``CYTOBRIDGE_TEST_INSTALLED=1`` and records its output hashes.
+These tests are skipped in a source-tree suite. ``smoke_installed_wheel.py``
+runs this file directly inside a clean, dependency-free virtual environment
+with ``CYTOBRIDGE_TEST_INSTALLED=1``.
 """
 
 from __future__ import annotations
@@ -117,6 +117,38 @@ class InstalledPackageContractTests(unittest.TestCase):
             "configs", "simulation_config.yaml"
         )
         self.assertTrue(config.is_file())
+        workflow_configs = resources.files("CytoBridge").joinpath("workflow_configs")
+        self.assertEqual(
+            {path.name for path in workflow_configs.iterdir() if path.suffix == ".json"},
+            {"zebrafish.json", "mosta.json", "arista.json", "admouse.json"},
+        )
+
+    def test_installed_workflow_dry_run_uses_packaged_resources(self) -> None:
+        executable = Path(sys.executable).with_name("cytobridge")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            completed = subprocess.run(
+                [
+                    str(executable),
+                    "workflow",
+                    "--config",
+                    "zebrafish",
+                    "--dry-run",
+                    "--json",
+                ],
+                cwd=temporary_directory,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(list(Path(temporary_directory).iterdir()), [])
+
+        plan = json.loads(completed.stdout)
+        self.assertEqual(plan["dataset"]["name"], "zebrafish")
+        self.assertEqual(plan["scientific"]["alpha_express"], 0.015)
+        self.assertEqual(plan["scientific"]["seed"], 42)
+        self.assertEqual(plan["scientific"]["classifier_k"], 10)
+        train = next(step for step in plan["steps"] if step["name"] == "train")
+        self.assertEqual(train["status"], "skipped; add --train to run")
 
 
 if __name__ == "__main__":

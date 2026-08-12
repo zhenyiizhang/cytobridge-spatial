@@ -26,11 +26,13 @@ simulation:
   spatial_warp_eps: 1.0e-6
 
 classifier:
-  epochs: 1000
+  epochs: 500
   hidden_size: 128
+  lr: 0.001
   best_metric: bacc
   train_on_full_data: false
-  knn_neighbors: 1
+  # ARISTA uses the shared spatially continuous annotation policy.
+  knn_neighbors: 10
 
 communication:
   remove_self_loop: false

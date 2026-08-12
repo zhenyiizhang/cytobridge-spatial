@@ -1281,7 +1281,7 @@ def simulate_sde_points_split(
     f_net=None,
     score_net=None,
     sigma_by_dim: Optional[Sequence[float]] = None,
-    growth_alpha: float = 0.5,
+    growth_alpha: float = 1.0,
     verbose: bool = True,
     resample_dt: Optional[float] = None,
     max_particles: Optional[int] = None,
@@ -1378,7 +1378,7 @@ def simulate_sde_points_split(
                     raise ValueError("Model missing velocity_net.")
                 drift = model.predict_velocity(t=t_expand, x=z)
                 if "growth" in components:
-                    dlnw = model.predict_growth(t=t_expand, x=z)
+                    dlnw = model.predict_growth(t=t_expand, x=z) * growth_alpha
                 else:
                     dlnw = torch.zeros_like(lnw)
 
@@ -1540,7 +1540,7 @@ def compute_velocity_components_from_adata(
     spatial_key: str = "spatial_aligned",
     concat_spatial: Optional[bool] = None,
     write_to_adata: bool = True,
-    reuse_if_present: bool = True,
+    reuse_if_present: bool = False,
 ) -> Dict[str, np.ndarray]:
     """Compute per-cell velocity decomposition from AnnData and optionally write back.
 

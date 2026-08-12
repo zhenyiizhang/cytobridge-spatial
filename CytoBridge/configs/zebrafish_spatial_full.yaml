@@ -48,7 +48,7 @@ training:
     sigma: 0.03
     batch_size: 512
     alpha_spatial: 10.0
-    alpha_express: 0.05
+    alpha_express: 0.015
     global_mass: true
 
   plan:

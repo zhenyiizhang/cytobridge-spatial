@@ -1,4 +1,5 @@
 import math
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -136,6 +137,70 @@ def test_split_integrator_particle_limit_fails_before_repeat_allocation():
             resample_dt=1.0,
             max_particles=1,
         )
+
+
+def test_split_particle_count_encodes_equal_mass_after_resampling():
+    z = torch.tensor([[0.0], [1.0]], dtype=torch.float32)
+    previous_weights = torch.full((2, 1), 0.5, dtype=torch.float32)
+    grown_lnw = torch.zeros((2, 1), dtype=torch.float32)  # mass doubled per source
+
+    (resampled_z, resampled_lnw), weights = simulation._apply_split_event(
+        (z, grown_lnw),
+        previous_weights=previous_weights,
+        initial_count=2,
+        noise_std=0.0,
+    )
+
+    assert resampled_z.shape[0] == 4
+    np.testing.assert_allclose(torch.exp(resampled_lnw).numpy(), 0.5)
+    np.testing.assert_allclose(weights.numpy(), 0.5)
+    assert weights.sum().item() == pytest.approx(2.0)
+
+
+class _ConstantGrowthModel:
+    components = ("velocity", "growth")
+    interaction_net = None
+
+    @staticmethod
+    def predict_velocity(*, t, x):
+        del t
+        return torch.zeros_like(x)
+
+    @staticmethod
+    def predict_growth(*, t, x):
+        del t
+        return torch.full((x.shape[0], 1), 4.0, dtype=x.dtype, device=x.device)
+
+
+def test_anndata_split_simulation_applies_growth_alpha(monkeypatch):
+    recorded_growth = []
+
+    def inspect_first_derivative(sde, initial_state, **_kwargs):
+        _, dlnw = sde.f(torch.tensor([0.0]), initial_state)
+        recorded_growth.append(dlnw.detach().cpu().numpy())
+        return [initial_state[0]], [initial_state[1]]
+
+    monkeypatch.setattr(simulation, "_euler_sdeint_split", inspect_first_derivative)
+    adata = SimpleNamespace(
+        obs=pd.DataFrame({"time": [0.0, 0.0]}),
+        obsm={"X_latent": np.asarray([[0.0], [1.0]], dtype=np.float32)},
+        n_obs=2,
+    )
+    common = dict(
+        adata=adata,
+        model=_ConstantGrowthModel(),
+        time_key="time",
+        obsm_key="X_latent",
+        concat_spatial=False,
+        ts_points=[0.0],
+        device="cpu",
+    )
+
+    simulation.simulate_sde_points_split(**common, growth_alpha=0.25)
+    simulation.simulate_sde_points_split(**common)
+
+    np.testing.assert_allclose(recorded_growth[0], 1.0)
+    np.testing.assert_allclose(recorded_growth[1], 4.0)
 
 
 def test_visualization_only_warp_uses_one_global_model_trajectory(monkeypatch):

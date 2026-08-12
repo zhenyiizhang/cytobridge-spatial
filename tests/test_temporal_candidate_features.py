@@ -82,9 +82,11 @@ def test_candidate_universe_excludes_high_variance_forced_pca_features() -> None
     assert all(len(value) == 64 for value in contract["hashes"].values())
     assert restricted.settings["expression_contract"] == {
         "source_policy": "inverse_pca_all_timepoints",
-        "output_space": "mean_log1p_expression",
+        "output_space": "mean_per_cell_clipped_log1p_expression",
+        "signed_output_space": "mean_signed_log1p_expression",
         "aggregation_identity": (
-            "inverse_pca(mean_latent_pca) == mean(inverse_pca(latent_pca))"
+            "nonlinear clipping applied per cell before arithmetic mean; "
+            "inverse_pca(mean) identity is intentionally not used"
         ),
         "count_space_conversion": "not_applied",
     }

@@ -38,6 +38,131 @@ def _prepare_model_input_from_adata(adata) -> np.ndarray:
     return latent
 
 
+def _radius_neighbor_candidates(
+    model_input: np.ndarray,
+    *,
+    cutoff: float,
+    use_spatial: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return directed radius-neighbor candidates in dense-forward order."""
+    from scipy.spatial import cKDTree
+
+    coordinates = model_input[:, :2] if use_spatial else model_input
+    # Query slightly beyond the cutoff, then reproduce the model's strict
+    # float32 distance test below.  The expansion only protects borderline
+    # pairs from float64/float32 round-off in cKDTree.
+    query_radius = float(cutoff) + max(1e-7, abs(float(cutoff)) * 1e-6)
+    pairs = cKDTree(coordinates).query_pairs(query_radius, output_type="ndarray")
+    if pairs.size == 0:
+        empty = np.empty(0, dtype=np.int64)
+        return empty, empty
+
+    source = np.concatenate((pairs[:, 0], pairs[:, 1])).astype(np.int64)
+    target = np.concatenate((pairs[:, 1], pairs[:, 0])).astype(np.int64)
+    order = np.lexsort((target, source))
+    return source[order], target[order]
+
+
+def _select_interaction_edges(
+    interaction_net,
+    data,
+    source: np.ndarray,
+    target: np.ndarray,
+    *,
+    edge_batch_size: int,
+):
+    """Apply the exact cutoff and learned edge prior without dense N x N tensors."""
+    import torch
+
+    coordinate_dim = 2 if bool(interaction_net.use_spatial) else data.shape[1]
+    learned_prior = getattr(interaction_net, "edge_prior_mode", "learned") == "learned"
+    selected_source = []
+    selected_target = []
+
+    for start in range(0, source.size, edge_batch_size):
+        stop = min(start + edge_batch_size, source.size)
+        source_batch = torch.as_tensor(
+            source[start:stop], dtype=torch.long, device=data.device
+        )
+        target_batch = torch.as_tensor(
+            target[start:stop], dtype=torch.long, device=data.device
+        )
+        distance = torch.linalg.vector_norm(
+            data[source_batch, :coordinate_dim] - data[target_batch, :coordinate_dim],
+            dim=1,
+        )
+        keep = (distance < float(interaction_net.cutoff)) & (distance > 1e-6)
+
+        if learned_prior:
+            pair_features = torch.cat(
+                (data[source_batch], data[target_batch]), dim=1
+            )
+            probability = torch.sigmoid(
+                interaction_net.link_predictor(pair_features)
+            ).reshape(-1)
+            keep &= probability >= float(interaction_net.edge_predictor_thre)
+
+        selected_source.append(source_batch[keep])
+        selected_target.append(target_batch[keep])
+
+    if not selected_source:
+        empty = torch.empty(0, dtype=torch.long, device=data.device)
+        return empty, empty
+    return torch.cat(selected_source), torch.cat(selected_target)
+
+
+def _first_layer_attention(
+    interaction_net,
+    data,
+    source,
+    target,
+    *,
+    edge_batch_size: int,
+):
+    """Evaluate the first GNN layer's attention gate in edge batches.
+
+    ``edge_index[0]`` is the PyG message source (sender, ``j``) and
+    ``edge_index[1]`` is the message target (receiver, ``i``).
+    """
+    import torch
+
+    x_embed = interaction_net.gene_embed(data[:, 2:])
+    layer = interaction_net.gnn_layers[0]
+    x_norm = layer.layernorm(x_embed)
+    q = layer.q_proj(x_norm).reshape(
+        -1, int(layer.num_heads), int(layer.head_dim)
+    )
+    k = layer.k_proj(x_norm).reshape(
+        -1, int(layer.num_heads), int(layer.head_dim)
+    )
+    coordinate_dim = 2 if bool(interaction_net.use_spatial) else data.shape[1]
+    attention = []
+
+    for start in range(0, source.numel(), edge_batch_size):
+        stop = min(start + edge_batch_size, source.numel())
+        source_batch = source[start:stop]
+        target_batch = target[start:stop]
+        distance = torch.linalg.vector_norm(
+            data[source_batch, :coordinate_dim] - data[target_batch, :coordinate_dim],
+            dim=1,
+        )
+        rbf = interaction_net.rbf_expansion(distance)
+        edge_attr = (
+            x_embed[source_batch] + x_embed[target_batch]
+        ) * interaction_net.distance_projection(rbf)
+        dk = layer.dk_proj(edge_attr).reshape(
+            -1, int(layer.num_heads), int(layer.head_dim)
+        )
+        gate = layer.attn_activation(
+            (q[target_batch] * k[source_batch] * dk).sum(dim=-1)
+        )
+        attention.append(gate.abs().mean(dim=1))
+
+    if not attention:
+        return torch.empty(0, dtype=data.dtype, device=data.device)
+    return torch.cat(attention)
+
+
 def save_interpolated_attention(
     adata: "ad.AnnData",
     time_value: float,
@@ -46,9 +171,10 @@ def save_interpolated_attention(
     device: str = "cpu",
     out_dir: Optional[str] = None,
     save_files: bool = True,
-    save_dense_matrix: bool = True,
+    save_dense_matrix: bool = False,
+    edge_batch_size: int = 131_072,
 ) -> Dict[str, np.ndarray]:
-    """Compute and save attention weights at an interpolated time point.
+    """Compute first-layer attention on sparse radius-neighbor edges.
     
     Parameters
     ----------
@@ -67,12 +193,16 @@ def save_interpolated_attention(
     save_files : bool
         Whether to save arrays to disk.
     save_dense_matrix : bool
-        Whether to materialize the dense N x N attention matrix.
+        Whether to materialize the dense N x N attention matrix. Disabled by
+        default because the edge representation contains the same information.
+    edge_batch_size : int
+        Number of candidate edges evaluated per learned-prior/attention batch.
         
     Returns
     -------
     dict
-        Dictionary with keys: 'attn_matrix', 'attn_mean', 'edge_index'.
+        Dictionary with ``attn_mean`` and ``edge_index``; ``attn_matrix`` is
+        included only when explicitly requested.
     """
     import torch
 
@@ -95,25 +225,37 @@ def save_interpolated_attention(
     model_input = _prepare_model_input_from_adata(adata)
     data = torch.tensor(model_input, dtype=torch.float32, device=device)
     n_particles = data.shape[0]
-    lnw0 = torch.log(torch.ones(n_particles, 1, device=device) / n_particles)
-    time_tensor = torch.tensor(time_value, dtype=torch.float32).to(device)
-    
-    with torch.no_grad():
-        _ = interaction_net(data, lnw0, time_tensor, return_attn=True)
-        attn = interaction_net.gnn_layers[0].attn
-    
-    attn = torch.abs(attn)
-    attn_mean = attn.mean(dim=1).cpu().numpy()
-    if not hasattr(interaction_net, "edge_index") or interaction_net.edge_index is None:
-        raise AttributeError(
-            "interaction_net.edge_index is missing. "
-            "Ensure GNNInteraction caches edge_index during forward."
-        )
-    edge_index = interaction_net.edge_index.detach().cpu().numpy()
-    # Keep attn/edge alignment when removing self-loops (bug fix; edge_index is usually self-loop free already).
-    m = edge_index[0] != edge_index[1]
-    edge_index = edge_index[:, m]
-    attn_mean = attn_mean[m]
+    if edge_batch_size <= 0:
+        raise ValueError("edge_batch_size must be positive.")
+
+    candidate_source, candidate_target = _radius_neighbor_candidates(
+        model_input,
+        cutoff=float(interaction_net.cutoff),
+        use_spatial=bool(interaction_net.use_spatial),
+    )
+    was_training = bool(interaction_net.training)
+    interaction_net.eval()
+    try:
+        with torch.no_grad():
+            source, target = _select_interaction_edges(
+                interaction_net,
+                data,
+                candidate_source,
+                candidate_target,
+                edge_batch_size=int(edge_batch_size),
+            )
+            attn = _first_layer_attention(
+                interaction_net,
+                data,
+                source,
+                target,
+                edge_batch_size=int(edge_batch_size),
+            )
+    finally:
+        interaction_net.train(was_training)
+
+    edge_index = torch.stack((source, target)).cpu().numpy()
+    attn_mean = attn.cpu().numpy()
 
     out = {"attn_mean": attn_mean, "edge_index": edge_index}
     attn_matrix = None
@@ -158,7 +300,8 @@ def analyze_attention_by_celltype(
     Parameters
     ----------
     edge_index : np.ndarray
-        Edge indices of shape (2, n_edges).
+        Edge indices of shape (2, n_edges), with sender/source in row 0 and
+        receiver/target in row 1 (PyG ``source_to_target`` convention).
     attn : np.ndarray
         Attention weights of shape (n_edges,).
     labels : np.ndarray
@@ -286,9 +429,12 @@ def analyze_attention_by_celltype(
             bins = None
         
         if bins is not None:
-            bin_id = np.digitize(pair_dist, bins, right=True)
+            # ``bins`` are interval boundaries, so K boundaries define K-1
+            # panels.  Searching only the interior boundaries includes both
+            # the global minimum and maximum exactly once.
+            bin_id = np.searchsorted(bins[1:-1], pair_dist, side="right")
             Mps_list = []
-            for b in range(1, len(bins) + 1):
+            for b in range(len(bins) - 1):
                 m = bin_id == b
                 if m.sum() > 0:
                     Ms = coo_matrix((w[m], (type_id[send[m]], type_id[recv[m]])), shape=(T, T)).toarray()

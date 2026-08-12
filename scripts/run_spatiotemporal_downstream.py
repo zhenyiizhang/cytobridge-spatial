@@ -81,6 +81,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--classifier-cache-dir", default=None)
     parser.add_argument("--classifier-cache-path", default=None)
     parser.add_argument("--classifier-epochs", type=int, default=None)
+    parser.add_argument("--classifier-hidden-size", type=int, default=None)
+    parser.add_argument("--classifier-lr", type=float, default=None)
     parser.add_argument("--classifier-knn-neighbors", type=int, default=None)
     parser.add_argument("--classifier-best-metric", choices=("accuracy", "bacc"), default=None)
     parser.add_argument(
@@ -322,7 +324,12 @@ def main() -> None:
         classifier_spatial_key=spatial_key,
         classifier_concat_spatial=concat_spatial,
         classifier_epochs=int(_resolve(args.classifier_epochs, config, "classifier", "epochs", 500)),
-        classifier_hidden_size=int(_nested(config, "classifier", "hidden_size", 128)),
+        classifier_hidden_size=int(
+            _resolve(args.classifier_hidden_size, config, "classifier", "hidden_size", 128)
+        ),
+        classifier_lr=float(
+            _resolve(args.classifier_lr, config, "classifier", "lr", 1e-3)
+        ),
         classifier_best_metric=str(
             _resolve(args.classifier_best_metric, config, "classifier", "best_metric", "bacc")
         ),
