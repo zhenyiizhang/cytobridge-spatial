@@ -168,9 +168,8 @@ def _input_report(split: SplitInput, data: TrainingData) -> dict[str, Any]:
         "train_time_counts": counts,
         "evaluation_targets": list(split.evaluation_targets),
         "held_out_time": split.holdout_time,
-        "target_physically_absent": split.regime != "loto" or not np.any(
-            np.isclose(data.time, split.holdout_time, rtol=0.0, atol=1e-8)
-        ),
+        "target_physically_absent": split.regime != "loto"
+        or not np.any(np.isclose(data.time, split.holdout_time, rtol=0.0, atol=1e-8)),
         "prediction_n": split.prediction_n,
         "prediction_n_policy": "fixed_from_train_contract_before_truth_access",
         "transductive_frozen_representation": True,
@@ -179,7 +178,11 @@ def _input_report(split: SplitInput, data: TrainingData) -> dict[str, Any]:
 
 
 def _probe_model_load(
-    repo: Path, model_dir: Path, data: TrainingData, device: str
+    repo: Path,
+    model_dir: Path,
+    data: TrainingData,
+    device: str,
+    reference_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if str(repo.resolve()) not in sys.path:
         sys.path.insert(0, str(repo.resolve()))
@@ -189,7 +192,11 @@ def _probe_model_load(
         loaded = load_dynamical_model_from_dir(
             model_dir, dim=data.joint_dim, device=str(device)
         )
-    validate_training_config(loaded.config, runtime_resolved=True)
+    validate_training_config(
+        loaded.config,
+        runtime_resolved=True,
+        reference=reference_config,
+    )
     if loaded.weight_stage != "Finetune" or loaded.score_stage != "Score_Refine":
         raise ContractError(
             "checkpoint loader must resolve Finetune weights and Score_Refine score; "
@@ -216,14 +223,21 @@ def _model_report(
     repo: Path | None = None,
     device: str = "cpu",
     probe_load: bool = False,
+    reference_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    inventory = checkpoint_inventory(model_dir)
+    inventory = checkpoint_inventory(model_dir, reference_config=reference_config)
     match = checkpoint_training_match(model_dir, split, data, inventory=inventory)
     report = {**inventory, "training_reference_match": match}
     if probe_load:
         if repo is None:
             raise ValueError("repo is required when probe_load=True")
-        report["model_load_probe"] = _probe_model_load(repo, model_dir, data, device)
+        report["model_load_probe"] = _probe_model_load(
+            repo,
+            model_dir,
+            data,
+            device,
+            reference_config,
+        )
     return report
 
 
@@ -232,7 +246,8 @@ def command_preflight(args: argparse.Namespace) -> None:
     split = read_split_input(args.input_manifest, args.split)
     data = load_training_data(split)
     config_path = args.training_config.expanduser().resolve()
-    config = validate_training_config(load_yaml(config_path))
+    package_config = load_yaml(config_path)
+    config = validate_training_config(package_config)
     report: dict[str, Any] = {
         "status": "ok",
         "phase": "preflight",
@@ -258,13 +273,16 @@ def command_preflight(args: argparse.Namespace) -> None:
             repo=args.repo,
             device=args.device,
             probe_load=True,
+            reference_config=package_config,
         )
     if args.output_json is not None:
         write_json(args.output_json, report)
     print(json.dumps(plain(report), indent=2, sort_keys=True))
 
 
-def _resolve_interaction_cutoff(adata: Any, requested: float | None) -> tuple[float, str]:
+def _resolve_interaction_cutoff(
+    adata: Any, requested: float | None
+) -> tuple[float, str]:
     if requested is not None:
         value = float(requested)
         if not np.isfinite(value) or value <= 0:
@@ -274,7 +292,10 @@ def _resolve_interaction_cutoff(adata: Any, requested: float | None) -> tuple[fl
     if isinstance(graph, Mapping):
         value = graph.get("neighborhood_threshold")
         if value is not None and np.isfinite(float(value)) and float(value) > 0:
-            return float(value), "train_h5ad.uns.interaction_graph.neighborhood_threshold"
+            return (
+                float(value),
+                "train_h5ad.uns.interaction_graph.neighborhood_threshold",
+            )
     raise ContractError(
         "interaction cutoff is absent from preprocessing; pass --interaction-cutoff"
     )
@@ -310,7 +331,10 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
         cutoff, cutoff_source = _resolve_interaction_cutoff(
             adata, args.interaction_cutoff
         )
-        if args.expression_layer is not None and args.expression_layer not in adata.layers:
+        if (
+            args.expression_layer is not None
+            and args.expression_layer not in adata.layers
+        ):
             raise ContractError(
                 f"LOTO graph requires layers[{args.expression_layer!r}], but it is absent"
             )
@@ -448,7 +472,9 @@ def _load_graph_summary(path: Path, split: SplitInput) -> dict[str, Any]:
     for relative, expected in declared_artifacts.items():
         artifact = (summary_path.parent / str(relative)).resolve()
         if not artifact.is_file() or sha256_file(artifact) != str(expected):
-            raise ContractError(f"graph/edge artifact changed or disappeared: {artifact}")
+            raise ContractError(
+                f"graph/edge artifact changed or disappeared: {artifact}"
+            )
     edge = Path(str(report.get("edge_model", ""))).expanduser().resolve()
     meta = Path(str(report.get("edge_meta", ""))).expanduser().resolve()
     for artifact, key in ((edge, "edge_model_sha256"), (meta, "edge_meta_sha256")):
@@ -466,8 +492,9 @@ def command_fit_loto(args: argparse.Namespace) -> None:
     data = load_training_data(split)
     _input_report(split, data)
     config_source = args.training_config.expanduser().resolve()
-    config = copy.deepcopy(load_yaml(config_source))
-    config_profile = validate_training_config(config)
+    package_config = load_yaml(config_source)
+    config_profile = validate_training_config(package_config)
+    config = copy.deepcopy(package_config)
     graph = _load_graph_summary(args.graph_dir, split)
     output = new_output_dir(args.output_dir)
     edge_path = Path(str(graph["edge_model"])).resolve()
@@ -485,6 +512,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         config,
         runtime_resolved=True,
         runtime_sigma=runtime_sigma,
+        reference=package_config,
     )
     if str(args.repo.resolve()) not in sys.path:
         sys.path.insert(0, str(args.repo.resolve()))
@@ -505,7 +533,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         sigma=runtime_sigma,
         evaluate_after_training=False,
     )
-    inventory = checkpoint_inventory(output)
+    inventory = checkpoint_inventory(output, reference_config=package_config)
     # At this point the fit summary does not yet exist; verification therefore
     # uses the saved adata's exact frozen arrays.
     match = checkpoint_training_match(
@@ -563,6 +591,11 @@ def command_fit_loto(args: argparse.Namespace) -> None:
 def command_validate_model(args: argparse.Namespace) -> None:
     split = read_split_input(args.input_manifest, args.split)
     data = load_training_data(split)
+    reference_config = (
+        None
+        if args.training_config is None
+        else load_yaml(args.training_config.expanduser().resolve())
+    )
     report = {
         "status": "complete",
         "phase": "validate_model",
@@ -577,6 +610,7 @@ def command_validate_model(args: argparse.Namespace) -> None:
             repo=args.repo,
             device=args.device,
             probe_load=True,
+            reference_config=reference_config,
         ),
         "repo": repo_identity(args.repo),
         "environment": environment_provenance(args.device),
@@ -611,7 +645,9 @@ def _source_roster(
         or np.any(indices >= data.n_obs)
         or not same_time(roster_source, source)
     ):
-        raise ContractError("canonical source roster has invalid shape, indices, or time")
+        raise ContractError(
+            "canonical source roster has invalid shape, indices, or time"
+        )
     if not np.array_equal(row_id, data.row_id[indices]):
         raise ContractError("canonical source roster row IDs differ from training rows")
     if not np.all(np.isclose(data.time[indices], source, rtol=0.0, atol=1e-8)):
@@ -619,7 +655,9 @@ def _source_roster(
     if not np.allclose(state, data.state[indices], rtol=1e-6, atol=1e-6):
         raise ContractError("canonical source roster state differs from training rows")
     if not np.allclose(spatial, data.spatial[indices], rtol=1e-6, atol=1e-6):
-        raise ContractError("canonical source roster spatial differs from training rows")
+        raise ContractError(
+            "canonical source roster spatial differs from training rows"
+        )
     path = output / "source_roster.npz"
     shutil.copy2(split.source_roster_npz, path)
     available = int(
@@ -776,15 +814,19 @@ def _simulate(
             raise ContractError(f"simulation output {index} contains non-finite values")
         if not np.isfinite(weight).all() or np.any(weight < 0) or weight.sum() <= 0:
             raise ContractError(f"simulation weights {index} are invalid")
-    return point_list, weight_list, {
-        "official_api": "CytoBridge.tl.downstream.simulation.simulate_sde_points",
-        "official_api_signature": str(signature),
-        "simulation_mode": "continuous_non_split_weighted_sde",
-        "weight_stage": loaded.weight_stage,
-        "score_stage": loaded.score_stage,
-        "weights_semantics": "native_unnormalised_growth_mass",
-        "torch_version": torch.__version__,
-    }
+    return (
+        point_list,
+        weight_list,
+        {
+            "official_api": "CytoBridge.tl.downstream.simulation.simulate_sde_points",
+            "official_api_signature": str(signature),
+            "simulation_mode": "continuous_non_split_weighted_sde",
+            "weight_stage": loaded.weight_stage,
+            "score_stage": loaded.score_stage,
+            "weights_semantics": "native_unnormalised_growth_mass",
+            "torch_version": torch.__version__,
+        },
+    )
 
 
 def _atomic_prediction(
@@ -828,8 +870,7 @@ def _prediction_summary(
     interaction_m: int,
 ) -> dict[str, Any]:
     checkpoint_hashes = {
-        name: record["sha256"]
-        for name, record in model_report["checkpoints"].items()
+        name: record["sha256"] for name, record in model_report["checkpoints"].items()
     }
     return {
         "status": "complete",
@@ -902,7 +943,17 @@ def command_infer_loto(args: argparse.Namespace) -> None:
     _require_loto(split)
     data = load_training_data(split)
     _input_report(split, data)
-    model_report = _model_report(args.model_dir, split, data)
+    reference_config = (
+        None
+        if args.training_config is None
+        else load_yaml(args.training_config.expanduser().resolve())
+    )
+    model_report = _model_report(
+        args.model_dir,
+        split,
+        data,
+        reference_config=reference_config,
+    )
     output = new_output_dir(args.output_dir)
     source, schedule = inference_schedule(split)
     target = schedule[-1]
@@ -945,7 +996,17 @@ def command_infer_full(args: argparse.Namespace) -> None:
     _require_full(split)
     data = load_training_data(split)
     _input_report(split, data)
-    model_report = _model_report(args.model_dir, split, data)
+    reference_config = (
+        None
+        if args.training_config is None
+        else load_yaml(args.training_config.expanduser().resolve())
+    )
+    model_report = _model_report(
+        args.model_dir,
+        split,
+        data,
+        reference_config=reference_config,
+    )
     output = new_output_dir(args.output_dir)
     source, times = inference_schedule(split)
     targets = times[1:]
@@ -1028,6 +1089,7 @@ def _inference_arguments(parser: argparse.ArgumentParser) -> None:
     _repo_argument(parser)
     _input_arguments(parser)
     parser.add_argument("--model-dir", required=True, type=Path)
+    parser.add_argument("--training-config", type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--prediction-n", type=int, default=PREDICTION_N)
@@ -1072,7 +1134,9 @@ def build_parser() -> argparse.ArgumentParser:
     graph.add_argument("--quiet", action="store_true")
     graph.set_defaults(func=command_prepare_loto)
 
-    fit = sub.add_parser("fit-loto", help="run the exact six-stage fit for one LOTO fold")
+    fit = sub.add_parser(
+        "fit-loto", help="run the exact six-stage fit for one LOTO fold"
+    )
     _repo_argument(fit)
     _input_arguments(fit)
     fit.add_argument("--training-config", required=True, type=Path)
@@ -1084,11 +1148,13 @@ def build_parser() -> argparse.ArgumentParser:
     fit.set_defaults(func=command_fit_loto)
 
     validate = sub.add_parser(
-        "validate-model", help="validate six stages and exact training-reference linkage"
+        "validate-model",
+        help="validate six stages and exact training-reference linkage",
     )
     _repo_argument(validate)
     _input_arguments(validate)
     validate.add_argument("--model-dir", required=True, type=Path)
+    validate.add_argument("--training-config", type=Path)
     validate.add_argument("--output-json", type=Path)
     validate.add_argument("--device", default="cpu")
     validate.set_defaults(func=command_validate_model)

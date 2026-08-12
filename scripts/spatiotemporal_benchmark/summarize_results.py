@@ -29,6 +29,14 @@ TRACK_LABELS = {
     "loto": "Transductive leave-one-timepoint-out",
     "full_data": "Full-data reconstruction (in-sample)",
 }
+COMPLETED_STATUSES = {"complete", "completed", "success"}
+NON_NUMERIC_STATUSES = {
+    "timeout",
+    "oom",
+    "failed",
+    "not_available",
+    "not_applicable",
+}
 
 
 class SummaryError(ValueError):
@@ -60,7 +68,9 @@ def _atomic_csv(path: Path, frame: pd.DataFrame) -> None:
     os.replace(temporary, path)
 
 
-def _load_registry(path: Path | None, observed_methods: list[str]) -> list[dict[str, Any]]:
+def _load_registry(
+    path: Path | None, observed_methods: list[str]
+) -> list[dict[str, Any]]:
     if path is None:
         return [
             {
@@ -124,7 +134,9 @@ def _canonicalize_methods(
     if unknown:
         raise SummaryError(f"metrics contain methods absent from registry: {unknown}")
     result = metrics.copy()
-    result["method"] = [alias_map[str(value).strip().casefold()] for value in result["method"]]
+    result["method"] = [
+        alias_map[str(value).strip().casefold()] for value in result["method"]
+    ]
     return result
 
 
@@ -136,13 +148,27 @@ def _canonical_method_names(
         for alias in [record["method"], record["display_name"], *record["aliases"]]:
             alias_map[str(alias).strip().casefold()] = record["method"]
     missing = sorted(
-        str(value)
-        for value in values
-        if str(value).strip().casefold() not in alias_map
+        str(value) for value in values if str(value).strip().casefold() not in alias_map
     )
     if missing:
         raise SummaryError(f"evaluation manifest contains unknown methods: {missing}")
     return {alias_map[str(value).strip().casefold()] for value in values}
+
+
+def _execution_status(value: Any) -> str:
+    status = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    aliases = {
+        "out_of_memory": "oom",
+        "unavailable": "not_available",
+        "n/a": "not_applicable",
+        "na": "not_applicable",
+    }
+    status = aliases.get(status, status)
+    if status in COMPLETED_STATUSES:
+        return "completed"
+    if status not in NON_NUMERIC_STATUSES:
+        raise SummaryError(f"unknown method-target status {value!r}")
+    return status
 
 
 def _verify_evaluation_manifest(
@@ -165,16 +191,16 @@ def _verify_evaluation_manifest(
         raise SummaryError("metrics CSV SHA-256 differs from evaluation manifest")
     expected_targets = {int(value) for value in payload.get("targets", [])}
     observed_targets = {int(value) for value in metrics["target"].unique()}
-    if not expected_targets or observed_targets != expected_targets:
+    if not expected_targets or not observed_targets.issubset(expected_targets):
         raise SummaryError(
-            f"metrics targets {sorted(observed_targets)} differ from evaluation manifest "
+            f"metrics targets {sorted(observed_targets)} are outside evaluation manifest "
             f"{sorted(expected_targets)}"
         )
     expected_methods = _canonical_method_names(payload.get("methods", []), registry)
     observed_methods = {str(value) for value in metrics["method"].unique()}
-    if not expected_methods or observed_methods != expected_methods:
+    if not expected_methods or not observed_methods.issubset(expected_methods):
         raise SummaryError(
-            f"metrics methods {sorted(observed_methods)} differ from evaluation manifest "
+            f"metrics methods {sorted(observed_methods)} are outside evaluation manifest "
             f"{sorted(expected_methods)}"
         )
     registry_primary = {
@@ -191,18 +217,63 @@ def _verify_evaluation_manifest(
         .drop_duplicates()
         .itertuples(index=False)
     }
+    raw_status = payload.get("method_target_status")
+    if raw_status is None:
+        raw_status = [
+            {"method": method, "target": target, "status": "completed", "reason": ""}
+            for method in payload.get("methods", [])
+            for target in expected_targets
+        ]
+    if not isinstance(raw_status, list):
+        raise SummaryError("evaluation manifest method_target_status must be a list")
+    statuses: list[dict[str, Any]] = []
+    status_pairs: set[tuple[str, int]] = set()
+    for record in raw_status:
+        if not isinstance(record, dict):
+            raise SummaryError("method_target_status entries must be objects")
+        canonical = next(
+            iter(_canonical_method_names([record.get("method")], registry))
+        )
+        target = int(record.get("target"))
+        pair = (canonical, target)
+        if pair in status_pairs:
+            raise SummaryError(
+                f"duplicate method-target status for {canonical}/t{target}"
+            )
+        status_pairs.add(pair)
+        statuses.append(
+            {
+                "method": canonical,
+                "target": target,
+                "status": _execution_status(record.get("status")),
+                "reason": str(record.get("reason", "") or ""),
+            }
+        )
     expected_pairs = {
-        (method, target)
-        for method in expected_methods
-        for target in expected_targets
+        (method, target) for method in expected_methods for target in expected_targets
     }
-    if observed_pairs != expected_pairs:
-        missing = sorted(expected_pairs.difference(observed_pairs))
-        raise SummaryError(f"metrics lack complete method-by-target grid: {missing}")
+    if status_pairs != expected_pairs:
+        missing = sorted(expected_pairs.difference(status_pairs))
+        extra = sorted(status_pairs.difference(expected_pairs))
+        raise SummaryError(
+            f"method-target status grid mismatch; missing={missing}, extra={extra}"
+        )
+    completed_pairs = {
+        (record["method"], record["target"])
+        for record in statuses
+        if record["status"] == "completed"
+    }
+    if observed_pairs != completed_pairs:
+        missing = sorted(completed_pairs.difference(observed_pairs))
+        extra = sorted(observed_pairs.difference(completed_pairs))
+        raise SummaryError(
+            f"numeric metrics/status mismatch; missing completed={missing}, unexpected={extra}"
+        )
+    payload["_canonical_method_target_status"] = statuses
     return payload
 
 
-def _validate_metrics(metrics: pd.DataFrame) -> str:
+def _validate_metrics(metrics: pd.DataFrame, *, track_hint: str | None = None) -> str:
     required = {
         "track",
         "target",
@@ -219,9 +290,18 @@ def _validate_metrics(metrics: pd.DataFrame) -> str:
     if missing:
         raise SummaryError(f"metrics CSV is missing columns: {missing}")
     tracks = {str(value) for value in metrics["track"].unique()}
-    if len(tracks) != 1:
-        raise SummaryError(f"one summary call must contain exactly one track, found {tracks}")
-    track = next(iter(tracks))
+    if metrics.empty:
+        if track_hint not in TRACK_LABELS:
+            raise SummaryError(
+                "empty metrics require a valid track in the evaluation manifest"
+            )
+        track = str(track_hint)
+    else:
+        if len(tracks) != 1:
+            raise SummaryError(
+                f"one summary call must contain exactly one track, found {tracks}"
+            )
+        track = next(iter(tracks))
     if track not in TRACK_LABELS:
         raise SummaryError(f"unknown track {track!r}")
     invalid_spaces = sorted(set(metrics["space"]).difference(SPACES))
@@ -239,7 +319,13 @@ def _validate_metrics(metrics: pd.DataFrame) -> str:
     return track
 
 
-def _target_summary(metrics: pd.DataFrame) -> pd.DataFrame:
+def _target_summary(
+    metrics: pd.DataFrame,
+    registry: list[dict[str, Any]],
+    track: str,
+    targets: list[int],
+    statuses: list[dict[str, Any]],
+) -> pd.DataFrame:
     grouping = [
         "track",
         "target",
@@ -250,73 +336,155 @@ def _target_summary(metrics: pd.DataFrame) -> pd.DataFrame:
         "native_vs_adapter",
     ]
     available = [column for column in grouping if column in metrics]
-    result = (
-        metrics.groupby(available, dropna=False, sort=False)
-        .agg(
-            sliced_w2=("sliced_w2", "mean"),
-            sliced_w2_projection_sd=("sliced_w2", "std"),
-            exact_w1=("exact_w1", "first"),
-            exact_w2=("exact_w2", "first"),
-            tmv_available=("tmv_available", "first"),
-            tmv=("tmv", "first"),
-            tmv_absolute=("tmv_absolute", "first"),
-            predicted_mass=("predicted_mass", "first"),
-            observed_mass_relative=("observed_mass_relative", "first"),
-            n_projection_repeats=("projection_repeat", "nunique"),
-            n_predicted=("n_predicted", "first"),
-            n_observed=("n_observed", "first"),
+    if metrics.empty:
+        numeric = pd.DataFrame()
+    else:
+        numeric = (
+            metrics.groupby(available, dropna=False, sort=False)
+            .agg(
+                sliced_w2=("sliced_w2", "mean"),
+                sliced_w2_projection_sd=("sliced_w2", "std"),
+                exact_w1=("exact_w1", "first"),
+                exact_w2=("exact_w2", "first"),
+                tmv_available=("tmv_available", "first"),
+                tmv=("tmv", "first"),
+                tmv_absolute=("tmv_absolute", "first"),
+                predicted_mass=("predicted_mass", "first"),
+                observed_mass_relative=("observed_mass_relative", "first"),
+                n_projection_repeats=("projection_repeat", "nunique"),
+                n_predicted=("n_predicted", "first"),
+                n_observed=("n_observed", "first"),
+            )
+            .reset_index()
         )
-        .reset_index()
+        numeric["sliced_w2_projection_sd"] = numeric["sliced_w2_projection_sd"].fillna(
+            0.0
+        )
+    numeric_index = {
+        (str(row.method), int(row.target), str(row.space)): row._asdict()
+        for row in numeric.itertuples(index=False)
+    }
+    status_index = {
+        (record["method"], int(record["target"])): record for record in statuses
+    }
+    empty_values = {
+        "source_time": np.nan,
+        "output_scope": np.nan,
+        "native_vs_adapter": np.nan,
+        "sliced_w2": np.nan,
+        "sliced_w2_projection_sd": np.nan,
+        "exact_w1": np.nan,
+        "exact_w2": np.nan,
+        "tmv_available": False,
+        "tmv": np.nan,
+        "tmv_absolute": np.nan,
+        "predicted_mass": np.nan,
+        "observed_mass_relative": np.nan,
+        "n_projection_repeats": 0,
+        "n_predicted": np.nan,
+        "n_observed": np.nan,
+    }
+    rows: list[dict[str, Any]] = []
+    for method_order, record in enumerate(registry):
+        method = record["method"]
+        for target_value in targets:
+            execution = status_index.get((method, target_value))
+            for space in SPACES:
+                applicable = (
+                    record["status"] == "evaluated" and space in record["spaces"]
+                )
+                key = (method, target_value, space)
+                values = numeric_index.get(key)
+                if not applicable:
+                    row_status = (
+                        record["status"]
+                        if record["status"] != "evaluated"
+                        else "not_applicable"
+                    )
+                    reason = str(record.get("reason", "") or "")
+                else:
+                    if execution is None:
+                        raise SummaryError(
+                            f"missing status for {method}/t{target_value}"
+                        )
+                    row_status = (
+                        "evaluated"
+                        if execution["status"] == "completed"
+                        else execution["status"]
+                    )
+                    reason = execution["reason"]
+                    if row_status == "evaluated" and values is None:
+                        raise SummaryError(
+                            f"completed method lacks {space} metrics: {method}/t{target_value}"
+                        )
+                rows.append(
+                    {
+                        "track": track,
+                        "target": target_value,
+                        "method": method,
+                        "display_name": record["display_name"],
+                        "method_order": method_order,
+                        "space": space,
+                        "status": row_status,
+                        "status_reason": reason,
+                        **empty_values,
+                        **({} if values is None else values),
+                    }
+                )
+    return (
+        pd.DataFrame.from_records(rows)
+        .sort_values(["target", "space", "method_order"], kind="stable")
+        .reset_index(drop=True)
     )
-    result["sliced_w2_projection_sd"] = result["sliced_w2_projection_sd"].fillna(0.0)
-    return result
 
 
 def _method_summary(
     target: pd.DataFrame, registry: list[dict[str, Any]], track: str
 ) -> pd.DataFrame:
-    observed = (
-        target.groupby(["method", "space"], sort=False)
-        .agg(
-            n_targets=("target", "nunique"),
-            sliced_w2_mean=("sliced_w2", "mean"),
-            sliced_w2_target_sd=("sliced_w2", "std"),
-            exact_w1_mean=("exact_w1", "mean"),
-            exact_w1_target_sd=("exact_w1", "std"),
-            exact_w2_mean=("exact_w2", "mean"),
-            exact_w2_target_sd=("exact_w2", "std"),
-        )
-        .reset_index()
-    )
     rows: list[dict[str, Any]] = []
-    observed_index = {
-        (str(row.method), str(row.space)): row._asdict()
-        for row in observed.itertuples(index=False)
-    }
+    n_expected_targets = int(target["target"].nunique())
     for order, record in enumerate(registry):
         for space in SPACES:
-            key = (record["method"], space)
             applicable = space in record["spaces"] and record["status"] == "evaluated"
-            if key in observed_index:
-                if not applicable:
-                    raise SummaryError(
-                        f"{record['method']} emitted {space}, but registry marks it ineligible"
-                    )
-                values = observed_index[key]
-                status = "evaluated"
+            subset = target[
+                target["method"].eq(record["method"]) & target["space"].eq(space)
+            ]
+            completed = subset[subset["status"].eq("evaluated")]
+            n_targets = int(completed["target"].nunique())
+            if not applicable:
+                status = (
+                    record["status"]
+                    if record["status"] != "evaluated"
+                    else "not_applicable"
+                )
             else:
-                values = {
-                    "n_targets": 0,
-                    "sliced_w2_mean": np.nan,
-                    "sliced_w2_target_sd": np.nan,
-                    "exact_w1_mean": np.nan,
-                    "exact_w1_target_sd": np.nan,
-                    "exact_w2_mean": np.nan,
-                    "exact_w2_target_sd": np.nan,
+                execution_statuses = sorted(
+                    set(subset.loc[~subset["status"].eq("evaluated"), "status"])
+                )
+                if n_targets == n_expected_targets:
+                    status = "evaluated"
+                elif n_targets > 0 or len(execution_statuses) > 1:
+                    status = "partial"
+                elif execution_statuses:
+                    status = execution_statuses[0]
+                else:
+                    status = "not_available"
+            reasons = sorted(
+                {
+                    str(value)
+                    for value in subset["status_reason"]
+                    if isinstance(value, str) and value.strip()
                 }
-                status = "missing" if applicable else record["status"]
-                if status == "evaluated":
-                    status = "N/A"
+            )
+
+            def mean(column: str) -> float:
+                return (
+                    float(completed[column].mean()) if not completed.empty else np.nan
+                )
+
+            def sample_sd(column: str) -> float:
+                return float(completed[column].std()) if len(completed) > 1 else np.nan
+
             rows.append(
                 {
                     "track": track,
@@ -325,19 +493,16 @@ def _method_summary(
                     "method_order": order,
                     "space": space,
                     "status": status,
+                    "status_reason": "; ".join(reasons),
                     "scope": record.get("scope"),
-                    **{
-                        key_name: values[key_name]
-                        for key_name in (
-                            "n_targets",
-                            "sliced_w2_mean",
-                            "sliced_w2_target_sd",
-                            "exact_w1_mean",
-                            "exact_w1_target_sd",
-                            "exact_w2_mean",
-                            "exact_w2_target_sd",
-                        )
-                    },
+                    "n_targets": n_targets,
+                    "n_expected_targets": n_expected_targets,
+                    "sliced_w2_mean": mean("sliced_w2"),
+                    "sliced_w2_target_sd": sample_sd("sliced_w2"),
+                    "exact_w1_mean": mean("exact_w1"),
+                    "exact_w1_target_sd": sample_sd("exact_w1"),
+                    "exact_w2_mean": mean("exact_w2"),
+                    "exact_w2_target_sd": sample_sd("exact_w2"),
                 }
             )
     result = pd.DataFrame.from_records(rows)
@@ -348,13 +513,16 @@ def _method_summary(
         .groupby("space")["sliced_w2_mean"]
         .rank(method="min", ascending=True)
     )
-    return result.sort_values(["space", "method_order"], kind="stable").reset_index(drop=True)
+    return result.sort_values(["space", "method_order"], kind="stable").reset_index(
+        drop=True
+    )
 
 
 def _colour_map(registry: list[dict[str, Any]]) -> dict[str, str]:
     palette = list(plt.get_cmap("tab20").colors)
     return {
-        record["method"]: record.get("color") or matplotlib.colors.to_hex(palette[index % len(palette)])
+        record["method"]: record.get("color")
+        or matplotlib.colors.to_hex(palette[index % len(palette)])
         for index, record in enumerate(registry)
     }
 
@@ -371,14 +539,19 @@ def _barplot_metric(
     colors = _colour_map(registry)
     methods = [record["method"] for record in registry]
     display = {record["method"]: record["display_name"] for record in registry}
-    figure, axes = plt.subplots(1, 3, figsize=(max(14.0, len(methods) * 1.25), 5.4), squeeze=False)
+    figure, axes = plt.subplots(
+        1, 3, figsize=(max(14.0, len(methods) * 1.25), 5.4), squeeze=False
+    )
     rng = np.random.default_rng(20260718)
     for axis, space in zip(axes[0], SPACES):
         table = method_summary[
-            (method_summary["space"] == space) & method_summary["status"].eq("evaluated")
+            (method_summary["space"] == space)
+            & method_summary["status"].eq("evaluated")
         ]
         mean_column = f"{metric}_mean" if metric != "sliced_w2" else "sliced_w2_mean"
-        sd_column = f"{metric}_target_sd" if metric != "sliced_w2" else "sliced_w2_target_sd"
+        sd_column = (
+            f"{metric}_target_sd" if metric != "sliced_w2" else "sliced_w2_target_sd"
+        )
         values = table.set_index("method")[mean_column]
         errors = table.set_index("method")[sd_column].fillna(0.0)
         active = [method for method in methods if method in values.index]
@@ -393,9 +566,13 @@ def _barplot_metric(
             capsize=3,
             alpha=0.88,
         )
-        stage_values = target[target["space"] == space]
+        stage_values = target[
+            target["space"].eq(space) & target["status"].eq("evaluated")
+        ]
         for index, method in enumerate(active):
-            points = stage_values.loc[stage_values["method"] == method, metric].to_numpy(float)
+            points = stage_values.loc[
+                stage_values["method"] == method, metric
+            ].to_numpy(float)
             if points.size:
                 jitter = rng.uniform(-0.12, 0.12, size=points.size)
                 axis.scatter(
@@ -408,11 +585,15 @@ def _barplot_metric(
                     zorder=4,
                 )
         axis.set_title(space.capitalize())
-        axis.set_xticks(x, [display[method] for method in active], rotation=55, ha="right")
+        axis.set_xticks(
+            x, [display[method] for method in active], rotation=55, ha="right"
+        )
         axis.set_ylabel(METRIC_LABELS[metric])
         axis.grid(axis="y", alpha=0.22)
         axis.spines[["top", "right"]].set_visible(False)
-    figure.suptitle(f"{TRACK_LABELS[track]} — {METRIC_LABELS[metric]} (lower is better)")
+    figure.suptitle(
+        f"{TRACK_LABELS[track]} — {METRIC_LABELS[metric]} (lower is better)"
+    )
     figure.text(
         0.5,
         0.005,
@@ -444,8 +625,8 @@ def _applicability_plot(
             value = str(status.loc[(method, space)])
             if value == "evaluated":
                 matrix[i, j], labels[i, j] = 2, "✓"
-            elif value == "missing":
-                matrix[i, j], labels[i, j] = 1, "missing"
+            elif value in {"partial", "timeout", "oom", "failed", "not_available"}:
+                matrix[i, j], labels[i, j] = 1, value.replace("not_available", "N/A")
             elif value == "sensitivity_only":
                 matrix[i, j], labels[i, j] = 0, "sens."
             else:
@@ -467,22 +648,33 @@ def _applicability_plot(
     plt.close(figure)
 
 
-def _tmv_plot(target: pd.DataFrame, registry: list[dict[str, Any]], output: Path, track: str) -> bool:
-    values = target[target["tmv_available"].astype(bool)].drop_duplicates(
+def _tmv_plot(
+    target: pd.DataFrame, registry: list[dict[str, Any]], output: Path, track: str
+) -> bool:
+    values = target[target["tmv_available"].fillna(False).astype(bool)].drop_duplicates(
         ["method", "target"]
     )
     if values.empty:
         return False
     colors = _colour_map(registry)
     display = {record["method"]: record["display_name"] for record in registry}
-    methods = [record["method"] for record in registry if record["method"] in set(values["method"])]
+    methods = [
+        record["method"]
+        for record in registry
+        if record["method"] in set(values["method"])
+    ]
     summary = values.groupby("method")["tmv"].agg(["mean", "std"])
     x = np.arange(len(methods))
     figure, axis = plt.subplots(figsize=(max(5.5, len(methods) * 1.4), 4.8))
     axis.bar(
         x,
         [summary.loc[method, "mean"] for method in methods],
-        yerr=[float(summary.loc[method, "std"]) if np.isfinite(summary.loc[method, "std"]) else 0 for method in methods],
+        yerr=[
+            float(summary.loc[method, "std"])
+            if np.isfinite(summary.loc[method, "std"])
+            else 0
+            for method in methods
+        ],
         color=[colors[method] for method in methods],
         edgecolor="black",
         linewidth=0.6,
@@ -516,15 +708,29 @@ def _tmv_plot(target: pd.DataFrame, registry: list[dict[str, Any]], output: Path
 def summarize(args: argparse.Namespace) -> dict[str, Any]:
     metrics_path = args.metrics_long.expanduser().resolve()
     metrics = pd.read_csv(metrics_path)
-    track = _validate_metrics(metrics)
-    registry_path = None if args.method_registry is None else args.method_registry.expanduser().resolve()
-    registry = _load_registry(registry_path, sorted(str(value) for value in metrics["method"].unique()))
-    metrics = _canonicalize_methods(metrics, registry)
     evaluation_path = args.evaluation_manifest.expanduser().resolve()
+    try:
+        evaluation_hint = json.loads(evaluation_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SummaryError(
+            f"cannot read evaluation manifest {evaluation_path}: {exc}"
+        ) from exc
+    track = _validate_metrics(metrics, track_hint=evaluation_hint.get("track"))
+    registry_path = (
+        None
+        if args.method_registry is None
+        else args.method_registry.expanduser().resolve()
+    )
+    registry = _load_registry(
+        registry_path, sorted(str(value) for value in metrics["method"].unique())
+    )
+    metrics = _canonicalize_methods(metrics, registry)
     evaluation = _verify_evaluation_manifest(
         evaluation_path, metrics_path, metrics, registry, track
     )
-    target = _target_summary(metrics)
+    targets = sorted(int(value) for value in evaluation["targets"])
+    statuses = evaluation["_canonical_method_target_status"]
+    target = _target_summary(metrics, registry, track, targets, statuses)
     method = _method_summary(target, registry, track)
     output = args.output_dir.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -536,7 +742,9 @@ def summarize(args: argparse.Namespace) -> dict[str, Any]:
     plot_paths: list[Path] = []
     for metric_name in METRIC_LABELS:
         plot = output / f"{track}_{metric_name}_barplot.png"
-        _barplot_metric(target, method, registry, metric=metric_name, output=plot, track=track)
+        _barplot_metric(
+            target, method, registry, metric=metric_name, output=plot, track=track
+        )
         plot_paths.extend([plot, plot.with_suffix(".pdf")])
     applicability = output / f"{track}_applicability_matrix.png"
     _applicability_plot(method, registry, applicability, track)
@@ -567,7 +775,9 @@ def summarize(args: argparse.Namespace) -> dict[str, Any]:
         "evaluation_methods": evaluation["methods"],
         "evaluation_targets": evaluation["targets"],
         "method_registry": None if registry_path is None else str(registry_path),
-        "method_registry_sha256": None if registry_path is None else sha256_file(registry_path),
+        "method_registry_sha256": None
+        if registry_path is None
+        else sha256_file(registry_path),
         "target_summary": str(target_path),
         "target_summary_sha256": sha256_file(target_path),
         "method_summary": str(method_path),

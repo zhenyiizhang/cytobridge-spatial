@@ -39,6 +39,20 @@ TRACK_ALIASES = {
     "noholdout": "full_data",
     "no-holdout": "full_data",
 }
+COMPLETED_STATUSES = {"complete", "completed", "success"}
+NON_NUMERIC_STATUSES = {
+    "timeout",
+    "oom",
+    "failed",
+    "not_available",
+    "not_applicable",
+}
+STATUS_ALIASES = {
+    "out_of_memory": "oom",
+    "unavailable": "not_available",
+    "n/a": "not_applicable",
+    "na": "not_applicable",
+}
 
 
 class ContractError(ValueError):
@@ -119,6 +133,114 @@ def _normalize_track(value: Any) -> str:
         raise ContractError(f"unknown benchmark track/regime {value!r}") from exc
 
 
+def _normalize_status(value: Any) -> str:
+    status = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    status = STATUS_ALIASES.get(status, status)
+    if status in COMPLETED_STATUSES:
+        return "completed"
+    if status not in NON_NUMERIC_STATUSES:
+        allowed = sorted({"completed", *NON_NUMERIC_STATUSES})
+        raise ContractError(
+            f"unknown execution status {value!r}; expected one of {allowed}"
+        )
+    return status
+
+
+def _load_status_table(
+    path: Path | None, track: str
+) -> dict[tuple[str, int], dict[str, Any]]:
+    if path is None:
+        return {}
+    path = path.expanduser().resolve()
+    try:
+        table = pd.read_csv(path)
+    except (OSError, pd.errors.ParserError) as exc:
+        raise ContractError(f"cannot read status table {path}: {exc}") from exc
+    required = {"method", "target", "status"}
+    missing = sorted(required.difference(table.columns))
+    if missing:
+        raise ContractError(f"status table is missing columns {missing}")
+    if "track" in table:
+        normalized_tracks = table["track"].map(_normalize_track)
+        table = table.loc[normalized_tracks.eq(track)].copy()
+    reason_column = next(
+        (name for name in ("reason", "failure_reason", "message") if name in table),
+        None,
+    )
+    result: dict[tuple[str, int], dict[str, Any]] = {}
+    for row in table.itertuples(index=False):
+        method = str(getattr(row, "method")).strip()
+        if not method:
+            raise ContractError("status table contains an empty method")
+        raw_target = getattr(row, "target")
+        target = int(raw_target)
+        if float(raw_target) != target:
+            raise ContractError(
+                f"status target must be an integer, found {raw_target!r}"
+            )
+        key = (method, target)
+        if key in result:
+            raise ContractError(f"duplicate status row for {method}/t{target}")
+        reason_value = getattr(row, reason_column) if reason_column else ""
+        reason = "" if pd.isna(reason_value) else str(reason_value).strip()
+        result[key] = {
+            "method": method,
+            "track": track,
+            "target": target,
+            "status": _normalize_status(getattr(row, "status")),
+            "reason": reason,
+        }
+    return result
+
+
+def _method_target_status(
+    *,
+    methods: list[str],
+    targets: list[int],
+    completed: set[tuple[str, int]],
+    declared: dict[tuple[str, int], dict[str, Any]],
+    track: str,
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for method in methods:
+        for target in targets:
+            key = (method, target)
+            record = declared.get(key)
+            if key in completed:
+                if record is not None and record["status"] != "completed":
+                    raise ContractError(
+                        f"{method}/t{target} has a prediction but status={record['status']}"
+                    )
+                status = "completed"
+                reason = "" if record is None else record["reason"]
+            elif record is None:
+                missing.append(f"{method}/t{target}")
+                continue
+            elif record["status"] == "completed":
+                raise ContractError(
+                    f"{method}/t{target} is marked completed but has no prediction"
+                )
+            else:
+                status = record["status"]
+                reason = record["reason"]
+            rows.append(
+                {
+                    "track": track,
+                    "target": target,
+                    "method": method,
+                    "status": status,
+                    "reason": reason,
+                }
+            )
+    if missing:
+        raise ContractError(
+            "missing predictions without an explicit failure status: "
+            + ", ".join(missing)
+        )
+    return pd.DataFrame.from_records(rows)
+
+
 def _targets(root: dict[str, Any], track: str) -> list[int]:
     key = "loto_targets" if track == "loto" else "full_data_targets"
     default = (1, 2, 3) if track == "loto" else (1, 2, 3, 4)
@@ -132,7 +254,9 @@ def _targets(root: dict[str, Any], track: str) -> list[int]:
     return values
 
 
-def _split_record(root: dict[str, Any], track: str, target: int) -> tuple[str, dict[str, Any]]:
+def _split_record(
+    root: dict[str, Any], track: str, target: int
+) -> tuple[str, dict[str, Any]]:
     split_id = f"loto_t{target}" if track == "loto" else "full_data"
     splits = root.get("splits")
     if not isinstance(splits, dict) or not isinstance(splits.get(split_id), dict):
@@ -224,7 +348,9 @@ def _summary_target(summary: dict[str, Any]) -> int:
             try:
                 return int(float(summary[key]))
             except (TypeError, ValueError) as exc:
-                raise ContractError(f"summary has invalid {key}={summary[key]!r}") from exc
+                raise ContractError(
+                    f"summary has invalid {key}={summary[key]!r}"
+                ) from exc
     raise ContractError("summary has no target_time/target/holdout_time")
 
 
@@ -323,9 +449,13 @@ def _verify_prediction_provenance(
         ),
     )
     if declared_training is None:
-        raise ContractError("prediction summary does not record training-reference SHA-256")
+        raise ContractError(
+            "prediction summary does not record training-reference SHA-256"
+        )
     if declared_training != training_sha:
-        raise ContractError("prediction summary training-reference SHA-256 does not match")
+        raise ContractError(
+            "prediction summary training-reference SHA-256 does not match"
+        )
     declared_roster = _summary_sha(summary, ("source_roster_sha256",))
     if declared_roster is None:
         raise ContractError("prediction summary does not record source-roster SHA-256")
@@ -345,13 +475,23 @@ def _prediction_arrays(
         if "weights" in archive:
             weights = np.asarray(archive["weights"], dtype=np.float64).reshape(-1)
             if weights.shape != (state.shape[0],):
-                raise ContractError(f"{path}: weights length does not match predictions")
-            if not np.isfinite(weights).all() or np.any(weights < 0) or weights.sum() <= 0:
-                raise ContractError(f"{path}: weights must be finite, nonnegative and nonzero")
+                raise ContractError(
+                    f"{path}: weights length does not match predictions"
+                )
+            if (
+                not np.isfinite(weights).all()
+                or np.any(weights < 0)
+                or weights.sum() <= 0
+            ):
+                raise ContractError(
+                    f"{path}: weights must be finite, nonnegative and nonzero"
+                )
     return state, spatial, weights
 
 
-def _source_time(summary: dict[str, Any], track: str, target: int, times: np.ndarray) -> int:
+def _source_time(
+    summary: dict[str, Any], track: str, target: int, times: np.ndarray
+) -> int:
     if track == "full_data":
         return int(summary.get("source_time", np.min(times)))
     for key in ("source_time", "previous_anchor_time", "start_time"):
@@ -389,7 +529,9 @@ def _tmv_columns(
     source_time = _source_time(summary, track, target, training_times)
     source_count = int(np.count_nonzero(np.isclose(training_times, source_time)))
     if source_count <= 0:
-        raise ContractError(f"source time t{source_time} is absent from training reference")
+        raise ContractError(
+            f"source time t{source_time} is absent from training reference"
+        )
     predicted_mass = float(weights.sum())
     observed_mass_relative = float(target_count / source_count)
     tmv_absolute = abs(predicted_mass - observed_mass_relative)
@@ -402,7 +544,7 @@ def _tmv_columns(
     }
 
 
-def evaluate_track(args: argparse.Namespace) -> pd.DataFrame:
+def evaluate_track(args: argparse.Namespace) -> tuple[pd.DataFrame, pd.DataFrame]:
     input_manifest = args.input_manifest.expanduser().resolve()
     root = _load_json(input_manifest)
     manifest_sha = sha256_file(input_manifest)
@@ -412,9 +554,12 @@ def evaluate_track(args: argparse.Namespace) -> pd.DataFrame:
     invalid = sorted(set(requested_targets).difference(allowed_targets))
     if invalid:
         raise ContractError(f"targets {invalid} are not valid for track {track}")
+    declared_status = _load_status_table(args.status_table, track)
 
-    candidates = sorted(args.predictions_root.expanduser().resolve().rglob("prediction.npz"))
-    if not candidates:
+    candidates = sorted(
+        args.predictions_root.expanduser().resolve().rglob("prediction.npz")
+    )
+    if not candidates and not declared_status:
         raise ContractError(f"no prediction.npz found below {args.predictions_root}")
 
     cases: dict[int, dict[str, Any]] = {}
@@ -441,8 +586,14 @@ def evaluate_track(args: argparse.Namespace) -> pd.DataFrame:
         transform = fit_frozen_benchmark_transform(train_state, train_spatial)
         transform_path = transform_dir / f"{split_id}.json"
         transform_path.parent.mkdir(parents=True, exist_ok=True)
-        if transform_path.exists() and transform_path.read_text(encoding="utf-8").strip() != transform.to_json():
-            raise ContractError(f"refusing to replace a different frozen transform: {transform_path}")
+        if (
+            transform_path.exists()
+            and transform_path.read_text(encoding="utf-8").strip()
+            != transform.to_json()
+        ):
+            raise ContractError(
+                f"refusing to replace a different frozen transform: {transform_path}"
+            )
         transform_path.write_text(transform.to_json() + "\n", encoding="utf-8")
         cases[target] = {
             "split_id": split_id,
@@ -554,25 +705,52 @@ def evaluate_track(args: argparse.Namespace) -> pd.DataFrame:
             metrics[column] = value
         rows.append(metrics)
 
-    if not rows:
-        raise ContractError(f"no completed predictions matched track={track}")
-    discovered_methods = (
-        set(method_filter) if method_filter is not None else {method for method, _ in seen}
+    if args.methods is not None:
+        methods = list(args.methods)
+    elif declared_status:
+        methods = sorted(
+            {method for method, _ in declared_status} | {method for method, _ in seen}
+        )
+    else:
+        methods = sorted({method for method, _ in seen})
+    if not methods or len(methods) != len(set(methods)):
+        raise ContractError("--methods must contain unique non-empty names")
+    status = _method_target_status(
+        methods=methods,
+        targets=list(requested_targets),
+        completed=seen,
+        declared=declared_status,
+        track=track,
     )
-    expected = {
-        (method, target)
-        for method in discovered_methods
-        for target in requested_targets
-    }
-    missing = sorted(expected.difference(seen))
-    if missing:
-        rendered = ", ".join(f"{method}/t{target}" for method, target in missing)
-        raise ContractError(f"incomplete method-by-target prediction grid: {rendered}")
-    result = pd.concat(rows, ignore_index=True)
-    result = result.sort_values(
-        ["target", "space", "method", "projection_repeat"], kind="stable"
-    ).reset_index(drop=True)
-    return result
+    if rows:
+        result = pd.concat(rows, ignore_index=True)
+        result = result.sort_values(
+            ["target", "space", "method", "projection_repeat"], kind="stable"
+        ).reset_index(drop=True)
+    else:
+        result = pd.DataFrame(
+            columns=[
+                "track",
+                "target",
+                "source_time",
+                "method",
+                "space",
+                "output_scope",
+                "native_vs_adapter",
+                "projection_repeat",
+                "sliced_w2",
+                "exact_w1",
+                "exact_w2",
+                "tmv_available",
+                "tmv",
+                "tmv_absolute",
+                "predicted_mass",
+                "observed_mass_relative",
+                "n_predicted",
+                "n_observed",
+            ]
+        )
+    return result, status
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -581,6 +759,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--predictions-root", type=Path, required=True)
     parser.add_argument("--track", choices=sorted(TRACK_ALIASES), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--status-table",
+        type=Path,
+        help=(
+            "CSV with method,target,status[,track,reason]. Missing predictions are "
+            "reported as NA only when status is timeout, oom, failed, "
+            "not_available, or not_applicable."
+        ),
+    )
     parser.add_argument("--targets", type=int, nargs="+")
     parser.add_argument("--methods", nargs="+")
     parser.add_argument(
@@ -597,24 +784,36 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        metrics = evaluate_track(args)
+        metrics, method_status = evaluate_track(args)
         track = _normalize_track(args.track)
         output_dir = args.output_dir.expanduser().resolve()
         output_csv = output_dir / f"{track}_metrics_long.csv"
+        status_csv = output_dir / f"{track}_method_target_status.csv"
         _atomic_csv(output_csv, metrics)
+        _atomic_csv(status_csv, method_status)
         manifest = {
             "schema_version": "1.0.0",
             "status": "complete",
             "track": track,
             "input_manifest": str(args.input_manifest.expanduser().resolve()),
-            "input_manifest_sha256": sha256_file(args.input_manifest.expanduser().resolve()),
+            "input_manifest_sha256": sha256_file(
+                args.input_manifest.expanduser().resolve()
+            ),
             "predictions_root": str(args.predictions_root.expanduser().resolve()),
             "n_projections": int(args.n_projections),
             "projection_repeats": int(args.projection_repeats),
             "max_ot_points": int(args.max_ot_points),
-            "methods": sorted(metrics["method"].unique().tolist()),
-            "targets": sorted(int(value) for value in metrics["target"].unique()),
+            "methods": method_status["method"].drop_duplicates().tolist(),
+            "completed_methods": sorted(metrics["method"].unique().tolist()),
+            "targets": sorted(int(value) for value in method_status["target"].unique()),
             "spaces": sorted(metrics["space"].unique().tolist()),
+            "method_target_status": method_status.to_dict(orient="records"),
+            "method_target_status_csv": str(status_csv),
+            "status_table_source": (
+                None
+                if args.status_table is None
+                else str(args.status_table.expanduser().resolve())
+            ),
             "metrics_long_csv": str(output_csv),
             "metrics_long_csv_sha256": sha256_file(output_csv),
             "n_rows": int(len(metrics)),

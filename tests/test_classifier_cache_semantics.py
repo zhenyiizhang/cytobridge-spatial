@@ -132,31 +132,73 @@ def test_phase_a_split_is_disjoint_and_its_union_covers_every_row():
     assert np.bincount(encoded[validation_indices], minlength=3).tolist() == [2, 2, 2]
 
 
-def test_stratification_fallback_is_recorded_and_strict_mode_fails_closed():
+def test_singleton_class_is_training_only_while_other_classes_stay_stratified():
     encoded = np.asarray([0, 0, 0, 1], dtype=np.int64)
 
-    _, _, metadata = _split_classifier_indices(
+    train_indices, validation_indices, metadata = _split_classifier_indices(
         encoded,
         test_size=0.5,
         seed=42,
         stratify_split=True,
-        strict_stratification=False,
+        strict_stratification=True,
         train_on_full_data=False,
+        class_names=["Neural", "Otic Vesicle"],
     )
-    assert metadata["stratify_used"] is False
-    assert "class_with_fewer_than_two_rows" in metadata[
-        "stratification_fallback_reason"
-    ]
+    assert metadata["stratify_used"] is True
+    assert metadata["stratification_fallback_reason"] is None
+    assert metadata["training_only_singleton_classes"] == ["Otic Vesicle"]
+    assert metadata["per_class_counts"] == {
+        "Neural": {"total": 3, "train": 1, "validation": 2},
+        "Otic Vesicle": {"total": 1, "train": 1, "validation": 0},
+    }
+    assert 3 in train_indices
+    assert 3 not in validation_indices
+
+
+def test_strict_stratification_still_fails_for_too_small_validation_split():
+    encoded = np.repeat(np.arange(3, dtype=np.int64), 2)
 
     with pytest.raises(ValueError, match="Strict stratification could not be honored"):
         _split_classifier_indices(
             encoded,
-            test_size=0.5,
+            test_size=0.1,
             seed=42,
             stratify_split=True,
             strict_stratification=True,
             train_on_full_data=False,
         )
+
+
+def test_cached_classifier_records_otic_vesicle_singleton_split(tmp_path):
+    rng = np.random.default_rng(23)
+    labels = np.asarray(["Neural"] * 20 + ["Mesenchyme"] * 20 + ["Otic Vesicle"])
+    adata = ad.AnnData(X=np.zeros((len(labels), 1), dtype=np.float32))
+    adata.obs["time"] = np.repeat([0.0], len(labels))
+    adata.obs["Annotation"] = labels
+    adata.obsm["X_latent"] = rng.normal(size=(len(labels), 4)).astype(np.float32)
+
+    cached, _ = train_cached_mlp_classifier_from_adata(
+        adata,
+        cache_path=tmp_path / "classifier.pt",
+        time_key="time",
+        concat_spatial=False,
+        hidden_size=8,
+        epochs=1,
+        test_size=0.1,
+        device="cpu",
+        strict_stratification=True,
+    )
+
+    expected = {"total": 1, "train": 1, "validation": 0}
+    assert cached.metadata["version"] == 7
+    assert (
+        cached.metadata["class_split"]["per_class_counts"]["Otic Vesicle"] == expected
+    )
+    assert cached.metadata["class_split"]["training_only_singleton_classes"] == [
+        "Otic Vesicle"
+    ]
+    assert cached.evaluation["per_class_split_counts"]["Otic Vesicle"] == expected
+    assert cached.evaluation["training_only_singleton_classes"] == ["Otic Vesicle"]
 
 
 def test_phase_a_refit_uses_fresh_model_all_rows_and_selection_scheduler_horizon(
@@ -227,9 +269,10 @@ def test_phase_a_refit_uses_fresh_model_all_rows_and_selection_scheduler_horizon
     assert refit["optimizer_steps"] == evaluation["best_epoch"]
     assert refit["scheduler_t_max"] == 3
     assert refit["scheduler_last_epoch"] == evaluation["best_epoch"]
-    assert instances[1].forward_batch_sizes[: refit["epochs"]] == [len(X)] * refit[
-        "epochs"
-    ]
+    assert (
+        instances[1].forward_batch_sizes[: refit["epochs"]]
+        == [len(X)] * refit["epochs"]
+    )
     for name in instances[0].initial_state:
         torch.testing.assert_close(
             instances[0].initial_state[name],
@@ -264,9 +307,7 @@ def test_cached_refit_persists_protocol_and_keeps_phase_a_metrics(tmp_path):
     rng = np.random.default_rng(13)
     adata = ad.AnnData(X=np.zeros((30, 1), dtype=np.float32))
     adata.obs["time"] = np.repeat([0.0, 1.0, 2.0], 10)
-    adata.obs["Annotation"] = np.asarray(
-        ["A"] * 10 + ["B"] * 10 + ["C"] * 10
-    )
+    adata.obs["Annotation"] = np.asarray(["A"] * 10 + ["B"] * 10 + ["C"] * 10)
     adata.obsm["X_latent"] = rng.normal(size=(30, 4)).astype(np.float32)
 
     cached, cache_path = train_cached_mlp_classifier_from_adata(
@@ -283,13 +324,14 @@ def test_cached_refit_persists_protocol_and_keeps_phase_a_metrics(tmp_path):
     )
 
     assert cache_path.exists()
-    assert cached.metadata["version"] == 6
+    assert cached.metadata["version"] == 7
     assert cached.metadata["selection_scope"] == "held_out_validation_phase_a"
     assert cached.metadata["refit_on_full_data_after_selection"] is True
     assert cached.metadata["strict_stratification"] is True
     assert cached.accuracy == cached.evaluation["selection"]["validation_accuracy"]
-    assert cached.balanced_accuracy == cached.evaluation["selection"][
-        "validation_balanced_accuracy"
-    ]
+    assert (
+        cached.balanced_accuracy
+        == cached.evaluation["selection"]["validation_balanced_accuracy"]
+    )
     assert cached.evaluation["refit"]["performed"] is True
     assert cached.evaluation["refit"]["n_train"] == adata.n_obs

@@ -5,7 +5,14 @@ external temporal/spatial baselines. Dataset choices live in YAML; the Python
 code contains no zebrafish or ARISTA time labels, paths, dimensions, or target
 sets.
 
-The checked-in zebrafish configuration is
+The four corrected package hand-offs are the thin files in
+`configs/unified_benchmark/`. They share the same state/spatial representation,
+fixed prediction population, source roster, LOTO logic, and full-data logic;
+only dataset-specific layers, labels, times, targets, LR database, and resolved
+training configuration differ. In particular, the MOSTA full-data target set is
+`t1,t2,t3` (not the older truncated `t1,t2` set).
+
+The older provenance-locked zebrafish configuration remains at
 `configs/zebrafish_clean_benchmark.yaml`. It freezes:
 
 - corrected `obsm['X_latent']` (50-dimensional state) and
@@ -32,6 +39,24 @@ evaluation stages `truth_t1.npz` through `truth_t4.npz` are exported. This is
 in-sample reconstruction and must be reported separately from LOTO.
 
 ## Validate, build, and verify
+
+For the corrected four-dataset run, use the public three-command launcher. Its
+`run` command uses a 3,600-second limit per method/split and writes explicit
+`completed`, `timeout`, `oom`, `failed`, `not_available`, or `not_applicable`
+rows; it never substitutes another method. `--dry-run` prints the complete
+commands without launching work:
+
+```bash
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run prepare
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run run
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run evaluate
+```
+
+External environments and official source checkouts can be supplied without
+editing code, for example `--python stvcr=/envs/stvcr/bin/python --source
+stvcr=/software/stvcr`. The default package checkpoints are read from
+`corrected-de-novo-20260813-r2/{dataset}/training`; the launcher does not start
+until those resolved checkpoints exist.
 
 Run from the repository root on the server:
 
@@ -111,15 +136,19 @@ adapters verify and reuse the same row IDs and values for a split.
 ## Evaluation and reporting
 
 Run LOTO and full-data evaluation into separate directories. Always pass the
-complete primary method list so an entirely missing method fails during
-evaluation. The summarizer verifies the generated evaluation manifest, metrics
-CSV hash, complete grid, and reporting registry:
+complete primary method list. If a baseline did not finish, provide a simple
+status CSV with columns `track,target,method,status,reason`; allowed non-numeric
+statuses are `timeout`, `oom`, `failed`, `not_available`, and
+`not_applicable`. A missing prediction without one of these explicit statuses
+is still an error. With a status, evaluation continues and the target/method
+tables contain `NA` rather than a surrogate score:
 
 ```bash
 python scripts/spatiotemporal_benchmark/evaluate_predictions.py \
   --input-manifest "$OUT/inputs/manifest.json" \
   --predictions-root "$OUT/predictions/loto" \
   --track loto \
+  --status-table "$OUT/status/method_target_status.csv" \
   --output-dir "$OUT/reports/evaluation/loto" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
             linear_centroid_shift random_independent_pairs
@@ -135,6 +164,18 @@ python scripts/spatiotemporal_benchmark/summarize_results.py \
 Repeat with `--track full_data` and the corresponding paths. Full-data scores
 are in-sample reconstruction references; they must not be pooled with or used
 to rank LOTO generalization results.
+
+Example status rows:
+
+```csv
+track,target,method,status,reason
+loto,2,stories,timeout,3600 second method budget
+full_data,3,wot,oom,worker exceeded available memory
+```
+
+Completed rows may be included with `status=completed`, or omitted when the
+prediction exists. Failed methods remain visible in the applicability matrix
+and summary tables, but are excluded from numerical ranks.
 
 ### Optional matched LOTO-versus-full-data diagnostic
 

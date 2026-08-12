@@ -99,7 +99,9 @@ def _stable_spatial_neighbors(
             candidates = initial_indices[row, keep].astype(np.int64, copy=False)
             candidate_distances = initial_distances[row, keep]
             if candidates.size < requested_other:  # pragma: no cover - defensive
-                raise RuntimeError("Could not resolve enough non-self spatial neighbors.")
+                raise RuntimeError(
+                    "Could not resolve enough non-self spatial neighbors."
+                )
             order = np.lexsort((candidates, candidate_distances))
             cutoff = float(candidate_distances[order[requested_other - 1]])
             candidates = np.asarray(
@@ -121,9 +123,7 @@ def _stable_spatial_neighbors(
             other_distances[row] = candidate_distances[order]
 
     if include_self:
-        indices = np.column_stack(
-            (np.arange(n_samples, dtype=np.int64), other_indices)
-        )
+        indices = np.column_stack((np.arange(n_samples, dtype=np.int64), other_indices))
         distances = np.column_stack(
             (np.zeros(n_samples, dtype=np.float64), other_distances)
         )
@@ -428,7 +428,10 @@ def analyze_spatial_label_sensitivity(
         boundary_source = "nearest_other_label_disagreement"
     else:
         resolved_boundary = np.asarray(boundary_mask, dtype=bool)
-        if resolved_boundary.ndim != 1 or resolved_boundary.shape[0] != raw_labels.shape[0]:
+        if (
+            resolved_boundary.ndim != 1
+            or resolved_boundary.shape[0] != raw_labels.shape[0]
+        ):
             raise ValueError("boundary_mask must be one-dimensional and match labels.")
         resolved_boundary = resolved_boundary.copy()
         boundary_source = "provided"
@@ -489,14 +492,20 @@ def analyze_spatial_label_sensitivity(
                 "changed_count": int(np.sum(changed)),
                 "changed_fraction": float(np.mean(changed)) if n_samples else 0.0,
                 "composition_total_variation": (
-                    float(0.5 * np.sum(absolute_changes)) if absolute_changes.size else 0.0
+                    float(0.5 * np.sum(absolute_changes))
+                    if absolute_changes.size
+                    else 0.0
                 ),
                 "max_absolute_change_pp": (
-                    float(100.0 * np.max(absolute_changes)) if absolute_changes.size else 0.0
+                    float(100.0 * np.max(absolute_changes))
+                    if absolute_changes.size
+                    else 0.0
                 ),
                 "per_type": per_type,
                 "boundary_flip_rate": (
-                    float(np.mean(changed[resolved_boundary])) if boundary_count else None
+                    float(np.mean(changed[resolved_boundary]))
+                    if boundary_count
+                    else None
                 ),
                 "interior_flip_rate": (
                     float(np.mean(changed[interior_mask])) if interior_count else None
@@ -580,9 +589,7 @@ def _classifier_cache_lock(path: Path):
 
 
 def _atomic_torch_save(payload: dict, path: Path) -> None:
-    temporary = path.with_name(
-        f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
-    )
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
     try:
         torch.save(payload, str(temporary))
         os.replace(temporary, path)
@@ -648,13 +655,19 @@ def load_cached_mlp_classifier(
     if "state_dict" not in payload:
         raise KeyError("Classifier cache payload is missing `state_dict`.")
 
-    input_size = int(meta.get("input_size", payload.get("input_size", len(feature_cols))))
+    input_size = int(
+        meta.get("input_size", payload.get("input_size", len(feature_cols)))
+    )
     hidden_size = int(meta.get("hidden_size", payload.get("hidden_size", 128)))
     num_classes = int(payload.get("num_classes", len(classes)))
-    model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes)
+    model = ResidualMLP(
+        input_size=input_size, hidden_size=hidden_size, num_classes=num_classes
+    )
     model.load_state_dict(payload["state_dict"], strict=True)
 
-    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    dev = torch.device(
+        device if (device != "cuda" or torch.cuda.is_available()) else "cpu"
+    )
     model = model.to(dev)
     model.eval()
 
@@ -667,13 +680,17 @@ def load_cached_mlp_classifier(
         feature_cols=feature_cols,
         label_col=str(meta.get("label_col", "Annotation")),
         accuracy=float(payload["acc"]) if payload.get("acc") is not None else None,
-        balanced_accuracy=float(payload["bacc"]) if payload.get("bacc") is not None else None,
+        balanced_accuracy=float(payload["bacc"])
+        if payload.get("bacc") is not None
+        else None,
         metadata=dict(meta),
         evaluation=dict(payload.get("evaluation", {})),
     )
 
 
-def _resolve_cached_latent_indices(feature_cols: Sequence[str], latent_dim: int) -> np.ndarray:
+def _resolve_cached_latent_indices(
+    feature_cols: Sequence[str], latent_dim: int
+) -> np.ndarray:
     if not feature_cols:
         return np.zeros((0,), dtype=int)
 
@@ -711,11 +728,12 @@ def build_cached_classifier_inputs_from_adata(
     """
     if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
         raise TypeError(
-            "Cached-classifier utilities require AnnData input. "
-            f"Got: {type(adata)}"
+            "Cached-classifier utilities require AnnData input. " f"Got: {type(adata)}"
         )
     if latent_key not in adata.obsm:
-        raise KeyError(f"adata.obsm['{latent_key}'] is required to rebuild cached classifier inputs.")
+        raise KeyError(
+            f"adata.obsm['{latent_key}'] is required to rebuild cached classifier inputs."
+        )
 
     latent = np.asarray(adata.obsm[latent_key], dtype=np.float32)
     blocks = []
@@ -723,7 +741,9 @@ def build_cached_classifier_inputs_from_adata(
 
     if cached.include_time_feature:
         if samples_column not in adata.obs.columns:
-            raise KeyError(f"adata.obs['{samples_column}'] is required when the cached classifier uses `samples`.")
+            raise KeyError(
+                f"adata.obs['{samples_column}'] is required when the cached classifier uses `samples`."
+            )
         from CytoBridge.tl.downstream.downstream_data import parse_time_value
 
         samples = np.asarray(
@@ -733,7 +753,9 @@ def build_cached_classifier_inputs_from_adata(
         blocks.append(samples)
         latent_feature_cols = cached.feature_cols[1:]
 
-    latent_indices = _resolve_cached_latent_indices(latent_feature_cols, latent.shape[1])
+    latent_indices = _resolve_cached_latent_indices(
+        latent_feature_cols, latent.shape[1]
+    )
     blocks.append(latent[:, latent_indices].astype(np.float32))
 
     X = np.hstack(blocks).astype(np.float32)
@@ -766,7 +788,9 @@ def predict_cached_mlp_classifier_from_adata(
         dev = next(cached.model.parameters()).device
         model = cached.model
     else:
-        dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+        dev = torch.device(
+            device if (device != "cuda" or torch.cuda.is_available()) else "cpu"
+        )
         model = cached.model.to(dev)
 
     model.eval()
@@ -878,13 +902,17 @@ def predict_labels_for_points(
         spatial_indices=spatial_indices,
     )
 
-    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    dev = torch.device(
+        device if (device != "cuda" or torch.cuda.is_available()) else "cpu"
+    )
     model.eval()
     model.to(dev)
 
     feature_t = torch.tensor(classifier_features, dtype=torch.float32)
     if include_time_feature:
-        samples_t = torch.full((n, 1), fill_value=float(time_value), dtype=torch.float32)
+        samples_t = torch.full(
+            (n, 1), fill_value=float(time_value), dtype=torch.float32
+        )
         input_t = torch.cat((samples_t, feature_t), dim=1)
     else:
         input_t = feature_t
@@ -892,7 +920,9 @@ def predict_labels_for_points(
     with torch.no_grad():
         outputs = model(input_t.float().to(dev))
         _, predicted = torch.max(outputs, 1)
-        predicted_labels = label_encoder.inverse_transform(predicted.detach().cpu().numpy())
+        predicted_labels = label_encoder.inverse_transform(
+            predicted.detach().cpu().numpy()
+        )
 
     refined_labels = smooth_spatial_labels(
         predicted_labels,
@@ -923,27 +953,38 @@ def _prepare_classifier_arrays(
             f"Got: {type(adata)}"
         )
 
-    from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
+    from CytoBridge.tl.downstream.downstream_data import (
+        infer_time_key,
+        parse_time_value,
+    )
 
     if label_col not in adata.obs.columns:
-        raise KeyError(
-            f"Label column '{label_col}' not found in adata.obs."
-        )
+        raise KeyError(f"Label column '{label_col}' not found in adata.obs.")
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
     raw_times = adata.obs[resolved_time_key].values
-    samples = np.asarray([parse_time_value(v) for v in raw_times], dtype=np.float32).reshape(-1, 1)
+    samples = np.asarray(
+        [parse_time_value(v) for v in raw_times], dtype=np.float32
+    ).reshape(-1, 1)
 
     if obsm_key in adata.obsm:
         latent = np.asarray(adata.obsm[obsm_key], dtype=np.float32)
     else:
-        latent = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+        latent = (
+            adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+        )
         latent = np.asarray(latent, dtype=np.float32)
 
-    use_spatial = bool(concat_spatial) if concat_spatial is not None else (spatial_key in adata.obsm)
+    use_spatial = (
+        bool(concat_spatial)
+        if concat_spatial is not None
+        else (spatial_key in adata.obsm)
+    )
     if use_spatial:
         if spatial_key not in adata.obsm:
-            raise KeyError(f"concat_spatial=True but adata.obsm['{spatial_key}'] is missing.")
+            raise KeyError(
+                f"concat_spatial=True but adata.obsm['{spatial_key}'] is missing."
+            )
         spatial = np.asarray(adata.obsm[spatial_key], dtype=np.float32)
         if spatial.shape[0] != latent.shape[0]:
             raise ValueError(
@@ -965,7 +1006,11 @@ def _prepare_classifier_arrays(
             )
         features = features[:, :n_features]
 
-    X = np.hstack((samples, features)).astype(np.float32) if include_time_feature else features.astype(np.float32)
+    X = (
+        np.hstack((samples, features)).astype(np.float32)
+        if include_time_feature
+        else features.astype(np.float32)
+    )
     y = adata.obs[label_col].astype(str).values
     return X, y
 
@@ -984,7 +1029,13 @@ def _train_mlp_classifier_arrays(
     stratify_split: bool = True,
     strict_stratification: bool = False,
 ) -> Tuple[MLP, object, float]:
-    model, label_encoder, accuracy, _, evaluation = _train_mlp_classifier_arrays_detailed(
+    (
+        model,
+        label_encoder,
+        accuracy,
+        _,
+        evaluation,
+    ) = _train_mlp_classifier_arrays_detailed(
         X=X,
         y=y,
         hidden_size=hidden_size,
@@ -1013,8 +1064,14 @@ def _split_classifier_indices(
     stratify_split: bool,
     strict_stratification: bool,
     train_on_full_data: bool,
+    class_names: Optional[Sequence[str]] = None,
 ) -> tuple[np.ndarray, np.ndarray, dict]:
-    """Resolve the historical full-data scope or a reproducible Phase-A split."""
+    """Resolve the historical full-data scope or a reproducible Phase-A split.
+
+    Singleton labels remain available to the classifier through training but
+    are not reported as validation evidence. All other labels use the requested
+    stratified holdout.
+    """
 
     from sklearn.model_selection import train_test_split
 
@@ -1022,65 +1079,126 @@ def _split_classifier_indices(
     if encoded.ndim != 1:
         raise ValueError("y_encoded must be one-dimensional.")
     all_indices = np.arange(encoded.shape[0], dtype=np.int64)
+    n_classes = int(np.max(encoded) + 1) if encoded.size else 0
+    class_counts = np.bincount(encoded, minlength=n_classes)
+    names = (
+        [str(index) for index in range(n_classes)]
+        if class_names is None
+        else [str(value) for value in class_names]
+    )
+    if len(names) != n_classes:
+        raise ValueError(
+            f"class_names contains {len(names)} labels, but y_encoded contains "
+            f"{n_classes} encoded classes."
+        )
+
+    def describe_split(
+        train_indices: np.ndarray,
+        validation_indices: np.ndarray,
+    ) -> dict:
+        train_counts = np.bincount(encoded[train_indices], minlength=n_classes)
+        validation_counts = np.bincount(
+            encoded[validation_indices], minlength=n_classes
+        )
+        per_class_counts = {
+            name: {
+                "total": int(class_counts[index]),
+                "train": int(train_counts[index]),
+                "validation": int(validation_counts[index]),
+            }
+            for index, name in enumerate(names)
+        }
+        training_only_singletons = [
+            name
+            for index, name in enumerate(names)
+            if class_counts[index] == 1
+            and train_counts[index] == 1
+            and validation_counts[index] == 0
+        ]
+        return {
+            "per_class_counts": per_class_counts,
+            "training_only_singleton_classes": training_only_singletons,
+            "singleton_class_policy": (
+                "A class represented by one row is retained in training and "
+                "excluded from validation."
+            ),
+        }
+
     if train_on_full_data:
-        return all_indices.copy(), all_indices.copy(), {
+        metadata = {
             "strategy": "legacy_full_data_training_scope",
             "stratify_requested": bool(stratify_split),
             "strict_stratification": bool(strict_stratification),
             "stratify_used": False,
             "stratification_fallback_reason": "not_applicable_train_on_full_data",
         }
+        metadata.update(describe_split(all_indices, all_indices))
+        return all_indices.copy(), all_indices.copy(), metadata
 
     if strict_stratification and not stratify_split:
-        raise ValueError(
-            "strict_stratification=True requires stratify_split=True."
-        )
+        raise ValueError("strict_stratification=True requires stratify_split=True.")
 
-    n_classes = int(np.max(encoded) + 1) if encoded.size else 0
-    class_counts = np.bincount(encoded, minlength=n_classes)
-    n_validation = int(np.ceil(float(test_size) * encoded.shape[0]))
-    n_train = int(encoded.shape[0] - n_validation)
+    singleton_classes = np.flatnonzero(class_counts == 1)
+    singleton_mask = np.isin(encoded, singleton_classes)
+    singleton_indices = all_indices[singleton_mask]
+    split_indices = all_indices[~singleton_mask]
+    split_labels = encoded[split_indices]
+    stratified_class_count = int(np.count_nonzero(class_counts >= 2))
+    n_validation = int(np.ceil(float(test_size) * split_indices.shape[0]))
+    n_train = int(split_indices.shape[0] - n_validation)
     fallback_reasons = []
     if stratify_split:
-        if np.any(class_counts < 2):
-            fallback_reasons.append("class_with_fewer_than_two_rows")
-        if n_validation < n_classes:
+        if stratified_class_count == 0:
+            fallback_reasons.append("no_class_with_at_least_two_rows")
+        if n_validation < stratified_class_count:
             fallback_reasons.append("validation_smaller_than_number_of_classes")
-        if n_train < n_classes:
+        if n_train < stratified_class_count:
             fallback_reasons.append("training_smaller_than_number_of_classes")
     can_stratify = bool(stratify_split and not fallback_reasons)
     if strict_stratification and not can_stratify:
         reason = ", ".join(fallback_reasons) or "unknown_stratification_constraint"
+        readable_counts = {
+            name: int(class_counts[index]) for index, name in enumerate(names)
+        }
+        singleton_names = [names[index] for index in singleton_classes]
         raise ValueError(
             "Strict stratification could not be honored: "
-            f"{reason}; class_counts={class_counts.tolist()}, "
-            f"n_train={n_train}, n_validation={n_validation}."
+            f"{reason}; class_counts={readable_counts}, "
+            f"n_train={n_train}, n_validation={n_validation}, "
+            f"training_only_singletons={singleton_names}."
         )
 
-    train_indices, validation_indices = train_test_split(
-        all_indices,
+    split_train_indices, validation_indices = train_test_split(
+        split_indices,
         test_size=test_size,
         random_state=seed,
-        stratify=encoded if can_stratify else None,
+        stratify=split_labels if can_stratify else None,
     )
+    train_indices = np.concatenate(
+        (np.asarray(split_train_indices, dtype=np.int64), singleton_indices)
+    )
+    validation_indices = np.asarray(validation_indices, dtype=np.int64)
+    metadata = {
+        "strategy": "held_out_train_validation",
+        "stratify_requested": bool(stratify_split),
+        "strict_stratification": bool(strict_stratification),
+        "stratify_used": bool(can_stratify),
+        "stratification_scope": "classes_with_at_least_two_rows",
+        "stratification_fallback_reason": (
+            None
+            if can_stratify
+            else (
+                "disabled_by_request"
+                if not stratify_split
+                else ", ".join(fallback_reasons)
+            )
+        ),
+    }
+    metadata.update(describe_split(train_indices, validation_indices))
     return (
-        np.asarray(train_indices, dtype=np.int64),
-        np.asarray(validation_indices, dtype=np.int64),
-        {
-            "strategy": "held_out_train_validation",
-            "stratify_requested": bool(stratify_split),
-            "strict_stratification": bool(strict_stratification),
-            "stratify_used": bool(can_stratify),
-            "stratification_fallback_reason": (
-                None
-                if can_stratify
-                else (
-                    "disabled_by_request"
-                    if not stratify_split
-                    else ", ".join(fallback_reasons)
-                )
-            ),
-        },
+        train_indices,
+        validation_indices,
+        metadata,
     )
 
 
@@ -1113,6 +1231,7 @@ def _train_mlp_classifier_arrays_detailed(
         balanced_accuracy_score,
         classification_report,
         confusion_matrix,
+        recall_score,
     )
     from sklearn.preprocessing import LabelEncoder
 
@@ -1144,11 +1263,26 @@ def _train_mlp_classifier_arrays_detailed(
         stratify_split=stratify_split,
         strict_stratification=strict_stratification,
         train_on_full_data=train_on_full_data,
+        class_names=label_encoder.classes_,
     )
     X_train, X_test = X[train_indices], X[test_indices]
     y_train, y_test = y_encoded[train_indices], y_encoded[test_indices]
+    validation_labels = np.unique(y_test)
 
-    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    def validation_balanced_accuracy(predictions: np.ndarray) -> float:
+        return float(
+            recall_score(
+                y_test,
+                predictions,
+                labels=validation_labels,
+                average="macro",
+                zero_division=0,
+            )
+        )
+
+    dev = torch.device(
+        device if (device != "cuda" or torch.cuda.is_available()) else "cpu"
+    )
     X_train_t = torch.tensor(X_train, dtype=torch.float32, device=dev)
     X_test_t = torch.tensor(X_test, dtype=torch.float32, device=dev)
     y_train_t = torch.tensor(y_train, dtype=torch.long, device=dev)
@@ -1156,10 +1290,14 @@ def _train_mlp_classifier_arrays_detailed(
     input_size = X_train_t.shape[1]
     num_classes = int(len(label_encoder.classes_))
     _seed_classifier_training(seed)
-    model = ResidualMLP(input_size=input_size, hidden_size=hidden_size, num_classes=num_classes).to(dev)
+    model = ResidualMLP(
+        input_size=input_size, hidden_size=hidden_size, num_classes=num_classes
+    ).to(dev)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=int(epochs), eta_min=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=int(epochs), eta_min=1e-5
+    )
 
     best_score = float("-inf")
     best_epoch = 0
@@ -1178,7 +1316,7 @@ def _train_mlp_classifier_arrays_detailed(
             val_outputs = model(X_test_t)
             _, val_preds = torch.max(val_outputs, 1)
             val_acc = accuracy_score(y_test, val_preds.detach().cpu().numpy())
-            val_bacc = balanced_accuracy_score(y_test, val_preds.detach().cpu().numpy())
+            val_bacc = validation_balanced_accuracy(val_preds.detach().cpu().numpy())
             score = float(val_acc if metric == "accuracy" else val_bacc)
             if score > best_score:
                 best_score = score
@@ -1191,7 +1329,7 @@ def _train_mlp_classifier_arrays_detailed(
         test_preds = torch.argmax(model(X_test_t), dim=1).detach().cpu().numpy()
         train_preds = torch.argmax(model(X_train_t), dim=1).detach().cpu().numpy()
     accuracy = accuracy_score(y_test, test_preds)
-    balanced_accuracy = balanced_accuracy_score(y_test, test_preds)
+    balanced_accuracy = validation_balanced_accuracy(test_preds)
     train_accuracy = accuracy_score(y_train, train_preds)
     train_balanced_accuracy = balanced_accuracy_score(y_train, train_preds)
     labels = np.arange(len(label_encoder.classes_), dtype=int)
@@ -1257,7 +1395,9 @@ def _train_mlp_classifier_arrays_detailed(
 
         refit_model.eval()
         with torch.no_grad():
-            refit_preds = torch.argmax(refit_model(X_full_t), dim=1).detach().cpu().numpy()
+            refit_preds = (
+                torch.argmax(refit_model(X_full_t), dim=1).detach().cpu().numpy()
+            )
         refit_evaluation = {
             "requested": True,
             "performed": True,
@@ -1294,7 +1434,9 @@ def _train_mlp_classifier_arrays_detailed(
         else "held-out validation split used for Phase-A model selection"
     )
     evaluation = {
-        "metric_scope": "training data" if train_on_full_data else "held-out validation split",
+        "metric_scope": "training data"
+        if train_on_full_data
+        else "held-out validation split",
         "validation_is_independent_test": False,
         "best_epoch": int(best_epoch),
         "best_epoch_metric": metric,
@@ -1315,6 +1457,14 @@ def _train_mlp_classifier_arrays_detailed(
         "stratification_fallback_reason": split_metadata[
             "stratification_fallback_reason"
         ],
+        "per_class_split_counts": split_metadata["per_class_counts"],
+        "training_only_singleton_classes": split_metadata[
+            "training_only_singleton_classes"
+        ],
+        "singleton_class_policy": split_metadata["singleton_class_policy"],
+        "validation_metric_classes": [
+            str(label_encoder.classes_[index]) for index in validation_labels
+        ],
         "n_train": int(len(train_indices)),
         "n_validation": int(len(test_indices)),
         "split_contract": split_contract,
@@ -1334,9 +1484,17 @@ def _train_mlp_classifier_arrays_detailed(
         },
         "refit": refit_evaluation,
         "per_class": per_class,
-        "confusion_matrix": confusion_matrix(y_test, test_preds, labels=labels).tolist(),
+        "confusion_matrix": confusion_matrix(
+            y_test, test_preds, labels=labels
+        ).tolist(),
     }
-    return returned_model, label_encoder, float(accuracy), float(balanced_accuracy), evaluation
+    return (
+        returned_model,
+        label_encoder,
+        float(accuracy),
+        float(balanced_accuracy),
+        evaluation,
+    )
 
 
 def _classifier_cache_fingerprint(
@@ -1351,7 +1509,9 @@ def _classifier_cache_fingerprint(
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
     digest = sha1()
-    digest.update(f"{adata.n_obs}|{adata.n_vars}|{label_col}|{resolved_time_key}".encode("utf-8"))
+    digest.update(
+        f"{adata.n_obs}|{adata.n_vars}|{label_col}|{resolved_time_key}".encode("utf-8")
+    )
     for values in (
         adata.obs_names.astype(str),
         adata.obs[label_col].astype(str).values,
@@ -1426,8 +1586,19 @@ def train_cached_mlp_classifier_from_adata(
         f"x{i + 1}" for i in range(feature_dim)
     ]
     classes = sorted({str(v) for v in y})
+    class_to_index = {name: index for index, name in enumerate(classes)}
+    encoded_labels = np.asarray([class_to_index[str(value)] for value in y])
+    _, _, split_metadata = _split_classifier_indices(
+        encoded_labels,
+        test_size=test_size,
+        seed=seed,
+        stratify_split=stratify_split,
+        strict_stratification=strict_stratification,
+        train_on_full_data=train_on_full_data,
+        class_names=classes,
+    )
     metadata = {
-        "version": 6,
+        "version": 7,
         "cache_tag": str(cache_tag or ""),
         "feature_cols": feature_cols,
         "label_col": str(label_col),
@@ -1440,9 +1611,7 @@ def train_cached_mlp_classifier_from_adata(
         "classes": classes,
         "best_epoch_metric": str(best_epoch_metric).strip().lower(),
         "train_on_full_data": bool(train_on_full_data),
-        "refit_on_full_data_after_selection": bool(
-            refit_on_full_data_after_selection
-        ),
+        "refit_on_full_data_after_selection": bool(refit_on_full_data_after_selection),
         "stratify_split": bool(stratify_split),
         "strict_stratification": bool(strict_stratification),
         "selection_scope": (
@@ -1450,13 +1619,19 @@ def train_cached_mlp_classifier_from_adata(
             if train_on_full_data
             else "held_out_validation_phase_a"
         ),
+        "class_split": {
+            "strategy": split_metadata["strategy"],
+            "per_class_counts": split_metadata["per_class_counts"],
+            "training_only_singleton_classes": split_metadata[
+                "training_only_singleton_classes"
+            ],
+            "singleton_class_policy": split_metadata["singleton_class_policy"],
+        },
         "include_time_feature": bool(include_time_feature),
         "feature_selection": {
             "kind": "leading_joint_dimensions",
             "n_features": int(feature_dim),
-            "requested_n_features": (
-                None if n_features is None else int(n_features)
-            ),
+            "requested_n_features": (None if n_features is None else int(n_features)),
         },
         "source": {
             "kind": "AnnData",
@@ -1490,36 +1665,37 @@ def train_cached_mlp_classifier_from_adata(
         # the same deterministic cache while this process was waiting.
         if reuse_if_compatible and resolved_path.exists():
             try:
-                cached = load_cached_mlp_classifier(
-                    str(resolved_path), device=device
-                )
+                cached = load_cached_mlp_classifier(str(resolved_path), device=device)
             except Exception:
                 cached = None
             if cached is not None and cached.metadata == metadata:
                 return cached, resolved_path
 
-        model, label_encoder, accuracy, balanced_accuracy, evaluation = (
-            _train_mlp_classifier_arrays_detailed(
-                X=X,
-                y=y,
-                hidden_size=hidden_size,
-                epochs=epochs,
-                lr=lr,
-                test_size=test_size,
-                seed=seed,
-                device=device,
-                best_epoch_metric=best_epoch_metric,
-                train_on_full_data=train_on_full_data,
-                refit_on_full_data_after_selection=refit_on_full_data_after_selection,
-                stratify_split=stratify_split,
-                strict_stratification=strict_stratification,
-            )
+        (
+            model,
+            label_encoder,
+            accuracy,
+            balanced_accuracy,
+            evaluation,
+        ) = _train_mlp_classifier_arrays_detailed(
+            X=X,
+            y=y,
+            hidden_size=hidden_size,
+            epochs=epochs,
+            lr=lr,
+            test_size=test_size,
+            seed=seed,
+            device=device,
+            best_epoch_metric=best_epoch_metric,
+            train_on_full_data=train_on_full_data,
+            refit_on_full_data_after_selection=refit_on_full_data_after_selection,
+            stratify_split=stratify_split,
+            strict_stratification=strict_stratification,
         )
         payload = {
             "meta": metadata,
             "state_dict": {
-                key: value.detach().cpu()
-                for key, value in model.state_dict().items()
+                key: value.detach().cpu() for key, value in model.state_dict().items()
             },
             "acc": float(accuracy),
             "bacc": float(balanced_accuracy),
@@ -1653,7 +1829,9 @@ def predict_labels_for_trajectories(
     spatial_coords: Optional[Sequence[np.ndarray] | np.ndarray] = None,
     spatial_indices: Sequence[int] = (0, 1),
 ) -> Sequence[np.ndarray]:
-    dev = torch.device(device if (device != "cuda" or torch.cuda.is_available()) else "cpu")
+    dev = torch.device(
+        device if (device != "cuda" or torch.cuda.is_available()) else "cpu"
+    )
     model.eval()
     model.to(dev)
 
@@ -1696,7 +1874,9 @@ def predict_labels_for_trajectories(
         n_samples = int(feature_t.shape[0])
 
         if include_time_feature:
-            samples_t = torch.full((n_samples, 1), fill_value=float(t), dtype=torch.float32)
+            samples_t = torch.full(
+                (n_samples, 1), fill_value=float(t), dtype=torch.float32
+            )
             input_t = torch.cat((samples_t, feature_t), dim=1)
         else:
             input_t = feature_t
@@ -1704,7 +1884,9 @@ def predict_labels_for_trajectories(
         with torch.no_grad():
             outputs = model(input_t.float().to(dev))
             _, predicted = torch.max(outputs, 1)
-            predicted_labels = label_encoder.inverse_transform(predicted.detach().cpu().numpy())
+            predicted_labels = label_encoder.inverse_transform(
+                predicted.detach().cpu().numpy()
+            )
 
         refined_labels = smooth_spatial_labels(
             predicted_labels,

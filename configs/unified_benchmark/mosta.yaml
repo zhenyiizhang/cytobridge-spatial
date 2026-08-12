@@ -1,0 +1,29 @@
+# Shared benchmark hand-off from the corrected package run.
+dataset_id: mosta
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/mosta_aligned.h5ad
+time_key: time_point_processed
+time_map: [[0, 0], [1, 1], [2, 2], [3, 3]]
+state_key: X_latent
+state_dim: 50
+spatial_key: spatial_aligned
+spatial_dim: 2
+annotation_key: Annotation
+loto_targets: [1, 2]
+full_data_targets: [1, 2, 3]
+prediction_n: 5000
+source_roster_support_n: 800
+source_roster_seed: 20260718
+preprocess_contract:
+  uns_key: preprocess_info
+  required_layers: [count]
+  counts_layer: count
+  required_exact:
+    expression_layer: count
+    dim_reduction: pca
+    n_pcs: 50
+  matrix_checks: {x_finite: true, counts_finite: true, counts_nonnegative: true}
+  external_audits: []
+benchmark:
+  training_config: training/config.yaml
+  graph_database: CytoBridge/workflow_databases/CellChatDB.ligrec.mouse.csv
+  expression_layer: count

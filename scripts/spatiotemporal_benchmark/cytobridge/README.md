@@ -7,12 +7,14 @@ state/spatial keys, dimensions, targets, and row IDs come from the root input
 manifest and train H5AD; the adapter contains no zebrafish-specific labels or
 paths.
 
-The locked scientific profile is:
+The shared scientific profile is:
 
 - `alpha_spatial=10`, `alpha_express=0.015`, `sigma=0.03`, seed 42;
 - stages `Pretrain/Refine/Init_interaction/Train_Score/Finetune/Score_Refine`;
-- epochs `100/100/50/2001/1000/2001` and the corresponding published
-  mode/train-strategy/mass/score-save profile;
+- the six stage roles and component set above;
+- the exact architecture, epochs, batch sizes, losses and scheduler loaded
+  from the selected data-set package YAML. These intentionally differ where
+  the package recipe differs (for example, AD uses 3,001 score epochs);
 - exactly 5,000 source particles from the builder-frozen, method-independent
   canonical source roster, verified before any truth artifact is opened;
 - raw two-dimensional frozen spatial coordinates followed by the frozen state
@@ -20,8 +22,8 @@ The locked scientific profile is:
 - the official continuous, non-split weighted SDE simulator with native,
   unnormalised growth weights.
 
-All commands refuse incompatible hashes, keys, profiles, incomplete stage
-folders, target leakage, non-empty output directories, or output overwrite.
+All commands refuse incompatible keys or profiles, incomplete stage folders,
+target leakage, non-empty output directories, or output overwrite.
 They resolve portable artifact `relative_path` values against the root
 manifest's `inputs/` directory and never resolve/open `truth*` artifacts.
 
@@ -38,7 +40,10 @@ observed training stage to the held-out target. No held-out graph is reused.
 ### Full data / no holdout (`full_data`)
 
 The complete `alpha_express=0.015` checkpoint is reused only after all six stage
-files and its training data are verified. A new adapter fit proves linkage via
+files, its resolved package config and its training data are verified. Current
+Finetune checkpoints embed the learned edge-predictor parameters, so a model
+remains loadable after it is moved and does not require the old external edge
+file or its original absolute path. A new adapter fit proves linkage via
 `benchmark_fit_summary.json`; an existing locked fit without that summary is
 accepted only when its saved `adata.h5ad` has the exact frozen state, spatial,
 time, and row-order arrays in `training_reference.npz`.
@@ -102,6 +107,7 @@ for TARGET in 1 2 3; do
     --input-manifest "$INPUTS" \
     --split "$SPLIT" \
     --model-dir "$RUN/$SPLIT/model" \
+    --training-config "$CONFIG" \
     --output-dir "$RUN/$SPLIT/prediction" \
     --device "$DEVICE"
 done
@@ -124,12 +130,14 @@ $PYTHON $ADAPTER validate-model \
   --input-manifest "$INPUTS" \
   --split full_data \
   --model-dir "$FULL_MODEL" \
+  --training-config "$CONFIG" \
   --output-json "$RUN/full_data/model_validation.json"
 
 $PYTHON $ADAPTER infer-full \
   --input-manifest "$INPUTS" \
   --split full_data \
   --model-dir "$FULL_MODEL" \
+  --training-config "$CONFIG" \
   --output-dir "$RUN/full_data/prediction" \
   --device "$DEVICE"
 ```
@@ -181,5 +189,6 @@ python -m unittest -v \
 
 They verify train-only artifact resolution even when truth is deliberately
 missing, physical LOTO removal, the single full-data t0-to-all-target schedule,
-fixed deterministic 5,000-particle bootstrapping, raw-weight export, the exact
-alpha/stage profile, and six-stage checkpoint completeness.
+fixed deterministic 5,000-particle bootstrapping, raw-weight export, all four
+package profiles, embedded edge-predictor portability, and six-stage
+checkpoint completeness.

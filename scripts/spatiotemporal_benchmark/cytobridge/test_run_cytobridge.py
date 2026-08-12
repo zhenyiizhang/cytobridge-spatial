@@ -20,6 +20,7 @@ from common import (  # noqa: E402
     CONTRACT_VERSION,
     PREDICTION_N,
     ContractError,
+    _checkpoint_runtime_binding,
     bootstrap_indices,
     checkpoint_inventory,
     checkpoint_training_match,
@@ -37,14 +38,23 @@ from run_cytobridge import (  # noqa: E402
 )
 
 
-def locked_config() -> dict:
-    path = (
-        HERE.parents[2]
-        / "CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml"
-    )
+PACKAGE_CONFIGS = {
+    "zebrafish": "zebrafish_spatial_full_alpha_express_0015.yaml",
+    "mosta": "mosta_spatial_full_alpha_express_0015.yaml",
+    "arista": "arista_spatial_full.yaml",
+    "admouse": "admouse_spatial_full_alpha_express_0015.yaml",
+}
+
+
+def package_config(dataset: str = "zebrafish") -> dict:
+    path = HERE.parents[2] / "CytoBridge/configs" / PACKAGE_CONFIGS[dataset]
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
     return payload
+
+
+def locked_config() -> dict:
+    return package_config("zebrafish")
 
 
 def runtime_config() -> dict:
@@ -121,8 +131,10 @@ def write_mock_inputs(
         time=times,
         row_id=row_id,
     )
-    source_value = int(np.min(times)) if regime == "full_data" else int(
-        max(value for value in np.unique(times) if value < holdout)
+    source_value = (
+        int(np.min(times))
+        if regime == "full_data"
+        else int(max(value for value in np.unique(times) if value < holdout))
     )
     source_candidates = np.flatnonzero(times == source_value)
     source_indices = np.resize(source_candidates, PREDICTION_N)
@@ -192,29 +204,56 @@ def write_mock_inputs(
 
 
 class ConfigContractTests(unittest.TestCase):
-    def test_exact_six_stage_profile(self) -> None:
-        report = validate_training_config(locked_config())
-        self.assertEqual(report["alpha_express"], 0.015)
-        self.assertEqual(
-            [stage["epochs"] for stage in report["stage_profile"]],
-            [100, 100, 50, 2001, 1000, 2001],
-        )
+    def test_all_package_dataset_profiles_share_the_core_contract(self) -> None:
+        expected_score_epochs = {
+            "zebrafish": 2001,
+            "mosta": 2001,
+            "arista": 2001,
+            "admouse": 3001,
+        }
+        for dataset in PACKAGE_CONFIGS:
+            with self.subTest(dataset=dataset):
+                report = validate_training_config(package_config(dataset))
+                self.assertEqual(report["alpha_express"], 0.015)
+                self.assertEqual(
+                    report["stage_profile"][3]["epochs"], expected_score_epochs[dataset]
+                )
 
-    def test_wrong_alpha_and_epoch_are_rejected(self) -> None:
+    def test_all_resolved_package_profiles_keep_their_dataset_recipe(self) -> None:
+        for dataset in PACKAGE_CONFIGS:
+            with self.subTest(dataset=dataset):
+                source = package_config(dataset)
+                resolved = copy.deepcopy(source)
+                resolved["ckpt_dir"] = f"/runs/{dataset}/training"
+                resolved["spatial_dim"] = 2
+                resolved["model"]["spatial_dim"] = 2
+                resolved["model"]["interaction_net"][
+                    "edge_predictor_path"
+                ] = f"/runs/{dataset}/preprocess/edge_classifier/{dataset}.pt"
+                for stage in resolved["training"]["plan"]:
+                    stage["sigma"] = 0.03
+                report = validate_training_config(
+                    resolved,
+                    runtime_resolved=True,
+                    reference=source,
+                )
+                self.assertTrue(report["runtime_resolved"])
+
+    def test_wrong_shared_alpha_and_stage_role_are_rejected(self) -> None:
         config = locked_config()
         config["training"]["defaults"]["alpha_express"] = 0.05
         with self.assertRaisesRegex(ContractError, "alpha_express"):
             validate_training_config(config)
         config = locked_config()
-        config["training"]["plan"][-1]["epochs"] = 2000
-        with self.assertRaisesRegex(ContractError, "epochs"):
+        config["training"]["plan"][-1]["train_strategy"] = "v+g"
+        with self.assertRaisesRegex(ContractError, "train_strategy"):
             validate_training_config(config)
 
-    def test_training_critical_mutations_are_rejected(self) -> None:
+    def test_resolved_fit_must_match_its_dataset_package_recipe(self) -> None:
+        reference = locked_config()
         mutations = (
             ("default learning rate", ("training", "defaults", "lr"), 0.0002),
             ("default OT weight", ("training", "defaults", "lambda_ot"), 9.0),
-            ("model cutoff", ("model", "interaction_net", "cutoff"), 0.13),
             ("model heads", ("model", "interaction_net", "num_heads"), 4),
             ("stage OT loss", ("training", "plan", 0, "OT_loss"), "weighted_emd"),
             ("stage numeric bool", ("training", "plan", 0, "lambda_ot"), True),
@@ -232,49 +271,43 @@ class ConfigContractTests(unittest.TestCase):
                 for key in path[:-1]:
                     target = target[key]
                 target[path[-1]] = replacement
-                with self.assertRaises(ContractError):
-                    validate_training_config(config)
+                config["model"]["spatial_dim"] = 2
+                with self.assertRaisesRegex(ContractError, "package YAML"):
+                    validate_training_config(
+                        config,
+                        runtime_resolved=True,
+                        reference=reference,
+                    )
 
-    def test_missing_and_extra_fields_are_rejected(self) -> None:
+    def test_missing_shared_contract_fields_are_rejected(self) -> None:
         mutations = (
-            ("missing default", lambda value: value["training"]["defaults"].pop("lr")),
             (
-                "extra default",
-                lambda value: value["training"]["defaults"].update({"dropout": 0.1}),
+                "missing alpha",
+                lambda value: value["training"]["defaults"].pop("alpha_express"),
             ),
             (
                 "missing model field",
                 lambda value: value["model"]["velocity_net"].pop("n_layers"),
             ),
             (
-                "extra model field",
-                lambda value: value["model"]["velocity_net"].update({"dropout": 0.1}),
+                "missing stage epochs",
+                lambda value: value["training"]["plan"][0].pop("epochs"),
             ),
-            (
-                "missing stage field",
-                lambda value: value["training"]["plan"][0].pop("OT_loss"),
-            ),
-            (
-                "extra stage field",
-                lambda value: value["training"]["plan"][0].update(
-                    {"use_density_loss": False}
-                ),
-            ),
-            ("extra top-level field", lambda value: value.update({"device": "cuda"})),
         )
         for label, mutation in mutations:
             with self.subTest(label=label):
                 config = locked_config()
                 mutation(config)
-                with self.assertRaisesRegex(ContractError, "(lacks|required|unsupported)"):
+                with self.assertRaises(ContractError):
                     validate_training_config(config)
 
-    def test_only_audited_runtime_fields_are_allowed(self) -> None:
+    def test_runtime_graph_fields_can_change_but_scientific_fields_cannot(self) -> None:
         config = runtime_config()
-        with self.assertRaisesRegex(ContractError, "(ckpt_dir|unsupported)"):
-            validate_training_config(config)
         report = validate_training_config(
-            config, runtime_resolved=True, runtime_sigma=0.03
+            config,
+            runtime_resolved=True,
+            runtime_sigma=0.03,
+            reference=locked_config(),
         )
         self.assertTrue(report["runtime_resolved"])
         self.assertEqual(report["runtime_resolved_fields"]["model.spatial_dim"], 2)
@@ -286,14 +319,50 @@ class ConfigContractTests(unittest.TestCase):
                 wrong_sigma, runtime_resolved=True, runtime_sigma=0.03
             )
 
-        extra = runtime_config()
-        extra["model"]["interaction_net"]["runtime_guess"] = 1
-        with self.assertRaisesRegex(ContractError, "unsupported"):
-            validate_training_config(extra, runtime_resolved=True, runtime_sigma=0.03)
+        scientific_change = runtime_config()
+        scientific_change["model"]["interaction_net"]["num_heads"] = 4
+        with self.assertRaisesRegex(ContractError, "package YAML"):
+            validate_training_config(
+                scientific_change,
+                runtime_resolved=True,
+                runtime_sigma=0.03,
+                reference=locked_config(),
+            )
 
         with self.assertRaisesRegex(ContractError, "runtime CLI sigma"):
             validate_training_config(
                 runtime_config(), runtime_resolved=True, runtime_sigma=0.05
+            )
+
+    def test_embedded_predictor_does_not_require_the_recorded_external_file(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary).resolve()
+
+            class Data:
+                spatial_dim = 2
+
+            inventory = {
+                "training_profile": {
+                    "runtime_resolved_fields": {
+                        "ckpt_dir": str(model),
+                        "model.spatial_dim": 2,
+                        "model.interaction_net.cutoff": 0.08,
+                        "model.interaction_net.edge_predictor_path": "/old/machine/missing.pt",
+                        "model.interaction_net.edge_predictor_thre": 0.57,
+                    }
+                }
+            }
+            report = _checkpoint_runtime_binding(
+                model,
+                Data(),
+                inventory,
+                {"interaction_cutoff": 0.08, "edge_threshold": 0.57},
+            )
+            self.assertFalse(report["external_edge_predictor_required"])
+            self.assertEqual(
+                report["edge_predictor_source"], "embedded_finetune_checkpoint"
             )
 
 
@@ -350,7 +419,9 @@ class PopulationAndOutputTests(unittest.TestCase):
 
     def test_prediction_npz_keeps_raw_weights(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            point = np.arange(PREDICTION_N * 5, dtype=np.float32).reshape(PREDICTION_N, 5)
+            point = np.arange(PREDICTION_N * 5, dtype=np.float32).reshape(
+                PREDICTION_N, 5
+            )
             weights = np.linspace(0.1, 0.2, PREDICTION_N, dtype=np.float64)
 
             class Data:

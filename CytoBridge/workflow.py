@@ -2205,6 +2205,21 @@ def _run_downstream(
         },
         "classifier_accuracy": result.classifier_accuracy,
         "classifier_balanced_accuracy": result.classifier_balanced_accuracy,
+        "classifier_split": (
+            None
+            if result.classifier_evaluation is None
+            else {
+                "per_class_counts": result.classifier_evaluation.get(
+                    "per_class_split_counts", {}
+                ),
+                "training_only_singleton_classes": result.classifier_evaluation.get(
+                    "training_only_singleton_classes", []
+                ),
+                "singleton_class_policy": result.classifier_evaluation.get(
+                    "singleton_class_policy"
+                ),
+            }
+        ),
         "snapshots": snapshots,
         "analyses": analyses,
     }
