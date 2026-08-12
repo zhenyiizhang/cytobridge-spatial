@@ -357,7 +357,8 @@ def _resolved_time_mapping(
     """Resolve a mapping against observed labels, tolerating JSON string keys.
 
     JSON objects necessarily stringify numeric keys. Exact key matches always
-    win; a unique ``str(key)`` match is used only when no exact match exists.
+    win; otherwise a unique string or finite-numeric equivalent is accepted.
+    Ambiguous equivalents are rejected rather than choosing by input order.
     """
     resolved: Dict[object, float] = {}
     missing = []
@@ -366,15 +367,37 @@ def _resolved_time_mapping(
         if observed in time_mapping:
             target = time_mapping[observed]
         else:
-            string_matches = [
-                value for key, value in mapping_items if str(key) == str(observed)
+            equivalent_items = [
+                (key, value)
+                for key, value in mapping_items
+                if str(key) == str(observed)
             ]
-            if len(string_matches) == 1:
-                target = string_matches[0]
-            elif len(string_matches) > 1:
+            if not isinstance(observed, (bool, np.bool_)):
+                try:
+                    observed_numeric = float(observed)
+                except (TypeError, ValueError):
+                    observed_numeric = None
+                if observed_numeric is not None and np.isfinite(observed_numeric):
+                    for key, value in mapping_items:
+                        if any(
+                            existing_key == key for existing_key, _ in equivalent_items
+                        ):
+                            continue
+                        if isinstance(key, (bool, np.bool_)):
+                            continue
+                        try:
+                            key_numeric = float(key)
+                        except (TypeError, ValueError):
+                            continue
+                        if np.isfinite(key_numeric) and key_numeric == observed_numeric:
+                            equivalent_items.append((key, value))
+            if len(equivalent_items) == 1:
+                target = equivalent_items[0][1]
+            elif len(equivalent_items) > 1:
+                equivalent_keys = [key for key, _ in equivalent_items]
                 raise ValueError(
-                    "time_mapping contains ambiguous string-equivalent keys for "
-                    f"observed time {observed!r}."
+                    "time_mapping contains ambiguous equivalent keys for "
+                    f"observed time {observed!r}: {equivalent_keys}."
                 )
             else:
                 missing.append(observed)

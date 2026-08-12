@@ -430,3 +430,40 @@ def test_numeric_time_mapping_provenance_is_h5ad_safe(tmp_path) -> None:
         {"source": "2", "source_type": "int", "target": 1.0},
     ]
     assert result.obs["time_point_processed"].tolist() == [0.0, 0.0, 1.0, 1.0]
+
+
+def test_json_numeric_time_mapping_matches_float_observations() -> None:
+    adata = AnnData(
+        X=np.ones((3, 1), dtype=np.float32),
+        obs={"time": np.asarray([1.0, 2.0, 3.0], dtype=np.float64)},
+    )
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        time_mapping={"1": 0.0, "2": 1.0, "3": 2.0},
+        normalization=False,
+        log1p=False,
+        dim_reduction="none",
+        select_hvg=False,
+    )
+
+    assert result.obs["time_point_processed"].tolist() == [0.0, 1.0, 2.0]
+
+
+def test_numeric_time_mapping_rejects_ambiguous_string_keys() -> None:
+    adata = AnnData(
+        X=np.ones((1, 1), dtype=np.float32),
+        obs={"time": np.asarray([1.0], dtype=np.float64)},
+    )
+
+    with pytest.raises(ValueError, match="ambiguous equivalent keys"):
+        preprocess(
+            adata,
+            time_key="time",
+            time_mapping={"1": 0.0, "1.0": 0.0},
+            normalization=False,
+            log1p=False,
+            dim_reduction="none",
+            select_hvg=False,
+        )
