@@ -1158,6 +1158,8 @@ def _run_preprocess(
         output_h5ad=None,
         cfg=cfg,
         batch_indices=preprocess_config.get("batch_indices"),
+        batch_values=preprocess_config.get("batch_values"),
+        drop_uns_keys=preprocess_config.get("drop_uns_keys"),
         device=options.device,
     )
     if lr_feature_coverage is not None:

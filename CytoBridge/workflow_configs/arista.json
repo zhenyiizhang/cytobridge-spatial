@@ -19,9 +19,25 @@
   },
   "preprocess": {
     "enabled": true,
-    "time_key": "time",
+    "time_key": "Batch",
     "annotation_source": "Annotation",
-    "batch_indices": null,
+    "batch_values": [
+      "Injury_2DPI_rep1_SS200000147BL_D5",
+      "Injury_5DPI_rep1_SS200000147BL_D2",
+      "Injury_10DPI_rep1_SS200000147BL_B5",
+      "Injury_15DPI_rep4_FP200000266TR_E4",
+      "Injury_20DPI_rep2_SS200000147BL_B4"
+    ],
+    "drop_uns_keys": [
+      "Injury_2DPI_rep1_SS200000147BL_D5",
+      "Injury_5DPI_rep1_SS200000147BL_D2",
+      "Injury_10DPI_rep1_SS200000147BL_B5",
+      "Injury_15DPI_rep4_FP200000266TR_E4",
+      "Injury_20DPI_rep2_SS200000147BL_B4",
+      "Injury_30DPI_rep2_FP200000264BL_A6",
+      "Injury_60DPI_rep3_FP200000264BL_A6",
+      "Injury_control_FP200000239BL_E3"
+    ],
     "align": {
       "n_top_genes": 2000,
       "n_pcs": 50,
@@ -30,10 +46,11 @@
       "counts_layer": "counts",
       "raw_count_validation": "strict",
       "observation_id_keys": ["Batch", "CellID"],
+      "hvg_batch_key": "Batch",
       "spatial_dim": 2,
       "shared_scale": 3000.0,
       "center_x": true,
-      "center_y": false,
+      "center_y": true,
       "flip_y": false,
       "phase1_epochs": 10000,
       "phase2_epochs": 500,
@@ -44,7 +61,17 @@
       "batch_size": 1024,
       "distance_pairs": 10000,
       "learning_rate": 0.001,
-      "random_seed": 42
+      "random_seed": 42,
+      "time_mapping": {
+        "Injury_control_FP200000239BL_E3": -1.0,
+        "Injury_2DPI_rep1_SS200000147BL_D5": 0.0,
+        "Injury_5DPI_rep1_SS200000147BL_D2": 1.0,
+        "Injury_10DPI_rep1_SS200000147BL_B5": 2.0,
+        "Injury_15DPI_rep4_FP200000266TR_E4": 3.0,
+        "Injury_20DPI_rep2_SS200000147BL_B4": 4.0,
+        "Injury_30DPI_rep2_FP200000264BL_A6": 5.0,
+        "Injury_60DPI_rep3_FP200000264BL_A6": 6.0
+      }
     },
     "edge_predictor": {
       "split": 0,

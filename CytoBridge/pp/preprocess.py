@@ -476,6 +476,7 @@ def preprocess(
     raw_count_integer_tolerance: float = 1e-6,
     required_latent_features: Optional[Sequence[str]] = None,
     observation_id_keys: Optional[Sequence[str]] = None,
+    hvg_batch_key: Optional[str] = None,
 ) -> AnnData:
     """
     Preprocess step for dynamical optimal transport analysis.
@@ -548,6 +549,10 @@ def preprocess(
     observation_id_keys
         Optional ``adata.obs`` columns that jointly define a stable cell ID.
         Required when input observation names are duplicated.
+    hvg_batch_key
+        Optional observation column for batch-aware highly-variable-gene
+        selection. The complete input population still participates in the
+        PCA fit before any later alignment-time subset is selected.
     Returns
     -------
     AnnData
@@ -736,9 +741,20 @@ def preprocess(
     required_latent_features_added: list[str] = []
     if select_hvg:
         print(f"Selecting top {n_top_genes} highly variable genes.")
+        resolved_hvg_batch_key = None
+        if hvg_batch_key is not None:
+            resolved_hvg_batch_key = str(hvg_batch_key).strip()
+            if not resolved_hvg_batch_key:
+                raise ValueError("hvg_batch_key must be a non-empty obs column name.")
+            if resolved_hvg_batch_key not in adata.obs:
+                raise KeyError(
+                    f"hvg_batch_key {resolved_hvg_batch_key!r} is absent from "
+                    f"adata.obs. Available columns: {list(adata.obs.columns)}"
+                )
         sc.pp.highly_variable_genes(
             adata,
             n_top_genes=n_top_genes,
+            batch_key=resolved_hvg_batch_key,
         )
         hvg_mask = adata.var.highly_variable.copy()
         if required_latent_features_requested:
@@ -885,6 +901,9 @@ def preprocess(
         "time_mapping_source": time_mapping_source,
         "time_mapping_json": _time_mapping_json(resolved_time_mapping),
         "observation_names": observation_name_info,
+        "hvg_batch_key": (
+            str(hvg_batch_key).strip() if hvg_batch_key is not None else "none"
+        ),
     }
     adata.uns["preprocess_info"] = preprocess_info
     original_gene_info = {

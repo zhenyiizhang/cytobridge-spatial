@@ -254,6 +254,27 @@ def test_arista_preprocessing_uses_raw_counts_layer():
     assert align["counts_layer"] == "counts"
     assert align["raw_count_validation"] == "strict"
     assert align["observation_id_keys"] == ["Batch", "CellID"]
+    assert align["hvg_batch_key"] == "Batch"
+    assert align["center_x"] is True
+    assert align["center_y"] is True
+    assert config["preprocess"]["time_key"] == "Batch"
+    assert config["preprocess"]["batch_values"] == [
+        "Injury_2DPI_rep1_SS200000147BL_D5",
+        "Injury_5DPI_rep1_SS200000147BL_D2",
+        "Injury_10DPI_rep1_SS200000147BL_B5",
+        "Injury_15DPI_rep4_FP200000266TR_E4",
+        "Injury_20DPI_rep2_SS200000147BL_B4",
+    ]
+    assert set(config["preprocess"]["drop_uns_keys"]) == {
+        "Injury_2DPI_rep1_SS200000147BL_D5",
+        "Injury_5DPI_rep1_SS200000147BL_D2",
+        "Injury_10DPI_rep1_SS200000147BL_B5",
+        "Injury_15DPI_rep4_FP200000266TR_E4",
+        "Injury_20DPI_rep2_SS200000147BL_B4",
+        "Injury_30DPI_rep2_FP200000264BL_A6",
+        "Injury_60DPI_rep3_FP200000264BL_A6",
+        "Injury_control_FP200000239BL_E3",
+    }
 
 
 def test_admouse_preprocessing_uses_stable_sample_cell_identity():

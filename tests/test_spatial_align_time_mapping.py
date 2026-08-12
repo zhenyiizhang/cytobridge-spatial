@@ -1,4 +1,5 @@
 import anndata as ad
+import json
 import numpy as np
 import pandas as pd
 
@@ -28,14 +29,22 @@ def test_preprocess_and_align_forwards_explicit_time_mapping(monkeypatch):
     def fake_preprocess(*, adata, time_key, time_mapping, **kwargs):
         assert time_key == "time"
         assert time_mapping == mapping
-        adata.obs["time_point_processed"] = adata.obs[time_key].map(time_mapping).astype(float)
+        adata.obs["time_point_processed"] = (
+            adata.obs[time_key].map(time_mapping).astype(float)
+        )
         adata.obsm["X_latent"] = np.zeros((adata.n_obs, 2), dtype=np.float32)
         return adata
 
     def fake_align(*, adata, batch_indices, **kwargs):
         selected = adata[adata.obs["time"] != "3.3hpf"].copy()
         assert batch_indices == [1, 2, 3, 4, 5]
-        assert selected.obs["time_point_processed"].tolist() == [0.0, 1.0, 2.0, 3.0, 4.0]
+        assert selected.obs["time_point_processed"].tolist() == [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+        ]
         return selected, pd.DataFrame({"samples": [0.0, 1.0, 2.0, 3.0, 4.0]})
 
     monkeypatch.setattr(spatial_align, "preprocess", fake_preprocess)
@@ -97,3 +106,135 @@ def test_prepare_alignment_accepts_explicit_coordinate_schema():
         np.asarray([[10.0, 30.0], [20.0, 40.0]], dtype=np.float32),
     )
     assert batches == ["a", "b"]
+
+
+def test_prepare_alignment_selects_named_batches_independent_of_category_order():
+    obs = pd.DataFrame(
+        {
+            "stage": pd.Categorical(
+                ["late", "early", "middle"],
+                categories=["middle", "late", "early"],
+            ),
+            "time_point_processed": [2.0, 0.0, 1.0],
+        },
+        index=["late-cell", "early-cell", "middle-cell"],
+    )
+    adata = ad.AnnData(X=np.ones((3, 2), dtype=np.float32), obs=obs)
+    adata.obsm["X_latent"] = np.ones((3, 2), dtype=np.float32)
+    adata.obsm["spatial"] = np.arange(6, dtype=np.float32).reshape(3, 2)
+
+    prepared, batches = spatial_align._prepare_adata_for_alignment(
+        adata,
+        time_key="stage",
+        cfg=spatial_align.AlignConfig(),
+        batch_values=["early", "middle"],
+    )
+
+    assert batches == ["early", "middle"]
+    assert prepared.obs_names.tolist() == ["early-cell", "middle-cell"]
+
+
+def test_prepare_alignment_rejects_mixed_batch_selectors():
+    obs = pd.DataFrame(
+        {"stage": ["a"], "time_point_processed": [0.0]},
+        index=["cell"],
+    )
+    adata = ad.AnnData(X=np.ones((1, 1), dtype=np.float32), obs=obs)
+    adata.obsm["X_latent"] = np.ones((1, 1), dtype=np.float32)
+    adata.obsm["spatial"] = np.ones((1, 2), dtype=np.float32)
+
+    with np.testing.assert_raises_regex(ValueError, "not both"):
+        spatial_align._prepare_adata_for_alignment(
+            adata,
+            time_key="stage",
+            cfg=spatial_align.AlignConfig(),
+            batch_indices=[0],
+            batch_values=["a"],
+        )
+
+
+def test_prepare_alignment_rejects_unused_categorical_batch_value():
+    obs = pd.DataFrame(
+        {
+            "stage": pd.Categorical(["a"], categories=["a", "empty"]),
+            "time_point_processed": [0.0],
+        },
+        index=["cell"],
+    )
+    adata = ad.AnnData(X=np.ones((1, 1), dtype=np.float32), obs=obs)
+    adata.obsm["X_latent"] = np.ones((1, 1), dtype=np.float32)
+    adata.obsm["spatial"] = np.ones((1, 2), dtype=np.float32)
+
+    with np.testing.assert_raises_regex(ValueError, "no observed cells"):
+        spatial_align._prepare_adata_for_alignment(
+            adata,
+            time_key="stage",
+            cfg=spatial_align.AlignConfig(),
+            batch_values=["empty"],
+        )
+
+
+def test_preprocess_file_wrapper_drops_only_declared_raw_uns(monkeypatch, tmp_path):
+    raw = ad.AnnData(
+        X=np.ones((2, 2), dtype=np.float32),
+        obs=pd.DataFrame({"time": [0, 1]}, index=["a", "b"]),
+    )
+    raw.uns["large_attachment"] = {"seg_cell": np.ones((4, 4), dtype=np.int32)}
+    raw.uns["keep_colors"] = ["#000000", "#ffffff"]
+    raw_path = tmp_path / "raw.h5ad"
+    raw.write_h5ad(raw_path)
+
+    def fake_preprocess_and_align(*, adata, **kwargs):
+        assert "large_attachment" not in adata.uns
+        assert list(adata.uns["keep_colors"]) == ["#000000", "#ffffff"]
+        return adata, pd.DataFrame({"samples": [0.0, 1.0]})
+
+    monkeypatch.setattr(
+        spatial_align, "preprocess_and_align", fake_preprocess_and_align
+    )
+    result = spatial_align.preprocess_align_to_files(
+        h5ad_path=str(raw_path),
+        time_key="time",
+        output_csv=str(tmp_path / "aligned.csv"),
+        output_h5ad=None,
+        drop_uns_keys=["large_attachment"],
+    )
+
+    record = json.loads(result.uns["cytobridge_removed_raw_uns_json"])
+    assert record == {
+        "reason": "dataset preset excludes non-model imaging attachments",
+        "already_absent": [],
+        "removed": [
+            {
+                "key": "large_attachment",
+                "type": "dict",
+                "child_keys": ["seg_cell"],
+            }
+        ],
+    }
+    assert "large_attachment" not in result.uns
+    assert list(result.uns["keep_colors"]) == ["#000000", "#ffffff"]
+
+
+def test_preprocess_file_wrapper_accepts_already_slim_input(monkeypatch, tmp_path):
+    raw = ad.AnnData(X=np.ones((1, 1), dtype=np.float32))
+    raw.obs["time"] = [0]
+    raw_path = tmp_path / "raw.h5ad"
+    raw.write_h5ad(raw_path)
+
+    monkeypatch.setattr(
+        spatial_align,
+        "preprocess_and_align",
+        lambda *, adata, **kwargs: (adata, pd.DataFrame({"samples": [0.0]})),
+    )
+    result = spatial_align.preprocess_align_to_files(
+        h5ad_path=str(raw_path),
+        time_key="time",
+        output_csv=str(tmp_path / "aligned.csv"),
+        output_h5ad=None,
+        drop_uns_keys=["missing_attachment"],
+    )
+
+    record = json.loads(result.uns["cytobridge_removed_raw_uns_json"])
+    assert record["removed"] == []
+    assert record["already_absent"] == ["missing_attachment"]

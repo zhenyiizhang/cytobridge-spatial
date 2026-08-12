@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import pandas as pd
 import pytest
 from anndata import AnnData
 from scipy import sparse
@@ -43,6 +44,59 @@ def test_preprocess_can_restore_counts_before_normalize_log1p() -> None:
     np.testing.assert_array_equal(result.layers["counts"].toarray(), counts)
     assert result.uns["preprocess_info"]["expression_source"] == "layers['counts']"
     assert result.uns["preprocess_info"]["expression_layer"] == "counts"
+
+
+def test_preprocess_forwards_batch_key_to_hvg_selection(monkeypatch) -> None:
+    adata = AnnData(
+        X=np.asarray(
+            [
+                [1.0, 0.0, 2.0],
+                [0.0, 3.0, 1.0],
+                [4.0, 1.0, 0.0],
+                [1.0, 2.0, 1.0],
+            ],
+            dtype=np.float32,
+        ),
+        obs=pd.DataFrame(
+            {"time": [0, 0, 1, 1], "Batch": ["a", "a", "b", "b"]},
+            index=["c0", "c1", "c2", "c3"],
+        ),
+    )
+    captured = {}
+
+    def fake_hvg(target, *, n_top_genes, batch_key):
+        captured["n_top_genes"] = n_top_genes
+        captured["batch_key"] = batch_key
+        target.var["highly_variable"] = [True, False, True]
+
+    monkeypatch.setattr("scanpy.pp.highly_variable_genes", fake_hvg)
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        select_hvg=True,
+        n_top_genes=2,
+        dim_reduction="none",
+        hvg_batch_key="Batch",
+    )
+
+    assert captured == {"n_top_genes": 2, "batch_key": "Batch"}
+    assert result.uns["preprocess_info"]["hvg_batch_key"] == "Batch"
+
+
+def test_preprocess_rejects_missing_hvg_batch_column() -> None:
+    with pytest.raises(KeyError, match="hvg_batch_key"):
+        preprocess(
+            _example_adata(),
+            time_key="time",
+            normalization=False,
+            log1p=False,
+            select_hvg=True,
+            dim_reduction="none",
+            hvg_batch_key="missing_batch",
+        )
 
 
 def test_preprocess_existing_x_behavior_remains_explicit() -> None:

@@ -9,7 +9,8 @@ The source distribution also includes maintained helpers for preprocessing,
 training, checkpoint conversion, notebook and wheel smoke tests, training-cost
 summaries, the matched spatiotemporal benchmark, and the reviewer analyses
 documented in this repository. `complete_downstream.py` is a compatibility
-alias for `cytobridge workflow`.
+alias for `cytobridge workflow`; `run_arista_end_to_end.py` is the same kind of
+thin alias with the packaged `arista` preset already selected.
 
 `verify_historical_artifact_compatibility.py` is a read-only maintainer check
 for comparing a checkpoint through its original source loader and the current

@@ -570,23 +570,25 @@ The feature table must match the checkpoint contract recorded in
 
 ## Canonical ARISTA reproduction
 
-ARISTA has a dataset-specific entry point, but all computation is delegated to
-the same public preprocessing, training, evaluation, simulation, communication,
-lineage, and plotting APIs used by other datasets.
+ARISTA uses the same packaged workflow as the other datasets. The preset
+contains the dataset schema and formal scientific settings; the user supplies
+the full H5AD and an output directory.
 
 ### Full H5AD-to-model run
 
 ```bash
-CUDA_VISIBLE_DEVICES=7 python scripts/run_arista_end_to_end.py \
-  --profile full \
-  --stage all \
-  --threshold-policy preprocess \
-  --expression-layer counts \
-  --h5ad-path /path/to/ARTISTA_after_pp_with_ae_and_center.h5ad \
-  --database-path /path/to/CellChatDB.ligrec.human.csv \
-  --output-dir /path/to/runs/arista-full \
+CUDA_VISIBLE_DEVICES=0 cytobridge workflow \
+  --config arista \
+  --train \
+  --input-h5ad /path/to/Regeneration.h5ad \
+  --output-dir /path/to/runs/arista-corrected \
   --device cuda
 ```
+
+The preset selects the species-matched LR database bundled with the package.
+Use `--graph-database` only to supply an intentional replacement database.
+Preprocessing trains a new edge predictor from this dataset's aligned cells and
+LR graph; it is not a model that the user must provide.
 
 The full profile uses the recovered CytoBridge six-stage spatial schedule in
 `CytoBridge/configs/arista_spatial_full.yaml`: 100 pretraining epochs, 100
@@ -607,23 +609,28 @@ but the original interaction-stage training driver and execution log are not
 part of the released assets. Therefore exact historical retraining should not
 be claimed from metadata alone; the formal comparison treats the saved model as
 the reference and the recovered package schedule as a separately labeled run.
-The ARISTA source H5AD stores an already log-transformed matrix in `X` and
-integer raw values in `layers['counts']`. The canonical runner therefore
+The complete ARISTA source H5AD stores an already log-transformed matrix in `X`
+and integer raw values in `layers['counts']`. The canonical runner therefore
 copies `layers['counts']` into `X` before median-library-size normalization and
 `log1p`, preventing the historical double transformation. This source choice
-is recorded in `uns['preprocess_info']` and the run manifest. Passing
-`--expression-layer X --allow-retransform-preprocessed-x` is reserved for an
-explicitly labelled legacy replay; an already transformed `X` otherwise fails
-fast instead of being silently transformed again. Because the available
-ARISTA H5AD is already restricted to 2,000 genes, this run is described as a
-counts-source, fixed-2,000-gene clean rerun rather than full-gene raw-data
-preprocessing. The alignment recipe uses median-library-size normalization
-(`target_sum=None` in Scanpy), 2,000 HVGs, 50 PCs, two aligned spatial
-coordinates, and seed 42.
-The canonical runner sets `evaluate_after_training=False` because the trainer's
+is recorded in `uns['preprocess_info']` and the run summary. A custom workflow
+may explicitly set `expression_layer: null` and
+`allow_retransform_preprocessed_x: true` for a labelled legacy replay; the
+packaged preset never does so, and an already transformed `X` otherwise fails
+fast instead of being silently transformed again. The package preset uses the
+complete 16,379-gene `Regeneration.h5ad`, selects HVGs across all eight batches,
+retains matched LR subunits in the PCA mask, and aligns the five named
+2/5/10/15/20-DPI batches. This yields 46,209 cells. The historical prepared
+2,000-gene file contains 46,189 of them, but its extra 20-cell spatial crop is
+not recoverable as a complete executable rule; the corrected pipeline does not
+guess it. The alignment recipe uses median-library-size normalization
+(`target_sum=None` in Scanpy), 2,000 base HVGs plus required LR features, 50
+PCs, two aligned spatial coordinates, and seed 42.
+The packaged workflow sets `evaluate_after_training=False` because the trainer's
 historical in-memory evaluation is redundant and can retain a large autograd
-graph. It evaluates the saved checkpoint immediately afterward through the
-bounded, reproducible distribution-evaluation API instead.
+graph. Standard downstream analyses run from the saved checkpoint. Add
+`--reconstruction-diagnostic` only for the fitted-model reconstruction table;
+the matched held-out/cross-method benchmark is a separate evaluation pipeline.
 
 The seed is applied before model construction as well as before sampling.
 For stages that explicitly use `save_strategy: last`, the saved state follows
@@ -650,15 +657,16 @@ The run writes:
 - `preprocess/arista_aligned.h5ad` and `arista_aligned.csv`
 - per-timepoint graph inputs and edge-predictor metadata
 - staged checkpoints under `training/`
-- PCA/spatial generated-versus-observed figures
-- joint, spatial, and PCA W1/W2 metrics plus TMV and local-structure diagnostics
-- compressed generated/observed sample arrays used to calculate the figures
-- a machine-readable `downstream/run_manifest.json`, including the exact
-  weight and score checkpoint paths
+- generated and observed slice H5ADs under `downstream/slice_data/`
+- fresh per-time velocity, growth, composition, and sparse communication tables
+- temporal gene and strict complete-subunit LR tables using the same PCA reference
+- standard snapshot, velocity, growth, composition, and communication figures
+- `downstream/summary.json`, including the loaded weight/score stages and the
+  scientific checkpoint-contract comparison
 
-Use `--profile smoke` only to test wiring. Its per-timepoint subsampling changes
-nearest-neighbor distances, so its automatically estimated spatial cutoff is not
-scientifically comparable with the full-data or published cutoff.
+The tutorial notebooks use a clearly labelled compact scope for wiring checks.
+Compact outputs are not substitutes for this full-data command because
+subsampling changes spatial neighborhoods and edge-predictor training.
 
 ### Auditing a released model-input CSV
 
@@ -686,37 +694,27 @@ and coordinate changes in a controlled comparison.
 
 ### Threshold provenance
 
-With `--threshold-policy preprocess` (recommended), preprocessing estimates the
-spatial neighborhood cutoff from the aligned coordinates and selects the edge
-classifier threshold on validation data. Both effective values and their sources
-are stored in `adata.uns` and edge metadata. `CytoBridge.tl.fit` reads those values
-directly from the aligned H5AD, so preprocessing and training cannot silently use
-different thresholds.
-
-For an explicit historical control, `--threshold-policy published` stores and
-uses the ARISTA manuscript values:
-
-- spatial neighborhood cutoff: `0.05`
-- edge-predictor decision threshold: `0.45`
-
-This control is useful for sensitivity analysis; it is not an instruction to
-reuse a smoke-run threshold on the full dataset.
+The packaged ARISTA preset fixes the formal spatial cutoff at
+`0.03154105148551745`. The newly trained edge predictor selects its decision
+threshold on validation data and passes that value directly to the six-stage
+model. Both effective values and their sources are stored in the aligned H5AD,
+edge metadata, and resolved training configuration, so the three steps cannot
+silently diverge. `--interaction-cutoff` and
+`--edge-predictor-threshold` are explicit sensitivity overrides; they are not
+required for a standard run.
 
 Because the neighborhood policy also changes the graph used to train the edge
 classifier, two independently preprocessed policy runs may have different edge
 weights even when their aligned coordinates and PCA values match. To isolate
-fit-time thresholds, copy one prepared H5AD and edge model byte-for-byte and use
-the runner's explicit training overrides:
+fit-time thresholds, use a matched aligned H5AD and edge predictor together:
 
 ```bash
-python scripts/run_arista_end_to_end.py \
-  --profile full --stage train \
-  --h5ad-path /path/to/frozen/preprocess/arista_aligned.h5ad \
-  --database-path /path/to/CellChatDB.ligrec.human.csv \
+cytobridge workflow --config arista --train --step downstream \
+  --aligned-h5ad /path/to/frozen/preprocess/arista_aligned.h5ad \
   --output-dir /path/to/frozen-control \
-  --training-interaction-cutoff 0.05 \
-  --training-edge-predictor-threshold 0.45 \
-  --training-edge-predictor-path /path/to/frozen/preprocess/edge_classifier/arista_edge_model.pt
+  --interaction-cutoff 0.05 \
+  --edge-predictor-threshold 0.45 \
+  --edge-predictor-path /path/to/frozen/preprocess/edge_classifier/arista_edge_model.pt
 ```
 
 The resolved `training/config.yaml` records the effective values and edge-model
@@ -1078,7 +1076,7 @@ environment or results directory.
 - `scripts/preprocess_pipeline.py`: end-to-end preprocessing, alignment, graph generation, and edge predictor training
 - `scripts/run_spatial_training.py`: preset-based spatial training entry point
 - `scripts/summarize_training_history.py`: training-curve and measured-resource summary entry point
-- `scripts/run_arista_end_to_end.py`: canonical ARISTA preprocess/train/evaluate entry point
+- `scripts/run_arista_end_to_end.py`: historical ARISTA compatibility runner; use `cytobridge workflow --config arista` for new runs
 - `scripts/run_spatiotemporal_downstream.py`: dataset-configured interpolation/lineage/communication/3D entry point
 - `scripts/convert_legacy_weights_to_ckpt.py`: convert legacy checkpoints into the current checkpoint format
 - `scripts/run_downstream_workflow_example.py`: downstream example workflow based on trained results

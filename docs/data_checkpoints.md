@@ -10,7 +10,7 @@ data are public:
 | --- | --- | --- | --- |
 | Zebrafish | [CNGB STDS0000057](https://db.cngb.org/stomics/datasets/STDS0000057/data) | `time` / `bin_annotation` | `layers['counts']` / `obs[['spatial_x', 'spatial_y']]` |
 | MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
-| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `time` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
+| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
 | AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
 
 These are the raw-input keys consumed by the four packaged presets. The
@@ -23,11 +23,19 @@ identity; it does not assign identities from row order.
 AD mouse similarly uses `sample` plus `cell_id`, so the original and the
 notebook-deduplicated handoff H5ADs resolve to the same stable identity scheme.
 
-The currently documented ARISTA package input is the released counts-source,
-fixed-2,000-gene H5AD. The upstream 16,379-gene study object does not contain the
-formal `time` field or the documented 20-cell exclusion rule, so it is not
-silently treated as an equivalent raw input. That additional adapter will be
-published only with a reproducible source-to-formal rule.
+The ARISTA preset accepts the complete 16,379-gene `Regeneration.h5ad`. It maps
+the five named injury batches at 2/5/10/15/20 DPI to model times 0–4, uses all
+eight study batches for batch-aware HVG selection and pooled PCA fitting, and then restricts
+alignment/training to those five named batches (46,209 cells). The historical
+fixed-2,000-gene file contains 46,189 of those cells, but no complete executable
+rule survives for its additional 20 spatial exclusions. The corrected workflow
+therefore retains all 46,209 provable cells and records this 0.043% historical
+scope difference; it does not hard-code cell IDs or infer a crop from the
+desired count. The raw H5AD also contains eight batch-keyed dense segmentation
+rasters in `uns` (about 1.9 GiB total). They are imaging attachments, not model
+inputs; the preset removes only those named keys before preprocessing and
+records the removal while retaining annotations, colors, coordinates, and
+expression data.
 
 The processed aligned H5ADs and formal 0.015 checkpoints are currently project
 artifacts and do not yet have a public archive DOI. They must be deposited and

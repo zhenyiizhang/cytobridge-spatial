@@ -1,6 +1,7 @@
 import os
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
+import json
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -78,6 +79,9 @@ class AlignConfig:
     # Columns that jointly identify an observation when the source index is
     # reused across sections or batches.
     observation_id_keys: Optional[Tuple[str, ...]] = None
+    # Optional batch-aware HVG selection column, evaluated on the complete
+    # input before the alignment subset is chosen.
+    hvg_batch_key: Optional[str] = None
 
 
 def _h5ad_uns_safe(value, *, path: str = "config"):
@@ -284,6 +288,7 @@ def _prepare_adata_for_alignment(
     time_key: str,
     cfg: AlignConfig,
     batch_indices: Optional[Sequence[int]] = None,
+    batch_values: Optional[Sequence[object]] = None,
 ) -> Tuple[sc.AnnData, List]:
     """Validate and subset a preprocessed adata for spatial alignment."""
     if time_key not in adata.obs:
@@ -344,13 +349,30 @@ def _prepare_adata_for_alignment(
         all_batch_names = list(adata.obs[time_key].cat.categories)
     else:
         all_batch_names = list(pd.unique(adata.obs[time_key]))
-    if batch_indices is None:
-        batch_indices = list(range(len(all_batch_names)))
-    if any((idx < 0 or idx >= len(all_batch_names)) for idx in batch_indices):
-        raise IndexError(
-            f"batch_indices out of range for {len(all_batch_names)} categories: {list(batch_indices)}"
-        )
-    batch_names_selected = [all_batch_names[i] for i in batch_indices]
+    observed_batch_names = list(pd.unique(adata.obs[time_key].dropna()))
+    if batch_indices is not None and batch_values is not None:
+        raise ValueError("Specify batch_indices or batch_values, not both.")
+    if batch_values is not None:
+        batch_names_selected = list(batch_values)
+        if len(set(batch_names_selected)) != len(batch_names_selected):
+            raise ValueError("batch_values must not contain duplicates.")
+        missing_batches = [
+            value for value in batch_names_selected if value not in observed_batch_names
+        ]
+        if missing_batches:
+            raise ValueError(
+                f"batch_values contains labels with no observed cells in {time_key!r}: "
+                f"{missing_batches}. Observed labels: {observed_batch_names}"
+            )
+    else:
+        if batch_indices is None:
+            batch_indices = list(range(len(all_batch_names)))
+        if any((idx < 0 or idx >= len(all_batch_names)) for idx in batch_indices):
+            raise IndexError(
+                "batch_indices out of range for "
+                f"{len(all_batch_names)} categories: {list(batch_indices)}"
+            )
+        batch_names_selected = [all_batch_names[i] for i in batch_indices]
 
     # Restrict the pipeline to selected batches to avoid NaN/zero placeholders for unselected times.
     selected_mask = adata.obs[time_key].isin(batch_names_selected).to_numpy()
@@ -370,6 +392,7 @@ def _align_preprocessed_adata(
     device: str = "cuda",
     verbose: bool = True,
     log_every: Optional[int] = None,
+    batch_values: Optional[Sequence[object]] = None,
 ) -> Tuple[sc.AnnData, pd.DataFrame]:
     """Run alignment only, assuming gene preprocessing has already been done."""
     np.random.seed(int(cfg.random_seed))
@@ -382,6 +405,7 @@ def _align_preprocessed_adata(
         time_key=time_key,
         cfg=cfg,
         batch_indices=batch_indices,
+        batch_values=batch_values,
     )
     present = set(pd.unique(adata.obs[time_key]))
     batch_names = [b for b in batch_names if b in present]
@@ -664,6 +688,7 @@ def preprocess_and_align(
     verbose: bool = True,
     log_every: Optional[int] = None,
     copy_adata: bool = False,
+    batch_values: Optional[Sequence[object]] = None,
 ) -> Tuple[sc.AnnData, pd.DataFrame]:
     """Compatibility wrapper: preprocess genes first, then run spatial alignment.
 
@@ -694,6 +719,7 @@ def preprocess_and_align(
         raw_count_integer_tolerance=cfg.raw_count_integer_tolerance,
         required_latent_features=cfg.required_latent_features,
         observation_id_keys=cfg.observation_id_keys,
+        hvg_batch_key=cfg.hvg_batch_key,
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,
@@ -703,6 +729,7 @@ def preprocess_and_align(
         device=device,
         verbose=verbose,
         log_every=log_every,
+        batch_values=batch_values,
     )
 
 
@@ -716,12 +743,38 @@ def preprocess_align_to_files(
     device: str = "cuda",
     verbose: bool = True,
     log_every: Optional[int] = None,
+    batch_values: Optional[Sequence[object]] = None,
+    drop_uns_keys: Optional[Sequence[str]] = None,
 ) -> sc.AnnData:
     """Convenience wrapper: read raw h5ad, run preprocess + align, and save files."""
     if cfg is None:
         cfg = AlignConfig()
 
     adata = sc.read(str(h5ad_path))
+    removed_uns = []
+    absent_uns = []
+    for key in dict.fromkeys(str(value) for value in (drop_uns_keys or ())):
+        if key not in adata.uns:
+            absent_uns.append(key)
+            continue
+        value = adata.uns.pop(key)
+        child_keys = list(value) if isinstance(value, Mapping) else []
+        removed_uns.append(
+            {
+                "key": key,
+                "type": type(value).__name__,
+                "child_keys": [str(item) for item in child_keys],
+            }
+        )
+    if removed_uns or absent_uns:
+        adata.uns["cytobridge_removed_raw_uns_json"] = json.dumps(
+            {
+                "reason": "dataset preset excludes non-model imaging attachments",
+                "removed": removed_uns,
+                "already_absent": absent_uns,
+            },
+            sort_keys=True,
+        )
     adata_aligned, df = preprocess_and_align(
         adata=adata,
         time_key=time_key,
@@ -730,6 +783,7 @@ def preprocess_align_to_files(
         device=device,
         verbose=verbose,
         log_every=log_every,
+        batch_values=batch_values,
     )
     output_csv_dir = os.path.dirname(output_csv)
     if output_csv_dir:
@@ -754,6 +808,7 @@ def align_spatial(
     verbose: bool = True,
     log_every: Optional[int] = None,
     copy_adata: bool = False,
+    batch_values: Optional[Sequence[object]] = None,
 ) -> sc.AnnData:
     """Align spatial coordinates only (expects preprocessed AnnData).
 
@@ -767,6 +822,9 @@ def align_spatial(
         Alignment configuration. If None, uses default `AlignConfig()`.
     batch_indices
         Optional selected time index list.
+    batch_values
+        Optional selected time labels. Prefer this over category positions in
+        dataset presets; it is mutually exclusive with ``batch_indices``.
     device
         Compute device for alignment.
     output_csv
@@ -796,6 +854,7 @@ def align_spatial(
         device=device,
         verbose=verbose,
         log_every=log_every,
+        batch_values=batch_values,
     )
     if output_csv is not None:
         output_csv_dir = os.path.dirname(output_csv)

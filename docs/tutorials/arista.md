@@ -29,3 +29,13 @@ jupyter lab notebooks/03_arista.ipynb
 The notebook does not itself reproduce the selected LR count or the paper's
 Figure 5e panel. The split frames do not retain persistent particle identifiers,
 so formal lineage is omitted and row order must not be interpreted as ancestry.
+
+For a corrected de novo run, pass the complete 16,379-gene
+`Regeneration.h5ad` to `cytobridge workflow --config arista --train`. The
+preset selects the five named 2/5/10/15/20-DPI batches by label, not category
+position; uses all eight batches for batch-aware HVG selection followed by
+pooled PCA fitting; retains
+species-matched LR subunits; and constructs a stable `Batch` + `CellID`
+observation identity. It retains 46,209 cells because the undocumented extra
+20-cell crop in the historical 46,189-cell prepared file cannot be reproduced
+without guessing.
