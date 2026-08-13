@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from dataclasses import asdict
@@ -47,6 +48,14 @@ from .registry import get_method_spec, list_method_specs, load_registry
 METHODS = tuple(sorted(list_method_specs()))
 OFFICIAL_METHODS = {"moscot", "wot", "paste", "spateo", "spatrack"}
 REPRESENTATIONS = ("matched_state_spatial", "native_gene_sensitivity")
+_ADAPTER_IMPLEMENTATION_FILES = (
+    "scripts/spatiotemporal_benchmark/static_baselines/run.py",
+    "scripts/spatiotemporal_benchmark/static_baselines/methods.py",
+    "scripts/spatiotemporal_benchmark/static_baselines/coupling.py",
+    "scripts/spatiotemporal_benchmark/static_baselines/data.py",
+    "scripts/spatiotemporal_benchmark/static_baselines/provenance.py",
+    "scripts/spatiotemporal_benchmark/static_baselines/registry.py",
+)
 
 
 def _jsonable(value: Any) -> Any:
@@ -61,6 +70,21 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, float) and not np.isfinite(value):
         return "inf" if value > 0 else "-inf"
     return value
+
+
+def _adapter_implementation() -> dict[str, Any]:
+    """Hash the exact package-side static adapter implementation."""
+
+    root = Path(__file__).resolve().parents[3]
+    files = {name: sha256_file(root / name) for name in _ADAPTER_IMPLEMENTATION_FILES}
+    aggregate = hashlib.sha256(
+        json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "schema_version": "1.0.0",
+        "files": files,
+        "aggregate_sha256": aggregate,
+    }
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -84,7 +108,9 @@ def _artifact(path: Path, **extra: Any) -> dict[str, Any]:
 
 
 def _time_token(value: float) -> str:
-    return str(int(value)) if float(value).is_integer() else str(value).replace(".", "p")
+    return (
+        str(int(value)) if float(value).is_integer() else str(value).replace(".", "p")
+    )
 
 
 def _load_parameter_overrides(raw: str | None) -> dict[str, Any]:
@@ -101,12 +127,16 @@ def _load_parameter_overrides(raw: str | None) -> dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    registry_parser = commands.add_parser("registry", help="Print the audited method registry")
+    registry_parser = commands.add_parser(
+        "registry", help="Print the audited method registry"
+    )
     registry_parser.add_argument("--method", choices=METHODS)
 
     run_parser = commands.add_parser("run", help="Run or dry-run one adapter")
     run_parser.add_argument("--method", choices=METHODS, required=True)
-    run_parser.add_argument("--representation", choices=REPRESENTATIONS, default="matched_state_spatial")
+    run_parser.add_argument(
+        "--representation", choices=REPRESENTATIONS, default="matched_state_spatial"
+    )
     run_parser.add_argument("--input-h5ad", type=Path, required=True)
     run_parser.add_argument("--input-manifest", type=Path, default=None)
     run_parser.add_argument("--training-reference", type=Path, default=None)
@@ -173,7 +203,9 @@ def _nested_reference_sha(record: dict[str, Any]) -> str | None:
     return next((str(value) for value in candidates if value), None)
 
 
-def _verify_external_provenance(args: argparse.Namespace, input_sha: str) -> dict[str, Any]:
+def _verify_external_provenance(
+    args: argparse.Namespace, input_sha: str
+) -> dict[str, Any]:
     result: dict[str, Any] = {
         "input_manifest": None,
         "input_manifest_sha256": None,
@@ -198,7 +230,9 @@ def _verify_external_provenance(args: argparse.Namespace, input_sha: str) -> dic
         split_name = None
         split = None
         if isinstance(splits, dict):
-            for candidate in _manifest_split_candidates(args.evaluation_mode, args.target_time):
+            for candidate in _manifest_split_candidates(
+                args.evaluation_mode, args.target_time
+            ):
                 if candidate in splits:
                     split_name, split = candidate, splits[candidate]
                     break
@@ -213,7 +247,9 @@ def _verify_external_provenance(args: argparse.Namespace, input_sha: str) -> dic
             if not args.allow_unverified_preprocessing:
                 raise ValueError("Input manifest has no train H5AD SHA256")
         elif expected != input_sha:
-            raise ValueError(f"Input H5AD SHA256 does not match manifest: {input_sha} != {expected}")
+            raise ValueError(
+                f"Input H5AD SHA256 does not match manifest: {input_sha} != {expected}"
+            )
         train_record = split.get("train")
         reference_record = (
             train_record.get("training_reference_npz")
@@ -254,7 +290,9 @@ def _verify_external_provenance(args: argparse.Namespace, input_sha: str) -> dic
                 "input_manifest_sha256": sha256_file(path),
                 "input_manifest_split": split_name,
                 "input_manifest_h5ad_verified": expected == input_sha,
-                "input_manifest_training_reference_expected_sha256": _nested_reference_sha(split),
+                "input_manifest_training_reference_expected_sha256": _nested_reference_sha(
+                    split
+                ),
             }
         )
     if args.training_reference is not None or manifest_reference is not None:
@@ -268,14 +306,20 @@ def _verify_external_provenance(args: argparse.Namespace, input_sha: str) -> dic
             raise ValueError(f"Training reference does not exist: {reference}")
         result["training_reference"] = str(reference)
         result["training_reference_sha256"] = sha256_file(reference)
-        expected_reference = result.get("input_manifest_training_reference_expected_sha256")
-        if expected_reference and result["training_reference_sha256"] != expected_reference:
+        expected_reference = result.get(
+            "input_manifest_training_reference_expected_sha256"
+        )
+        if (
+            expected_reference
+            and result["training_reference_sha256"] != expected_reference
+        ):
             raise ValueError(
                 "Training reference SHA256 does not match input manifest: "
                 f"{result['training_reference_sha256']} != {expected_reference}"
             )
         result["input_manifest_training_reference_verified"] = bool(
-            expected_reference and result["training_reference_sha256"] == expected_reference
+            expected_reference
+            and result["training_reference_sha256"] == expected_reference
         )
     if args.input_manifest is None:
         return result
@@ -299,7 +343,10 @@ def _save_anchor_selection(output_dir: Path, data: TrajectoryInput) -> dict[str,
     np.savez_compressed(path, **arrays)
     return _artifact(
         path,
-        stage_shapes={str(stage.time): [stage.n_obs, stage.state_pca.shape[1]] for stage in data.stages},
+        stage_shapes={
+            str(stage.time): [stage.n_obs, stage.state_pca.shape[1]]
+            for stage in data.stages
+        },
     )
 
 
@@ -335,7 +382,9 @@ def _canonical_source_roster(
         source_time, source_stage.time
     ):
         raise ValueError("Canonical source roster has wrong row count or source time")
-    lookup = {value: index for index, value in enumerate(source_stage.row_ids.astype(str))}
+    lookup = {
+        value: index for index, value in enumerate(source_stage.row_ids.astype(str))
+    }
     try:
         indices = np.asarray([lookup[value] for value in row_ids], dtype=np.int64)
     except KeyError as exc:
@@ -343,9 +392,13 @@ def _canonical_source_roster(
             "Canonical source roster row is absent from the method-independent fitted support"
         ) from exc
     if not np.allclose(source_stage.spatial[indices], spatial, rtol=1e-6, atol=1e-6):
-        raise ValueError("Canonical source roster spatial values differ from fitted support")
+        raise ValueError(
+            "Canonical source roster spatial values differ from fitted support"
+        )
     if not np.allclose(source_stage.state_pca[indices], state, rtol=1e-6, atol=1e-6):
-        raise ValueError("Canonical source roster state values differ from fitted support")
+        raise ValueError(
+            "Canonical source roster state values differ from fitted support"
+        )
     return indices, row_ids
 
 
@@ -365,8 +418,11 @@ def _base_manifest(
     return {
         "schema_version": "2.0.0",
         "status": "initialized",
-        "dataset": data.contract.get("dataset_id", data.contract.get("dataset", "unspecified")),
+        "dataset": data.contract.get(
+            "dataset_id", data.contract.get("dataset", "unspecified")
+        ),
         "method": args.method,
+        "adapter_implementation": _adapter_implementation(),
         "representation": args.representation,
         "method_spec": method_spec,
         "representation_spec": rep_spec,
@@ -384,7 +440,10 @@ def _base_manifest(
         "protocol": {
             "mode": data.mode,
             "requested_target_time": args.target_time,
-            "time_values": list(data.time_values),
+            # In LOTO, ``data.time_values`` may retain the declared held target
+            # for bracket semantics.  Provenance must describe only fitted
+            # train anchors, which are exactly the loaded stages.
+            "time_values": sorted(float(stage.time) for stage in data.stages),
             "loto_target": data.target_time,
             "prediction_n": int(data.prediction_n),
             "prediction_size_source": "train H5AD cytobridge_benchmark_contract.prediction_n",
@@ -408,8 +467,14 @@ def _base_manifest(
         "anchors": {
             "sampling_policy": "method-independent seed+row_id hash; sampled once per stage",
             "stage_fit_counts": {str(stage.time): stage.n_obs for stage in data.stages},
-            "stage_row_ids_sha256": {str(stage.time): ids_sha256(stage.row_ids) for stage in data.stages},
-            "source_stage": float(data.loto_pair().previous.time if data.mode == "loto" else data.time_values[0]),
+            "stage_row_ids_sha256": {
+                str(stage.time): ids_sha256(stage.row_ids) for stage in data.stages
+            },
+            "source_stage": float(
+                data.loto_pair().previous.time
+                if data.mode == "loto"
+                else data.time_values[0]
+            ),
             "source_roster_policy": "fixed bootstrap from fitted source anchor using base seed + source row_id digest",
             "source_roster_n": int(len(roster_indices)),
             "source_roster_row_ids_sha256": ids_sha256(roster_ids),
@@ -430,7 +495,8 @@ def _base_manifest(
             "growth_or_total_mass_evaluated": False,
         },
         "primary_benchmark_eligible": bool(
-            args.representation == "matched_state_spatial" and rep_spec.get("primary_ranking", False)
+            args.representation == "matched_state_spatial"
+            and rep_spec.get("primary_ranking", False)
         ),
         "surrogate_attempted": False,
     }
@@ -540,7 +606,9 @@ def _official_plans(
             block_transform=transform,
         )
         plans.append(plan)
-        diagnostics.append({"from": pair.previous.time, "to": pair.following.time, **asdict(diag)})
+        diagnostics.append(
+            {"from": pair.previous.time, "to": pair.following.time, **asdict(diag)}
+        )
         metadata.append({"from": pair.previous.time, "to": pair.following.time, **meta})
     return plans, diagnostics, metadata
 
@@ -569,7 +637,9 @@ def _random_plans(
         )
         plans.append(plan)
         target_indices.append(selected)
-        diagnostics.append({"from": pair.previous.time, "to": pair.following.time, **asdict(diag)})
+        diagnostics.append(
+            {"from": pair.previous.time, "to": pair.following.time, **asdict(diag)}
+        )
     return plans, diagnostics, target_indices
 
 
@@ -584,7 +654,11 @@ def _coupling_predictions(
         pair = data.loto_pair()
         if len(plans) != 1:
             raise ValueError("LOTO requires exactly one bracket coupling")
-        fitted = project_loto_state(pair, plans[0]) if state_only else project_loto_joint(pair, plans[0])
+        fitted = (
+            project_loto_state(pair, plans[0])
+            if state_only
+            else project_loto_joint(pair, plans[0])
+        )
         return {float(pair.target_time): take_roster(fitted, roster_indices)}, {
             "composition": "single bracket coupling; no target rows present",
             "interpolation_alpha": float(pair.interpolation_alpha),
@@ -592,7 +666,9 @@ def _coupling_predictions(
 
     pairs = data.adjacent_pairs()
     if len(plans) != len(pairs):
-        raise ValueError("No-holdout requires one coupling for every adjacent stage pair")
+        raise ValueError(
+            "No-holdout requires one coupling for every adjacent stage pair"
+        )
     outputs: dict[float, np.ndarray] = {}
     histories: dict[str, Any] = {}
     declared_targets = data.contract.get("full_data_targets")
@@ -660,23 +736,34 @@ def _control_predictions(
                 if any(np.isclose(time, float(value)) for value in declared_targets)
             }
         return (
-            {time: take_roster(points, roster_indices) for time, points in fitted_by_time.items()},
+            {
+                time: take_roster(points, roster_indices)
+                for time, points in fitted_by_time.items()
+            },
             {
                 "control": "linear_centroid_shift",
                 "conditioning": "sequential adjacent centroid shifts applied to the same t0 roster",
-                "shift_l2_by_transition": [float(np.linalg.norm(shift)) for shift in shifts],
+                "shift_l2_by_transition": [
+                    float(np.linalg.norm(shift)) for shift in shifts
+                ],
             },
             shifts,
         )
     pairs = [data.loto_pair()] if data.mode == "loto" else list(data.adjacent_pairs())
     plans, diagnostics, selections = _random_plans(args, data, pairs)
-    predictions, composition = _coupling_predictions(data, plans, roster_indices, state_only=False)
-    return predictions, {
-        "control": "random_independent_pairs",
-        "conditioning": "independent one-hot coupling per observed transition",
-        "coupling_diagnostics": diagnostics,
-        **composition,
-    }, plans
+    predictions, composition = _coupling_predictions(
+        data, plans, roster_indices, state_only=False
+    )
+    return (
+        predictions,
+        {
+            "control": "random_independent_pairs",
+            "conditioning": "independent one-hot coupling per observed transition",
+            "coupling_diagnostics": diagnostics,
+            **composition,
+        },
+        plans,
+    )
 
 
 def _write_outputs(
@@ -701,7 +788,9 @@ def _write_outputs(
                 f"Prediction at {target_time} has {len(prediction)} rows; contract requires {data.prediction_n}"
             )
         token = _time_token(target_time)
-        target_dir = args.output_dir if data.mode == "loto" else args.output_dir / f"t{token}"
+        target_dir = (
+            args.output_dir if data.mode == "loto" else args.output_dir / f"t{token}"
+        )
         target_dir.mkdir(parents=True, exist_ok=True)
         path = target_dir / "prediction.npz"
         record = _save_prediction(
@@ -816,9 +905,7 @@ def _write_summary(args: argparse.Namespace, manifest: dict[str, Any]) -> None:
     target_values = sorted(float(value) for value in prediction_by_time)
     source_time = manifest.get("anchors", {}).get("source_stage")
     output_scope = str(manifest.get("output_scope", {}).get("scope", ""))
-    hybrid_adapter = bool(
-        manifest.get("output_scope", {}).get("hybrid_adapter", False)
-    )
+    hybrid_adapter = bool(manifest.get("output_scope", {}).get("hybrid_adapter", False))
     payload = {
         "schema_version": "2.0.0",
         "status": manifest["status"],
@@ -844,7 +931,9 @@ def _write_summary(args: argparse.Namespace, manifest: dict[str, Any]) -> None:
         ),
         "primary_benchmark_eligible": manifest.get("primary_benchmark_eligible", False),
         "input_manifest_sha256": manifest.get("input", {}).get("input_manifest_sha256"),
-        "training_reference_sha256": manifest.get("input", {}).get("training_reference_sha256"),
+        "training_reference_sha256": manifest.get("input", {}).get(
+            "training_reference_sha256"
+        ),
         "prediction": outputs.get("trajectory_prediction"),
         "truth_artifact_opened": False,
         "target_n_used_for_prediction": False,
@@ -866,7 +955,9 @@ def execute_run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("--max-fit-n must be positive")
     args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    args.evaluation_mode = "no-holdout" if args.evaluation_mode == "full-data" else args.evaluation_mode
+    args.evaluation_mode = (
+        "no-holdout" if args.evaluation_mode == "full-data" else args.evaluation_mode
+    )
     if args.evaluation_mode == "loto" and args.target_time is None:
         raise ValueError("LOTO requires --target-time")
 
@@ -893,12 +984,23 @@ def execute_run(args: argparse.Namespace) -> dict[str, Any]:
         allow_unverified_preprocessing=args.allow_unverified_preprocessing,
     )
     provenance = _verify_external_provenance(args, data.input_sha256)
-    source_stage = data.loto_pair().previous if data.mode == "loto" else data.stage(data.time_values[0])
+    source_stage = (
+        data.loto_pair().previous
+        if data.mode == "loto"
+        else data.stage(data.time_values[0])
+    )
     roster_indices, roster_ids = _canonical_source_roster(
         data, source_stage, provenance, args
     )
     manifest = _base_manifest(
-        args, data, method_spec, rep_spec, params, provenance, roster_indices, roster_ids
+        args,
+        data,
+        method_spec,
+        rep_spec,
+        params,
+        provenance,
+        roster_indices,
+        roster_ids,
     )
     manifest_path = args.output_dir / "run_manifest.json"
     manifest["outputs"] = {
@@ -924,8 +1026,12 @@ def execute_run(args: argparse.Namespace) -> dict[str, Any]:
             manifest["status"] = "dry_run_failed_dependency_missing"
             _write_json(manifest_path, manifest)
             _write_summary(args, manifest)
-            raise DependencyUnavailable(f"Official dependency is unavailable; see {manifest_path}")
-        manifest["status"] = "dry_run_ready" if probe["available"] else "dry_run_dependency_missing"
+            raise DependencyUnavailable(
+                f"Official dependency is unavailable; see {manifest_path}"
+            )
+        manifest["status"] = (
+            "dry_run_ready" if probe["available"] else "dry_run_dependency_missing"
+        )
         manifest["prediction_written"] = False
         manifest["dry_run"] = True
         _write_json(manifest_path, manifest)
@@ -947,7 +1053,9 @@ def execute_run(args: argparse.Namespace) -> dict[str, Any]:
         manifest["composition"] = composition
     else:
         state_only = False
-        predictions, control_meta, plans = _control_predictions(args, data, roster_indices)
+        predictions, control_meta, plans = _control_predictions(
+            args, data, roster_indices
+        )
         manifest["control_run"] = control_meta
 
     if args.save_coupling and plans:
@@ -1003,7 +1111,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "surrogate_attempted": False,
                 "truth_artifact_opened": False,
             }
-            _write_json(Path(args.output_dir).resolve() / "failure_manifest.json", failure)
+            _write_json(
+                Path(args.output_dir).resolve() / "failure_manifest.json", failure
+            )
         print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(_jsonable(manifest), indent=2, sort_keys=True))

@@ -334,9 +334,7 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
 
     assert evaluation["targets"] == [1, 2]
     assert evaluation["methods"] == ["joint_method", "state_method"]
-    assert evaluation["method_registry"]["sha256"] == _sha(
-        _registry_path(manifest)
-    )
+    assert evaluation["method_registry"]["sha256"] == _sha(_registry_path(manifest))
     assert evaluation["method_registry"]["canonical_methods"] == [
         "joint_method",
         "state_method",
@@ -353,9 +351,7 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert metrics["transform_sha256"].nunique() == 1
     assert (metrics["method"] == metrics["canonical_method"]).all()
     assert (metrics["raw_method"] == metrics["method"]).all()
-    assert set(metrics["scope_compatibility"]) == {
-        matched._SCOPE_COMPATIBILITY_EXACT
-    }
+    assert set(metrics["scope_compatibility"]) == {matched._SCOPE_COMPATIBILITY_EXACT}
     assert len(metrics) == 32
     assert evaluation["n_metrics_rows"] == 32
     assert evaluation["n_paired_rows"] == 8
@@ -433,15 +429,17 @@ def test_matched_evaluator_shares_transform_truth_and_random_keys(
     assert len(exact_audit["records"]) == 6
     inventory = json.loads((output / "prediction_inventory.json").read_text())
     assert inventory["method_registry"] == evaluation["method_registry"]
-    assert {
-        record["scope_compatibility"] for record in inventory["records"]
-    } == {matched._SCOPE_COMPATIBILITY_EXACT}
-    assert evaluation["scope_compatibility_audit"][
-        "n_legacy_wot_native_state_records"
-    ] == 0
-    assert evaluation["scope_compatibility_audit"][
-        "numeric_prediction_arrays_unchanged"
-    ] is True
+    assert {record["scope_compatibility"] for record in inventory["records"]} == {
+        matched._SCOPE_COMPATIBILITY_EXACT
+    }
+    assert (
+        evaluation["scope_compatibility_audit"]["n_legacy_wot_native_state_records"]
+        == 0
+    )
+    assert (
+        evaluation["scope_compatibility_audit"]["numeric_prediction_arrays_unchanged"]
+        is True
+    )
     assert inventory["n_records"] == 8
     inventory_keys = [
         (
@@ -594,6 +592,43 @@ def test_nonempty_output_without_run_contract_is_not_adopted(tmp_path: Path) -> 
         matched.evaluate_matched(_args(manifest, loto_root, full_root, output))
     assert foreign.read_text(encoding="utf-8") == "foreign\n"
     assert not (output / "run_contract.json").exists()
+
+
+def test_summary_resolution_rejects_conflicting_dual_summaries(
+    tmp_path: Path,
+) -> None:
+    prediction = tmp_path / "method" / "t1" / "prediction.npz"
+    _write_npz(prediction, {"state": np.ones((2, 2), dtype=np.float64)})
+    canonical = prediction.parent / "summary.json"
+    evaluator = prediction.with_suffix(".summary.json")
+    canonical.write_text('{"status":"complete"}\n', encoding="utf-8")
+    evaluator.write_text('{"status":"corrupted"}\n', encoding="utf-8")
+
+    with pytest.raises(matched.ContractError, match="not byte-identical"):
+        matched._summary_path_for_prediction(prediction)
+    with pytest.raises(matched.ContractError, match="not byte-identical"):
+        matched.primary._find_summary(prediction)
+
+    evaluator.write_bytes(canonical.read_bytes())
+    assert matched._summary_path_for_prediction(prediction) == canonical
+    primary_path, payload = matched.primary._find_summary(prediction)
+    assert primary_path == canonical
+    assert payload == {"status": "complete"}
+
+
+def test_summary_resolution_does_not_adopt_run_manifest_as_prediction_summary(
+    tmp_path: Path,
+) -> None:
+    prediction = tmp_path / "method" / "t1" / "prediction.npz"
+    _write_npz(prediction, {"state": np.ones((2, 2), dtype=np.float64)})
+    (prediction.parent / "run_manifest.json").write_text(
+        '{"status":"complete"}\n', encoding="utf-8"
+    )
+
+    with pytest.raises(matched.ContractError, match="no summary JSON"):
+        matched._summary_path_for_prediction(prediction)
+    with pytest.raises(matched.ContractError, match="no summary JSON"):
+        matched.primary._find_summary(prediction)
 
 
 @pytest.mark.parametrize("artifact_kind", ["prediction", "summary"])
@@ -765,22 +800,28 @@ def test_registry_scope_matches_production_summary_semantics(
     output_scope: str,
     native_vs_adapter: str,
 ) -> None:
-    assert matched._scope_compatibility(
-        canonical_method="Synthetic method",
-        raw_method="synthetic_raw",
-        registry_scope=registry_scope,
-        output_scope=output_scope,
-        native_vs_adapter=native_vs_adapter,
-        actual_spaces=["state"],
-    ) == matched._SCOPE_COMPATIBILITY_EXACT
-    assert matched._scope_compatibility(
-        canonical_method="Synthetic method",
-        raw_method="synthetic_raw",
-        registry_scope=registry_scope,
-        output_scope=output_scope,
-        native_vs_adapter="wrong-category",
-        actual_spaces=["state"],
-    ) is None
+    assert (
+        matched._scope_compatibility(
+            canonical_method="Synthetic method",
+            raw_method="synthetic_raw",
+            registry_scope=registry_scope,
+            output_scope=output_scope,
+            native_vs_adapter=native_vs_adapter,
+            actual_spaces=["state"],
+        )
+        == matched._SCOPE_COMPATIBILITY_EXACT
+    )
+    assert (
+        matched._scope_compatibility(
+            canonical_method="Synthetic method",
+            raw_method="synthetic_raw",
+            registry_scope=registry_scope,
+            output_scope=output_scope,
+            native_vs_adapter="wrong-category",
+            actual_spaces=["state"],
+        )
+        is None
+    )
 
 
 def test_legacy_wot_scope_compatibility_is_identity_and_state_only() -> None:
@@ -832,9 +873,10 @@ def test_legacy_wot_labels_are_accepted_audited_and_numerically_unchanged(
 
     new_metrics, new_evaluation, _ = evaluations["new"]
     legacy_metrics, legacy_evaluation, legacy_output = evaluations["legacy"]
-    assert new_evaluation["scope_compatibility_audit"][
-        "n_legacy_wot_native_state_records"
-    ] == 0
+    assert (
+        new_evaluation["scope_compatibility_audit"]["n_legacy_wot_native_state_records"]
+        == 0
+    )
     legacy_audit = legacy_evaluation["scope_compatibility_audit"]
     assert legacy_audit["compatibility_is_metadata_only"] is True
     assert legacy_audit["numeric_prediction_arrays_unchanged"] is True
@@ -842,8 +884,7 @@ def test_legacy_wot_labels_are_accepted_audited_and_numerically_unchanged(
     legacy_records = [
         record
         for record in legacy_audit["records"]
-        if record["scope_compatibility"]
-        == matched._SCOPE_COMPATIBILITY_LEGACY_WOT
+        if record["scope_compatibility"] == matched._SCOPE_COMPATIBILITY_LEGACY_WOT
     ]
     assert {
         (
@@ -1049,7 +1090,9 @@ def test_registry_mutation_after_binding_stops_metrics(
 
     monkeypatch.setattr(matched, "_write_immutable_json", write_then_mutate)
     monkeypatch.setattr(matched, "_evaluate_predictions", metrics_must_not_run)
-    with pytest.raises(matched.ContractError, match="registry changed after byte snapshot"):
+    with pytest.raises(
+        matched.ContractError, match="registry changed after byte snapshot"
+    ):
         matched.evaluate_matched(
             _args(manifest, loto_root, full_root, tmp_path / "reports")
         )
@@ -1064,7 +1107,9 @@ def test_final_publish_guard_rehashes_method_registry(tmp_path: Path) -> None:
     )
     with _registry_path(manifest).open("ab") as handle:
         handle.write(b"changed-before-final-publish")
-    with pytest.raises(matched.ContractError, match="registry changed after byte snapshot"):
+    with pytest.raises(
+        matched.ContractError, match="registry changed after byte snapshot"
+    ):
         matched._verify_bound_inventory_from_manifest(evaluation)
     assert not (output / "matched_evaluation_manifest.json").exists()
 

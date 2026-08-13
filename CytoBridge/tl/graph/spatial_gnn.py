@@ -87,23 +87,36 @@ class GNNInteraction(nn.Module):
         )
 
         if self.edge_prior_mode == "learned":
-            self.link_predictor = LinkPredictorMLP(input_dim=in_out_dim * 2)
-            if load_edge_predictor_from_path:
-                if edge_predictor_path is None:
-                    raise ValueError(
-                        "edge_predictor_path must be provided when "
-                        "edge_prior_mode='learned'."
+            # The predictor is frozen auxiliary state, not part of the matched
+            # trainable interaction-backbone initialization.  Keep its random
+            # initialization (which is overwritten for production models) from
+            # advancing the CPU stream used by gene_embed/GAT/readout.  This
+            # makes learned and all-spatial ablations share byte-identical
+            # trainable GNN initial weights under the same outer seed.
+            with torch.random.fork_rng(devices=[]):
+                self.link_predictor = LinkPredictorMLP(input_dim=in_out_dim * 2)
+                if load_edge_predictor_from_path:
+                    if edge_predictor_path is None:
+                        raise ValueError(
+                            "edge_predictor_path must be provided when "
+                            "edge_prior_mode='learned'."
+                        )
+                    predictor_path = os.path.expanduser(edge_predictor_path)
+                    if edge_predictor_root is not None and not os.path.isabs(
+                        predictor_path
+                    ):
+                        predictor_path = os.path.join(
+                            edge_predictor_root, predictor_path
+                        )
+                    if not os.path.isabs(predictor_path):
+                        predictor_path = os.path.abspath(predictor_path)
+                    self.link_predictor.load_state_dict(
+                        torch.load(
+                            predictor_path,
+                            map_location=torch.device("cpu"),
+                            weights_only=True,
+                        )
                     )
-                predictor_path = os.path.expanduser(edge_predictor_path)
-                if edge_predictor_root is not None and not os.path.isabs(
-                    predictor_path
-                ):
-                    predictor_path = os.path.join(edge_predictor_root, predictor_path)
-                if not os.path.isabs(predictor_path):
-                    predictor_path = os.path.abspath(predictor_path)
-                self.link_predictor.load_state_dict(
-                    torch.load(predictor_path, map_location=torch.device("cpu"))
-                )
             for param in self.link_predictor.parameters():
                 param.requires_grad = False
             self.link_predictor.eval()

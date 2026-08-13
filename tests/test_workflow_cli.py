@@ -274,6 +274,138 @@ def test_custom_all_spatial_training_never_inherits_preset_predictor_threshold(
     assert captured["edge_predictor_threshold"] is None
 
 
+def test_no_interaction_training_does_not_invent_a_learned_edge_prior(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("zebrafish")
+    captured = {}
+
+    def fake_fit(_aligned_h5ad, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(cb.tl, "fit", fake_fit)
+    _run_train(
+        config,
+        WorkflowOptions(
+            training_config=(
+                "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml"
+            ),
+            device="cpu",
+        ),
+        aligned_h5ad=tmp_path / "aligned.h5ad",
+        model_dir=tmp_path / "training",
+    )
+
+    resolved_model = captured["config"]["model"]
+    assert resolved_model["components"] == ["velocity", "growth", "score"]
+    assert "interaction_net" not in resolved_model
+    assert captured["interaction_cutoff"] is None
+    assert captured["edge_predictor_path"] is None
+    assert captured["edge_predictor_threshold"] is None
+
+
+@pytest.mark.parametrize(
+    ("option", "match"),
+    (
+        ({"interaction_cutoff": 0.5}, "--interaction-cutoff cannot affect"),
+        ({"graph_database": Path("unused.csv")}, "--graph-database cannot affect"),
+    ),
+)
+def test_no_interaction_training_rejects_inert_scientific_options(option, match):
+    config, _ = load_workflow_config("zebrafish")
+    with pytest.raises(ValueError, match=match):
+        build_workflow_plan(
+            config,
+            source="test",
+            options=WorkflowOptions(
+                training_config=(
+                    "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml"
+                ),
+                train=True,
+                **option,
+            ),
+        )
+
+
+def test_explicit_train_step_is_train_only_and_requires_opt_in(
+    monkeypatch,
+    tmp_path,
+):
+    import CytoBridge.workflow as workflow
+
+    config, source = load_workflow_config("zebrafish")
+    aligned = tmp_path / "zebrafish_aligned.h5ad"
+    edge_predictor = tmp_path / "zebrafish_edge_model.pt"
+    aligned.write_bytes(b"aligned")
+    edge_predictor.write_bytes(b"edge")
+
+    with pytest.raises(ValueError, match="also requires.*--train"):
+        build_workflow_plan(
+            config,
+            source=source,
+            options=WorkflowOptions(steps=("train",)),
+        )
+
+    calls = []
+
+    def train(
+        _config,
+        _options,
+        *,
+        aligned_h5ad,
+        model_dir,
+        edge_predictor_path,
+        edge_predictor_threshold,
+    ):
+        calls.append(
+            (
+                "train",
+                aligned_h5ad,
+                edge_predictor_path,
+                edge_predictor_threshold,
+            )
+        )
+        return model_dir
+
+    monkeypatch.setattr(workflow, "_run_train", train)
+    monkeypatch.setattr(
+        workflow,
+        "_run_preprocess",
+        lambda *_args, **_kwargs: pytest.fail("preprocess must remain skipped"),
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_run_downstream",
+        lambda *_args, **_kwargs: pytest.fail("downstream must remain skipped"),
+    )
+    output = tmp_path / "run"
+    result = run_workflow(
+        config,
+        options=WorkflowOptions(
+            train=True,
+            steps=("train",),
+            aligned_h5ad=aligned,
+            edge_predictor_path=edge_predictor,
+            output_dir=output,
+            device="cpu",
+        ),
+    )
+
+    assert result == {
+        "completed": ["train"],
+        "outputs": {"model_dir": str(output / "training")},
+    }
+    assert calls == [
+        (
+            "train",
+            aligned,
+            edge_predictor,
+            None,
+        )
+    ]
+
+
 def test_custom_training_cutoff_mismatch_fails_before_preprocessing(tmp_path):
     config, source = load_workflow_config("zebrafish")
 
@@ -400,6 +532,7 @@ def test_formal_downstream_simulation_profiles_are_packaged():
         assert downstream["sde_n_samples"] == particles
         assert len(time_grid) == n_times
         assert downstream["split_sde_dt"] == split_dt
+        assert downstream["split_daughter_noise_std"] == 0.0
         if dataset == "zebrafish":
             assert downstream["split_resample_dt"] == 0.05
             assert downstream["split_max_particles"] == 100_000
@@ -807,3 +940,28 @@ def test_dry_run_json_is_machine_readable(capsys):
     assert plan["scientific"]["classifier_k"] == 10
     assert plan["scientific"]["alpha_express"] == 0.015
     assert plan["scientific"]["alpha_spatial"] == 10.0
+
+
+@pytest.mark.parametrize("name", ("zebrafish", "mosta", "arista", "admouse"))
+def test_builtin_dry_run_never_parses_training_yaml(monkeypatch, name):
+    config, source = load_workflow_config(name)
+
+    def reject_training_yaml(*_args, **_kwargs):
+        raise AssertionError("dependency-free built-in dry-run must use workflow JSON")
+
+    monkeypatch.setattr(
+        "CytoBridge.workflow._read_training_config", reject_training_yaml
+    )
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(),
+    )
+
+    downstream = next(step for step in plan["steps"] if step["name"] == "downstream")
+    communication = next(
+        analysis
+        for analysis in downstream["analyses"]
+        if analysis["name"] == "sparse communication"
+    )
+    assert communication["status"] == "enabled"

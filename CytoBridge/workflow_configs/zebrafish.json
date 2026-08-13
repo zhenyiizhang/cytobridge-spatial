@@ -95,6 +95,7 @@
     "split_sde_piecewise_include_end": false,
     "piecewise_observed_sample_mode": "per_timepoint",
     "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
     "split_growth_alpha": 1.0
   }
 }

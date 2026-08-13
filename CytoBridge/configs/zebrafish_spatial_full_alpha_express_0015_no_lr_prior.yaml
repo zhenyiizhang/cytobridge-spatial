@@ -37,6 +37,17 @@ ckpt_dir: results/zebrafish_spatial_full_alpha_express_0015_no_lr_prior
 reverse: true
 seed: 42
 
+matched_ablation:
+  schema_version: 1
+  family: zebrafish-full-no-lr-no-interaction-v1
+  dataset: zebrafish
+  arm: no_lr_prior
+  protocol: isolated-interaction-crn-v1
+  shared_seed: 42
+  interaction_grouping_seed_offset: 10000
+  input_contract: exact-shared-aligned-h5ad
+  implementation_contract: exact-shared-training-code-sha256
+
 training:
   defaults:
     lr: 0.0001
@@ -48,6 +59,7 @@ training:
     alpha_spatial: 10.0
     alpha_express: 0.015
     global_mass: true
+    score_energy_objective: velocity_score_cross_term
 
   plan:
     - name: Pretrain

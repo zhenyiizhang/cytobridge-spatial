@@ -37,7 +37,9 @@ from scripts.spatiotemporal_benchmark.static_baselines.methods import fit_block_
 from scripts.spatiotemporal_benchmark.static_baselines.registry import list_method_specs
 
 
-run_module = importlib.import_module("scripts.spatiotemporal_benchmark.static_baselines.run")
+run_module = importlib.import_module(
+    "scripts.spatiotemporal_benchmark.static_baselines.run"
+)
 methods_module = importlib.import_module(
     "scripts.spatiotemporal_benchmark.static_baselines.methods"
 )
@@ -53,7 +55,9 @@ def write_fixture(
 ) -> Path:
     rng = np.random.default_rng(12)
     times = np.repeat(np.arange(5), [3, 4, 5, 4, 3])
-    keep = np.ones(len(times), dtype=bool) if remove_time is None else times != remove_time
+    keep = (
+        np.ones(len(times), dtype=bool) if remove_time is None else times != remove_time
+    )
     times = times[keep]
     expression = rng.uniform(0.0, 2.0, size=(len(times), 4)).astype(np.float32)
     if negative_expression:
@@ -65,13 +69,22 @@ def write_fixture(
         },
         index=[f"cell_{index:03d}" for index in np.flatnonzero(keep)],
     )
-    data = ad.AnnData(X=expression, obs=obs, var=pd.DataFrame(index=[f"g{i}" for i in range(4)]))
+    data = ad.AnnData(
+        X=expression, obs=obs, var=pd.DataFrame(index=[f"g{i}" for i in range(4)])
+    )
     # Nontrivial deterministic coordinates make composition assertions easier.
     data.obsm["benchmark_state"] = np.column_stack(
-        [times + rng.normal(scale=0.01, size=len(times)), times**2, rng.normal(size=len(times))]
+        [
+            times + rng.normal(scale=0.01, size=len(times)),
+            times**2,
+            rng.normal(size=len(times)),
+        ]
     ).astype(np.float32)
     data.obsm["benchmark_spatial"] = np.column_stack(
-        [times * 2 + rng.normal(scale=0.01, size=len(times)), rng.normal(size=len(times))]
+        [
+            times * 2 + rng.normal(scale=0.01, size=len(times)),
+            rng.normal(size=len(times)),
+        ]
     ).astype(np.float32)
     data.uns["cytobridge_benchmark_contract"] = {
         "dataset_id": "fixture",
@@ -90,7 +103,9 @@ def write_fixture(
         "held_out_benchmark_time": "none" if remove_time is None else int(remove_time),
     }
     if builder_preprocess_proof:
-        data.uns["cytobridge_benchmark_contract"]["preprocess_provenance_contract_passed"] = True
+        data.uns["cytobridge_benchmark_contract"][
+            "preprocess_provenance_contract_passed"
+        ] = True
         data.uns["preprocess_info"] = {
             "transformation_sequence": ["normalize_total", "log1p"]
         }
@@ -122,8 +137,10 @@ def write_manifest(
     contract = data.uns["cytobridge_benchmark_contract"]
     target = int(split.removeprefix("loto_t")) if split.startswith("loto_t") else None
     times = data.obs["benchmark_time"].to_numpy(dtype=float)
-    source_time = float(np.min(times)) if target is None else float(
-        max(value for value in np.unique(times) if value < target)
+    source_time = (
+        float(np.min(times))
+        if target is None
+        else float(max(value for value in np.unique(times) if value < target))
     )
     candidates = np.flatnonzero(np.isclose(times, source_time))
     roster_indices = np.resize(candidates, int(contract["prediction_n"]))
@@ -152,7 +169,9 @@ def write_manifest(
     return path
 
 
-def common_args(input_path: Path, output: Path, mode: str, target: int | None = None) -> list[str]:
+def common_args(
+    input_path: Path, output: Path, mode: str, target: int | None = None
+) -> list[str]:
     args = [
         "run",
         "--input-h5ad",
@@ -188,8 +207,14 @@ def test_registry_exact_methods_and_scopes() -> None:
     assert "barycentric" in wot["benchmark_output"]
     assert specs["paste"]["representations"]["matched_state_spatial"]["hybrid"] is True
     assert specs["spateo"]["representations"]["matched_state_spatial"]["hybrid"] is True
-    assert specs["spatrack"]["representations"]["matched_state_spatial"]["applicable"] is False
-    assert specs["spatrack"]["representations"]["native_gene_sensitivity"]["applicable"] is True
+    assert (
+        specs["spatrack"]["representations"]["matched_state_spatial"]["applicable"]
+        is False
+    )
+    assert (
+        specs["spatrack"]["representations"]["native_gene_sensitivity"]["applicable"]
+        is True
+    )
 
 
 def test_loto_rejects_target_rows_before_method_fit(tmp_path: Path) -> None:
@@ -205,19 +230,31 @@ def test_loto_rejects_target_rows_before_method_fit(tmp_path: Path) -> None:
         )
 
 
-def test_loto_uses_target_removed_brackets_and_contract_prediction_n(tmp_path: Path) -> None:
+def test_loto_uses_target_removed_brackets_and_contract_prediction_n(
+    tmp_path: Path,
+) -> None:
     path = write_fixture(tmp_path / "loto.h5ad", remove_time=2, prediction_n=13)
     data = load_trajectory(path, mode="loto", target_time=2, max_fit_n=20, seed=7)
     pair = data.loto_pair()
-    assert (pair.previous.time, pair.following.time, pair.interpolation_alpha) == (1.0, 3.0, 0.5)
+    assert (pair.previous.time, pair.following.time, pair.interpolation_alpha) == (
+        1.0,
+        3.0,
+        0.5,
+    )
     assert data.prediction_n == 13
     assert all(stage.time != 2 for stage in data.stages)
 
 
-def test_no_holdout_returns_all_adjacent_pairs_and_full_t0_anchor(tmp_path: Path) -> None:
+def test_no_holdout_returns_all_adjacent_pairs_and_full_t0_anchor(
+    tmp_path: Path,
+) -> None:
     path = write_fixture(tmp_path / "full.h5ad")
-    data = load_trajectory(path, mode="no-holdout", target_time=None, max_fit_n=800, seed=7)
-    assert [(pair.previous.time, pair.following.time) for pair in data.adjacent_pairs()] == [
+    data = load_trajectory(
+        path, mode="no-holdout", target_time=None, max_fit_n=800, seed=7
+    )
+    assert [
+        (pair.previous.time, pair.following.time) for pair in data.adjacent_pairs()
+    ] == [
         (0.0, 1.0),
         (1.0, 2.0),
         (2.0, 3.0),
@@ -226,11 +263,17 @@ def test_no_holdout_returns_all_adjacent_pairs_and_full_t0_anchor(tmp_path: Path
     assert data.stage(0).n_obs == 3
 
 
-def test_source_roster_is_train_only_method_independent_and_fixed_size(tmp_path: Path) -> None:
+def test_source_roster_is_train_only_method_independent_and_fixed_size(
+    tmp_path: Path,
+) -> None:
     path = write_fixture(tmp_path / "full.h5ad", prediction_n=17)
-    data = load_trajectory(path, mode="no-holdout", target_time=None, max_fit_n=20, seed=7)
+    data = load_trajectory(
+        path, mode="no-holdout", target_time=None, max_fit_n=20, seed=7
+    )
     first_indices, first_ids = build_source_roster(data.stage(0), data.prediction_n, 91)
-    second_indices, second_ids = build_source_roster(data.stage(0), data.prediction_n, 91)
+    second_indices, second_ids = build_source_roster(
+        data.stage(0), data.prediction_n, 91
+    )
     np.testing.assert_array_equal(first_indices, second_indices)
     np.testing.assert_array_equal(first_ids, second_ids)
     assert len(first_indices) == 17
@@ -253,7 +296,9 @@ def test_static_anchor_ranking_matches_builder_for_integral_float_time() -> None
 
 def test_moscot_block_balance_is_fit_on_all_training_anchors(tmp_path: Path) -> None:
     path = write_fixture(tmp_path / "full.h5ad")
-    data = load_trajectory(path, mode="no-holdout", target_time=None, max_fit_n=20, seed=7)
+    data = load_trajectory(
+        path, mode="no-holdout", target_time=None, max_fit_n=20, seed=7
+    )
     transform = fit_block_balance(data.stages)
     transformed = np.vstack([transform.transform(stage) for stage in data.stages])
     state_dim = data.stage(0).state_pca.shape[1]
@@ -282,7 +327,9 @@ def test_composition_is_p01_p12_not_direct_target_resample() -> None:
         (np.array([[1.0, -1.0], [0.5, 0.5]]), (2, 2), "negative"),
     ],
 )
-def test_invalid_couplings_fail_closed(bad: np.ndarray, shape: tuple[int, int], message: str) -> None:
+def test_invalid_couplings_fail_closed(
+    bad: np.ndarray, shape: tuple[int, int], message: str
+) -> None:
     with pytest.raises(OfficialAPIError, match=message):
         validate_and_row_normalize(bad, shape)
 
@@ -301,7 +348,12 @@ def test_no_holdout_linear_writes_t1_to_t4_from_one_roster(tmp_path: Path) -> No
     manifest = json.loads((output / "run_manifest.json").read_text())
     assert manifest["status"] == "complete"
     assert manifest["protocol"]["direct_previous_to_target_alpha_one_used"] is False
-    assert set(manifest["outputs"]["prediction_by_time"]) == {"1.0", "2.0", "3.0", "4.0"}
+    assert set(manifest["outputs"]["prediction_by_time"]) == {
+        "1.0",
+        "2.0",
+        "3.0",
+        "4.0",
+    }
     with np.load(output / "trajectory_prediction.npz", allow_pickle=False) as values:
         assert values["points"].shape == (36, 5)
         assert np.array_equal(np.unique(values["time"]), [1, 2, 3, 4])
@@ -324,7 +376,9 @@ def test_no_holdout_random_uses_all_adjacent_composed_plans(tmp_path: Path) -> N
     manifest = json.loads((output / "run_manifest.json").read_text())
     assert manifest["protocol"]["mode"] == "no-holdout"
     assert "P01" in manifest["control_run"]["targets"]["1.0"]["formula"]
-    assert manifest["control_run"]["targets"]["4.0"]["formula"] == "P01 @ P12 @ P23 @ P34"
+    assert (
+        manifest["control_run"]["targets"]["4.0"]["formula"] == "P01 @ P12 @ P23 @ P34"
+    )
     assert manifest["outputs"]["couplings"]["shapes"] == {
         "P_0_1": [3, 4],
         "P_1_2": [4, 5],
@@ -334,7 +388,9 @@ def test_no_holdout_random_uses_all_adjacent_composed_plans(tmp_path: Path) -> N
 
 
 def _mock_coupling(method_name, pair, representation, **kwargs):
-    plan = np.full((pair.previous.n_obs, pair.following.n_obs), 1.0 / pair.following.n_obs)
+    plan = np.full(
+        (pair.previous.n_obs, pair.following.n_obs), 1.0 / pair.following.n_obs
+    )
     diagnostics = CouplingDiagnostics(
         shape=plan.shape,
         total_mass=float(plan.sum()),
@@ -342,13 +398,40 @@ def _mock_coupling(method_name, pair, representation, **kwargs):
         row_sum_max=1.0,
         zero_rows=0,
     )
-    return plan, diagnostics, {
-        "dependency": {"available": True, "version": "mock", "git_commit": "abc"},
-        "official_api": f"mock.{method_name}",
-    }
+    return (
+        plan,
+        diagnostics,
+        {
+            "dependency": {"available": True, "version": "mock", "git_commit": "abc"},
+            "official_api": f"mock.{method_name}",
+        },
+    )
 
 
-def test_mocked_official_api_no_holdout_is_called_for_four_edges(tmp_path: Path, monkeypatch) -> None:
+def test_loto_manifest_records_observed_grid_and_nearest_fitted_pair(
+    tmp_path: Path, monkeypatch
+) -> None:
+    path = write_fixture(tmp_path / "loto.h5ad", remove_time=2, prediction_n=6)
+    output = tmp_path / "paste_loto"
+    monkeypatch.setattr(run_module, "run_official_coupling", _mock_coupling)
+
+    code = run_module.main([*common_args(path, output, "loto", 2), "--method", "paste"])
+
+    assert code == 0
+    manifest = json.loads((output / "run_manifest.json").read_text())
+    summary = json.loads((output / "summary.json").read_text())
+    assert manifest["protocol"]["time_values"] == [0.0, 1.0, 3.0, 4.0]
+    assert manifest["protocol"]["loto_target"] == 2.0
+    assert manifest["anchors"]["source_stage"] == 1.0
+    assert summary["source_time"] == 1.0
+    assert [(run["from"], run["to"]) for run in manifest["official_runs"]] == [
+        (1.0, 3.0)
+    ]
+
+
+def test_mocked_official_api_no_holdout_is_called_for_four_edges(
+    tmp_path: Path, monkeypatch
+) -> None:
     path = write_fixture(tmp_path / "full.h5ad", prediction_n=6)
     output = tmp_path / "paste"
     calls: list[tuple[float, float]] = []
@@ -364,11 +447,15 @@ def test_mocked_official_api_no_holdout_is_called_for_four_edges(tmp_path: Path,
     assert code == 0
     assert calls == [(0, 1), (1, 2), (2, 3), (3, 4)]
     manifest = json.loads((output / "run_manifest.json").read_text())
-    assert manifest["composition"]["targets"]["4.0"]["formula"] == "P01 @ P12 @ P23 @ P34"
+    assert (
+        manifest["composition"]["targets"]["4.0"]["formula"] == "P01 @ P12 @ P23 @ P34"
+    )
     assert manifest["output_scope"]["hybrid_adapter"] is True
 
 
-def test_official_paste_api_mock_receives_signed_pc_euclidean_inputs(tmp_path: Path, monkeypatch) -> None:
+def test_official_paste_api_mock_receives_signed_pc_euclidean_inputs(
+    tmp_path: Path, monkeypatch
+) -> None:
     path = write_fixture(tmp_path / "loto.h5ad", remove_time=2)
     data = load_trajectory(path, mode="loto", target_time=2, max_fit_n=20, seed=7)
     pair = data.loto_pair()
@@ -380,7 +467,9 @@ def test_official_paste_api_mock_receives_signed_pc_euclidean_inputs(tmp_path: P
         observed["kwargs"] = kwargs
         return np.ones((previous.n_obs, following.n_obs), dtype=float)
 
-    fake = SimpleNamespace(pairwise_align=pairwise_align, __name__="paste", __file__="/mock/paste.py")
+    fake = SimpleNamespace(
+        pairwise_align=pairwise_align, __name__="paste", __file__="/mock/paste.py"
+    )
     monkeypatch.setattr(
         methods_module,
         "import_official",
@@ -396,13 +485,13 @@ def test_official_paste_api_mock_receives_signed_pc_euclidean_inputs(tmp_path: P
     assert metadata["dependency"]["version"] == "mock"
 
 
-def test_mocked_wot_emits_state_only_and_no_spatial(tmp_path: Path, monkeypatch) -> None:
+def test_mocked_wot_emits_state_only_and_no_spatial(
+    tmp_path: Path, monkeypatch
+) -> None:
     path = write_fixture(tmp_path / "loto.h5ad", remove_time=2, prediction_n=5)
     output = tmp_path / "wot"
     monkeypatch.setattr(run_module, "run_official_coupling", _mock_coupling)
-    code = run_module.main(
-        [*common_args(path, output, "loto", 2), "--method", "wot"]
-    )
+    code = run_module.main([*common_args(path, output, "loto", 2), "--method", "wot"])
     assert code == 0
     with np.load(output / "prediction.npz", allow_pickle=False) as values:
         assert "state" in values
@@ -443,7 +532,9 @@ def test_mocked_wot_full_data_keeps_every_target_state_only(
             assert set(values.files).isdisjoint({"spatial", "points"})
 
 
-def test_matched_spatrack_is_na_without_dependency_or_prediction(tmp_path: Path, monkeypatch) -> None:
+def test_matched_spatrack_is_na_without_dependency_or_prediction(
+    tmp_path: Path, monkeypatch
+) -> None:
     path = write_fixture(tmp_path / "full.h5ad")
     output = tmp_path / "spatrack_na"
 
@@ -460,7 +551,9 @@ def test_matched_spatrack_is_na_without_dependency_or_prediction(tmp_path: Path,
     assert not (output / "prediction.npz").exists()
 
 
-def test_spatrack_native_sensitivity_rejects_negative_expression(tmp_path: Path) -> None:
+def test_spatrack_native_sensitivity_rejects_negative_expression(
+    tmp_path: Path,
+) -> None:
     path = write_fixture(tmp_path / "bad.h5ad", negative_expression=True)
     output = tmp_path / "spatrack_bad"
     code = run_module.main(
@@ -504,7 +597,9 @@ def test_builder_verified_once_log_metadata_allows_spatrack_sensitivity(
     assert manifest["output_scope"]["hybrid_adapter"] is True
 
 
-def test_official_failure_writes_failure_manifest_without_surrogate(tmp_path: Path, monkeypatch) -> None:
+def test_official_failure_writes_failure_manifest_without_surrogate(
+    tmp_path: Path, monkeypatch
+) -> None:
     path = write_fixture(tmp_path / "loto.h5ad", remove_time=1)
     output = tmp_path / "failed"
 
@@ -512,9 +607,7 @@ def test_official_failure_writes_failure_manifest_without_surrogate(tmp_path: Pa
         raise OfficialAPIError("mock official failure")
 
     monkeypatch.setattr(run_module, "run_official_coupling", fail)
-    code = run_module.main(
-        [*common_args(path, output, "loto", 1), "--method", "paste"]
-    )
+    code = run_module.main([*common_args(path, output, "loto", 1), "--method", "paste"])
     assert code == 2
     failure = json.loads((output / "failure_manifest.json").read_text())
     assert failure["surrogate_attempted"] is False

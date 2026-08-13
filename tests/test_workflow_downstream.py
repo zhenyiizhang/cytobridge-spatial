@@ -59,6 +59,7 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     analyses = {item["name"]: item for item in downstream["analyses"]}
     assert downstream["simulation"]["split_resample_dt"] == 0.05
     assert downstream["simulation"]["split_max_particles"] == 100_000
+    assert downstream["simulation"]["daughter_noise_std"] == 0.0
     assert downstream["simulation"]["trajectory_mode"] == (
         "piecewise_observed_anchored_interval_forward_simulation"
     )
@@ -191,6 +192,7 @@ def test_zebrafish_package_workflow_passes_the_formal_split_contract(
         "_loaded_model_scientific_contract",
         lambda *_args, **_kwargs: {
             "status": "test",
+            "interaction_component": True,
             "edge_prior_mode": "learned",
             "interaction_group_size": 64,
         },
@@ -208,6 +210,7 @@ def test_zebrafish_package_workflow_passes_the_formal_split_contract(
     assert captured["split_sde_dt"] == 0.05
     assert captured["split_resample_dt"] == 0.05
     assert captured["split_max_particles"] == 100_000
+    assert captured["split_daughter_noise_std"] == 0.0
     assert captured["split_growth_alpha"] == 1.0
     assert captured["split_interaction_m"] == 64
     assert captured["split_sde_piecewise"] is True
@@ -240,6 +243,14 @@ def test_zebrafish_summary_records_piecewise_estimand_and_actual_counts():
                 uns={"slice_origin": "observed_real", "source_anchor_time": 1.0},
             ),
         },
+        simulation_seeds={
+            "split_population": 43,
+            "split_interaction_grouping": 10043,
+            "split_interaction_grouping_by_interval": {"0.0->1.0": 10043},
+            "piecewise_interaction_seed_derivation": (
+                "split_interaction_grouping + zero_based_observed_interval_index"
+            ),
+        },
     )
 
     summary = _downstream_simulation_summary(
@@ -266,6 +277,22 @@ def test_zebrafish_summary_records_piecewise_estimand_and_actual_counts():
         "0.5": 0.0,
         "1.0": 1.0,
     }
+    assert summary["stochastic_streams"] == {
+        "split_population": 43,
+        "split_interaction_grouping": 10043,
+        "split_interaction_grouping_by_interval": {"0.0->1.0": 10043},
+        "piecewise_interaction_seed_derivation": (
+            "split_interaction_grouping + zero_based_observed_interval_index"
+        ),
+    }
+    assert (
+        "share the declared split_population stream"
+        in summary["stochastic_stream_contract"]
+    )
+    assert (
+        "does not advance the population stream"
+        in summary["stochastic_stream_contract"]
+    )
     assert "not a lineage-continuous" in summary["trajectory_scope"]
     assert (
         "not conditioned on the following observed endpoint"
@@ -561,6 +588,44 @@ def test_all_spatial_artifact_reuse_rejects_inert_predictor_settings():
         )
 
 
+def test_no_interaction_artifact_contract_is_explicit_and_clean():
+    config, _ = load_workflow_config("zebrafish")
+    import CytoBridge.workflow as workflow
+
+    no_interaction_config = (
+        "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml"
+    )
+    checkpoint = deepcopy(workflow._read_training_config(no_interaction_config))
+    checkpoint["ckpt_dir"] = "/copied/model"
+    checkpoint["spatial_dim"] = 2
+    checkpoint["model"]["spatial_dim"] = 2
+    loaded = SimpleNamespace(
+        config=checkpoint,
+        weight_stage="Finetune_no_interaction",
+        score_stage="Score_Refine",
+    )
+
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(training_config=no_interaction_config),
+    )
+
+    assert contract["interaction_component"] is False
+    assert contract["edge_prior_mode"] == "none"
+    assert contract["interaction_cutoff"] is None
+    assert contract["edge_predictor_threshold"] is None
+    assert contract["interaction_group_size"] is None
+
+    checkpoint["model"]["interaction_net"] = {}
+    with pytest.raises(ValueError, match="inert model.interaction_net"):
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(training_config=no_interaction_config),
+        )
+
+
 def test_artifact_reuse_validates_derived_nondefault_spatial_dimension(tmp_path):
     config, _ = load_workflow_config("admouse")
     config = deepcopy(config)
@@ -774,7 +839,10 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
         obs=pd.DataFrame({"Annotation": ["A", "B", "A", "B"]}),
         obsm={"spatial_aligned": np.zeros((4, 2))},
     )
-    model = SimpleNamespace(interaction_net=SimpleNamespace(cutoff=0.25))
+    model = SimpleNamespace(
+        components=["velocity", "growth", "score", "interaction"],
+        interaction_net=SimpleNamespace(cutoff=0.25),
+    )
     result = _write_velocity_outputs(
         cb=cb,
         adata=adata,
@@ -800,6 +868,60 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
     }
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_allclose(archive["full"], components["full"])
+
+
+def test_velocity_no_interaction_retains_zero_sentinel_without_false_panel(
+    tmp_path: Path,
+):
+    calls = []
+    components = {
+        "times": np.asarray([0.0, 0.0]),
+        "features": np.asarray([[0.0, 0.0, 1.0], [1.0, 0.0, 2.0]]),
+        "drift": np.ones((2, 3)),
+        "interaction": np.zeros((2, 3)),
+        "score": np.full((2, 3), 3.0),
+        "full": np.full((2, 3), 4.0),
+    }
+
+    def compute(_adata, _model, **kwargs):
+        assert kwargs["interaction_threshold"] is None
+        return components
+
+    cb = SimpleNamespace(
+        tl=SimpleNamespace(compute_velocity_components_from_adata=compute),
+        pl=SimpleNamespace(
+            plot_velocity_component=lambda **kwargs: calls.append(kwargs)
+        ),
+    )
+    adata = SimpleNamespace(
+        obs=pd.DataFrame({"Annotation": ["A", "B"]}),
+        obsm={"spatial_aligned": np.zeros((2, 2))},
+    )
+    result = _write_velocity_outputs(
+        cb=cb,
+        adata=adata,
+        model=SimpleNamespace(components=["velocity", "growth", "score"]),
+        dataset={
+            "time_key": "time",
+            "obsm_key": "X_latent",
+            "spatial_key": "spatial_aligned",
+            "concat_spatial": True,
+        },
+        annotation_key="Annotation",
+        label_to_color={"A": "#000000", "B": "#ffffff"},
+        output_dir=tmp_path,
+        device="cpu",
+    )
+
+    assert result["interaction_component"] is False
+    assert result["interaction_cutoff"] is None
+    assert len(result["figures"]) == 2
+    assert {call["title"].split(" (")[0] for call in calls} == {
+        "Intrinsic velocity",
+        "Full velocity",
+    }
+    with np.load(tmp_path / "velocity_components.npz") as archive:
+        np.testing.assert_array_equal(archive["interaction"], 0.0)
 
 
 def test_communication_uses_prewarp_states_and_writes_tidy_table(tmp_path: Path):
@@ -956,6 +1078,44 @@ def test_3d_figure_omits_lineage_when_fixed_particle_labels_are_absent(
     assert output["spatiotemporal_3d"]["lineage_ribbons"] == "omitted"
     assert captured["predicted_labels_list"] is None
     assert captured["ribbon_render_mode"] == "none"
+
+
+def test_standard_figures_skip_communication_renderer_when_not_applicable(
+    tmp_path: Path,
+):
+    def unexpected_3d(**_kwargs):
+        raise AssertionError("3D communication renderer must not run")
+
+    cb = SimpleNamespace(
+        tl=SimpleNamespace(
+            save_timepoint_snapshots=lambda **_kwargs: None,
+            plot_lineage_sankey=lambda **_kwargs: None,
+            plot_spatiotemporal_3d=unexpected_3d,
+        )
+    )
+    result = SimpleNamespace(
+        adata_dict={"0.0": object(), "1.0": object()},
+        time_keys=["0.0", "1.0"],
+        ts_points=[0.0, 1.0],
+        plot_3d_time_keys=["0.0", "1.0"],
+        plot_3d_ts_points=[0.0, 1.0],
+        observed_time_points=[0.0, 1.0],
+        interp_points=[],
+        predicted_labels_list=None,
+    )
+
+    output = _write_standard_figures(
+        cb=cb,
+        result=result,
+        communications={},
+        annotation_key="Annotation",
+        label_to_color={"A": "#000000"},
+        output_dir=tmp_path,
+        lineage_enabled=False,
+    )
+
+    assert output["spatiotemporal_3d"]["status"] == "not applicable"
+    assert "no interaction component" in output["spatiotemporal_3d"]["reason"]
 
 
 def test_3d_renderer_accepts_no_lineage_when_ribbons_are_disabled(tmp_path: Path):

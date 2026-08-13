@@ -33,6 +33,7 @@ if __package__ in (None, ""):
         TrainingData,
         add_source_to_path,
         canonical_adata,
+        dynamic_adapter_implementation_identity,
         environment_provenance,
         git_identity,
         input_provenance,
@@ -57,6 +58,7 @@ else:
         TrainingData,
         add_source_to_path,
         canonical_adata,
+        dynamic_adapter_implementation_identity,
         environment_provenance,
         git_identity,
         input_provenance,
@@ -282,8 +284,7 @@ def _install_minimal_packages(
         existing = sys.modules.get(name)
         if existing is not None:
             existing_paths = {
-                str(Path(item).resolve())
-                for item in getattr(existing, "__path__", [])
+                str(Path(item).resolve()) for item in getattr(existing, "__path__", [])
             }
             if str(path) not in existing_paths:
                 raise ContractError(
@@ -419,9 +420,7 @@ def _official_identity(method: str, source_root: Path) -> dict[str, Any]:
             "fit": str(inspect.signature(cls.fit)),
             "imported_as": imported_as,
         }
-        source_files = {
-            "fit": _source_file(cls.fit, source_root, "MIOFlow fit API")
-        }
+        source_files = {"fit": _source_file(cls.fit, source_root, "MIOFlow fit API")}
     return {
         "official_api": OFFICIAL_APIS[method],
         "official_api_signatures": signatures,
@@ -492,15 +491,21 @@ def _save_roster(
         or np.any(indices >= data.n_obs)
         or not same_time(roster_time, source_time)
     ):
-        raise ContractError("canonical source roster has invalid shape, indices, or time")
+        raise ContractError(
+            "canonical source roster has invalid shape, indices, or time"
+        )
     if not np.array_equal(row_id, data.row_id[indices]):
         raise ContractError("canonical source roster row IDs differ from training rows")
     if not np.all(np.isclose(data.time[indices], source_time, rtol=0.0, atol=1e-8)):
         raise ContractError("canonical source roster includes rows outside source time")
     if not np.allclose(spatial, data.spatial[indices], rtol=1e-6, atol=1e-6):
-        raise ContractError("canonical source roster spatial values differ from training rows")
+        raise ContractError(
+            "canonical source roster spatial values differ from training rows"
+        )
     if not np.allclose(state, data.state[indices], rtol=1e-6, atol=1e-6):
-        raise ContractError("canonical source roster state values differ from training rows")
+        raise ContractError(
+            "canonical source roster state values differ from training rows"
+        )
     path = output_dir / "source_roster.npz"
     shutil.copy2(split.source_roster_npz, path)
     return path, {
@@ -591,6 +596,7 @@ def preflight(
         "dataset": split.dataset_id,
         "split_id": split.split_id,
         "regime": split.regime,
+        "track": split.regime,
         "observed_times": list(split.observed_times),
         "n_train": data.n_obs,
         "state_dim": data.state_dim,
@@ -665,6 +671,7 @@ def fit_method(
         "output_scope": representation_contract(method, data)["output_scope"],
         "primary_benchmark_eligible": True,
         "representation_contract": representation_contract(method, data),
+        "adapter_implementation": dynamic_adapter_implementation_identity(),
         "source_import_root": str(import_root),
         **source,
         **input_provenance(split),
@@ -740,9 +747,7 @@ def fit_method(
             "infer": str(inspect.signature(stories.SpaceTime.transform)),
         }
         official_source_files = {
-            "fit": _source_file(
-                stories.SpaceTime.fit, source_root, "STORIES fit API"
-            ),
+            "fit": _source_file(stories.SpaceTime.fit, source_root, "STORIES fit API"),
             "infer": _source_file(
                 stories.SpaceTime.transform, source_root, "STORIES infer API"
             ),
@@ -908,6 +913,20 @@ def infer_method(
     fit_dir = Path(fit_dir).expanduser().resolve()
     fit_manifest_path = fit_dir / "fit_manifest.json"
     fit_manifest = _load_fit_manifest(fit_dir, method, split_id)
+    adapter_implementation = dynamic_adapter_implementation_identity()
+    if fit_manifest.get("adapter_implementation") != adapter_implementation:
+        raise ContractError("dynamic adapter implementation changed after fitting")
+    expected_fit_seed = stable_seed(
+        seed, split.dataset_id, split.split_id, method, "fit"
+    )
+    if (
+        fit_manifest.get("dataset") != split.dataset_id
+        or fit_manifest.get("regime") != split.regime
+        or isinstance(fit_manifest.get("fit_seed"), bool)
+        or fit_manifest.get("fit_seed") != expected_fit_seed
+        or fit_manifest.get("seed_base") != int(seed)
+    ):
+        raise ContractError("fit manifest dataset/regime/seed contract changed")
     source = _pinned_source_identity(method, source_root, pins_path)
     if source["source_git_commit"] != fit_manifest["source_git_commit"]:
         raise ContractError("official source commit differs from fitted commit")
@@ -941,6 +960,7 @@ def infer_method(
         "dataset": split.dataset_id,
         "split_id": split.split_id,
         "regime": split.regime,
+        "track": split.regime,
         "source_time": source_time,
         "target_time": target,
         "initial_n": PREDICTION_N,
@@ -969,6 +989,7 @@ def infer_method(
         "method_version": fit_manifest.get("method_version"),
         "environment": fit_manifest.get("environment"),
         "representation_contract": representation_contract(method, data),
+        "adapter_implementation": adapter_implementation,
         "fit_manifest": str(fit_manifest_path),
         "fit_manifest_sha256": sha256_file(fit_manifest_path),
         **source,

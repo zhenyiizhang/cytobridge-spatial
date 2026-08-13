@@ -151,6 +151,35 @@ def test_current_stage_manifest_rejects_changed_common_or_output(tmp_path):
         runner._require_current_stage_manifest(context, "s22")
 
 
+def test_canonical_s22_manifest_semantics_reject_legacy_global_bundle(tmp_path):
+    manifest_path = tmp_path / "stage_manifest.json"
+    canonical = {
+        "settings": {
+            "trajectory_mode": (
+                "piecewise_observed_anchored_interval_forward_simulation"
+            ),
+            "split_sde_piecewise": True,
+            "piecewise_observed_sample_mode": "per_timepoint",
+            "piecewise_include_end": False,
+            "daughter_noise_std": 0.0,
+            "display_warp": {"applied": False},
+            "simulation": runner.CANONICAL_TRAJECTORY_SCOPE,
+        },
+        "details": {
+            "trajectory_scope": runner.CANONICAL_TRAJECTORY_SCOPE,
+            "display_warp_applied": False,
+        },
+    }
+    runner._require_canonical_s22_manifest_semantics(canonical, manifest_path)
+
+    legacy = json.loads(json.dumps(canonical))
+    legacy["settings"]["trajectory_mode"] = "global_t0_continuous"
+    legacy["settings"]["split_sde_piecewise"] = False
+    legacy["settings"]["display_warp"]["applied"] = True
+    with pytest.raises(RuntimeError, match="refusing legacy/global-t0"):
+        runner._require_canonical_s22_manifest_semantics(legacy, manifest_path)
+
+
 def test_s25_refuses_stale_existing_s22_trajectory(tmp_path):
     common = {"model_config_sha256": "old"}
     _write_current_stage_manifest(tmp_path, stage="s22", common=common)
@@ -163,6 +192,109 @@ def test_s25_refuses_stale_existing_s22_trajectory(tmp_path):
         args=SimpleNamespace(profile="full", s25_top_genes=250),
     )
     with pytest.raises(RuntimeError, match="different data/model/code"):
+        runner._stage_s25(context)
+
+
+def _external_s22_test_context(tmp_path, *, common):
+    bundle = tmp_path / "external_s22" / "canonical_prewarp_states"
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(tmp_path / "aligned.h5ad"),
+            "--model-dir",
+            str(tmp_path / "model"),
+            "--output-dir",
+            str(tmp_path / "current_run"),
+            "--s25-canonical-state-bundle",
+            str(bundle),
+        ]
+    )
+    return (
+        SimpleNamespace(
+            args=args,
+            output_dir=tmp_path / "current_run",
+            shared_cache_dir=tmp_path / "shared_cache",
+            common_signature=common,
+        ),
+        bundle,
+    )
+
+
+def _write_external_s22_bundle(bundle, *, common, settings):
+    bundle.mkdir(parents=True)
+    index = bundle / "index.json"
+    index.write_text('{"frames": []}\n', encoding="utf-8")
+    manifest = {
+        "schema_version": 1,
+        "stage": "s22",
+        "status": "complete",
+        "signature": runner._stable_hash(
+            {"stage": "s22", "common": common, "settings": settings}
+        ),
+        "settings": settings,
+        "details": {
+            "trajectory_scope": runner.CANONICAL_TRAJECTORY_SCOPE,
+            "display_warp_applied": False,
+        },
+        "outputs": [str(index.resolve())],
+        "output_artifacts": [
+            {
+                "path": str(index.resolve()),
+                "size_bytes": index.stat().st_size,
+                "sha256": runner._sha256(index),
+            }
+        ],
+    }
+    manifest_path = bundle.parent / "stage_manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return manifest_path
+
+
+def _canonical_s22_test_settings(context):
+    settings = {
+        "trajectory_mode": ("piecewise_observed_anchored_interval_forward_simulation"),
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": "per_timepoint",
+        "piecewise_include_end": False,
+        "display_warp": {"applied": False},
+        "simulation": runner.CANONICAL_TRAJECTORY_SCOPE,
+    }
+    settings.update(runner._expected_s22_state_settings(context))
+    return settings
+
+
+def test_s25_external_s22_signature_must_bind_current_common(tmp_path):
+    current_common = {"model_config_sha256": "current"}
+    context, bundle = _external_s22_test_context(tmp_path, common=current_common)
+    settings = _canonical_s22_test_settings(context)
+    _write_external_s22_bundle(
+        bundle,
+        common={"model_config_sha256": "stale"},
+        settings=settings,
+    )
+
+    with pytest.raises(RuntimeError, match="different data/model/code"):
+        runner._stage_s25(context)
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "expected_path"),
+    [("sigma", "sigma"), ("classifier", "classifier.epochs")],
+)
+def test_s25_refuses_s22_state_setting_mismatch(tmp_path, mismatch, expected_path):
+    common = {"model_config_sha256": "current"}
+    context, bundle = _external_s22_test_context(tmp_path, common=common)
+    settings = _canonical_s22_test_settings(context)
+    if mismatch == "sigma":
+        settings["sigma"] = float(settings["sigma"]) + 0.01
+    else:
+        settings["classifier"]["epochs"] = int(settings["classifier"]["epochs"]) + 1
+    _write_external_s22_bundle(bundle, common=common, settings=settings)
+
+    with pytest.raises(
+        RuntimeError,
+        match=rf"state-affecting settings.*{expected_path}",
+    ):
         runner._stage_s25(context)
 
 
@@ -267,7 +399,7 @@ def test_communication_relabels_generated_states_without_changing_points(monkeyp
     assert hybrid["0.5"].obs["Annotation"].tolist() == ["direct", "direct"]
     assert sources == {
         0.0: "observed_actual_annotation",
-        0.5: "generated_prewarp_classifier_knn_1",
+        0.5: "generated_interval_local_classifier_knn_1",
     }
     generated_summary = summary.loc[summary["time"].eq(0.5)].iloc[0]
     assert generated_summary["n_labels_changed"] == 2
@@ -595,3 +727,67 @@ def test_interpolation_uses_the_classifier_stage_cache_tag(tmp_path, monkeypatch
         display_piecewise_warp=False,
     )
     assert captured["classifier_cache_tag"] == runner.MAIN_CLASSIFIER_CACHE_TAG
+    assert captured["split_sde_piecewise"] is True
+    assert captured["split_sde_piecewise_include_end"] is False
+    assert captured["split_daughter_noise_std"] == 0.0
+    assert captured["piecewise_observed_sample_mode"] == "per_timepoint"
+    assert captured["spatial_warp_to_observed"] is False
+    assert captured["spatial_warp_to_observed_piecewise"] is False
+    assert captured["spatial_warp_visualization_only"] is False
+    assert "one-sided" in runner.CANONICAL_TRAJECTORY_SCOPE
+    assert "not conditioned on the following observed endpoint" in (
+        runner.CANONICAL_TRAJECTORY_SCOPE
+    )
+    assert "not global-t0" in runner.CANONICAL_TRAJECTORY_SCOPE
+    assert "not lineage-continuous" in runner.CANONICAL_TRAJECTORY_SCOPE
+
+
+def test_interpolation_rejects_legacy_endpoint_directed_display_warp(
+    tmp_path, monkeypatch
+):
+    called = False
+
+    def fake_workflow(**kwargs):
+        nonlocal called
+        called = True
+        return object()
+
+    monkeypatch.setattr(runner.cb.tl, "run_interpolation_workflow", fake_workflow)
+    args = SimpleNamespace(
+        profile="smoke",
+        classifier_epochs=500,
+        random_seed=42,
+        annotation_key="Annotation",
+        time_key="time_point_processed",
+        latent_key="X_latent",
+        spatial_key="spatial_aligned",
+        device="cpu",
+        smoke_n_samples=8,
+        sde_dt=0.05,
+        sde_sigma=0.03,
+        growth_alpha=1.0,
+        interaction_m=1024,
+        sde_max_particles=100000,
+    )
+    context = runner.RunContext(
+        args=args,
+        adata=object(),
+        df=object(),
+        loaded=None,
+        runtime=object(),
+        dim=52,
+        spatial_dim=2,
+        output_dir=tmp_path,
+        shared_cache_dir=tmp_path / "cache",
+        label_to_color={},
+        common_signature={"test": True},
+    )
+    with pytest.raises(ValueError, match="does not permit the legacy"):
+        runner._run_interpolation(
+            context,
+            output_dir=tmp_path / "workflow",
+            time_points=(0.0, 0.5, 1.0),
+            use_real_for_observed=True,
+            display_piecewise_warp=True,
+        )
+    assert not called

@@ -1,4 +1,7 @@
-# Clean-counts Zebrafish production profile with the formal resolved graph.
+# Matched ARISTA no-LR-prior ablation.
+# The complete trainable interaction GNN, spatial cutoff, seed, and six-stage
+# training contract match the production profile. The only scientific change
+# is replacing the learned edge gate with all within-cutoff spatial candidates.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
@@ -19,27 +22,25 @@ model:
     n_layers: 3
     activation: leaky_relu
   interaction_net:
-    edge_prior_mode: learned
+    edge_prior_mode: all_spatial
     hidden_dim: 256
     num_heads: 8
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 0.09606367405591873
+    cutoff: 0.03154105148551745
     use_spatial: true
     rbf_trainable: false
-    edge_predictor_path: edge_classifier/zebrafish.pt
-    edge_predictor_thre: 0.6063615679740906
 
-ckpt_dir: results/zebrafish_spatial_full_alpha_express_0015
+ckpt_dir: results/arista_spatial_full_no_lr_prior
 reverse: true
 seed: 42
 
 matched_ablation:
   schema_version: 1
-  family: zebrafish-full-no-lr-no-interaction-v1
-  dataset: zebrafish
-  arm: full
+  family: arista-full-no-lr-no-interaction-v1
+  dataset: arista
+  arm: no_lr_prior
   protocol: isolated-interaction-crn-v1
   shared_seed: 42
   interaction_grouping_seed_offset: 10000
@@ -49,8 +50,8 @@ matched_ablation:
 training:
   defaults:
     lr: 0.0001
-    lambda_ot: 10.0
-    lambda_mass: 10.0
+    lambda_ot: 1.0
+    lambda_mass: 1.0
     lambda_energy: 0.01
     sigma: 0.03
     batch_size: 512
@@ -121,8 +122,8 @@ training:
       train_strategy: v+g+i
       score_use: true
       lr: 0.0001
-      lambda_ot: 10.0
-      lambda_mass: 10.0
+      lambda_ot: 1.0
+      lambda_mass: 1.0
       lambda_energy: 0.01
       global_mass: true
       reverse_mass_norm: false

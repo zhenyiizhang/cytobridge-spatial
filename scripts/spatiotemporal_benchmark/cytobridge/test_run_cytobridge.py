@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest import mock
 
 import anndata as ad
@@ -39,6 +39,7 @@ from run_cytobridge import (  # noqa: E402
     _atomic_prediction,
     _compact_prediction_summaries,
     _load_graph_summary,
+    _simulate,
     _validated_interaction_m,
     command_fit_loto,
     command_prepare_loto,
@@ -57,6 +58,12 @@ ALL_SPATIAL_CONFIG = (
     HERE.parents[2]
     / "CytoBridge/configs/admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml"
 )
+NO_INTERACTION_CONFIGS = {
+    "zebrafish": "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml",
+    "mosta": "mosta_spatial_full_alpha_express_0015_no_interaction.yaml",
+    "arista": "arista_spatial_full_no_interaction.yaml",
+    "admouse": "admouse_spatial_full_alpha_express_0015_no_interaction.yaml",
+}
 
 
 def package_config(dataset: str = "zebrafish") -> dict:
@@ -74,6 +81,17 @@ def all_spatial_config() -> dict:
     payload = yaml.safe_load(ALL_SPATIAL_CONFIG.read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
     return payload
+
+
+def no_interaction_config(dataset: str = "zebrafish") -> dict:
+    path = HERE.parents[2] / "CytoBridge/configs" / NO_INTERACTION_CONFIGS[dataset]
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
+
+
+def no_interaction_config_path(dataset: str = "zebrafish") -> Path:
+    return HERE.parents[2] / "CytoBridge/configs" / NO_INTERACTION_CONFIGS[dataset]
 
 
 def runtime_config() -> dict:
@@ -238,6 +256,66 @@ class ConfigContractTests(unittest.TestCase):
                 self.assertEqual(
                     report["stage_profile"][3]["epochs"], expected_score_epochs[dataset]
                 )
+
+    def test_real_no_interaction_profiles_have_the_matched_third_state(self) -> None:
+        expected_score_epochs = {
+            "zebrafish": 2001,
+            "mosta": 2001,
+            "arista": 2001,
+            "admouse": 3001,
+        }
+        for dataset in NO_INTERACTION_CONFIGS:
+            with self.subTest(dataset=dataset):
+                source = no_interaction_config(dataset)
+                report = validate_training_config(source)
+                self.assertEqual(report["components"], ["velocity", "growth", "score"])
+                self.assertEqual(report["interaction_mode"], "none")
+                self.assertEqual(report["edge_prior_mode"], "none")
+                self.assertFalse(report["uses_interaction"])
+                self.assertIsNone(report["interaction_group_size"])
+                self.assertEqual(
+                    report["expected_weight_stage"], "Finetune_no_interaction"
+                )
+                self.assertEqual(report["expected_score_stage"], "Score_Refine")
+                self.assertEqual(
+                    report["stage_profile"][3]["epochs"],
+                    expected_score_epochs[dataset],
+                )
+
+                resolved = copy.deepcopy(source)
+                resolved["ckpt_dir"] = f"/runs/{dataset}/no_interaction"
+                resolved["model"]["spatial_dim"] = 2
+                for stage in resolved["training"]["plan"]:
+                    stage["sigma"] = 0.03
+                resolved_report = validate_training_config(
+                    resolved,
+                    runtime_resolved=True,
+                    reference=source,
+                )
+                fields = resolved_report["runtime_resolved_fields"]
+                self.assertEqual(fields["interaction_mode"], "none")
+                self.assertEqual(fields["edge_prior_mode"], "none")
+                self.assertFalse(any("interaction_net" in key for key in fields))
+
+    def test_no_interaction_reference_validation_rejects_any_scientific_drift(
+        self,
+    ) -> None:
+        reference = no_interaction_config()
+        resolved = copy.deepcopy(reference)
+        resolved["ckpt_dir"] = "/runs/zebrafish/no_interaction"
+        resolved["model"]["spatial_dim"] = 2
+        resolved["training"]["defaults"]["lambda_mass"] = 99.0
+        with self.assertRaisesRegex(ContractError, "package YAML"):
+            validate_training_config(
+                resolved,
+                runtime_resolved=True,
+                reference=reference,
+            )
+
+        inert = no_interaction_config()
+        inert["model"]["interaction_net"] = {"edge_prior_mode": "none"}
+        with self.assertRaisesRegex(ContractError, "inert interaction model fields"):
+            validate_training_config(inert)
 
     def test_all_resolved_package_profiles_keep_their_dataset_recipe(self) -> None:
         for dataset in PACKAGE_CONFIGS:
@@ -529,7 +607,11 @@ class ConfigContractTests(unittest.TestCase):
             expected = _full_runtime_expectation(Data(), inventory)
             self.assertEqual(
                 expected,
-                {"interaction_cutoff": 0.08, "edge_prior_mode": "all_spatial"},
+                {
+                    "interaction_cutoff": 0.08,
+                    "interaction_mode": "all_spatial",
+                    "edge_prior_mode": "all_spatial",
+                },
             )
             report = _checkpoint_runtime_binding(model, Data(), inventory, expected)
             self.assertEqual(report["edge_prior_mode"], "all_spatial")
@@ -541,6 +623,44 @@ class ConfigContractTests(unittest.TestCase):
                 "model.interaction_net.edge_predictor_path"
             ] = "/inert/edge.pt"
             with self.assertRaisesRegex(ContractError, "inert predictor fields"):
+                _checkpoint_runtime_binding(model, Data(), inventory, expected)
+
+    def test_no_interaction_checkpoint_binding_has_no_graph_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary).resolve()
+
+            class Data:
+                spatial_dim = 2
+                interaction_graph = {
+                    "neighborhood_threshold": 123.0,
+                    "edge_predictor_threshold": 0.5,
+                }
+
+            inventory = {
+                "training_profile": {
+                    "runtime_resolved_fields": {
+                        "ckpt_dir": str(model),
+                        "model.spatial_dim": 2,
+                        "interaction_mode": "none",
+                        "edge_prior_mode": "none",
+                    }
+                }
+            }
+            expected = _full_runtime_expectation(Data(), inventory)
+            self.assertEqual(
+                expected,
+                {"interaction_mode": "none", "edge_prior_mode": "none"},
+            )
+            report = _checkpoint_runtime_binding(model, Data(), inventory, expected)
+            self.assertEqual(report["interaction_mode"], "none")
+            self.assertEqual(report["edge_prior_mode"], "none")
+            self.assertFalse(report["include_interaction"])
+            self.assertNotIn("interaction_cutoff", report)
+
+            inventory["training_profile"]["runtime_resolved_fields"][
+                "model.interaction_net.cutoff"
+            ] = 0.08
+            with self.assertRaisesRegex(ContractError, "inert interaction fields"):
                 _checkpoint_runtime_binding(model, Data(), inventory, expected)
 
 
@@ -661,6 +781,76 @@ class ModeAwareExecutionTests(unittest.TestCase):
                     split,
                     edge_prior_mode="all_spatial",
                     training_config_sha256=sha256_file(ALL_SPATIAL_CONFIG),
+                )
+
+    def test_no_interaction_prepare_writes_only_a_mode_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs")
+            output = root / "prior"
+            config_path = no_interaction_config_path()
+            args = SimpleNamespace(
+                input_manifest=manifest,
+                split="loto_t1",
+                training_config=config_path,
+                output_dir=output,
+                database=None,
+                repo=HERE.parents[2],
+                device="cpu",
+                expression_layer="counts",
+                interaction_cutoff=None,
+                spot_diameter=None,
+                edge_threshold=None,
+                edge_epochs=100,
+                edge_batch_size=1024,
+                edge_learning_rate=0.001,
+                edge_train_sample_ratio=1.0,
+                edge_max_train_edges=None,
+                edge_num_workers=0,
+                seed=42,
+                quiet=True,
+            )
+            command_prepare_loto(args)
+            summary_path = output / "prepare_graph_summary.json"
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["interaction_mode"], "none")
+            self.assertEqual(summary["edge_prior_mode"], "none")
+            self.assertEqual(summary["artifact_sha256"], {})
+            self.assertEqual(
+                summary["graph_generation"],
+                "not_applicable_no_interaction_component",
+            )
+            for key in (
+                "interaction_cutoff",
+                "interaction_cutoff_source",
+                "observed_stage_graphs",
+                "database",
+                "edge_model",
+                "edge_meta",
+                "edge_threshold",
+            ):
+                self.assertNotIn(key, summary)
+            self.assertEqual(
+                [path.name for path in output.iterdir()],
+                ["prepare_graph_summary.json"],
+            )
+
+            split = read_split_input(manifest, "loto_t1")
+            loaded = _load_graph_summary(
+                output,
+                split,
+                edge_prior_mode="none",
+                training_config_sha256=sha256_file(config_path),
+            )
+            self.assertEqual(loaded["interaction_mode"], "none")
+            summary["interaction_cutoff"] = 0.1
+            summary_path.write_text(json.dumps(summary), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "inert graph fields"):
+                _load_graph_summary(
+                    output,
+                    split,
+                    edge_prior_mode="none",
+                    training_config_sha256=sha256_file(config_path),
                 )
 
     def test_all_spatial_cli_values_are_fail_closed(self) -> None:
@@ -803,6 +993,7 @@ class ModeAwareExecutionTests(unittest.TestCase):
                 captured_binding,
                 {
                     "interaction_cutoff": cutoff,
+                    "interaction_mode": "all_spatial",
                     "edge_prior_mode": "all_spatial",
                 },
             )
@@ -812,6 +1003,211 @@ class ModeAwareExecutionTests(unittest.TestCase):
             self.assertEqual(report["edge_prior_mode"], "all_spatial")
             self.assertNotIn("edge_model", report)
             self.assertNotIn("edge_threshold", report)
+
+    def test_no_interaction_fit_passes_no_graph_or_interaction_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "model"
+            split = SimpleNamespace(
+                regime="loto",
+                holdout_time=1.0,
+                split_id="loto_t1",
+                train_h5ad=root / "train.h5ad",
+            )
+            data = SimpleNamespace(
+                spatial_dim=2,
+                state_key="benchmark_state",
+                spatial_key="benchmark_spatial",
+                time_key="benchmark_time",
+            )
+            config_source = no_interaction_config_path()
+            prepared = {
+                "interaction_mode": "none",
+                "edge_prior_mode": "none",
+                "_summary_path": str(root / "prior/prepare_graph_summary.json"),
+                "_summary_sha256": "a" * 64,
+            }
+            inventory = {
+                "config_sha256": "b" * 64,
+                "stage_complete": True,
+                "checkpoints": {},
+            }
+            captured_binding = {}
+
+            def new_output(path):
+                path.mkdir(parents=True)
+                return path
+
+            def match(*unused, **kwargs):
+                captured_binding.update(kwargs["runtime_binding"])
+                return {"proof": "mock"}
+
+            fit = mock.Mock()
+            fake_cytobridge = SimpleNamespace(tl=SimpleNamespace(fit=fit))
+            with (
+                mock.patch("run_cytobridge.read_split_input", return_value=split),
+                mock.patch("run_cytobridge.load_training_data", return_value=data),
+                mock.patch("run_cytobridge._input_report", return_value={}),
+                mock.patch("run_cytobridge._load_graph_summary", return_value=prepared),
+                mock.patch("run_cytobridge.new_output_dir", side_effect=new_output),
+                mock.patch(
+                    "run_cytobridge.checkpoint_inventory", return_value=inventory
+                ),
+                mock.patch(
+                    "run_cytobridge.checkpoint_training_match", side_effect=match
+                ),
+                mock.patch("run_cytobridge.input_provenance", return_value={}),
+                mock.patch("run_cytobridge.environment_provenance", return_value={}),
+                mock.patch("run_cytobridge.repo_identity", return_value={}),
+                mock.patch.dict(sys.modules, {"CytoBridge": fake_cytobridge}),
+            ):
+                command_fit_loto(
+                    SimpleNamespace(
+                        input_manifest=root / "manifest.json",
+                        split="loto_t1",
+                        training_config=config_source,
+                        graph_dir=root / "prior",
+                        output_dir=output,
+                        repo=HERE.parents[2],
+                        device="cpu",
+                        sigma=0.03,
+                        seed=42,
+                    )
+                )
+
+            fit_kwargs = fit.call_args.kwargs
+            self.assertNotIn("interaction_cutoff", fit_kwargs)
+            self.assertNotIn("edge_predictor_path", fit_kwargs)
+            self.assertNotIn("edge_predictor_threshold", fit_kwargs)
+            self.assertNotIn("interaction_net", fit_kwargs["config"]["model"])
+            self.assertEqual(
+                fit_kwargs["config"]["model"]["components"],
+                ["velocity", "growth", "score"],
+            )
+            self.assertEqual(
+                captured_binding,
+                {"interaction_mode": "none", "edge_prior_mode": "none"},
+            )
+            report = json.loads(
+                (output / "benchmark_fit_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(report["interaction_mode"], "none")
+            self.assertEqual(report["edge_prior_mode"], "none")
+            self.assertNotIn("interaction_cutoff", report)
+            self.assertNotIn("edge_model", report)
+            self.assertNotIn("edge_threshold", report)
+
+    def test_no_interaction_inference_runs_velocity_growth_and_score_only(self) -> None:
+        source = no_interaction_config()
+        resolved = copy.deepcopy(source)
+        resolved["ckpt_dir"] = "/runs/zebrafish/no_interaction"
+        resolved["model"]["spatial_dim"] = 2
+        for stage in resolved["training"]["plan"]:
+            stage["sigma"] = 0.03
+        loaded = SimpleNamespace(
+            config=resolved,
+            model=SimpleNamespace(components=["velocity", "growth", "score"]),
+            weight_stage="Finetune_no_interaction",
+            score_stage="Score_Refine",
+        )
+        data = SimpleNamespace(
+            joint_dim=5,
+            time_key="benchmark_time",
+            state_key="benchmark_state",
+            spatial_key="benchmark_spatial",
+        )
+        captured = {}
+
+        def simulate(
+            *,
+            adata,
+            model,
+            dim,
+            time_index,
+            n_samples,
+            ts_points,
+            dt,
+            sigma,
+            include_score,
+            interaction_m,
+            device,
+            time_key,
+            obsm_key,
+            spatial_key,
+            concat_spatial,
+            interaction_seed,
+            verbose,
+        ):
+            captured.update(
+                {
+                    "adata": adata,
+                    "model": model,
+                    "dim": dim,
+                    "time_index": time_index,
+                    "n_samples": n_samples,
+                    "ts_points": ts_points,
+                    "dt": dt,
+                    "sigma": sigma,
+                    "include_score": include_score,
+                    "interaction_m": interaction_m,
+                    "device": device,
+                    "time_key": time_key,
+                    "obsm_key": obsm_key,
+                    "spatial_key": spatial_key,
+                    "concat_spatial": concat_spatial,
+                    "interaction_seed": interaction_seed,
+                    "verbose": verbose,
+                }
+            )
+            points = [
+                np.zeros((PREDICTION_N, data.joint_dim), dtype=np.float32)
+                for _ in ts_points
+            ]
+            weights = [np.ones(PREDICTION_N, dtype=np.float64) for _ in ts_points]
+            return points, weights
+
+        cytobridge_module = ModuleType("CytoBridge")
+        tl_module = ModuleType("CytoBridge.tl")
+        downstream_module = ModuleType("CytoBridge.tl.downstream")
+        simulation_module = ModuleType("CytoBridge.tl.downstream.simulation")
+        tl_module.load_dynamical_model_from_dir = mock.Mock(return_value=loaded)
+        simulation_module.simulate_sde_points = simulate
+        downstream_module.simulation = simulation_module
+        tl_module.downstream = downstream_module
+        cytobridge_module.tl = tl_module
+        with mock.patch.dict(
+            sys.modules,
+            {
+                "CytoBridge": cytobridge_module,
+                "CytoBridge.tl": tl_module,
+                "CytoBridge.tl.downstream": downstream_module,
+                "CytoBridge.tl.downstream.simulation": simulation_module,
+            },
+        ):
+            points, weights, report = _simulate(
+                repo=HERE.parents[2],
+                model_dir=Path("/runs/zebrafish/no_interaction"),
+                data=data,
+                bootstrap=object(),
+                times=[0.0, 1.0],
+                device="cpu",
+                dt=0.01,
+                interaction_m=999,
+                expected_interaction_mode="none",
+            )
+
+        self.assertEqual(len(points), 2)
+        self.assertEqual(len(weights), 2)
+        self.assertTrue(captured["include_score"])
+        self.assertEqual(captured["interaction_m"], 1)
+        self.assertEqual(captured["interaction_seed"], 10_042)
+        self.assertEqual(report["interaction_mode"], "none")
+        self.assertEqual(report["edge_prior_mode"], "none")
+        self.assertFalse(report["include_interaction"])
+        self.assertFalse(report["edge_predictor_used"])
+        self.assertIsNone(report["interaction_m"])
+        self.assertIsNone(report["interaction_grouping_seed"])
+        self.assertEqual(report["dynamics_components"], ["velocity", "growth", "score"])
 
 
 class InputContractTests(unittest.TestCase):

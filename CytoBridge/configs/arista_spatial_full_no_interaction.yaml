@@ -1,8 +1,10 @@
-# Clean-counts Zebrafish production profile with the formal resolved graph.
+# Matched ARISTA ablation of the interaction component.
+#
+# All retained model, optimization, data, seed, and six-stage schedule settings
+# match arista_spatial_full.yaml.  Only interaction-specific model fields and
+# training are disabled.
 model:
-  components: [velocity, growth, score, interaction]
-  interaction_type: gnn
-  interaction_group_size: 1024
+  components: [velocity, growth, score]
   velocity_net:
     hidden_dim: 256
     n_layers: 5
@@ -18,28 +20,16 @@ model:
     hidden_dim: 400
     n_layers: 3
     activation: leaky_relu
-  interaction_net:
-    edge_prior_mode: learned
-    hidden_dim: 256
-    num_heads: 8
-    num_layers: 1
-    activation: leakyrelu
-    num_rbf: 8
-    cutoff: 0.09606367405591873
-    use_spatial: true
-    rbf_trainable: false
-    edge_predictor_path: edge_classifier/zebrafish.pt
-    edge_predictor_thre: 0.6063615679740906
 
-ckpt_dir: results/zebrafish_spatial_full_alpha_express_0015
+ckpt_dir: results/arista_spatial_full_no_interaction
 reverse: true
 seed: 42
 
 matched_ablation:
   schema_version: 1
-  family: zebrafish-full-no-lr-no-interaction-v1
-  dataset: zebrafish
-  arm: full
+  family: arista-full-no-lr-no-interaction-v1
+  dataset: arista
+  arm: no_interaction
   protocol: isolated-interaction-crn-v1
   shared_seed: 42
   interaction_grouping_seed_offset: 10000
@@ -49,8 +39,8 @@ matched_ablation:
 training:
   defaults:
     lr: 0.0001
-    lambda_ot: 10.0
-    lambda_mass: 10.0
+    lambda_ot: 1.0
+    lambda_mass: 1.0
     lambda_energy: 0.01
     sigma: 0.03
     batch_size: 512
@@ -66,6 +56,7 @@ training:
       batch_size: 512
       OT_loss: weighted_emd_detach
       train_strategy: v+g
+      interaction_use: false
       lambda_ot: 1.0
       lambda_mass: 0.01
       lambda_energy: 0.0
@@ -80,6 +71,7 @@ training:
       batch_size: 512
       OT_loss: weighted_emd
       train_strategy: v+g
+      interaction_use: false
       lambda_ot: 1.0
       lambda_mass: 0.01
       lambda_energy: 0.0
@@ -88,12 +80,13 @@ training:
       reverse_mass_offset: false
       checkpoint_metric: legacy_forward_last_ot
 
-    - name: Init_interaction
+    - name: Matched_stage_3_no_interaction
       mode: neural_ode
       epochs: 50
       batch_size: 512
       OT_loss: weighted_emd
-      train_strategy: v+g+i
+      train_strategy: v+g
+      interaction_use: false
       lambda_ot: 10.0
       lambda_mass: 10.0
       lambda_energy: 0.01
@@ -113,16 +106,17 @@ training:
       lambda_penalty: 0
       save_strategy: last
 
-    - name: Finetune
+    - name: Finetune_no_interaction
       mode: neural_ode
       epochs: 1000
       batch_size: 512
       OT_loss: weighted_emd
-      train_strategy: v+g+i
+      train_strategy: v+g
       score_use: true
+      interaction_use: false
       lr: 0.0001
-      lambda_ot: 10.0
-      lambda_mass: 10.0
+      lambda_ot: 1.0
+      lambda_mass: 1.0
       lambda_energy: 0.01
       global_mass: true
       reverse_mass_norm: false

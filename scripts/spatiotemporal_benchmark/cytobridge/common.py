@@ -30,13 +30,22 @@ SEED = 42
 ALPHA_EXPRESS = 0.015
 ALPHA_SPATIAL = 10.0
 SIGMA = 0.03
-COMPONENTS = ("velocity", "growth", "score", "interaction")
+BASE_COMPONENTS = ("velocity", "growth", "score")
+COMPONENTS = (*BASE_COMPONENTS, "interaction")
 STAGE_CONTRACT = (
     ("Pretrain", "neural_ode", "v+g"),
     ("Refine", "neural_ode", "v+g"),
     ("Init_interaction", "neural_ode", "v+g+i"),
     ("Train_Score", "score_matching", "s"),
     ("Finetune", "neural_ode", "v+g+i"),
+    ("Score_Refine", "score_matching", "s"),
+)
+NO_INTERACTION_STAGE_CONTRACT = (
+    ("Pretrain", "neural_ode", "v+g"),
+    ("Refine", "neural_ode", "v+g"),
+    ("Matched_stage_3_no_interaction", "neural_ode", "v+g"),
+    ("Train_Score", "score_matching", "s"),
+    ("Finetune_no_interaction", "neural_ode", "v+g"),
     ("Score_Refine", "score_matching", "s"),
 )
 
@@ -612,15 +621,12 @@ def validate_training_config(
     components = model.get("components")
     if not isinstance(components, Sequence) or isinstance(components, (str, bytes)):
         raise ContractError("config.model.components must be a sequence")
-    if tuple(components) != COMPONENTS:
+    components_tuple = tuple(str(component) for component in components)
+    if components_tuple not in {COMPONENTS, BASE_COMPONENTS}:
         raise ContractError(
-            f"config.model.components must be {COMPONENTS!r}, found {components!r}"
+            "config.model.components must be either "
+            f"{COMPONENTS!r} or {BASE_COMPONENTS!r}, found {components!r}"
         )
-    if model.get("interaction_type") != "gnn":
-        raise ContractError("config.model.interaction_type must be 'gnn'")
-    _require_positive_int(
-        model.get("interaction_group_size"), "config.model.interaction_group_size"
-    )
     for network_name in ("velocity_net", "growth_net", "score_net"):
         network = _require_mapping(
             model.get(network_name), f"config.model.{network_name}"
@@ -632,62 +638,89 @@ def validate_training_config(
             network.get("n_layers"), f"config.model.{network_name}.n_layers"
         )
 
-    interaction = _require_mapping(
-        model.get("interaction_net"), "config.model.interaction_net"
-    )
-    cutoff = float(interaction.get("cutoff", np.nan))
-    if not np.isfinite(cutoff) or cutoff <= 0:
-        raise ContractError("config.model.interaction_net.cutoff must be positive")
-    edge_prior_mode = str(interaction.get("edge_prior_mode", "learned")).strip().lower()
-    if edge_prior_mode not in {"learned", "all_spatial"}:
-        raise ContractError(
-            "config.model.interaction_net.edge_prior_mode must be 'learned' or "
-            f"'all_spatial', found {edge_prior_mode!r}"
+    uses_interaction = components_tuple == COMPONENTS
+    if uses_interaction:
+        if model.get("interaction_type") != "gnn":
+            raise ContractError("config.model.interaction_type must be 'gnn'")
+        interaction_group_size = _require_positive_int(
+            model.get("interaction_group_size"),
+            "config.model.interaction_group_size",
         )
-    if edge_prior_mode == "learned":
-        try:
-            threshold = float(interaction.get("edge_predictor_thre", np.nan))
-        except (TypeError, ValueError) as exc:
+        interaction = _require_mapping(
+            model.get("interaction_net"), "config.model.interaction_net"
+        )
+        cutoff = float(interaction.get("cutoff", np.nan))
+        if not np.isfinite(cutoff) or cutoff <= 0:
+            raise ContractError("config.model.interaction_net.cutoff must be positive")
+        interaction_mode = (
+            str(interaction.get("edge_prior_mode", "learned")).strip().lower()
+        )
+        if interaction_mode not in {"learned", "all_spatial"}:
             raise ContractError(
-                "config.model.interaction_net.edge_predictor_thre must lie "
-                "between zero and one when edge_prior_mode='learned'"
-            ) from exc
-        if not np.isfinite(threshold) or not 0 < threshold < 1:
-            raise ContractError(
-                "config.model.interaction_net.edge_predictor_thre must lie "
-                "between zero and one when edge_prior_mode='learned'"
+                "config.model.interaction_net.edge_prior_mode must be 'learned' or "
+                f"'all_spatial', found {interaction_mode!r}"
             )
-        edge_path = interaction.get("edge_predictor_path")
-        if not isinstance(edge_path, str) or not edge_path.strip():
-            raise ContractError(
-                "config.model.interaction_net.edge_predictor_path must be a "
-                "non-empty string when edge_prior_mode='learned'"
+        if interaction_mode == "learned":
+            try:
+                threshold = float(interaction.get("edge_predictor_thre", np.nan))
+            except (TypeError, ValueError) as exc:
+                raise ContractError(
+                    "config.model.interaction_net.edge_predictor_thre must lie "
+                    "between zero and one when edge_prior_mode='learned'"
+                ) from exc
+            if not np.isfinite(threshold) or not 0 < threshold < 1:
+                raise ContractError(
+                    "config.model.interaction_net.edge_predictor_thre must lie "
+                    "between zero and one when edge_prior_mode='learned'"
+                )
+            edge_path = interaction.get("edge_predictor_path")
+            if not isinstance(edge_path, str) or not edge_path.strip():
+                raise ContractError(
+                    "config.model.interaction_net.edge_predictor_path must be a "
+                    "non-empty string when edge_prior_mode='learned'"
+                )
+        else:
+            inert_predictor_keys = sorted(
+                key
+                for key in (
+                    "edge_predictor_path",
+                    "edge_predictor_thre",
+                    "edge_predictor_threshold",
+                )
+                if key in interaction
             )
+            if inert_predictor_keys:
+                raise ContractError(
+                    "config.model.interaction_net edge_prior_mode='all_spatial' does "
+                    "not use an edge predictor; remove inert predictor keys "
+                    f"{inert_predictor_keys!r}"
+                )
+        stage_contract = STAGE_CONTRACT
     else:
-        inert_predictor_keys = sorted(
+        inert_interaction_keys = sorted(
             key
-            for key in (
-                "edge_predictor_path",
-                "edge_predictor_thre",
-                "edge_predictor_threshold",
-            )
-            if key in interaction
+            for key in ("interaction_type", "interaction_group_size", "interaction_net")
+            if key in model
         )
-        if inert_predictor_keys:
+        if inert_interaction_keys:
             raise ContractError(
-                "config.model.interaction_net edge_prior_mode='all_spatial' does "
-                "not use an edge predictor; remove inert predictor keys "
-                f"{inert_predictor_keys!r}"
+                "config.model.components excludes interaction; remove inert "
+                f"interaction model fields {inert_interaction_keys!r}"
             )
+        interaction_group_size = None
+        interaction = {}
+        cutoff = None
+        interaction_mode = "none"
+        stage_contract = NO_INTERACTION_STAGE_CONTRACT
     if runtime_resolved and int(model.get("spatial_dim", -1)) != 2:
         raise ContractError("runtime config.model.spatial_dim must be 2")
 
-    if len(plan) != len(STAGE_CONTRACT):
+    if len(plan) != len(stage_contract):
         raise ContractError(
-            f"training plan must contain exactly {len(STAGE_CONTRACT)} stages"
+            f"training plan must contain exactly {len(stage_contract)} stages"
         )
     observed_profile: list[dict[str, Any]] = []
-    for index, (stage, expected) in enumerate(zip(plan, STAGE_CONTRACT)):
+    for index, (stage, expected) in enumerate(zip(plan, stage_contract)):
         stage = _require_mapping(stage, f"config.training.plan[{index}]")
         expected_name, expected_mode, expected_strategy = expected
         for key, expected_value in (
@@ -704,19 +737,32 @@ def validate_training_config(
         _require_positive_int(stage.get("batch_size"), f"{expected_name}.batch_size")
         if "sigma" in stage:
             _require_close(stage["sigma"], runtime_sigma, f"{expected_name}.sigma")
+        if interaction_mode == "none":
+            if (
+                expected_mode == "neural_ode"
+                and stage.get("interaction_use") is not False
+            ):
+                raise ContractError(
+                    f"{expected_name}.interaction_use must be false for a "
+                    "no-interaction profile"
+                )
+            if expected_mode == "score_matching" and "interaction_use" in stage:
+                raise ContractError(
+                    f"{expected_name}.interaction_use is inert for a score-only stage"
+                )
         observed_profile.append(plain(stage))
 
     scientific_profile = _scientific_config(config)
     if reference is not None:
         reference_profile = validate_training_config(reference)
-        reference_interaction = _require_mapping(
-            _require_mapping(reference.get("model"), "reference.model").get(
-                "interaction_net"
-            ),
-            "reference.model.interaction_net",
-        )
-        if edge_prior_mode == "all_spatial":
-            if reference_profile["edge_prior_mode"] != "all_spatial":
+        reference_model = _require_mapping(reference.get("model"), "reference.model")
+        reference_interaction = reference_model.get("interaction_net", {})
+        if interaction_mode == "all_spatial":
+            reference_interaction = _require_mapping(
+                reference_interaction,
+                "reference.model.interaction_net",
+            )
+            if reference_profile["interaction_mode"] != "all_spatial":
                 raise ContractError(
                     "resolved all_spatial training config differs in edge-prior mode "
                     "from its package YAML"
@@ -734,7 +780,9 @@ def validate_training_config(
         # missing reference declaration must continue through the strict byte-
         # projected scientific comparison unchanged.
         if (
-            "edge_prior_mode" not in interaction
+            interaction_mode != "none"
+            and isinstance(reference_interaction, Mapping)
+            and "edge_prior_mode" not in interaction
             and "edge_prior_mode" in reference_interaction
             and str(reference_interaction["edge_prior_mode"]).strip().lower()
             == "learned"
@@ -758,11 +806,18 @@ def validate_training_config(
         runtime_fields = {
             "ckpt_dir": config["ckpt_dir"],
             "model.spatial_dim": model.get("spatial_dim"),
-            "model.interaction_net.cutoff": interaction["cutoff"],
-            "model.interaction_net.edge_prior_mode": edge_prior_mode,
+            "interaction_mode": interaction_mode,
+            "edge_prior_mode": interaction_mode,
             "stage_sigma": runtime_sigma,
         }
-        if edge_prior_mode == "learned":
+        if interaction_mode != "none":
+            runtime_fields.update(
+                {
+                    "model.interaction_net.cutoff": interaction["cutoff"],
+                    "model.interaction_net.edge_prior_mode": interaction_mode,
+                }
+            )
+        if interaction_mode == "learned":
             runtime_fields.update(
                 {
                     "model.interaction_net.edge_predictor_path": interaction[
@@ -779,8 +834,21 @@ def validate_training_config(
         "alpha_express": ALPHA_EXPRESS,
         "alpha_spatial": ALPHA_SPATIAL,
         "sigma": SIGMA,
-        "components": list(COMPONENTS),
-        "edge_prior_mode": edge_prior_mode,
+        "components": list(components_tuple),
+        "interaction_mode": interaction_mode,
+        "edge_prior_mode": interaction_mode,
+        "uses_interaction": uses_interaction,
+        "interaction_group_size": interaction_group_size,
+        "expected_weight_stage": next(
+            stage[0]
+            for stage in reversed(stage_contract)
+            if stage[1] != "score_matching" and stage[2] != "s"
+        ),
+        "expected_score_stage": next(
+            stage[0]
+            for stage in reversed(stage_contract)
+            if stage[1] == "score_matching" or stage[2] == "s"
+        ),
         "defaults_profile": plain(defaults),
         "model_profile": plain(model),
         "stage_profile": observed_profile,
@@ -836,6 +904,22 @@ def checkpoint_inventory(
     }
 
 
+def _runtime_interaction_mode(fields: Mapping[str, Any]) -> str:
+    """Return the explicit interaction mode, preserving learned legacy defaults."""
+
+    mode = fields.get(
+        "interaction_mode",
+        fields.get(
+            "edge_prior_mode",
+            fields.get("model.interaction_net.edge_prior_mode", "learned"),
+        ),
+    )
+    result = str(mode).strip().lower()
+    if result not in {"learned", "all_spatial", "none"}:
+        raise ContractError("checkpoint inventory records an invalid interaction mode")
+    return result
+
+
 def _checkpoint_runtime_binding(
     model_dir: Path,
     data: TrainingData,
@@ -862,28 +946,49 @@ def _checkpoint_runtime_binding(
         raise ContractError(
             "saved config.model.spatial_dim differs from benchmark data"
         )
-    edge_prior_mode = (
-        str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
+    interaction_mode = _runtime_interaction_mode(fields)
+    expected_mode = (
+        str(
+            expected.get(
+                "interaction_mode",
+                expected.get("edge_prior_mode", interaction_mode),
+            )
+        )
         .strip()
         .lower()
     )
-    if edge_prior_mode not in {"learned", "all_spatial"}:
-        raise ContractError(
-            "checkpoint inventory records an invalid interaction edge-prior mode"
+    if expected_mode != interaction_mode:
+        raise ContractError("saved interaction mode differs from benchmark expectation")
+    if interaction_mode == "none":
+        inert_fields = sorted(
+            key
+            for key in (
+                "model.interaction_net.cutoff",
+                "model.interaction_net.edge_prior_mode",
+                "model.interaction_net.edge_predictor_path",
+                "model.interaction_net.edge_predictor_thre",
+            )
+            if key in fields
         )
-    expected_mode = (
-        str(expected.get("edge_prior_mode", edge_prior_mode)).strip().lower()
-    )
-    if expected_mode != edge_prior_mode:
-        raise ContractError(
-            "saved interaction edge-prior mode differs from benchmark expectation"
-        )
+        if inert_fields:
+            raise ContractError(
+                "no-interaction checkpoint inventory contains inert interaction "
+                f"fields {inert_fields!r}"
+            )
+        return {
+            "model_dir": str(model_dir),
+            "recorded_ckpt_dir": recorded_dir,
+            "spatial_dim": data.spatial_dim,
+            "interaction_mode": "none",
+            "edge_prior_mode": "none",
+            "include_interaction": False,
+        }
     cutoff = _require_close(
         fields.get("model.interaction_net.cutoff"),
         float(expected["interaction_cutoff"]),
         "saved interaction cutoff",
     )
-    if edge_prior_mode == "all_spatial":
+    if interaction_mode == "all_spatial":
         inert_fields = sorted(
             key
             for key in (
@@ -902,7 +1007,9 @@ def _checkpoint_runtime_binding(
             "recorded_ckpt_dir": recorded_dir,
             "spatial_dim": data.spatial_dim,
             "interaction_cutoff": cutoff,
-            "edge_prior_mode": edge_prior_mode,
+            "interaction_mode": interaction_mode,
+            "edge_prior_mode": interaction_mode,
+            "include_interaction": True,
             "edge_threshold": None,
             "recorded_edge_predictor_path": None,
             "edge_predictor_source": None,
@@ -919,7 +1026,9 @@ def _checkpoint_runtime_binding(
         "recorded_ckpt_dir": recorded_dir,
         "spatial_dim": data.spatial_dim,
         "interaction_cutoff": cutoff,
-        "edge_prior_mode": edge_prior_mode,
+        "interaction_mode": interaction_mode,
+        "edge_prior_mode": interaction_mode,
+        "include_interaction": True,
         "edge_threshold": threshold,
         "recorded_edge_predictor_path": str(recorded_edge_path),
         "edge_predictor_source": "embedded_finetune_checkpoint",
@@ -936,31 +1045,33 @@ def _full_runtime_expectation(
     )
     if not isinstance(fields, Mapping):
         raise ContractError("checkpoint inventory lacks resolved runtime fields")
-    edge_prior_mode = (
-        str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
-        .strip()
-        .lower()
-    )
+    interaction_mode = _runtime_interaction_mode(fields)
+    if interaction_mode == "none":
+        return {
+            "interaction_mode": "none",
+            "edge_prior_mode": "none",
+        }
     graph = data.interaction_graph
     required = {"neighborhood_threshold"}
-    if edge_prior_mode == "learned":
+    if interaction_mode == "learned":
         required.add("edge_predictor_threshold")
     missing = required - set(graph)
-    if missing and edge_prior_mode == "learned":
+    if missing and interaction_mode == "learned":
         raise ContractError(
             "full-data input lacks frozen interaction provenance fields "
             f"{sorted(missing)}"
         )
     cutoff = (
         fields.get("model.interaction_net.cutoff")
-        if edge_prior_mode == "all_spatial"
+        if interaction_mode == "all_spatial"
         else graph.get("neighborhood_threshold")
     )
     result = {
         "interaction_cutoff": cutoff,
-        "edge_prior_mode": edge_prior_mode,
+        "interaction_mode": interaction_mode,
+        "edge_prior_mode": interaction_mode,
     }
-    if edge_prior_mode == "learned":
+    if interaction_mode == "learned":
         result["edge_threshold"] = graph["edge_predictor_threshold"]
     return result
 
@@ -1045,25 +1156,27 @@ def checkpoint_training_match(
                 not prepare_summary.is_file()
                 or sha256_file(prepare_summary) != expected_prepare_sha
             ):
-                raise ContractError(
-                    "prepared LOTO graph summary changed or disappeared"
-                )
-            expected_runtime = {
-                "interaction_cutoff": payload.get("interaction_cutoff"),
-            }
+                raise ContractError("prepared LOTO mode summary changed or disappeared")
             profile = current.get("training_profile")
             fields = (
                 profile.get("runtime_resolved_fields")
                 if isinstance(profile, Mapping)
                 else None
             )
-            edge_prior_mode = (
-                str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
+            interaction_mode = (
+                _runtime_interaction_mode(fields)
                 if isinstance(fields, Mapping)
                 else "learned"
             )
-            expected_runtime["edge_prior_mode"] = edge_prior_mode
-            if edge_prior_mode == "learned":
+            expected_runtime = {
+                "interaction_mode": interaction_mode,
+                "edge_prior_mode": interaction_mode,
+            }
+            if interaction_mode != "none":
+                expected_runtime["interaction_cutoff"] = payload.get(
+                    "interaction_cutoff"
+                )
+            if interaction_mode == "learned":
                 expected_runtime["edge_threshold"] = payload.get("edge_threshold")
         runtime_report = _checkpoint_runtime_binding(
             model_dir, data, current, expected_runtime
@@ -1122,7 +1235,7 @@ def checkpoint_training_match(
             expected_runtime = _full_runtime_expectation(data, inventory)
         else:
             raise ContractError(
-                "new LOTO checkpoint validation requires prepared graph runtime binding"
+                "new LOTO checkpoint validation requires prepared mode runtime binding"
             )
         runtime_report = _checkpoint_runtime_binding(
             model_dir, data, inventory, expected_runtime

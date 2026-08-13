@@ -137,6 +137,10 @@ def load_workflow_config(config: str | Path) -> tuple[dict[str, Any], str]:
 def _selected_steps(
     config: Mapping[str, Any], options: WorkflowOptions
 ) -> tuple[str, ...]:
+    if options.steps and "train" in options.steps and not options.train:
+        raise ValueError(
+            "Selecting --step train also requires the explicit --train flag."
+        )
     if options.steps:
         selected = list(options.steps)
     else:
@@ -228,11 +232,22 @@ def _validate_training_edge_prior_options(
             "Training config model.interaction_net.edge_prior_mode must be "
             f"'learned' or 'all_spatial'; got {mode!r}."
         )
-    uses_learned = bool(
-        "interaction" in model.get("components", [])
+    uses_interaction = "interaction" in model.get("components", [])
+    uses_gnn_interaction = bool(
+        uses_interaction
         and str(model.get("interaction_type", "potential")).lower() == "gnn"
-        and mode == "learned"
     )
+    uses_learned = bool(uses_gnn_interaction and mode == "learned")
+    if not uses_interaction and options.interaction_cutoff is not None:
+        raise ValueError(
+            "The selected training model has no interaction component, so "
+            "--interaction-cutoff cannot affect it. Remove the inert option."
+        )
+    if not uses_learned and options.graph_database is not None:
+        raise ValueError(
+            "The selected training model does not construct a learned LR edge "
+            "prior, so --graph-database cannot affect it. Remove the inert option."
+        )
     if not uses_learned:
         stale_config_values = {
             key: interaction.get(key)
@@ -620,10 +635,52 @@ def _loaded_model_scientific_contract(
     expected_defaults["alpha_spatial"] = float(
         requested_scientific.get("alpha_spatial", 10.0)
     )
-    expected_interaction = expected_config.setdefault("model", {}).setdefault(
-        "interaction_net", {}
-    )
-    actual_interaction = source.get("model", {}).get("interaction_net", {})
+    expected_model = expected_config.setdefault("model", {})
+    actual_model = source.get("model", {})
+    expected_components = {
+        str(value).strip().lower() for value in expected_model.get("components", [])
+    }
+    actual_components = {
+        str(value).strip().lower() for value in actual_model.get("components", [])
+    }
+    expected_has_interaction = "interaction" in expected_components
+    actual_has_interaction = "interaction" in actual_components
+    if expected_has_interaction:
+        expected_interaction = expected_model.get("interaction_net")
+        if not isinstance(expected_interaction, dict) or not expected_interaction:
+            raise ValueError(
+                "Requested training config includes the interaction component but "
+                "does not define model.interaction_net."
+            )
+        actual_interaction = actual_model.get("interaction_net")
+        if not isinstance(actual_interaction, dict) or not actual_interaction:
+            raise ValueError(
+                "Loaded model includes the interaction component but does not "
+                "record model.interaction_net."
+            )
+    else:
+        if "interaction_net" in expected_model:
+            raise ValueError(
+                "Requested no-interaction training config contains an inert "
+                "model.interaction_net section; remove it."
+            )
+        if "interaction_net" in actual_model:
+            raise ValueError(
+                "Loaded no-interaction model contains an inert "
+                "model.interaction_net section; it is not a clean matched ablation."
+            )
+        if (
+            options.interaction_cutoff is not None
+            or options.edge_predictor_path is not None
+            or options.edge_predictor_threshold is not None
+            or options.graph_database is not None
+        ):
+            raise ValueError(
+                "A no-interaction checkpoint does not accept interaction cutoff, "
+                "edge-predictor, or graph-database overrides."
+            )
+        expected_interaction = {}
+        actual_interaction = {}
 
     # Current GNN configs spell out the learned prior explicitly. Checkpoints
     # made before that field was added have identical runtime semantics because
@@ -631,7 +688,9 @@ def _loaded_model_scientific_contract(
     # that historical omission; do not invent an interaction config for models
     # that do not have one or weaken any other scientific field.
     if (
-        isinstance(actual_interaction, dict)
+        expected_has_interaction
+        and actual_has_interaction
+        and isinstance(actual_interaction, dict)
         and actual_interaction
         and "edge_prior_mode" not in actual_interaction
         and str(expected_interaction.get("edge_prior_mode", "learned")).lower()
@@ -639,17 +698,23 @@ def _loaded_model_scientific_contract(
     ):
         actual_interaction["edge_prior_mode"] = "learned"
 
-    requested_cutoff = options.interaction_cutoff
-    if requested_cutoff is None and options.training_config is None:
-        requested_cutoff = config.get("train", {}).get("interaction_cutoff")
-    if requested_cutoff is not None:
-        expected_interaction["cutoff"] = float(requested_cutoff)
+    requested_cutoff = None
+    if expected_has_interaction:
+        requested_cutoff = options.interaction_cutoff
+        if requested_cutoff is None and options.training_config is None:
+            requested_cutoff = config.get("train", {}).get("interaction_cutoff")
+        if requested_cutoff is not None:
+            expected_interaction["cutoff"] = float(requested_cutoff)
 
     expected_edge_mode = (
         str(expected_interaction.get("edge_prior_mode", "learned")).strip().lower()
+        if expected_has_interaction
+        else "none"
     )
     actual_edge_mode = (
         str(actual_interaction.get("edge_prior_mode", "learned")).strip().lower()
+        if actual_has_interaction
+        else "none"
     )
     if actual_edge_mode != expected_edge_mode:
         raise ValueError(
@@ -805,14 +870,16 @@ def _loaded_model_scientific_contract(
     alpha_express = float(defaults["alpha_express"])
     alpha_spatial = float(defaults["alpha_spatial"])
     seed = int(source["seed"])
-    cutoff = interaction.get("cutoff")
+    cutoff = interaction.get("cutoff") if actual_has_interaction else None
     threshold = (
         interaction.get("edge_predictor_thre")
         if str(interaction.get("edge_prior_mode", "learned")).lower() == "learned"
         else None
     )
-    interaction_group_size = int(
-        source.get("model", {}).get("interaction_group_size", 1024)
+    interaction_group_size = (
+        int(source.get("model", {}).get("interaction_group_size", 1024))
+        if actual_has_interaction
+        else None
     )
     return {
         "status": "matches requested preset",
@@ -820,11 +887,21 @@ def _loaded_model_scientific_contract(
         "alpha_spatial": alpha_spatial,
         "seed": int(seed),
         "interaction_cutoff": None if cutoff is None else float(cutoff),
-        "edge_prior_mode": str(interaction.get("edge_prior_mode", "learned")).lower(),
+        "components": sorted(actual_components),
+        "interaction_component": bool(actual_has_interaction),
+        "edge_prior_mode": (
+            str(interaction.get("edge_prior_mode", "learned")).lower()
+            if actual_has_interaction
+            else "none"
+        ),
         "interaction_group_size": interaction_group_size,
-        "interaction_group_max_size": 2 * interaction_group_size - 1,
+        "interaction_group_max_size": (
+            None if interaction_group_size is None else 2 * interaction_group_size - 1
+        ),
         "interaction_group_remainder_policy": (
-            "merge a nonzero remainder into the final base-size group"
+            None
+            if interaction_group_size is None
+            else "merge a nonzero remainder into the final base-size group"
         ),
         "edge_predictor_threshold": (None if threshold is None else float(threshold)),
         "edge_predictor_threshold_check": threshold_source,
@@ -1011,11 +1088,17 @@ def build_workflow_plan(
         effective_training = _read_training_config(
             options.training_config or str(train_config["config"])
         )
-        effective_interaction = effective_training.get("model", {}).get(
-            "interaction_net", {}
-        )
+        effective_model = effective_training.get("model", {})
+        effective_components = {
+            str(value).strip().lower()
+            for value in effective_model.get("components", [])
+        }
+        effective_has_interaction = "interaction" in effective_components
+        effective_interaction = effective_model.get("interaction_net", {})
         planned_interaction_cutoff = (
-            float(options.interaction_cutoff)
+            None
+            if not effective_has_interaction
+            else float(options.interaction_cutoff)
             if options.interaction_cutoff is not None
             else effective_interaction.get("cutoff")
             if options.training_config is not None
@@ -1100,6 +1183,26 @@ def build_workflow_plan(
             missing.append("--model-dir (or add --train)")
         if options.output_dir is None:
             missing.append("--output-dir")
+        if options.training_config is None:
+            # Built-in dependency-free dry-runs use the packaged workflow JSON
+            # as their lightweight planning contract. Training plans and real
+            # execution still call _validate_builtin_training_contract above or
+            # in run_workflow, so duplicated JSON/YAML science cannot drift.
+            planned_has_interaction = bool(
+                train_config.get("requires_edge_predictor", False)
+            )
+        else:
+            planned_training = _read_training_config(options.training_config)
+            planned_components = {
+                str(value).strip().lower()
+                for value in planned_training.get("model", {}).get("components", [])
+            }
+            planned_has_interaction = "interaction" in planned_components
+        if not planned_has_interaction and options.lr_database is not None:
+            raise ValueError(
+                "--lr-database cannot affect a no-interaction downstream run: "
+                "ligand-receptor projection requires model-derived communication."
+            )
         analyses = [
             {
                 "name": "interpolation and classification",
@@ -1108,13 +1211,22 @@ def build_workflow_plan(
             {"name": "time-slice velocity", "status": "enabled"},
             {"name": "growth", "status": "enabled when present in the model"},
             {"name": "cell-type composition", "status": "enabled"},
-            {"name": "sparse communication", "status": "enabled"},
+            {
+                "name": "sparse communication",
+                "status": "enabled" if planned_has_interaction else "not applicable",
+                "note": (
+                    None
+                    if planned_has_interaction
+                    else "selected checkpoint config has no interaction component"
+                ),
+            },
             {
                 "name": "standard figures",
                 "status": "enabled",
                 "note": (
-                    "snapshots, mosaic, growth, composition, velocity, and 3D "
-                    "communication; lineage only with an explicit persistent-ID contract"
+                    "snapshots, mosaic, growth, composition, and velocity; 3D "
+                    "communication only when the model has an interaction component; "
+                    "lineage only with an explicit persistent-ID contract"
                 ),
             },
             {
@@ -1137,27 +1249,45 @@ def build_workflow_plan(
             {
                 "name": "strict ligand-receptor projection",
                 "status": (
-                    "enabled" if downstream_analyses["lr_enabled"] else "not requested"
+                    "enabled"
+                    if downstream_analyses["lr_enabled"] and planned_has_interaction
+                    else "not applicable"
+                    if not planned_has_interaction
+                    else "not requested"
                 ),
                 "database": (
                     None
+                    if not planned_has_interaction
+                    else None
                     if downstream_analyses["lr_database"] is None
                     else str(downstream_analyses["lr_database"])
                 ),
-                "source": downstream_analyses["lr_database_source"],
-                "preferred_species_tag": downstream_analyses["preferred_species_tag"],
+                "source": (
+                    downstream_analyses["lr_database_source"]
+                    if planned_has_interaction
+                    else None
+                ),
+                "preferred_species_tag": (
+                    downstream_analyses["preferred_species_tag"]
+                    if planned_has_interaction
+                    else None
+                ),
                 "missing": (
                     [
                         "LR database file not found: "
                         f"{downstream_analyses['lr_database']}"
                     ]
-                    if downstream_analyses["lr_database"] is not None
+                    if planned_has_interaction
+                    and downstream_analyses["lr_database"] is not None
                     and not downstream_analyses["lr_database"].expanduser().is_file()
                     else []
                 ),
                 "note": (
-                    "uses all required complex subunits and the selected min/geometric-mean rule; "
-                    "requires PCA loadings and the matching complete reference H5AD"
+                    "model has no interaction component"
+                    if not planned_has_interaction
+                    else "uses all required complex subunits and the selected "
+                    "min/geometric-mean rule; requires PCA loadings and the "
+                    "matching complete reference H5AD"
                 ),
             },
             {
@@ -1229,6 +1359,9 @@ def build_workflow_plan(
                         else int(downstream_config["split_max_particles"])
                     ),
                     "sigma": float(downstream_config.get("split_sigma", 0.03)),
+                    "daughter_noise_std": float(
+                        downstream_config.get("split_daughter_noise_std", 0.0)
+                    ),
                     "growth_alpha": float(
                         downstream_config.get("split_growth_alpha", 1.0)
                     ),
@@ -1312,6 +1445,7 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
                 f"interpolated={simulation['interpolated_time_points']}, "
                 f"initial particles={simulation['initial_particles']}, "
                 f"dt={simulation['split_dt']:g}, sigma={simulation['sigma']:g}, "
+                f"daughter noise={simulation['daughter_noise_std']:g}, "
                 f"growth alpha={simulation['growth_alpha']:g}, "
                 f"trajectory mode={simulation['trajectory_mode']}"
             )
@@ -1643,17 +1777,31 @@ def _run_train(
     defaults = resolved.setdefault("training", {}).setdefault("defaults", {})
     defaults["alpha_spatial"] = float(scientific.get("alpha_spatial", 10.0))
     defaults["alpha_express"] = float(scientific["alpha_express"])
-    interaction = resolved.setdefault("model", {}).setdefault("interaction_net", {})
+    model = resolved.setdefault("model", {})
+    components = {
+        str(component).strip().lower() for component in model.get("components", [])
+    }
+    uses_interaction = "interaction" in components
+    interaction_type = str(model.get("interaction_type", "potential")).lower()
+    interaction = model.get("interaction_net")
+    if uses_interaction and interaction_type == "gnn" and interaction is None:
+        interaction = {}
+        model["interaction_net"] = interaction
+    elif interaction is None:
+        interaction = {}
     edge_prior_mode = str(interaction.get("edge_prior_mode", "learned")).lower()
-    if edge_prior_mode != "learned" and (
+    uses_learned_edge_prior = bool(
+        uses_interaction and interaction_type == "gnn" and edge_prior_mode == "learned"
+    )
+    if not uses_learned_edge_prior and (
         edge_predictor_path is not None or edge_predictor_threshold is not None
     ):
         raise ValueError(
-            f"edge_prior_mode={edge_prior_mode!r} cannot receive a generated edge "
-            "predictor path or threshold."
+            "The selected training model does not use a learned edge prior and "
+            "cannot receive a generated edge predictor path or threshold."
         )
     effective_edge_path = None
-    if edge_prior_mode == "learned":
+    if uses_learned_edge_prior:
         supplied_edge_path = edge_predictor_path or options.edge_predictor_path
         if supplied_edge_path is None:
             raise ValueError(
@@ -1671,7 +1819,7 @@ def _run_train(
             )
         interaction["edge_predictor_path"] = str(effective_edge_path)
     threshold = None
-    if edge_prior_mode == "learned":
+    if uses_learned_edge_prior:
         threshold = edge_predictor_threshold
         if threshold is None:
             threshold = options.edge_predictor_threshold
@@ -1679,13 +1827,15 @@ def _run_train(
             threshold = train_config.get("edge_predictor_threshold")
     if threshold is not None:
         interaction["edge_predictor_thre"] = float(threshold)
-    cutoff = options.interaction_cutoff
-    if cutoff is None and options.training_config is not None:
-        cutoff = interaction.get("cutoff")
-    if cutoff is None:
-        cutoff = train_config.get("interaction_cutoff")
-    if cutoff is not None:
-        interaction["cutoff"] = float(cutoff)
+    cutoff = None
+    if uses_interaction:
+        cutoff = options.interaction_cutoff
+        if cutoff is None and options.training_config is not None:
+            cutoff = interaction.get("cutoff")
+        if cutoff is None:
+            cutoff = train_config.get("interaction_cutoff")
+        if cutoff is not None:
+            interaction["cutoff"] = float(cutoff)
     cb.tl.fit(
         str(aligned_h5ad),
         config=resolved,
@@ -1734,8 +1884,18 @@ def _write_velocity_outputs(
     obsm_key = str(dataset.get("obsm_key", "X_latent"))
     spatial_key = str(dataset.get("spatial_key", "spatial_aligned"))
     concat_spatial = dataset.get("concat_spatial", True)
+    model_components = {
+        str(component).strip().lower() for component in getattr(model, "components", [])
+    }
+    has_interaction = "interaction" in model_components
     interaction_net = getattr(model, "interaction_net", None)
-    interaction_cutoff = float(getattr(interaction_net, "cutoff", 1000.0))
+    if has_interaction and interaction_net is None:
+        raise ValueError(
+            "Model declares an interaction component but has no interaction_net."
+        )
+    interaction_cutoff = (
+        float(getattr(interaction_net, "cutoff")) if has_interaction else None
+    )
     components = cb.tl.compute_velocity_components_from_adata(
         adata,
         model,
@@ -1769,11 +1929,13 @@ def _write_velocity_outputs(
             mask = np.isclose(components["times"], time_value)
             coords = components["features"][mask, :2]
             labels_at_time = labels[mask]
-            for component_name, title in (
+            plotted_components = [
                 ("drift", "Intrinsic velocity"),
-                ("interaction", "Interaction velocity"),
                 ("full", "Full velocity"),
-            ):
+            ]
+            if has_interaction:
+                plotted_components.insert(1, ("interaction", "Interaction velocity"))
+            for component_name, title in plotted_components:
                 figure_path = output_dir / (
                     f"{component_name}_time_{_safe_time_name(time_value)}.pdf"
                 )
@@ -1792,6 +1954,12 @@ def _write_velocity_outputs(
         "status": "completed",
         "component_archive": str(archive_path),
         "interaction_cutoff": interaction_cutoff,
+        "interaction_component": has_interaction,
+        "interaction_vector_status": (
+            "evaluated"
+            if has_interaction
+            else "not applicable; zero sentinel retained in the component archive"
+        ),
         "figures": figures,
     }
 
@@ -2038,29 +2206,40 @@ def _write_standard_figures(
         )
         outputs["lineage"] = {"status": "completed", "figure": str(lineage_path)}
 
-    plot_3d_path = output_dir / "spatiotemporal_communication_3d.html"
-    cb.tl.plot_spatiotemporal_3d(
-        adata_dict=result.adata_dict,
-        all_time_communications=communications,
-        time_keys=result.plot_3d_time_keys,
-        plot_time_points=result.plot_3d_ts_points,
-        ts_points=result.ts_points,
-        observed_time_points=result.observed_time_points,
-        interp_points=result.interp_points,
-        annotation_key=annotation_key,
-        label_to_color=dict(label_to_color),
-        out_html=str(plot_3d_path),
-        predicted_labels_list=lineage_labels,
-        ribbon_render_mode="line" if lineage_labels is not None else "none",
-        background_color="white",
-        font_color="black",
-        show_slice_border=True,
-    )
-    outputs["spatiotemporal_3d"] = {
-        "status": "completed",
-        "figure": str(plot_3d_path),
-        "lineage_ribbons": "included" if lineage_labels is not None else "omitted",
-    }
+    if communications:
+        plot_3d_path = output_dir / "spatiotemporal_communication_3d.html"
+        cb.tl.plot_spatiotemporal_3d(
+            adata_dict=result.adata_dict,
+            all_time_communications=communications,
+            time_keys=result.plot_3d_time_keys,
+            plot_time_points=result.plot_3d_ts_points,
+            ts_points=result.ts_points,
+            observed_time_points=result.observed_time_points,
+            interp_points=result.interp_points,
+            annotation_key=annotation_key,
+            label_to_color=dict(label_to_color),
+            out_html=str(plot_3d_path),
+            predicted_labels_list=lineage_labels,
+            ribbon_render_mode="line" if lineage_labels is not None else "none",
+            background_color="white",
+            font_color="black",
+            show_slice_border=True,
+        )
+        outputs["spatiotemporal_3d"] = {
+            "status": "completed",
+            "figure": str(plot_3d_path),
+            "lineage_ribbons": (
+                "included" if lineage_labels is not None else "omitted"
+            ),
+        }
+    else:
+        outputs["spatiotemporal_3d"] = {
+            "status": "not applicable",
+            "reason": (
+                "model has no interaction component, so no communication graph "
+                "or communication ribbons are defined"
+            ),
+        }
     return outputs
 
 
@@ -2307,7 +2486,7 @@ def _downstream_simulation_summary(
     downstream: Mapping[str, Any],
     trajectory: Mapping[str, Any],
     result: Any,
-    interaction_group_size: int,
+    interaction_group_size: int | None,
 ) -> dict[str, Any]:
     """Build a readable simulation record from the slices actually emitted."""
 
@@ -2344,8 +2523,11 @@ def _downstream_simulation_summary(
         "split_dt": float(downstream.get("split_sde_dt", 0.01)),
         "split_resample_dt": downstream.get("split_resample_dt"),
         "sigma": float(downstream.get("split_sigma", 0.03)),
+        "daughter_noise_std": float(downstream.get("split_daughter_noise_std", 0.0)),
         "growth_alpha": float(downstream.get("split_growth_alpha", 1.0)),
-        "interaction_group_size": int(interaction_group_size),
+        "interaction_group_size": (
+            None if interaction_group_size is None else int(interaction_group_size)
+        ),
         "non_split_lineage_rollout": bool(downstream.get("lineage_enabled", False)),
         "trajectory_mode": trajectory["trajectory_mode"],
         "split_sde_piecewise": bool(trajectory["split_sde_piecewise"]),
@@ -2357,6 +2539,14 @@ def _downstream_simulation_summary(
         "generated_particle_counts": generated_counts,
         "slice_origins_by_time": slice_origins,
         "source_anchor_times_by_time": source_anchor_times,
+        "stochastic_streams": dict(getattr(result, "simulation_seeds", {})),
+        "stochastic_stream_contract": (
+            "Brownian diffusion, split/resampling decisions, and daughter noise "
+            "share the declared split_population stream. Stochastic interaction "
+            "grouping uses a separate seeded torch.Generator and therefore does "
+            "not advance the population stream. Piecewise interaction grouping "
+            "derives a distinct stable seed for each observed interval."
+        ),
     }
 
 
@@ -2438,6 +2628,19 @@ def _run_downstream(
         config=config,
         options=options,
     )
+    has_interaction = bool(model_contract["interaction_component"])
+    if not has_interaction and options.lr_database is not None:
+        raise ValueError(
+            "--lr-database cannot affect a no-interaction downstream run: "
+            "ligand-receptor projection requires model-derived communication."
+        )
+    if not has_interaction and output_dir.exists() and any(output_dir.iterdir()):
+        raise FileExistsError(
+            "Refusing to write a no-interaction downstream result into a non-empty "
+            f"directory: {output_dir}. Use a new condition-specific output root so "
+            "stale communication, LR, or interaction figures cannot coexist with "
+            "a not-applicable summary."
+        )
     effective_edge_mode = str(model_contract["edge_prior_mode"]).lower()
     effective_downstream = dict(downstream)
     effective_communication = dict(downstream.get("communication", {}))
@@ -2459,6 +2662,13 @@ def _run_downstream(
                     "ablation model and do not form a global CCI screen."
                 ),
             }
+    if not has_interaction:
+        effective_communication["interpretation"] = (
+            "Not applicable: this matched ablation has no interaction component. "
+            "No radius graph, learned-gate graph, zero communication matrix, or "
+            "ligand-receptor projection is substituted."
+        )
+        effective_lr_scope = None
     effective_downstream["communication"] = effective_communication
     runtime = cb.tl.build_dynamical_runtime(loaded)
     observed = [float(value) for value in downstream["observed"]]
@@ -2498,8 +2708,13 @@ def _run_downstream(
         sde_dt=float(downstream.get("sde_dt", 0.05)),
         split_sde_dt=float(downstream.get("split_sde_dt", 0.01)),
         split_sigma_scalar=float(downstream.get("split_sigma", 0.03)),
+        split_daughter_noise_std=float(downstream.get("split_daughter_noise_std", 0.0)),
         split_growth_alpha=float(downstream.get("split_growth_alpha", 1.0)),
-        split_interaction_m=int(model_contract["interaction_group_size"]),
+        split_interaction_m=(
+            1024
+            if model_contract["interaction_group_size"] is None
+            else int(model_contract["interaction_group_size"])
+        ),
         split_resample_dt=(
             None
             if downstream.get("split_resample_dt") is None
@@ -2565,16 +2780,29 @@ def _run_downstream(
         label_to_color=label_to_color,
         output_dir=output_dir / "composition",
     )
-    communication_summary, communications = _write_communication_outputs(
-        cb=cb,
-        result=result,
-        runtime=runtime,
-        annotation_key=annotation_key,
-        output_dir=output_dir / "communication",
-        device=options.device,
-        downstream=effective_downstream,
-        seed=int(scientific["seed"]),
-    )
+    if has_interaction:
+        communication_summary, communications = _write_communication_outputs(
+            cb=cb,
+            result=result,
+            runtime=runtime,
+            annotation_key=annotation_key,
+            output_dir=output_dir / "communication",
+            device=options.device,
+            downstream=effective_downstream,
+            seed=int(scientific["seed"]),
+        )
+    else:
+        communication_summary = {
+            "status": "not applicable",
+            "representation": None,
+            "edge_prior_mode": "none",
+            "interpretation": effective_communication["interpretation"],
+            "reason": "model has no interaction component",
+            "edge_selection_by_time": None,
+            "table": None,
+            "attention_directory": None,
+        }
+        communications = {}
     analyses["communication"] = communication_summary
     analyses["communication"]["trajectory_scope"] = trajectory["trajectory_scope"]
     analyses["figures"] = _write_standard_figures(
@@ -2588,7 +2816,9 @@ def _run_downstream(
     )
 
     reference_adata = None
-    if downstream_analyses["gene_dynamics"] or downstream_analyses["lr_enabled"]:
+    if downstream_analyses["gene_dynamics"] or (
+        downstream_analyses["lr_enabled"] and has_interaction
+    ):
         reference_adata = (
             adata
             if options.reference_h5ad is None
@@ -2610,7 +2840,7 @@ def _run_downstream(
     else:
         analyses["gene_dynamics"] = {"status": "not requested"}
 
-    if downstream_analyses["lr_enabled"]:
+    if downstream_analyses["lr_enabled"] and has_interaction:
         lr_database = downstream_analyses["lr_database"]
         if lr_database is None:
             raise ValueError("Strict LR projection is enabled without an LR database.")
@@ -2631,6 +2861,15 @@ def _run_downstream(
             ),
             analysis_scope=effective_lr_scope,
         )
+    elif not has_interaction:
+        analyses["ligand_receptor"] = {
+            "status": "not applicable",
+            "reason": (
+                "model has no interaction component; LR projection requires "
+                "model-derived sparse communication attention"
+            ),
+            "analysis_scope": None,
+        }
     else:
         analyses["ligand_receptor"] = {"status": "not requested"}
     analyses["ligand_receptor"]["trajectory_scope"] = trajectory["trajectory_scope"]
@@ -2675,7 +2914,7 @@ def _run_downstream(
             downstream=downstream,
             trajectory=trajectory,
             result=result,
-            interaction_group_size=int(model_contract["interaction_group_size"]),
+            interaction_group_size=model_contract["interaction_group_size"],
         ),
         "classifier_accuracy": result.classifier_accuracy,
         "classifier_balanced_accuracy": result.classifier_balanced_accuracy,

@@ -223,8 +223,8 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--step",
         action="append",
-        choices=("preprocess", "downstream"),
-        help="run only this step; repeat to select both",
+        choices=("preprocess", "train", "downstream"),
+        help="run only this step; repeat to select multiple steps",
     )
     workflow.add_argument(
         "--train",

@@ -18,6 +18,61 @@ package loader. Start from
 `historical_artifact_compatibility.example.json`; private machine paths are not
 stored in this repository.
 
+`run_zebrafish_interval_daughter_noise_sensitivity.py` is the maintained
+daughter-noise sensitivity entry point. It runs independent one-sided
+midpoint forecasts from every observed left anchor, optionally adds generated
+right-end forecasts, and requires exact hashes for the aligned H5AD, learned
+model checkpoints, label classifier, and four-dataset acceptance report. Its
+lineage keys are interval-local `(anchor_time, source_obs_id)` namespaces and
+must never be joined across intervals. Raw states are always retained, and the
+paired noise-0 table includes composition/count/lineage deltas plus joint-state
+and spatial empirical W1/W2 metrics.
+
+`run_matched_ablation_matrix.py` is the fail-closed server launcher for the
+formal four-dataset × three-arm comparison. It accepts exactly one shared
+aligned H5AD per dataset, the validation-selected learned predictor plus its
+sidecar and input-graph provenance for each full arm, and an explicit CUDA
+index for every validator profile. `dry-run` hashes and renders the complete
+plan without writing; `prepare` creates a new root once and links the immutable
+inputs; `launch-one` starts only one train-only or downstream-only command after
+a literal profile confirmation; `status` reports monitor/child PIDs and output
+summaries. The no-LR-prior and no-interaction directories never receive graph
+or predictor artifacts. The tool rejects a dirty or mismatched release commit,
+changed inputs, changed configs, changed package code, existing output roots,
+phase reuse, and concurrent reuse of a planned GPU. Use `render` when commands
+will be submitted through an external scheduler instead of launched directly.
+The commands use the bound server Python as `python -m CytoBridge.cli`, expose
+only the assigned physical GPU, address it as logical `cuda:0`, set
+`PYTHONHASHSEED=42` before interpreter startup, and use condition-specific
+Numba, Matplotlib, and XDG cache roots. The four aligned inputs are accepted
+only when their SHA-256 digests exactly match the immutable inputs recorded by
+the packaged unified-benchmark configs; a valid H5AD from another dataset is
+therefore rejected before launch.
+
+The required assignment keys can be printed with
+`python scripts/run_matched_ablation_matrix.py dry-run --help`. A formal call
+has this shape (each repeated group must be complete):
+
+```text
+python scripts/run_matched_ablation_matrix.py prepare \
+  --run-root /data/runs/cytobridge-matched-<release-sha> \
+  --release-root /opt/src/CytoBridge \
+  --release-commit <40-character-release-commit> \
+  --python-executable /data/cytobridge/projects/CytoBridge-ST-1104/envs/arista-api/bin/python \
+  --aligned-h5ad zebrafish=/data/accepted/zebrafish_aligned.h5ad [...] \
+  --edge-predictor zebrafish=/data/accepted/zebrafish_edge_model.pt [...] \
+  --input-graph-dir zebrafish=/data/accepted/zebrafish/input_graph [...] \
+  --gpu zebrafish=0 --gpu zebrafish_no_lr_prior=1 \
+  --gpu zebrafish_no_interaction=2 [...all 12 profiles...]
+```
+
+After preparation, launch one fit with, for example,
+`python scripts/run_matched_ablation_matrix.py launch-one --run-root <root>
+--profile zebrafish --phase train --confirm-profile zebrafish`. Launch its
+downstream phase only after that train-only fit finishes. The manifest renders
+the final validator command with all twelve `--datasets` and all four repeated
+`--matched-family` arguments.
+
 Other top-level files under `scripts/` in the Git repository are retained as
 historical research records. Some contain workstation-specific paths or calls
 from earlier package versions. They are not installed, are not included in the

@@ -195,6 +195,24 @@ def _restore_model_after_inference(
         param.requires_grad_(requires_grad)
 
 
+def _interaction_generator(
+    device: str | torch.device,
+    seed: Optional[int],
+) -> Optional[torch.Generator]:
+    """Create an RNG stream used only for stochastic interaction grouping."""
+
+    if seed is None:
+        return None
+    if isinstance(seed, bool):
+        raise TypeError("interaction_seed must be an integer or None")
+    seed_value = int(seed)
+    if seed_value != seed or seed_value < 0:
+        raise ValueError("interaction_seed must be a non-negative integer or None")
+    generator = torch.Generator(device=torch.device(device))
+    generator.manual_seed(seed_value)
+    return generator
+
+
 def _euler_sdeint(sde: nn.Module, initial_state, dt: float, ts: torch.Tensor):
     import math
 
@@ -240,6 +258,7 @@ def _apply_split_event(
     noise_std: float,
     max_particles: Optional[int] = None,
     event_time: Optional[float] = None,
+    lineage_ids: Optional[torch.Tensor] = None,
 ):
     new_z, new_lnw = current_state
     device = new_z.device
@@ -247,8 +266,17 @@ def _apply_split_event(
         raise ValueError("initial_count must be > 0.")
     if max_particles is not None and int(max_particles) <= 0:
         raise ValueError("max_particles must be > 0 when provided.")
+    tracks_lineage = lineage_ids is not None
+    if tracks_lineage and (
+        lineage_ids.ndim != 1 or lineage_ids.shape[0] != new_z.shape[0]
+    ):
+        raise ValueError(
+            "lineage_ids must be one-dimensional with one identifier per "
+            "current particle."
+        )
     if new_z.shape[0] == 0:
-        return current_state, torch.exp(new_lnw)
+        output = (current_state, torch.exp(new_lnw))
+        return (*output, lineage_ids) if tracks_lineage else output
 
     if not torch.isfinite(new_lnw).all():
         raise FloatingPointError("Split-SDE log-weights must remain finite.")
@@ -346,16 +374,36 @@ def _apply_split_event(
         )
         split_z = repeated_z + noise
         split_lnw = repeated_lnw
+        split_lineage_ids = (
+            torch.repeat_interleave(
+                lineage_ids[mask_split][valid_mask], repeat_counts, dim=0
+            )
+            if tracks_lineage
+            else None
+        )
     else:
         split_z = torch.empty(0, new_z.shape[1], device=device)
         split_lnw = torch.empty(0, 1, device=device)
+        split_lineage_ids = (
+            lineage_ids.new_empty((0, *lineage_ids.shape[1:]))
+            if tracks_lineage
+            else None
+        )
 
     if keep_mask is not None:
         extinct_z = new_z[mask_extinct][keep_mask]
         extinct_lnw = new_lnw[mask_extinct][keep_mask]
+        extinct_lineage_ids = (
+            lineage_ids[mask_extinct][keep_mask] if tracks_lineage else None
+        )
     else:
         extinct_z = torch.empty(0, new_z.shape[1], device=device)
         extinct_lnw = torch.empty(0, 1, device=device)
+        extinct_lineage_ids = (
+            lineage_ids.new_empty((0, *lineage_ids.shape[1:]))
+            if tracks_lineage
+            else None
+        )
 
     if split_z.shape[0] > 0 or extinct_z.shape[0] > 0:
         new_z = torch.cat([split_z, extinct_z], dim=0)
@@ -363,10 +411,15 @@ def _apply_split_event(
         new_lnw = torch.log(
             torch.ones(new_z.shape[0], 1, device=device) / int(initial_count)
         )
+        if tracks_lineage:
+            lineage_ids = torch.cat([split_lineage_ids, extinct_lineage_ids], dim=0)
     else:
         new_z = torch.empty(0, current_state[0].shape[1], device=device)
         new_lnw = torch.empty(0, 1, device=device)
-    return (new_z, new_lnw), torch.exp(new_lnw)
+        if tracks_lineage:
+            lineage_ids = lineage_ids.new_empty((0, *lineage_ids.shape[1:]))
+    output = ((new_z, new_lnw), torch.exp(new_lnw))
+    return (*output, lineage_ids) if tracks_lineage else output
 
 
 def _euler_sdeint_split(
@@ -377,6 +430,8 @@ def _euler_sdeint_split(
     noise_std: float = 0.01,
     resample_dt: Optional[float] = None,
     max_particles: Optional[int] = None,
+    initial_lineage_ids: Optional[torch.Tensor] = None,
+    return_lineage_ids: bool = False,
 ):
     import math
 
@@ -387,6 +442,9 @@ def _euler_sdeint_split(
         raise ValueError("ts must contain at least one output time.")
     if max_particles is not None and int(max_particles) <= 0:
         raise ValueError("max_particles must be > 0 when provided.")
+    noise_std_value = float(noise_std)
+    if not math.isfinite(noise_std_value) or noise_std_value < 0:
+        raise ValueError("noise_std must be finite and >= 0.")
     if max_particles is not None and int(initial_state[0].shape[0]) > int(
         max_particles
     ):
@@ -397,6 +455,31 @@ def _euler_sdeint_split(
             "invariant and never downsamples particles."
         )
     device = initial_state[0].device
+    tracks_lineage = bool(return_lineage_ids or initial_lineage_ids is not None)
+    if initial_lineage_ids is None:
+        current_lineage_ids = (
+            torch.arange(initial_state[0].shape[0], dtype=torch.long, device=device)
+            if tracks_lineage
+            else None
+        )
+    else:
+        current_lineage_ids = torch.as_tensor(initial_lineage_ids, device=device)
+        if (
+            current_lineage_ids.ndim != 1
+            or current_lineage_ids.shape[0] != initial_state[0].shape[0]
+        ):
+            raise ValueError(
+                "initial_lineage_ids must be one-dimensional with one identifier "
+                "per initial particle."
+            )
+        if current_lineage_ids.dtype not in {
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+            torch.uint8,
+        }:
+            raise TypeError("initial_lineage_ids must contain integer identifiers.")
     ts_list = [float(x) for x in ts.tolist()]
     if not all(math.isfinite(value) for value in ts_list):
         raise ValueError("ts values must all be finite.")
@@ -429,6 +512,7 @@ def _euler_sdeint_split(
             )
 
         output_states = [initial_state]
+        output_lineage_ids = [current_lineage_ids]
         current_state = initial_state
         current_time = t0
         initial_count = int(initial_state[0].shape[0])
@@ -453,31 +537,42 @@ def _euler_sdeint_split(
                     current_state[1] + f_lnw * step_dt,
                 )
                 current_time += step_dt
-            current_state, previous_weights = _apply_split_event(
+            split_result = _apply_split_event(
                 current_state,
                 previous_weights=previous_weights,
                 initial_count=initial_count,
-                noise_std=noise_std,
+                noise_std=noise_std_value,
                 max_particles=max_particles,
                 event_time=event_time,
+                lineage_ids=current_lineage_ids,
             )
+            if tracks_lineage:
+                current_state, previous_weights, current_lineage_ids = split_result
+            else:
+                current_state, previous_weights = split_result
             if event_step in output_by_step:
                 output_states.append(current_state)
+                output_lineage_ids.append(current_lineage_ids)
 
         if len(output_states) != len(ts_list):
             raise RuntimeError(
                 "Fixed split-event integrator recorded "
                 f"{len(output_states)} states for {len(ts_list)} outputs."
             )
-        return [state[0] for state in output_states], [
-            state[1] for state in output_states
-        ]
+        output = (
+            [state[0] for state in output_states],
+            [state[1] for state in output_states],
+        )
+        if return_lineage_ids:
+            return (*output, output_lineage_ids)
+        return output
 
     # The state at ts[0] is the supplied initial condition. Historical code
     # integrated one dt step before recording it, shifting every nominal
     # segment start and causing adjacent piecewise segments to overwrite a
     # boundary with t_start + dt.
     output_states = [current_state]
+    output_lineage_ids = [current_lineage_ids]
     next_output_idx = 1
     w_prev = torch.exp(current_state[1])
 
@@ -497,19 +592,27 @@ def _euler_sdeint_split(
             current_state = (new_z, new_lnw)
             current_time += step_dt
 
-        current_state, w_prev = _apply_split_event(
+        split_result = _apply_split_event(
             current_state,
             previous_weights=w_prev,
             initial_count=int(initial_state[0].shape[0]),
-            noise_std=noise_std,
+            noise_std=noise_std_value,
             max_particles=max_particles,
             event_time=target_time,
+            lineage_ids=current_lineage_ids,
         )
+        if tracks_lineage:
+            current_state, w_prev, current_lineage_ids = split_result
+        else:
+            current_state, w_prev = split_result
         output_states.append(current_state)
+        output_lineage_ids.append(current_lineage_ids)
         next_output_idx += 1
 
     traj_z = [state[0] for state in output_states]
     traj_lnw = [state[1] for state in output_states]
+    if return_lineage_ids:
+        return traj_z, traj_lnw, output_lineage_ids
     return traj_z, traj_lnw
 
 
@@ -639,7 +742,24 @@ def simulate_sde_points_split_from_x0(
     verbose: bool = True,
     resample_dt: Optional[float] = None,
     max_particles: Optional[int] = None,
-) -> np.ndarray:
+    daughter_noise_std: float = 0.0,
+    initial_lineage_ids: Optional[Sequence[int]] = None,
+    return_lineage_ids: bool = False,
+    interaction_seed: Optional[int] = None,
+) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+    """Simulate split-SDE states from an explicit initial particle roster.
+
+    ``sigma``/``sigma_by_dim`` control continuous Brownian diffusion. The
+    independent ``daughter_noise_std`` controls only the Gaussian perturbation
+    added when a parent is copied at a split event. Its default is zero, which
+    preserves the production workflow contract.
+
+    Set ``return_lineage_ids=True`` to receive one integer identifier array per
+    output time. Daughters inherit the parent identifier and extinct particles
+    disappear. When identifiers are omitted, initial row indices are used.
+    Lineage identifiers describe a single rollout only; callers must not join
+    them across independently observed-anchored piecewise intervals.
+    """
     from CytoBridge.tl.core.interaction import cal_interaction
 
     if len(ts_points) < 1:
@@ -649,10 +769,28 @@ def simulate_sde_points_split_from_x0(
         raise ValueError("x0 must be a non-empty two-dimensional array")
     if not np.isfinite(x0_array).all():
         raise ValueError("x0 must contain only finite values")
+    daughter_noise_std = float(daughter_noise_std)
+    if not np.isfinite(daughter_noise_std) or daughter_noise_std < 0:
+        raise ValueError("daughter_noise_std must be finite and >= 0")
+
+    lineage_tensor = None
+    if initial_lineage_ids is not None:
+        lineage_array = np.asarray(initial_lineage_ids)
+        if lineage_array.ndim != 1 or lineage_array.shape[0] != x0_array.shape[0]:
+            raise ValueError(
+                "initial_lineage_ids must be one-dimensional with one value per "
+                "initial particle"
+            )
+        if not np.issubdtype(lineage_array.dtype, np.integer):
+            raise TypeError("initial_lineage_ids must contain integer identifiers")
+        lineage_tensor = torch.as_tensor(
+            lineage_array.astype(np.int64, copy=False), device=device
+        )
 
     x0_t = torch.tensor(x0_array, device=device)
     lnw0 = torch.log(torch.ones(x0_t.shape[0], 1, device=device) / x0_t.shape[0])
     initial_state = (x0_t, lnw0)
+    interaction_generator = _interaction_generator(device, interaction_seed)
 
     class SDE(nn.Module):
         noise_type = "diagonal"
@@ -683,13 +821,16 @@ def simulate_sde_points_split_from_x0(
             with torch.no_grad():
                 drift = self.drift(t, z)
                 dlnw = self.g_net(t, z) * growth_alpha
-                net_forces = cal_interaction(
-                    z=z,
-                    lnw=lnw,
-                    interaction_potential=self.interaction,
-                    m=interaction_m,
-                    t=t,
-                )
+                net_forces = torch.zeros_like(z)
+                if self.interaction is not None:
+                    net_forces = cal_interaction(
+                        z=z,
+                        lnw=lnw,
+                        interaction_potential=self.interaction,
+                        m=interaction_m,
+                        t=t,
+                        generator=interaction_generator,
+                    )
             t_expand = t.expand(z.shape[0], 1)
             score_grad = self.score.compute_gradient(t_expand, z)
             return (drift + score_grad + net_forces, dlnw)
@@ -714,6 +855,7 @@ def simulate_sde_points_split_from_x0(
             "[piecewise split-SDE] start | "
             f"n_init={x0_t.shape[0]}, ts_points={len(ts_points)}, "
             f"dt={dt}, sigma={'vector' if sigma_by_dim is not None else sigma}, "
+            f"daughter_noise_std={daughter_noise_std}, "
             f"growth_alpha={growth_alpha}, resample_dt={resample_dt}, "
             f"t_range=({t_min},{t_max}), est_steps={est_steps}"
         )
@@ -722,20 +864,26 @@ def simulate_sde_points_split_from_x0(
         f_net.v_net,
         f_net.g_net,
         score_net,
-        f_net.interaction_net,
+        getattr(f_net, "interaction_net", None),
         sigma=sigma,
         sigma_by_dim=sigma_by_dim,
     )
     ts_tensor = torch.tensor(list(ts_points), dtype=torch.float32, device=device)
-    sde_points, _ = _euler_sdeint_split(
+    integration = _euler_sdeint_split(
         sde,
         initial_state,
         dt=dt,
         ts=ts_tensor,
-        noise_std=0.0,
+        noise_std=daughter_noise_std,
         resample_dt=resample_dt,
         max_particles=max_particles,
+        initial_lineage_ids=lineage_tensor,
+        return_lineage_ids=bool(return_lineage_ids),
     )
+    if return_lineage_ids:
+        sde_points, _, lineage_ids = integration
+    else:
+        sde_points, _ = integration
     sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
 
     if verbose:
@@ -744,7 +892,27 @@ def simulate_sde_points_split_from_x0(
             f"timepoints={len(sde_point_np)}, "
             f"shape0={sde_point_np[0].shape if sde_point_np else None}"
         )
-    return np.array(sde_point_np, dtype=object)
+    # Always expose a one-dimensional frame container.  ``np.array(...,
+    # dtype=object)`` still expands equally shaped frames into a higher-rank
+    # object array, so the public return shape would otherwise depend on
+    # whether population size happened to change during the rollout.
+    points_array = np.empty(len(sde_point_np), dtype=object)
+    points_array[:] = sde_point_np
+    if not return_lineage_ids:
+        return points_array
+    lineage_frames = [values.detach().cpu().numpy() for values in lineage_ids]
+    lineage_array = np.empty(len(lineage_frames), dtype=object)
+    lineage_array[:] = lineage_frames
+    return points_array, lineage_array
+
+
+def _frame_object_array(frames: Sequence[np.ndarray]) -> np.ndarray:
+    """Return a stable one-dimensional object container of numeric frames."""
+
+    values = [np.asarray(frame) for frame in frames]
+    output = np.empty(len(values), dtype=object)
+    output[:] = values
+    return output
 
 
 def apply_spatial_warp_to_segments(
@@ -767,9 +935,8 @@ def apply_spatial_warp_to_segments(
     if len(ts_points) == 0 or len(observed_time_points) < 2:
         return sde_points_split
 
-    sde_points_out = np.array(
-        [np.asarray(p, dtype=np.float32).copy() for p in sde_points_split],
-        dtype=object,
+    sde_points_out = _frame_object_array(
+        [np.asarray(p, dtype=np.float32).copy() for p in sde_points_split]
     )
     ts_index = {float(t): i for i, t in enumerate(ts_points)}
 
@@ -936,6 +1103,8 @@ def simulate_piecewise_spatially_warped_split(
     use_real_for_observed: bool = True,
     resample_dt: Optional[float] = None,
     max_particles: Optional[int] = None,
+    daughter_noise_std: float = 0.0,
+    interaction_seed: Optional[int] = None,
 ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     ts_sorted = [float(t) for t in ts_points]
     observed_sorted = [
@@ -958,11 +1127,12 @@ def simulate_piecewise_spatially_warped_split(
             verbose=True,
             resample_dt=resample_dt,
             max_particles=max_particles,
+            daughter_noise_std=daughter_noise_std,
+            interaction_seed=interaction_seed,
         )
         if return_prewarp:
-            return fallback, np.array(
-                [np.asarray(points, dtype=np.float32).copy() for points in fallback],
-                dtype=object,
+            return fallback, _frame_object_array(
+                [np.asarray(points, dtype=np.float32).copy() for points in fallback]
             )
         return fallback
 
@@ -985,6 +1155,8 @@ def simulate_piecewise_spatially_warped_split(
             verbose=True,
             resample_dt=resample_dt,
             max_particles=max_particles,
+            daughter_noise_std=daughter_noise_std,
+            interaction_seed=interaction_seed,
         )
         warped = apply_spatial_warp_to_segments(
             sde_points_split=prewarp,
@@ -1004,16 +1176,17 @@ def simulate_piecewise_spatially_warped_split(
         )
         if not return_prewarp:
             return warped
-        return warped, np.array(
-            [np.asarray(points, dtype=np.float32).copy() for points in prewarp],
-            dtype=object,
+        return warped, _frame_object_array(
+            [np.asarray(points, dtype=np.float32).copy() for points in prewarp]
         )
 
     current_x0 = np.asarray(x0, dtype=np.float32)
     points_by_time: Dict[float, np.ndarray] = {}
     prewarp_points_by_time: Dict[float, np.ndarray] = {}
 
-    for t_start, t_end in zip(observed_sorted[:-1], observed_sorted[1:]):
+    for interval_index, (t_start, t_end) in enumerate(
+        zip(observed_sorted[:-1], observed_sorted[1:])
+    ):
         seg_ts = [
             float(t) for t in ts_sorted if float(t_start) <= float(t) <= float(t_end)
         ]
@@ -1029,6 +1202,11 @@ def simulate_piecewise_spatially_warped_split(
             continue
 
         print(f"[spatial-warp piecewise] segment {t_start}->{t_end} | targets={seg_ts}")
+        interval_interaction_seed = (
+            None
+            if interaction_seed is None
+            else int(interaction_seed) + int(interval_index)
+        )
         seg_points = simulate_sde_points_split_from_x0(
             x0=current_x0,
             f_net=f_net,
@@ -1043,6 +1221,8 @@ def simulate_piecewise_spatially_warped_split(
             verbose=True,
             resample_dt=resample_dt,
             max_particles=max_particles,
+            daughter_noise_std=daughter_noise_std,
+            interaction_seed=interval_interaction_seed,
         )
 
         source_endpoint_xy = np.asarray(seg_points[-1], dtype=np.float32)[:, :2]
@@ -1121,7 +1301,7 @@ def simulate_piecewise_spatially_warped_split(
             f"Piecewise spatial-warp split-SDE missing timepoints: {missing}"
         )
 
-    warped = np.array([points_by_time[float(t)] for t in ts_sorted], dtype=object)
+    warped = _frame_object_array([points_by_time[float(t)] for t in ts_sorted])
     if not return_prewarp:
         return warped
     missing_prewarp = [
@@ -1132,9 +1312,7 @@ def simulate_piecewise_spatially_warped_split(
             "Piecewise spatial-warp split-SDE missing prewarp timepoints: "
             f"{missing_prewarp}"
         )
-    prewarp = np.array(
-        [prewarp_points_by_time[float(t)] for t in ts_sorted], dtype=object
-    )
+    prewarp = _frame_object_array([prewarp_points_by_time[float(t)] for t in ts_sorted])
     return warped, prewarp
 
 
@@ -1161,6 +1339,7 @@ def simulate_sde_points(
     f_net=None,
     score_net=None,
     verbose: bool = True,
+    interaction_seed: Optional[int] = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     from CytoBridge.tl.core.interaction import cal_interaction
 
@@ -1192,6 +1371,8 @@ def simulate_sde_points(
         lnw0 = torch.log(torch.ones(x0.shape[0], 1, device=device) / x0.shape[0])
         initial_state = (x0, lnw0)
 
+        interaction_generator = _interaction_generator(device, interaction_seed)
+
         class SDE(nn.Module):
             noise_type = "diagonal"
             sde_type = "ito"
@@ -1209,13 +1390,16 @@ def simulate_sde_points(
                 with torch.no_grad():
                     drift = self.drift(t, z)
                     dlnw = self.g_net(t, z)
-                    net_forces = cal_interaction(
-                        z=z,
-                        lnw=lnw,
-                        interaction_potential=self.interaction,
-                        m=interaction_m,
-                        t=t,
-                    )
+                    net_forces = torch.zeros_like(z)
+                    if self.interaction is not None:
+                        net_forces = cal_interaction(
+                            z=z,
+                            lnw=lnw,
+                            interaction_potential=self.interaction,
+                            m=interaction_m,
+                            t=t,
+                            generator=interaction_generator,
+                        )
                 if include_score:
                     t_expand = t.expand(z.shape[0], 1)
                     with torch.enable_grad():
@@ -1241,7 +1425,11 @@ def simulate_sde_points(
             )
 
         sde = SDE(
-            f_net.v_net, f_net.g_net, score_net, f_net.interaction_net, sigma=sigma
+            f_net.v_net,
+            f_net.g_net,
+            score_net,
+            getattr(f_net, "interaction_net", None),
+            sigma=sigma,
         )
         ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
         sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
@@ -1255,7 +1443,7 @@ def simulate_sde_points(
                 f"shape0={sde_point_np[0].shape if sde_point_np else None}"
             )
         return (
-            np.array(sde_point_np, dtype=object),
+            _frame_object_array(sde_point_np),
             weight_normed.detach().cpu().numpy(),
         )
 
@@ -1297,6 +1485,7 @@ def simulate_sde_points(
     interaction_net = getattr(model, "interaction_net", None)
     components = set(getattr(model, "components", []))
     use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
+    interaction_generator = _interaction_generator(device, interaction_seed)
 
     class SDE(nn.Module):
         noise_type = "diagonal"
@@ -1330,6 +1519,7 @@ def simulate_sde_points(
                             cutoff=1000,
                             use_mass=use_mass,
                             t=t,
+                            generator=interaction_generator,
                         ).float()
                 else:
                     net_forces = cal_interaction(
@@ -1340,6 +1530,7 @@ def simulate_sde_points(
                         cutoff=1000,
                         use_mass=use_mass,
                         t=t,
+                        generator=interaction_generator,
                     ).float()
 
             if include_score and "score" in components:
@@ -1362,7 +1553,7 @@ def simulate_sde_points(
         sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
         weight = torch.exp(traj_lnw)
         sde_point_np = [p.detach().cpu().numpy() for p in sde_point]
-        return np.array(sde_point_np, dtype=object), weight.detach().cpu().numpy()
+        return _frame_object_array(sde_point_np), weight.detach().cpu().numpy()
     finally:
         _restore_model_after_inference(freeze_state)
 
@@ -1393,6 +1584,8 @@ def simulate_sde_points_split(
     verbose: bool = True,
     resample_dt: Optional[float] = None,
     max_particles: Optional[int] = None,
+    daughter_noise_std: float = 0.0,
+    interaction_seed: Optional[int] = None,
 ) -> np.ndarray:
     from CytoBridge.tl.core.interaction import cal_interaction
 
@@ -1435,6 +1628,8 @@ def simulate_sde_points_split(
             verbose=verbose,
             resample_dt=resample_dt,
             max_particles=max_particles,
+            daughter_noise_std=daughter_noise_std,
+            interaction_seed=interaction_seed,
         )
 
     X, times, time_points, dim = _prepare_adata_arrays(
@@ -1475,6 +1670,7 @@ def simulate_sde_points_split(
     interaction_net = getattr(model, "interaction_net", None)
     components = set(getattr(model, "components", []))
     use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
+    interaction_generator = _interaction_generator(device, interaction_seed)
 
     class SDE(nn.Module):
         noise_type = "diagonal"
@@ -1508,6 +1704,7 @@ def simulate_sde_points_split(
                             cutoff=1000,
                             use_mass=use_mass,
                             t=t,
+                            generator=interaction_generator,
                         ).float()
                 else:
                     net_forces = cal_interaction(
@@ -1518,6 +1715,7 @@ def simulate_sde_points_split(
                         cutoff=1000,
                         use_mass=use_mass,
                         t=t,
+                        generator=interaction_generator,
                     ).float()
 
             if "score" in components:
@@ -1542,12 +1740,12 @@ def simulate_sde_points_split(
             initial_state,
             dt=dt,
             ts=ts_tensor,
-            noise_std=0.0,
+            noise_std=float(daughter_noise_std),
             resample_dt=resample_dt,
             max_particles=max_particles,
         )
         sde_point_np = [p.detach().cpu().numpy() for p in sde_points]
-        return np.array(sde_point_np, dtype=object)
+        return _frame_object_array(sde_point_np)
     finally:
         _restore_model_after_inference(freeze_state)
 

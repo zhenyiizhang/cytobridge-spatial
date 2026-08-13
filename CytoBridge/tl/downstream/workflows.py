@@ -70,7 +70,7 @@ class InterpolationResult:
     classifier_balanced_accuracy: Optional[float]
     classifier_metadata: Optional[dict]
     classifier_evaluation: Optional[dict]
-    simulation_seeds: dict[str, Optional[int]]
+    simulation_seeds: dict[str, Any]
 
 
 def run_interpolation_workflow(
@@ -113,6 +113,7 @@ def run_interpolation_workflow(
     split_sde_dt: float = 0.05,
     split_sigma_scalar: float = 0.03,
     split_sigma_vector: Optional[Sequence[float]] = None,
+    split_daughter_noise_std: float = 0.0,
     split_growth_alpha: float = 1.0,
     split_interaction_m: int = 1024,
     split_resample_dt: Optional[float] = None,
@@ -244,6 +245,11 @@ def run_interpolation_workflow(
     classifier_evaluation = None
     nonsplit_seed = None if random_seed is None else int(random_seed)
     split_seed = None if random_seed is None else int(random_seed) + 1
+    nonsplit_interaction_seed = (
+        None if random_seed is None else int(random_seed) + 10_000
+    )
+    split_interaction_seed = None if random_seed is None else int(random_seed) + 10_001
+    split_interaction_seeds_by_interval: dict[str, int] = {}
 
     feature_cols_full = [f"x{i}" for i in range(1, dim + 1)]
     if need_interp:
@@ -368,6 +374,7 @@ def run_interpolation_workflow(
                 include_score=False,
                 interaction_m=int(split_interaction_m),
                 device=device,
+                interaction_seed=nonsplit_interaction_seed,
             )
             print(f"Non-split SDE done in {time.perf_counter() - t_sde0:.1f}s")
 
@@ -418,6 +425,8 @@ def run_interpolation_workflow(
                 use_real_for_observed=bool(use_real_for_observed),
                 resample_dt=split_resample_dt,
                 max_particles=split_max_particles,
+                daughter_noise_std=split_daughter_noise_std,
+                interaction_seed=split_interaction_seed,
             )
         elif split_sde_piecewise:
             rng_piecewise = np.random.default_rng(
@@ -449,8 +458,8 @@ def run_interpolation_workflow(
                 points_by_time[float(t_obs)] = x0_by_observed[float(t_obs)]
 
             observed_set = {float(t) for t in observed_time_points}
-            for t_start, t_end in zip(
-                observed_time_points[:-1], observed_time_points[1:]
+            for interval_index, (t_start, t_end) in enumerate(
+                zip(observed_time_points[:-1], observed_time_points[1:])
             ):
                 mids = sorted(
                     [
@@ -467,6 +476,15 @@ def run_interpolation_workflow(
                 print(
                     f"[piecewise split-SDE] segment {t_start}->{t_end} | targets={seg_ts}"
                 )
+                interval_interaction_seed = (
+                    None
+                    if split_interaction_seed is None
+                    else int(split_interaction_seed) + int(interval_index)
+                )
+                if interval_interaction_seed is not None:
+                    split_interaction_seeds_by_interval[
+                        f"{float(t_start)}->{float(t_end)}"
+                    ] = interval_interaction_seed
                 seg_points = simulate_sde_points_split_from_x0(
                     x0=x0_by_observed[float(t_start)],
                     f_net=f_net,
@@ -481,6 +499,8 @@ def run_interpolation_workflow(
                     verbose=True,
                     resample_dt=split_resample_dt,
                     max_particles=split_max_particles,
+                    daughter_noise_std=split_daughter_noise_std,
+                    interaction_seed=interval_interaction_seed,
                 )
                 for t_val, pts in zip(seg_ts, seg_points):
                     if float(t_val) in observed_set:
@@ -496,9 +516,9 @@ def run_interpolation_workflow(
             missing = [float(t) for t in ts_points if float(t) not in points_by_time]
             if missing:
                 raise ValueError(f"Piecewise split-SDE missing timepoints: {missing}")
-            sde_points_split = np.array(
-                [points_by_time[float(t)] for t in ts_points], dtype=object
-            )
+            point_frames = [points_by_time[float(t)] for t in ts_points]
+            sde_points_split = np.empty(len(point_frames), dtype=object)
+            sde_points_split[:] = point_frames
         else:
             # Keep legacy parity here: the original MOSTA workflow sampled x0
             # inside simulate_sde_points_split(...) via torch.randperm, not via
@@ -520,13 +540,16 @@ def run_interpolation_workflow(
                 verbose=True,
                 resample_dt=split_resample_dt,
                 max_particles=split_max_particles,
+                daughter_noise_std=split_daughter_noise_std,
+                interaction_seed=split_interaction_seed,
             )
 
         if spatial_warp_to_observed:
-            sde_points_split_prewarp = np.array(
-                [np.asarray(p, dtype=np.float32).copy() for p in sde_points_split],
-                dtype=object,
-            )
+            prewarp_frames = [
+                np.asarray(p, dtype=np.float32).copy() for p in sde_points_split
+            ]
+            sde_points_split_prewarp = np.empty(len(prewarp_frames), dtype=object)
+            sde_points_split_prewarp[:] = prewarp_frames
             if spatial_warp_k <= 0:
                 raise ValueError("--spatial-warp-k must be > 0")
             if spatial_warp_eps <= 0:
@@ -746,6 +769,16 @@ def run_interpolation_workflow(
         simulation_seeds={
             "non_split_identity": nonsplit_seed,
             "split_population": split_seed,
+            "non_split_interaction_grouping": nonsplit_interaction_seed,
+            "split_interaction_grouping": split_interaction_seed,
+            "split_interaction_grouping_by_interval": (
+                split_interaction_seeds_by_interval
+            ),
+            "piecewise_interaction_seed_derivation": (
+                "split_interaction_grouping + zero_based_observed_interval_index"
+                if split_sde_piecewise
+                else None
+            ),
         },
     )
 

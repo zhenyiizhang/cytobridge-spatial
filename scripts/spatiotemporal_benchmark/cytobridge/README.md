@@ -10,15 +10,22 @@ paths.
 The shared scientific profile is:
 
 - `alpha_spatial=10`, `alpha_express=0.015`, `sigma=0.03`, seed 42;
-- stages `Pretrain/Refine/Init_interaction/Train_Score/Finetune/Score_Refine`;
-- the six stage roles and component set above;
+- the exact six-stage plan in the selected package YAML. Interaction-enabled
+  profiles use `Init_interaction` and `Finetune`; matched no-interaction
+  profiles use `Matched_stage_3_no_interaction` and
+  `Finetune_no_interaction`, with the same stage count and matched scientific
+  settings but `v+g` rather than `v+g+i` in those neural-ODE stages;
+- either the full `velocity/growth/score/interaction` component set or the
+  explicit no-interaction `velocity/growth/score` component set;
 - the exact architecture, epochs, batch sizes, losses and scheduler loaded
   from the selected data-set package YAML. These intentionally differ where
   the package recipe differs (for example, AD uses 3,001 score epochs);
 - the interaction prior declared by that YAML: `learned` profiles require a
   validated edge-predictor path and threshold, while `all_spatial` profiles
   retain every within-cutoff candidate inside each stochastic interaction
-  group and reject predictor fields;
+  group and reject predictor fields. Profiles with no interaction component
+  have `interaction_mode=edge_prior_mode=none` and reject cutoffs, predictor
+  metadata, and interaction-graph metadata altogether;
 - exactly 5,000 source particles from the builder-frozen, method-independent
   canonical source roster, verified before any truth artifact is opened;
 - raw two-dimensional frozen spatial coordinates followed by the frozen state
@@ -40,11 +47,15 @@ For every fold, the held-out target rows must be physically absent. For a
 interaction graphs for the remaining stages and retrains the edge classifier.
 For an `all_spatial` no-LR-prior ablation, it prepares only the cutoff declared
 by the matched training config: no LR graph or edge-classifier artifact is
-created, recorded, or passed to fitting. The adapter then runs all six stages
-from scratch and continuously simulates from the nearest previous observed
-training stage to the held-out target. The AD production benchmark remains the
-corrected learned predictor trained from its seven strictly retained LR pairs;
-radius-only AD is reported only as an ablation or sensitivity analysis.
+created, recorded, or passed to fitting. For a no-interaction ablation,
+`prepare-loto` writes only a mode/provenance summary: it does not open the
+training H5AD to generate a graph, and fitting receives no cutoff, graph, or
+predictor argument. The adapter then runs the profile's exact six stages from
+scratch and continuously simulates from the nearest previous observed training
+stage to the held-out target. No-interaction inference uses only velocity,
+growth, and score. The AD production benchmark remains the corrected learned
+predictor trained from its seven strictly retained LR pairs; radius-only AD is
+reported only as an ablation or sensitivity analysis.
 
 ### Full data / no holdout (`full_data`)
 
@@ -53,6 +64,10 @@ files, its resolved package config, interaction-prior mode, and training data
 are verified. Learned-mode Finetune checkpoints embed the predictor parameters,
 so they remain loadable after being moved. An `all_spatial` checkpoint has no
 predictor dependency at all; validation rejects stale predictor metadata. A new
+no-interaction checkpoint likewise has no cutoff, graph, predictor, or
+interaction-group dependency and is simulated with
+`include_interaction=false`. For every mode, both LOTO and full-data reuse
+require a field-by-field match to the selected reference package YAML. A new
 adapter fit proves linkage via
 `benchmark_fit_summary.json`; an existing locked fit without that summary is
 accepted only when its saved `adata.h5ad` has the exact frozen state, spatial,
@@ -134,7 +149,10 @@ YAML; an explicit `--interaction-cutoff` is accepted only when numerically
 equal to that value. `--edge-threshold` and `--spot-diameter` are rejected in
 that mode, and no learned-graph artifacts are written. In learned mode,
 `--database` is required. The AD production benchmark uses learned mode; its
-all-spatial profile is a separately labelled no-LR-prior ablation.
+all-spatial profile is a separately labelled no-LR-prior ablation. In
+no-interaction mode, `--interaction-cutoff`, `--edge-threshold`,
+`--spot-diameter`, and `--database` are all rejected; the `graph-dir` argument
+to `fit-loto` names the prepare summary directory, not an interaction graph.
 
 Validate and reuse an existing complete full-data `.015` model, then create all
 four snapshots in one continuous call:
@@ -163,7 +181,14 @@ single read-only report.
 
 Inference also binds `--interaction-m` exactly to the loaded checkpoint's
 `model.interaction_group_size`; a mismatch is rejected instead of silently
-changing the stochastic interaction grouping.
+changing the stochastic interaction grouping. That option is not applicable to
+no-interaction checkpoints, which have no interaction group and always run
+with `include_interaction=false`.
+
+Communication and ligand-receptor interpretation are intentionally outside
+this prediction-benchmark adapter. In particular, a no-interaction checkpoint
+does not produce communication or LR outputs here; those analyses require a
+separate, explicitly scoped downstream contract.
 
 ## Outputs
 
@@ -211,4 +236,6 @@ They verify train-only artifact resolution even when truth is deliberately
 missing, physical LOTO removal, the single full-data t0-to-all-target schedule,
 fixed deterministic 5,000-particle bootstrapping, raw-weight export, all four
 package profiles, learned-predictor portability, radius-only execution without
-predictor artifacts or arguments, and six-stage checkpoint completeness.
+predictor artifacts or arguments, no-interaction prepare/fit/infer execution
+without graph dependencies, exact real-config reference matching, and
+six-stage checkpoint completeness.

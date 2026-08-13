@@ -129,7 +129,9 @@ def _build_legacy_model_config(
     model_cfg = legacy_cfg.get("model", {})
     if not model_cfg:
         raise KeyError("Legacy params.yml is missing the required 'model' section.")
-    latent_dim = int(legacy_cfg.get("data", {}).get("dim", model_cfg.get("in_out_dim", 0)))
+    latent_dim = int(
+        legacy_cfg.get("data", {}).get("dim", model_cfg.get("in_out_dim", 0))
+    )
     if latent_dim <= 0:
         raise ValueError("Could not infer latent dimension from legacy params.yml.")
 
@@ -137,7 +139,11 @@ def _build_legacy_model_config(
     if edge_predictor_path:
         edge_predictor_path = Path(str(edge_predictor_path))
         if not edge_predictor_path.is_absolute():
-            root = Path(edge_predictor_root) if edge_predictor_root is not None else model_dir.parent.parent / "edge_classifier"
+            root = (
+                Path(edge_predictor_root)
+                if edge_predictor_root is not None
+                else model_dir.parent.parent / "edge_classifier"
+            )
             edge_predictor_path = root / edge_predictor_path.name
 
     return {
@@ -170,7 +176,9 @@ def _build_legacy_model_config(
             "num_rbf": 8,
             "cutoff": float(model_cfg["thre"]),
             "use_spatial": bool(model_cfg.get("use_spatial", True)),
-            "edge_predictor_path": str(edge_predictor_path) if edge_predictor_path is not None else None,
+            "edge_predictor_path": str(edge_predictor_path)
+            if edge_predictor_path is not None
+            else None,
             "edge_predictor_thre": float(model_cfg.get("edge_predictor_thre", 0.45)),
         },
     }
@@ -237,7 +245,9 @@ def load_dynamical_model_from_dir(
         candidate_stages = list(_iter_stage_names_from_config(cfg))
         if not candidate_stages:
             # Fallback: scan subfolders
-            candidate_stages = sorted([p.name for p in model_dir.iterdir() if p.is_dir()])
+            candidate_stages = sorted(
+                [p.name for p in model_dir.iterdir() if p.is_dir()]
+            )
         weight_stage = None
         for st in reversed(candidate_stages):
             candidate_path = _resolve_stage_checkpoint(model_dir, st, cfg)
@@ -253,16 +263,29 @@ def load_dynamical_model_from_dir(
 
     state_dict = _load_state_dict(weight_path, device=device)
     model_config = deepcopy(cfg["model"])
-    interaction_config = model_config.get("interaction_net", {})
-    model_config["interaction_net"] = interaction_config
+    components = {str(value).strip().lower() for value in model_config["components"]}
+    has_interaction = "interaction" in components
+    interaction_present = "interaction_net" in model_config
+    interaction_config = model_config.get("interaction_net")
+    if has_interaction and interaction_config is None:
+        raise KeyError(
+            "config.model.components includes interaction but interaction_net is missing"
+        )
+    if not has_interaction and interaction_present:
+        raise ValueError(
+            "config.model.interaction_net is inert because the interaction component "
+            "is absent; remove it from a no-interaction checkpoint config"
+        )
+    if edge_predictor_path is not None and not has_interaction:
+        raise ValueError(
+            "edge_predictor_path cannot be supplied for a no-interaction checkpoint"
+        )
     if edge_predictor_path is not None:
         interaction_config["edge_predictor_path"] = str(
             Path(edge_predictor_path).expanduser().resolve()
         )
-    embedded_predictor = any(
-        ".link_predictor." in str(key) for key in state_dict
-    )
-    if embedded_predictor:
+    embedded_predictor = any(".link_predictor." in str(key) for key in state_dict)
+    if embedded_predictor and interaction_config is not None:
         interaction_config["load_edge_predictor_from_path"] = False
 
     model = DynamicalModel(int(dim), model_config)
@@ -285,7 +308,11 @@ def load_dynamical_model_from_dir(
     # ---- optional score stage ----
     score_stage_used: Optional[str] = None
     score_path_used: Optional[Path] = None
-    if hasattr(model, "score_net") and model.score_net is not None and "score" in getattr(model, "components", []):
+    if (
+        hasattr(model, "score_net")
+        and model.score_net is not None
+        and "score" in getattr(model, "components", [])
+    ):
         for st in _score_stage_candidates(cfg, score_stage_prefer):
             score_path = model_dir / str(st) / "score_model.pth"
             if score_path.exists():
@@ -340,7 +367,11 @@ def load_legacy_dynamical_model_from_dir(
     if latent_dim <= 0:
         raise ValueError("Legacy params.yml is missing a valid data.dim.")
 
-    edge_root = Path(edge_predictor_root) if edge_predictor_root is not None else model_dir.parent.parent / "edge_classifier"
+    edge_root = (
+        Path(edge_predictor_root)
+        if edge_predictor_root is not None
+        else model_dir.parent.parent / "edge_classifier"
+    )
     model_cfg = _build_legacy_model_config(
         legacy_cfg,
         model_dir=model_dir,

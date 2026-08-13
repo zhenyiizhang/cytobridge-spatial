@@ -25,6 +25,10 @@ METHODS = ("stvcr", "stories", "mioflow")
 REGIMES = ("full_data", "loto")
 CONTRACT_UNS_KEY = "cytobridge_benchmark_contract"
 PREDICTION_N = 5000
+DYNAMIC_ADAPTER_FILES = (
+    "scripts/spatiotemporal_benchmark/dynamic/common.py",
+    "scripts/spatiotemporal_benchmark/dynamic/run_dynamic.py",
+)
 
 
 class ContractError(ValueError):
@@ -94,6 +98,24 @@ def sha256_file(path: Path, chunk_size: int = 8 * 1024 * 1024) -> str:
         while block := handle.read(chunk_size):
             digest.update(block)
     return digest.hexdigest()
+
+
+def dynamic_adapter_implementation_identity() -> dict[str, Any]:
+    """Return a portable byte-level identity for the in-repo dynamic adapter."""
+
+    repository_root = Path(__file__).resolve().parents[3]
+    files = {
+        relative_path: sha256_file(repository_root / relative_path)
+        for relative_path in DYNAMIC_ADAPTER_FILES
+    }
+    aggregate = hashlib.sha256(
+        json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "schema_version": "1.0.0",
+        "files": files,
+        "aggregate_sha256": aggregate,
+    }
 
 
 def sha256_array(value: np.ndarray) -> str:
@@ -266,9 +288,7 @@ def read_split_contract(root_manifest: Path, split_id: str) -> SplitContract:
         training_reference_declared_sha256=_artifact_sha(
             reference_entry, "training reference NPZ"
         ),
-        source_roster_declared_sha256=_artifact_sha(
-            roster_entry, "source roster NPZ"
-        ),
+        source_roster_declared_sha256=_artifact_sha(roster_entry, "source roster NPZ"),
         raw=dict(entry),
     )
 
@@ -532,6 +552,23 @@ def canonical_adata(data: TrainingData):
 
 def git_identity(source_root: Path) -> dict[str, Any]:
     source_root = Path(source_root).expanduser().resolve()
+    toplevel = subprocess.run(
+        ["git", "-C", str(source_root), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if toplevel.returncode:
+        raise ContractError(f"{source_root} is not an auditable git checkout")
+    try:
+        actual_toplevel = Path(toplevel.stdout.strip()).expanduser().resolve()
+    except (OSError, RuntimeError) as exc:
+        raise ContractError(f"{source_root} has an invalid git toplevel") from exc
+    if actual_toplevel != source_root:
+        raise ContractError(
+            "official source root must be the exact git toplevel: "
+            f"requested {source_root}, found {actual_toplevel}"
+        )
     head = subprocess.run(
         ["git", "-C", str(source_root), "rev-parse", "HEAD"],
         check=False,
@@ -541,13 +578,25 @@ def git_identity(source_root: Path) -> dict[str, Any]:
     commit = head.stdout.strip()
     if head.returncode or len(commit) != 40:
         raise ContractError(f"{source_root} is not an auditable git checkout")
-    tracked = subprocess.run(
-        ["git", "-C", str(source_root), "diff", "--quiet", "HEAD", "--"],
+    status = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(source_root),
+            "status",
+            "--porcelain",
+            "--untracked-files=normal",
+        ],
         check=False,
+        capture_output=True,
+        text=True,
     )
-    if tracked.returncode != 0:
+    if status.returncode != 0:
+        raise ContractError(f"cannot audit official source checkout: {source_root}")
+    if status.stdout != "":
         raise ContractError(
-            f"official source checkout has tracked modifications: {source_root}"
+            "official source checkout has tracked, staged, or untracked changes: "
+            f"{source_root}"
         )
     remote = subprocess.run(
         ["git", "-C", str(source_root), "config", "--get", "remote.origin.url"],
@@ -560,6 +609,7 @@ def git_identity(source_root: Path) -> dict[str, Any]:
         "source_git_commit": commit,
         "source_remote": remote or None,
         "source_tracked_tree_clean": True,
+        "source_worktree_clean": True,
     }
 
 

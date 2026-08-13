@@ -62,7 +62,9 @@ def _load_method_registry(path: Path) -> dict[str, Any]:
     try:
         registry_bytes = registry_path.read_bytes()
     except OSError as exc:
-        raise ContractError(f"cannot capture method registry snapshot {registry_path}: {exc}") from exc
+        raise ContractError(
+            f"cannot capture method registry snapshot {registry_path}: {exc}"
+        ) from exc
     registry_sha = hashlib.sha256(registry_bytes).hexdigest()
     try:
         payload = json.loads(registry_bytes.decode("utf-8"))
@@ -96,11 +98,12 @@ def _load_method_registry(path: Path) -> dict[str, Any]:
         if not isinstance(raw_spaces, list):
             raise ContractError(f"{canonical}: registry spaces must be a list")
         spaces = [str(value).strip().casefold() for value in raw_spaces]
-        if (
-            len(set(spaces)) != len(spaces)
-            or any(space not in _EVALUATION_SPACES for space in spaces)
+        if len(set(spaces)) != len(spaces) or any(
+            space not in _EVALUATION_SPACES for space in spaces
         ):
-            raise ContractError(f"{canonical}: invalid or duplicate registry spaces {spaces}")
+            raise ContractError(
+                f"{canonical}: invalid or duplicate registry spaces {spaces}"
+            )
         if not isinstance(raw_aliases, list):
             raise ContractError(f"{canonical}: registry aliases must be a list")
         alias_values = [canonical, display_name, *raw_aliases]
@@ -140,7 +143,9 @@ def _registry_record_for_raw(
     raw = str(raw_method).strip()
     canonical = registry["aliases"].get(raw.casefold())
     if canonical is None:
-        raise ContractError(f"{label}: raw method {raw!r} is absent from method registry")
+        raise ContractError(
+            f"{label}: raw method {raw!r} is absent from method registry"
+        )
     record = registry["records"][canonical]
     if record["status"] != "evaluated" or not record["declared_spaces"]:
         raise ContractError(
@@ -212,7 +217,9 @@ def _verify_method_registry_file(binding: dict[str, Any]) -> None:
         raise ContractError(f"bound method registry is missing: {path}")
     observed = primary.sha256_file(path)
     if observed != expected:
-        raise ContractError(f"bound method registry changed after byte snapshot: {path}")
+        raise ContractError(
+            f"bound method registry changed after byte snapshot: {path}"
+        )
 
 
 def _registry_binding_for_raw(
@@ -228,7 +235,9 @@ def _registry_binding_for_raw(
         )
     entry = entries[raw_method]
     if not isinstance(entry, dict) or entry.get("raw_method") != raw_method:
-        raise ContractError(f"{label}: malformed method-registry binding for {raw_method!r}")
+        raise ContractError(
+            f"{label}: malformed method-registry binding for {raw_method!r}"
+        )
     return entry
 
 
@@ -951,15 +960,29 @@ def _load_cases(
 
 
 def _summary_path_for_prediction(prediction_path: Path) -> Path:
-    summary_candidates = (
-        prediction_path.with_suffix(".summary.json"),
-        prediction_path.parent / "summary.json",
-        prediction_path.parent / "run_manifest.json",
-    )
-    summary_path = next((path for path in summary_candidates if path.is_file()), None)
-    if summary_path is None:
-        raise ContractError(f"prediction has no summary JSON: {prediction_path}")
-    return summary_path
+    evaluator_summary = prediction_path.with_suffix(".summary.json")
+    canonical_summary = prediction_path.parent / "summary.json"
+    evaluator_exists = evaluator_summary.is_file()
+    canonical_exists = canonical_summary.is_file()
+    if evaluator_exists and canonical_exists:
+        try:
+            evaluator_bytes = evaluator_summary.read_bytes()
+            canonical_bytes = canonical_summary.read_bytes()
+        except OSError as exc:
+            raise ContractError(
+                f"cannot read prediction summary pair for {prediction_path}: {exc}"
+            ) from exc
+        if evaluator_bytes != canonical_bytes:
+            raise ContractError(
+                "prediction.summary.json and summary.json coexist but are not "
+                f"byte-identical: {prediction_path.parent}"
+            )
+        return canonical_summary
+    if canonical_exists:
+        return canonical_summary
+    if evaluator_exists:
+        return evaluator_summary
+    raise ContractError(f"prediction has no summary JSON: {prediction_path}")
 
 
 def _parse_summary_snapshot(summary_path: Path) -> tuple[bytes, dict[str, Any]]:
@@ -999,8 +1022,7 @@ def _discover_prediction_methods(
     if requested_binding is not None:
         entries = requested_binding["raw_to_canonical"]
         expected_raw_by_canonical = {
-            str(entry["canonical_method"]): str(raw)
-            for raw, entry in entries.items()
+            str(entry["canonical_method"]): str(raw) for raw, entry in entries.items()
         }
         requested_canonical = set(expected_raw_by_canonical)
 
@@ -1302,9 +1324,7 @@ def _prediction_inventory(
                         "registry_declared_spaces": prediction["registry_spaces"],
                         "actual_output_spaces": prediction["actual_spaces"],
                         "native_vs_adapter": prediction["native_vs_adapter"],
-                        "scope_compatibility": prediction[
-                            "scope_compatibility"
-                        ],
+                        "scope_compatibility": prediction["scope_compatibility"],
                         "primary_benchmark_eligible": bool(
                             prediction["primary_benchmark_eligible"]
                         ),
@@ -1357,7 +1377,9 @@ def _scope_compatibility_audit(inventory: dict[str, Any]) -> dict[str, Any]:
     audit_records: list[dict[str, Any]] = []
     for record in records:
         if not isinstance(record, dict):
-            raise ContractError("scope compatibility inventory record must be an object")
+            raise ContractError(
+                "scope compatibility inventory record must be an object"
+            )
         audit_records.append(
             {
                 "raw_method": record.get("raw_method"),
@@ -1369,9 +1391,7 @@ def _scope_compatibility_audit(inventory: dict[str, Any]) -> dict[str, Any]:
                 "native_vs_adapter": record.get("native_vs_adapter"),
                 "actual_output_spaces": record.get("actual_output_spaces"),
                 "scope_compatibility": record.get("scope_compatibility"),
-                "prediction_summary_sha256": record.get(
-                    "prediction_summary_sha256"
-                ),
+                "prediction_summary_sha256": record.get("prediction_summary_sha256"),
             }
         )
     legacy = [
@@ -1544,9 +1564,7 @@ def _verify_bound_inventory_from_manifest(manifest: dict[str, Any]) -> None:
         "base_run_contract": str(manifest["run_contract"]),
         "base_run_contract_sha256": str(manifest["run_contract_sha256"]),
         "prediction_inventory": str(manifest["prediction_inventory"]),
-        "prediction_inventory_sha256": str(
-            manifest["prediction_inventory_sha256"]
-        ),
+        "prediction_inventory_sha256": str(manifest["prediction_inventory_sha256"]),
     }
     for key, expected in expected_bound_links.items():
         if str(bound_contract.get(key, "")) != expected:
@@ -1841,9 +1859,7 @@ def _evaluate_predictions(
                 metrics["seed_pairing_split"] = seed_split
                 metrics["output_scope"] = prediction["scope"]
                 metrics["native_vs_adapter"] = prediction["native_vs_adapter"]
-                metrics["scope_compatibility"] = prediction[
-                    "scope_compatibility"
-                ]
+                metrics["scope_compatibility"] = prediction["scope_compatibility"]
                 metrics["source_time"] = primary._source_time(
                     summary, track, target, case["train_time"]
                 )

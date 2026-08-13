@@ -10,7 +10,8 @@ recursive-include notebooks *.ipynb *.md
 recursive-include requirements *.txt
 recursive-include tests *.py
 # The sdist is the complete source release and carries every tracked scientific
-# profile.  The wheel remains intentionally narrower through pyproject package-data.
+# profile, including the four-dataset matched no-interaction/no-LR matrix.  The
+# wheel remains intentionally narrower through pyproject package-data.
 recursive-include CytoBridge/configs *.yaml
 recursive-include configs *.yaml
 
@@ -32,9 +33,11 @@ include scripts/run_arista_end_to_end.py
 include scripts/run_downstream_workflow_example.py
 include scripts/run_mosta_alignment_sensitivity.py
 include scripts/run_mosta_end_to_end.py
+include scripts/run_matched_ablation_matrix.py
 include scripts/run_spatial_training.py
 include scripts/run_spatiotemporal_downstream.py
 include scripts/run_zebrafish_end_to_end.py
+include scripts/run_zebrafish_interval_daughter_noise_sensitivity.py
 include scripts/run_zebrafish_paper_downstream.py
 include scripts/smoke_dataset_notebooks.py
 include scripts/smoke_installed_wheel.py

@@ -1,6 +1,7 @@
 # Shared benchmark hand-off from the corrected package run.
 dataset_id: admouse
-input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/admouse/preprocess/admouse_aligned.h5ad
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-final-4d53ec9/admouse/preprocess/admouse_aligned.h5ad
+expected_source_sha256: 26d9a68acde90afc09d11b9c17de38525e37b1ee6b2e0290ddbda3efbe9ab968
 time_key: time_point_processed
 time_map: [[0, 0], [1, 1], [2, 2]]
 state_key: X_latent
@@ -22,7 +23,14 @@ preprocess_contract:
     dim_reduction: pca
     n_pcs: 50
   matrix_checks: {x_finite: true, counts_finite: true, counts_nonnegative: true}
-  external_audits: []
+  external_audits:
+    - name: canonical_four_dataset_acceptance
+      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-final-4d53ec9/acceptance-4d53ec9.json
+      sha256: 48ac1924bc3fe10dd80d858f4bdf2100acc392811d184bc50d1bb5f1e161dd92
+      required_exact:
+        status: PASS
+        datasets:
+          admouse: {status: PASS}
 benchmark:
   training_config: training/config.yaml
   edge_prior_mode: learned

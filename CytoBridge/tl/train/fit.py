@@ -1,4 +1,5 @@
 import json
+import hashlib
 import pathlib
 import re
 import warnings
@@ -14,6 +15,156 @@ from CytoBridge.tl.core.models import DynamicalModel
 from CytoBridge.tl.train.trainer import TrainingPipeline
 
 _TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _sha256_file(path: pathlib.Path, chunk_size: int = 8 * 1024 * 1024) -> str:
+    digest = hashlib.sha256()
+    with pathlib.Path(path).open("rb") as handle:
+        while block := handle.read(chunk_size):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _input_h5ad_provenance(path: pathlib.Path | None, *, source_kind: str) -> dict:
+    if path is None or pathlib.Path(path).suffix.lower() != ".h5ad":
+        return {
+            "source_kind": source_kind,
+            "path": None,
+            "size_bytes": None,
+            "sha256": None,
+            "not_applicable": True,
+            "not_applicable_reason": (
+                "training input was not supplied to fit as an H5AD path"
+            ),
+        }
+    resolved = pathlib.Path(path).expanduser().resolve()
+    return {
+        "source_kind": "h5ad_path",
+        "path": str(resolved),
+        "size_bytes": int(resolved.stat().st_size),
+        "sha256": _sha256_file(resolved),
+        "not_applicable": False,
+        "not_applicable_reason": None,
+    }
+
+
+def _canonical_array_provenance(values: np.ndarray) -> dict:
+    """Hash an array in canonical C-order, little-endian representation."""
+    array = np.asarray(values)
+    if array.dtype.hasobject:
+        raise TypeError(
+            "training provenance cannot hash object-dtype arrays; convert the "
+            "exact training array to a numeric or fixed-width dtype first."
+        )
+    canonical_dtype = array.dtype.newbyteorder("<")
+    canonical = np.ascontiguousarray(array.astype(canonical_dtype, copy=False))
+    return {
+        "shape": [int(value) for value in array.shape],
+        "dtype": str(array.dtype),
+        "nbytes": int(canonical.nbytes),
+        "canonical_order": "C",
+        "canonical_byte_order": "little",
+        "sha256": hashlib.sha256(canonical.tobytes(order="C")).hexdigest(),
+    }
+
+
+def _obs_names_provenance(obs_names) -> dict:
+    """Hash ordered observation names with unambiguous UTF-8 framing."""
+    digest = hashlib.sha256()
+    count = 0
+    for value in obs_names:
+        encoded = str(value).encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, byteorder="big", signed=False))
+        digest.update(encoded)
+        count += 1
+    return {
+        "count": count,
+        "encoding": "utf-8",
+        "length_prefix": "uint64-big-endian",
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _edge_predictor_provenance(resolved_config: Dict[str, Any]) -> dict:
+    """Resolve and hash the exact learned edge predictor before model creation."""
+    model_config = resolved_config.get("model", {})
+    components = {
+        str(value).strip().lower() for value in model_config.get("components", [])
+    }
+    interaction_type = str(model_config.get("interaction_type", "potential")).lower()
+    interaction_config = model_config.get("interaction_net", {})
+    edge_prior_mode = (
+        str(interaction_config.get("edge_prior_mode", "learned")).lower()
+        if "interaction" in components and isinstance(interaction_config, dict)
+        else "none"
+    )
+    learned = (
+        "interaction" in components
+        and interaction_type == "gnn"
+        and edge_prior_mode == "learned"
+    )
+    if not learned:
+        return {
+            "applicable": False,
+            "edge_prior_mode": edge_prior_mode,
+            "path": None,
+            "size_bytes": None,
+            "sha256": None,
+            "not_applicable": True,
+            "not_applicable_reason": (
+                "training condition does not use a learned edge predictor"
+            ),
+        }
+
+    raw_path = interaction_config.get("edge_predictor_path")
+    if raw_path is None or not str(raw_path).strip():
+        raise ValueError(
+            "edge_prior_mode='learned' requires a non-empty edge_predictor_path "
+            "before model construction."
+        )
+    predictor_path = pathlib.Path(str(raw_path)).expanduser()
+    predictor_root = interaction_config.get("edge_predictor_root")
+    if predictor_root is not None and not predictor_path.is_absolute():
+        predictor_path = pathlib.Path(str(predictor_root)).expanduser() / predictor_path
+    resolved = predictor_path.resolve()
+    if not resolved.is_file():
+        raise FileNotFoundError(
+            f"learned edge predictor does not exist or is not a file: {resolved}"
+        )
+    return {
+        "applicable": True,
+        "edge_prior_mode": "learned",
+        "path": str(resolved),
+        "size_bytes": int(resolved.stat().st_size),
+        "sha256": _sha256_file(resolved),
+        "not_applicable": False,
+        "not_applicable_reason": None,
+    }
+
+
+def _declares_matched_ablation(config: Dict[str, Any]) -> bool:
+    return config.get("matched_ablation") is not None
+
+
+def _valid_formal_h5ad_provenance(provenance: Dict[str, Any] | None) -> bool:
+    if not isinstance(provenance, dict):
+        return False
+    sha256 = provenance.get("sha256")
+    size = provenance.get("size_bytes")
+    path = provenance.get("path")
+    return (
+        provenance.get("source_kind") == "h5ad_path"
+        and provenance.get("not_applicable") is False
+        and isinstance(path, str)
+        and pathlib.Path(path).is_absolute()
+        and pathlib.Path(path).suffix.lower() == ".h5ad"
+        and not isinstance(size, bool)
+        and isinstance(size, int)
+        and size > 0
+        and isinstance(sha256, str)
+        and len(sha256) == 64
+        and all(character in "0123456789abcdef" for character in sha256)
+    )
 
 
 def _auto_time_mapping(raw_time) -> dict:
@@ -658,6 +809,8 @@ def _fit_adata(
     ckpt_dir: str | pathlib.Path | None = None,
     sigma: float | None = None,
     evaluate_after_training: bool = True,
+    input_h5ad_provenance: Dict[str, Any] | None = None,
+    input_selection: Dict[str, Any] | None = None,
 ) -> sc.AnnData:
     """
     Internal training entrypoint: requires `adata.obs['time_point_processed']`
@@ -680,6 +833,18 @@ def _fit_adata(
     used_ckpt_dir = used_overrides.get("ckpt_dir")
     used_sigma = used_overrides.get("sigma")
     spatial_dim = _resolve_spatial_dim_config(resolved_config, spatial_dim)
+    effective_input_h5ad = dict(
+        input_h5ad_provenance
+        or _input_h5ad_provenance(None, source_kind="in_memory_anndata")
+    )
+    if _declares_matched_ablation(
+        resolved_config
+    ) and not _valid_formal_h5ad_provenance(effective_input_h5ad):
+        raise ValueError(
+            "config.matched_ablation requires training from an applicable formal "
+            "H5AD path with path, size, and SHA-256 provenance."
+        )
+    edge_predictor_provenance = _edge_predictor_provenance(resolved_config)
     device = torch.device(device)
     model_input = np.asarray(model_input, dtype=np.float32)
     if model_input.shape[0] != adata.n_obs:
@@ -691,6 +856,20 @@ def _fit_adata(
     time_key = "time_point_processed"
     time_points = sorted(adata.obs[time_key].unique())
     time_values = adata.obs[time_key].to_numpy()
+    effective_input_selection = dict(
+        input_selection
+        or {
+            "time_key": time_key,
+            "processed_time_key": time_key,
+            "obsm_key": "X_latent",
+            "resolved_latent_key": "X_latent",
+            "spatial_key": "spatial_aligned",
+            "is_spatial": bool(spatial_dim > 0),
+        }
+    )
+    model_input_provenance = _canonical_array_provenance(model_input)
+    processed_time_provenance = _canonical_array_provenance(time_values)
+    obs_names_provenance = _obs_names_provenance(adata.obs_names)
     data_torch = []
     for t in time_points:
         mask = time_values == t
@@ -719,6 +898,12 @@ def _fit_adata(
     resolved_config["seed"] = seed
     set_seed(seed)
     model = DynamicalModel(dim, resolved_config["model"])
+    edge_predictor_after_construction = _edge_predictor_provenance(resolved_config)
+    if edge_predictor_after_construction != edge_predictor_provenance:
+        raise RuntimeError(
+            "edge predictor bytes changed during model construction; refusing "
+            "ambiguous learned-prior provenance."
+        )
     trainer = TrainingPipeline(
         model,
         resolved_config,
@@ -735,6 +920,13 @@ def _fit_adata(
             "sample_counts_by_timepoint": [
                 int(values.shape[0]) for values in data_torch
             ],
+            "seed_applied_before_model_construction": True,
+            "input_h5ad": effective_input_h5ad,
+            "input_selection": effective_input_selection,
+            "model_input": model_input_provenance,
+            "processed_time": processed_time_provenance,
+            "obs_names": obs_names_provenance,
+            "edge_predictor": edge_predictor_provenance,
         },
     )
     model = trainer.train(data_torch, time_points)
@@ -886,6 +1078,8 @@ def _fit_adata(
         ),
         "edge_predictor_threshold": (edge_prior_artifact["edge_predictor_threshold"]),
         "edge_predictor_path": edge_prior_artifact["edge_predictor_path"],
+        "edge_predictor_size_bytes": edge_predictor_provenance["size_bytes"],
+        "edge_predictor_sha256": edge_predictor_provenance["sha256"],
         "edge_prior_mode": edge_prior_artifact["edge_prior_mode"],
         "ignored_input_interaction_graph_metadata": bool(
             ignored_input_interaction_graph_metadata
@@ -935,7 +1129,7 @@ def _fit_adata(
 
 
 def fit(
-    adata: sc.AnnData | str,
+    adata: sc.AnnData | str | pathlib.Path,
     config: Dict[str, Any] | str,
     batch_size: int | None = None,
     device: str = "cuda",
@@ -969,12 +1163,37 @@ def fit(
     `evaluate_after_training=False` when evaluation is run separately through
     the distribution-evaluation API (recommended for large spatial datasets).
     """
-    if isinstance(adata, str):
-        path = pathlib.Path(adata)
+    resolved_config = load_config(config)
+    declares_matched = _declares_matched_ablation(resolved_config)
+    is_h5ad_path = (
+        isinstance(adata, (str, pathlib.Path))
+        and pathlib.Path(adata).suffix.lower() == ".h5ad"
+    )
+    if declares_matched and not is_h5ad_path:
+        raise ValueError(
+            "config.matched_ablation with input_contract="
+            "'exact-shared-aligned-h5ad' requires fit(...) to receive an H5AD "
+            "file path; AnnData and CSV inputs are not formal matched inputs."
+        )
+    config = resolved_config
+    if isinstance(adata, (str, pathlib.Path)):
+        path = pathlib.Path(adata).expanduser().resolve()
         if not path.exists():
             raise FileNotFoundError(path)
         if path.suffix.lower() == ".h5ad":
             adata_obj = sc.read_h5ad(str(path))
+            resolved_time_key = (
+                "time_point_processed"
+                if "time_point_processed" in adata_obj.obs
+                else str(time_key)
+            )
+            resolved_obsm_key = (
+                "X_latent"
+                if "X_latent" in adata_obj.obsm
+                else str(obsm_key)
+                if obsm_key in adata_obj.obsm
+                else "X"
+            )
             adata_obj = _ensure_time_point_processed(adata_obj, time_key=time_key)
             adata_obj = _ensure_x_latent(adata_obj, obsm_key=obsm_key)
             model_input, spatial_dim = _build_model_input(
@@ -995,6 +1214,17 @@ def fit(
                 ckpt_dir=ckpt_dir,
                 sigma=sigma,
                 evaluate_after_training=evaluate_after_training,
+                input_h5ad_provenance=_input_h5ad_provenance(
+                    path, source_kind="h5ad_path"
+                ),
+                input_selection={
+                    "time_key": resolved_time_key,
+                    "processed_time_key": "time_point_processed",
+                    "obsm_key": resolved_obsm_key,
+                    "resolved_latent_key": "X_latent",
+                    "spatial_key": str(spatial_key),
+                    "is_spatial": bool(is_spatial),
+                },
             )
         if path.suffix.lower() == ".csv":
             df = pd.read_csv(str(path))
@@ -1025,9 +1255,30 @@ def fit(
                 ckpt_dir=ckpt_dir,
                 sigma=sigma,
                 evaluate_after_training=evaluate_after_training,
+                input_h5ad_provenance=_input_h5ad_provenance(
+                    None, source_kind="csv_path"
+                ),
+                input_selection={
+                    "time_key": str(samples_key),
+                    "processed_time_key": "time_point_processed",
+                    "obsm_key": "X_latent",
+                    "resolved_latent_key": "X_latent",
+                    "spatial_key": str(spatial_key),
+                    "is_spatial": bool(is_spatial),
+                },
             )
         raise ValueError(f"Unsupported input path: {path} (expected .h5ad or .csv)")
 
+    resolved_time_key = (
+        "time_point_processed" if "time_point_processed" in adata.obs else str(time_key)
+    )
+    resolved_obsm_key = (
+        "X_latent"
+        if "X_latent" in adata.obsm
+        else str(obsm_key)
+        if obsm_key in adata.obsm
+        else "X"
+    )
     adata_obj = _ensure_time_point_processed(adata, time_key=time_key)
     adata_obj = _ensure_x_latent(adata_obj, obsm_key=obsm_key)
     model_input, spatial_dim = _build_model_input(
@@ -1048,6 +1299,17 @@ def fit(
         ckpt_dir=ckpt_dir,
         sigma=sigma,
         evaluate_after_training=evaluate_after_training,
+        input_h5ad_provenance=_input_h5ad_provenance(
+            None, source_kind="in_memory_anndata"
+        ),
+        input_selection={
+            "time_key": resolved_time_key,
+            "processed_time_key": "time_point_processed",
+            "obsm_key": resolved_obsm_key,
+            "resolved_latent_key": "X_latent",
+            "spatial_key": str(spatial_key),
+            "is_spatial": bool(is_spatial),
+        },
     )
 
 

@@ -5,6 +5,9 @@
 - one preprocessing/alignment API;
 - one six-stage training implementation;
 - `alpha_express=0.015`, `alpha_spatial=10`, seed 42 for the four formal spatial applications;
+- one explicit `velocity_score_cross_term` score-energy objective across the
+  full, no-LR-prior, and no-interaction arms, independent of the interaction
+  gate;
 - an independently trained Residual MLP per dataset with hidden width 128,
   Adam at `1e-3`, cosine annealing over 500 selection epochs, a fixed
   stratified 90/10 development split, and balanced-accuracy checkpoint

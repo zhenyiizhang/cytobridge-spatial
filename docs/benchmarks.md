@@ -46,9 +46,26 @@ strict scored multi-subunit pair and is non-diagnostic for this question.
 
 ## Interaction/LR-prior ablations
 
-The matched Zebrafish full/no-interaction/no-LR-prior comparison is
-metric-dependent: the full model is not declared universally best. This is the
-appropriate interpretation of targeted component ablations.
+The package ships matched no-interaction and no-LR-prior training profiles for
+all four datasets:
+
+| Dataset | No interaction | No LR prior (`all_spatial`) |
+| --- | --- | --- |
+| Zebrafish | `zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml` | `zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml` |
+| MOSTA | `mosta_spatial_full_alpha_express_0015_no_interaction.yaml` | `mosta_spatial_full_alpha_express_0015_no_lr_prior.yaml` |
+| ARISTA | `arista_spatial_full_no_interaction.yaml` | `arista_spatial_full_no_lr_prior.yaml` |
+| AD mouse | `admouse_spatial_full_alpha_express_0015_no_interaction.yaml` | `admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml` |
+
+Each no-interaction profile preserves the retained velocity, growth, and score
+networks plus the full six-stage optimization budget. All three arms explicitly
+use the same `velocity_score_cross_term` score-energy objective, so disabling
+interaction does not silently substitute a different growth/score regularizer;
+the historical interaction-dependent objective remains only as the default for
+unrelated legacy configs. Each no-LR-prior profile
+preserves the full model and changes only the edge gate from the learned
+predictor to `all_spatial`. These profiles are matched execution contracts, not
+completed final-checkpoint evidence; old Zebrafish ablation results must not be
+carried forward as results for the final model.
 
 ## Hyperparameter evidence boundary
 

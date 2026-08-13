@@ -524,11 +524,14 @@ classifier file.
 Split-SDE population events use a fixed `resample_dt=0.05`, independent of the
 frames requested for plotting. This matters because birth/extinction sampling
 is part of the dynamics: changing a video from 9 to 41 frames must not change
-the trajectory itself. S22 performs one global simulation on its canonical
-0.1 grid, keeps the pre-warp model state, applies the historical piecewise warp
-only to a display copy, and selects the 0.5-step mosaic from that same run.
-The runner also applies a fail-fast particle ceiling before split allocation;
-this guard never downsamples a valid run.
+the generated slices. S22 uses the canonical piecewise observed-anchor mode on
+its 0.1 grid: each non-integer slice is simulated forward from the preceding
+observed time point, is not conditioned on the following endpoint, and is not
+part of a global-t0 or lineage-continuous trajectory. No endpoint-directed
+display warp is applied. S24 is separate: it is an explicitly labelled
+global-t0 virtual-removal sensitivity, not canonical reconstruction or lineage
+evidence. The runner also applies a fail-fast particle ceiling before split
+allocation; this guard never downsamples a valid run.
 
 The manuscript redraws are assembled by reusable plotting APIs rather than by
 copying historical PDFs. S22 uses a 3-by-3 wrapped trajectory grid with one
@@ -541,16 +544,16 @@ single-seed virtual sensitivity analysis, not causal knockout estimates.
 
 S25 follows the manuscript wording "observed and interpolated time points":
 integer stages use the actual observed cells and annotations, while half-time
-stages reuse S22's canonical generated pre-warp states. Every generated
+stages reuse S22's canonical interval-local one-sided generated states. Every generated
 Zebrafish annotation uses the formal `k=10` spatial-majority policy, including
 the S22 trajectory, the S25 target-cell analysis, and communication/LR. The
 direct classifier (`k=1`) is retained as a separately labeled sensitivity
 setting; every per-timepoint YSL count is recorded and a full run still fails
 rather than fabricating cells if no target cells are predicted.
 
-Communication/LR does not inherit the labels stored in the S22/S25 trajectory
-bundle. It explicitly applies the same cached classifier to every generated
-pre-warp frame with the formal `k=10` label policy; the corresponding CLI
+Communication/LR does not inherit the labels stored in the S22/S25 state
+bundle. It explicitly applies the same cached classifier to every interval-local
+generated frame with the formal `k=10` label policy; the corresponding CLI
 setting is `--communication-classifier-knn-neighbors 10`. Observed times keep
 their actual annotations. Use k=1/5/20/50 only for separate sensitivity
 results. The stage records the classifier cache

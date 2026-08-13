@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 import yaml
 
@@ -48,14 +49,10 @@ def test_weight_checkpoint_respects_configured_save_strategy(tmp_path) -> None:
     last.touch()
 
     best_config = {
-        "training": {
-            "plan": [{"name": "Finetune", "save_strategy": "best"}]
-        }
+        "training": {"plan": [{"name": "Finetune", "save_strategy": "best"}]}
     }
     last_config = {
-        "training": {
-            "plan": [{"name": "Finetune", "save_strategy": "last"}]
-        }
+        "training": {"plan": [{"name": "Finetune", "save_strategy": "last"}]}
     }
 
     assert _resolve_stage_checkpoint(tmp_path, "Finetune", best_config) == best
@@ -95,12 +92,16 @@ def test_current_checkpoint_embeds_predictor_and_ignores_stale_external_path(
             captured["strict"] = strict
 
     monkeypatch.setattr(checkpoint_module, "DynamicalModel", FakeModel)
-    monkeypatch.setattr(checkpoint_module, "_load_state_dict", lambda *args, **kwargs: state)
+    monkeypatch.setattr(
+        checkpoint_module, "_load_state_dict", lambda *args, **kwargs: state
+    )
 
     loaded = load_dynamical_model_from_dir(tmp_path, dim=4)
 
     assert loaded.weight_path == checkpoint_path
-    assert captured["config"]["interaction_net"]["load_edge_predictor_from_path"] is False
+    assert (
+        captured["config"]["interaction_net"]["load_edge_predictor_from_path"] is False
+    )
     assert captured["state"] is state
     assert captured["strict"] is True
 
@@ -112,7 +113,11 @@ def test_current_checkpoint_accepts_predictor_path_override_when_not_embedded(
     stage.mkdir()
     (stage / "last_model.pth").touch()
     config = {
-        "model": {"components": ["velocity"], "interaction_net": {}},
+        "model": {
+            "components": ["velocity", "interaction"],
+            "interaction_type": "gnn",
+            "interaction_net": {"edge_prior_mode": "learned"},
+        },
         "training": {"plan": [{"name": "Finetune", "save_strategy": "last"}]},
     }
     (tmp_path / "config.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
@@ -122,7 +127,7 @@ def test_current_checkpoint_accepts_predictor_path_override_when_not_embedded(
         def __init__(self, _dim, model_config):
             super().__init__()
             captured["config"] = model_config
-            self.components = []
+            self.components = ["velocity", "interaction"]
             self.interaction_net = torch.nn.Module()
             self.interaction_net.link_predictor = torch.nn.Linear(2, 1)
 
@@ -131,7 +136,9 @@ def test_current_checkpoint_accepts_predictor_path_override_when_not_embedded(
             captured["strict"] = strict
 
     monkeypatch.setattr(checkpoint_module, "DynamicalModel", FakeModel)
-    monkeypatch.setattr(checkpoint_module, "_load_state_dict", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        checkpoint_module, "_load_state_dict", lambda *args, **kwargs: {}
+    )
     replacement = tmp_path / "portable-edge-model.pt"
 
     load_dynamical_model_from_dir(
@@ -148,3 +155,32 @@ def test_current_checkpoint_accepts_predictor_path_override_when_not_embedded(
         "interaction_net.link_predictor.weight",
         "interaction_net.link_predictor.bias",
     }
+
+
+def test_no_interaction_checkpoint_rejects_even_null_interaction_section(
+    tmp_path, monkeypatch
+) -> None:
+    stage = tmp_path / "Finetune_no_interaction"
+    stage.mkdir()
+    (stage / "best_model.pth").touch()
+    config = {
+        "model": {
+            "components": ["velocity", "growth", "score"],
+            "interaction_net": None,
+        },
+        "training": {
+            "plan": [
+                {
+                    "name": "Finetune_no_interaction",
+                    "save_strategy": "best",
+                }
+            ]
+        },
+    }
+    (tmp_path / "config.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    monkeypatch.setattr(
+        checkpoint_module, "_load_state_dict", lambda *args, **kwargs: {}
+    )
+
+    with pytest.raises(ValueError, match="interaction_net is inert"):
+        load_dynamical_model_from_dir(tmp_path, dim=4)

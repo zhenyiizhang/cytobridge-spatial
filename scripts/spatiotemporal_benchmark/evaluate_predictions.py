@@ -331,14 +331,28 @@ def _load_truth(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _find_summary(prediction_path: Path) -> tuple[Path, dict[str, Any]]:
-    candidates = (
-        prediction_path.with_suffix(".summary.json"),
-        prediction_path.parent / "summary.json",
-        prediction_path.parent / "run_manifest.json",
-    )
-    for path in candidates:
-        if path.is_file():
-            return path, _load_json(path)
+    evaluator_summary = prediction_path.with_suffix(".summary.json")
+    canonical_summary = prediction_path.parent / "summary.json"
+    evaluator_exists = evaluator_summary.is_file()
+    canonical_exists = canonical_summary.is_file()
+    if evaluator_exists and canonical_exists:
+        try:
+            evaluator_bytes = evaluator_summary.read_bytes()
+            canonical_bytes = canonical_summary.read_bytes()
+        except OSError as exc:
+            raise ContractError(
+                f"cannot read prediction summary pair for {prediction_path}: {exc}"
+            ) from exc
+        if evaluator_bytes != canonical_bytes:
+            raise ContractError(
+                "prediction.summary.json and summary.json coexist but are not "
+                f"byte-identical: {prediction_path.parent}"
+            )
+        return canonical_summary, _load_json(canonical_summary)
+    if canonical_exists:
+        return canonical_summary, _load_json(canonical_summary)
+    if evaluator_exists:
+        return evaluator_summary, _load_json(evaluator_summary)
     raise ContractError(f"prediction has no summary JSON: {prediction_path}")
 
 

@@ -1,4 +1,7 @@
-# Clean-counts Zebrafish production profile with the formal resolved graph.
+# Matched MOSTA no-LR-prior ablation at alpha_express=0.015.
+# The complete trainable interaction GNN, spatial cutoff, seed, and six-stage
+# training contract match the production profile. The only scientific change
+# is replacing the learned edge gate with all within-cutoff spatial candidates.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
@@ -19,27 +22,25 @@ model:
     n_layers: 3
     activation: leaky_relu
   interaction_net:
-    edge_prior_mode: learned
+    edge_prior_mode: all_spatial
     hidden_dim: 256
     num_heads: 8
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 0.09606367405591873
+    cutoff: 0.02400244047956264
     use_spatial: true
     rbf_trainable: false
-    edge_predictor_path: edge_classifier/zebrafish.pt
-    edge_predictor_thre: 0.6063615679740906
 
-ckpt_dir: results/zebrafish_spatial_full_alpha_express_0015
+ckpt_dir: results/mosta_spatial_full_alpha_express_0015_no_lr_prior
 reverse: true
 seed: 42
 
 matched_ablation:
   schema_version: 1
-  family: zebrafish-full-no-lr-no-interaction-v1
-  dataset: zebrafish
-  arm: full
+  family: mosta-full-no-lr-no-interaction-v1
+  dataset: mosta
+  arm: no_lr_prior
   protocol: isolated-interaction-crn-v1
   shared_seed: 42
   interaction_grouping_seed_offset: 10000
@@ -53,7 +54,7 @@ training:
     lambda_mass: 10.0
     lambda_energy: 0.01
     sigma: 0.03
-    batch_size: 512
+    batch_size: 1024
     alpha_spatial: 10.0
     alpha_express: 0.015
     global_mass: true
@@ -63,7 +64,7 @@ training:
     - name: Pretrain
       mode: neural_ode
       epochs: 100
-      batch_size: 512
+      batch_size: 1024
       OT_loss: weighted_emd_detach
       train_strategy: v+g
       lambda_ot: 1.0
@@ -77,7 +78,7 @@ training:
     - name: Refine
       mode: neural_ode
       epochs: 100
-      batch_size: 512
+      batch_size: 1024
       OT_loss: weighted_emd
       train_strategy: v+g
       lambda_ot: 1.0
@@ -91,7 +92,7 @@ training:
     - name: Init_interaction
       mode: neural_ode
       epochs: 50
-      batch_size: 512
+      batch_size: 1024
       OT_loss: weighted_emd
       train_strategy: v+g+i
       lambda_ot: 10.0
@@ -105,7 +106,7 @@ training:
     - name: Train_Score
       mode: score_matching
       epochs: 2001
-      batch_size: 128
+      batch_size: 512
       sigma: 0.03
       train_strategy: s
       optimizer_type: adamw
@@ -116,7 +117,7 @@ training:
     - name: Finetune
       mode: neural_ode
       epochs: 1000
-      batch_size: 512
+      batch_size: 1024
       OT_loss: weighted_emd
       train_strategy: v+g+i
       score_use: true
@@ -130,6 +131,7 @@ training:
       scheduler_type: plateau
       scheduler_metric: forward_last_ot
       scheduler_step_before_reverse: true
+      scheduler_gamma: 0.8
       max_grad_norm: 10.0
       checkpoint_metric: legacy_forward_last_ot
       save_strategy: best
@@ -137,7 +139,7 @@ training:
     - name: Score_Refine
       mode: score_matching
       epochs: 2001
-      batch_size: 128
+      batch_size: 512
       sigma: 0.03
       train_strategy: s
       optimizer_type: adamw

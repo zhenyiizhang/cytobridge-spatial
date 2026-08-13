@@ -5,6 +5,7 @@ The CLI supports input/config preflight, training-only LOTO interaction-prior
 preparation, one exact six-stage fit per LOTO fold, validation of a reused
 full-data checkpoint, and continuous non-split weighted SDE inference. Learned
 priors rebuild an edge classifier; radius-only priors never create or pass one.
+No-interaction profiles create no graph and infer with velocity/growth/score.
 It never opens benchmark truth artifacts.
 """
 
@@ -13,6 +14,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import copy
+import hashlib
 import inspect
 import json
 import os
@@ -23,6 +25,23 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import numpy as np
+
+
+_ADAPTER_IMPLEMENTATION_FILES = (
+    "scripts/spatiotemporal_benchmark/cytobridge/common.py",
+    "scripts/spatiotemporal_benchmark/cytobridge/run_cytobridge.py",
+    "CytoBridge/tl/core/interaction.py",
+    "CytoBridge/tl/core/methods.py",
+    "CytoBridge/tl/core/models.py",
+    "CytoBridge/tl/graph/spatial_gnn.py",
+    "CytoBridge/tl/downstream/checkpoint.py",
+    "CytoBridge/tl/downstream/runtime.py",
+    "CytoBridge/tl/downstream/simulation.py",
+    "CytoBridge/tl/train/trainer.py",
+    "CytoBridge/tl/train/fit.py",
+    "CytoBridge/pp/edge_prediction.py",
+    "CytoBridge/pp/interaction_graph.py",
+)
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -83,6 +102,21 @@ else:
         validate_training_config,
         write_json,
     )
+
+
+def _adapter_implementation(repo: Path) -> dict[str, Any]:
+    """Hash the exact package and adapter bytes used for inference."""
+
+    repo = Path(repo).expanduser().resolve()
+    files = {name: sha256_file(repo / name) for name in _ADAPTER_IMPLEMENTATION_FILES}
+    aggregate = hashlib.sha256(
+        json.dumps(files, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "schema_version": "1.0.0",
+        "files": files,
+        "aggregate_sha256": aggregate,
+    }
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -148,7 +182,7 @@ def _validate_runtime_constants(args: argparse.Namespace) -> None:
 def _input_report(split: SplitInput, data: TrainingData) -> dict[str, Any]:
     if data.spatial_dim != 2:
         raise ContractError(
-            "the current CytoBridge GNN interaction implementation requires 2D spatial "
+            "the CytoBridge benchmark joint-state contract requires 2D spatial "
             f"coordinates, found {data.spatial_dim}D"
         )
     counts = {
@@ -193,14 +227,20 @@ def _probe_model_load(
         loaded = load_dynamical_model_from_dir(
             model_dir, dim=data.joint_dim, device=str(device)
         )
-    validate_training_config(
+    profile = validate_training_config(
         loaded.config,
         runtime_resolved=True,
         reference=reference_config,
     )
-    if loaded.weight_stage != "Finetune" or loaded.score_stage != "Score_Refine":
+    expected_weight_stage = str(profile["expected_weight_stage"])
+    expected_score_stage = str(profile["expected_score_stage"])
+    if (
+        loaded.weight_stage != expected_weight_stage
+        or loaded.score_stage != expected_score_stage
+    ):
         raise ContractError(
-            "checkpoint loader must resolve Finetune weights and Score_Refine score; "
+            "checkpoint loader must resolve the config-declared final weight and "
+            f"score stages {expected_weight_stage!r}/{expected_score_stage!r}; "
             f"found {loaded.weight_stage!r}/{loaded.score_stage!r}"
         )
     return {
@@ -228,11 +268,12 @@ def _model_report(
     reference_config_sha256: str | None = None,
 ) -> dict[str, Any]:
     inventory = checkpoint_inventory(model_dir, reference_config=reference_config)
-    inventory_mode = str(inventory["training_profile"]["edge_prior_mode"])
-    if inventory_mode == "all_spatial" and reference_config is None:
+    inventory_mode = str(inventory["training_profile"]["interaction_mode"])
+    if inventory_mode in {"all_spatial", "none"} and reference_config is None:
         raise ContractError(
-            "all_spatial checkpoint validation requires --training-config so its "
-            "saved cutoff can be matched to the reference training config"
+            f"{inventory_mode} checkpoint validation requires --training-config "
+            "so every saved scientific field can be matched to its reference "
+            "training config"
         )
     match = checkpoint_training_match(
         model_dir,
@@ -356,10 +397,11 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
     config_source = args.training_config.expanduser().resolve()
     package_config = load_yaml(config_source)
     config_profile = validate_training_config(package_config)
+    interaction_mode = str(config_profile["interaction_mode"])
     edge_prior_mode = str(config_profile["edge_prior_mode"])
     database_arg = getattr(args, "database", None)
     database = None if database_arg is None else database_arg.expanduser().resolve()
-    if edge_prior_mode == "learned":
+    if interaction_mode == "learned":
         if database is None:
             raise ContractError("--database is required when edge_prior_mode='learned'")
         if not database.is_file():
@@ -370,14 +412,20 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
             for option, value in (
                 ("--edge-threshold", args.edge_threshold),
                 ("--spot-diameter", args.spot_diameter),
+                ("--database", database),
             )
             if value is not None
         )
+        if interaction_mode == "none" and args.interaction_cutoff is not None:
+            inert_cli.append("--interaction-cutoff")
         if inert_cli:
             raise ContractError(
-                "edge_prior_mode='all_spatial' does not use learned-graph CLI "
-                f"options {inert_cli!r}; remove them"
+                f"interaction_mode={interaction_mode!r} does not use CLI options "
+                f"{sorted(inert_cli)!r}; remove them"
             )
+    cutoff: float | None = None
+    cutoff_source: str | None = None
+    if interaction_mode == "all_spatial":
         cutoff, cutoff_source = _all_spatial_cutoff(
             package_config, args.interaction_cutoff
         )
@@ -385,30 +433,22 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
     if str(args.repo.resolve()) not in sys.path:
         sys.path.insert(0, str(args.repo.resolve()))
 
-    if edge_prior_mode == "learned":
+    graph_results: list[dict[str, Any]] = []
+    spot_diameter: float | None = None
+    edge_path: Path | None = None
+    edge_result: Mapping[str, Any] | None = None
+    if interaction_mode == "learned":
         assert database is not None
         import scanpy as sc
 
         from CytoBridge.pp.edge_prediction import train_edge_predictor
         from CytoBridge.pp.interaction_graph import generate_interaction_graph
 
-        read_h5ad = sc.read_h5ad
-    else:
-        import anndata as ad
-
-        read_h5ad = ad.read_h5ad
-
-    adata = read_h5ad(split.train_h5ad)
-    try:
-        if edge_prior_mode == "learned":
+        adata = sc.read_h5ad(split.train_h5ad)
+        try:
             cutoff, cutoff_source = _resolve_interaction_cutoff(
                 adata, args.interaction_cutoff
             )
-        graph_results: list[dict[str, Any]] = []
-        spot_diameter: float | None = None
-        edge_path: Path | None = None
-        edge_result: Mapping[str, Any] | None = None
-        if edge_prior_mode == "learned":
             if (
                 args.expression_layer is not None
                 and args.expression_layer not in adata.layers
@@ -478,12 +518,16 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
                 random_seed=SEED,
                 edge_predictor_threshold=args.edge_threshold,
             )
-    finally:
-        del adata
+        finally:
+            del adata
 
     report = {
         "status": "complete",
-        "phase": "prepare_loto_interaction_prior",
+        "phase": (
+            "prepare_loto_no_interaction"
+            if interaction_mode == "none"
+            else "prepare_loto_interaction_prior"
+        ),
         "method": METHOD,
         "split_id": split.split_id,
         "regime": "loto",
@@ -492,12 +536,8 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
         **input_provenance(split),
         "training_only_recomputation": True,
         "held_out_graph_opened": False,
+        "interaction_mode": interaction_mode,
         "edge_prior_mode": edge_prior_mode,
-        "interaction_cutoff": cutoff,
-        "interaction_cutoff_source": cutoff_source,
-        "spot_diameter": spot_diameter,
-        "expression_layer": args.expression_layer,
-        "observed_stage_graphs": graph_results,
         "training_config_source": str(config_source),
         "training_config_source_sha256": sha256_file(config_source),
         "seed": SEED,
@@ -505,7 +545,24 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
         "environment": environment_provenance(args.device),
         "repo": repo_identity(args.repo),
     }
-    if edge_prior_mode == "learned":
+    if interaction_mode == "none":
+        report.update(
+            {
+                "graph_generation": "not_applicable_no_interaction_component",
+                "predictor_training": "not_applicable_no_interaction_component",
+            }
+        )
+    else:
+        report.update(
+            {
+                "interaction_cutoff": cutoff,
+                "interaction_cutoff_source": cutoff_source,
+                "spot_diameter": spot_diameter,
+                "expression_layer": args.expression_layer,
+                "observed_stage_graphs": graph_results,
+            }
+        )
+    if interaction_mode == "learned":
         assert (
             database is not None and edge_path is not None and edge_result is not None
         )
@@ -561,7 +618,16 @@ def _load_graph_summary(
         raise ContractError("graph summary training-reference SHA mismatch")
     if report.get("training_only_recomputation") is not True:
         raise ContractError("graph summary does not prove training-only recomputation")
-    recorded_mode = str(report.get("edge_prior_mode", "learned")).strip().lower()
+    recorded_mode = (
+        str(
+            report.get(
+                "interaction_mode",
+                report.get("edge_prior_mode", "learned"),
+            )
+        )
+        .strip()
+        .lower()
+    )
     if recorded_mode != edge_prior_mode:
         raise ContractError(
             "interaction-prior summary mode differs from the training config"
@@ -584,6 +650,10 @@ def _load_graph_summary(
         raise ContractError("graph summary lacks immutable artifact hashes")
     if edge_prior_mode == "learned" and not declared_artifacts:
         raise ContractError("learned graph summary lacks immutable artifact hashes")
+    if edge_prior_mode == "none" and declared_artifacts:
+        raise ContractError(
+            "no-interaction preparation must not create graph artifacts"
+        )
     for relative, expected in declared_artifacts.items():
         artifact = (summary_path.parent / str(relative)).resolve()
         if not artifact.is_file() or sha256_file(artifact) != str(expected):
@@ -618,9 +688,27 @@ def _load_graph_summary(
         )
         if inert:
             raise ContractError(
-                "all_spatial interaction-prior summary contains inert learned "
+                f"{edge_prior_mode} interaction-prior summary contains inert learned "
                 f"predictor fields {inert!r}"
             )
+        if edge_prior_mode == "none":
+            inert_interaction = sorted(
+                key
+                for key in (
+                    "interaction_cutoff",
+                    "interaction_cutoff_source",
+                    "spot_diameter",
+                    "observed_stage_graphs",
+                    "database",
+                    "database_sha256",
+                )
+                if key in report
+            )
+            if inert_interaction:
+                raise ContractError(
+                    "no-interaction preparation contains inert graph fields "
+                    f"{inert_interaction!r}"
+                )
     report["_summary_path"] = str(summary_path)
     report["_summary_sha256"] = sha256_file(summary_path)
     return report
@@ -635,6 +723,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
     config_source = args.training_config.expanduser().resolve()
     package_config = load_yaml(config_source)
     config_profile = validate_training_config(package_config)
+    interaction_mode = str(config_profile["interaction_mode"])
     edge_prior_mode = str(config_profile["edge_prior_mode"])
     config = copy.deepcopy(package_config)
     config_source_sha256 = sha256_file(config_source)
@@ -645,15 +734,18 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         training_config_sha256=config_source_sha256,
     )
     output = new_output_dir(args.output_dir)
-    cutoff = float(graph["interaction_cutoff"])
+    cutoff = None if interaction_mode == "none" else float(graph["interaction_cutoff"])
     config["ckpt_dir"] = str(output)
     config["model"]["spatial_dim"] = data.spatial_dim
-    config["model"]["interaction_net"]["cutoff"] = cutoff
+    if interaction_mode != "none":
+        config["model"]["interaction_net"]["cutoff"] = cutoff
     fit_predictor_kwargs: dict[str, Any] = {}
     runtime_binding: dict[str, Any] = {
-        "interaction_cutoff": cutoff,
+        "interaction_mode": interaction_mode,
         "edge_prior_mode": edge_prior_mode,
     }
+    if interaction_mode != "none":
+        runtime_binding["interaction_cutoff"] = cutoff
     predictor_report: dict[str, Any] = {}
     if edge_prior_mode == "learned":
         edge_path = Path(str(graph["edge_model"])).resolve()
@@ -689,19 +781,23 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         sys.path.insert(0, str(args.repo.resolve()))
     import CytoBridge as cb
 
+    fit_kwargs: dict[str, Any] = {
+        "config": config,
+        "device": str(args.device),
+        "time_key": data.time_key,
+        "obsm_key": data.state_key,
+        "spatial_key": data.spatial_key,
+        "is_spatial": True,
+        "ckpt_dir": str(output),
+        "sigma": runtime_sigma,
+        "evaluate_after_training": False,
+        **fit_predictor_kwargs,
+    }
+    if interaction_mode != "none":
+        fit_kwargs["interaction_cutoff"] = cutoff
     cb.tl.fit(
         str(split.train_h5ad),
-        config=config,
-        device=str(args.device),
-        time_key=data.time_key,
-        obsm_key=data.state_key,
-        spatial_key=data.spatial_key,
-        is_spatial=True,
-        ckpt_dir=str(output),
-        interaction_cutoff=cutoff,
-        sigma=runtime_sigma,
-        evaluate_after_training=False,
-        **fit_predictor_kwargs,
+        **fit_kwargs,
     )
     inventory = checkpoint_inventory(output, reference_config=package_config)
     # At this point the fit summary does not yet exist; verification therefore
@@ -739,8 +835,8 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         },
         "checkpoint_inventory": inventory,
         "training_reference_match": match,
+        "interaction_mode": interaction_mode,
         "edge_prior_mode": edge_prior_mode,
-        "interaction_cutoff": cutoff,
         "prepare_graph_summary": graph["_summary_path"],
         "prepare_graph_summary_sha256": graph["_summary_sha256"],
         "environment": environment_provenance(args.device),
@@ -748,6 +844,8 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         **input_provenance(split),
         **predictor_report,
     }
+    if interaction_mode != "none":
+        report["interaction_cutoff"] = cutoff
     write_json(output / "benchmark_fit_summary.json", report)
     print(json.dumps(plain(report), indent=2, sort_keys=True))
 
@@ -962,7 +1060,7 @@ def _simulate(
     device: str,
     dt: float,
     interaction_m: int,
-    expected_edge_prior_mode: str,
+    expected_interaction_mode: str,
 ) -> tuple[list[np.ndarray], list[np.ndarray], dict[str, Any]]:
     if str(repo.resolve()) not in sys.path:
         sys.path.insert(0, str(repo.resolve()))
@@ -987,6 +1085,7 @@ def _simulate(
         "obsm_key",
         "spatial_key",
         "concat_spatial",
+        "interaction_seed",
     }
     missing = sorted(required - set(signature.parameters))
     if missing:
@@ -999,22 +1098,33 @@ def _simulate(
             model_dir, dim=data.joint_dim, device=str(device)
         )
     loaded_profile = validate_training_config(loaded.config, runtime_resolved=True)
+    loaded_interaction_mode = str(loaded_profile["interaction_mode"])
     loaded_edge_prior_mode = str(loaded_profile["edge_prior_mode"])
-    if loaded_edge_prior_mode != expected_edge_prior_mode:
+    if loaded_interaction_mode != expected_interaction_mode:
         raise ContractError(
-            "loaded model interaction edge-prior mode differs from the validated "
+            "loaded model interaction mode differs from the validated "
             "checkpoint inventory"
         )
-    if loaded.weight_stage != "Finetune":
+    expected_weight_stage = str(loaded_profile["expected_weight_stage"])
+    expected_score_stage = str(loaded_profile["expected_score_stage"])
+    if loaded.weight_stage != expected_weight_stage:
         raise ContractError(
-            f"inference must load Finetune weights, found {loaded.weight_stage!r}"
+            f"inference must load {expected_weight_stage} weights, "
+            f"found {loaded.weight_stage!r}"
         )
-    if loaded.score_stage != "Score_Refine":
+    if loaded.score_stage != expected_score_stage:
         raise ContractError(
-            f"inference must load Score_Refine score, found {loaded.score_stage!r}"
+            f"inference must load {expected_score_stage} score, "
+            f"found {loaded.score_stage!r}"
         )
-    loaded_interaction_group_size = _validated_interaction_m(
-        loaded.model, interaction_m
+    include_interaction = bool(loaded_profile["uses_interaction"])
+    loaded_interaction_group_size = (
+        _validated_interaction_m(loaded.model, interaction_m)
+        if include_interaction
+        else None
+    )
+    simulator_interaction_m = (
+        int(loaded_interaction_group_size) if include_interaction else 1
     )
     # Model construction consumes torch RNG while initializing modules before
     # checkpoint loading. Reset after loading so SDE noise itself starts from
@@ -1030,12 +1140,13 @@ def _simulate(
         dt=float(dt),
         sigma=SIGMA,
         include_score=True,
-        interaction_m=loaded_interaction_group_size,
+        interaction_m=simulator_interaction_m,
         device=str(device),
         time_key=data.time_key,
         obsm_key=data.state_key,
         spatial_key=data.spatial_key,
         concat_spatial=True,
+        interaction_seed=SEED + 10_000,
         verbose=True,
     )
     point_list = [np.asarray(value, dtype=np.float32) for value in points]
@@ -1063,11 +1174,26 @@ def _simulate(
             "simulation_mode": "continuous_non_split_weighted_sde",
             "weight_stage": loaded.weight_stage,
             "score_stage": loaded.score_stage,
+            "interaction_mode": loaded_interaction_mode,
             "edge_prior_mode": loaded_edge_prior_mode,
+            "include_interaction": include_interaction,
             "edge_predictor_used": loaded_edge_prior_mode == "learned",
             "interaction_m": loaded_interaction_group_size,
-            "loaded_model_interaction_group_size": (loaded_interaction_group_size),
-            "interaction_group_binding": "exact_checkpoint_model_match",
+            "loaded_model_interaction_group_size": loaded_interaction_group_size,
+            "interaction_group_binding": (
+                "exact_checkpoint_model_match"
+                if include_interaction
+                else "not_applicable_no_interaction_component"
+            ),
+            "interaction_grouping_seed": (
+                SEED + 10_000 if include_interaction else None
+            ),
+            "stochastic_stream_contract": (
+                "interaction grouping uses an independent torch.Generator; the "
+                "global torch stream remains paired for Brownian diffusion"
+            ),
+            "dynamics_components": ["velocity", "growth", "score"]
+            + (["interaction"] if include_interaction else []),
             "weights_semantics": "native_unnormalised_growth_mass",
             "torch_version": torch.__version__,
         },
@@ -1112,13 +1238,13 @@ def _prediction_summary(
     repo: Path,
     device: str,
     dt: float,
-    interaction_m: int,
 ) -> dict[str, Any]:
     checkpoint_hashes = {
         name: record["sha256"] for name, record in model_report["checkpoints"].items()
     }
     return {
         "status": "complete",
+        "dataset": split.dataset_id,
         "method": METHOD,
         "implementation": (
             f"CytoBridge alpha_spatial={ALPHA_SPATIAL:g}, "
@@ -1153,10 +1279,11 @@ def _prediction_summary(
         "sigma": SIGMA,
         "dt": float(dt),
         "include_score": True,
-        "include_interaction": True,
+        "include_interaction": bool(simulation["include_interaction"]),
+        "interaction_mode": simulation["interaction_mode"],
         "edge_prior_mode": simulation["edge_prior_mode"],
         "edge_predictor_used": simulation["edge_predictor_used"],
-        "interaction_m": int(interaction_m),
+        "interaction_m": simulation["interaction_m"],
         "seed": SEED,
         "device": str(device),
         "predicted_mass": float(weight.sum()),
@@ -1175,6 +1302,7 @@ def _prediction_summary(
         "simulation": dict(simulation),
         "environment": environment_provenance(device),
         "repo": repo_identity(repo),
+        "adapter_implementation": _adapter_implementation(repo),
         **input_provenance(split),
     }
 
@@ -1223,7 +1351,7 @@ def command_infer_loto(args: argparse.Namespace) -> None:
         device=args.device,
         dt=args.dt,
         interaction_m=args.interaction_m,
-        expected_edge_prior_mode=model_report["training_profile"]["edge_prior_mode"],
+        expected_interaction_mode=model_report["training_profile"]["interaction_mode"],
     )
     prediction = output / "prediction.npz"
     _atomic_prediction(prediction, points[-1], weights[-1], data, source, target)
@@ -1240,7 +1368,6 @@ def command_infer_loto(args: argparse.Namespace) -> None:
         repo=args.repo,
         device=args.device,
         dt=args.dt,
-        interaction_m=args.interaction_m,
     )
     _write_prediction_summary(prediction, report)
     print(json.dumps(plain(report), indent=2, sort_keys=True))
@@ -1287,7 +1414,7 @@ def command_infer_full(args: argparse.Namespace) -> None:
         device=args.device,
         dt=args.dt,
         interaction_m=args.interaction_m,
-        expected_edge_prior_mode=model_report["training_profile"]["edge_prior_mode"],
+        expected_interaction_mode=model_report["training_profile"]["interaction_mode"],
     )
     summaries: list[dict[str, Any]] = []
     for index, target in enumerate(targets, start=1):
@@ -1309,7 +1436,6 @@ def command_infer_full(args: argparse.Namespace) -> None:
             repo=args.repo,
             device=args.device,
             dt=args.dt,
-            interaction_m=args.interaction_m,
         )
         _write_prediction_summary(prediction, report)
         summaries.append(report)
@@ -1353,7 +1479,12 @@ def _inference_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--sigma", type=float, default=SIGMA)
     parser.add_argument("--dt", type=float, default=0.01)
-    parser.add_argument("--interaction-m", type=int, default=1024)
+    parser.add_argument(
+        "--interaction-m",
+        type=int,
+        default=1024,
+        help="must match interaction checkpoints; not applicable in none mode",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1379,7 +1510,10 @@ def build_parser() -> argparse.ArgumentParser:
     graph.add_argument(
         "--database",
         type=Path,
-        help="required only for learned edge-prior training; unused by all_spatial",
+        help=(
+            "required only for learned edge-prior training; rejected by "
+            "all_spatial and none"
+        ),
     )
     graph.add_argument("--output-dir", required=True, type=Path)
     graph.add_argument("--device", default="cuda")
@@ -1403,7 +1537,12 @@ def build_parser() -> argparse.ArgumentParser:
     _repo_argument(fit)
     _input_arguments(fit)
     fit.add_argument("--training-config", required=True, type=Path)
-    fit.add_argument("--graph-dir", required=True, type=Path)
+    fit.add_argument(
+        "--graph-dir",
+        required=True,
+        type=Path,
+        help="prepare-loto output directory (mode summary only in none mode)",
+    )
     fit.add_argument("--output-dir", required=True, type=Path)
     fit.add_argument("--device", default="cuda")
     fit.add_argument("--seed", type=int, default=SEED)

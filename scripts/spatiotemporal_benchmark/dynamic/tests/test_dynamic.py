@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import types
@@ -22,6 +23,7 @@ from scripts.spatiotemporal_benchmark.dynamic.common import (
     CONTRACT_UNS_KEY,
     PREDICTION_N,
     ContractError,
+    git_identity,
     load_training_data,
     read_split_contract,
     sha256_file,
@@ -40,6 +42,7 @@ GIT = {
     "source_git_commit": "a" * 40,
     "source_remote": "https://example.test/official.git",
     "source_tracked_tree_clean": True,
+    "source_worktree_clean": True,
 }
 
 
@@ -193,8 +196,10 @@ class FixtureMixin:
             row_id=row_id.astype(str),
             annotation=np.asarray(["cell"] * len(rows)),
         )
-        source_time = min(times) if holdout is None else max(
-            value for value in times if value < holdout
+        source_time = (
+            min(times)
+            if holdout is None
+            else max(value for value in times if value < holdout)
         )
         candidates = np.flatnonzero(time == source_time)
         roster_indices = np.resize(candidates, PREDICTION_N)
@@ -258,6 +263,47 @@ class FixtureMixin:
 
 
 class ContractTests(FixtureMixin, unittest.TestCase):
+    def test_git_identity_requires_exact_clean_toplevel_including_untracked(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary) / "official"
+            repository.mkdir()
+            subprocess.run(["git", "init", str(repository)], check=True)
+            tracked = repository / "tracked.py"
+            tracked.write_text("VALUE = 1\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(repository), "add", "tracked.py"], check=True
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repository),
+                    "-c",
+                    "user.name=CytoBridge Test",
+                    "-c",
+                    "user.email=cytobridge@example.test",
+                    "commit",
+                    "-m",
+                    "fixture",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            identity = git_identity(repository)
+            self.assertEqual(identity["source_root"], str(repository.resolve()))
+            self.assertTrue(identity["source_worktree_clean"])
+
+            child = repository / "src"
+            child.mkdir()
+            with self.assertRaisesRegex(ContractError, "exact git toplevel"):
+                git_identity(child)
+
+            child.rmdir()
+            (repository / "untracked.py").write_text("VALUE = 2\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "untracked changes"):
+                git_identity(repository)
+
     def test_stories_benchmark_compute_profile_is_fixed_and_from_scratch(self):
         self.assertEqual(
             DEFAULT_PARAMS["stories"],
@@ -332,25 +378,31 @@ class AdapterTests(FixtureMixin, unittest.TestCase):
             )
         )
         if method == "stvcr":
-            stack.enter_context(patch(
-                "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_stvcr",
-                return_value=(
-                    FAKE_STVCR_PACKAGE,
-                    {},
-                    fake_train_stvcr,
-                    fake_growth_simulator,
-                ),
-            ))
+            stack.enter_context(
+                patch(
+                    "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_stvcr",
+                    return_value=(
+                        FAKE_STVCR_PACKAGE,
+                        {},
+                        fake_train_stvcr,
+                        fake_growth_simulator,
+                    ),
+                )
+            )
         elif method == "stories":
-            stack.enter_context(patch(
-                "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_stories",
-                return_value=(FAKE_STORIES, FAKE_JAX),
-            ))
+            stack.enter_context(
+                patch(
+                    "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_stories",
+                    return_value=(FAKE_STORIES, FAKE_JAX),
+                )
+            )
         else:
-            stack.enter_context(patch(
-                "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_mioflow",
-                return_value=(FakeMIOFlow, "fake.mioflow", FAKE_MIOFLOW_MODULE),
-            ))
+            stack.enter_context(
+                patch(
+                    "scripts.spatiotemporal_benchmark.dynamic.run_dynamic._import_mioflow",
+                    return_value=(FakeMIOFlow, "fake.mioflow", FAKE_MIOFLOW_MODULE),
+                )
+            )
         return stack
 
     def _run(self, method: str, root: Path, manifest: Path, split: str, target: int):

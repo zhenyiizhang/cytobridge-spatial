@@ -223,7 +223,21 @@ class DynamicalModel(nn.Module):
         super().__init__()
         self.latent_dim = latent_dim
         self.config = config
-        self.components = config["components"]
+        self.components = list(config["components"])
+        if len(set(self.components)) != len(self.components):
+            raise ValueError("model.components must not contain duplicate entries.")
+        has_interaction_component = "interaction" in self.components
+        has_interaction_config = "interaction_net" in config
+        if has_interaction_component != has_interaction_config:
+            if has_interaction_component:
+                raise ValueError(
+                    "model.components contains 'interaction', but model.interaction_net "
+                    "is missing."
+                )
+            raise ValueError(
+                "model.interaction_net is present while model.components omits "
+                "'interaction'; remove the residual interaction configuration."
+            )
         self.interaction_type = config.get("interaction_type", "potential")
         self.interaction_group_size = config.get("interaction_group_size", 1024)
         self.net_input_dim = self.latent_dim + 1  # 时间+状态（t + x）
@@ -264,30 +278,39 @@ class DynamicalModel(nn.Module):
 
             elif comp_name == "interaction":
                 self.use_growth_in_ode_inter = use_growth_in_ode_inter
-                if self.interaction_type == "gnn":
-                    from CytoBridge.tl.graph.spatial_gnn import GNNInteraction
+                # Interaction is an optional component in the matched
+                # no-interaction ablation.  Construct it in a forked CPU RNG
+                # scope so adding/removing it never moves the shared stream
+                # used by retained components or subsequent training.
+                with torch.random.fork_rng(devices=[]):
+                    if self.interaction_type == "gnn":
+                        from CytoBridge.tl.graph.spatial_gnn import GNNInteraction
 
-                    network = GNNInteraction(
-                        in_out_dim=self.latent_dim,
-                        hidden_dim=comp_config.get("hidden_dim", 256),
-                        num_heads=comp_config.get("num_heads", 8),
-                        num_layers=comp_config.get("num_layers", 1),
-                        activation=comp_config.get("activation", "leakyrelu"),
-                        num_rbf=comp_config.get("num_rbf", 8),
-                        cutoff=comp_config.get("cutoff", 0.2),
-                        use_spatial=comp_config.get("use_spatial", True),
-                        spatial_dim=config.get("spatial_dim", 2),
-                        rbf_trainable=comp_config.get("rbf_trainable", False),
-                        edge_predictor_path=comp_config.get("edge_predictor_path"),
-                        edge_predictor_thre=comp_config.get("edge_predictor_thre", 0.5),
-                        edge_predictor_root=comp_config.get("edge_predictor_root"),
-                        edge_prior_mode=comp_config.get("edge_prior_mode", "learned"),
-                        load_edge_predictor_from_path=comp_config.get(
-                            "load_edge_predictor_from_path", True
-                        ),
-                    )
-                else:
-                    network = InteractionModel(self.latent_dim, **comp_config)
+                        network = GNNInteraction(
+                            in_out_dim=self.latent_dim,
+                            hidden_dim=comp_config.get("hidden_dim", 256),
+                            num_heads=comp_config.get("num_heads", 8),
+                            num_layers=comp_config.get("num_layers", 1),
+                            activation=comp_config.get("activation", "leakyrelu"),
+                            num_rbf=comp_config.get("num_rbf", 8),
+                            cutoff=comp_config.get("cutoff", 0.2),
+                            use_spatial=comp_config.get("use_spatial", True),
+                            spatial_dim=config.get("spatial_dim", 2),
+                            rbf_trainable=comp_config.get("rbf_trainable", False),
+                            edge_predictor_path=comp_config.get("edge_predictor_path"),
+                            edge_predictor_thre=comp_config.get(
+                                "edge_predictor_thre", 0.5
+                            ),
+                            edge_predictor_root=comp_config.get("edge_predictor_root"),
+                            edge_prior_mode=comp_config.get(
+                                "edge_prior_mode", "learned"
+                            ),
+                            load_edge_predictor_from_path=comp_config.get(
+                                "load_edge_predictor_from_path", True
+                            ),
+                        )
+                    else:
+                        network = InteractionModel(self.latent_dim, **comp_config)
             else:
                 raise ValueError(f"Unknown dynamical component: '{comp_name}'")
 
@@ -343,6 +366,7 @@ class DynamicalModel(nn.Module):
         include_interaction: bool = True,
         include_score_gradient: bool = True,
         score_create_graph: bool = True,
+        interaction_generator: Optional[torch.Generator] = None,
     ) -> Dict[str, torch.Tensor]:
         """Unified component prediction entrypoint used by training and downstream."""
         outputs: Dict[str, torch.Tensor] = {}
@@ -375,6 +399,7 @@ class DynamicalModel(nn.Module):
                     m=self.interaction_group_size,
                     use_mass=self.use_growth_in_ode_inter,
                     t=t,
+                    generator=interaction_generator,
                 ).float()
             else:
                 outputs["interaction"] = cal_interaction(
@@ -383,6 +408,7 @@ class DynamicalModel(nn.Module):
                     self.interaction_net,
                     cutoff=self.interaction_net.cutoff,
                     use_mass=self.use_growth_in_ode_inter,
+                    generator=interaction_generator,
                 ).float()
         return outputs
 
@@ -392,6 +418,7 @@ class DynamicalModel(nn.Module):
         x: torch.Tensor,
         lnw: torch.Tensor,
         except_interaction: bool = True,
+        interaction_generator: Optional[torch.Generator] = None,
     ) -> Dict[str, torch.Tensor]:
         return self.predict_components(
             t=t,
@@ -400,6 +427,7 @@ class DynamicalModel(nn.Module):
             include_interaction=except_interaction,
             include_score_gradient=True,
             score_create_graph=True,
+            interaction_generator=interaction_generator,
         )
 
     def compute_score(self, t, x, create_graph: bool = True):

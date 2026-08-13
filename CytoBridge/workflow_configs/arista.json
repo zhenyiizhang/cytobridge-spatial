@@ -109,6 +109,7 @@
     "sde_dt": 0.05,
     "split_sde_dt": 0.01,
     "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
     "split_growth_alpha": 1.0
   }
 }

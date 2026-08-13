@@ -6,17 +6,21 @@ six-stage training directory.  It intentionally does not read historical
 interpolated H5AD files, cached communication pickles, or copied manuscript
 PDFs.  Every biological result is regenerated through public CytoBridge APIs.
 
-The workflow keeps visualization-only spatial warping isolated from model-state
-analyses:
+The canonical reconstruction stages use interval-local, observed-anchored
+split-SDE simulation.  Each generated slice is simulated forward from the
+preceding observed time point and is not conditioned on the following observed
+endpoint.  It is therefore neither a global-t0 nor a lineage-continuous
+trajectory:
 
-* S22 uses one global continuous split-SDE on a fixed dense grid and applies
-  the historical piecewise warp only to displayed coordinates (k=8).  Mosaic
-  frames are selected from that same trajectory; integer frames are observed
-  cells and half-time frames are generated cells.
-* S24 virtual ablation and S25/communication use unwarped trajectories.
-* Communication uses a hybrid no-warp state population: observed cells at
-  integer times and generated cells at intermediate times. This state-source
-  choice is separate from the LR expression measurement policy.
+* S22 uses the canonical unwarped interval-local states on a fixed dense grid;
+  integer frames are observed cells and non-integer frames are one-sided model
+  simulations from the preceding observed anchor.
+* S25 and communication reuse those same unwarped generated states.
+* S24 remains a separately labelled global-t0 virtual-removal counterfactual;
+  it is not canonical reconstruction evidence or a lineage analysis.
+* Communication uses a hybrid state population: observed cells at integer
+  times and interval-local generated cells at intermediate times. This
+  state-source choice is separate from the LR expression measurement policy.
 
 Stages are resumable.  A completed stage is skipped when its input/settings
 signature and every recorded output still match; pass ``--force`` to rerun it.
@@ -82,6 +86,12 @@ ALL_STAGES = (
 OBSERVED_TIMES = (0.0, 1.0, 2.0, 3.0, 4.0)
 HALF_TIMES = tuple(float(value) for value in np.arange(0.0, 4.0 + 0.5, 0.5))
 MAIN_CLASSIFIER_CACHE_TAG = "zebrafish-paper-main-spatial2-latent10"
+CANONICAL_TRAJECTORY_SCOPE = (
+    "piecewise observed-anchored interval-local one-sided forward simulation; "
+    "each generated slice starts from the preceding observed anchor and is not "
+    "conditioned on the following observed endpoint; not global-t0 and not "
+    "lineage-continuous"
+)
 S22_MOSAIC_COLUMNS = 3
 S25_HEATMAP_COLUMNS = 2
 IMPLEMENTATION_SOURCE_RELATIVE_PATHS = tuple(
@@ -398,6 +408,32 @@ def _recorded_outputs_exist(manifest: Mapping[str, object]) -> bool:
     return True
 
 
+def _require_manifest_current_common_signature(
+    ctx: RunContext,
+    manifest: Mapping[str, object],
+    manifest_path: str | Path,
+    *,
+    stage: str,
+) -> None:
+    """Require a stage manifest signature to bind the current common contract."""
+
+    source = Path(manifest_path)
+    if manifest.get("status") != "complete":
+        raise RuntimeError(f"Upstream stage {stage!r} is not complete: {source}")
+    expected_signature = _stable_hash(
+        {
+            "stage": stage,
+            "common": ctx.common_signature,
+            "settings": manifest.get("settings", {}),
+        }
+    )
+    if manifest.get("signature") != expected_signature:
+        raise RuntimeError(
+            f"Upstream stage {stage!r} was produced by different data/model/code "
+            f"settings. Rerun that stage before consuming it: {source}"
+        )
+
+
 def _require_current_stage_manifest(ctx: RunContext, stage: str) -> dict[str, object]:
     """Load an upstream stage only when it matches the current run contract."""
     manifest_path = _stage_manifest_path(ctx, stage)
@@ -406,25 +442,121 @@ def _require_current_stage_manifest(ctx: RunContext, stage: str) -> dict[str, ob
             f"Current {stage!r} stage manifest is required: {manifest_path}."
         )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    expected_signature = _stable_hash(
-        {
-            "stage": stage,
-            "common": ctx.common_signature,
-            "settings": manifest.get("settings", {}),
-        }
+    _require_manifest_current_common_signature(
+        ctx, manifest, manifest_path, stage=stage
     )
-    if manifest.get("status") != "complete":
-        raise RuntimeError(f"Upstream stage {stage!r} is not complete: {manifest_path}")
-    if manifest.get("signature") != expected_signature:
-        raise RuntimeError(
-            f"Upstream stage {stage!r} was produced by different data/model/code "
-            f"settings. Rerun that stage before consuming it: {manifest_path}"
-        )
     if not _recorded_outputs_exist(manifest):
         raise RuntimeError(
             f"Upstream stage {stage!r} has missing or modified outputs: {manifest_path}"
         )
     return manifest
+
+
+def _expected_s22_state_settings(ctx: RunContext) -> dict[str, object]:
+    """Return the current settings that determine reusable canonical S22 states."""
+
+    return {
+        "dt": float(ctx.args.sde_dt),
+        "split_resample_dt": float(ctx.args.sde_dt),
+        "sigma": float(ctx.args.sde_sigma),
+        "daughter_noise_std": 0.0,
+        "growth_alpha": float(ctx.args.growth_alpha),
+        "interaction_m": int(ctx.args.interaction_m),
+        "sde_n_samples": (
+            int(ctx.args.smoke_n_samples)
+            if ctx.args.profile == "smoke"
+            else ctx.args.sde_n_samples
+        ),
+        "max_particles": int(ctx.args.sde_max_particles),
+        "classifier": _main_classifier_settings(ctx),
+    }
+
+
+def _contract_mismatch_paths(
+    recorded: object, expected: object, *, prefix: str = ""
+) -> list[str]:
+    if isinstance(recorded, Mapping) and isinstance(expected, Mapping):
+        mismatches: list[str] = []
+        for key in sorted(set(recorded).union(expected)):
+            path = f"{prefix}.{key}" if prefix else str(key)
+            if key not in recorded or key not in expected:
+                mismatches.append(path)
+            else:
+                mismatches.extend(
+                    _contract_mismatch_paths(recorded[key], expected[key], prefix=path)
+                )
+        return mismatches
+    return [] if recorded == expected else [prefix]
+
+
+def _require_s22_state_settings_match(
+    ctx: RunContext,
+    manifest: Mapping[str, object],
+    manifest_path: str | Path,
+) -> None:
+    """Reject canonical S22 states generated under different current settings."""
+
+    settings = manifest.get("settings")
+    expected = _expected_s22_state_settings(ctx)
+    recorded = (
+        {key: settings.get(key) for key in expected}
+        if isinstance(settings, Mapping)
+        else {}
+    )
+    mismatches = _contract_mismatch_paths(recorded, expected)
+    if mismatches:
+        raise RuntimeError(
+            "S22 canonical states were produced with state-affecting settings "
+            "that differ from the current S25 request "
+            f"({', '.join(mismatches)}): {Path(manifest_path)}"
+        )
+
+
+def _require_canonical_s22_manifest_semantics(
+    manifest: Mapping[str, object], manifest_path: str | Path
+) -> None:
+    """Reject S22 bundles that do not prove canonical interval-local semantics."""
+
+    source = Path(manifest_path)
+    settings = manifest.get("settings")
+    details = manifest.get("details")
+    if not isinstance(settings, Mapping) or not isinstance(details, Mapping):
+        raise RuntimeError(
+            "S22 manifest lacks settings/details needed to prove canonical "
+            f"trajectory semantics: {source}"
+        )
+    display_warp = settings.get("display_warp")
+    failures = []
+    if (
+        settings.get("trajectory_mode")
+        != "piecewise_observed_anchored_interval_forward_simulation"
+    ):
+        failures.append("trajectory_mode")
+    if settings.get("split_sde_piecewise") is not True:
+        failures.append("split_sde_piecewise")
+    if settings.get("piecewise_observed_sample_mode") != "per_timepoint":
+        failures.append("piecewise_observed_sample_mode")
+    if settings.get("piecewise_include_end") is not False:
+        failures.append("piecewise_include_end")
+    if settings.get("daughter_noise_std") != 0.0:
+        failures.append("daughter_noise_std")
+    if (
+        not isinstance(display_warp, Mapping)
+        or display_warp.get("applied") is not False
+    ):
+        failures.append("display_warp.applied")
+    if settings.get("simulation") != CANONICAL_TRAJECTORY_SCOPE:
+        failures.append("simulation/trajectory_scope")
+    if details.get("trajectory_scope") != CANONICAL_TRAJECTORY_SCOPE:
+        failures.append("details.trajectory_scope")
+    if details.get("display_warp_applied") is not False:
+        failures.append("details.display_warp_applied")
+    if failures:
+        raise RuntimeError(
+            "S22 state bundle is not proven to use canonical interval-local, "
+            "one-sided observed-anchor semantics; refusing legacy/global-t0 "
+            f"states ({', '.join(failures)}): {source}"
+        )
 
 
 def _execute_stage(
@@ -707,6 +839,12 @@ def _run_interpolation(
     use_real_for_observed: bool,
     display_piecewise_warp: bool,
 ):
+    if display_piecewise_warp:
+        raise ValueError(
+            "Canonical zebrafish paper reconstruction does not permit the legacy "
+            "endpoint-directed display warp. Consume the canonical unwarped "
+            "piecewise states instead."
+        )
     interp = [
         float(value)
         for value in time_points
@@ -749,12 +887,17 @@ def _run_interpolation(
         skip_nonsplit_sde=True,
         split_sde_dt=float(ctx.args.sde_dt),
         split_sigma_scalar=float(ctx.args.sde_sigma),
+        split_daughter_noise_std=0.0,
         split_growth_alpha=float(ctx.args.growth_alpha),
         split_interaction_m=int(ctx.args.interaction_m),
         split_resample_dt=float(ctx.args.sde_dt),
         split_max_particles=int(ctx.args.sde_max_particles),
-        spatial_warp_to_observed_piecewise=bool(display_piecewise_warp),
-        spatial_warp_visualization_only=bool(display_piecewise_warp),
+        split_sde_piecewise=True,
+        split_sde_piecewise_include_end=False,
+        piecewise_observed_sample_mode="per_timepoint",
+        spatial_warp_to_observed=False,
+        spatial_warp_to_observed_piecewise=False,
+        spatial_warp_visualization_only=False,
         spatial_warp_k=8,
         spatial_warp_eps=1e-6,
         random_seed=int(ctx.args.random_seed),
@@ -793,39 +936,31 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         "video_times": video_times,
         "observed_integer_frames": True,
         "generated_noninteger_frames": True,
-        "simulation": (
-            "one global split SDE on the dense grid; x and log-mass are continuous "
-            "across observed intervals"
-        ),
+        "simulation": CANONICAL_TRAJECTORY_SCOPE,
+        "trajectory_mode": "piecewise_observed_anchored_interval_forward_simulation",
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": "per_timepoint",
+        "piecewise_include_end": False,
         "simulation_grid": list(simulation_times),
         "simulation_step": (
             None if ctx.args.profile == "smoke" else float(ctx.args.s22_simulation_step)
         ),
-        "mosaic_is_subsample_of_dense_trajectory": True,
+        "mosaic_is_subsample_of_dense_piecewise_slices": True,
         "mosaic_layout": {
             "columns": S22_MOSAIC_COLUMNS,
             "show_axes": False,
             "show_legend": True,
         },
-        "canonical_prewarp_trajectory_consumers": ["s25", "communication"],
-        "dt": float(ctx.args.sde_dt),
-        "split_resample_dt": float(ctx.args.sde_dt),
-        "sigma": float(ctx.args.sde_sigma),
-        "growth_alpha": float(ctx.args.growth_alpha),
-        "interaction_m": int(ctx.args.interaction_m),
-        "sde_n_samples": (
-            int(ctx.args.smoke_n_samples)
-            if ctx.args.profile == "smoke"
-            else ctx.args.sde_n_samples
-        ),
-        "max_particles": int(ctx.args.sde_max_particles),
+        "canonical_state_consumers": ["s25", "communication"],
+        **_expected_s22_state_settings(ctx),
         "display_warp": {
-            "piecewise": True,
-            "visualization_only": True,
-            "k": 8,
-            "eps": 1e-6,
+            "applied": False,
+            "reason": (
+                "disabled because endpoint-directed display warping assumes a "
+                "cross-interval trajectory incompatible with canonical one-sided "
+                "observed-anchor reconstruction"
+            ),
         },
-        "classifier": _main_classifier_settings(ctx),
         "generated_label_knn_neighbors": 10,
         "generated_label_policy": (
             "shared Zebrafish annotation policy for every generated frame"
@@ -843,16 +978,16 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             output_dir=stage_dir / "workflow_shared_dense",
             time_points=simulation_times,
             use_real_for_observed=True,
-            display_piecewise_warp=True,
+            display_piecewise_warp=False,
         )
         source_by_time = {
             float(value): (
-                "observed"
+                "observed_actual_annotation"
                 if any(
                     np.isclose(value, obs, rtol=0.0, atol=1e-9)
                     for obs in OBSERVED_TIMES
                 )
-                else "generated_display_warp"
+                else "generated_interval_local_one_sided"
             )
             for value in HALF_TIMES
         }
@@ -863,50 +998,54 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             annotation_key=ctx.args.annotation_key,
             source_by_time=source_by_time,
         )
-        if (
-            dense_result.sde_points_split_prewarp is None
-            or dense_result.predicted_labels_split_prewarp is None
-        ):
-            raise RuntimeError(
-                "S22 display-only warp did not preserve the canonical pre-warp "
-                "trajectory and labels."
-            )
         canonical_states: dict[str, ad.AnnData] = {}
         for time_value in HALF_TIMES:
-            matches = [
-                index
-                for index, simulated in enumerate(dense_result.ts_points)
-                if np.isclose(time_value, simulated, rtol=0.0, atol=1e-9)
-            ]
-            if len(matches) != 1:
+            key = str(float(time_value))
+            if key not in dense_result.adata_dict:
+                raise RuntimeError(f"Canonical S22 result is missing time {key}.")
+            state = dense_result.adata_dict[key]
+            expected_origin = (
+                "observed_real"
+                if float(time_value) in OBSERVED_TIMES
+                else "generated_interval_local"
+            )
+            actual_origin = str(state.uns.get("slice_origin", ""))
+            if actual_origin != expected_origin:
                 raise RuntimeError(
-                    f"Canonical S22 trajectory has {len(matches)} frames for "
-                    f"t={time_value}; expected exactly one."
+                    "Canonical S22 slice provenance is not interval-local: "
+                    f"time={time_value}, expected origin={expected_origin!r}, "
+                    f"actual={actual_origin!r}."
                 )
-            index = matches[0]
+            expected_anchor = (
+                float(time_value)
+                if float(time_value) in OBSERVED_TIMES
+                else max(
+                    observed
+                    for observed in OBSERVED_TIMES
+                    if observed < float(time_value)
+                )
+            )
+            actual_anchor = state.uns.get("source_anchor_time")
+            if actual_anchor is None or not np.isclose(
+                float(actual_anchor), expected_anchor, rtol=0.0, atol=1e-9
+            ):
+                raise RuntimeError(
+                    "Canonical S22 slice has the wrong observed anchor: "
+                    f"time={time_value}, expected={expected_anchor}, "
+                    f"actual={actual_anchor}."
+                )
             canonical_states[str(float(time_value))] = _minimal_state_adata(
-                np.asarray(
-                    dense_result.sde_points_split_prewarp[index], dtype=np.float32
-                ),
-                np.asarray(dense_result.predicted_labels_split_prewarp[index]).astype(
-                    str
-                ),
+                np.asarray(state.X, dtype=np.float32),
+                state.obs[ctx.args.annotation_key].astype(str).to_numpy(),
                 annotation_key=ctx.args.annotation_key,
             )
-        prewarp_source_by_time = {
-            float(value): (
-                "observed_seed_predicted_labels"
-                if np.isclose(value, 0.0, rtol=0.0, atol=1e-9)
-                else "generated_prewarp"
-            )
-            for value in HALF_TIMES
-        }
+        canonical_source_by_time = dict(source_by_time)
         prewarp_outputs = _write_state_bundle(
             canonical_states,
             HALF_TIMES,
             stage_dir / "canonical_prewarp_states",
             annotation_key=ctx.args.annotation_key,
-            source_by_time=prewarp_source_by_time,
+            source_by_time=canonical_source_by_time,
         )
         outputs.extend(prewarp_outputs)
         source_table = pd.DataFrame(
@@ -915,14 +1054,14 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 "display_source": [
                     source_by_time[float(value)] for value in HALF_TIMES
                 ],
-                "canonical_prewarp_source": [
-                    prewarp_source_by_time[float(value)] for value in HALF_TIMES
+                "canonical_state_source": [
+                    canonical_source_by_time[float(value)] for value in HALF_TIMES
                 ],
                 "s25_analysis_source": [
                     (
                         "observed_actual_annotation"
                         if float(value) in OBSERVED_TIMES
-                        else "generated_prewarp_direct_classifier"
+                        else "generated_interval_local_direct_classifier"
                     )
                     for value in HALF_TIMES
                 ],
@@ -930,7 +1069,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                     (
                         "observed_actual_annotation"
                         if float(value) in OBSERVED_TIMES
-                        else "generated_prewarp_reclassified_by_communication_stage"
+                        else "generated_interval_local_reclassified_by_communication_stage"
                     )
                     for value in HALF_TIMES
                 ],
@@ -966,7 +1105,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             mosaic_labels.append(
                 state.obs[ctx.args.annotation_key].astype(str).to_numpy()
             )
-        mosaic_pdf = stage_dir / "S22_piecewise_display_warp_mosaic.pdf"
+        mosaic_pdf = stage_dir / "S22_observed_anchored_piecewise_mosaic.pdf"
         fig = cb.pl.plot_trajectory_grid(
             sde_points=mosaic_points,
             time_values=HALF_TIMES,
@@ -977,7 +1116,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             figsize_per_panel=(2.6, 2.6),
             point_size=float(ctx.args.point_size),
             alpha=0.9,
-            title="Zebrafish trajectory (observed integers; generated half-times)",
+            title=(
+                "Zebrafish observed and interval-local generated slices "
+                "(one-sided from preceding anchors)"
+            ),
             n_cols=S22_MOSAIC_COLUMNS,
             show_axes=False,
             show_legend=True,
@@ -985,7 +1127,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             legend_title="Cell type",
             legend_fontsize=6.0,
         )
-        mosaic_png = stage_dir / "S22_piecewise_display_warp_mosaic.png"
+        mosaic_png = stage_dir / "S22_observed_anchored_piecewise_mosaic.png"
         fig.savefig(mosaic_png, dpi=240, bbox_inches="tight", facecolor="white")
         plt.close(fig)
         outputs.extend([mosaic_pdf, mosaic_png])
@@ -1000,7 +1142,9 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             )
         animation_errors: dict[str, str] = {}
         for extension in formats:
-            animation_path = stage_dir / f"S22_piecewise_display_warp_dense.{extension}"
+            animation_path = (
+                stage_dir / f"S22_observed_anchored_piecewise_dense.{extension}"
+            )
             if extension == "mp4" and shutil.which("ffmpeg") is None:
                 animation_errors[extension] = "ffmpeg is not installed"
                 continue
@@ -1032,9 +1176,11 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             },
             "video_frame_count": int(len(video_times)),
             "simulation_frame_count": int(len(simulation_times)),
-            "shared_simulation_for_mosaic_and_video": True,
+            "shared_piecewise_slices_for_mosaic_and_video": True,
             "animation_errors": animation_errors,
-            "prewarp_states_are_used_for_labels": True,
+            "display_warp_applied": False,
+            "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
+            "canonical_state_directory_legacy_name": "canonical_prewarp_states",
             "canonical_prewarp_state_index": str(
                 (stage_dir / "canonical_prewarp_states" / "index.json").resolve()
             ),
@@ -1206,7 +1352,13 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
     time_points = _time_grid(0.0, 4.0, step)
     settings = {
         "time_points": time_points,
-        "simulation": "continuous split SDE from observed t0; no warp, reanchor, replacement",
+        "simulation": (
+            "separate global-t0 virtual-removal counterfactual with no re-anchoring; "
+            "sensitivity only, not canonical reconstruction, forecasting, or "
+            "lineage-continuous evidence"
+        ),
+        "canonical_reconstruction": False,
+        "counterfactual_scope": "global_t0_virtual_removal_sensitivity",
         "dt": float(ctx.args.sde_dt),
         "split_resample_dt": float(ctx.args.sde_dt),
         "sigma": float(ctx.args.sde_sigma),
@@ -1401,7 +1553,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         if external_bundle_arg is None
         else _require_dir(
             external_bundle_arg,
-            "external S25 canonical pre-warp state bundle",
+            "external S25 canonical interval-local state bundle",
         )
     )
     canonical_index = (
@@ -1414,46 +1566,66 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             canonical_index, "external S25 canonical state index"
         )
         upstream_s22_manifest = None
-        external_manifest_path = external_bundle.parent / "stage_manifest.json"
-        external_s22_manifest = (
-            json.loads(external_manifest_path.read_text(encoding="utf-8"))
-            if external_manifest_path.is_file()
-            else None
+        external_manifest_path = _require_file(
+            external_bundle.parent / "stage_manifest.json",
+            "adjacent external S22 stage manifest",
         )
-        if external_s22_manifest is not None:
-            if external_s22_manifest.get("status") != "complete":
-                raise RuntimeError(
-                    "External S22 state bundle belongs to an incomplete stage: "
-                    f"{external_manifest_path}"
-                )
-            if not _recorded_outputs_exist(external_s22_manifest):
-                raise RuntimeError(
-                    "External S22 outputs no longer match its stage manifest: "
-                    f"{external_manifest_path}"
-                )
-            recorded_outputs = {
-                str(Path(path).expanduser().resolve())
-                for path in external_s22_manifest.get("outputs", [])
-            }
-            if str(canonical_index.resolve()) not in recorded_outputs:
-                raise RuntimeError(
-                    "External canonical state index is not recorded by its adjacent "
-                    f"S22 manifest: {canonical_index}"
-                )
+        external_s22_manifest = json.loads(
+            external_manifest_path.read_text(encoding="utf-8")
+        )
+        _require_manifest_current_common_signature(
+            ctx,
+            external_s22_manifest,
+            external_manifest_path,
+            stage="s22",
+        )
+        _require_canonical_s22_manifest_semantics(
+            external_s22_manifest, external_manifest_path
+        )
+        _require_s22_state_settings_match(
+            ctx, external_s22_manifest, external_manifest_path
+        )
+        if not _recorded_outputs_exist(external_s22_manifest):
+            raise RuntimeError(
+                "External S22 outputs no longer match its stage manifest: "
+                f"{external_manifest_path}"
+            )
+        recorded_outputs = {
+            str(Path(path).expanduser().resolve())
+            for path in external_s22_manifest.get("outputs", [])
+        }
+        if str(canonical_index.resolve()) not in recorded_outputs:
+            raise RuntimeError(
+                "External canonical state index is not recorded by its adjacent "
+                f"S22 manifest: {canonical_index}"
+            )
     else:
         upstream_s22_manifest = (
             _require_current_stage_manifest(ctx, "s22")
             if canonical_index.exists()
             else None
         )
+        if upstream_s22_manifest is not None:
+            _require_canonical_s22_manifest_semantics(
+                upstream_s22_manifest, _stage_manifest_path(ctx, "s22")
+            )
+            _require_s22_state_settings_match(
+                ctx, upstream_s22_manifest, _stage_manifest_path(ctx, "s22")
+            )
         external_s22_manifest = None
         external_manifest_path = None
     settings = {
         "time_points": list(HALF_TIMES),
         "trajectory": (
-            "observed integer states with actual annotations + canonical generated "
-            "pre-warp half-time states from one global continuous split SDE"
+            "observed integer states with actual annotations plus canonical "
+            "interval-local one-sided half-time states simulated from the preceding "
+            "observed anchor"
         ),
+        "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
+        "trajectory_mode": "piecewise_observed_anchored_interval_forward_simulation",
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": "per_timepoint",
+        "piecewise_include_end": False,
         "dt": float(ctx.args.sde_dt),
         "split_resample_dt": float(ctx.args.sde_dt),
         "sigma": float(ctx.args.sde_sigma),
@@ -1466,6 +1638,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         ),
         "max_particles": int(ctx.args.sde_max_particles),
         "cell_type_filter": ctx.args.ysl_label,
+        "daughter_noise_std": 0.0,
         "target_classifier_knn_neighbors": int(ctx.args.s25_classifier_knn_neighbors),
         "target_classifier_policy": (
             "same k=10 spatially smoothed classifier labels used by the generated "
@@ -1543,12 +1716,16 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             )
             if canonical_times != list(HALF_TIMES):
                 raise RuntimeError(
-                    "S22 canonical pre-warp trajectory does not match the S25 grid."
+                    "S22 canonical interval-local slices do not match the S25 grid."
                 )
             invalid_sources = {
                 time_value: source
                 for time_value, source in canonical_sources.items()
-                if source not in {"observed_seed_predicted_labels", "generated_prewarp"}
+                if source
+                not in {
+                    "observed_actual_annotation",
+                    "generated_interval_local_one_sided",
+                }
             }
             if invalid_sources:
                 raise RuntimeError(
@@ -1569,9 +1746,9 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             )
             simulation_seeds = s22_details.get("simulation_seeds", {})
             trajectory_source = (
-                "external_validated_s22_canonical_prewarp"
+                "external_validated_s22_canonical_interval_local"
                 if external_bundle is not None
-                else "s22_canonical_prewarp"
+                else "s22_canonical_interval_local"
             )
             if classifier_cache_path is None:
                 cached, cache_path = _train_main_classifier(ctx)
@@ -1583,7 +1760,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 ctx,
                 output_dir=stage_dir / "workflow",
                 time_points=HALF_TIMES,
-                use_real_for_observed=False,
+                use_real_for_observed=True,
                 display_piecewise_warp=False,
             )
             states = result.adata_dict
@@ -1591,7 +1768,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             classifier_accuracy = result.classifier_accuracy
             classifier_balanced_accuracy = result.classifier_balanced_accuracy
             simulation_seeds = result.simulation_seeds
-            trajectory_source = "stage_local_global_simulation"
+            trajectory_source = "stage_local_piecewise_observed_anchored"
         outputs = _write_state_bundle(
             states,
             HALF_TIMES,
@@ -1599,9 +1776,9 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             annotation_key=ctx.args.annotation_key,
             source_by_time={
                 float(value): (
-                    "observed_seed_predicted_labels"
-                    if np.isclose(value, 0.0, rtol=0.0, atol=1e-9)
-                    else "generated_prewarp"
+                    "observed_actual_annotation"
+                    if float(value) in OBSERVED_TIMES
+                    else "generated_interval_local_one_sided"
                 )
                 for value in HALF_TIMES
             },
@@ -1635,7 +1812,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 points, labels, annotation_key=ctx.args.annotation_key
             )
             analysis_source_by_time[float(time_value)] = (
-                "generated_prewarp_classifier_knn_"
+                "generated_interval_local_classifier_knn_"
                 f"{int(ctx.args.s25_classifier_knn_neighbors)}"
             )
         outputs.extend(
@@ -2042,11 +2219,13 @@ def _build_explicitly_labeled_hybrid_states(
             raise RuntimeError(
                 f"Generated points changed while relabeling time {time_value}."
             )
-        source_by_time[time_value] = f"generated_prewarp_classifier_knn_{knn_neighbors}"
+        source_by_time[
+            time_value
+        ] = f"generated_interval_local_classifier_knn_{knn_neighbors}"
         summary_rows.append(
             {
                 "time": time_value,
-                "state_source": "generated_prewarp",
+                "state_source": "generated_interval_local",
                 "n_cells": int(len(analysis_labels)),
                 "n_labels_changed": int(changed.sum()),
                 "fraction_labels_changed": float(changed.mean()),
@@ -2075,7 +2254,7 @@ def _build_explicitly_labeled_hybrid_states(
                 count_rows.append(
                     {
                         "time": time_value,
-                        "state_source": "generated_prewarp",
+                        "state_source": "generated_interval_local",
                         "label_policy": policy,
                         "label": str(label),
                         "n_cells": int(count),
@@ -2568,7 +2747,11 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
     lr_expression_policy = str(ctx.args.lr_expression_time_policy)
     settings = {
         "time_points": list(HALF_TIMES),
-        "states": "observed integer frames + generated no-warp half-time frames",
+        "states": (
+            "observed integer frames plus unwarped interval-local one-sided "
+            "half-time frames from the preceding observed anchor"
+        ),
+        "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
         "attention_matrix": "M_per_source",
         "remove_self_loop": False,
         "winsor_quantile": float(ctx.args.communication_winsor_quantile),
@@ -2582,7 +2765,7 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
         "s25_stage_signature": upstream_s25_manifest.get("signature"),
         "generated_label_classifier": {
             "policy": (
-                "explicitly re-predict every generated pre-warp frame; never "
+                "explicitly re-predict every interval-local generated frame; never "
                 "inherit display labels from the state bundle"
             ),
             "knn_neighbors": communication_knn,
@@ -3095,7 +3278,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--sde-n-samples",
         type=int,
         default=None,
-        help="Optional full-run t0 cap; default uses all t0 cells.",
+        help=(
+            "Optional per-observed-anchor cap for canonical interpolation; "
+            "default uses every cell at each observed anchor."
+        ),
     )
     parser.add_argument(
         "--sde-max-particles",
@@ -3115,9 +3301,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.1,
         help=(
-            "Output grid for the single full S22 simulation. Mosaic and video "
-            "frames are selected from this trajectory; split/resampling events "
-            "remain fixed by --sde-dt."
+            "Output grid for the S22 interval-local simulations. Mosaic and video "
+            "frames are selected from these one-sided observed-anchor slices; "
+            "split/resampling events remain fixed by --sde-dt."
         ),
     )
     parser.add_argument("--video-step", type=float, default=0.1)
@@ -3137,10 +3323,11 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "Optional existing canonical_prewarp_states directory. The index and "
-            "frame hashes are validated, and an adjacent complete S22 manifest is "
+            "Optional existing canonical interval-local state bundle (the legacy "
+            "directory name is canonical_prewarp_states). The index and frame "
+            "hashes are validated, and an adjacent complete S22 manifest is "
             "validated when present. Use this for downstream-only recomputation "
-            "without silently simulating a different trajectory."
+            "without silently simulating different slice semantics."
         ),
     )
     parser.add_argument(
