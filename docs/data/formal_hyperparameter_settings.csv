@@ -1,5 +1,5 @@
-dataset,alpha_express,seed,spatial_cutoff,main_edge_prior_mode,current_main_edge_threshold,no_lr_prior_ablation,historical_matched_edge_threshold,dynamics_batch_size,score_batch_size,early_stage_ot_to_mass_ratio,interaction_stage_ot_to_mass_ratio
-Zebrafish,0.015,42,0.09606367405591873,learned,0.6063615679740906,,0.4999999701976776,512,128,100,1
-MOSTA,0.015,42,0.02400244047956264,learned,0.1192110925912857,,0.44999998807907104,1024,512,100,1
-ARISTA,0.015,42,0.03154105148551745,learned,0.5884028673171997,,0.23999999463558197,512,128,100,1
-AD,0.015,42,0.012106042891492197,learned,0.9956824779510498,all_spatial radius-only,0.32999998331069946,512,256,100,1
+dataset,alpha_express,seed,spatial_cutoff,main_edge_prior_mode,accepted_matched_full_edge_threshold,no_lr_prior_ablation,no_interaction_components,dynamics_batch_size,score_batch_size,early_stage_ot_to_mass_ratio,interaction_stage_ot_to_mass_ratio
+Zebrafish,0.015,42,0.09606367405591873,learned,0.6063615679740906,all_spatial,velocity+growth+score,512,128,100,1
+MOSTA,0.015,42,0.02400244047956264,learned,0.1192110925912857,all_spatial,velocity+growth+score,1024,512,100,1
+ARISTA,0.015,42,0.03154105148551745,learned,0.5884028673171997,all_spatial,velocity+growth+score,512,128,100,1
+AD,0.015,42,0.012106042891492197,learned,0.9956824779510498,all_spatial,velocity+growth+score,512,256,100,1

@@ -20,23 +20,25 @@
 ## What may differ by dataset
 
 Biological scale and data availability require explicit differences in time
-maps, interaction cutoff, edge-prior policy, historical matched edge threshold,
+maps, interaction cutoff, accepted matched-full edge threshold,
 particle count, annotation key, species database, and whether persistent
 particle identities exist. These are stored in small workflow presets rather
 than copied implementations.
 
-| Dataset | Interaction cutoff | Main edge prior | Historical matched predictor threshold | Formal k | Particle scope |
+| Dataset | Interaction cutoff | Main edge prior | Accepted matched-full predictor threshold | Formal k | Particle scope |
 | --- | ---: | --- | ---: | ---: | --- |
-| Zebrafish | 0.0960636741 | learned predictor | 0.4999999702 | 10 | all available t0 cells |
-| MOSTA | 0.0240024405 | learned predictor | 0.4499999881 | 10 | 12,000 |
-| ARISTA | 0.0315410515 | learned predictor | 0.2399999946 | 10 | 7,668 |
-| AD | 0.0121060429 | learned predictor; corrected threshold 0.9956824780 | 0.3299999833 | 1 | all 53,615 observed t0 cells |
+| Zebrafish | 0.0960636741 | learned predictor | 0.6063615680 | 10 | all available t0 cells |
+| MOSTA | 0.0240024405 | learned predictor | 0.1192110926 | 10 | 12,000 |
+| ARISTA | 0.0315410515 | learned predictor | 0.5884028673 | 10 | 7,668 |
+| AD | 0.0121060429 | learned predictor | 0.9956824780 | 1 | all 53,615 observed t0 cells |
 
 All four corrected de novo workflows keep the preset cutoff, train a new edge
 predictor, and use its validation-selected threshold. AD has only seven strict
 complete LR pairs in its targeted panel; the main model uses that learned prior
 and explicitly limits its biological interpretation. The separately packaged
-`all_spatial` profile is the matched no-LR-prior ablation.
+`all_spatial` profile is the matched no-LR-prior ablation. The 12-run matched
+matrix and all four three-arm families pass formal acceptance; comparative
+ablation metrics remain pending.
 
 Downstream sparse-attention export has a different scope. It reconstructs the
 full radius graph for each analyzed time-slice cohort, or for the explicit
@@ -46,10 +48,10 @@ during model fitting or simulation.
 
 For AD main, the mouse CellChatDB supplies the seven strict complete pairs used
 both for predictor labels and the downstream projection. The corrected run
-selected threshold `0.9956824779510498`; the `0.3299999833` table value belongs
-to a separate historical matched predictor. The limited targeted panel means
-none of these outputs may be described as global CCI inference. The radius-only
-condition is a future/matched no-LR-prior ablation, not the production main.
+selected threshold `0.9956824779510498`. The limited targeted panel means none
+of these outputs may be described as global CCI inference. The accepted
+radius-only condition is the matched no-LR-prior ablation, not the production
+main.
 
 The accuracy sweep selected `k=1` for all four datasets. Z/M/A retain `k=10`
 as the manuscript spatial-domain estimand; AD uses `k=1` because larger votes

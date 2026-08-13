@@ -5,10 +5,12 @@
   better pointwise accuracy.
 - ARISTA lineage is unavailable because persistent particle IDs were not saved.
 - Historical formal peak RSS/VRAM was not recorded and remains NA.
-- MOSTA/ARISTA retained training logs are sparse, not complete per-epoch curves.
-- The current formal graph/optimizer values were not all exhaustively re-fit in
-  one matched grid.
-- The unified benchmark does not show universal CytoBridge superiority.
+- Earlier MOSTA/ARISTA histories are sparse, but all 12 current matched runs
+  have complete finite six-stage histories.
+- The full, no-LR-prior, and no-interaction arms were re-fit in one matched
+  grid; exhaustive sweeps around every graph/optimizer value were not run.
+- The primary four-dataset cross-method and matched-ablation result tables are
+  still pending. No current superiority or ablation-effect claim is released.
 - WOT has no native joint or spatial prediction and is NA in those spaces.
 - The original Heart Figure 3 application is outside the four-dataset formal
   chain; later Heart-v2 benchmark evidence is a separate context.

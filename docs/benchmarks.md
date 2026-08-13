@@ -7,21 +7,19 @@ values.
 
 ## Unified sliced-W2 benchmark
 
-The matched benchmark removes an internal target from model fitting, fixes a
-source cohort and output count before opening target truth, fits transforms on
-observed training slices, and evaluates joint/state/spatial sliced W2 with 256
-projections for seeds 42–46. Unsupported method/space combinations are `NA`,
-not replaced by a surrogate.
+The primary four-dataset benchmark is being recomputed against the accepted
+matched models. Its result table is pending; no current winner count, rank, or
+cross-method superiority conclusion is released yet. The run removes an
+internal target from model fitting, fixes the source cohort and output count
+before opening target truth, fits transforms on observed training slices, and
+evaluates joint/state/spatial sliced W2 with 256 projections for seeds 42–46.
+Unsupported method/space combinations remain `NA`, not surrogate values.
 
-Across 27 dataset-target-space comparisons, Linear ranks first 13 times,
-CytoBridge 11, PASTE 2, and MOSCOT 1. CytoBridge ranks first for 7 of 9 spatial
-targets. AD shows a small mean advantage over Linear in joint, state, and
-spatial W2; the results do not support universal superiority.
-
-The compact winner table used for those counts is shipped as
-{download}`unified_w2_winners.csv <data/unified_w2_winners.csv>`. Recreate the
-method counts together with the classifier, compute, and hyperparameter table
-summaries with:
+The shipped {download}`unified_w2_winners.csv
+<data/unified_w2_winners.csv>` is a superseded pre-acceptance snapshot retained
+only for provenance. It must not be used as the primary release benchmark or
+as evidence for the final matched models. The legacy summary can be inspected
+with:
 
 ```bash
 python scripts/summarize_release_evidence.py
@@ -29,6 +27,25 @@ python scripts/summarize_release_evidence.py
 
 `cytobridge workflow --reconstruction-diagnostic` is a fitted-model
 reconstruction diagnostic. It is not the cross-method holdout benchmark above.
+
+## Zebrafish formal downstream and daughter-noise sensitivity
+
+The matched Zebrafish paper downstream completed all seven signed stages:
+classifier, velocity, observed-anchored S22, growth, S24 sensitivity, S25, and
+communication. The canonical reconstruction panels are interval-local and
+observed-anchored, not global-t0 rollouts. S24 remains a separately labelled
+global-t0 virtual-removal sensitivity and is neither a canonical
+reconstruction nor a causal knockout estimate. Older global-t0 reconstruction
+and ablation values are not final-model evidence.
+
+The interval-local daughter-noise analysis used four observed intervals,
+daughter-noise SD `0`, `0.01`, `0.03`, and `0.06`, and five paired seeds (80
+independent interval/noise/seed simulations). Across the 12 nonzero-noise
+interval summaries, mean composition TV ranged from 2.47% to 14.18%, relative
+particle-count change from -0.25% to 0.33%, joint W2 from 0.596 to 3.499,
+spatial W2 from 0.0336 to 0.1564, and mean lineage-fate TV from 0.121 to 0.589.
+These are inference-time sensitivities of one frozen learned checkpoint, not a
+training-seed hypothesis test or lineage-continuous rollout.
 
 ## Classifier spatial smoothing
 
@@ -63,16 +80,22 @@ interaction does not silently substitute a different growth/score regularizer;
 the historical interaction-dependent objective remains only as the default for
 unrelated legacy configs. Each no-LR-prior profile
 preserves the full model and changes only the edge gate from the learned
-predictor to `all_spatial`. These profiles are matched execution contracts, not
-completed final-checkpoint evidence; old Zebrafish ablation results must not be
-carried forward as results for the final model.
+predictor to `all_spatial`. All 12 profile runs (four datasets × full,
+no-LR-prior, and no-interaction) completed training and package downstream.
+All 12 profiles and all four matched three-arm families pass the formal
+validator under acceptance SHA-256
+`c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
+No-interaction outputs intentionally omit communication and LR artifacts, so
+those analyses are `NA` rather than zero. Comparative matched-ablation metrics
+are still pending; old Zebrafish ablation values must not be carried forward as
+results for the final model.
 
 ## Hyperparameter evidence boundary
 
-Current results provide practical guidance for graph thresholds, score batch,
-OT:mass, and scheduler settings, but not every current formal run-resolved value
-has been exhaustively re-fit in one matched grid. Documentation must preserve
-that boundary unless additional matched fits are run.
+The full, no-LR-prior, and no-interaction arms have now been re-fit in one
+matched four-dataset grid. This does not make the retained graph-threshold,
+score-batch, OT:mass, or scheduler diagnostics exhaustive sweeps around every
+formal value, and the primary matched comparison tables remain pending.
 
 The run-resolved values used by the four formal presets are available in
 {download}`formal_hyperparameter_settings.csv

@@ -40,13 +40,16 @@ records the removal while retaining annotations, colors, coordinates, and
 expression data.
 
 The processed aligned H5ADs and completed 0.015 checkpoints are currently
-project artifacts and do not yet have a public archive DOI. The corrected AD
-learned-predictor main and historical matched checkpoint are complete; the
-matched no-LR-prior ablation remains pending. Completed artifacts must be
-deposited and linked here before the 1.5 stable release. Until then, the release
-candidate is fully installable and supports user-provided inputs, but a new
-reader cannot download the exact manuscript artifacts from the package
-documentation alone.
+project artifacts and do not yet have a public archive DOI. The authoritative
+matrix now contains 12 completed training and package-downstream profiles: the
+full learned-prior, no-LR-prior (`all_spatial`), and no-interaction arms for
+each of the four datasets. All 12 profiles and all four matched three-arm
+families pass acceptance SHA-256
+`c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
+These artifacts must be deposited and linked here before the 1.5 stable
+release. Until then, the release candidate is fully installable and supports
+user-provided inputs, but a new reader cannot download the exact manuscript
+artifacts from the package documentation alone.
 
 ## Aligned AnnData contract
 
@@ -134,3 +137,9 @@ communication somewhere across the full trajectory.
 Manuscript-specific perturbations, matched cross-method benchmarks, and final
 panel assembly are separate analyses built on these outputs; the workflow does
 not run them implicitly.
+
+For the no-interaction arm, communication and ligand–receptor outputs are
+scientifically not applicable and are intentionally absent. Acceptance treats
+their absence as the arm's contract, not as a failed downstream run. The
+no-LR-prior arm retains interaction and uses `all_spatial` instead of a learned
+edge gate.

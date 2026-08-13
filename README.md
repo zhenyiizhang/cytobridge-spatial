@@ -173,16 +173,24 @@ ligand-receptor pairs under strict all-subunit matching; the corrected main
 model deliberately uses those labels and its validation-selected predictor
 threshold rather than silently changing the model class.
 
-| preset | interaction cutoff | main edge prior | current corrected predictor threshold | historical matched predictor threshold |
-|---|---:|---|---:|---:|
-| MOSTA | 0.02400244047956264 | learned predictor | 0.1192110925912857 | 0.44999998807907104 |
-| ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 | 0.23999999463558197 |
-| Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 | 0.4999999701976776 |
-| AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 | 0.32999998331069946 |
+| preset | interaction cutoff | main edge prior | accepted matched-full predictor threshold |
+|---|---:|---|---:|
+| MOSTA | 0.02400244047956264 | learned predictor | 0.1192110925912857 |
+| ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 |
+| Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 |
+| AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 |
 
-The final column contains separate historical matched-run thresholds; those
-values are not the corrected main thresholds. The AD all-spatial/radius-only
-variant is packaged separately as a no-LR-prior ablation.
+The formal matched matrix now contains 12 completed training and package
+downstream runs: full learned prior, no-LR-prior (`all_spatial`), and
+no-interaction for every dataset. All 12 profiles and all four three-arm
+families pass acceptance SHA-256
+`c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
+No-interaction retains velocity, growth, and score; communication and LR are
+`NA` by construction. The matched comparative metrics and primary
+four-dataset benchmark are still pending, so older winner and ablation tables
+are not final-model evidence. The formal Zebrafish paper downstream completed
+all seven signed stages; its canonical reconstruction is interval-local and
+observed-anchored, not a global-t0 rollout.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:
@@ -309,10 +317,10 @@ raw-H5AD workflow: `obs['Timepoint']` values 1/2/3 map to model times 0/1/2,
 batches are aligned, and a learned edge predictor is fitted from the seven
 strict complete panel-supported pairs. The corrected main run selected
 `0.9956824779510498`, recorded identically in its resolved training config and
-edge metadata. Historical matched 0.015
-artifacts, including the `0.32999998331069946` threshold in the table above,
-remain a separate compatibility path. The matched radius-only alternative is
-an explicit no-LR-prior ablation:
+edge metadata. Legacy 0.015 artifacts that used threshold
+`0.32999998331069946` remain a compatibility path and are not evidence for the
+accepted matched family. The accepted `all_spatial` alternative is the
+explicit no-LR-prior ablation:
 
 ```bash
 cytobridge workflow --config admouse --step downstream \
