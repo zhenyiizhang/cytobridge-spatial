@@ -26,12 +26,13 @@ from pathlib import Path
 import platform
 import secrets
 import shlex
+import stat
 import subprocess
 import sys
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PLAN_NAME = "matched_ablation_matrix_manifest.json"
 PLAN_DIGEST_NAME = f"{PLAN_NAME}.sha256"
 LAUNCHER_DIR_NAME = "_matched_launcher"
@@ -165,6 +166,197 @@ def _file_identity(path: str | Path, *, label: str) -> dict[str, Any]:
         "path": str(resolved),
         "size_bytes": int(stat.st_size),
         "sha256": _sha256_file(resolved),
+    }
+
+
+def _absolute_lexical_path(path: str | Path) -> Path:
+    """Return an absolute path without resolving any symbolic links."""
+
+    supplied = os.fspath(Path(path).expanduser())
+    return Path(os.path.abspath(supplied))
+
+
+def _lstat_identity(path: Path, *, label: str) -> dict[str, Any]:
+    """Describe the directory entry itself rather than its resolved target."""
+
+    try:
+        entry_stat = path.lstat()
+    except FileNotFoundError as error:
+        raise FileNotFoundError(f"{label} does not exist: {path}") from error
+    if stat.S_ISLNK(entry_stat.st_mode):
+        file_type = "symlink"
+    elif stat.S_ISREG(entry_stat.st_mode):
+        file_type = "regular_file"
+    elif stat.S_ISDIR(entry_stat.st_mode):
+        file_type = "directory"
+    else:
+        file_type = "other"
+    identity: dict[str, Any] = {
+        "path": str(path),
+        "file_type": file_type,
+        "mode": f"{stat.S_IMODE(entry_stat.st_mode):04o}",
+        "size_bytes": int(entry_stat.st_size),
+    }
+    if file_type == "symlink":
+        identity["link_target"] = os.readlink(path)
+    return identity
+
+
+def _symlink_chain_identity(path: Path, *, label: str) -> list[dict[str, Any]]:
+    """Record every symlink followed while resolving an absolute path."""
+
+    if not path.is_absolute():
+        raise ValueError(f"{label} invocation path must be absolute: {path}")
+    resolved_prefix = Path(path.anchor)
+    pending = list(path.parts[1:])
+    seen_states: set[tuple[str, str, tuple[str, ...]]] = set()
+    chain: list[dict[str, Any]] = []
+    hops = 0
+    while pending:
+        component = pending.pop(0)
+        candidate = resolved_prefix / component
+        entry = _lstat_identity(candidate, label=label)
+        if entry["file_type"] != "symlink":
+            resolved_prefix = candidate
+            continue
+        hops += 1
+        if hops > 64:
+            raise ValueError(f"{label} has more than 64 symbolic-link hops: {path}")
+        raw_target_text = str(entry["link_target"])
+        state = (str(candidate), raw_target_text, tuple(pending))
+        if state in seen_states:
+            raise ValueError(f"{label} contains a symbolic-link loop: {candidate}")
+        seen_states.add(state)
+        chain.append(entry)
+        raw_target = Path(raw_target_text)
+        if raw_target.is_absolute():
+            target = Path(os.path.normpath(os.fspath(raw_target)))
+        else:
+            target = Path(
+                os.path.normpath(
+                    os.path.join(os.fspath(candidate.parent), raw_target_text)
+                )
+            )
+        pending = list(target.parts[1:]) + pending
+        resolved_prefix = Path(target.anchor)
+    return chain
+
+
+def _python_runtime_probe(invocation: Path) -> dict[str, Any]:
+    """Probe the interpreter through the lexical entry used for real jobs."""
+
+    probe_source = (
+        "import json, platform, sys; "
+        "print(json.dumps({"
+        "'executable': sys.executable, "
+        "'prefix': sys.prefix, "
+        "'base_prefix': sys.base_prefix, "
+        "'exec_prefix': sys.exec_prefix, "
+        "'base_exec_prefix': sys.base_exec_prefix, "
+        "'implementation': platform.python_implementation(), "
+        "'cache_tag': sys.implementation.cache_tag, "
+        "'version': platform.python_version()"
+        "}, sort_keys=True))"
+    )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONHASHSEED": str(MATCHED_SEED),
+        }
+    )
+    try:
+        completed = subprocess.run(
+            [str(invocation), "-I", "-B", "-c", probe_source],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"Python executable probe timed out for {invocation}."
+        ) from error
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        raise RuntimeError(f"Python executable probe failed for {invocation}: {detail}")
+    try:
+        value = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Python executable probe returned invalid JSON for {invocation}."
+        ) from error
+    required = {
+        "executable",
+        "prefix",
+        "base_prefix",
+        "exec_prefix",
+        "base_exec_prefix",
+        "implementation",
+        "cache_tag",
+        "version",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != required
+        or not all(isinstance(value[key], str) and value[key] for key in required)
+    ):
+        raise ValueError(f"Python executable probe is incomplete for {invocation}.")
+    return value
+
+
+def _python_environment_files(
+    invocation: Path, runtime: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Bind pyvenv.cfg files that determine interpreter prefix semantics."""
+
+    candidates = (
+        invocation.parent.parent / "pyvenv.cfg",
+        Path(str(runtime["prefix"])) / "pyvenv.cfg",
+    )
+    identities: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        lexical = _absolute_lexical_path(candidate)
+        key = str(lexical)
+        if key in seen:
+            continue
+        seen.add(key)
+        if not lexical.exists() and not lexical.is_symlink():
+            continue
+        identity = _file_identity(lexical, label="Python environment pyvenv.cfg")
+        identity["invocation_path"] = key
+        identities.append(identity)
+    return identities
+
+
+def _python_executable_identity(path: str | Path) -> dict[str, Any]:
+    """Bind a Python invocation path without replacing its venv symlink."""
+
+    invocation = _absolute_lexical_path(path)
+    invocation_lstat = _lstat_identity(invocation, label="Python executable")
+    resolved = _resolved_file(invocation, label="Python executable")
+    if not os.access(invocation, os.X_OK):
+        raise PermissionError(f"Python executable is not executable: {invocation}")
+    resolved_identity = _file_identity(resolved, label="resolved Python executable")
+    resolved_identity["lstat"] = _lstat_identity(
+        resolved, label="resolved Python executable"
+    )
+    runtime = _python_runtime_probe(invocation)
+    if Path(str(runtime["executable"])).resolve(strict=True) != resolved:
+        raise ValueError(
+            "Python runtime probe resolved to a different executable: "
+            f"reported={runtime['executable']}, expected_target={resolved}."
+        )
+    return {
+        "invocation_path": str(invocation),
+        "invocation_lstat": invocation_lstat,
+        "symlink_chain": _symlink_chain_identity(invocation, label="Python executable"),
+        "resolved_target": resolved_identity,
+        "runtime": runtime,
+        "environment_files": _python_environment_files(invocation, runtime),
     }
 
 
@@ -787,9 +979,8 @@ def build_plan(
         )
     if output.parent == output:
         raise ValueError("Refusing to use a filesystem root as --run-root.")
-    python = _resolved_file(python_executable, label="Python executable")
-    if not os.access(python, os.X_OK):
-        raise PermissionError(f"Python executable is not executable: {python}")
+    python_identity = _python_executable_identity(python_executable)
+    python = Path(str(python_identity["invocation_path"]))
     if set(aligned_h5ad) != set(DATASET_ORDER):
         raise ValueError("aligned_h5ad must contain exactly the four formal datasets.")
     if set(edge_predictor) != set(DATASET_ORDER):
@@ -943,7 +1134,7 @@ def build_plan(
             "training_code": code_identity,
             "package_payload": payload_identity,
             "launcher": launcher_identity,
-            "python_executable": _file_identity(python, label="Python executable"),
+            "python_executable": python_identity,
         },
         "matrix": {
             "datasets": list(DATASET_ORDER),
@@ -1072,6 +1263,15 @@ def _identity_matches(record: Mapping[str, Any], *, label: str) -> None:
         raise ValueError(f"{label} changed after matrix preparation.")
 
 
+def _python_executable_identity_matches(record: Mapping[str, Any]) -> None:
+    invocation_path = record.get("invocation_path")
+    if not isinstance(invocation_path, str) or not invocation_path:
+        raise ValueError("Prepared Python executable identity is malformed.")
+    actual = _python_executable_identity(invocation_path)
+    if actual != dict(record):
+        raise ValueError("Python executable changed after matrix preparation.")
+
+
 def verify_prepared_run(
     run_root: str | Path,
     *,
@@ -1102,7 +1302,7 @@ def verify_prepared_run(
     current_launcher = _bound_launcher_identity(release)
     if current_launcher != plan["release"]["launcher"]:
         raise ValueError("Release-owned launcher changed after matrix preparation.")
-    _identity_matches(plan["release"]["python_executable"], label="Python executable")
+    _python_executable_identity_matches(plan["release"]["python_executable"])
     cache_root = root / LAUNCHER_DIR_NAME / "cache"
     expected_cache_profiles = {*PROFILE_ORDER, "validator"}
     if cache_root.is_symlink() or not cache_root.is_dir():
@@ -1538,7 +1738,7 @@ def launch_one(
         )
         raise
     monitor_argv = [
-        str(plan["release"]["python_executable"]["path"]),
+        str(plan["release"]["python_executable"]["invocation_path"]),
         str(plan["release"]["launcher"]["path"]),
         "_execute-one",
         "--run-root",

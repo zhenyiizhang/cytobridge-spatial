@@ -158,7 +158,7 @@ def test_plan_binds_hashes_and_renders_exact_train_and_downstream_commands(
         train = condition["commands"]["train"]["argv"]
         downstream = condition["commands"]["downstream"]["argv"]
         assert train[:4] == [
-            str(Path(sys.executable).resolve()),
+            str(Path(sys.executable).expanduser()),
             "-m",
             "CytoBridge.cli",
             "workflow",
@@ -254,6 +254,74 @@ def test_prepared_manifest_and_assets_are_hash_bound(tmp_path: Path) -> None:
 
     aligned["zebrafish"].write_bytes(b"changed")
     with pytest.raises(ValueError, match="changed after matrix preparation"):
+        MODULE.verify_prepared_run(root, git_identity=_git_identity())
+
+
+def test_symlinked_python_keeps_venv_invocation_and_binds_target(
+    tmp_path: Path,
+) -> None:
+    fake_runtime = tmp_path / "fake runtime"
+    fake_runtime.mkdir()
+    target = fake_runtime / "python-real"
+    target.symlink_to(Path(sys.executable).resolve())
+    fake_venv = tmp_path / "fake venv" / "bin"
+    fake_venv.mkdir(parents=True)
+    pyvenv = fake_venv.parent / "pyvenv.cfg"
+    pyvenv.write_text(
+        f"home = {Path(sys.base_prefix) / 'bin'}\n"
+        "include-system-site-packages = true\n"
+        f"version = {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n",
+        encoding="utf-8",
+    )
+    invocation = fake_venv / "python"
+    intermediate = fake_venv / "python3"
+    invocation.symlink_to("python3")
+    intermediate.symlink_to(target)
+
+    aligned, predictors, graph_dirs = _source_inputs(tmp_path)
+    plan = MODULE.build_plan(
+        run_root=tmp_path / "symlinked python matrix",
+        release_root=ROOT,
+        release_commit=RELEASE_COMMIT,
+        python_executable=invocation,
+        aligned_h5ad=aligned,
+        edge_predictor=predictors,
+        input_graph_dir=graph_dirs,
+        gpu_by_profile=_gpu_map(),
+        git_identity=_git_identity(),
+    )
+    identity = plan["release"]["python_executable"]
+    assert identity["invocation_path"] == str(invocation)
+    assert identity["invocation_lstat"]["file_type"] == "symlink"
+    assert identity["symlink_chain"][0]["path"] == str(invocation)
+    assert [record["path"] for record in identity["symlink_chain"]][-2:] == [
+        str(intermediate),
+        str(target),
+    ]
+    assert identity["resolved_target"]["path"] == str(Path(sys.executable).resolve())
+    assert identity["runtime"]["executable"] == str(invocation)
+    assert identity["runtime"]["prefix"] == str(fake_venv.parent)
+    assert identity["environment_files"][0]["invocation_path"] == str(pyvenv)
+    for condition in plan["conditions"].values():
+        assert condition["commands"]["train"]["argv"][0] == str(invocation)
+        assert condition["commands"]["downstream"]["argv"][0] == str(invocation)
+    assert plan["validator"]["argv"][0] == str(invocation)
+
+    root, _ = MODULE.prepare_run_root(plan)
+    pyvenv.write_text(
+        pyvenv.read_text(encoding="utf-8") + "prompt = changed\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="Python executable changed"):
+        MODULE.verify_prepared_run(root, git_identity=_git_identity())
+
+    pyvenv.write_text(
+        f"home = {Path(sys.base_prefix) / 'bin'}\n"
+        "include-system-site-packages = true\n"
+        f"version = {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}\n",
+        encoding="utf-8",
+    )
+    target.unlink()
+    with pytest.raises(FileNotFoundError, match="Python executable does not exist"):
         MODULE.verify_prepared_run(root, git_identity=_git_identity())
 
 
