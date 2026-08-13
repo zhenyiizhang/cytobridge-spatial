@@ -225,6 +225,12 @@ graph is distinct from the stochastic interaction groups used by training and
 dynamics. The main AD checkpoint applies its learned edge gate; because that
 gate is supported by only seven strict panel-covered pairs, its attention
 summaries must not be described as a global cell-cell communication screen.
+For every dataset, `summary.json` records downstream radius candidates and
+retained edges under `analyses.communication.edge_selection_by_time`. A valid
+empty time point is emitted as canonical empty sparse arrays and an explicit
+structural-zero status, rather than being hidden or filled with fallback edges;
+the accompanying interpretation states that this is not evidence for absence
+of all biological communication.
 
 The packaged downstream profiles also keep the formal simulation scope:
 Zebrafish uses every observed t0 cell on its nine analysis slices; MOSTA uses

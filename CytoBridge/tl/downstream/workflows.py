@@ -839,6 +839,12 @@ def compute_timepoint_communications(
             n_permutations=0,
             plot=False,
         )
+        comm["edge_selection"] = {
+            "candidate_count": int(attn_out["candidate_edge_count"]),
+            "selected_count": int(attn_out["selected_edge_count"]),
+            "selected_fraction": float(attn_out["selected_fraction"]),
+            "status": str(attn_out["status"]),
+        }
         all_time_communications[key] = comm
 
     if save_pickle_path is not None:

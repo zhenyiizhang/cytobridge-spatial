@@ -27,6 +27,18 @@ Spatial radius pairs are constructed without a dense cell-by-cell matrix.
 Edges retain sender/source to receiver/target direction, and attention is
 aggregated into cell-type tables without changing the underlying model output.
 
+Each time point records the number of within-cutoff candidates, the number
+retained by the configured edge prior, and their fraction. Under a learned
+prior, `candidate_count > 0` with zero retained edges is a valid structural zero
+when no candidate passes the frozen LR-informed learned edge-predictor
+threshold. If `candidate_count == 0`, the status instead records that there
+were no within-cutoff candidates. Neither case establishes the absence of all
+biological communication. The formal acceptance check permits such individual
+time points only when the sparse arrays are canonically empty and the
+trajectory-wide communication output remains non-degenerate. A structural
+zero also makes that time point's LR projection zero by construction; edges
+must not be added and the frozen threshold must not be changed after the fact.
+
 For AD main, distinguish the downstream reporting graph from the stochastic
 interaction groups used by the dynamical model. Downstream constructs the full
 radius candidate graph for the analyzed time-slice cohort, or for an explicit

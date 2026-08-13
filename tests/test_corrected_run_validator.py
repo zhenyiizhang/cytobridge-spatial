@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import runpy
 import sys
+import tempfile
 
 import anndata as ad
 import numpy as np
@@ -20,6 +21,9 @@ VALIDATION_PROFILES = VALIDATOR["VALIDATION_PROFILES"]
 required_files = VALIDATOR["required_files"]
 classifier_split_contract = VALIDATOR["classifier_split_contract"]
 complete_lr_pair_time_grid = VALIDATOR["complete_lr_pair_time_grid"]
+communication_edge_selection_contract = VALIDATOR[
+    "communication_edge_selection_contract"
+]
 downstream_scope_contract = VALIDATOR["downstream_scope_contract"]
 edge_threshold_provenance_contract = VALIDATOR["edge_threshold_provenance_contract"]
 lr_database_provenance_contract = VALIDATOR["lr_database_provenance_contract"]
@@ -858,6 +862,351 @@ def test_ad_all_spatial_downstream_scope_separates_attention_from_lr_projection(
         expected_ad_lr_pairs=7,
     )
     assert not valid
+
+
+def _communication_edge_selection_fixture(
+    tmp_path: Path,
+) -> tuple[pd.DataFrame, dict, Path]:
+    sparse_dir = tmp_path / "sparse_attention"
+    sparse_dir.mkdir()
+    selected_by_time = {0.0: 2, 0.5: 0, 1.0: 1}
+    candidate_by_time = {0.0: 4, 0.5: 6, 1.0: 2}
+    for time_value, selected_count in selected_by_time.items():
+        np.save(
+            sparse_dir / f"attn_mean_interp_t{time_value}.npy",
+            np.linspace(0.1, 0.2, selected_count, dtype=np.float32),
+        )
+        np.save(
+            sparse_dir / f"edge_index_interp_t{time_value}.npy",
+            np.asarray([[0, 1], [1, 2]], dtype=np.int64)[:, :selected_count],
+        )
+    summary = {
+        "structural_zero_interpretation": (
+            "When candidate edges exist, a structural zero means no candidate edge "
+            "passed the LR-informed learned edge-predictor gate at that time point; "
+            "when the candidate "
+            "count is zero, no edge was available within the spatial cutoff. Neither "
+            "case establishes absence of all biological communication."
+        ),
+        "edge_selection_by_time": {
+            f"{time_value:g}": {
+                "candidate_count": candidate_by_time[time_value],
+                "selected_count": selected_count,
+                "selected_fraction": (selected_count / candidate_by_time[time_value]),
+                "status": (
+                    "selected_edges"
+                    if selected_count > 0
+                    else "no_edges_passed_learned_gate"
+                ),
+            }
+            for time_value, selected_count in selected_by_time.items()
+        },
+    }
+    communication_rows = []
+    for time_value, selected_count in selected_by_time.items():
+        for source in ("A", "B"):
+            for target in ("A", "B"):
+                communication_rows.append(
+                    {
+                        "time": time_value,
+                        "source": source,
+                        "target": target,
+                        "attention_per_source": (
+                            0.0
+                            if selected_count == 0
+                            else (0.2 if source != target else 0.0)
+                        ),
+                    }
+                )
+    communication = pd.DataFrame(communication_rows)
+    return communication, summary, sparse_dir
+
+
+def test_communication_contract_allows_canonical_per_time_structural_zero(
+    tmp_path: Path,
+) -> None:
+    communication, summary, sparse_dir = _communication_edge_selection_fixture(tmp_path)
+
+    valid, _ = communication_edge_selection_contract(
+        communication,
+        summary,
+        sparse_dir,
+        expected_times=(0.0, 0.5, 1.0),
+        expected_node_counts={0.0: 3, 0.5: 3, 1.0: 3},
+        expected_label_sets={0.0: {"A", "B"}, 0.5: {"A", "B"}, 1.0: {"A", "B"}},
+        expected_edge_mode="learned",
+    )
+
+    assert valid
+
+
+def test_communication_contract_allows_zero_candidates_when_run_is_nonzero(
+    tmp_path: Path,
+) -> None:
+    communication, summary, sparse_dir = _communication_edge_selection_fixture(tmp_path)
+    summary["edge_selection_by_time"]["0.5"]["candidate_count"] = 0
+    summary["edge_selection_by_time"]["0.5"]["status"] = "no_edges_within_cutoff"
+
+    valid, _ = communication_edge_selection_contract(
+        communication,
+        summary,
+        sparse_dir,
+        expected_times=(0.0, 0.5, 1.0),
+        expected_node_counts={0.0: 3, 0.5: 3, 1.0: 3},
+        expected_label_sets={0.0: {"A", "B"}, 0.5: {"A", "B"}, 1.0: {"A", "B"}},
+        expected_edge_mode="learned",
+    )
+
+    assert valid
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "noncanonical_empty_attention",
+        "noncanonical_empty_edge_index",
+        "nonfinite_attention",
+        "negative_attention",
+        "float_edge_index",
+        "negative_edge_index",
+        "out_of_bounds_edge_index",
+        "self_loop_edge_index",
+        "duplicate_edge_index",
+        "nonfloating_attention",
+        "missing_time_file",
+        "all_times_empty",
+        "missing_summary_time",
+        "extra_summary_time",
+        "negative_candidate_count",
+        "odd_candidate_count",
+        "selected_count_mismatch",
+        "selected_fraction_mismatch",
+        "boolean_selected_fraction",
+        "zero_status_mismatch",
+        "positive_status_mismatch",
+        "misleading_interpretation",
+        "globally_zero_celltype_table",
+        "structural_zero_nonzero_table",
+        "missing_table_column",
+        "duplicate_table_key",
+        "wrong_table_time",
+        "missing_table_pair",
+        "missing_table_type",
+        "unknown_table_types",
+    ),
+)
+def test_communication_contract_rejects_incomplete_or_misleading_zero_evidence(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    communication, summary, sparse_dir = _communication_edge_selection_fixture(tmp_path)
+    if mutation == "noncanonical_empty_attention":
+        np.save(
+            sparse_dir / "attn_mean_interp_t0.5.npy",
+            np.empty((0, 1), dtype=np.float32),
+        )
+    elif mutation == "noncanonical_empty_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.5.npy",
+            np.empty((0, 2), dtype=np.int64),
+        )
+    elif mutation == "nonfinite_attention":
+        np.save(
+            sparse_dir / "attn_mean_interp_t0.0.npy",
+            np.asarray([0.1, np.nan], dtype=np.float32),
+        )
+    elif mutation == "negative_attention":
+        np.save(
+            sparse_dir / "attn_mean_interp_t0.0.npy",
+            np.asarray([0.1, -0.2], dtype=np.float32),
+        )
+    elif mutation == "float_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.zeros((2, 2), dtype=np.float32),
+        )
+    elif mutation == "negative_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, -1], [1, 2]], dtype=np.int64),
+        )
+    elif mutation == "out_of_bounds_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, 3], [1, 2]], dtype=np.int64),
+        )
+    elif mutation == "self_loop_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, 1], [0, 2]], dtype=np.int64),
+        )
+    elif mutation == "duplicate_edge_index":
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, 0], [1, 1]], dtype=np.int64),
+        )
+    elif mutation == "nonfloating_attention":
+        np.save(
+            sparse_dir / "attn_mean_interp_t0.0.npy",
+            np.asarray([1, 2], dtype=np.int64),
+        )
+    elif mutation == "missing_time_file":
+        (sparse_dir / "attn_mean_interp_t0.5.npy").unlink()
+    elif mutation == "all_times_empty":
+        for time_value in (0.0, 0.5, 1.0):
+            np.save(
+                sparse_dir / f"attn_mean_interp_t{time_value}.npy",
+                np.empty((0,), dtype=np.float32),
+            )
+            np.save(
+                sparse_dir / f"edge_index_interp_t{time_value}.npy",
+                np.empty((2, 0), dtype=np.int64),
+            )
+            record = summary["edge_selection_by_time"][f"{time_value:g}"]
+            record["selected_count"] = 0
+            record["selected_fraction"] = 0.0
+            record["status"] = "no_edges_passed_learned_gate"
+    elif mutation == "missing_summary_time":
+        del summary["edge_selection_by_time"]["0.5"]
+    elif mutation == "extra_summary_time":
+        summary["edge_selection_by_time"]["1.5"] = dict(
+            summary["edge_selection_by_time"]["1"]
+        )
+    elif mutation == "negative_candidate_count":
+        summary["edge_selection_by_time"]["0.5"]["candidate_count"] = -1
+    elif mutation == "odd_candidate_count":
+        summary["edge_selection_by_time"]["0.5"]["candidate_count"] = 5
+    elif mutation == "selected_count_mismatch":
+        summary["edge_selection_by_time"]["0"]["selected_count"] = 1
+    elif mutation == "selected_fraction_mismatch":
+        summary["edge_selection_by_time"]["0"]["selected_fraction"] = 0.49
+    elif mutation == "boolean_selected_fraction":
+        summary["edge_selection_by_time"]["0.5"]["selected_fraction"] = False
+    elif mutation == "zero_status_mismatch":
+        summary["edge_selection_by_time"]["0.5"]["status"] = "selected_edges"
+    elif mutation == "positive_status_mismatch":
+        summary["edge_selection_by_time"]["0"][
+            "status"
+        ] = "no_edges_passed_learned_gate"
+    elif mutation == "misleading_interpretation":
+        summary[
+            "structural_zero_interpretation"
+        ] = "A structural zero proves that no biological communication exists."
+    elif mutation == "globally_zero_celltype_table":
+        communication["attention_per_source"] = 0.0
+    elif mutation == "structural_zero_nonzero_table":
+        communication.loc[communication["time"] == 0.5, "attention_per_source"] = 0.1
+    elif mutation == "missing_table_column":
+        communication = communication.drop(columns="source")
+    elif mutation == "duplicate_table_key":
+        communication = pd.concat([communication, communication.iloc[[0]]])
+    elif mutation == "wrong_table_time":
+        communication.loc[communication["time"] == 0.5, "time"] = 1.5
+    elif mutation == "missing_table_pair":
+        communication = communication.drop(index=communication.index[0])
+    elif mutation == "missing_table_type":
+        communication = communication.loc[
+            ~(
+                (communication["time"] == 0.5)
+                & ((communication["source"] == "B") | (communication["target"] == "B"))
+            )
+        ]
+    elif mutation == "unknown_table_types":
+        time_mask = communication["time"] == 0.5
+        communication.loc[time_mask, "source"] = communication.loc[
+            time_mask, "source"
+        ].map({"A": "X", "B": "Y"})
+        communication.loc[time_mask, "target"] = communication.loc[
+            time_mask, "target"
+        ].map({"A": "X", "B": "Y"})
+
+    valid, _ = communication_edge_selection_contract(
+        communication,
+        summary,
+        sparse_dir,
+        expected_times=(0.0, 0.5, 1.0),
+        expected_node_counts={0.0: 3, 0.5: 3, 1.0: 3},
+        expected_label_sets={0.0: {"A", "B"}, 0.5: {"A", "B"}, 1.0: {"A", "B"}},
+        expected_edge_mode="learned",
+    )
+
+    assert not valid
+
+
+def test_all_spatial_communication_contract_requires_every_candidate() -> None:
+    communication = pd.DataFrame(
+        {
+            "time": [0.0, 0.0, 0.0, 0.0],
+            "source": ["A", "A", "B", "B"],
+            "target": ["A", "B", "A", "B"],
+            "attention_per_source": [0.0, 0.2, 0.1, 0.0],
+        }
+    )
+    with tempfile.TemporaryDirectory() as temp_dir:
+        sparse_dir = Path(temp_dir)
+        np.save(
+            sparse_dir / "attn_mean_interp_t0.0.npy",
+            np.asarray([0.1, 0.2], dtype=np.float32),
+        )
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, 1], [1, 0]], dtype=np.int64),
+        )
+        summary = {
+            "structural_zero_interpretation": (
+                "A structural zero means no edge was available within the spatial "
+                "cutoff at that time point; it does not establish absence of all "
+                "biological communication."
+            ),
+            "edge_selection_by_time": {
+                "0": {
+                    "candidate_count": 2,
+                    "selected_count": 2,
+                    "selected_fraction": 1.0,
+                    "status": "selected_edges",
+                }
+            },
+        }
+        valid, _ = communication_edge_selection_contract(
+            communication,
+            summary,
+            sparse_dir,
+            expected_times=(0.0,),
+            expected_node_counts={0.0: 2},
+            expected_label_sets={0.0: {"A", "B"}},
+            expected_edge_mode="all_spatial",
+        )
+        assert valid
+
+        summary["edge_selection_by_time"]["0"]["candidate_count"] = 3
+        summary["edge_selection_by_time"]["0"]["selected_fraction"] = 2 / 3
+        valid, _ = communication_edge_selection_contract(
+            communication,
+            summary,
+            sparse_dir,
+            expected_times=(0.0,),
+            expected_node_counts={0.0: 2},
+            expected_label_sets={0.0: {"A", "B"}},
+            expected_edge_mode="all_spatial",
+        )
+        assert not valid
+
+        summary["edge_selection_by_time"]["0"]["candidate_count"] = 2
+        summary["edge_selection_by_time"]["0"]["selected_fraction"] = 1.0
+        np.save(
+            sparse_dir / "edge_index_interp_t0.0.npy",
+            np.asarray([[0, 0], [1, 2]], dtype=np.int64),
+        )
+        valid, _ = communication_edge_selection_contract(
+            communication,
+            summary,
+            sparse_dir,
+            expected_times=(0.0,),
+            expected_node_counts={0.0: 3},
+            expected_label_sets={0.0: {"A", "B"}},
+            expected_edge_mode="all_spatial",
+        )
+        assert not valid
 
 
 def test_ad_retained_pair_count_excludes_pair_celltype_children() -> None:

@@ -122,6 +122,15 @@ downstream/
 └── reconstruction_diagnostic/ # only when requested; not a holdout benchmark
 ```
 
+`summary.json` exposes per-time communication selection provenance at
+`analyses.communication.edge_selection_by_time`. Each normalized time key
+contains `candidate_count`, `selected_count`, `selected_fraction`, and
+`status`, with the scientific boundary recorded in
+`structural_zero_interpretation`. A valid empty time point has
+`edge_index.shape == (2, 0)` and `attn_mean.shape == (0,)`; it is not a missing
+artifact. Acceptance still requires selected edges and nonzero cell-type
+communication somewhere across the full trajectory.
+
 Manuscript-specific perturbations, matched cross-method benchmarks, and final
 panel assembly are separate analyses built on these outputs; the workflow does
 not run them implicitly.

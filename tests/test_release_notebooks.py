@@ -65,6 +65,10 @@ def test_dataset_notebook_is_clean_runnable_source(
     assert "load_workflow_config(DATASET_PRESET)" in text
     assert "reuse_if_present=False" in text
     assert "compute_timepoint_communications" in text
+    assert 'record["edge_selection"]' in text
+    assert "structural zero" in text.lower()
+    assert "does not establish absence of all biological communication" in text.lower()
+    assert "do not add radius edges" in text.lower()
     assert 'complex_mode="min"' in text
     assert "require_all_subunits=True" in text
     assert "keep quantitative analyses on unwarped states" in text.lower()

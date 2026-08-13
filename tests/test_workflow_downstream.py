@@ -808,6 +808,12 @@ def test_communication_uses_prewarp_states_and_writes_tidy_table(tmp_path: Path)
         key: {
             "types": np.asarray(["A", "B"]),
             "M_per_source": np.asarray([[0.0, 1.0], [2.0, 0.0]]),
+            "edge_selection": {
+                "candidate_count": 20,
+                "selected_count": 5,
+                "selected_fraction": 0.25,
+                "status": "selected_edges",
+            },
         }
         for key in prewarp
     }
@@ -835,6 +841,23 @@ def test_communication_uses_prewarp_states_and_writes_tidy_table(tmp_path: Path)
 
     assert returned is communication
     assert summary["representation"] == "sparse model-edge attention"
+    assert summary["edge_selection_by_time"] == {
+        "0": {
+            "candidate_count": 20,
+            "selected_count": 5,
+            "selected_fraction": 0.25,
+            "status": "selected_edges",
+        },
+        "1": {
+            "candidate_count": 20,
+            "selected_count": 5,
+            "selected_fraction": 0.25,
+            "status": "selected_edges",
+        },
+    }
+    assert (
+        "Neither case establishes absence" in summary["structural_zero_interpretation"]
+    )
     table = pd.read_csv(tmp_path / "communication_by_celltype.csv")
     assert table.shape == (8, 4)
     assert set(table.columns) == {

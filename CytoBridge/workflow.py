@@ -1930,14 +1930,34 @@ def _write_communication_outputs(
     table_path = output_dir / "communication_by_celltype.csv"
     pd.DataFrame(rows).to_csv(table_path, index=False)
     interaction_net = getattr(getattr(runtime, "f_net", None), "interaction_net", None)
+    edge_prior_mode = str(
+        getattr(interaction_net, "edge_prior_mode", "learned")
+    ).lower()
+    edge_selection_by_time = {
+        f"{float(time_value):g}": dict(
+            communications[str(time_value)]["edge_selection"]
+        )
+        for time_value in result.ts_points
+    }
     return (
         {
             "status": "completed",
             "representation": "sparse model-edge attention",
-            "edge_prior_mode": str(
-                getattr(interaction_net, "edge_prior_mode", "learned")
-            ).lower(),
+            "edge_prior_mode": edge_prior_mode,
             "interpretation": communication_config.get("interpretation"),
+            "edge_selection_by_time": edge_selection_by_time,
+            "structural_zero_interpretation": (
+                "When candidate edges exist, a structural zero means no candidate "
+                "edge passed the LR-informed learned edge-predictor gate at that "
+                "time point; when the "
+                "candidate count is zero, no edge was available within the spatial "
+                "cutoff. Neither case establishes absence of all biological "
+                "communication."
+                if edge_prior_mode == "learned"
+                else "A structural zero means no edge was available within the "
+                "spatial cutoff at that time point; it does not establish absence "
+                "of all biological communication."
+            ),
             "attention_scope": (
                 "full time-slice radius candidate graph"
                 if communication_config.get("max_cells_per_timepoint") is None

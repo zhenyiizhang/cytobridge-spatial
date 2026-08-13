@@ -1495,6 +1495,250 @@ def finite_numeric_frame(frame: pd.DataFrame, *, allow_na: bool = False) -> bool
     return bool(np.isfinite(values).all())
 
 
+def communication_edge_selection_contract(
+    communication: pd.DataFrame,
+    communication_summary: Any,
+    sparse_attention_dir: Path,
+    *,
+    expected_times: Sequence[float],
+    expected_node_counts: Mapping[float, int],
+    expected_label_sets: Mapping[float, set[str]],
+    expected_edge_mode: str,
+) -> tuple[bool, str]:
+    """Validate per-time sparse attention while allowing learned-gate zeros.
+
+    An empty time point is a valid structural zero only when both sparse arrays
+    have their canonical empty shapes.  The run as a whole must still contain
+    selected edges and a nonzero cell-type communication summary.
+    """
+
+    required_table_columns = {"time", "source", "target", "attention_per_source"}
+    table_ok = not communication.empty and required_table_columns.issubset(
+        communication.columns
+    )
+    table_max = math.nan
+    if table_ok:
+        table_times = pd.to_numeric(communication["time"], errors="coerce").to_numpy(
+            dtype=float
+        )
+        attention_per_source = pd.to_numeric(
+            communication["attention_per_source"], errors="coerce"
+        ).to_numpy(dtype=float)
+        table_max = float(attention_per_source.max())
+        source_values = communication["source"].astype("string")
+        target_values = communication["target"].astype("string")
+        complete_type_grids = True
+        for time_value in expected_times:
+            time_mask = np.isclose(table_times, float(time_value))
+            time_sources = set(source_values[time_mask].tolist())
+            time_targets = set(target_values[time_mask].tolist())
+            expected_labels = expected_label_sets.get(float(time_value))
+            complete_type_grids = complete_type_grids and (
+                isinstance(expected_labels, set)
+                and bool(expected_labels)
+                and time_sources == expected_labels
+                and time_targets == expected_labels
+                and int(time_mask.sum()) == len(time_sources) ** 2
+            )
+        table_ok = (
+            np.isfinite(table_times).all()
+            and np.isfinite(attention_per_source).all()
+            and bool((attention_per_source >= 0.0).all())
+            and table_max > 0.0
+            and not source_values.isna().any()
+            and not target_values.isna().any()
+            and bool(source_values.str.len().gt(0).all())
+            and bool(target_values.str.len().gt(0).all())
+            and not communication.duplicated(subset=["time", "source", "target"]).any()
+            and set(table_times) == {float(value) for value in expected_times}
+            and complete_type_grids
+        )
+    else:
+        table_times = np.empty(0, dtype=float)
+        attention_per_source = np.empty(0, dtype=float)
+
+    summary_meta = _mapping(communication_summary)
+    edge_selection_raw = summary_meta.get("edge_selection_by_time")
+    edge_selection = _mapping(edge_selection_raw)
+    expected_keys = tuple(f"{float(time_value):g}" for time_value in expected_times)
+    mapping_ok = (
+        isinstance(edge_selection_raw, Mapping)
+        and len(expected_keys) == len(set(expected_keys))
+        and set(edge_selection) == set(expected_keys)
+    )
+
+    interpretation_ok = False
+    interpretation = summary_meta.get("structural_zero_interpretation")
+    interpretation_text = (
+        interpretation.lower() if isinstance(interpretation, str) else ""
+    )
+    if expected_edge_mode == "learned":
+        interpretation_ok = (
+            "no candidate edge passed the lr-informed learned edge-predictor gate"
+            in interpretation_text
+            and "no edge was available within the spatial cutoff" in interpretation_text
+            and "neither case establishes absence of all biological communication"
+            in interpretation_text
+        )
+    elif expected_edge_mode == "all_spatial":
+        interpretation_ok = (
+            "no edge was available within the spatial cutoff" in interpretation_text
+            and "does not establish absence of all biological communication"
+            in interpretation_text
+        )
+
+    arrays_ok = True
+    records_ok = mapping_ok
+    total_selected = 0
+    sparse_details: list[str] = []
+    for time_value, time_key in zip(expected_times, expected_keys):
+        attention_path = sparse_attention_dir / f"attn_mean_interp_t{time_value}.npy"
+        edge_path = sparse_attention_dir / f"edge_index_interp_t{time_value}.npy"
+        if not attention_path.is_file() or not edge_path.is_file():
+            arrays_ok = False
+            sparse_details.append(f"t={time_value:g}:missing")
+            continue
+        try:
+            attention = np.load(attention_path, mmap_mode="r")
+            edge_index = np.load(edge_path, mmap_mode="r")
+        except (OSError, ValueError):
+            arrays_ok = False
+            sparse_details.append(f"t={time_value:g}:unreadable")
+            continue
+
+        canonical = (
+            edge_index.ndim == 2
+            and edge_index.shape[0] == 2
+            and np.issubdtype(edge_index.dtype, np.integer)
+            and attention.ndim == 1
+            and edge_index.shape[1] == attention.shape[0]
+        )
+        node_count = expected_node_counts.get(float(time_value))
+        valid_indices = (
+            canonical
+            and isinstance(node_count, int)
+            and not isinstance(node_count, bool)
+            and node_count > 0
+            and (
+                edge_index.shape[1] == 0
+                or (
+                    bool((edge_index >= 0).all())
+                    and int(edge_index.max()) < node_count
+                    and bool((edge_index[0] != edge_index[1]).all())
+                    and np.unique(edge_index.T, axis=0).shape[0] == edge_index.shape[1]
+                )
+            )
+        )
+        if valid_indices and expected_edge_mode == "all_spatial":
+            directed_edges = {
+                (int(source), int(target)) for source, target in edge_index.T
+            }
+            valid_indices = all(
+                (target, source) in directed_edges for source, target in directed_edges
+            )
+        selected_count = int(attention.shape[0]) if attention.ndim == 1 else -1
+        valid_values = (
+            valid_indices
+            and np.issubdtype(attention.dtype, np.floating)
+            and np.isfinite(attention).all()
+            and bool((attention >= 0.0).all())
+        )
+        arrays_ok = arrays_ok and valid_values
+        if canonical:
+            total_selected += selected_count
+
+        record = _mapping(edge_selection.get(time_key)) if mapping_ok else {}
+        candidate_value = record.get("candidate_count")
+        selected_value = record.get("selected_count")
+        candidate_count = (
+            candidate_value
+            if isinstance(candidate_value, int)
+            and not isinstance(candidate_value, bool)
+            else None
+        )
+        recorded_selected = (
+            selected_value
+            if isinstance(selected_value, int) and not isinstance(selected_value, bool)
+            else None
+        )
+        fraction_value = record.get("selected_fraction")
+        try:
+            selected_fraction = (
+                math.nan if isinstance(fraction_value, bool) else float(fraction_value)
+            )
+        except (TypeError, ValueError):
+            selected_fraction = math.nan
+        expected_fraction = (
+            selected_count / candidate_count
+            if candidate_count is not None and candidate_count > 0
+            else 0.0
+        )
+        expected_status = (
+            "selected_edges"
+            if selected_count > 0
+            else (
+                "no_edges_within_cutoff"
+                if candidate_count == 0
+                else (
+                    "no_edges_passed_learned_gate"
+                    if expected_edge_mode == "learned"
+                    else "no_edges_within_cutoff"
+                )
+            )
+        )
+        record_ok = (
+            canonical
+            and candidate_count is not None
+            and candidate_count >= 0
+            and candidate_count % 2 == 0
+            and isinstance(node_count, int)
+            and candidate_count <= node_count * (node_count - 1)
+            and recorded_selected == selected_count
+            and recorded_selected <= candidate_count
+            and (
+                expected_edge_mode != "all_spatial"
+                or recorded_selected == candidate_count
+            )
+            and math.isfinite(selected_fraction)
+            and selected_fraction == expected_fraction
+            and record.get("status") == expected_status
+            and (
+                selected_count > 0
+                or (
+                    table_ok
+                    and bool(
+                        (
+                            attention_per_source[
+                                np.isclose(table_times, float(time_value))
+                            ]
+                            == 0.0
+                        ).all()
+                    )
+                )
+            )
+        )
+        records_ok = records_ok and record_ok
+        sparse_details.append(
+            f"t={time_value:g}:selected={selected_count},candidate={candidate_count},"
+            f"status={record.get('status')!r}"
+        )
+
+    dense_attention = list(sparse_attention_dir.glob("attn_interp_t*.npy"))
+    arrays_ok = arrays_ok and not dense_attention
+    ok = (
+        table_ok
+        and arrays_ok
+        and records_ok
+        and total_selected > 0
+        and interpretation_ok
+    )
+    return ok, (
+        f"table_max={table_max:.6g}, total_selected={total_selected}, "
+        f"summary_keys={tuple(sorted(edge_selection))}, "
+        f"interpretation_ok={interpretation_ok}; " + ", ".join(sparse_details)
+    )
+
+
 def validate_downstream(
     audit: Audit,
     run_dir: Path,
@@ -1772,51 +2016,19 @@ def validate_downstream(
 
     communication_dir = downstream / "communication"
     communication = pd.read_csv(communication_dir / "communication_by_celltype.csv")
-    communication_ok = not communication.empty and finite_numeric_frame(communication)
-    communication_ok = communication_ok and bool(
-        (communication["attention_per_source"] >= 0).all()
+    communication_ok, communication_detail = communication_edge_selection_contract(
+        communication,
+        analyses.get("communication"),
+        communication_dir / "sparse_attention",
+        expected_times=expected_times,
+        expected_node_counts=slice_counts,
+        expected_label_sets=slice_labels,
+        expected_edge_mode=spec["edge_prior_mode"],
     )
-    communication_ok = (
-        communication_ok and float(communication["attention_per_source"].max()) > 0.0
-    )
-    sparse_details = []
-    for time_value in expected_times:
-        attention_path = (
-            communication_dir
-            / "sparse_attention"
-            / f"attn_mean_interp_t{time_value}.npy"
-        )
-        edge_path = (
-            communication_dir
-            / "sparse_attention"
-            / f"edge_index_interp_t{time_value}.npy"
-        )
-        if not attention_path.is_file() or not edge_path.is_file():
-            communication_ok = False
-            continue
-        attention = np.load(attention_path, mmap_mode="r")
-        edge_index = np.load(edge_path, mmap_mode="r")
-        aligned = (
-            edge_index.ndim == 2
-            and edge_index.shape[0] == 2
-            and edge_index.shape[1] == attention.shape[0]
-        )
-        valid = (
-            aligned
-            and attention.size > 0
-            and np.isfinite(attention).all()
-            and bool((attention >= 0).all())
-        )
-        communication_ok = communication_ok and valid
-        sparse_details.append(f"t={time_value:g}:edges={attention.size}")
-    dense_attention = list(
-        (communication_dir / "sparse_attention").glob("attn_interp_t*.npy")
-    )
-    communication_ok = communication_ok and not dense_attention
     audit.check(
         communication_ok,
         "sparse nondegenerate communication",
-        ", ".join(sparse_details),
+        communication_detail,
     )
 
     gene_dir = downstream / "gene_dynamics"

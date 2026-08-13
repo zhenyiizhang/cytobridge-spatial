@@ -30,6 +30,14 @@ conditioned on the following observed endpoint, is not a two-endpoint bridge,
 and is not one lineage-continuous population rollout from t0. It must not be
 reported as global extrapolation.
 
+The LR-informed learned edge-predictor gate can retain zero edges at an
+individual stage. The saved summary distinguishes this structural-zero status
+from missing or failed output and reports the within-cutoff candidate and
+retained-edge counts. When candidates exist, zero means that none passed the
+frozen learned gate at that time; it must not be interpreted as evidence that
+all biological communication is absent. Do not add radius edges or change the
+frozen threshold after inspecting the result.
+
 ```bash
 cytobridge workflow --config zebrafish --dry-run
 jupyter lab notebooks/01_zebrafish.ipynb
