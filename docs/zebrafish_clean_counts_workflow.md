@@ -511,6 +511,14 @@ authoritative command contract for the checked-out revision:
 python scripts/run_zebrafish_paper_downstream.py --help
 ```
 
+A formal (`--profile full`) paper-downstream invocation must also pass
+`--acceptance-report` and `--expected-acceptance-sha256` for the exact canonical
+matched-ablation acceptance JSON. The report must record overall `PASS` and
+`datasets.zebrafish.status=PASS`; its `run_root`, the model directory, and the
+matched-root aligned-H5AD entry must identify the same full zebrafish profile.
+That exact path, hash, and required assertions are signed into every stage and
+the final run manifest, including when S25 reuses an external S22 bundle.
+
 Classifier reuse is part of the recorded contract. The runner trains the main
 trajectory classifier once and passes the same `classifier_cache_tag` through
 `cb.tl.run_interpolation_workflow`, so S22 and S25 resolve the identical cache

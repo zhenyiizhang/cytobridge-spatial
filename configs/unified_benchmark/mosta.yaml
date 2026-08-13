@@ -1,6 +1,6 @@
 # Shared benchmark hand-off from the corrected package run.
 dataset_id: mosta
-input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-final-4d53ec9/mosta/preprocess/mosta_aligned.h5ad
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/preprocess/mosta_aligned.h5ad
 expected_source_sha256: 8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25
 time_key: time_point_processed
 time_map: [[0, 0], [1, 1], [2, 2], [3, 3]]
@@ -24,12 +24,14 @@ preprocess_contract:
     n_pcs: 50
   matrix_checks: {x_finite: true, counts_finite: true, counts_nonnegative: true}
   external_audits:
-    - name: canonical_four_dataset_acceptance
-      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-final-4d53ec9/acceptance-4d53ec9.json
-      sha256: 48ac1924bc3fe10dd80d858f4bdf2100acc392811d184bc50d1bb5f1e161dd92
+    - name: canonical_matched_ablation_acceptance
+      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/matched_ablation_acceptance.json
+      sha256: c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df
       required_exact:
         status: PASS
         datasets:
+          mosta: {status: PASS}
+        matched_families:
           mosta: {status: PASS}
 benchmark:
   training_config: training/config.yaml

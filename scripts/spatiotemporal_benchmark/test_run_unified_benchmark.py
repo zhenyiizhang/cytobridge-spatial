@@ -18,6 +18,7 @@ import pytest
 import yaml
 
 from scripts.spatiotemporal_benchmark import build_inputs as input_builder
+from scripts.spatiotemporal_benchmark import evaluate_predictions as evaluator
 from scripts.spatiotemporal_benchmark import run_unified_benchmark as runner
 from scripts.spatiotemporal_benchmark.static_baselines import run as static_runner
 
@@ -782,7 +783,7 @@ def _write_formal_cytobridge_model(formal_dataset_root, root, cfg, split_id):
 def test_dataset_matrix_has_the_complete_target_plan():
     configs = runner.load_datasets(list(runner.DATASETS))
     assert all(
-        "corrected-de-novo-20260813-final-4d53ec9" in cfg["input_h5ad"]
+        "corrected-matched-ablation-20260813-3c87a3e-r1" in cfg["input_h5ad"]
         for cfg in configs.values()
     )
     expected_source_sha256 = {
@@ -792,7 +793,7 @@ def test_dataset_matrix_has_the_complete_target_plan():
         "admouse": "26d9a68acde90afc09d11b9c17de38525e37b1ee6b2e0290ddbda3efbe9ab968",
     }
     acceptance_sha256 = (
-        "48ac1924bc3fe10dd80d858f4bdf2100acc392811d184bc50d1bb5f1e161dd92"
+        "c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df"
     )
     for dataset, cfg in configs.items():
         assert cfg["expected_source_sha256"] == expected_source_sha256[dataset]
@@ -802,6 +803,7 @@ def test_dataset_matrix_has_the_complete_target_plan():
         assert audits[0]["required_exact"] == {
             "status": "PASS",
             "datasets": {dataset: {"status": "PASS"}},
+            "matched_families": {dataset: {"status": "PASS"}},
         }
     assert configs["zebrafish"]["loto_targets"] == [1, 2, 3]
     assert configs["zebrafish"]["full_data_targets"] == [1, 2, 3, 4]
@@ -815,10 +817,10 @@ def test_dataset_matrix_has_the_complete_target_plan():
 
 def test_launcher_defaults_bind_the_accepted_final_root():
     assert runner.DEFAULT_FORMAL_ROOT.name == (
-        "corrected-de-novo-20260813-final-4d53ec9"
+        "corrected-matched-ablation-20260813-3c87a3e-r1"
     )
     assert runner.DEFAULT_RUN_ROOT.name == (
-        "corrected-benchmark-20260813-final-4d53ec9-r1"
+        "corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-r1"
     )
 
 
@@ -1998,6 +2000,243 @@ def test_evaluate_revalidates_every_current_prediction_contract(tmp_path, monkey
     with pytest.raises(RuntimeError, match="stories:t1"):
         runner.evaluate("admouse", cfg, args)
     assert len(calls) == len(runner.PRIMARY_METHODS) * len(cfg["full_data_targets"])
+
+
+def test_evaluate_allows_only_explicit_non_numeric_status_for_missing_predictions(
+    tmp_path, monkeypatch
+):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    args = SimpleNamespace(
+        run_root=tmp_path,
+        formal_root=tmp_path / "formal",
+        tracks=["full_data"],
+        dry_run=False,
+    )
+    status_path = tmp_path / "admouse/status/method_target_status.csv"
+    runner.merge_status_rows(
+        status_path,
+        [
+            {
+                "track": "full_data",
+                "target": target,
+                "method": "stories",
+                "status": "timeout",
+                "reason": "declared test budget",
+                "elapsed_seconds": 3600.0,
+            }
+            for target in cfg["full_data_targets"]
+        ],
+    )
+    calls = []
+
+    def fake_complete(
+        root,
+        method,
+        track,
+        target,
+        config,
+        formal,
+        validation_cache=None,
+    ):
+        del root, track, target, config, formal, validation_cache
+        return method != "stories"
+
+    monkeypatch.setattr(runner, "target_output_is_complete", fake_complete)
+    monkeypatch.setattr(
+        runner,
+        "run_or_print",
+        lambda commands, dry_run: calls.append((commands, dry_run)),
+    )
+
+    runner.evaluate("admouse", cfg, args)
+
+    assert len(calls) == 1
+    commands, dry_run = calls[0]
+    assert dry_run is False
+    assert len(commands) == 2
+    assert str(status_path) in commands[0]
+
+
+def test_evaluate_omits_an_absent_optional_status_table(tmp_path, monkeypatch):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    args = SimpleNamespace(
+        run_root=tmp_path,
+        formal_root=tmp_path / "formal",
+        tracks=["full_data"],
+        dry_run=False,
+    )
+    calls = []
+    monkeypatch.setattr(
+        runner, "target_output_is_complete", lambda *args, **kwargs: True
+    )
+    monkeypatch.setattr(
+        runner,
+        "run_or_print",
+        lambda commands, dry_run: calls.append((commands, dry_run)),
+    )
+
+    runner.evaluate("admouse", cfg, args)
+
+    assert len(calls) == 1
+    assert "--status-table" not in calls[0][0][0]
+    command = calls[0][0][0]
+    prediction_root = Path(command[command.index("--predictions-root") + 1])
+    assert prediction_root == tmp_path / "admouse/predictions/full_data"
+
+
+def test_evaluate_scopes_prediction_scan_to_the_requested_track(tmp_path, monkeypatch):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    args = SimpleNamespace(
+        run_root=tmp_path,
+        formal_root=tmp_path / "formal",
+        tracks=["loto"],
+        dry_run=False,
+    )
+    malformed_off_track = (
+        tmp_path / "admouse/predictions/full_data/stories/t1/prediction.npz"
+    )
+    malformed_off_track.parent.mkdir(parents=True)
+    malformed_off_track.write_bytes(b"partial off-track artifact")
+    runner.merge_status_rows(
+        tmp_path / "admouse/status/method_target_status.csv",
+        [
+            {
+                "track": "loto",
+                "target": target,
+                "method": "stories",
+                "status": "timeout",
+                "reason": "declared test budget",
+                "elapsed_seconds": 3600.0,
+            }
+            for target in cfg["loto_targets"]
+        ],
+    )
+    calls = []
+
+    def fake_complete(
+        root,
+        method,
+        track,
+        target,
+        config,
+        formal,
+        validation_cache=None,
+    ):
+        del root, track, target, config, formal, validation_cache
+        return method != "stories"
+
+    monkeypatch.setattr(runner, "target_output_is_complete", fake_complete)
+    monkeypatch.setattr(
+        runner,
+        "run_or_print",
+        lambda commands, dry_run: calls.append((commands, dry_run)),
+    )
+
+    runner.evaluate("admouse", cfg, args)
+
+    command = calls[0][0][0]
+    prediction_root = Path(command[command.index("--predictions-root") + 1])
+    assert prediction_root == tmp_path / "admouse/predictions/loto"
+    assert malformed_off_track.is_file()
+
+
+def test_evaluate_rejects_prediction_that_contradicts_failure_status(
+    tmp_path, monkeypatch
+):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    args = SimpleNamespace(
+        run_root=tmp_path,
+        formal_root=tmp_path / "formal",
+        tracks=["full_data"],
+        dry_run=False,
+    )
+    runner.merge_status_rows(
+        tmp_path / "admouse/status/method_target_status.csv",
+        [
+            {
+                "track": "full_data",
+                "target": cfg["full_data_targets"][0],
+                "method": "stories",
+                "status": "oom",
+                "reason": "declared failure",
+                "elapsed_seconds": 1.0,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        runner, "target_output_is_complete", lambda *args, **kwargs: True
+    )
+
+    with pytest.raises(RuntimeError, match="contradict.*status=oom"):
+        runner.evaluate("admouse", cfg, args)
+
+
+@pytest.mark.parametrize(
+    ("track_cell", "target_cell", "status_cell", "expected"),
+    [
+        ("full-data", "1.0", "out-of-memory", "oom"),
+        ("no-holdout", "01", "unavailable", "not_available"),
+        ("full data", "1", "not available", "not_available"),
+        ("full_data", "1", "N/A", "not_applicable"),
+    ],
+)
+def test_evaluation_status_preflight_matches_evaluator_aliases(
+    tmp_path, track_cell, target_cell, status_cell, expected
+):
+    path = tmp_path / "status.csv"
+    path.write_text(
+        "track,target,method,status,reason\n"
+        f"{track_cell},{target_cell},stories,{status_cell},declared\n",
+        encoding="utf-8",
+    )
+
+    expected_rows = {("stories", 1): expected}
+    assert runner._evaluation_status_rows(path, track="full_data") == expected_rows
+    assert {
+        key: row["status"]
+        for key, row in evaluator._load_status_table(path, "full_data").items()
+    } == expected_rows
+
+
+def test_evaluation_status_preflight_accepts_optional_track_column(tmp_path):
+    path = tmp_path / "status.csv"
+    path.write_text(
+        "target,method,status,reason\n1,stories,timeout,declared\n",
+        encoding="utf-8",
+    )
+
+    expected_rows = {("stories", 1): "timeout"}
+    assert runner._evaluation_status_rows(path, track="full_data") == expected_rows
+    assert {
+        key: row["status"]
+        for key, row in evaluator._load_status_table(path, "full_data").items()
+    } == expected_rows
+
+
+def test_evaluation_status_parsers_both_reject_duplicate_headers(tmp_path):
+    path = tmp_path / "status.csv"
+    path.write_text(
+        "track,target,method,status,status\n" "full_data,1,stories,timeout,completed\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="duplicate columns.*status"):
+        runner._evaluation_status_rows(path, track="full_data")
+    with pytest.raises(evaluator.ContractError, match="duplicate columns.*status"):
+        evaluator._load_status_table(path, "full_data")
+
+
+def test_evaluation_status_parsers_both_reject_ragged_rows(tmp_path):
+    path = tmp_path / "status.csv"
+    path.write_text(
+        "track,target,method,status\n" "full_data,1,stories,timeout,EXTRA\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="different number of fields"):
+        runner._evaluation_status_rows(path, track="full_data")
+    with pytest.raises(evaluator.ContractError, match="different number of fields"):
+        evaluator._load_status_table(path, "full_data")
 
 
 def test_unverified_dynamic_fit_fails_closed(tmp_path, monkeypatch):

@@ -54,6 +54,26 @@ NATIVE_VS_ADAPTER_BY_METHOD = {
     "linear_centroid_shift": "explicit_control",
     "random_independent_pairs": "explicit_control",
 }
+EVALUATION_NON_NUMERIC_STATUSES = {
+    "timeout",
+    "oom",
+    "failed",
+    "not_available",
+    "not_applicable",
+}
+EVALUATION_STATUS_ALIASES = {
+    "out_of_memory": "oom",
+    "unavailable": "not_available",
+    "n/a": "not_applicable",
+    "na": "not_applicable",
+}
+EVALUATION_TRACK_ALIASES = {
+    "loto": "loto",
+    "full_data": "full_data",
+    "full-data": "full_data",
+    "noholdout": "full_data",
+    "no-holdout": "full_data",
+}
 DYNAMIC_REQUIRED_ARTIFACTS = {
     "stvcr": {"source_roster", "model", "rigid_transform", "fitted_train"},
     "stories": {"source_roster", "model"},
@@ -117,11 +137,11 @@ CYTOBRIDGE_ADAPTER_FILES = (
 )
 DEFAULT_FORMAL_ROOT = Path(
     "/data/cytobridge/projects/CytoBridge-ST-1104/runs/"
-    "corrected-de-novo-20260813-final-4d53ec9"
+    "corrected-matched-ablation-20260813-3c87a3e-r1"
 )
 DEFAULT_RUN_ROOT = Path(
     "/data/cytobridge/projects/CytoBridge-ST-1104/runs/"
-    "corrected-benchmark-20260813-final-4d53ec9-r1"
+    "corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-r1"
 )
 
 
@@ -1683,6 +1703,84 @@ def merge_status_rows(path, rows):
                 temporary.unlink()
 
 
+def _evaluation_status_rows(path, *, track):
+    """Read the exact explicit status contract used to justify an NA result."""
+
+    if not path.is_file():
+        return {}
+    with path.open(newline="", encoding="utf-8") as handle:
+        raw_reader = csv.reader(handle)
+        raw_header = next(raw_reader, None)
+        if raw_header is None:
+            raise RuntimeError("benchmark status table is empty")
+        for line_number, raw_row in enumerate(raw_reader, start=2):
+            if raw_row and len(raw_row) != len(raw_header):
+                raise RuntimeError(
+                    "benchmark status table row has a different number of fields "
+                    f"than its header at line {line_number}"
+                )
+        handle.seek(0)
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames or []
+        if len(fieldnames) != len(set(fieldnames)):
+            duplicates = sorted(
+                {name for name in fieldnames if fieldnames.count(name) > 1}
+            )
+            raise RuntimeError(
+                f"benchmark status table contains duplicate columns {duplicates}"
+            )
+        required = {"target", "method", "status"}
+        missing = sorted(required.difference(fieldnames))
+        if missing:
+            raise RuntimeError(f"benchmark status table is missing columns {missing}")
+        rows = {}
+        for row in reader:
+            raw_track = str(row.get("track", track)).strip().lower().replace(" ", "_")
+            try:
+                row_track = EVALUATION_TRACK_ALIASES[raw_track]
+            except KeyError as exc:
+                raise RuntimeError(
+                    f"unknown benchmark track/regime {row.get('track')!r}"
+                ) from exc
+            if row_track != track:
+                continue
+            try:
+                numeric_target = float(row["target"])
+                target = int(numeric_target)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"benchmark status target is not an integer: {row['target']!r}"
+                ) from exc
+            if not np.isfinite(numeric_target) or numeric_target != target:
+                raise RuntimeError(
+                    f"benchmark status target is not an integer: {row['target']!r}"
+                )
+            key = (str(row["method"]).strip(), target)
+            if not key[0]:
+                raise RuntimeError("benchmark status table contains an empty method")
+            if key in rows:
+                raise RuntimeError(
+                    f"duplicate benchmark status row for {key[0]}/t{target}"
+                )
+            status = (
+                str(row["status"])
+                .strip()
+                .lower()
+                .replace("-", "_")
+                .replace(" ", "_")
+            )
+            status = EVALUATION_STATUS_ALIASES.get(status, status)
+            if status in {"complete", "success"}:
+                status = "completed"
+            if status not in {"completed", *EVALUATION_NON_NUMERIC_STATUSES}:
+                raise RuntimeError(
+                    f"unknown benchmark status {row['status']!r} for "
+                    f"{key[0]}/t{target}"
+                )
+            rows[key] = status
+    return rows
+
+
 def run_or_print(commands, dry_run):
     for item in commands:
         print(shlex.join(item))
@@ -1768,20 +1866,41 @@ def evaluate(name, cfg, args):
     validation_cache = ResumeValidationCache()
     for track in args.tracks:
         targets = cfg["loto_targets"] if track == "loto" else cfg["full_data_targets"]
-        incomplete = [] if args.dry_run else [
-            (method, target)
-            for method in PRIMARY_METHODS
-            for target in targets
-            if not target_output_is_complete(
-                root,
-                method,
-                track,
-                target,
-                cfg,
-                formal,
-                validation_cache,
+        status_path = root / "status" / "method_target_status.csv"
+        declared = (
+            {}
+            if args.dry_run
+            else _evaluation_status_rows(status_path, track=track)
+        )
+        incomplete = []
+        contradictions = []
+        if not args.dry_run:
+            for method in PRIMARY_METHODS:
+                display_name = METHOD_NAME[method]
+                for target in targets:
+                    complete = target_output_is_complete(
+                        root,
+                        method,
+                        track,
+                        target,
+                        cfg,
+                        formal,
+                        validation_cache,
+                    )
+                    status = declared.get((display_name, int(target)))
+                    if complete:
+                        if status in EVALUATION_NON_NUMERIC_STATUSES:
+                            contradictions.append(
+                                f"{method}:t{target} has a current prediction but "
+                                f"status={status}"
+                            )
+                    elif status not in EVALUATION_NON_NUMERIC_STATUSES:
+                        incomplete.append((method, target))
+        if contradictions:
+            raise RuntimeError(
+                "Refusing evaluation because prediction artifacts contradict "
+                "their declared execution status: " + "; ".join(contradictions)
             )
-        ]
         if incomplete:
             detail = ", ".join(
                 f"{method}:t{target}" for method, target in incomplete
@@ -1792,10 +1911,12 @@ def evaluate(name, cfg, args):
             )
         output = root / "evaluation" / track
         score = command("scripts.spatiotemporal_benchmark.evaluate_predictions", sys.executable,
-                        "--input-manifest", root / "inputs" / "manifest.json", "--predictions-root", root / "predictions",
-                        "--status-table", root / "status" / "method_target_status.csv", "--track", track,
-                        "--targets", *targets, "--methods", *(METHOD_NAME[method] for method in PRIMARY_METHODS),
+                        "--input-manifest", root / "inputs" / "manifest.json", "--predictions-root", root / "predictions" / track,
+                        "--track", track, "--targets", *targets,
+                        "--methods", *(METHOD_NAME[method] for method in PRIMARY_METHODS),
                         "--output-dir", output)
+        if status_path.is_file():
+            score.extend(["--status-table", str(status_path)])
         report = command("scripts.spatiotemporal_benchmark.summarize_results", sys.executable,
                          "--metrics-long", output / f"{track}_metrics_long.csv",
                          "--evaluation-manifest", output / f"{track}_evaluation_manifest.json",

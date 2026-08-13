@@ -30,10 +30,12 @@ Examples
 Run all manuscript analyses::
 
     python scripts/run_zebrafish_paper_downstream.py \
-      --aligned-h5ad RUN/preprocess/zebrafish_aligned.h5ad \
-      --model-dir RUN/conditions/alpha_express_0015/training \
-      --lr-database RUN/assets/CellChatDB.ligrec.zebrafish.csv \
-      --output-dir RUN/conditions/alpha_express_0015/paper_downstream \
+      --aligned-h5ad MATCHED_RUN/zebrafish/preprocess/zebrafish_aligned.h5ad \
+      --model-dir MATCHED_RUN/zebrafish/training \
+      --acceptance-report MATCHED_RUN/matched_ablation_acceptance.json \
+      --expected-acceptance-sha256 <exact-sha256> \
+      --lr-database /accepted/assets/CellChatDB.ligrec.zebrafish.csv \
+      --output-dir MATCHED_RUN/zebrafish/paper_downstream \
       --stage all --profile full --device cuda
 
 Resume only S25 and communication::
@@ -94,6 +96,11 @@ CANONICAL_TRAJECTORY_SCOPE = (
 )
 S22_MOSAIC_COLUMNS = 3
 S25_HEATMAP_COLUMNS = 2
+MATCHED_ACCEPTANCE_KEY = "canonical_matched_acceptance"
+MATCHED_ACCEPTANCE_REQUIRED_EXACT = {
+    "status": "PASS",
+    "datasets": {"zebrafish": {"status": "PASS"}},
+}
 IMPLEMENTATION_SOURCE_RELATIVE_PATHS = tuple(
     sorted(
         path.relative_to(REPO_ROOT).as_posix()
@@ -171,6 +178,201 @@ def _require_dir(path: str | Path, description: str) -> Path:
     if not resolved.is_dir():
         raise FileNotFoundError(f"Missing {description}: {resolved}")
     return resolved
+
+
+def _lexical_absolute_path(path: str | Path) -> Path:
+    """Return an absolute normalized path without resolving its final symlink."""
+
+    return Path(os.path.abspath(os.fspath(Path(path).expanduser())))
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def _load_matched_acceptance_report(
+    path: str | Path,
+    expected_sha256: str,
+) -> tuple[Path, str, Mapping[str, Any], Path]:
+    """Load the exact canonical matched acceptance report, failing closed."""
+
+    report_path = _require_file(path, "canonical matched acceptance report")
+    expected = str(expected_sha256).strip().lower()
+    if len(expected) != 64 or any(
+        character not in "0123456789abcdef" for character in expected
+    ):
+        raise ValueError("--expected-acceptance-sha256 must be exactly 64 hex digits")
+    observed = _sha256(report_path)
+    if observed != expected:
+        raise RuntimeError(
+            "Canonical matched acceptance SHA-256 mismatch: "
+            f"expected {expected}, observed {observed}"
+        )
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            f"Cannot read canonical matched acceptance JSON {report_path}: {exc}"
+        ) from exc
+    if not isinstance(payload, Mapping):
+        raise RuntimeError("Canonical matched acceptance report must be a JSON object")
+    datasets = payload.get("datasets")
+    zebrafish = datasets.get("zebrafish") if isinstance(datasets, Mapping) else None
+    if payload.get("status") != "PASS":
+        raise RuntimeError("Canonical matched acceptance report is not overall PASS")
+    if not isinstance(zebrafish, Mapping) or zebrafish.get("status") != "PASS":
+        raise RuntimeError(
+            "Canonical matched acceptance report does not record "
+            "datasets.zebrafish status PASS"
+        )
+    raw_run_root = payload.get("run_root")
+    if not isinstance(raw_run_root, str) or not raw_run_root.strip():
+        raise RuntimeError(
+            "Canonical matched acceptance report lacks a non-empty run_root"
+        )
+    declared_root = Path(raw_run_root).expanduser()
+    if not declared_root.is_absolute():
+        raise RuntimeError("Canonical matched acceptance run_root must be absolute")
+    run_root = declared_root.resolve()
+    if not run_root.is_dir():
+        raise RuntimeError(
+            f"Canonical matched acceptance run_root is missing: {run_root}"
+        )
+    return report_path, observed, payload, run_root
+
+
+def _require_zebrafish_matched_path(
+    path: str | Path,
+    *,
+    run_root: Path,
+    description: str,
+    allow_final_symlink: bool,
+) -> Path:
+    """Require a formal input entry under the accepted full zebrafish profile."""
+
+    candidate = _lexical_absolute_path(path)
+    try:
+        relative = candidate.relative_to(run_root)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{description} is outside canonical matched run_root {run_root}: "
+            f"{candidate}"
+        ) from exc
+    if not relative.parts or relative.parts[0] != "zebrafish":
+        raise RuntimeError(
+            f"{description} must belong to the full zebrafish profile under "
+            f"canonical matched run_root {run_root}: {candidate}"
+        )
+    profile_root = run_root / "zebrafish"
+    resolved_scope = (
+        candidate.parent.resolve() if allow_final_symlink else candidate.resolve()
+    )
+    if not _is_relative_to(resolved_scope, profile_root):
+        raise RuntimeError(
+            f"{description} escapes the full zebrafish profile through a symlink: "
+            f"{candidate}"
+        )
+    return candidate
+
+
+def _require_formal_acceptance_cli(args: argparse.Namespace) -> None:
+    report = getattr(args, "acceptance_report", None)
+    digest = getattr(args, "expected_acceptance_sha256", None)
+    required = str(getattr(args, "profile", "full")) == "full"
+    if required and (report is None or digest is None):
+        raise ValueError(
+            "--acceptance-report and --expected-acceptance-sha256 are required "
+            "for --profile full"
+        )
+    if (report is None) != (digest is None):
+        raise ValueError(
+            "--acceptance-report and --expected-acceptance-sha256 must be "
+            "provided together"
+        )
+
+
+def _build_matched_acceptance_binding(
+    args: argparse.Namespace,
+    *,
+    aligned_h5ad: str | Path,
+    model_dir: str | Path,
+) -> dict[str, object] | None:
+    """Bind formal downstream work to one exact accepted matched run."""
+
+    _require_formal_acceptance_cli(args)
+    if args.acceptance_report is None:
+        return None
+    report_path, digest, _payload, run_root = _load_matched_acceptance_report(
+        args.acceptance_report,
+        args.expected_acceptance_sha256,
+    )
+    aligned_entry = _require_zebrafish_matched_path(
+        aligned_h5ad,
+        run_root=run_root,
+        description="aligned zebrafish H5AD path",
+        allow_final_symlink=True,
+    )
+    model_entry = _require_zebrafish_matched_path(
+        model_dir,
+        run_root=run_root,
+        description="native six-stage model directory",
+        allow_final_symlink=False,
+    )
+    return {
+        "path": str(report_path),
+        "sha256": digest,
+        "required_exact": _json_ready(MATCHED_ACCEPTANCE_REQUIRED_EXACT),
+        "observed_run_root": str(run_root),
+        "matched_profile": "zebrafish",
+        "aligned_h5ad_entry": str(aligned_entry),
+        "model_dir_entry": str(model_entry),
+    }
+
+
+def _require_acceptance_binding_current(binding: Mapping[str, object]) -> None:
+    """Rehash a signed acceptance record before reuse or publication."""
+
+    if binding.get("required_exact") != MATCHED_ACCEPTANCE_REQUIRED_EXACT:
+        raise RuntimeError(
+            "Canonical matched acceptance binding has stale required_exact assertions"
+        )
+    report_path, digest, _payload, run_root = _load_matched_acceptance_report(
+        str(binding.get("path", "")),
+        str(binding.get("sha256", "")),
+    )
+    if str(report_path) != str(binding.get("path")) or digest != binding.get("sha256"):
+        raise RuntimeError("Canonical matched acceptance path/SHA binding changed")
+    if str(run_root) != binding.get("observed_run_root"):
+        raise RuntimeError("Canonical matched acceptance run_root binding changed")
+    _require_zebrafish_matched_path(
+        str(binding.get("aligned_h5ad_entry", "")),
+        run_root=run_root,
+        description="bound aligned zebrafish H5AD path",
+        allow_final_symlink=True,
+    )
+    _require_zebrafish_matched_path(
+        str(binding.get("model_dir_entry", "")),
+        run_root=run_root,
+        description="bound native six-stage model directory",
+        allow_final_symlink=False,
+    )
+
+
+def _context_acceptance_binding(ctx: object) -> Mapping[str, object] | None:
+    common = getattr(ctx, "common_signature", {})
+    binding = (
+        common.get(MATCHED_ACCEPTANCE_KEY) if isinstance(common, Mapping) else None
+    )
+    if binding is None:
+        return None
+    if not isinstance(binding, Mapping):
+        raise RuntimeError("Canonical matched acceptance binding must be an object")
+    _require_acceptance_binding_current(binding)
+    return binding
 
 
 def _time_grid(start: float, end: float, step: float) -> list[float]:
@@ -432,6 +634,18 @@ def _require_manifest_current_common_signature(
             f"Upstream stage {stage!r} was produced by different data/model/code "
             f"settings. Rerun that stage before consuming it: {source}"
         )
+    current_acceptance = _context_acceptance_binding(ctx)
+    recorded_acceptance = manifest.get(MATCHED_ACCEPTANCE_KEY)
+    if current_acceptance is not None and recorded_acceptance != current_acceptance:
+        raise RuntimeError(
+            f"Upstream stage {stage!r} is missing or was produced under a stale "
+            f"canonical matched acceptance binding: {source}"
+        )
+    if current_acceptance is None and recorded_acceptance is not None:
+        raise RuntimeError(
+            f"Upstream stage {stage!r} has an unexpected canonical matched "
+            f"acceptance binding: {source}"
+        )
 
 
 def _require_current_stage_manifest(ctx: RunContext, stage: str) -> dict[str, object]:
@@ -565,6 +779,7 @@ def _execute_stage(
     settings: Mapping[str, object],
     action: Callable[[Path], tuple[Sequence[str | Path], Mapping[str, object]]],
 ) -> dict[str, object]:
+    current_acceptance = _context_acceptance_binding(ctx)
     stage_dir = ctx.output_dir / stage
     stage_dir.mkdir(parents=True, exist_ok=True)
     signature = _stable_hash(
@@ -582,6 +797,11 @@ def _execute_stage(
             and prior.get("signature") == signature
             and _recorded_outputs_exist(prior)
         ):
+            if prior.get(MATCHED_ACCEPTANCE_KEY) != current_acceptance:
+                raise RuntimeError(
+                    f"Refusing to resume {stage!r} with a missing or stale "
+                    "canonical matched acceptance binding"
+                )
             print(f"[resume] {stage}: signature matches; keeping existing outputs")
             return prior
         print(
@@ -606,6 +826,7 @@ def _execute_stage(
         }
         for path in output_paths
     ]
+    _context_acceptance_binding(ctx)
     manifest = {
         "schema_version": 1,
         "stage": stage,
@@ -618,6 +839,7 @@ def _execute_stage(
         "details": _json_ready(details),
         "outputs": output_paths,
         "output_artifacts": output_artifacts,
+        MATCHED_ACCEPTANCE_KEY: _json_ready(current_acceptance),
     }
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
@@ -3035,6 +3257,13 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
 
 
 def _build_context(args: argparse.Namespace) -> RunContext:
+    aligned_h5ad_entry = _lexical_absolute_path(args.aligned_h5ad)
+    model_dir_entry = _lexical_absolute_path(args.model_dir)
+    acceptance_binding = _build_matched_acceptance_binding(
+        args,
+        aligned_h5ad=aligned_h5ad_entry,
+        model_dir=model_dir_entry,
+    )
     args.aligned_h5ad = _require_file(args.aligned_h5ad, "aligned zebrafish H5AD")
     args.model_dir = _require_dir(args.model_dir, "native six-stage model directory")
     args.output_dir = Path(args.output_dir).expanduser().resolve()
@@ -3108,9 +3337,12 @@ def _build_context(args: argparse.Namespace) -> RunContext:
         *(REPO_ROOT / path for path in IMPLEMENTATION_SOURCE_RELATIVE_PATHS),
     )
     common_signature = {
+        MATCHED_ACCEPTANCE_KEY: _json_ready(acceptance_binding),
         "aligned_h5ad": str(args.aligned_h5ad),
+        "aligned_h5ad_matched_entry": str(aligned_h5ad_entry),
         "aligned_h5ad_sha256": _sha256(args.aligned_h5ad),
         "model_dir": str(args.model_dir),
+        "model_dir_matched_entry": str(model_dir_entry),
         "weight_stage": loaded.weight_stage,
         "weight_path": str(loaded.weight_path),
         "weight_sha256": _sha256(loaded.weight_path),
@@ -3172,6 +3404,7 @@ def _write_root_manifest(
     selected_stages: Sequence[str],
     stage_manifests: Mapping[str, Mapping[str, object]],
 ) -> Path:
+    current_acceptance = _context_acceptance_binding(ctx)
     training_defaults = ctx.loaded.config.get("training", {}).get("defaults", {})
     interaction_cfg = ctx.loaded.config.get("model", {}).get("interaction_net", {})
     complete_manifests: dict[str, Mapping[str, object]] = {}
@@ -3182,13 +3415,24 @@ def _write_root_manifest(
             continue
         complete_manifests[name] = manifest
     complete_manifests.update(stage_manifests)
+    stage_signatures = {
+        name: manifest.get("signature") for name, manifest in complete_manifests.items()
+    }
     payload = {
         "schema_version": 1,
         "workflow": "zebrafish_native_paper_downstream",
+        "signature": _stable_hash(
+            {
+                "workflow": "zebrafish_native_paper_downstream",
+                "common": ctx.common_signature,
+                "stage_signatures": stage_signatures,
+            }
+        ),
         "completed_at": _utc_now(),
         "selected_stages_this_invocation": list(selected_stages),
         "completed_stages": list(complete_manifests),
         "common": ctx.common_signature,
+        MATCHED_ACCEPTANCE_KEY: _json_ready(current_acceptance),
         "profile": ctx.args.profile,
         "shared_cache_dir": str(ctx.shared_cache_dir),
         "gpu_assignment": {
@@ -3220,10 +3464,7 @@ def _write_root_manifest(
         "stage_manifests": {
             name: str(_stage_manifest_path(ctx, name)) for name in complete_manifests
         },
-        "stage_signatures": {
-            name: manifest.get("signature")
-            for name, manifest in complete_manifests.items()
-        },
+        "stage_signatures": stage_signatures,
     }
     path = ctx.output_dir / "run_manifest.json"
     path.write_text(
@@ -3239,6 +3480,23 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--aligned-h5ad", type=Path, required=True)
     parser.add_argument("--model-dir", type=Path, required=True)
+    parser.add_argument(
+        "--acceptance-report",
+        type=Path,
+        default=None,
+        help=(
+            "Exact canonical matched-ablation acceptance JSON. Required for "
+            "--profile full and optional only for smoke tests."
+        ),
+    )
+    parser.add_argument(
+        "--expected-acceptance-sha256",
+        default=None,
+        help=(
+            "Required exact SHA-256 of --acceptance-report. The report must be "
+            "overall PASS with datasets.zebrafish PASS."
+        ),
+    )
     parser.add_argument(
         "--lr-database",
         type=Path,
@@ -3393,6 +3651,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         raise ValueError("--s25-classifier-knn-neighbors must be > 0")
     if int(args.communication_classifier_knn_neighbors) <= 0:
         raise ValueError("--communication-classifier-knn-neighbors must be > 0")
+    _require_formal_acceptance_cli(args)
     selected_stages = _parse_stages(args.stage)
     if "communication" in selected_stages and "s25" not in selected_stages:
         state_index = (

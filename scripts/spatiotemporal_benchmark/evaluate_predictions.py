@@ -10,6 +10,7 @@ written separately and cannot be pooled by this script.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -153,7 +154,25 @@ def _load_status_table(
         return {}
     path = path.expanduser().resolve()
     try:
-        table = pd.read_csv(path)
+        with path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.reader(handle)
+            header = next(reader, None)
+            rows = list(reader)
+        if header is None:
+            raise ContractError(f"status table is empty: {path}")
+        if len(header) != len(set(header)):
+            duplicates = sorted({name for name in header if header.count(name) > 1})
+            raise ContractError(f"status table contains duplicate columns {duplicates}")
+        for line_number, row in enumerate(rows, start=2):
+            if row and len(row) != len(header):
+                raise ContractError(
+                    "status table row has a different number of fields than "
+                    f"its header at line {line_number}"
+                )
+        # Status tokens such as ``N/A`` are part of the explicit execution
+        # contract, not missing CSV values.  Preserve their literal spelling
+        # so the alias normalizer below sees the same bytes as the launcher.
+        table = pd.read_csv(path, keep_default_na=False)
     except (OSError, pd.errors.ParserError) as exc:
         raise ContractError(f"cannot read status table {path}: {exc}") from exc
     required = {"method", "target", "status"}

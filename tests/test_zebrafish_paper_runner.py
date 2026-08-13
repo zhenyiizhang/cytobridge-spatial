@@ -62,6 +62,91 @@ def test_production_classifier_defaults_use_balanced_accuracy_and_k10():
     assert sensitivity_args.lr_complex_mode == "geometric_mean"
 
 
+def _matched_acceptance_fixture(tmp_path):
+    run_root = tmp_path / "matched"
+    aligned = run_root / "zebrafish" / "preprocess" / "zebrafish_aligned.h5ad"
+    aligned.parent.mkdir(parents=True)
+    aligned.write_bytes(b"aligned")
+    model = run_root / "zebrafish" / "training"
+    model.mkdir()
+    report = run_root / "matched_ablation_acceptance.json"
+    report.write_text(
+        json.dumps(
+            {
+                "run_root": str(run_root.resolve()),
+                "status": "PASS",
+                "datasets": {"zebrafish": {"status": "PASS"}},
+                "matched_families": {"zebrafish": {"status": "PASS"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return run_root, aligned, model, report, runner._sha256(report)
+
+
+def _acceptance_args(tmp_path):
+    run_root, aligned, model, report, digest = _matched_acceptance_fixture(tmp_path)
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(aligned),
+            "--model-dir",
+            str(model),
+            "--output-dir",
+            str(run_root / "zebrafish" / "paper_downstream"),
+            "--acceptance-report",
+            str(report),
+            "--expected-acceptance-sha256",
+            digest,
+        ]
+    )
+    return args, run_root, aligned, model, report
+
+
+def test_formal_profile_requires_both_acceptance_arguments(tmp_path):
+    with pytest.raises(ValueError, match="acceptance-report.*required"):
+        runner.main(
+            [
+                "--aligned-h5ad",
+                str(tmp_path / "aligned.h5ad"),
+                "--model-dir",
+                str(tmp_path / "model"),
+                "--output-dir",
+                str(tmp_path / "output"),
+            ]
+        )
+
+
+def test_matched_acceptance_rejects_tampered_report(tmp_path):
+    args, _run_root, aligned, model, report = _acceptance_args(tmp_path)
+    report.write_text(report.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="SHA-256 mismatch"):
+        runner._build_matched_acceptance_binding(
+            args,
+            aligned_h5ad=aligned,
+            model_dir=model,
+        )
+
+
+@pytest.mark.parametrize("wrong_input", ["aligned", "model"])
+def test_matched_acceptance_rejects_input_from_wrong_root(tmp_path, wrong_input):
+    args, _run_root, aligned, model, _report = _acceptance_args(tmp_path)
+    other = tmp_path / "other" / "zebrafish"
+    if wrong_input == "aligned":
+        aligned = other / "preprocess" / "zebrafish_aligned.h5ad"
+        aligned.parent.mkdir(parents=True)
+        aligned.write_bytes(b"other")
+    else:
+        model = other / "training"
+        model.mkdir(parents=True)
+    with pytest.raises(RuntimeError, match="outside canonical matched run_root"):
+        runner._build_matched_acceptance_binding(
+            args,
+            aligned_h5ad=aligned,
+            model_dir=model,
+        )
+
+
 def test_communication_classifier_knn_must_be_positive(tmp_path):
     with pytest.raises(
         ValueError, match="--communication-classifier-knn-neighbors must be > 0"
@@ -149,6 +234,57 @@ def test_current_stage_manifest_rejects_changed_common_or_output(tmp_path):
     output.write_text("tampered\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="missing or modified outputs"):
         runner._require_current_stage_manifest(context, "s22")
+
+
+def test_acceptance_binding_is_explicit_in_stage_and_final_manifests(tmp_path):
+    args, _run_root, aligned, model, _report = _acceptance_args(tmp_path)
+    binding = runner._build_matched_acceptance_binding(
+        args,
+        aligned_h5ad=aligned,
+        model_dir=model,
+    )
+    common = {runner.MATCHED_ACCEPTANCE_KEY: binding, "model": "current"}
+    output_dir = tmp_path / "paper"
+    context = SimpleNamespace(
+        args=SimpleNamespace(
+            force=False, profile="full", device="cpu", time_key="time"
+        ),
+        output_dir=output_dir,
+        common_signature=common,
+        loaded=SimpleNamespace(config={}),
+        shared_cache_dir=tmp_path / "cache",
+        adata=ad.AnnData(
+            X=np.ones((1, 1)),
+            obs={"time": [0.0]},
+        ),
+    )
+
+    def action(stage_dir):
+        output = stage_dir / "result.txt"
+        output.write_text("complete\n", encoding="utf-8")
+        return [output], {}
+
+    manifest = runner._execute_stage(context, "classifier", {}, action)
+    assert manifest[runner.MATCHED_ACCEPTANCE_KEY] == binding
+    assert manifest["signature"] == runner._stable_hash(
+        {"stage": "classifier", "common": common, "settings": {}}
+    )
+
+    root_manifest = runner._write_root_manifest(
+        context,
+        ["classifier"],
+        {"classifier": manifest},
+    )
+    payload = json.loads(root_manifest.read_text(encoding="utf-8"))
+    assert payload[runner.MATCHED_ACCEPTANCE_KEY] == binding
+    assert payload["common"][runner.MATCHED_ACCEPTANCE_KEY] == binding
+    assert payload["signature"] == runner._stable_hash(
+        {
+            "workflow": "zebrafish_native_paper_downstream",
+            "common": common,
+            "stage_signatures": {"classifier": manifest["signature"]},
+        }
+    )
 
 
 def test_canonical_s22_manifest_semantics_reject_legacy_global_bundle(tmp_path):
@@ -245,6 +381,8 @@ def _write_external_s22_bundle(bundle, *, common, settings):
             }
         ],
     }
+    if runner.MATCHED_ACCEPTANCE_KEY in common:
+        manifest[runner.MATCHED_ACCEPTANCE_KEY] = common[runner.MATCHED_ACCEPTANCE_KEY]
     manifest_path = bundle.parent / "stage_manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     return manifest_path
@@ -274,6 +412,44 @@ def test_s25_external_s22_signature_must_bind_current_common(tmp_path):
     )
 
     with pytest.raises(RuntimeError, match="different data/model/code"):
+        runner._stage_s25(context)
+
+
+@pytest.mark.parametrize("external_binding", ["missing", "stale"])
+def test_s25_external_s22_must_bind_same_matched_acceptance(tmp_path, external_binding):
+    args, _run_root, aligned, model, _report = _acceptance_args(tmp_path)
+    binding = runner._build_matched_acceptance_binding(
+        args,
+        aligned_h5ad=aligned,
+        model_dir=model,
+    )
+    common = {
+        "model_config_sha256": "current",
+        runner.MATCHED_ACCEPTANCE_KEY: binding,
+    }
+    context, bundle = _external_s22_test_context(tmp_path, common=common)
+    settings = _canonical_s22_test_settings(context)
+    manifest_path = _write_external_s22_bundle(
+        bundle,
+        common=common,
+        settings=settings,
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if external_binding == "missing":
+        manifest.pop(runner.MATCHED_ACCEPTANCE_KEY)
+    else:
+        manifest[runner.MATCHED_ACCEPTANCE_KEY] = {
+            **binding,
+            "sha256": "0" * 64,
+        }
+    # Preserve a current common signature to prove that the explicit external
+    # acceptance record is independently enforced.
+    manifest["signature"] = runner._stable_hash(
+        {"stage": "s22", "common": common, "settings": settings}
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="missing or.*stale.*acceptance"):
         runner._stage_s25(context)
 
 

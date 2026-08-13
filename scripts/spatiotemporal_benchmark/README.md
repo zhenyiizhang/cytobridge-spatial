@@ -55,18 +55,19 @@ python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run evalu
 External environments and official source checkouts can be supplied without
 editing code, for example `--python stvcr=/envs/stvcr/bin/python --source
 stvcr=/software/stvcr`. The default package checkpoints are read from
-`corrected-de-novo-20260813-final-4d53ec9/{dataset}/training`. This accepted
-canonical hand-off retains immutable links to the r2 preprocessing/training
-bytes and adds the final package-run acceptance boundary. The launcher does not
-start a method/split until its resolved checkpoints exist. Each dataset YAML
-also pins the aligned-H5AD SHA-256 and the SHA-256 plus per-dataset PASS entry
-of the canonical four-dataset acceptance report.
+`corrected-matched-ablation-20260813-3c87a3e-r1/{dataset}/training`. This is the
+same-release, same-seed retraining accepted across the full, radius-only, and
+no-interaction arms; the benchmark uses only its learned-interaction main arm.
+The launcher does not start a method/split until its resolved checkpoints
+exist. Each dataset YAML also pins the aligned-H5AD SHA-256 and the SHA-256 plus
+both the per-profile and matched-family PASS entries of the 12-profile
+acceptance report.
 
-Each four-dataset YAML binds the exact aligned-H5AD SHA-256 and the hashed final
-acceptance report. Because the canonical preprocessing and training entries are
-immutable symbolic links, the resolved input manifest intentionally records
-their physical r2 targets; the YAML/config-source hash records that those exact
-bytes were selected through the accepted final hand-off.
+Each four-dataset YAML binds the exact aligned-H5AD SHA-256 and hashed matched
+acceptance report. The resolved input manifest may record the aligned H5AD's
+physical accepted-r2 target because the formal matched root uses immutable
+links; the YAML/config-source hash proves those exact bytes were selected
+through the accepted matched hand-off.
 
 Run from the repository root on the server:
 
