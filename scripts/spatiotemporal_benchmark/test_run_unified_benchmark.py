@@ -23,6 +23,21 @@ from scripts.spatiotemporal_benchmark import run_unified_benchmark as runner
 from scripts.spatiotemporal_benchmark.static_baselines import run as static_runner
 
 
+def test_python_assignment_preserves_virtualenv_symlink(tmp_path):
+    system_python = tmp_path / "usr/bin/python3.10"
+    system_python.parent.mkdir(parents=True)
+    system_python.write_bytes(b"python")
+    venv_python = tmp_path / "env/bin/python"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.symlink_to(system_python)
+
+    parsed = runner.assignments([f"stvcr={venv_python}"], preserve_symlinks=True)
+
+    assert parsed["stvcr"] == venv_python
+    assert parsed["stvcr"] != system_python.resolve()
+    assert runner.command("example.module", parsed["stvcr"])[0] == str(venv_python)
+
+
 def _merge_one_status(path, method):
     runner.merge_status_rows(
         path,

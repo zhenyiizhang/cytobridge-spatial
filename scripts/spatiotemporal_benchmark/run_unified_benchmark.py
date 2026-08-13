@@ -149,13 +149,25 @@ def load_datasets(names):
     return {name: yaml.safe_load((CONFIG_DIR / f"{name}.yaml").read_text(encoding="utf-8")) for name in names}
 
 
-def assignments(values):
+def assignments(values, *, preserve_symlinks=False):
     result = {}
     for value in values:
         name, separator, path = value.partition("=")
         if not separator or name not in METHODS:
             raise ValueError(f"expected METHOD=PATH, found {value!r}")
-        result[name] = Path(path).expanduser().resolve()
+        candidate = Path(path).expanduser()
+        if preserve_symlinks:
+            # A virtual environment commonly exposes ``bin/python`` as a
+            # symlink.  Keep that lexical path so Python discovers the venv
+            # from argv[0] instead of accidentally invoking its system target.
+            candidate = Path(os.path.abspath(candidate))
+            if not candidate.exists():
+                raise FileNotFoundError(f"Python path does not exist: {candidate}")
+            if not candidate.is_file():
+                raise ValueError(f"Python path is not a file: {candidate}")
+        else:
+            candidate = candidate.resolve()
+        result[name] = candidate
     return result
 
 
@@ -1944,7 +1956,8 @@ def main(argv=None):
     if args.action == "prepare":
         for name, cfg in configs.items(): prepare(name, cfg, args)
     elif args.action == "run":
-        pythons, sources = assignments(args.python), assignments(args.source)
+        pythons = assignments(args.python, preserve_symlinks=True)
+        sources = assignments(args.source)
         for name, cfg in configs.items(): run_dataset(name, cfg, args, pythons, sources)
     else:
         for name, cfg in configs.items(): evaluate(name, cfg, args)
