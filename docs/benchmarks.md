@@ -107,6 +107,11 @@ dataset-dependent reconstruction effect, not uniform full-model superiority or
 evidence that interaction is biologically unnecessary. Old Zebrafish ablation
 values must not be carried forward as results for the final model.
 
+The signed report manifest has SHA-256
+`b96de0c13023b6a4727e76ba8f67b84f3442f9c989b4d7a14dc03f5c1b904fdb`;
+its companion PDF, PNG, paired tables, caption, and provenance record are the
+authoritative matched-ablation reporting artifacts.
+
 ## Hyperparameter evidence boundary
 
 The full, no-LR-prior, and no-interaction arms have now been re-fit in one

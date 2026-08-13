@@ -33,7 +33,8 @@ in-sample comparisons, not LOTO or significance tests, and support a
 dataset-dependent interaction effect rather than uniform full-model
 superiority. The primary four-dataset cross-method benchmark remains pending;
 legacy winner and old ablation summaries are not promoted into release
-conclusions.
+conclusions. The matched report manifest SHA-256 is
+`b96de0c13023b6a4727e76ba8f67b84f3442f9c989b4d7a14dc03f5c1b904fdb`.
 
 This is a release candidate. It should be merged to `main` only after source,
 wheel, notebook, documentation, and independent science review pass.
