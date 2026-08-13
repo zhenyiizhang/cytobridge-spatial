@@ -726,6 +726,22 @@ def validate_training_config(
                 float(reference_interaction.get("cutoff", np.nan)),
                 "resolved all_spatial interaction cutoff",
             )
+        # Production checkpoints written before ``edge_prior_mode`` became an
+        # explicit YAML field still have learned-prior semantics: ``learned``
+        # was the GNN constructor default.  Normalize only that one historical
+        # omission and only when the reference profile explicitly declares
+        # learned.  An explicit actual mode, an all-spatial reference, or a
+        # missing reference declaration must continue through the strict byte-
+        # projected scientific comparison unchanged.
+        if (
+            "edge_prior_mode" not in interaction
+            and "edge_prior_mode" in reference_interaction
+            and str(reference_interaction["edge_prior_mode"]).strip().lower()
+            == "learned"
+        ):
+            scientific_profile["model"]["interaction_net"][
+                "edge_prior_mode"
+            ] = "learned"
         scientific_text = json.dumps(
             scientific_profile, sort_keys=True, separators=(",", ":")
         )

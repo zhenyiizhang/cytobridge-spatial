@@ -271,6 +271,42 @@ class ConfigContractTests(unittest.TestCase):
                     fields["model.interaction_net.edge_predictor_thre"], 0.57
                 )
 
+    def test_only_historical_missing_learned_mode_matches_explicit_reference(
+        self,
+    ) -> None:
+        reference = locked_config()
+        historical = runtime_config()
+        historical["model"]["interaction_net"].pop("edge_prior_mode")
+
+        report = validate_training_config(
+            historical,
+            runtime_resolved=True,
+            reference=reference,
+        )
+        self.assertEqual(report["edge_prior_mode"], "learned")
+        self.assertEqual(
+            report["runtime_resolved_fields"]["model.interaction_net.edge_prior_mode"],
+            "learned",
+        )
+
+        all_spatial_reference = all_spatial_config()
+        with self.assertRaisesRegex(ContractError, "package YAML"):
+            validate_training_config(
+                historical,
+                runtime_resolved=True,
+                reference=all_spatial_reference,
+            )
+
+        implicit_reference = locked_config()
+        implicit_reference["model"]["interaction_net"].pop("edge_prior_mode")
+        explicit_actual = runtime_config()
+        with self.assertRaisesRegex(ContractError, "package YAML"):
+            validate_training_config(
+                explicit_actual,
+                runtime_resolved=True,
+                reference=implicit_reference,
+            )
+
     def test_edge_prior_mode_controls_predictor_fields(self) -> None:
         learned_mutations = (
             (
