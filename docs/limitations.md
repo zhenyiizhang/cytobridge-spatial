@@ -9,8 +9,11 @@
   have complete finite six-stage histories.
 - The full, no-LR-prior, and no-interaction arms were re-fit in one matched
   grid; exhaustive sweeps around every graph/optimizer value were not run.
-- The primary four-dataset cross-method and matched-ablation result tables are
-  still pending. No current superiority or ablation-effect claim is released.
+- The matched-ablation reconstruction comparison is complete, but is
+  full-data/in-sample rather than LOTO and is not a significance test.
+  Interaction effects are dataset-dependent; no uniform full-model superiority
+  is claimed.
+- The primary four-dataset cross-method benchmark remains pending.
 - WOT has no native joint or spatial prediction and is NA in those spaces.
 - The original Heart Figure 3 application is outside the four-dataset formal
   chain; later Heart-v2 benchmark evidence is a separate context.

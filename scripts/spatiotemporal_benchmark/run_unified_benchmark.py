@@ -260,10 +260,17 @@ def execute(commands, required, timeout, log_path):
     if missing:
         return "not_available", "missing: " + ", ".join(missing)
     deadline, output = time.monotonic() + timeout, []
+    environment = os.environ.copy()
+    # Official source checkouts are immutable provenance inputs.  Some pinned
+    # projects historically tracked ``__pycache__`` files, so a normal import
+    # can otherwise dirty the checkout and make every later job fail its own
+    # clean-source gate.
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
     try:
         for item in commands:
             run = subprocess.run(item, cwd=REPO, text=True, stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT, timeout=max(1, deadline - time.monotonic()))
+                                 stderr=subprocess.STDOUT, timeout=max(1, deadline - time.monotonic()),
+                                 env=environment)
             output.append(run.stdout)
             if run.returncode:
                 status = "oom" if "out of memory" in "\n".join(output).lower() else "failed"

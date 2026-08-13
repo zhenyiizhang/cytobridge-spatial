@@ -37,8 +37,13 @@ predictor, and use its validation-selected threshold. AD has only seven strict
 complete LR pairs in its targeted panel; the main model uses that learned prior
 and explicitly limits its biological interpretation. The separately packaged
 `all_spatial` profile is the matched no-LR-prior ablation. The 12-run matched
-matrix and all four three-arm families pass formal acceptance; comparative
-ablation metrics remain pending.
+matrix and all four three-arm families pass formal acceptance. The paired
+full-data reconstruction comparison is complete, but is neither LOTO nor a
+significance test. No-LR prior increases mean paired relative sliced W2 versus
+full by 25.46% (AD), 59.44% (ARISTA), 26.13% (MOSTA), and 13.53% (Zebrafish).
+No-interaction changes it by -0.04%, -6.02%, -28.35%, and -10.16%,
+respectively; the interaction effect is therefore dataset-dependent, not
+evidence of uniform full-model superiority.
 
 Downstream sparse-attention export has a different scope. It reconstructs the
 full radius graph for each analyzed time-slice cohort, or for the explicit

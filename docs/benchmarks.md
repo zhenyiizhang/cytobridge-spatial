@@ -86,16 +86,34 @@ All 12 profiles and all four matched three-arm families pass the formal
 validator under acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
 No-interaction outputs intentionally omit communication and LR artifacts, so
-those analyses are `NA` rather than zero. Comparative matched-ablation metrics
-are still pending; old Zebrafish ablation values must not be carried forward as
-results for the final model.
+those analyses are `NA` rather than zero. The formal paired reconstruction
+comparison is complete. It evaluates full-data, in-sample reconstruction with
+the same target×space pairs in each arm; it is neither a leave-one-timepoint-out
+(LOTO) benchmark nor a significance test.
+
+| Dataset | No LR prior vs full | No interaction vs full |
+| --- | ---: | ---: |
+| AD mouse | +25.46% | -0.04% |
+| ARISTA | +59.44% | -6.02% |
+| MOSTA | +26.13% | -28.35% |
+| Zebrafish | +13.53% | -10.16% |
+
+Values are the mean of paired relative sliced-W2 changes computed separately
+for every target×space combination; positive values mean higher (worse) W2
+than full. Removing the learned LR prior worsened mean reconstruction W2 in all
+four datasets. Removing interaction produced near-zero to lower mean W2, with
+substantially different magnitudes by dataset. This establishes a
+dataset-dependent reconstruction effect, not uniform full-model superiority or
+evidence that interaction is biologically unnecessary. Old Zebrafish ablation
+values must not be carried forward as results for the final model.
 
 ## Hyperparameter evidence boundary
 
 The full, no-LR-prior, and no-interaction arms have now been re-fit in one
 matched four-dataset grid. This does not make the retained graph-threshold,
 score-batch, OT:mass, or scheduler diagnostics exhaustive sweeps around every
-formal value, and the primary matched comparison tables remain pending.
+formal value. The separate primary cross-method four-dataset benchmark remains
+pending.
 
 The run-resolved values used by the four formal presets are available in
 {download}`formal_hyperparameter_settings.csv

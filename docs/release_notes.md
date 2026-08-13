@@ -25,9 +25,14 @@
   retained only the classifier input fingerprint that prevents stale cache
   reuse and deterministic benchmark seed identities.
 
-The primary four-dataset benchmark and comparative matched-ablation result
-tables are still running/pending. Legacy winner and old ablation summaries are
-not evidence for the accepted matched models and are not promoted into release
+The formal matched-ablation reconstruction comparison is complete. Mean paired
+relative sliced-W2 changes for no-LR versus full are +25.46% (AD), +59.44%
+(ARISTA), +26.13% (MOSTA), and +13.53% (Zebrafish); no-interaction changes are
+-0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are full-data
+in-sample comparisons, not LOTO or significance tests, and support a
+dataset-dependent interaction effect rather than uniform full-model
+superiority. The primary four-dataset cross-method benchmark remains pending;
+legacy winner and old ablation summaries are not promoted into release
 conclusions.
 
 This is a release candidate. It should be merged to `main` only after source,

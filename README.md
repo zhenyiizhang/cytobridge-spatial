@@ -186,11 +186,16 @@ no-interaction for every dataset. All 12 profiles and all four three-arm
 families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
 No-interaction retains velocity, growth, and score; communication and LR are
-`NA` by construction. The matched comparative metrics and primary
-four-dataset benchmark are still pending, so older winner and ablation tables
-are not final-model evidence. The formal Zebrafish paper downstream completed
-all seven signed stages; its canonical reconstruction is interval-local and
-observed-anchored, not a global-t0 rollout.
+`NA` by construction. The formal matched reconstruction comparison is complete:
+mean paired relative sliced-W2 changes for no-LR versus full are +25.46% (AD),
++59.44% (ARISTA), +26.13% (MOSTA), and +13.53% (Zebrafish); no-interaction
+changes are -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are
+full-data in-sample reconstruction comparisons, not LOTO or significance
+tests; the interaction effect is dataset-dependent, and no uniform full-model
+superiority is claimed. The primary four-dataset cross-method benchmark remains
+pending. The formal Zebrafish paper downstream completed all seven signed
+stages; its canonical reconstruction is interval-local and observed-anchored,
+not a global-t0 rollout.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:

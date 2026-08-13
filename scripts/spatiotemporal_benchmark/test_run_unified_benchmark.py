@@ -1012,8 +1012,9 @@ def test_execute_maps_missing_timeout_oom_and_failure(tmp_path):
     )
 
     completed = SimpleNamespace(returncode=0, stdout="ok")
-    with mock.patch.object(runner.subprocess, "run", return_value=completed):
+    with mock.patch.object(runner.subprocess, "run", return_value=completed) as run:
         assert runner.execute([["job"]], [], 1, tmp_path / "ok.log")[0] == "completed"
+    assert run.call_args.kwargs["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
 
     oom = SimpleNamespace(returncode=1, stdout="CUDA out of memory")
     with mock.patch.object(runner.subprocess, "run", return_value=oom):
