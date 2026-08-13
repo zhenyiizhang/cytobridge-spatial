@@ -1125,6 +1125,8 @@ def _save_figure(summary: pd.DataFrame, pdf_path: Path, png_path: Path) -> None:
             percent=percent,
             zero_reference=zero_reference,
         )
+        if metric == "particle_count_relative_delta":
+            axis.yaxis.set_major_formatter(PercentFormatter(xmax=1.0, decimals=2))
     handles = [
         Line2D(
             [0],
