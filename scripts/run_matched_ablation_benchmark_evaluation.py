@@ -699,7 +699,6 @@ def _verify_benchmark_input(
     expected_sha256: str,
     *,
     launcher_aligned_sha256: str,
-    package_config_path: Path,
 ) -> dict[str, Any]:
     manifest_path, digest = _verified_file(
         path, expected_sha256, description=f"{dataset} benchmark input manifest"
@@ -720,22 +719,38 @@ def _verify_benchmark_input(
         raise ContractError(
             f"{dataset} benchmark source does not match the launcher-aligned input"
         )
-    package_config = _read_yaml(
-        package_config_path, description=f"{dataset} unified benchmark config"
+    config_source_record = _mapping(
+        payload.get("config_source"), description=f"{dataset} config_source"
     )
-    if package_config.get("dataset_id") != dataset:
-        raise ContractError(f"{dataset} package benchmark config has wrong dataset_id")
-    targets = package_config.get("full_data_targets")
-    if (
-        not isinstance(targets, list)
-        or not targets
-        or any(
-            isinstance(value, bool) or not isinstance(value, int) for value in targets
-        )
-        or len(targets) != len(set(targets))
-        or payload.get("full_data_targets") != targets
-        or targets != FULL_DATA_TARGETS[dataset]
+    config_source_path, _ = _verified_file(
+        config_source_record.get("path"),
+        config_source_record.get("sha256"),
+        description=f"{dataset} benchmark config source",
+    )
+    config_source = _read_yaml(
+        config_source_path, description=f"{dataset} benchmark config source"
+    )
+    resolved_config_identity = _artifact_from_record(
+        payload.get("resolved_config"),
+        manifest_path=manifest_path,
+        description=f"{dataset} resolved benchmark config",
+    )
+    resolved_config = _read_yaml(
+        Path(resolved_config_identity["path"]),
+        description=f"{dataset} resolved benchmark config",
+    )
+    targets = list(FULL_DATA_TARGETS[dataset])
+    for label, config in (
+        ("config source", config_source),
+        ("resolved config", resolved_config),
     ):
+        if (
+            config.get("dataset_id") != dataset
+            or config.get("prediction_n") != PREDICTION_N
+            or config.get("full_data_targets") != targets
+        ):
+            raise ContractError(f"{dataset} {label} differs from the frozen matrix")
+    if payload.get("full_data_targets") != targets:
         raise ContractError(
             f"{dataset} full-data target set differs from the frozen matrix"
         )
@@ -791,9 +806,10 @@ def _verify_benchmark_input(
         "manifest_sidecar": _file_identity(
             root_sidecar, description=f"{dataset} manifest sidecar"
         ),
-        "package_config": _file_identity(
-            package_config_path, description=f"{dataset} package benchmark config"
+        "config_source": _file_identity(
+            config_source_path, description=f"{dataset} benchmark config source"
         ),
+        "resolved_config": resolved_config_identity,
         "targets": list(targets),
         "source_aligned_sha256": launcher_aligned_sha256,
         "artifacts": artifacts,
@@ -1062,15 +1078,11 @@ def build_plan(
             source.get("aligned_h5ad"), description=f"{dataset} aligned source"
         )
         _identity_matches(aligned, description=f"{dataset} launcher aligned H5AD")
-        package_config = (
-            release_root / "configs" / "unified_benchmark" / f"{dataset}.yaml"
-        )
         input_records[dataset] = _verify_benchmark_input(
             dataset,
             benchmark_inputs[dataset],
             expected_benchmark_sha256[dataset],
             launcher_aligned_sha256=str(aligned["sha256"]),
-            package_config_path=package_config,
         )
 
     profiles: dict[str, dict[str, Any]] = {}
@@ -1382,7 +1394,10 @@ def verify_prepared_plan(run_root: str | Path) -> tuple[Path, dict[str, Any], st
             record.get("manifest_sidecar"), description=f"{dataset} manifest sidecar"
         )
         _identity_matches(
-            record.get("package_config"), description=f"{dataset} package config"
+            record.get("config_source"), description=f"{dataset} config source"
+        )
+        _identity_matches(
+            record.get("resolved_config"), description=f"{dataset} resolved config"
         )
         for name, artifact in _mapping(
             record.get("artifacts"), description="artifacts"

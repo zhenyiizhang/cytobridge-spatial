@@ -142,6 +142,15 @@ def _write_benchmark_input(
     input_root = root / dataset / "inputs"
     full = input_root / "full_data"
     full.mkdir(parents=True)
+    config_payload = {
+        "dataset_id": dataset,
+        "prediction_n": MODULE.PREDICTION_N,
+        "full_data_targets": TARGETS[dataset],
+    }
+    config_source = root / dataset / "unified_benchmark.yaml"
+    config_source.write_text(yaml.safe_dump(config_payload, sort_keys=False))
+    resolved_config = input_root / "resolved_config.yaml"
+    resolved_config.write_text(yaml.safe_dump(config_payload, sort_keys=False))
     train_h5ad = full / "train.h5ad"
     training_reference = full / "training_reference.npz"
     source_roster = full / "source_roster.npz"
@@ -231,6 +240,11 @@ def _write_benchmark_input(
             "prediction_n": MODULE.PREDICTION_N,
             "full_data_targets": TARGETS[dataset],
             "source": {"h5ad_sha256": aligned_sha},
+            "config_source": {
+                "path": str(config_source.resolve()),
+                "sha256": _sha256(config_source),
+            },
+            "resolved_config": _artifact(resolved_config, input_root),
             "splits": {"full_data": split_record},
         },
     )
@@ -857,6 +871,15 @@ def test_prepare_binds_matrix_and_renders_only_official_full_data_commands(
         dataset: plan["benchmark_inputs"][dataset]["targets"]
         for dataset in MODULE.DATASET_ORDER
     } == TARGETS
+    for dataset in MODULE.DATASET_ORDER:
+        input_record = plan["benchmark_inputs"][dataset]
+        assert "package_config" not in input_record
+        assert Path(input_record["config_source"]["path"]).name == (
+            "unified_benchmark.yaml"
+        )
+        assert Path(input_record["resolved_config"]["path"]).name == (
+            "resolved_config.yaml"
+        )
     for profile in MODULE.PROFILE_ORDER:
         record = plan["profiles"][profile]
         assert len(record["inventory"]["checkpoints"]) == 6
