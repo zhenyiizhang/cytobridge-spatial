@@ -38,6 +38,7 @@ from run_cytobridge import (  # noqa: E402
     _all_spatial_cutoff,
     _atomic_prediction,
     _compact_prediction_summaries,
+    _resolve_interaction_cutoff,
     _load_graph_summary,
     _simulate,
     _validated_interaction_m,
@@ -665,6 +666,44 @@ class ConfigContractTests(unittest.TestCase):
 
 
 class ModeAwareExecutionTests(unittest.TestCase):
+    def test_learned_cutoff_uses_real_matched_config_without_h5ad_graph_uns(
+        self,
+    ) -> None:
+        config = package_config("zebrafish")
+        adata = ad.AnnData(np.zeros((2, 2), dtype=np.float32))
+        cutoff, source = _resolve_interaction_cutoff(adata, config, None)
+        self.assertEqual(cutoff, config["model"]["interaction_net"]["cutoff"])
+        self.assertEqual(source, "training_config.model.interaction_net.cutoff")
+
+    def test_full_learned_binding_uses_real_saved_config_schema_without_graph_uns(
+        self,
+    ) -> None:
+        config = package_config("zebrafish")
+        interaction = config["model"]["interaction_net"]
+        fields = {
+            "ckpt_dir": "/accepted/zebrafish/training",
+            "model.spatial_dim": 2,
+            "model.interaction_net.cutoff": interaction["cutoff"],
+            "model.interaction_net.edge_prior_mode": interaction["edge_prior_mode"],
+            "model.interaction_net.edge_predictor_path": interaction[
+                "edge_predictor_path"
+            ],
+            "model.interaction_net.edge_predictor_thre": interaction[
+                "edge_predictor_thre"
+            ],
+        }
+        data = SimpleNamespace(spatial_dim=2, interaction_graph={})
+        inventory = {"training_profile": {"runtime_resolved_fields": fields}}
+        expected = _full_runtime_expectation(data, inventory)
+        self.assertEqual(expected["interaction_mode"], "learned")
+        self.assertEqual(expected["interaction_cutoff"], interaction["cutoff"])
+        self.assertEqual(expected["edge_threshold"], interaction["edge_predictor_thre"])
+        bound = _checkpoint_runtime_binding(
+            Path("/accepted/zebrafish/training"), data, inventory, expected
+        )
+        self.assertEqual(bound["edge_predictor_source"], "embedded_finetune_checkpoint")
+        self.assertFalse(bound["external_edge_predictor_required"])
+
     def test_inference_group_size_must_match_loaded_model(self) -> None:
         model = SimpleNamespace(interaction_group_size=1024)
         self.assertEqual(_validated_interaction_m(model, 1024), 1024)

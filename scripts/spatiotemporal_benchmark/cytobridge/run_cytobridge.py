@@ -337,24 +337,51 @@ def command_preflight(args: argparse.Namespace) -> None:
 
 
 def _resolve_interaction_cutoff(
-    adata: Any, requested: float | None
+    adata: Any,
+    config: Mapping[str, Any],
+    requested: float | None,
 ) -> tuple[float, str]:
+    """Resolve the learned-prior candidate cutoff from the accepted config.
+
+    Benchmark train H5ADs are row subsets of the aligned input and therefore do
+    not necessarily carry graph-construction metadata.  The matched training
+    config is the immutable scientific source for this value; input metadata,
+    when present, is only checked for agreement.
+    """
+    try:
+        configured = float(config["model"]["interaction_net"]["cutoff"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ContractError(
+            "learned training config lacks model.interaction_net.cutoff"
+        ) from exc
+    if not np.isfinite(configured) or configured <= 0:
+        raise ContractError(
+            "learned training-config cutoff must be finite and positive"
+        )
     if requested is not None:
         value = float(requested)
         if not np.isfinite(value) or value <= 0:
             raise ContractError("--interaction-cutoff must be finite and positive")
-        return value, "explicit_cli"
+        if not np.isclose(value, configured, rtol=0.0, atol=1e-12):
+            raise ContractError(
+                "learned --interaction-cutoff must match "
+                "training_config.model.interaction_net.cutoff; "
+                f"configured={configured}, explicit={value}"
+            )
+        source = "explicit_cli_matches_training_config"
+    else:
+        source = "training_config.model.interaction_net.cutoff"
     graph = adata.uns.get("interaction_graph", {})
     if isinstance(graph, Mapping):
         value = graph.get("neighborhood_threshold")
-        if value is not None and np.isfinite(float(value)) and float(value) > 0:
-            return (
-                float(value),
-                "train_h5ad.uns.interaction_graph.neighborhood_threshold",
+        if value is not None and not np.isclose(
+            float(value), configured, rtol=0.0, atol=1e-12
+        ):
+            raise ContractError(
+                "train H5AD interaction cutoff differs from the accepted "
+                "training config"
             )
-    raise ContractError(
-        "interaction cutoff is absent from preprocessing; pass --interaction-cutoff"
-    )
+    return configured, source
 
 
 def _all_spatial_cutoff(
@@ -447,7 +474,7 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
         adata = sc.read_h5ad(split.train_h5ad)
         try:
             cutoff, cutoff_source = _resolve_interaction_cutoff(
-                adata, args.interaction_cutoff
+                adata, package_config, args.interaction_cutoff
             )
             if (
                 args.expression_layer is not None

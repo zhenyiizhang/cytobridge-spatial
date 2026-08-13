@@ -1051,28 +1051,31 @@ def _full_runtime_expectation(
             "interaction_mode": "none",
             "edge_prior_mode": "none",
         }
-    graph = data.interaction_graph
-    required = {"neighborhood_threshold"}
-    if interaction_mode == "learned":
-        required.add("edge_predictor_threshold")
-    missing = required - set(graph)
-    if missing and interaction_mode == "learned":
+    cutoff = fields.get("model.interaction_net.cutoff")
+    try:
+        cutoff = float(cutoff)
+    except (TypeError, ValueError) as exc:
         raise ContractError(
-            "full-data input lacks frozen interaction provenance fields "
-            f"{sorted(missing)}"
-        )
-    cutoff = (
-        fields.get("model.interaction_net.cutoff")
-        if interaction_mode == "all_spatial"
-        else graph.get("neighborhood_threshold")
-    )
+            "checkpoint config lacks a numeric interaction cutoff"
+        ) from exc
+    if not np.isfinite(cutoff) or cutoff <= 0:
+        raise ContractError("checkpoint interaction cutoff must be finite and positive")
     result = {
         "interaction_cutoff": cutoff,
         "interaction_mode": interaction_mode,
         "edge_prior_mode": interaction_mode,
     }
     if interaction_mode == "learned":
-        result["edge_threshold"] = graph["edge_predictor_threshold"]
+        threshold = fields.get("model.interaction_net.edge_predictor_thre")
+        try:
+            threshold = float(threshold)
+        except (TypeError, ValueError) as exc:
+            raise ContractError(
+                "checkpoint config lacks a numeric learned edge threshold"
+            ) from exc
+        if not np.isfinite(threshold) or not 0 < threshold < 1:
+            raise ContractError("checkpoint learned edge threshold must lie in (0, 1)")
+        result["edge_threshold"] = threshold
     return result
 
 
