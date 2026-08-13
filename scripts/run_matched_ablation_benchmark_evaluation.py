@@ -43,7 +43,7 @@ import pandas as pd  # noqa: E402
 import yaml  # noqa: E402
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PLAN_KIND = "cytobridge-matched-ablation-full-data-benchmark-evaluation"
 REPORT_KIND = f"{PLAN_KIND}-report"
 CONTRACT_DIR = "_matched_benchmark_evaluation"
@@ -1033,6 +1033,8 @@ def build_plan(
     expected_launcher_sha256: str,
     acceptance_report: str | Path,
     expected_acceptance_sha256: str,
+    runtime_release_root: str | Path,
+    expected_runtime_release_commit: str,
     benchmark_inputs: Mapping[str, str | Path],
     expected_benchmark_sha256: Mapping[str, str],
 ) -> dict[str, Any]:
@@ -1048,10 +1050,24 @@ def build_plan(
     if root.parent == root:
         raise ContractError("Refusing a filesystem root as evaluation root")
     release = _mapping(launcher.get("release"), description="launcher release")
-    release_root = Path(str(release.get("root", ""))).expanduser().resolve()
-    if not release_root.is_dir():
-        raise FileNotFoundError(f"Launcher release root is missing: {release_root}")
-    for disallowed in (launcher_root, release_root):
+    accepted_release_root = Path(str(release.get("root", ""))).expanduser().resolve()
+    if not accepted_release_root.is_dir():
+        raise FileNotFoundError(
+            f"Launcher release root is missing: {accepted_release_root}"
+        )
+    runtime_root = Path(runtime_release_root).expanduser().resolve(strict=True)
+    if not runtime_root.is_dir():
+        raise ContractError("Runtime release root is not a directory")
+    runtime_commit = str(expected_runtime_release_commit).strip().lower()
+    try:
+        runtime_git = _git_release_identity(runtime_root, runtime_commit)
+    except ContractError as exc:
+        raise ContractError(f"Runtime release Git identity is invalid: {exc}") from exc
+    if runtime_root == accepted_release_root:
+        raise ContractError(
+            "Runtime release root must be separate from the accepted training release"
+        )
+    for disallowed in (launcher_root, accepted_release_root, runtime_root):
         nested = False
         for left, right in ((root, disallowed), (disallowed, root)):
             try:
@@ -1064,8 +1080,8 @@ def build_plan(
                 "Evaluation root must be disjoint from launcher/release roots"
             )
     python = _verify_python_binding(release.get("python_executable"))
-    adapter_code = _code_identity(release_root, ADAPTER_FILES, name="adapter")
-    evaluator_code = _code_identity(release_root, EVALUATOR_FILES, name="evaluator")
+    adapter_code = _code_identity(runtime_root, ADAPTER_FILES, name="adapter")
+    evaluator_code = _code_identity(runtime_root, EVALUATOR_FILES, name="evaluator")
     sources = _mapping(launcher.get("sources"), description="launcher sources")
     conditions = _mapping(launcher.get("conditions"), description="launcher conditions")
 
@@ -1097,6 +1113,20 @@ def build_plan(
                 condition.get("training_config"),
                 description=f"{profile} training config",
             )
+            runtime_config_path = (
+                runtime_root
+                / "CytoBridge"
+                / "configs"
+                / Path(str(config_identity.get("path", ""))).name
+            )
+            runtime_config_identity = _file_identity(
+                runtime_config_path,
+                description=f"{profile} runtime training config",
+            )
+            if runtime_config_identity["sha256"] != config_identity.get("sha256"):
+                raise ContractError(
+                    f"{profile} runtime training config differs from the accepted config"
+                )
             inventory = _checkpoint_inventory(
                 profile,
                 arm,
@@ -1118,7 +1148,7 @@ def build_plan(
             environment = _profile_environment(
                 profile=profile,
                 gpu=gpu,
-                release_root=release_root,
+                release_root=runtime_root,
                 evaluation_root=root,
             )
             infer_argv = [
@@ -1127,7 +1157,7 @@ def build_plan(
                 "scripts.spatiotemporal_benchmark.cytobridge.run_cytobridge",
                 "infer-full",
                 "--repo",
-                str(release_root),
+                str(runtime_root),
                 "--input-manifest",
                 input_records[dataset]["manifest"]["path"],
                 "--split",
@@ -1135,7 +1165,7 @@ def build_plan(
                 "--model-dir",
                 inventory["model_dir"],
                 "--training-config",
-                config_identity["path"],
+                runtime_config_identity["path"],
                 "--output-dir",
                 str(predictions),
                 "--device",
@@ -1194,6 +1224,7 @@ def build_plan(
                     ]["sha256"],
                 },
                 "inventory": inventory,
+                "runtime_training_config": runtime_config_identity,
                 "paths": {
                     "predictions": str(predictions),
                     "scores": str(scores),
@@ -1201,14 +1232,14 @@ def build_plan(
                 },
                 "commands": {
                     "infer_full": _command_record(
-                        infer_argv, environment, cwd=release_root
+                        infer_argv, environment, cwd=runtime_root
                     ),
                     "score_full_data": _command_record(
                         score_argv,
                         _score_environment(
-                            release_root=release_root, evaluation_root=root
+                            release_root=runtime_root, evaluation_root=root
                         ),
-                        cwd=release_root,
+                        cwd=runtime_root,
                     ),
                 },
             }
@@ -1225,11 +1256,16 @@ def build_plan(
                 acceptance_path, description="matched-family acceptance report"
             ),
             "run_root": str(launcher_root),
-            "release_root": str(release_root),
+            "release_root": str(accepted_release_root),
             "release_commit": release.get("commit"),
             "python_executable": release.get("python_executable"),
             "launcher_manifest_sha256": launcher_sha,
             "acceptance_sha256": acceptance_sha,
+        },
+        "runtime_release": {
+            "root": str(runtime_root),
+            "commit": runtime_commit,
+            "git": runtime_git,
         },
         "matrix": {
             "datasets": list(DATASET_ORDER),
@@ -1250,7 +1286,10 @@ def build_plan(
             "adapter": adapter_code,
             "evaluator": evaluator_code,
             "orchestrator": _file_identity(
-                Path(__file__).resolve(), description="evaluation orchestrator"
+                runtime_root
+                / "scripts"
+                / "run_matched_ablation_benchmark_evaluation.py",
+                description="evaluation orchestrator",
             ),
         },
         "settings": {
@@ -1369,6 +1408,20 @@ def verify_prepared_plan(run_root: str | Path) -> tuple[Path, dict[str, Any], st
         launcher_root=launcher_root,
     )
     _verify_python_binding(launcher.get("python_executable"))
+    runtime_release = _mapping(
+        plan.get("runtime_release"), description="runtime release"
+    )
+    if set(runtime_release) != {"root", "commit", "git"}:
+        raise ContractError("Prepared runtime release identity is incomplete")
+    runtime_root = Path(str(runtime_release["root"])).expanduser().resolve(strict=True)
+    try:
+        observed_runtime_git = _git_release_identity(
+            runtime_root, str(runtime_release["commit"])
+        )
+    except ContractError as exc:
+        raise ContractError(f"Runtime release Git identity is invalid: {exc}") from exc
+    if observed_runtime_git != runtime_release["git"]:
+        raise ContractError("Prepared runtime release Git identity changed")
     implementation = _mapping(plan.get("implementation"), description="implementation")
     for family in ("adapter", "evaluator"):
         code = _mapping(implementation.get(family), description=f"{family} code")
@@ -1420,6 +1473,17 @@ def verify_prepared_plan(run_root: str | Path) -> tuple[Path, dict[str, Any], st
         _identity_matches(
             inventory.get("training_summary"), description=f"{profile} training summary"
         )
+        _identity_matches(
+            record.get("runtime_training_config"),
+            description=f"{profile} runtime training config",
+        )
+        if (
+            record["runtime_training_config"]["sha256"]
+            != inventory["source_config"]["sha256"]
+        ):
+            raise ContractError(
+                f"{profile} runtime training config differs from the accepted config"
+            )
         for stage, checkpoint in _mapping(
             inventory.get("checkpoints"), description=f"{profile} checkpoints"
         ).items():
@@ -1719,8 +1783,8 @@ def _validate_prediction_outputs(
     expected_adapter = plan["implementation"]["adapter"]
     expected_simulation = inventory["inference_contract"]
     expected_repo = {
-        "repo": plan["launcher"]["release_root"],
-        "git_commit": plan["launcher"]["release_commit"],
+        "repo": plan["runtime_release"]["root"],
+        "git_commit": plan["runtime_release"]["commit"],
         "git_dirty": False,
     }
     expected_provenance = {
@@ -3129,6 +3193,8 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--expected-launcher-manifest-sha256", required=True)
     prepare.add_argument("--matched-acceptance", required=True, type=Path)
     prepare.add_argument("--expected-matched-acceptance-sha256", required=True)
+    prepare.add_argument("--runtime-release-root", required=True, type=Path)
+    prepare.add_argument("--expected-runtime-release-commit", required=True)
     prepare.add_argument(
         "--benchmark-input",
         action="append",
@@ -3168,6 +3234,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             expected_launcher_sha256=args.expected_launcher_manifest_sha256,
             acceptance_report=args.matched_acceptance,
             expected_acceptance_sha256=args.expected_matched_acceptance_sha256,
+            runtime_release_root=args.runtime_release_root,
+            expected_runtime_release_commit=args.expected_runtime_release_commit,
             benchmark_inputs=benchmark_inputs,
             expected_benchmark_sha256=benchmark_hashes,
         )

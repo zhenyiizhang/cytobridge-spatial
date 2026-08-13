@@ -259,7 +259,11 @@ def _write_fixture(tmp_path: Path) -> dict[str, object]:
     benchmark_root = tmp_path / "benchmark"
     release.mkdir()
     launcher_root.mkdir()
-    for relative in (*MODULE.ADAPTER_FILES, *MODULE.EVALUATOR_FILES):
+    for relative in (
+        *MODULE.ADAPTER_FILES,
+        *MODULE.EVALUATOR_FILES,
+        "scripts/run_matched_ablation_benchmark_evaluation.py",
+    ):
         path = release / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"implementation:{relative}\n")
@@ -351,6 +355,10 @@ def _write_fixture(tmp_path: Path) -> dict[str, object]:
         capture_output=True,
         text=True,
     ).stdout.strip()
+    runtime_release = tmp_path / "runtime-release"
+    subprocess.run(
+        ["git", "clone", "-q", str(release), str(runtime_release)], check=True
+    )
     python_identity = MODULE._python_executable_identity(
         Path(sys.executable).absolute()
     )
@@ -410,6 +418,8 @@ def _write_fixture(tmp_path: Path) -> dict[str, object]:
         benchmark_hashes[dataset] = digest
     return {
         "release": release,
+        "runtime_release": runtime_release,
+        "runtime_commit": commit,
         "launcher_root": launcher_root,
         "launcher_path": launcher_path,
         "launcher_sha": launcher_sha,
@@ -429,6 +439,8 @@ def _prepare(tmp_path: Path) -> tuple[dict[str, object], Path, dict[str, object]
         expected_launcher_sha256=fixture["launcher_sha"],
         acceptance_report=fixture["acceptance_path"],
         expected_acceptance_sha256=fixture["acceptance_sha"],
+        runtime_release_root=fixture["runtime_release"],
+        expected_runtime_release_commit=fixture["runtime_commit"],
         benchmark_inputs=fixture["benchmark_inputs"],
         expected_benchmark_sha256=fixture["benchmark_hashes"],
     )
@@ -623,8 +635,8 @@ def _write_prediction_outputs(plan: dict[str, object], profile: str) -> None:
             "source_roster": roster_summary,
             "simulation": simulation,
             "repo": {
-                "repo": plan["launcher"]["release_root"],
-                "git_commit": plan["launcher"]["release_commit"],
+                "repo": plan["runtime_release"]["root"],
+                "git_commit": plan["runtime_release"]["commit"],
                 "git_dirty": False,
             },
             "adapter_implementation": adapter_summary,
@@ -865,6 +877,8 @@ def test_prepare_binds_matrix_and_renders_only_official_full_data_commands(
 
     assert len(digest) == 64
     assert plan["matrix"]["track"] == "full_data"
+    assert plan["launcher"]["release_root"] == str(fixture["release"])
+    assert plan["runtime_release"]["root"] == str(fixture["runtime_release"])
     assert len(plan["profiles"]) == 12
     assert plan["matrix"]["target_prediction_count"] == 39
     assert {
@@ -883,6 +897,10 @@ def test_prepare_binds_matrix_and_renders_only_official_full_data_commands(
     for profile in MODULE.PROFILE_ORDER:
         record = plan["profiles"][profile]
         assert len(record["inventory"]["checkpoints"]) == 6
+        assert (
+            record["runtime_training_config"]["sha256"]
+            == record["inventory"]["source_config"]["sha256"]
+        )
         assert set(record["input_binding"]) == {
             "aligned_h5ad_sha256",
             "benchmark_manifest_sha256",
@@ -898,9 +916,9 @@ def test_prepare_binds_matrix_and_renders_only_official_full_data_commands(
         assert score[score.index("--max-ot-points") + 1] == "800"
         assert "downstream" not in " ".join(infer + score).lower()
         for command in record["commands"].values():
-            assert command["cwd"] == str(fixture["release"])
+            assert command["cwd"] == str(fixture["runtime_release"])
             assert command["shell"].startswith(
-                f"cd {shlex.quote(str(fixture['release']))} && env "
+                f"cd {shlex.quote(str(fixture['runtime_release']))} && env "
             )
     assert MODULE.main(["render", "--run-root", str(root)]) == 0
     rendered = capsys.readouterr().out
@@ -928,6 +946,15 @@ def test_prepared_plan_rechecks_clean_release_payload(tmp_path: Path) -> None:
     release_file.write_text("tampered release payload\n")
 
     with pytest.raises(MODULE.ContractError, match="Git checkout"):
+        MODULE.verify_prepared_plan(root)
+
+
+def test_prepared_plan_rechecks_clean_runtime_release(tmp_path: Path) -> None:
+    fixture, root, _, _ = _prepare(tmp_path)
+    runtime_file = Path(fixture["runtime_release"]) / "CytoBridge/tl/core/methods.py"
+    runtime_file.write_text("tampered runtime payload\n")
+
+    with pytest.raises(MODULE.ContractError, match="Runtime release Git identity"):
         MODULE.verify_prepared_plan(root)
 
 
