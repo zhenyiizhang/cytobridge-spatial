@@ -403,6 +403,9 @@ def test_formal_downstream_simulation_profiles_are_packaged():
         if dataset == "zebrafish":
             assert downstream["split_resample_dt"] == 0.05
             assert downstream["split_max_particles"] == 100_000
+            assert downstream["split_sde_piecewise"] is True
+            assert downstream["split_sde_piecewise_include_end"] is False
+            assert downstream["piecewise_observed_sample_mode"] == "per_timepoint"
         assert downstream["gene_dynamics_enabled"] is True
         assert downstream["lr_enabled"] is True
 

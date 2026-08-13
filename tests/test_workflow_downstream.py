@@ -10,10 +10,12 @@ import pytest
 
 from CytoBridge.workflow import (
     WorkflowOptions,
+    _downstream_simulation_summary,
     _effective_downstream_analyses,
     _loaded_model_scientific_contract,
     _require_pca_reference,
     _run_downstream,
+    _split_trajectory_contract,
     _write_communication_outputs,
     _write_composition_outputs,
     _write_lr_outputs,
@@ -23,6 +25,7 @@ from CytoBridge.workflow import (
     build_workflow_plan,
     load_workflow_config,
     plan_missing_inputs,
+    render_workflow_plan,
 )
 
 
@@ -56,6 +59,13 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     analyses = {item["name"]: item for item in downstream["analyses"]}
     assert downstream["simulation"]["split_resample_dt"] == 0.05
     assert downstream["simulation"]["split_max_particles"] == 100_000
+    assert downstream["simulation"]["trajectory_mode"] == (
+        "piecewise_observed_anchored_interval_forward_simulation"
+    )
+    assert downstream["simulation"]["piecewise_observed_sample_mode"] == (
+        "per_timepoint"
+    )
+    assert downstream["simulation"]["piecewise_include_end"] is False
     assert analyses["time-slice velocity"]["status"] == "enabled"
     assert analyses["sparse communication"]["status"] == "enabled"
     assert analyses["gene dynamics"]["status"] == "enabled"
@@ -64,10 +74,17 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     assert analyses["strict ligand-receptor projection"]["source"] == (
         "explicit --lr-database override"
     )
-    assert (
-        "not a training holdout"
-        in analyses["fitted-model reconstruction diagnostic"]["note"]
+    reconstruction = analyses["fitted-model reconstruction diagnostic"]
+    assert reconstruction["status"] == (
+        "not applicable to observed-anchored interval simulation"
     )
+    assert "not a fitted global-t0 reconstruction" in reconstruction["note"]
+    rendered = render_workflow_plan(plan)
+    assert (
+        "trajectory mode=piecewise_observed_anchored_interval_forward_simulation"
+        in rendered
+    )
+    assert "sample mode=per_timepoint, include end=False" in rendered
     assert plan_missing_inputs(plan) == [
         f"strict ligand-receptor projection: LR database file not found: {missing_lr}"
     ]
@@ -193,6 +210,94 @@ def test_zebrafish_package_workflow_passes_the_formal_split_contract(
     assert captured["split_max_particles"] == 100_000
     assert captured["split_growth_alpha"] == 1.0
     assert captured["split_interaction_m"] == 64
+    assert captured["split_sde_piecewise"] is True
+    assert captured["split_sde_piecewise_include_end"] is False
+    assert captured["piecewise_observed_sample_mode"] == "per_timepoint"
+
+
+def test_zebrafish_summary_records_piecewise_estimand_and_actual_counts():
+    config, _ = load_workflow_config("zebrafish")
+    downstream = config["downstream"]
+    trajectory = _split_trajectory_contract(downstream)
+    result = SimpleNamespace(
+        ts_points=[0.0, 0.5, 1.0],
+        time_keys=["0.0", "0.5", "1.0"],
+        observed_time_points=[0.0, 1.0],
+        adata_dict={
+            "0.0": SimpleNamespace(
+                n_obs=563,
+                uns={"slice_origin": "observed_real", "source_anchor_time": 0.0},
+            ),
+            "0.5": SimpleNamespace(
+                n_obs=735,
+                uns={
+                    "slice_origin": "generated_interval_local",
+                    "source_anchor_time": 0.0,
+                },
+            ),
+            "1.0": SimpleNamespace(
+                n_obs=1036,
+                uns={"slice_origin": "observed_real", "source_anchor_time": 1.0},
+            ),
+        },
+    )
+
+    summary = _downstream_simulation_summary(
+        downstream=downstream,
+        trajectory=trajectory,
+        result=result,
+        interaction_group_size=1024,
+    )
+
+    assert summary["trajectory_mode"] == (
+        "piecewise_observed_anchored_interval_forward_simulation"
+    )
+    assert summary["piecewise_observed_sample_mode"] == "per_timepoint"
+    assert summary["piecewise_include_end"] is False
+    assert summary["observed_particle_counts"] == {"0.0": 563, "1.0": 1036}
+    assert summary["generated_particle_counts"] == {"0.5": 735}
+    assert summary["slice_origins_by_time"] == {
+        "0.0": "observed_real",
+        "0.5": "generated_interval_local",
+        "1.0": "observed_real",
+    }
+    assert summary["source_anchor_times_by_time"] == {
+        "0.0": 0.0,
+        "0.5": 0.0,
+        "1.0": 1.0,
+    }
+    assert "not a lineage-continuous" in summary["trajectory_scope"]
+    assert (
+        "not conditioned on the following observed endpoint"
+        in summary["trajectory_scope"]
+    )
+
+
+def test_global_trajectory_ignores_inert_piecewise_fields():
+    trajectory = _split_trajectory_contract(
+        {
+            "split_sde_piecewise": False,
+            "piecewise_observed_sample_mode": "inert_invalid_value",
+            "split_sde_piecewise_include_end": True,
+        }
+    )
+
+    assert trajectory["trajectory_mode"] == "global_t0_extrapolation"
+    assert trajectory["piecewise_observed_sample_mode"] is None
+    assert trajectory["piecewise_include_end"] is None
+
+
+def test_piecewise_observed_anchors_reject_global_reconstruction_claim(tmp_path: Path):
+    config, _ = load_workflow_config("zebrafish")
+
+    with pytest.raises(ValueError, match="self-reconstruction rather than global-t0"):
+        _run_downstream(
+            config,
+            WorkflowOptions(reconstruction_diagnostic=True),
+            aligned_h5ad=tmp_path / "aligned.h5ad",
+            model_dir=tmp_path / "model",
+            output_dir=tmp_path / "out",
+        )
 
 
 def test_downstream_cli_database_and_species_overrides_take_precedence(tmp_path: Path):

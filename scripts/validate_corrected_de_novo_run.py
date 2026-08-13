@@ -552,15 +552,224 @@ def classifier_split_contract(
     return ok, detail
 
 
-def zebrafish_split_sde_contract(simulation: Any) -> tuple[bool, str]:
+def _time_count_mapping(value: Any) -> dict[float, int] | None:
+    mapping = _mapping(value)
+    normalized: dict[float, int] = {}
+    try:
+        for key, count in mapping.items():
+            time_value = float(key)
+            normalized_count = int(count)
+            if not math.isfinite(time_value) or normalized_count <= 0:
+                return None
+            if time_value in normalized:
+                return None
+            normalized[time_value] = normalized_count
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return normalized
+
+
+def _time_text_mapping(value: Any) -> dict[float, str] | None:
+    mapping = _mapping(value)
+    normalized: dict[float, str] = {}
+    try:
+        for key, text in mapping.items():
+            time_value = float(key)
+            normalized_text = str(text)
+            if (
+                not math.isfinite(time_value)
+                or not normalized_text
+                or time_value in normalized
+            ):
+                return None
+            normalized[time_value] = normalized_text
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return normalized
+
+
+def _time_float_mapping(value: Any) -> dict[float, float] | None:
+    mapping = _mapping(value)
+    normalized: dict[float, float] = {}
+    try:
+        for key, raw_value in mapping.items():
+            time_value = float(key)
+            normalized_value = float(raw_value)
+            if (
+                not math.isfinite(time_value)
+                or not math.isfinite(normalized_value)
+                or time_value in normalized
+            ):
+                return None
+            normalized[time_value] = normalized_value
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return normalized
+
+
+def _zebrafish_scope_contract(scope: Any) -> bool:
+    """Require language that rules out endpoint-conditioned/global trajectory claims."""
+
+    normalized = " ".join(str(scope).lower().replace("_", "-").split())
+    observed_anchor = "observed" in normalized and "anchor" in normalized
+    interval_local = "interval-local" in normalized or "interval local" in normalized
+    one_sided = "one-sided" in normalized or "one sided" in normalized
+    following_endpoint = (
+        "not conditioned on the following" in normalized and "endpoint" in normalized
+    )
+    not_global = (
+        "not global-t0" in normalized
+        or "not a global-t0" in normalized
+        or "not global t0" in normalized
+        or "not a global t0" in normalized
+        or (
+            "not a single lineage-continuous" in normalized
+            and "or global-t0" in normalized
+        )
+    )
+    not_lineage = (
+        "not lineage-continuous" in normalized
+        or "not a lineage-continuous" in normalized
+        or "not a single lineage-continuous" in normalized
+        or "not lineage continuous" in normalized
+        or "not a lineage continuous" in normalized
+        or "not a single lineage continuous" in normalized
+    )
+    return all(
+        (
+            observed_anchor,
+            interval_local,
+            one_sided,
+            following_endpoint,
+            not_global,
+            not_lineage,
+        )
+    )
+
+
+def slice_provenance_summary_contract(
+    simulation: Any,
+    *,
+    slice_provenance: Mapping[float, Mapping[str, Any]],
+    expected_times: Sequence[float],
+) -> tuple[bool, str]:
+    """Require the summary's origin/anchor maps to equal the emitted slices."""
+
+    simulation_meta = _mapping(simulation)
+    actual_origins = {
+        float(time): str(provenance.get("origin"))
+        for time, provenance in slice_provenance.items()
+    }
+    try:
+        actual_anchors: dict[float, float] | None = {
+            float(time): float(provenance.get("anchor_time"))
+            for time, provenance in slice_provenance.items()
+        }
+    except (TypeError, ValueError, OverflowError):
+        actual_anchors = None
+    declared_origins = _time_text_mapping(simulation_meta.get("slice_origins_by_time"))
+    declared_anchors = _time_float_mapping(
+        simulation_meta.get("source_anchor_times_by_time")
+    )
+    expected = {float(time) for time in expected_times}
+    ok = (
+        declared_origins == actual_origins
+        and declared_anchors == actual_anchors
+        and set(actual_origins) == expected
+    )
+    return ok, (
+        f"origins_match={declared_origins == actual_origins}, "
+        f"anchors_match={declared_anchors == actual_anchors}, "
+        f"times_match={set(actual_origins) == expected}"
+    )
+
+
+def zebrafish_split_sde_contract(
+    simulation: Any,
+    *,
+    slice_counts: Mapping[float, int],
+    expected_observed_counts: Mapping[float, int],
+    analyses: Any,
+) -> tuple[bool, str]:
     simulation_meta = _mapping(simulation)
     resample_dt = simulation_meta.get("split_resample_dt")
     ceiling = simulation_meta.get("split_particle_ceiling")
+    trajectory_mode = simulation_meta.get("trajectory_mode")
+    sample_mode = simulation_meta.get("piecewise_observed_sample_mode")
+    include_end = simulation_meta.get("piecewise_include_end")
+    scope = str(simulation_meta.get("trajectory_scope", ""))
+    actual_counts = {float(time): int(count) for time, count in slice_counts.items()}
+    expected_observed = {
+        float(time): int(count) for time, count in expected_observed_counts.items()
+    }
+    actual_observed = {time: actual_counts.get(time) for time in expected_observed}
+    actual_generated = {
+        time: count
+        for time, count in actual_counts.items()
+        if time not in expected_observed
+    }
+    declared_all = _time_count_mapping(simulation_meta.get("particle_counts_by_time"))
+    declared_observed = _time_count_mapping(
+        simulation_meta.get("observed_particle_counts")
+    )
+    declared_generated = _time_count_mapping(
+        simulation_meta.get("generated_particle_counts")
+    )
+    analysis_meta = _mapping(analyses)
+    communication_scope = _mapping(analysis_meta.get("communication")).get(
+        "trajectory_scope"
+    )
+    lr_scope = _mapping(analysis_meta.get("ligand_receptor")).get("trajectory_scope")
+    reconstruction = _mapping(analysis_meta.get("reconstruction_diagnostic"))
+    reconstruction_claim = str(reconstruction.get("claim", ""))
+    reconstruction_claim_normalized = " ".join(
+        reconstruction_claim.lower().replace("_", "-").split()
+    )
     try:
-        ok = close_enough(resample_dt, 0.05) and int(ceiling) == 100_000
-    except (TypeError, ValueError):
+        normalized_ceiling = int(ceiling)
+        bounded_generated = bool(actual_generated) and all(
+            0 < int(count) <= normalized_ceiling for count in actual_generated.values()
+        )
+        ok = (
+            close_enough(simulation_meta.get("split_dt"), 0.05)
+            and close_enough(resample_dt, 0.05)
+            and close_enough(simulation_meta.get("sigma"), 0.03)
+            and close_enough(simulation_meta.get("growth_alpha"), 1.0)
+            and normalized_ceiling == 100_000
+            and simulation_meta.get("configured_particle_cap") is None
+            and simulation_meta.get("initial_particle_cap") is None
+            and int(simulation_meta.get("initial_particles")) == 563
+            and simulation_meta.get("non_split_lineage_rollout") is False
+            and trajectory_mode
+            == "piecewise_observed_anchored_interval_forward_simulation"
+            and simulation_meta.get("split_sde_piecewise") is True
+            and sample_mode == "per_timepoint"
+            and include_end is False
+            and _zebrafish_scope_contract(scope)
+            and communication_scope == scope
+            and lr_scope == scope
+            and "global-t0" in reconstruction_claim_normalized
+            and "not applicable" in reconstruction_claim_normalized
+            and actual_observed == expected_observed
+            and bounded_generated
+            and declared_all == actual_counts
+            and declared_observed == expected_observed
+            and declared_generated == actual_generated
+        )
+    except (TypeError, ValueError, OverflowError):
         ok = False
-    return ok, f"split_resample_dt={resample_dt!r}, split_particle_ceiling={ceiling!r}"
+    return (
+        ok,
+        f"trajectory_mode={trajectory_mode!r}, sample_mode={sample_mode!r}, "
+        f"include_end={include_end!r}, split_dt={simulation_meta.get('split_dt')!r}, "
+        f"split_resample_dt={resample_dt!r}, sigma={simulation_meta.get('sigma')!r}, "
+        f"growth_alpha={simulation_meta.get('growth_alpha')!r}, "
+        f"split_particle_ceiling={ceiling!r}, observed={actual_observed}, "
+        f"generated={actual_generated}, declared_matches={declared_all == actual_counts}, "
+        f"scope_contract={_zebrafish_scope_contract(scope)}, "
+        f"analysis_scopes_match={communication_scope == scope and lr_scope == scope}, "
+        f"reconstruction_claim={reconstruction_claim!r}",
+    )
 
 
 def retained_top_level_lr_pairs(frame: pd.DataFrame) -> tuple[int | None, str]:
@@ -1111,8 +1320,13 @@ def validate_slice(
     path: Path,
     annotation_key: str,
     model_dim: int,
-) -> tuple[int, set[str]]:
-    shape, obs, _, _ = read_metadata(path)
+    *,
+    time_value: float,
+    observed_time: bool,
+    aligned: ad.AnnData | None = None,
+    aligned_time_key: str = "time_point_processed",
+) -> tuple[int, set[str], dict[str, Any]]:
+    shape, obs, _, uns = read_metadata(path)
     annotations_ok = annotation_key in obs and obs[annotation_key].notna().all()
     with h5py.File(path, "r") as handle:
         state = handle["X"]
@@ -1148,7 +1362,97 @@ def validate_slice(
         f"shape={shape}",
     )
     labels = set(obs[annotation_key].astype(str)) if annotation_key in obs else set()
-    return int(shape[0]), labels
+    provenance = {
+        "origin": uns.get("slice_origin"),
+        "anchor_time": uns.get("source_anchor_time"),
+    }
+    if aligned is not None:
+        if observed_time:
+            aligned_times = pd.to_numeric(
+                aligned.obs[aligned_time_key], errors="coerce"
+            ).to_numpy(dtype=float)
+            aligned_mask = np.isclose(
+                aligned_times, float(time_value), rtol=0, atol=1e-12
+            )
+            aligned_subset = aligned[aligned_mask]
+            expected_ids = aligned_subset.obs_names.astype(str).to_numpy()
+            source_ids = (
+                obs["source_obs_id"].astype(str).to_numpy()
+                if "source_obs_id" in obs
+                else np.asarray([], dtype=str)
+            )
+            expected_annotations = (
+                aligned_subset.obs[annotation_key].astype(str).to_numpy()
+            )
+            actual_annotations = (
+                obs[annotation_key].astype(str).to_numpy()
+                if annotation_key in obs
+                else np.asarray([], dtype=str)
+            )
+            expected_state = np.hstack(
+                (
+                    np.asarray(aligned_subset.obsm["spatial_aligned"]),
+                    np.asarray(aligned_subset.obsm["X_latent"]),
+                )
+            )
+            with h5py.File(path, "r") as handle:
+                actual_state = np.asarray(numeric_node(handle["X"]))
+            try:
+                anchor_matches = close_enough(provenance["anchor_time"], time_value)
+            except (TypeError, ValueError, OverflowError):
+                anchor_matches = False
+            observed_provenance_ok = (
+                provenance["origin"] == "observed_real"
+                and anchor_matches
+                and "source_obs_id" in obs
+                and np.array_equal(source_ids, expected_ids)
+                and np.array_equal(actual_annotations, expected_annotations)
+                and actual_state.shape == expected_state.shape
+                and np.allclose(
+                    actual_state,
+                    expected_state,
+                    rtol=0,
+                    atol=1e-6,
+                )
+            )
+            audit.check(
+                observed_provenance_ok,
+                f"exact observed slice provenance t={time_value:g}",
+                f"origin={provenance['origin']!r}, anchor={provenance['anchor_time']!r}, "
+                f"source_ids={len(source_ids)}, expected={len(expected_ids)}",
+            )
+        else:
+            earlier_anchors = [
+                float(value)
+                for value in DATASETS["zebrafish"]["observed_counts"]
+                if float(value) < float(time_value)
+            ]
+            expected_anchor = max(earlier_anchors) if earlier_anchors else None
+            aligned_labels = set(aligned.obs[annotation_key].astype(str))
+            source_ids_absent = "source_obs_id" not in obs or bool(
+                obs["source_obs_id"].isna().all()
+            )
+            try:
+                anchor_matches = expected_anchor is not None and close_enough(
+                    provenance["anchor_time"], expected_anchor
+                )
+            except (TypeError, ValueError, OverflowError):
+                anchor_matches = False
+            generated_provenance_ok = (
+                provenance["origin"] == "generated_interval_local"
+                and anchor_matches
+                and source_ids_absent
+                and annotations_ok
+                and bool(labels)
+                and labels.issubset(aligned_labels)
+            )
+            audit.check(
+                generated_provenance_ok,
+                f"interval-local generated slice provenance t={time_value:g}",
+                f"origin={provenance['origin']!r}, anchor={provenance['anchor_time']!r}, "
+                f"expected_anchor={expected_anchor!r}, labels={len(labels)}",
+            )
+    return int(shape[0]), labels, provenance
 
 
 def valid_color_map(
@@ -1254,15 +1558,6 @@ def validate_downstream(
         expected_class_counts=aligned_class_counts,
     )
     audit.check(split_ok, "classifier holdout class support", split_detail)
-    if audit.dataset == "zebrafish":
-        split_sde_ok, split_sde_detail = zebrafish_split_sde_contract(
-            summary.get("simulation")
-        )
-        audit.check(
-            split_sde_ok,
-            "bounded zebrafish split-SDE simulation",
-            split_sde_detail,
-        )
     classifier_metrics = (
         float(summary["classifier_accuracy"]),
         float(summary["classifier_balanced_accuracy"]),
@@ -1330,14 +1625,32 @@ def validate_downstream(
 
     slice_counts: dict[float, int] = {}
     slice_labels: dict[float, set[str]] = {}
+    slice_provenance: dict[float, dict[str, Any]] = {}
+    aligned_for_slice_provenance = (
+        ad.read_h5ad(paths["aligned H5AD"], backed="r")
+        if audit.dataset == "zebrafish"
+        else None
+    )
     for time_value in expected_times:
         path = downstream / "slice_data" / f"time_{safe_time_name(time_value)}.h5ad"
         if not path.is_file():
             audit.check(False, f"slice file t={time_value:g}", str(path))
             continue
-        slice_counts[time_value], slice_labels[time_value] = validate_slice(
-            audit, path, spec["annotation_key"], model_dim
+        (
+            slice_counts[time_value],
+            slice_labels[time_value],
+            slice_provenance[time_value],
+        ) = validate_slice(
+            audit,
+            path,
+            spec["annotation_key"],
+            model_dim,
+            time_value=time_value,
+            observed_time=time_value in spec["observed_counts"],
+            aligned=aligned_for_slice_provenance,
         )
+    if aligned_for_slice_provenance is not None:
+        aligned_for_slice_provenance.file.close()
     observed_slice_counts = {time: slice_counts.get(time) for time in observed}
     audit.check(
         observed_slice_counts == spec["observed_counts"],
@@ -1362,17 +1675,26 @@ def validate_downstream(
         f"observed_labels={len(observed_labels)}, generated_per_slice={generated_label_counts}",
     )
     if audit.dataset == "zebrafish":
-        generated_particle_counts = {
-            time: slice_counts.get(time) for time in generated_times
-        }
+        provenance_ok, provenance_detail = slice_provenance_summary_contract(
+            summary.get("simulation"),
+            slice_provenance=slice_provenance,
+            expected_times=expected_times,
+        )
         audit.check(
-            bool(generated_particle_counts)
-            and all(
-                count is not None and 0 < int(count) <= 100_000
-                for count in generated_particle_counts.values()
-            ),
-            "zebrafish generated particle ceiling",
-            f"counts={generated_particle_counts}",
+            provenance_ok,
+            "zebrafish summary matches per-slice provenance",
+            provenance_detail,
+        )
+        split_sde_ok, split_sde_detail = zebrafish_split_sde_contract(
+            summary.get("simulation"),
+            slice_counts=slice_counts,
+            expected_observed_counts=spec["observed_counts"],
+            analyses=analyses,
+        )
+        audit.check(
+            split_sde_ok,
+            "observed-anchored zebrafish split-SDE contract",
+            split_sde_detail,
         )
     color_path = downstream / "label_to_color.json"
     color_mapping = (

@@ -833,6 +833,48 @@ def _loaded_model_scientific_contract(
     }
 
 
+def _split_trajectory_contract(downstream: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the explicit estimand contract for split-SDE outputs."""
+
+    piecewise = bool(downstream.get("split_sde_piecewise", False))
+    if not piecewise:
+        return {
+            "trajectory_mode": "global_t0_extrapolation",
+            "split_sde_piecewise": False,
+            "piecewise_observed_sample_mode": None,
+            "piecewise_include_end": None,
+            "trajectory_scope": (
+                "Generated states belong to one split-SDE rollout initialized from t0; "
+                "later states are global extrapolations rather than independently "
+                "observed-anchored interval interpolations."
+            ),
+        }
+
+    configured_sample_mode = downstream.get("piecewise_observed_sample_mode")
+    sample_mode = (
+        "t0_fixed" if configured_sample_mode is None else str(configured_sample_mode)
+    )
+    if sample_mode not in {"t0_fixed", "per_timepoint"}:
+        raise ValueError(
+            "piecewise_observed_sample_mode must be 't0_fixed' or "
+            f"'per_timepoint'; got {sample_mode!r}."
+        )
+    include_end = bool(downstream.get("split_sde_piecewise_include_end", False))
+    return {
+        "trajectory_mode": ("piecewise_observed_anchored_interval_forward_simulation"),
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": sample_mode,
+        "piecewise_include_end": include_end,
+        "trajectory_scope": (
+            "Observed times use real cells. Each generated time is a one-sided, "
+            "interval-local forward simulation initialized only from the "
+            "immediately preceding observed anchor; it is not conditioned on the "
+            "following observed endpoint. It is not global-t0 extrapolation and "
+            "not a lineage-continuous population trajectory."
+        ),
+    }
+
+
 def build_workflow_plan(
     config: Mapping[str, Any],
     *,
@@ -848,9 +890,10 @@ def build_workflow_plan(
     paths = _output_paths(config, options)
     dataset = config["dataset"]
     scientific = config["scientific"]
+    downstream_config = config.get("downstream", {})
+    trajectory = _split_trajectory_contract(downstream_config)
     preprocess_config = config.get("preprocess", {})
     train_config = config.get("train", {})
-    downstream_config = config.get("downstream", {})
     downstream_analyses = _effective_downstream_analyses(config, options)
 
     steps: list[dict[str, Any]] = []
@@ -1120,12 +1163,19 @@ def build_workflow_plan(
             {
                 "name": "fitted-model reconstruction diagnostic",
                 "status": (
-                    "requested"
+                    "not applicable to observed-anchored interval simulation"
+                    if options.reconstruction_diagnostic
+                    and trajectory["split_sde_piecewise"]
+                    else "requested"
                     if options.reconstruction_diagnostic
                     else "not requested"
                 ),
                 "note": (
-                    "descriptive W2 diagnostic; not a training holdout or "
+                    "observed endpoints are interval anchors, so comparing them "
+                    "to themselves is not a fitted global-t0 reconstruction "
+                    "diagnostic"
+                    if trajectory["split_sde_piecewise"]
+                    else "descriptive W2 diagnostic; not a training holdout or "
                     "cross-method benchmark"
                 ),
             },
@@ -1182,6 +1232,12 @@ def build_workflow_plan(
                     "growth_alpha": float(
                         downstream_config.get("split_growth_alpha", 1.0)
                     ),
+                    "trajectory_mode": trajectory["trajectory_mode"],
+                    "piecewise_observed_sample_mode": trajectory[
+                        "piecewise_observed_sample_mode"
+                    ],
+                    "piecewise_include_end": trajectory["piecewise_include_end"],
+                    "trajectory_scope": trajectory["trajectory_scope"],
                 },
                 "analyses": analyses,
             }
@@ -1256,8 +1312,16 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
                 f"interpolated={simulation['interpolated_time_points']}, "
                 f"initial particles={simulation['initial_particles']}, "
                 f"dt={simulation['split_dt']:g}, sigma={simulation['sigma']:g}, "
-                f"growth alpha={simulation['growth_alpha']:g}"
+                f"growth alpha={simulation['growth_alpha']:g}, "
+                f"trajectory mode={simulation['trajectory_mode']}"
             )
+            if simulation["piecewise_observed_sample_mode"] is not None:
+                lines.append(
+                    "      piecewise observed anchors: "
+                    f"sample mode={simulation['piecewise_observed_sample_mode']}, "
+                    f"include end={simulation['piecewise_include_end']}"
+                )
+            lines.append(f"      scope: {simulation['trajectory_scope']}")
         if step.get("edge_predictor"):
             edge = step["edge_predictor"]
             lines.append(f"    edge predictor: {edge['status']}")
@@ -2218,6 +2282,64 @@ def _write_reconstruction_diagnostic(
     }
 
 
+def _downstream_simulation_summary(
+    *,
+    downstream: Mapping[str, Any],
+    trajectory: Mapping[str, Any],
+    result: Any,
+    interaction_group_size: int,
+) -> dict[str, Any]:
+    """Build a readable simulation record from the slices actually emitted."""
+
+    particle_counts = {
+        str(float(time_value)): int(result.adata_dict[time_key].n_obs)
+        for time_value, time_key in zip(result.ts_points, result.time_keys)
+    }
+    slice_origins = {
+        str(float(time_value)): str(
+            result.adata_dict[time_key].uns.get("slice_origin", "")
+        )
+        for time_value, time_key in zip(result.ts_points, result.time_keys)
+    }
+    source_anchor_times = {
+        str(float(time_value)): float(
+            result.adata_dict[time_key].uns["source_anchor_time"]
+        )
+        for time_value, time_key in zip(result.ts_points, result.time_keys)
+    }
+    observed = {float(value) for value in result.observed_time_points}
+    observed_counts = {
+        key: count for key, count in particle_counts.items() if float(key) in observed
+    }
+    generated_counts = {
+        key: count
+        for key, count in particle_counts.items()
+        if float(key) not in observed
+    }
+    return {
+        "initial_particles": int(result.adata_dict[result.time_keys[0]].n_obs),
+        "configured_particle_cap": downstream.get("sde_n_samples"),
+        "initial_particle_cap": downstream.get("sde_n_samples"),
+        "split_particle_ceiling": downstream.get("split_max_particles"),
+        "split_dt": float(downstream.get("split_sde_dt", 0.01)),
+        "split_resample_dt": downstream.get("split_resample_dt"),
+        "sigma": float(downstream.get("split_sigma", 0.03)),
+        "growth_alpha": float(downstream.get("split_growth_alpha", 1.0)),
+        "interaction_group_size": int(interaction_group_size),
+        "non_split_lineage_rollout": bool(downstream.get("lineage_enabled", False)),
+        "trajectory_mode": trajectory["trajectory_mode"],
+        "split_sde_piecewise": bool(trajectory["split_sde_piecewise"]),
+        "piecewise_observed_sample_mode": trajectory["piecewise_observed_sample_mode"],
+        "piecewise_include_end": trajectory["piecewise_include_end"],
+        "trajectory_scope": trajectory["trajectory_scope"],
+        "particle_counts_by_time": particle_counts,
+        "observed_particle_counts": observed_counts,
+        "generated_particle_counts": generated_counts,
+        "slice_origins_by_time": slice_origins,
+        "source_anchor_times_by_time": source_anchor_times,
+    }
+
+
 def _run_downstream(
     config: Mapping[str, Any],
     options: WorkflowOptions,
@@ -2232,6 +2354,14 @@ def _run_downstream(
     dataset = config["dataset"]
     scientific = config["scientific"]
     downstream = config["downstream"]
+    trajectory = _split_trajectory_contract(downstream)
+    if options.reconstruction_diagnostic and trajectory["split_sde_piecewise"]:
+        raise ValueError(
+            "The fitted-model reconstruction diagnostic is not defined for "
+            "piecewise observed-anchored interval simulation: each observed endpoint "
+            "is an input anchor, so the comparison would be self-reconstruction "
+            "rather than global-t0 prediction."
+        )
     downstream_analyses = _effective_downstream_analyses(config, options)
     adata = ad.read_h5ad(aligned_h5ad)
     annotation_key = str(dataset.get("annotation_key", "Annotation"))
@@ -2360,6 +2490,11 @@ def _run_downstream(
             if downstream.get("split_max_particles") is None
             else int(downstream["split_max_particles"])
         ),
+        split_sde_piecewise=bool(trajectory["split_sde_piecewise"]),
+        split_sde_piecewise_include_end=bool(trajectory["piecewise_include_end"]),
+        piecewise_observed_sample_mode=(
+            trajectory["piecewise_observed_sample_mode"] or "t0_fixed"
+        ),
         spatial_warp_to_observed_piecewise=False,
         spatial_warp_visualization_only=True,
         random_seed=int(scientific["seed"]),
@@ -2421,6 +2556,7 @@ def _run_downstream(
         seed=int(scientific["seed"]),
     )
     analyses["communication"] = communication_summary
+    analyses["communication"]["trajectory_scope"] = trajectory["trajectory_scope"]
     analyses["figures"] = _write_standard_figures(
         cb=cb,
         result=result,
@@ -2477,6 +2613,7 @@ def _run_downstream(
         )
     else:
         analyses["ligand_receptor"] = {"status": "not requested"}
+    analyses["ligand_receptor"]["trajectory_scope"] = trajectory["trajectory_scope"]
 
     if options.reconstruction_diagnostic:
         analyses["reconstruction_diagnostic"] = _write_reconstruction_diagnostic(
@@ -2492,7 +2629,12 @@ def _run_downstream(
     else:
         analyses["reconstruction_diagnostic"] = {
             "status": "not requested",
-            "claim": "not a training holdout or cross-method benchmark",
+            "claim": (
+                "not applicable as a global-t0 reconstruction diagnostic because "
+                "observed endpoints are interval anchors"
+                if trajectory["split_sde_piecewise"]
+                else "not a training holdout or cross-method benchmark"
+            ),
         }
     summary = {
         "dataset": dataset["name"],
@@ -2509,20 +2651,12 @@ def _run_downstream(
             "scientific_contract": model_contract,
         },
         "time_points": [float(value) for value in result.ts_points],
-        "simulation": {
-            "initial_particles": int(
-                result.communication_adata_dict[result.time_keys[0]].n_obs
-            ),
-            "configured_particle_cap": downstream.get("sde_n_samples"),
-            "initial_particle_cap": downstream.get("sde_n_samples"),
-            "split_particle_ceiling": downstream.get("split_max_particles"),
-            "split_dt": float(downstream.get("split_sde_dt", 0.01)),
-            "split_resample_dt": downstream.get("split_resample_dt"),
-            "sigma": float(downstream.get("split_sigma", 0.03)),
-            "growth_alpha": float(downstream.get("split_growth_alpha", 1.0)),
-            "interaction_group_size": int(model_contract["interaction_group_size"]),
-            "non_split_lineage_rollout": bool(downstream.get("lineage_enabled", False)),
-        },
+        "simulation": _downstream_simulation_summary(
+            downstream=downstream,
+            trajectory=trajectory,
+            result=result,
+            interaction_group_size=int(model_contract["interaction_group_size"]),
+        ),
         "classifier_accuracy": result.classifier_accuracy,
         "classifier_balanced_accuracy": result.classifier_balanced_accuracy,
         "classifier_split": (

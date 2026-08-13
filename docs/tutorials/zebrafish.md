@@ -19,7 +19,16 @@ from the packaged preset:
 - classifier `k=10`, seed 42, `alpha_express=0.015`, and
   `alpha_spatial=10`;
 - `sde_dt=0.05`, split `dt=0.05`, split `sigma=0.03`, and growth
-  exponent 1.0.
+  exponent 1.0;
+- observed-anchored piecewise split-SDE: every interval starts from all real
+  cells at its left observed time point and generates only the requested
+  interior midpoint (`per_timepoint`, `include_end=False`).
+
+Accordingly, each half-time state is a one-sided, interval-local forward
+simulation from the immediately preceding observed slice. It is not
+conditioned on the following observed endpoint, is not a two-endpoint bridge,
+and is not one lineage-continuous population rollout from t0. It must not be
+reported as global extrapolation.
 
 ```bash
 cytobridge workflow --config zebrafish --dry-run

@@ -128,6 +128,18 @@ def run_interpolation_workflow(
     slice_max_cells_per_timepoint: Optional[int] = None,
     random_seed: Optional[int] = 42,
 ) -> InterpolationResult:
+    valid_piecewise_observed_sample_modes = ("t0_fixed", "per_timepoint")
+    if (
+        split_sde_piecewise
+        and piecewise_observed_sample_mode not in valid_piecewise_observed_sample_modes
+    ):
+        raise ValueError(
+            "piecewise_observed_sample_mode must be exactly one of "
+            f"{valid_piecewise_observed_sample_modes} when "
+            "split_sde_piecewise=True; got "
+            f"{piecewise_observed_sample_mode!r}"
+        )
+
     import anndata as ad
 
     f_net = runtime.f_net
@@ -595,6 +607,13 @@ def run_interpolation_workflow(
             X = subset[feature_cols_full].values.astype(np.float32)
             labels = subset[annotation_key].astype(str).values
             model_X = X
+            slice_origin = "observed_real"
+            source_anchor_time = float(t)
+            source_obs_ids = (
+                subset["cell_id"].astype(str).to_numpy()
+                if "cell_id" in subset.columns
+                else subset.index.astype(str).to_numpy()
+            )
         elif (
             (not use_real_for_observed)
             and split_sde_piecewise
@@ -627,6 +646,9 @@ def run_interpolation_workflow(
                 X = np.asarray(piecewise_x0_by_observed[float(t)], dtype=np.float32)
                 labels = np.asarray(piecewise_labels_by_observed[float(t)]).astype(str)
                 model_X = X
+            slice_origin = "sampled_observed_anchor"
+            source_anchor_time = float(t)
+            source_obs_ids = None
         else:
             if sde_points_split is None or slice_labels_split is None:
                 raise ValueError(
@@ -641,6 +663,21 @@ def run_interpolation_workflow(
                 and sde_points_split_prewarp is not None
                 else X
             )
+            slice_origin = (
+                "generated_interval_local"
+                if split_sde_piecewise
+                else "generated_global_t0"
+            )
+            source_anchor_time = (
+                max(
+                    float(observed_time)
+                    for observed_time in observed_time_points
+                    if float(observed_time) < float(t)
+                )
+                if split_sde_piecewise
+                else float(min(observed_time_points))
+            )
+            source_obs_ids = None
 
         if slice_max_cells_per_timepoint is not None and X.shape[0] > int(
             slice_max_cells_per_timepoint
@@ -655,12 +692,24 @@ def run_interpolation_workflow(
             X = X[indices]
             model_X = model_X[indices]
             labels = labels[indices]
+            if source_obs_ids is not None:
+                source_obs_ids = source_obs_ids[indices]
         adata_t = ad.AnnData(X=X)
         adata_t.obs[annotation_key] = labels
+        if source_obs_ids is not None:
+            adata_t.obs["source_obs_id"] = source_obs_ids
+            adata_t.obs_names = source_obs_ids
+        adata_t.uns["slice_origin"] = slice_origin
+        adata_t.uns["source_anchor_time"] = source_anchor_time
         adata_t.obsm["spatial"] = X[:, :2]
         adata_dict[key] = adata_t
         communication_adata_t = ad.AnnData(X=model_X)
         communication_adata_t.obs[annotation_key] = labels
+        if source_obs_ids is not None:
+            communication_adata_t.obs["source_obs_id"] = source_obs_ids
+            communication_adata_t.obs_names = source_obs_ids
+        communication_adata_t.uns["slice_origin"] = slice_origin
+        communication_adata_t.uns["source_anchor_time"] = source_anchor_time
         communication_adata_t.obsm["spatial"] = model_X[:, :2]
         communication_adata_dict[key] = communication_adata_t
 

@@ -1,5 +1,15 @@
 # Downstream analyses
 
+## Zebrafish interval-local simulation scope
+
+The formal Zebrafish preset uses observed-anchored piecewise split-SDE. Real
+observed slices remain unchanged, and each generated midpoint is a one-sided
+forward simulation starting from the immediately preceding observed slice. It
+is not conditioned on the following observed endpoint and therefore is not a
+two-endpoint bridge. Communication and ligand–receptor tables combine real
+observed stages with these interval-local generated stages; they do not
+describe one lineage-continuous rollout or global t0 extrapolation.
+
 ## Velocity
 
 Interaction velocity is recomputed independently within each real time slice.

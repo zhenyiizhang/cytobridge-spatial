@@ -6,6 +6,8 @@ from pathlib import Path
 import runpy
 import sys
 
+import anndata as ad
+import numpy as np
 import pandas as pd
 import pytest
 import yaml
@@ -23,8 +25,10 @@ edge_threshold_provenance_contract = VALIDATOR["edge_threshold_provenance_contra
 lr_database_provenance_contract = VALIDATOR["lr_database_provenance_contract"]
 parse_args = VALIDATOR["parse_args"]
 retained_top_level_lr_pairs = VALIDATOR["retained_top_level_lr_pairs"]
+slice_provenance_summary_contract = VALIDATOR["slice_provenance_summary_contract"]
 trained_edge_prior_contract = VALIDATOR["trained_edge_prior_contract"]
 valid_color_map = VALIDATOR["valid_color_map"]
+validate_slice = VALIDATOR["validate_slice"]
 zebrafish_split_sde_contract = VALIDATOR["zebrafish_split_sde_contract"]
 validate_no_lr_ablation_artifact_cleanliness = VALIDATOR[
     "validate_no_lr_ablation_artifact_cleanliness"
@@ -411,13 +415,334 @@ def test_classifier_split_contract_requires_protocol_and_support_for_every_class
 def test_zebrafish_split_sde_contract_requires_resampling_and_particle_ceiling() -> (
     None
 ):
+    slice_counts = {
+        0.0: 563,
+        0.5: 735,
+        1.0: 1036,
+        1.5: 1470,
+        2.0: 2081,
+        2.5: 2619,
+        3.0: 3048,
+        3.5: 3962,
+        4.0: 5271,
+    }
+    observed_counts = DATASETS["zebrafish"]["observed_counts"]
+    generated_counts = {
+        time: count
+        for time, count in slice_counts.items()
+        if time not in observed_counts
+    }
+    simulation = {
+        "trajectory_mode": ("piecewise_observed_anchored_interval_forward_simulation"),
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": "per_timepoint",
+        "piecewise_include_end": False,
+        "trajectory_scope": (
+            "Each observed slice is an observed anchor for interval-local, one-sided "
+            "forward simulation. A generated slice is not conditioned on the following "
+            "observed endpoint. This is not global-t0 extrapolation and not a "
+            "lineage-continuous trajectory."
+        ),
+        "initial_particles": 563,
+        "configured_particle_cap": None,
+        "initial_particle_cap": None,
+        "split_dt": 0.05,
+        "split_resample_dt": 0.05,
+        "sigma": 0.03,
+        "growth_alpha": 1.0,
+        "split_particle_ceiling": 100_000,
+        "non_split_lineage_rollout": False,
+        "particle_counts_by_time": {
+            str(time): count for time, count in slice_counts.items()
+        },
+        "observed_particle_counts": {
+            str(time): count for time, count in observed_counts.items()
+        },
+        "generated_particle_counts": {
+            str(time): count for time, count in generated_counts.items()
+        },
+    }
+    analyses = {
+        "communication": {"trajectory_scope": simulation["trajectory_scope"]},
+        "ligand_receptor": {"trajectory_scope": simulation["trajectory_scope"]},
+        "reconstruction_diagnostic": {
+            "status": "not requested",
+            "claim": "not applicable as a global-t0 reconstruction diagnostic",
+        },
+    }
     valid, _ = zebrafish_split_sde_contract(
-        {"split_resample_dt": 0.05, "split_particle_ceiling": 100_000}
+        simulation,
+        slice_counts=slice_counts,
+        expected_observed_counts=observed_counts,
+        analyses=analyses,
     )
     assert valid
 
+    invalid_cases = [
+        dict(simulation, piecewise_observed_sample_mode="t0_fixed"),
+        dict(simulation, piecewise_include_end=True),
+        dict(simulation, trajectory_mode="global_t0_extrapolation"),
+        dict(simulation, split_particle_ceiling=None),
+    ]
+    for invalid in invalid_cases:
+        valid, _ = zebrafish_split_sde_contract(
+            invalid,
+            slice_counts=slice_counts,
+            expected_observed_counts=observed_counts,
+            analyses=analyses,
+        )
+        assert not valid
+
+    wrong_observed = dict(slice_counts, **{})
+    wrong_observed[1.0] = 1035
     valid, _ = zebrafish_split_sde_contract(
-        {"split_resample_dt": None, "split_particle_ceiling": None}
+        simulation,
+        slice_counts=wrong_observed,
+        expected_observed_counts=observed_counts,
+        analyses=analyses,
+    )
+    assert not valid
+
+    above_ceiling = dict(slice_counts)
+    above_ceiling[0.5] = 100_001
+    valid, _ = zebrafish_split_sde_contract(
+        simulation,
+        slice_counts=above_ceiling,
+        expected_observed_counts=observed_counts,
+        analyses=analyses,
+    )
+    assert not valid
+
+
+@pytest.mark.parametrize(
+    ("mutation", "value"),
+    (
+        ("split_dt", 0.01),
+        ("split_resample_dt", 0.1),
+        ("sigma", 0.04),
+        ("growth_alpha", 0.5),
+        ("configured_particle_cap", 563),
+        ("initial_particle_cap", 563),
+        ("initial_particles", 564),
+        ("non_split_lineage_rollout", True),
+    ),
+)
+def test_zebrafish_split_sde_contract_locks_all_simulation_constants(
+    mutation: str,
+    value: object,
+) -> None:
+    observed_counts = DATASETS["zebrafish"]["observed_counts"]
+    slice_counts = {
+        0.0: 563,
+        0.5: 735,
+        1.0: 1036,
+        1.5: 1470,
+        2.0: 2081,
+        2.5: 2619,
+        3.0: 3048,
+        3.5: 3962,
+        4.0: 5271,
+    }
+    scope = (
+        "Each observed slice is an observed anchor for interval-local, one-sided "
+        "forward simulation. A generated slice is not conditioned on the following "
+        "observed endpoint. This is not global-t0 extrapolation and not a "
+        "lineage-continuous trajectory."
+    )
+    simulation = {
+        "trajectory_mode": ("piecewise_observed_anchored_interval_forward_simulation"),
+        "split_sde_piecewise": True,
+        "piecewise_observed_sample_mode": "per_timepoint",
+        "piecewise_include_end": False,
+        "trajectory_scope": scope,
+        "initial_particles": 563,
+        "configured_particle_cap": None,
+        "initial_particle_cap": None,
+        "split_dt": 0.05,
+        "split_resample_dt": 0.05,
+        "sigma": 0.03,
+        "growth_alpha": 1.0,
+        "split_particle_ceiling": 100_000,
+        "non_split_lineage_rollout": False,
+        "particle_counts_by_time": {
+            str(time): count for time, count in slice_counts.items()
+        },
+        "observed_particle_counts": {
+            str(time): count for time, count in observed_counts.items()
+        },
+        "generated_particle_counts": {
+            str(time): count
+            for time, count in slice_counts.items()
+            if time not in observed_counts
+        },
+    }
+    simulation[mutation] = value
+    analyses = {
+        "communication": {"trajectory_scope": scope},
+        "ligand_receptor": {"trajectory_scope": scope},
+        "reconstruction_diagnostic": {
+            "claim": "not applicable as a global-t0 reconstruction diagnostic"
+        },
+    }
+
+    valid, _ = zebrafish_split_sde_contract(
+        simulation,
+        slice_counts=slice_counts,
+        expected_observed_counts=observed_counts,
+        analyses=analyses,
+    )
+
+    assert not valid
+
+
+def _provenance_aligned_adata() -> ad.AnnData:
+    aligned = ad.AnnData(
+        X=np.zeros((4, 2), dtype=np.float32),
+        obs=pd.DataFrame(
+            {
+                "time_point_processed": [0.0, 0.0, 1.0, 1.0],
+                "Annotation": ["A", "B", "A", "B"],
+            },
+            index=["cell0", "cell1", "cell2", "cell3"],
+        ),
+    )
+    aligned.obsm["spatial_aligned"] = np.asarray(
+        [[0.0, 0.1], [0.2, 0.3], [1.0, 1.1], [1.2, 1.3]], dtype=np.float32
+    )
+    aligned.obsm["X_latent"] = np.asarray(
+        [[2.0], [3.0], [4.0], [5.0]], dtype=np.float32
+    )
+    return aligned
+
+
+def _observed_slice(aligned: ad.AnnData, *, time_value: float = 0.0) -> ad.AnnData:
+    mask = np.isclose(
+        aligned.obs["time_point_processed"].to_numpy(dtype=float), time_value
+    )
+    subset = aligned[mask]
+    state = np.hstack((subset.obsm["spatial_aligned"], subset.obsm["X_latent"])).astype(
+        np.float32
+    )
+    result = ad.AnnData(
+        X=state,
+        obs=pd.DataFrame(
+            {
+                "Annotation": subset.obs["Annotation"].astype(str).to_numpy(),
+                "source_obs_id": subset.obs_names.astype(str).to_numpy(),
+            },
+        ),
+    )
+    result.obsm["spatial"] = state[:, :2]
+    result.uns["slice_origin"] = "observed_real"
+    result.uns["source_anchor_time"] = float(time_value)
+    return result
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("source_order", "annotation", "state", "origin", "anchor"),
+)
+def test_observed_slice_provenance_rejects_adversarial_mutations(
+    tmp_path: Path,
+    mutation: str,
+) -> None:
+    aligned = _provenance_aligned_adata()
+    slice_data = _observed_slice(aligned)
+    if mutation == "source_order":
+        slice_data.obs["source_obs_id"] = ["cell1", "cell0"]
+    elif mutation == "annotation":
+        slice_data.obs["Annotation"] = ["B", "A"]
+    elif mutation == "state":
+        slice_data.X[0, 2] += 1e-3
+    elif mutation == "origin":
+        slice_data.uns["slice_origin"] = "generated_interval_local"
+    elif mutation == "anchor":
+        slice_data.uns["source_anchor_time"] = 1.0
+    path = tmp_path / f"observed_{mutation}.h5ad"
+    slice_data.write_h5ad(path)
+    audit = VALIDATOR["Audit"]("zebrafish")
+
+    validate_slice(
+        audit,
+        path,
+        "Annotation",
+        3,
+        time_value=0.0,
+        observed_time=True,
+        aligned=aligned,
+    )
+
+    assert any(
+        check["name"] == "exact observed slice provenance t=0"
+        and check["status"] == "FAIL"
+        for check in audit.checks
+    )
+
+
+def test_generated_slice_rejects_source_ids_wrong_anchor_and_unknown_labels(
+    tmp_path: Path,
+) -> None:
+    aligned = _provenance_aligned_adata()
+    state = np.asarray([[0.4, 0.5, 3.5], [0.6, 0.7, 3.8]], dtype=np.float32)
+    generated = ad.AnnData(
+        X=state,
+        obs=pd.DataFrame(
+            {
+                "Annotation": ["A", "unknown"],
+                "source_obs_id": ["cell0", "cell1"],
+            }
+        ),
+    )
+    generated.obsm["spatial"] = state[:, :2]
+    generated.uns["slice_origin"] = "generated_interval_local"
+    generated.uns["source_anchor_time"] = 1.0
+    path = tmp_path / "generated_bad.h5ad"
+    generated.write_h5ad(path)
+    audit = VALIDATOR["Audit"]("zebrafish")
+
+    validate_slice(
+        audit,
+        path,
+        "Annotation",
+        3,
+        time_value=0.5,
+        observed_time=False,
+        aligned=aligned,
+    )
+
+    assert any(
+        check["name"] == "interval-local generated slice provenance t=0.5"
+        and check["status"] == "FAIL"
+        for check in audit.checks
+    )
+
+
+def test_slice_provenance_summary_must_exactly_match_emitted_slices() -> None:
+    provenance = {
+        0.0: {"origin": "observed_real", "anchor_time": 0.0},
+        0.5: {"origin": "generated_interval_local", "anchor_time": 0.0},
+        1.0: {"origin": "observed_real", "anchor_time": 1.0},
+    }
+    simulation = {
+        "slice_origins_by_time": {
+            "0.0": "observed_real",
+            "0.5": "generated_interval_local",
+            "1.0": "observed_real",
+        },
+        "source_anchor_times_by_time": {"0.0": 0.0, "0.5": 0.0, "1.0": 1.0},
+    }
+    valid, _ = slice_provenance_summary_contract(
+        simulation,
+        slice_provenance=provenance,
+        expected_times=(0.0, 0.5, 1.0),
+    )
+    assert valid
+
+    simulation["source_anchor_times_by_time"]["0.5"] = 1.0
+    valid, _ = slice_provenance_summary_contract(
+        simulation,
+        slice_provenance=provenance,
+        expected_times=(0.0, 0.5, 1.0),
     )
     assert not valid
 
