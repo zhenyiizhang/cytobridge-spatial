@@ -156,7 +156,7 @@ def _smoke_config() -> dict:
     }
 
 
-def _write_training_config(path: Path) -> None:
+def _write_training_config(path: Path, *, edge_prior_mode: str = "learned") -> None:
     """Keep the real three-stage trainer but bound each stage to one epoch."""
 
     config = {
@@ -189,6 +189,7 @@ def _write_training_config(path: Path) -> None:
                 "num_rbf": 4,
                 "cutoff": 10.0,
                 "use_spatial": True,
+                "edge_prior_mode": edge_prior_mode,
             },
         },
         "seed": 42,
@@ -349,3 +350,70 @@ def test_real_raw_h5ad_to_model_and_velocity_components(tmp_path: Path):
     }
     assert components["full"].shape == (54, 6)
     assert np.isfinite(components["full"]).all()
+
+
+def test_real_raw_h5ad_all_spatial_skips_edge_predictor_and_has_finite_velocity(
+    tmp_path: Path,
+):
+    """Run the raw-data all-spatial scientific path without mocked compute."""
+
+    pytest.importorskip("qnorm", reason="requires the CytoBridge preprocess extra")
+    pytest.importorskip("torch_geometric", reason="requires the CytoBridge graph extra")
+    raw_h5ad = tmp_path / "raw.h5ad"
+    training_config_path = tmp_path / "training_all_spatial.yaml"
+    output_dir = tmp_path / "run"
+    _write_raw_h5ad(raw_h5ad)
+    _write_training_config(training_config_path, edge_prior_mode="all_spatial")
+
+    result = run_workflow(
+        _smoke_config(),
+        options=WorkflowOptions(
+            input_h5ad=raw_h5ad,
+            output_dir=output_dir,
+            training_config=str(training_config_path),
+            device="cpu",
+            steps=("preprocess",),
+            train=True,
+        ),
+    )
+
+    assert result["completed"] == ["preprocess", "train"]
+    assert "edge_predictor" not in result["outputs"]
+    assert not (output_dir / "preprocess" / "edge_classifier").exists()
+    assert not (output_dir / "preprocess" / "input_graph").exists()
+    assert not list(output_dir.rglob("*_edge_model.pt"))
+    assert not list(output_dir.rglob("*_edge_model.meta.json"))
+
+    aligned = ad.read_h5ad(result["outputs"]["aligned_h5ad"])
+    assert aligned.shape == (54, 12)
+    assert "interaction_graph" not in aligned.uns
+
+    model_dir = Path(result["outputs"]["model_dir"])
+    resolved_config = yaml.safe_load((model_dir / "config.yaml").read_text())
+    interaction_config = resolved_config["model"]["interaction_net"]
+    assert interaction_config["edge_prior_mode"] == "all_spatial"
+    assert "edge_predictor_path" not in interaction_config
+    assert "edge_predictor_thre" not in interaction_config
+
+    trained = ad.read_h5ad(model_dir / "adata.h5ad")
+    assert "interaction_graph" not in trained.uns
+    assert trained.uns["all_model"]["edge_prior_mode"] == "all_spatial"
+    assert trained.uns["all_model"].get("edge_predictor_path") is None
+    assert trained.uns["all_model"].get("edge_predictor_threshold") is None
+
+    loaded = cb.tl.load_dynamical_model_from_dir(model_dir, dim=6, device="cpu")
+    assert loaded.model.interaction_net.edge_prior_mode == "all_spatial"
+    assert not hasattr(loaded.model.interaction_net, "link_predictor")
+    components = cb.tl.compute_velocity_components_from_adata(
+        aligned,
+        loaded.model,
+        device="cpu",
+        time_key="time_point_processed",
+        obsm_key="X_latent",
+        spatial_key="spatial_aligned",
+        concat_spatial=True,
+        write_to_adata=False,
+    )
+    assert components["full"].shape == (54, 6)
+    assert np.isfinite(components["full"]).all()
+    assert np.isfinite(components["interaction"]).all()

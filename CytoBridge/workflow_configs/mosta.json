@@ -73,7 +73,7 @@
     "graph_database": "CellChatDB.ligrec.mouse.csv",
     "interaction_cutoff": 0.02400244047956264,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.44999998807907104,
+    "edge_predictor_threshold": 0.1192110925912857,
     "evaluate_after_training": false
   },
   "downstream": {

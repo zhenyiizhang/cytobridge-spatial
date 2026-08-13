@@ -52,6 +52,7 @@
         "3": 2.0
       }
     },
+    "note": "De novo corrected raw-H5AD workflow. The AD production model fits a learned edge predictor from the seven strict complete ligand-receptor pairs represented by the targeted panel and uses the validation-selected threshold 0.9956824779510498. The seven-pair support is an explicit panel limitation, not a global CCI claim. The packaged all-spatial configuration is a separate no-LR-prior ablation.",
     "edge_predictor": {
       "split": 0,
       "epochs": 100,
@@ -61,15 +62,14 @@
       "train_sample_ratio_per_epoch": 1.0,
       "max_train_edges_per_epoch": null,
       "num_workers": 4
-    },
-    "note": "De novo corrected raw-H5AD workflow. The historical matched alpha_express=0.015 run reused released aligned and edge-model artifacts; use explicit --step downstream with those artifacts for that separate provenance path."
+    }
   },
   "train": {
     "config": "admouse_spatial_full_alpha_express_0015.yaml",
     "graph_database": "CellChatDB.ligrec.mouse.csv",
     "interaction_cutoff": 0.012106042891492197,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.32999998331069946,
+    "edge_predictor_threshold": 0.9956824779510498,
     "evaluate_after_training": false
   },
   "downstream": {
@@ -89,6 +89,13 @@
     "classifier_lr": 0.001,
     "classifier_best_metric": "bacc",
     "classifier_strict_stratification": true,
+    "communication": {
+        "interpretation": "Spatial-attention summaries over learned-predictor-gated, within-cutoff candidate edges; the predictor was trained from seven strict panel-supported ligand-receptor pairs, so do not report these values as a global cell-cell communication screen."
+    },
+    "lr_scope": {
+      "strict_supported_pair_count": 7,
+      "interpretation": "Strict complete-subunit projection is limited to the seven CellChatDB pairs fully represented by the AD expression panel; it is not a global CCI screen."
+    },
     "sde_n_samples": null,
     "sde_dt": 0.05,
     "split_sde_dt": 0.01,

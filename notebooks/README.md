@@ -34,9 +34,18 @@ jupyter lab notebooks/01_zebrafish.ipynb
 
 Each notebook starts with `RUN_TRAINING = False`. Supply an existing aligned
 H5AD and model directory for analysis, or deliberately enable training and
-provide the required edge predictor. Current checkpoints embed predictor
-weights and remain portable; older current-format checkpoints without those
-weights also need an explicit edge-predictor path for downstream loading.
+provide the required edge predictor for any of the four main models. The
+dataset-matched formal ligand-receptor database is included in the wheel and
+resolved by `cb.pp.bundled_graph_database_path(DATASET_PRESET)`; no external LR
+CSV is required. Set `LR_DATABASE_OVERRIDE` only when intentionally running a
+custom database. AD's
+corrected main predictor is trained from seven strict panel-supported LR pairs
+and uses threshold `0.9956824779510498`; this is panel-limited evidence, not a
+global CCI screen. The all-spatial AD profile is a separate no-LR-prior
+ablation.
+Current predictor-gated checkpoints embed their predictor weights and remain
+portable; older predictor-gated checkpoints without those weights also need an
+explicit edge-predictor path for downstream loading.
 
 To run the notebook API-wiring smoke:
 

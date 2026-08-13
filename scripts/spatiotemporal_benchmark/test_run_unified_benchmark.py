@@ -37,6 +37,52 @@ def test_dataset_matrix_has_the_complete_target_plan():
     assert configs["admouse"]["full_data_targets"] == [1, 2]
 
 
+def test_cytobridge_loto_preparation_receives_the_training_profile(tmp_path):
+    cfg = runner.load_datasets(["admouse"])["admouse"]
+    commands = runner.cytobridge_commands(
+        Path("python"),
+        cfg,
+        tmp_path / "formal/admouse",
+        tmp_path / "benchmark/admouse/inputs/manifest.json",
+        tmp_path / "benchmark/admouse",
+        "loto_t1",
+        [1],
+        "cpu",
+    )
+    prepare = commands[0]
+    self_config = tmp_path / "formal/admouse/training/config.yaml"
+    assert "prepare-loto" in prepare
+    assert prepare[prepare.index("--training-config") + 1] == str(self_config)
+    assert "--database" in prepare
+
+    learned_cfg = runner.load_datasets(["zebrafish"])["zebrafish"]
+    learned = runner.cytobridge_commands(
+        Path("python"),
+        learned_cfg,
+        tmp_path / "formal/zebrafish",
+        tmp_path / "benchmark/zebrafish/inputs/manifest.json",
+        tmp_path / "benchmark/zebrafish",
+        "loto_t1",
+        [1],
+        "cpu",
+    )[0]
+    assert "--database" in learned
+
+    radius_cfg = dict(cfg)
+    radius_cfg["benchmark"] = dict(cfg["benchmark"], edge_prior_mode="all_spatial")
+    radius = runner.cytobridge_commands(
+        Path("python"),
+        radius_cfg,
+        tmp_path / "formal/admouse",
+        tmp_path / "benchmark/admouse/inputs/manifest.json",
+        tmp_path / "benchmark/admouse",
+        "loto_t1",
+        [1],
+        "cpu",
+    )[0]
+    assert "--database" not in radius
+
+
 def test_mosta_full_dry_run_includes_t3(tmp_path, capsys):
     runner.main(
         [

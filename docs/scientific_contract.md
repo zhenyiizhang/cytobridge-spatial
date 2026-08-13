@@ -17,21 +17,36 @@
 ## What may differ by dataset
 
 Biological scale and data availability require explicit differences in time
-maps, interaction cutoff, historical matched edge threshold, particle count, annotation key,
-species database, and whether persistent particle identities exist. These are
-stored in small workflow presets rather than copied implementations.
+maps, interaction cutoff, edge-prior policy, historical matched edge threshold,
+particle count, annotation key, species database, and whether persistent
+particle identities exist. These are stored in small workflow presets rather
+than copied implementations.
 
-| Dataset | Interaction cutoff | Historical matched edge threshold | Formal k | Particle scope |
-| --- | ---: | ---: | ---: | --- |
-| Zebrafish | 0.0960636741 | 0.4999999702 | 10 | all available t0 cells |
-| MOSTA | 0.0240024405 | 0.4499999881 | 10 | 12,000 |
-| ARISTA | 0.0315410515 | 0.2399999946 | 10 | 7,668 |
-| AD | 0.0121060429 | 0.3299999833 | 1 | all 53,615 observed t0 cells |
+| Dataset | Interaction cutoff | Main edge prior | Historical matched predictor threshold | Formal k | Particle scope |
+| --- | ---: | --- | ---: | ---: | --- |
+| Zebrafish | 0.0960636741 | learned predictor | 0.4999999702 | 10 | all available t0 cells |
+| MOSTA | 0.0240024405 | learned predictor | 0.4499999881 | 10 | 12,000 |
+| ARISTA | 0.0315410515 | learned predictor | 0.2399999946 | 10 | 7,668 |
+| AD | 0.0121060429 | learned predictor; corrected threshold 0.9956824780 | 0.3299999833 | 1 | all 53,615 observed t0 cells |
 
-Corrected de novo workflows keep the preset interaction cutoff but train a new
-edge predictor and use its validation-selected threshold. The threshold in the
-table is retained for historical predictor reuse or an explicit fixed-threshold
-override; it is not silently imposed on a newly trained predictor.
+All four corrected de novo workflows keep the preset cutoff, train a new edge
+predictor, and use its validation-selected threshold. AD has only seven strict
+complete LR pairs in its targeted panel; the main model uses that learned prior
+and explicitly limits its biological interpretation. The separately packaged
+`all_spatial` profile is the matched no-LR-prior ablation.
+
+Downstream sparse-attention export has a different scope. It reconstructs the
+full radius graph for each analyzed time-slice cohort, or for the explicit
+seeded subsample when a cap is configured, and evaluates its edges in memory
+batches. Those reporting edges are not the exact stochastic groups realized
+during model fitting or simulation.
+
+For AD main, the mouse CellChatDB supplies the seven strict complete pairs used
+both for predictor labels and the downstream projection. The corrected run
+selected threshold `0.9956824779510498`; the `0.3299999833` table value belongs
+to a separate historical matched predictor. The limited targeted panel means
+none of these outputs may be described as global CCI inference. The radius-only
+condition is a future/matched no-LR-prior ablation, not the production main.
 
 The accuracy sweep selected `k=1` for all four datasets. Z/M/A retain `k=10`
 as the manuscript spatial-domain estimand; AD uses `k=1` because larger votes

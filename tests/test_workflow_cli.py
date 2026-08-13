@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import CytoBridge as cb
@@ -9,6 +11,7 @@ import CytoBridge as cb
 from CytoBridge.cli import main
 from CytoBridge.workflow import (
     WorkflowOptions,
+    _loaded_model_scientific_contract,
     _run_edge_predictor,
     build_workflow_plan,
     load_workflow_config,
@@ -31,6 +34,31 @@ def test_packaged_presets_share_formal_scientific_defaults(name, classifier_k):
         "alpha_express": 0.015,
         "classifier_k": classifier_k,
     }
+
+
+@pytest.mark.parametrize(
+    ("json_field", "json_value", "message"),
+    (
+        ("requires_edge_predictor", False, "requires_edge_predictor"),
+        ("interaction_cutoff", 0.5, "interaction cutoff"),
+        ("edge_predictor_threshold", 0.42, "edge predictor threshold"),
+    ),
+)
+def test_builtin_workflow_and_training_yaml_scientific_fields_cannot_drift(
+    json_field,
+    json_value,
+    message,
+):
+    config, source = load_workflow_config("admouse")
+    drifted = deepcopy(config)
+    drifted["train"][json_field] = json_value
+
+    with pytest.raises(ValueError, match=message):
+        build_workflow_plan(
+            drifted,
+            source=source,
+            options=WorkflowOptions(train=True),
+        )
 
 
 def test_cli_exposes_explicit_complete_reference_pca_center_opt_in(capsys):
@@ -56,25 +84,19 @@ def test_cli_exposes_explicit_complete_reference_pca_center_opt_in(capsys):
             "mosta",
             "CellChatDB.ligrec.mouse.csv",
             0.02400244047956264,
-            0.44999998807907104,
+            0.1192110925912857,
         ),
         (
             "arista",
             "CellChatDB.ligrec.human.csv",
             0.03154105148551745,
-            0.23999999463558197,
+            0.5884028673171997,
         ),
         (
             "zebrafish",
             "CellChatDB.ligrec.zebrafish.csv",
             0.09606367405591873,
-            0.4999999701976776,
-        ),
-        (
-            "admouse",
-            "CellChatDB.ligrec.mouse.csv",
-            0.012106042891492197,
-            0.32999998331069946,
+            0.6063615679740906,
         ),
     ),
 )
@@ -120,14 +142,16 @@ def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path)
     downstream = next(step for step in de_novo["steps"] if step["name"] == "downstream")
 
     assert preprocessing["status"] == "ready"
-    assert preprocessing["edge_predictor"]["status"] == (
-        "will be trained automatically"
-    )
-    assert preprocessing["edge_predictor"]["graph_database"].endswith(
-        "CellChatDB.ligrec.mouse.csv"
-    )
+    assert preprocessing["edge_predictor"]["status"] == "will be trained automatically"
     assert training["training_config"] == "admouse_spatial_full_alpha_express_0015.yaml"
     assert training["status"] == "ready"
+    assert training["edge_predictor_path"].endswith(
+        "/preprocess/edge_classifier/admouse_edge_model.pt"
+    )
+    assert training["edge_predictor_threshold"] is None
+    assert training["edge_predictor_threshold_source"] == (
+        "validation-selected during preprocessing"
+    )
     assert downstream["model_format"] == "current"
 
     align = config["preprocess"]["align"]
@@ -141,39 +165,36 @@ def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path)
     assert align["n_pcs"] == 50
     assert align["auto_scale_from_centered_x_max"] is True
 
-    released_edge = tmp_path / "released_edge.pt"
-    released_edge.touch()
     historical = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
-            train=True,
             steps=("downstream",),
             aligned_h5ad=tmp_path / "released_aligned.h5ad",
-            edge_predictor_path=released_edge,
+            model_dir=tmp_path / "released_model",
             output_dir=tmp_path / "historical",
         ),
     )
     historical_preprocess = next(
         step for step in historical["steps"] if step["name"] == "preprocess"
     )
-    historical_training = next(
-        step for step in historical["steps"] if step["name"] == "train"
-    )
     assert historical_preprocess["status"] == "skipped"
-    assert historical_training["status"] == "ready"
-    assert historical_training["edge_predictor_source"] == (
-        "explicit --edge-predictor-path"
+    assert (
+        next(step for step in historical["steps"] if step["name"] == "downstream")[
+            "status"
+        ]
+        == "ready"
     )
 
 
-def test_training_passes_formal_graph_values_as_explicit_fit_arguments(
+def test_admouse_training_uses_corrected_learned_predictor_arguments(
     monkeypatch,
     tmp_path,
 ):
     config, _ = load_workflow_config("admouse")
-    edge_model = tmp_path / "admouse_edge_model.pt"
     captured = {}
+    edge_predictor = tmp_path / "admouse.pt"
+    edge_predictor.touch()
 
     def fake_fit(aligned_h5ad, **kwargs):
         captured["aligned_h5ad"] = aligned_h5ad
@@ -182,22 +203,106 @@ def test_training_passes_formal_graph_values_as_explicit_fit_arguments(
     monkeypatch.setattr(cb.tl, "fit", fake_fit)
     _run_train(
         config,
-        WorkflowOptions(edge_predictor_path=edge_model, device="cpu"),
+        WorkflowOptions(
+            device="cpu",
+            edge_predictor_path=edge_predictor,
+            edge_predictor_threshold=0.9956824779510498,
+        ),
         aligned_h5ad=tmp_path / "admouse_aligned.h5ad",
         model_dir=tmp_path / "training",
     )
 
     assert captured["interaction_cutoff"] == 0.012106042891492197
-    assert captured["edge_predictor_threshold"] == 0.32999998331069946
-    assert captured["edge_predictor_path"] == str(edge_model.resolve())
+    assert captured["edge_predictor_threshold"] == 0.9956824779510498
+    assert captured["edge_predictor_path"] == str(edge_predictor)
     resolved = captured["config"]
     assert resolved["training"]["defaults"]["alpha_spatial"] == 10.0
     assert resolved["training"]["defaults"]["alpha_express"] == 0.015
-    assert resolved["model"]["interaction_net"]["cutoff"] == 0.012106042891492197
+    interaction = resolved["model"]["interaction_net"]
+    assert interaction["cutoff"] == 0.012106042891492197
+    assert interaction["edge_prior_mode"] == "learned"
+    assert interaction["edge_predictor_path"] == str(edge_predictor)
+    assert interaction["edge_predictor_thre"] == 0.9956824779510498
     assert captured["time_key"] == "time_point_processed"
     assert captured["obsm_key"] == "X_latent"
     assert captured["spatial_key"] == "spatial_aligned"
     assert captured["is_spatial"] is True
+
+    contract = _loaded_model_scientific_contract(
+        SimpleNamespace(
+            config=resolved,
+            weight_stage="Finetune",
+            score_stage="Score_Refine",
+        ),
+        config=config,
+        options=WorkflowOptions(train=True),
+    )
+    assert contract["status"] == "matches requested preset"
+    assert contract["interaction_cutoff"] == 0.012106042891492197
+    assert contract["edge_predictor_threshold"] == 0.9956824779510498
+    assert contract["interaction_group_size"] == 1024
+    assert contract["interaction_group_max_size"] == 2047
+    assert "remainder" in contract["interaction_group_remainder_policy"]
+
+
+def test_custom_all_spatial_training_never_inherits_preset_predictor_threshold(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("zebrafish")
+    captured = {}
+
+    def fake_fit(_aligned_h5ad, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(cb.tl, "fit", fake_fit)
+    _run_train(
+        config,
+        WorkflowOptions(
+            training_config="admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml",
+            device="cpu",
+        ),
+        aligned_h5ad=tmp_path / "aligned.h5ad",
+        model_dir=tmp_path / "training",
+    )
+
+    interaction = captured["config"]["model"]["interaction_net"]
+    assert interaction["edge_prior_mode"] == "all_spatial"
+    assert "edge_predictor_path" not in interaction
+    assert "edge_predictor_thre" not in interaction
+    assert captured["edge_predictor_path"] is None
+    assert captured["edge_predictor_threshold"] is None
+
+
+def test_custom_training_cutoff_mismatch_fails_before_preprocessing(tmp_path):
+    config, source = load_workflow_config("zebrafish")
+
+    with pytest.raises(ValueError, match="changes the interaction cutoff"):
+        build_workflow_plan(
+            config,
+            source=source,
+            options=WorkflowOptions(
+                train=True,
+                input_h5ad=tmp_path / "raw.h5ad",
+                output_dir=tmp_path / "run",
+                training_config="admouse_spatial_full_alpha_express_0015.yaml",
+            ),
+        )
+
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            train=True,
+            input_h5ad=tmp_path / "raw.h5ad",
+            output_dir=tmp_path / "run",
+            training_config="admouse_spatial_full_alpha_express_0015.yaml",
+            interaction_cutoff=0.012106042891492197,
+        ),
+    )
+    training = next(step for step in plan["steps"] if step["name"] == "train")
+    assert training["interaction_cutoff"] == pytest.approx(0.012106042891492197)
+    assert training["edge_predictor_threshold"] is None
 
 
 def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
@@ -210,6 +315,8 @@ def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
         "concat_spatial": False,
     }
     captured = {}
+    edge_predictor = tmp_path / "edge.pt"
+    edge_predictor.touch()
 
     def fake_fit(_aligned_h5ad, **kwargs):
         captured.update(kwargs)
@@ -217,7 +324,7 @@ def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
     monkeypatch.setattr(cb.tl, "fit", fake_fit)
     _run_train(
         config,
-        WorkflowOptions(edge_predictor_path=tmp_path / "edge.pt", device="cpu"),
+        WorkflowOptions(edge_predictor_path=edge_predictor, device="cpu"),
         aligned_h5ad=tmp_path / "aligned.h5ad",
         model_dir=tmp_path / "training",
     )
@@ -226,6 +333,57 @@ def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
     assert captured["obsm_key"] == "latent_custom"
     assert captured["spatial_key"] == "xy_custom"
     assert captured["is_spatial"] is False
+
+
+def test_direct_learned_training_never_falls_back_to_packaged_relative_predictor(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("zebrafish")
+    called = False
+
+    def fake_fit(*_args, **_kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(cb.tl, "fit", fake_fit)
+
+    with pytest.raises(ValueError, match="requires an explicit edge predictor"):
+        _run_train(
+            config,
+            WorkflowOptions(device="cpu"),
+            aligned_h5ad=tmp_path / "aligned.h5ad",
+            model_dir=tmp_path / "training",
+        )
+
+    assert called is False
+
+
+def test_direct_learned_training_rejects_missing_explicit_predictor(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("zebrafish")
+    called = False
+
+    def fake_fit(*_args, **_kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(cb.tl, "fit", fake_fit)
+
+    with pytest.raises(FileNotFoundError, match="explicit run-bound path"):
+        _run_train(
+            config,
+            WorkflowOptions(
+                device="cpu",
+                edge_predictor_path=tmp_path / "missing-edge.pt",
+            ),
+            aligned_h5ad=tmp_path / "aligned.h5ad",
+            model_dir=tmp_path / "training",
+        )
+
+    assert called is False
 
 
 def test_formal_downstream_simulation_profiles_are_packaged():
@@ -242,6 +400,9 @@ def test_formal_downstream_simulation_profiles_are_packaged():
         assert downstream["sde_n_samples"] == particles
         assert len(time_grid) == n_times
         assert downstream["split_sde_dt"] == split_dt
+        if dataset == "zebrafish":
+            assert downstream["split_resample_dt"] == 0.05
+            assert downstream["split_max_particles"] == 100_000
         assert downstream["gene_dynamics_enabled"] is True
         assert downstream["lr_enabled"] is True
 
@@ -407,7 +568,7 @@ def test_raw_preprocess_and_train_rejects_existing_edge_predictor(tmp_path):
         )
 
 
-def test_admouse_historical_training_still_requires_released_edge_predictor(tmp_path):
+def test_admouse_learned_training_from_aligned_data_requires_edge_predictor(tmp_path):
     config, source = load_workflow_config("admouse")
     plan = build_workflow_plan(
         config,
@@ -423,6 +584,72 @@ def test_admouse_historical_training_still_requires_released_edge_predictor(tmp_
 
     assert training["status"] == "missing input"
     assert "--edge-predictor-path" in training["missing"]
+    assert training["edge_predictor_path"] is None
+    assert training["edge_predictor_threshold"] == 0.9956824779510498
+
+
+def test_admouse_raw_workflow_fits_and_passes_edge_predictor(monkeypatch, tmp_path):
+    import CytoBridge.workflow as workflow
+
+    config, _ = load_workflow_config("admouse")
+    calls = []
+
+    def preprocess(_config, _options, *, aligned_h5ad):
+        calls.append("preprocess")
+        return aligned_h5ad
+
+    def edge_predictor(_config, _options, *, aligned_h5ad, edge_predictor_path):
+        assert aligned_h5ad == tmp_path / "run" / "preprocess" / "admouse_aligned.h5ad"
+        assert edge_predictor_path == (
+            tmp_path
+            / "run"
+            / "preprocess"
+            / "edge_classifier"
+            / "admouse_edge_model.pt"
+        )
+        calls.append("edge_predictor")
+        return {
+            "model_path": str(edge_predictor_path),
+            "edge_predictor_threshold": 0.9956824779510498,
+        }
+
+    def train(
+        _config,
+        _options,
+        *,
+        aligned_h5ad,
+        model_dir,
+        edge_predictor_path,
+        edge_predictor_threshold,
+    ):
+        assert aligned_h5ad == tmp_path / "run" / "preprocess" / "admouse_aligned.h5ad"
+        assert edge_predictor_path == (
+            tmp_path
+            / "run"
+            / "preprocess"
+            / "edge_classifier"
+            / "admouse_edge_model.pt"
+        )
+        assert edge_predictor_threshold == 0.9956824779510498
+        calls.append("train")
+        return model_dir
+
+    monkeypatch.setattr(workflow, "_run_preprocess", preprocess)
+    monkeypatch.setattr(workflow, "_run_edge_predictor", edge_predictor)
+    monkeypatch.setattr(workflow, "_run_train", train)
+
+    result = run_workflow(
+        config,
+        options=WorkflowOptions(
+            train=True,
+            input_h5ad=tmp_path / "raw.h5ad",
+            output_dir=tmp_path / "run",
+            steps=("preprocess",),
+        ),
+    )
+
+    assert calls == ["preprocess", "edge_predictor", "train"]
+    assert result["completed"] == ["preprocess", "edge_predictor", "train"]
 
 
 def test_workflow_passes_automatic_edge_model_and_threshold_to_training(

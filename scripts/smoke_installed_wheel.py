@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -95,16 +96,43 @@ def _run(
     )
 
 
+def _stage_clean_source(destination: Path) -> Path:
+    """Copy only files required to build the wheel, never datasets or results."""
+
+    destination.mkdir()
+    for directory in ("CytoBridge", "requirements"):
+        shutil.copytree(
+            PROJECT_ROOT / directory,
+            destination / directory,
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "*.pyo", "*.egg-info", ".DS_Store"
+            ),
+        )
+    for filename in ("LICENSE", "README.md", "pyproject.toml", "setup.py"):
+        shutil.copy2(PROJECT_ROOT / filename, destination / filename)
+    return destination
+
+
 def run_smoke(workspace: Path) -> dict[str, str]:
+    try:
+        workspace.resolve().relative_to(PROJECT_ROOT.resolve())
+    except ValueError:
+        pass
+    else:
+        raise RuntimeError(
+            "Wheel smoke workspace must be outside the source tree so clean-source "
+            "staging cannot recurse into its own destination."
+        )
     wheel_directory = workspace / "dist"
     venv_directory = workspace / "venv"
     test_directory = workspace / "test-cwd"
     wheel_directory.mkdir()
     test_directory.mkdir()
+    staged_source = _stage_clean_source(workspace / "source")
 
     environment = _clean_environment()
     _run(
-        _build_command(PROJECT_ROOT, wheel_directory, Path(sys.executable)),
+        _build_command(staged_source, wheel_directory, Path(sys.executable)),
         cwd=workspace,
         environment=environment,
     )
@@ -160,9 +188,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(result, indent=2))
             return 0
 
-        with tempfile.TemporaryDirectory(
-            prefix="cytobridge-wheel-smoke-"
-        ) as temporary:
+        with tempfile.TemporaryDirectory(prefix="cytobridge-wheel-smoke-") as temporary:
             result = run_smoke(Path(temporary))
             result["workspace"] = "temporary directory removed after success"
             print(json.dumps(result, indent=2))

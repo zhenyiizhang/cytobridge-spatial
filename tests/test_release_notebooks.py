@@ -51,6 +51,14 @@ def test_dataset_notebook_is_clean_runnable_source(
     text = "\n".join(text_parts)
 
     assert f"DATASET_PRESET = '{dataset}'" in text
+    assert "LR_DATABASE_OVERRIDE: Path | None = None" in text
+    assert "if LR_DATABASE_OVERRIDE is None:" in text
+    assert "LR_DATABASE = cb.pp.bundled_graph_database_path(DATASET_PRESET)" in text
+    assert "required_external_inputs = {" in text
+    assert 'Path("inputs/CellChatDB.ligrec.' not in text
+    assert "a ligand-receptor table" not in text
+    assert "Provide the external files for the wheel-packaged" not in text
+    assert '"lr_database": LR_DATABASE,\n    **(' not in text
     assert "RUN_TRAINING = False" in text
     assert "RUN_FORMAL_SCOPE = False" in text
     assert 'downstream_preset = workflow_preset["downstream"]' in text
@@ -61,7 +69,7 @@ def test_dataset_notebook_is_clean_runnable_source(
     assert "require_all_subunits=True" in text
     assert "keep quantitative analyses on unwarped states" in text.lower()
     assert f'"classifier_k": {classifier_k}' not in text
-    assert "scientific_preset[\"classifier_k\"]" in text
+    assert 'scientific_preset["classifier_k"]' in text
     assert 'downstream_preset["classifier_epochs"]' in text
     assert 'downstream_preset["classifier_hidden_size"]' in text
     assert 'downstream_preset["classifier_lr"]' in text
@@ -124,17 +132,35 @@ def test_notebook_smoke_runner_is_explicitly_limited_and_parseable() -> None:
     assert '"training_or_checkpoint_load": False' in source
 
 
+def test_admouse_notebook_uses_corrected_learned_main_and_scopes_lr_claims() -> None:
+    notebook = json.loads(
+        (ROOT / "notebooks" / "04_admouse.ipynb").read_text(encoding="utf-8")
+    )
+    text = "\n".join("".join(cell.get("source", [])) for cell in notebook["cells"])
+    prose = " ".join(text.split())
+
+    assert 'interaction_config["edge_predictor_thre"]' in text
+    assert "EDGE_PREDICTOR_PATH" in text
+    assert "EDGE_PREDICTOR_THRESHOLD" in text
+    assert "0.9956824779510498" in text
+    assert "no-LR-prior ablation" in prose
+    assert "seven strict ligand-receptor pairs" in prose
+    assert "not a global cell-cell communication screen" in prose
+
+
 def test_readme_and_docs_publish_all_dataset_notebooks() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     tutorial_index = (ROOT / "docs" / "tutorials" / "index.md").read_text(
         encoding="utf-8"
     )
-    notebook_readme = (ROOT / "notebooks" / "README.md").read_text(
-        encoding="utf-8"
-    )
+    notebook_readme = (ROOT / "notebooks" / "README.md").read_text(encoding="utf-8")
+    notebook_readme_prose = " ".join(notebook_readme.split())
 
     for filename in NOTEBOOKS:
         assert filename in notebook_readme
+    assert "cb.pp.bundled_graph_database_path(DATASET_PRESET)" in notebook_readme
+    assert "no external LR CSV is required" in notebook_readme_prose
+    assert "LR_DATABASE_OVERRIDE" in notebook_readme
     for dataset in ("zebrafish", "mosta", "arista", "admouse"):
         assert dataset in tutorial_index
     assert "four dataset notebooks" in readme

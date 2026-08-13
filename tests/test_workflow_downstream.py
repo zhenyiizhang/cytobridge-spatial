@@ -54,6 +54,8 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
 
     downstream = next(step for step in plan["steps"] if step["name"] == "downstream")
     analyses = {item["name"]: item for item in downstream["analyses"]}
+    assert downstream["simulation"]["split_resample_dt"] == 0.05
+    assert downstream["simulation"]["split_max_particles"] == 100_000
     assert analyses["time-slice velocity"]["status"] == "enabled"
     assert analyses["sparse communication"]["status"] == "enabled"
     assert analyses["gene dynamics"]["status"] == "enabled"
@@ -109,6 +111,90 @@ def test_packaged_downstream_defaults_share_the_graph_database():
         assert analyses["strict ligand-receptor projection"]["missing"] == []
 
 
+def test_zebrafish_package_workflow_passes_the_formal_split_contract(
+    monkeypatch,
+    tmp_path,
+):
+    import anndata as ad
+    import CytoBridge as cb
+    import CytoBridge.workflow as workflow
+
+    config, _ = load_workflow_config("zebrafish")
+    adata = SimpleNamespace(
+        obsm={
+            "X_latent": np.zeros((2, 2), dtype=np.float32),
+            "spatial_aligned": np.zeros((2, 2), dtype=np.float32),
+        },
+        obs=pd.DataFrame(
+            {
+                "Annotation": ["A", "A"],
+                "time_point_processed": [0.0, 1.0],
+            }
+        ),
+    )
+    dataframe = pd.DataFrame(
+        {
+            "samples": [0.0, 1.0],
+            "x1": [0.0, 0.0],
+            "x2": [0.0, 0.0],
+            "x3": [0.0, 0.0],
+            "x4": [0.0, 0.0],
+            "Annotation": ["A", "A"],
+        }
+    )
+    captured = {}
+
+    class StopAfterSimulationCall(Exception):
+        pass
+
+    def capture_workflow(**kwargs):
+        captured.update(kwargs)
+        raise StopAfterSimulationCall
+
+    monkeypatch.setattr(ad, "read_h5ad", lambda _path: adata)
+    monkeypatch.setattr(
+        cb.tl,
+        "adata_to_aligned_dataframe",
+        lambda *_args, **_kwargs: (dataframe, "time_point_processed"),
+    )
+    monkeypatch.setattr(
+        cb.tl,
+        "infer_feature_columns",
+        lambda *_args, **_kwargs: ["x1", "x2", "x3", "x4"],
+    )
+    monkeypatch.setattr(
+        cb.tl,
+        "load_dynamical_model_from_dir",
+        lambda *_args, **_kwargs: SimpleNamespace(model=object()),
+    )
+    monkeypatch.setattr(cb.tl, "build_dynamical_runtime", lambda _loaded: object())
+    monkeypatch.setattr(cb.tl, "run_interpolation_workflow", capture_workflow)
+    monkeypatch.setattr(
+        workflow,
+        "_loaded_model_scientific_contract",
+        lambda *_args, **_kwargs: {
+            "status": "test",
+            "edge_prior_mode": "learned",
+            "interaction_group_size": 64,
+        },
+    )
+
+    with pytest.raises(StopAfterSimulationCall):
+        _run_downstream(
+            config,
+            WorkflowOptions(device="cpu"),
+            aligned_h5ad=tmp_path / "aligned.h5ad",
+            model_dir=tmp_path / "model",
+            output_dir=tmp_path / "out",
+        )
+
+    assert captured["split_sde_dt"] == 0.05
+    assert captured["split_resample_dt"] == 0.05
+    assert captured["split_max_particles"] == 100_000
+    assert captured["split_growth_alpha"] == 1.0
+    assert captured["split_interaction_m"] == 64
+
+
 def test_downstream_cli_database_and_species_overrides_take_precedence(tmp_path: Path):
     config, _ = load_workflow_config("arista")
     custom_database = tmp_path / "custom_lr.csv"
@@ -148,9 +234,10 @@ def test_canonical_current_checkpoint_configs_match_requested_preset(name):
     expected_training["ckpt_dir"] = "/copied/canonical/model"
     expected_training["spatial_dim"] = 2
     expected_training["model"]["spatial_dim"] = 2
-    expected_training["model"]["interaction_net"][
-        "edge_predictor_path"
-    ] = "/copied/canonical/edge.pt"
+    if config["train"].get("requires_edge_predictor", False):
+        expected_training["model"]["interaction_net"][
+            "edge_predictor_path"
+        ] = "/copied/canonical/edge.pt"
     loaded = SimpleNamespace(
         config=expected_training,
         weight_stage="Finetune",
@@ -164,10 +251,35 @@ def test_canonical_current_checkpoint_configs_match_requested_preset(name):
 
     assert contract["status"] == "matches requested preset"
     assert contract["alpha_express"] == 0.015
-    assert (
-        contract["edge_predictor_threshold"]
-        == config["train"]["edge_predictor_threshold"]
+    expected_threshold = config["train"].get("edge_predictor_threshold")
+    assert contract["edge_predictor_threshold"] == expected_threshold
+
+
+def test_checkpoint_without_explicit_learned_mode_uses_historical_default():
+    config, _ = load_workflow_config("zebrafish")
+    import CytoBridge.workflow as workflow
+
+    checkpoint = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    checkpoint["model"]["interaction_net"].pop("edge_prior_mode")
+    checkpoint["ckpt_dir"] = "/copied/canonical/model"
+    checkpoint["spatial_dim"] = 2
+    checkpoint["model"]["spatial_dim"] = 2
+    checkpoint["model"]["interaction_net"][
+        "edge_predictor_path"
+    ] = "/copied/canonical/edge.pt"
+    loaded = SimpleNamespace(
+        config=checkpoint,
+        weight_stage="Finetune",
+        score_stage="Score_Refine",
     )
+
+    contract = _loaded_model_scientific_contract(
+        loaded,
+        config=config,
+        options=WorkflowOptions(),
+    )
+
+    assert contract["edge_prior_mode"] == "learned"
 
 
 def _zebrafish_checkpoint_config(*, threshold: float, edge_path: str) -> dict:
@@ -228,8 +340,7 @@ def test_standalone_downstream_rejects_conflicting_explicit_threshold():
 
     message = str(error.value)
     assert (
-        "loaded model.interaction_net.edge_predictor_thre=0.6063615679740906"
-        in message
+        "loaded model.interaction_net.edge_predictor_thre=0.6063615679740906" in message
     )
     assert "expected model.interaction_net.edge_predictor_thre=0.42" in message
 
@@ -313,15 +424,15 @@ def test_artifact_reuse_rejects_readable_scientific_config_mismatch(
     assert f"loaded {readable_path}={replacement!r}" in message
 
 
-def test_artifact_reuse_ignores_only_operational_locations():
+def test_all_spatial_artifact_reuse_rejects_inert_predictor_settings():
     config, _ = load_workflow_config("admouse")
     import CytoBridge.workflow as workflow
 
-    altered = deepcopy(workflow._read_training_config(config["train"]["config"]))
+    no_lr_config = "admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml"
+    altered = deepcopy(workflow._read_training_config(no_lr_config))
     altered["ckpt_dir"] = "/copied/model"
     altered["device"] = "cpu"
     altered["training"]["history_flush_every"] = 1
-    altered["model"]["interaction_net"]["edge_predictor_path"] = "/copied/edge.pt"
     loaded = SimpleNamespace(
         config=altered,
         weight_stage="Finetune",
@@ -331,9 +442,18 @@ def test_artifact_reuse_ignores_only_operational_locations():
     contract = _loaded_model_scientific_contract(
         loaded,
         config=config,
-        options=WorkflowOptions(),
+        options=WorkflowOptions(training_config=no_lr_config),
     )
     assert contract["status"] == "matches requested preset"
+
+    altered["model"]["interaction_net"]["edge_predictor_path"] = "/copied/edge.pt"
+    loaded.config = altered
+    with pytest.raises(ValueError, match="records predictor settings"):
+        _loaded_model_scientific_contract(
+            loaded,
+            config=config,
+            options=WorkflowOptions(training_config=no_lr_config),
+        )
 
 
 def test_artifact_reuse_validates_derived_nondefault_spatial_dimension(tmp_path):

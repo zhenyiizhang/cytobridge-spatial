@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Leakage-audited CytoBridge-0.015 benchmark adapter.
 
-The CLI supports input/config preflight, training-only LOTO graph and edge-
-classifier rebuilding, one exact six-stage fit per LOTO fold, validation of a
-reused full-data checkpoint, and continuous non-split weighted SDE inference.
+The CLI supports input/config preflight, training-only LOTO interaction-prior
+preparation, one exact six-stage fit per LOTO fold, validation of a reused
+full-data checkpoint, and continuous non-split weighted SDE inference. Learned
+priors rebuild an edge classifier; radius-only priors never create or pass one.
 It never opens benchmark truth artifacts.
 """
 
@@ -224,9 +225,22 @@ def _model_report(
     device: str = "cpu",
     probe_load: bool = False,
     reference_config: Mapping[str, Any] | None = None,
+    reference_config_sha256: str | None = None,
 ) -> dict[str, Any]:
     inventory = checkpoint_inventory(model_dir, reference_config=reference_config)
-    match = checkpoint_training_match(model_dir, split, data, inventory=inventory)
+    inventory_mode = str(inventory["training_profile"]["edge_prior_mode"])
+    if inventory_mode == "all_spatial" and reference_config is None:
+        raise ContractError(
+            "all_spatial checkpoint validation requires --training-config so its "
+            "saved cutoff can be matched to the reference training config"
+        )
+    match = checkpoint_training_match(
+        model_dir,
+        split,
+        data,
+        inventory=inventory,
+        reference_config_sha256=reference_config_sha256,
+    )
     report = {**inventory, "training_reference_match": match}
     if probe_load:
         if repo is None:
@@ -274,6 +288,7 @@ def command_preflight(args: argparse.Namespace) -> None:
             device=args.device,
             probe_load=True,
             reference_config=package_config,
+            reference_config_sha256=sha256_file(config_path),
         )
     if args.output_json is not None:
         write_json(args.output_json, report)
@@ -301,6 +316,29 @@ def _resolve_interaction_cutoff(
     )
 
 
+def _all_spatial_cutoff(
+    config: Mapping[str, Any], requested: float | None
+) -> tuple[float, str]:
+    """Resolve a radius-only cutoff without allowing a new scientific setting."""
+    configured = float(config["model"]["interaction_net"]["cutoff"])
+    if not np.isfinite(configured) or configured <= 0:
+        raise ContractError(
+            "all_spatial training-config cutoff must be finite and positive"
+        )
+    if requested is None:
+        return configured, "training_config.model.interaction_net.cutoff"
+    explicit = float(requested)
+    if not np.isfinite(explicit) or explicit <= 0:
+        raise ContractError("--interaction-cutoff must be finite and positive")
+    if not np.isclose(explicit, configured, rtol=0.0, atol=1e-12):
+        raise ContractError(
+            "all_spatial --interaction-cutoff must match "
+            "training_config.model.interaction_net.cutoff; "
+            f"configured={configured}, explicit={explicit}"
+        )
+    return configured, "explicit_cli_matches_training_config"
+
+
 def _tree_hashes(root: Path) -> dict[str, str]:
     return {
         str(path.relative_to(root)): sha256_file(path)
@@ -315,103 +353,137 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
     _require_loto(split)
     data = load_training_data(split)
     input_report = _input_report(split, data)
+    config_source = args.training_config.expanduser().resolve()
+    package_config = load_yaml(config_source)
+    config_profile = validate_training_config(package_config)
+    edge_prior_mode = str(config_profile["edge_prior_mode"])
+    database_arg = getattr(args, "database", None)
+    database = None if database_arg is None else database_arg.expanduser().resolve()
+    if edge_prior_mode == "learned":
+        if database is None:
+            raise ContractError("--database is required when edge_prior_mode='learned'")
+        if not database.is_file():
+            raise FileNotFoundError(database)
+    else:
+        inert_cli = sorted(
+            option
+            for option, value in (
+                ("--edge-threshold", args.edge_threshold),
+                ("--spot-diameter", args.spot_diameter),
+            )
+            if value is not None
+        )
+        if inert_cli:
+            raise ContractError(
+                "edge_prior_mode='all_spatial' does not use learned-graph CLI "
+                f"options {inert_cli!r}; remove them"
+            )
+        cutoff, cutoff_source = _all_spatial_cutoff(
+            package_config, args.interaction_cutoff
+        )
     output = new_output_dir(args.output_dir)
-    database = args.database.expanduser().resolve()
-    if not database.is_file():
-        raise FileNotFoundError(database)
     if str(args.repo.resolve()) not in sys.path:
         sys.path.insert(0, str(args.repo.resolve()))
 
-    import scanpy as sc
-    from CytoBridge.pp.edge_prediction import train_edge_predictor
-    from CytoBridge.pp.interaction_graph import generate_interaction_graph
+    if edge_prior_mode == "learned":
+        assert database is not None
+        import scanpy as sc
 
-    adata = sc.read_h5ad(split.train_h5ad)
+        from CytoBridge.pp.edge_prediction import train_edge_predictor
+        from CytoBridge.pp.interaction_graph import generate_interaction_graph
+
+        read_h5ad = sc.read_h5ad
+    else:
+        import anndata as ad
+
+        read_h5ad = ad.read_h5ad
+
+    adata = read_h5ad(split.train_h5ad)
     try:
-        cutoff, cutoff_source = _resolve_interaction_cutoff(
-            adata, args.interaction_cutoff
-        )
-        if (
-            args.expression_layer is not None
-            and args.expression_layer not in adata.layers
-        ):
-            raise ContractError(
-                f"LOTO graph requires layers[{args.expression_layer!r}], but it is absent"
+        if edge_prior_mode == "learned":
+            cutoff, cutoff_source = _resolve_interaction_cutoff(
+                adata, args.interaction_cutoff
             )
-        spot_diameter = (
-            float(args.spot_diameter)
-            if args.spot_diameter is not None
-            else float(cutoff / 4.0)
-        )
-        if not np.isfinite(spot_diameter) or spot_diameter <= 0:
-            raise ContractError("spot diameter must be finite and positive")
-        graph_root = output / "interaction_graphs"
-        metadata_root = output / "metadata"
-        slug = _slug(split.dataset_id)
         graph_results: list[dict[str, Any]] = []
-        # Edge-classifier loading uses observed-stage order (t0, t1, ...).
-        # Naming by actual time would collide with that lookup after a LOTO gap
-        # (e.g. fold-order t2 could accidentally open actual-time t2).  Keep an
-        # explicit actual-time mapping in provenance while writing ordered names.
-        for order, actual_time, stage_name in ordered_graph_plan(split):
-            result = generate_interaction_graph(
-                data_name=stage_name,
-                data_from=adata,
-                data_to=str(graph_root / stage_name),
-                metadata_to=str(metadata_root / stage_name),
-                database_path=str(database),
-                split=0,
-                time_key=data.time_key,
-                time_value=actual_time,
-                neighborhood_threshold=cutoff,
-                spot_diameter=spot_diameter,
-                spatial_key=data.spatial_key,
-                expression_layer=args.expression_layer,
-                auto_neighborhood_threshold=False,
-                save_metadata=False,
-                verbose=not args.quiet,
-                use_tqdm=not args.quiet,
+        spot_diameter: float | None = None
+        edge_path: Path | None = None
+        edge_result: Mapping[str, Any] | None = None
+        if edge_prior_mode == "learned":
+            if (
+                args.expression_layer is not None
+                and args.expression_layer not in adata.layers
+            ):
+                raise ContractError(
+                    f"LOTO graph requires layers[{args.expression_layer!r}], but it is absent"
+                )
+            spot_diameter = (
+                float(args.spot_diameter)
+                if args.spot_diameter is not None
+                else float(cutoff / 4.0)
             )
-            graph_results.append(
-                {
-                    "ordered_fold_index": order,
-                    "ordered_graph_name": stage_name,
-                    "actual_benchmark_time": actual_time,
-                    **plain(result),
-                }
-            )
+            if not np.isfinite(spot_diameter) or spot_diameter <= 0:
+                raise ContractError("spot diameter must be finite and positive")
+            graph_root = output / "interaction_graphs"
+            metadata_root = output / "metadata"
+            slug = _slug(split.dataset_id)
+            # Edge-classifier loading uses observed-stage order (t0, t1, ...).
+            # Naming by actual time would collide with that lookup after a LOTO
+            # gap. Keep the actual-time mapping in the provenance report.
+            for order, actual_time, stage_name in ordered_graph_plan(split):
+                result = generate_interaction_graph(
+                    data_name=stage_name,
+                    data_from=adata,
+                    data_to=str(graph_root / stage_name),
+                    metadata_to=str(metadata_root / stage_name),
+                    database_path=str(database),
+                    split=0,
+                    time_key=data.time_key,
+                    time_value=actual_time,
+                    neighborhood_threshold=cutoff,
+                    spot_diameter=spot_diameter,
+                    spatial_key=data.spatial_key,
+                    expression_layer=args.expression_layer,
+                    auto_neighborhood_threshold=False,
+                    save_metadata=False,
+                    verbose=not args.quiet,
+                    use_tqdm=not args.quiet,
+                )
+                graph_results.append(
+                    {
+                        "ordered_fold_index": order,
+                        "ordered_graph_name": stage_name,
+                        "actual_benchmark_time": actual_time,
+                        **plain(result),
+                    }
+                )
 
-        edge_path = output / "edge_classifier" / f"{slug}.pt"
-        edge_result = train_edge_predictor(
-            data_name=slug,
-            adata_or_h5ad=adata,
-            graph_input_dir=str(graph_root),
-            output_model_path=str(edge_path),
-            epochs=int(args.edge_epochs),
-            batch_size=int(args.edge_batch_size),
-            learning_rate=float(args.edge_learning_rate),
-            spatial_dim=data.spatial_dim,
-            distance_threshold=cutoff,
-            device=str(args.device),
-            time_key=data.time_key,
-            latent_key=data.state_key,
-            spatial_key=data.spatial_key,
-            train_sample_ratio_per_epoch=float(args.edge_train_sample_ratio),
-            max_train_edges_per_epoch=args.edge_max_train_edges,
-            num_workers=int(args.edge_num_workers),
-            random_seed=SEED,
-            edge_predictor_threshold=args.edge_threshold,
-        )
+            edge_path = output / "edge_classifier" / f"{slug}.pt"
+            edge_result = train_edge_predictor(
+                data_name=slug,
+                adata_or_h5ad=adata,
+                graph_input_dir=str(graph_root),
+                output_model_path=str(edge_path),
+                epochs=int(args.edge_epochs),
+                batch_size=int(args.edge_batch_size),
+                learning_rate=float(args.edge_learning_rate),
+                spatial_dim=data.spatial_dim,
+                distance_threshold=cutoff,
+                device=str(args.device),
+                time_key=data.time_key,
+                latent_key=data.state_key,
+                spatial_key=data.spatial_key,
+                train_sample_ratio_per_epoch=float(args.edge_train_sample_ratio),
+                max_train_edges_per_epoch=args.edge_max_train_edges,
+                num_workers=int(args.edge_num_workers),
+                random_seed=SEED,
+                edge_predictor_threshold=args.edge_threshold,
+            )
     finally:
         del adata
 
-    edge_meta = Path(str(edge_result["meta_path"])).resolve()
-    effective_threshold = float(edge_result["edge_predictor_threshold"])
-    if not 0 < effective_threshold < 1:
-        raise ContractError("trained edge classifier returned an invalid threshold")
     report = {
         "status": "complete",
-        "phase": "prepare_loto_graph_and_edge_classifier",
+        "phase": "prepare_loto_interaction_prior",
         "method": METHOD,
         "split_id": split.split_id,
         "regime": "loto",
@@ -420,36 +492,59 @@ def command_prepare_loto(args: argparse.Namespace) -> None:
         **input_provenance(split),
         "training_only_recomputation": True,
         "held_out_graph_opened": False,
+        "edge_prior_mode": edge_prior_mode,
         "interaction_cutoff": cutoff,
         "interaction_cutoff_source": cutoff_source,
         "spot_diameter": spot_diameter,
         "expression_layer": args.expression_layer,
         "observed_stage_graphs": graph_results,
-        "database": str(database),
-        "database_sha256": sha256_file(database),
-        "edge_epochs": int(args.edge_epochs),
-        "edge_model": str(edge_path.resolve()),
-        "edge_model_sha256": sha256_file(edge_path),
-        "edge_meta": str(edge_meta),
-        "edge_meta_sha256": sha256_file(edge_meta),
-        "edge_threshold": effective_threshold,
-        "edge_threshold_selected_on_validation": float(
-            edge_result["edge_predictor_threshold_selected"]
-        ),
-        "edge_threshold_source": (
-            "validation_selected" if args.edge_threshold is None else "explicit_cli"
-        ),
+        "training_config_source": str(config_source),
+        "training_config_source_sha256": sha256_file(config_source),
         "seed": SEED,
         "device": str(args.device),
         "environment": environment_provenance(args.device),
         "repo": repo_identity(args.repo),
     }
+    if edge_prior_mode == "learned":
+        assert (
+            database is not None and edge_path is not None and edge_result is not None
+        )
+        edge_meta = Path(str(edge_result["meta_path"])).resolve()
+        effective_threshold = float(edge_result["edge_predictor_threshold"])
+        if not 0 < effective_threshold < 1:
+            raise ContractError("trained edge classifier returned an invalid threshold")
+        report.update(
+            {
+                "database": str(database),
+                "database_sha256": sha256_file(database),
+                "edge_epochs": int(args.edge_epochs),
+                "edge_model": str(edge_path.resolve()),
+                "edge_model_sha256": sha256_file(edge_path),
+                "edge_meta": str(edge_meta),
+                "edge_meta_sha256": sha256_file(edge_meta),
+                "edge_threshold": effective_threshold,
+                "edge_threshold_selected_on_validation": float(
+                    edge_result["edge_predictor_threshold_selected"]
+                ),
+                "edge_threshold_source": (
+                    "validation_selected"
+                    if args.edge_threshold is None
+                    else "explicit_cli"
+                ),
+            }
+        )
     report["artifact_sha256"] = _tree_hashes(output)
     write_json(output / "prepare_graph_summary.json", report)
     print(json.dumps(plain(report), indent=2, sort_keys=True))
 
 
-def _load_graph_summary(path: Path, split: SplitInput) -> dict[str, Any]:
+def _load_graph_summary(
+    path: Path,
+    split: SplitInput,
+    *,
+    edge_prior_mode: str,
+    training_config_sha256: str,
+) -> dict[str, Any]:
     path = Path(path).expanduser().resolve()
     summary_path = path / "prepare_graph_summary.json" if path.is_dir() else path
     try:
@@ -466,20 +561,66 @@ def _load_graph_summary(path: Path, split: SplitInput) -> dict[str, Any]:
         raise ContractError("graph summary training-reference SHA mismatch")
     if report.get("training_only_recomputation") is not True:
         raise ContractError("graph summary does not prove training-only recomputation")
+    recorded_mode = str(report.get("edge_prior_mode", "learned")).strip().lower()
+    if recorded_mode != edge_prior_mode:
+        raise ContractError(
+            "interaction-prior summary mode differs from the training config"
+        )
+    current_config_sha = str(training_config_sha256).strip().lower()
+    recorded_config_sha = (
+        str(report.get("training_config_source_sha256", "")).strip().lower()
+    )
+    if len(current_config_sha) != 64 or len(recorded_config_sha) != 64:
+        raise ContractError(
+            "interaction-prior summary lacks a valid training-config SHA"
+        )
+    if recorded_config_sha != current_config_sha:
+        raise ContractError(
+            "interaction-prior summary training-config SHA differs from the "
+            "current training config"
+        )
     declared_artifacts = report.get("artifact_sha256")
-    if not isinstance(declared_artifacts, Mapping) or not declared_artifacts:
+    if not isinstance(declared_artifacts, Mapping):
         raise ContractError("graph summary lacks immutable artifact hashes")
+    if edge_prior_mode == "learned" and not declared_artifacts:
+        raise ContractError("learned graph summary lacks immutable artifact hashes")
     for relative, expected in declared_artifacts.items():
         artifact = (summary_path.parent / str(relative)).resolve()
         if not artifact.is_file() or sha256_file(artifact) != str(expected):
             raise ContractError(
                 f"graph/edge artifact changed or disappeared: {artifact}"
             )
-    edge = Path(str(report.get("edge_model", ""))).expanduser().resolve()
-    meta = Path(str(report.get("edge_meta", ""))).expanduser().resolve()
-    for artifact, key in ((edge, "edge_model_sha256"), (meta, "edge_meta_sha256")):
-        if not artifact.is_file() or sha256_file(artifact) != str(report.get(key, "")):
-            raise ContractError(f"graph artifact changed or disappeared: {artifact}")
+    if edge_prior_mode == "learned":
+        edge = Path(str(report.get("edge_model", ""))).expanduser().resolve()
+        meta = Path(str(report.get("edge_meta", ""))).expanduser().resolve()
+        for artifact, key in (
+            (edge, "edge_model_sha256"),
+            (meta, "edge_meta_sha256"),
+        ):
+            if not artifact.is_file() or sha256_file(artifact) != str(
+                report.get(key, "")
+            ):
+                raise ContractError(
+                    f"graph artifact changed or disappeared: {artifact}"
+                )
+    else:
+        inert = sorted(
+            key
+            for key in (
+                "edge_model",
+                "edge_model_sha256",
+                "edge_meta",
+                "edge_meta_sha256",
+                "edge_threshold",
+                "edge_threshold_selected_on_validation",
+            )
+            if key in report
+        )
+        if inert:
+            raise ContractError(
+                "all_spatial interaction-prior summary contains inert learned "
+                f"predictor fields {inert!r}"
+            )
     report["_summary_path"] = str(summary_path)
     report["_summary_sha256"] = sha256_file(summary_path)
     return report
@@ -494,17 +635,47 @@ def command_fit_loto(args: argparse.Namespace) -> None:
     config_source = args.training_config.expanduser().resolve()
     package_config = load_yaml(config_source)
     config_profile = validate_training_config(package_config)
+    edge_prior_mode = str(config_profile["edge_prior_mode"])
     config = copy.deepcopy(package_config)
-    graph = _load_graph_summary(args.graph_dir, split)
+    config_source_sha256 = sha256_file(config_source)
+    graph = _load_graph_summary(
+        args.graph_dir,
+        split,
+        edge_prior_mode=edge_prior_mode,
+        training_config_sha256=config_source_sha256,
+    )
     output = new_output_dir(args.output_dir)
-    edge_path = Path(str(graph["edge_model"])).resolve()
     cutoff = float(graph["interaction_cutoff"])
-    threshold = float(graph["edge_threshold"])
     config["ckpt_dir"] = str(output)
     config["model"]["spatial_dim"] = data.spatial_dim
     config["model"]["interaction_net"]["cutoff"] = cutoff
-    config["model"]["interaction_net"]["edge_predictor_path"] = str(edge_path)
-    config["model"]["interaction_net"]["edge_predictor_thre"] = threshold
+    fit_predictor_kwargs: dict[str, Any] = {}
+    runtime_binding: dict[str, Any] = {
+        "interaction_cutoff": cutoff,
+        "edge_prior_mode": edge_prior_mode,
+    }
+    predictor_report: dict[str, Any] = {}
+    if edge_prior_mode == "learned":
+        edge_path = Path(str(graph["edge_model"])).resolve()
+        threshold = float(graph["edge_threshold"])
+        config["model"]["interaction_net"]["edge_predictor_path"] = str(edge_path)
+        config["model"]["interaction_net"]["edge_predictor_thre"] = threshold
+        fit_predictor_kwargs = {
+            "edge_predictor_path": str(edge_path),
+            "edge_predictor_threshold": threshold,
+        }
+        runtime_binding.update(
+            {
+                "edge_threshold": threshold,
+                "edge_model": str(edge_path),
+                "edge_model_sha256": sha256_file(edge_path),
+            }
+        )
+        predictor_report = {
+            "edge_threshold": threshold,
+            "edge_model": str(edge_path),
+            "edge_model_sha256": sha256_file(edge_path),
+        }
     runtime_sigma = float(args.sigma)
     for stage in config["training"]["plan"]:
         stage["sigma"] = runtime_sigma
@@ -528,10 +699,9 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         is_spatial=True,
         ckpt_dir=str(output),
         interaction_cutoff=cutoff,
-        edge_predictor_path=str(edge_path),
-        edge_predictor_threshold=threshold,
         sigma=runtime_sigma,
         evaluate_after_training=False,
+        **fit_predictor_kwargs,
     )
     inventory = checkpoint_inventory(output, reference_config=package_config)
     # At this point the fit summary does not yet exist; verification therefore
@@ -541,12 +711,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         split,
         data,
         inventory=inventory,
-        runtime_binding={
-            "interaction_cutoff": cutoff,
-            "edge_threshold": threshold,
-            "edge_model": str(edge_path),
-            "edge_model_sha256": sha256_file(edge_path),
-        },
+        runtime_binding=runtime_binding,
     )
     report = {
         "status": "complete",
@@ -565,7 +730,7 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         "training_profile": config_profile,
         "resolved_training_profile": resolved_config_profile,
         "training_config_source": str(config_source),
-        "training_config_source_sha256": sha256_file(config_source),
+        "training_config_source_sha256": config_source_sha256,
         "saved_config_sha256": inventory["config_sha256"],
         "stage_complete": inventory["stage_complete"],
         "checkpoint_sha256": {
@@ -574,15 +739,14 @@ def command_fit_loto(args: argparse.Namespace) -> None:
         },
         "checkpoint_inventory": inventory,
         "training_reference_match": match,
+        "edge_prior_mode": edge_prior_mode,
         "interaction_cutoff": cutoff,
-        "edge_threshold": threshold,
-        "edge_model": str(edge_path),
-        "edge_model_sha256": sha256_file(edge_path),
         "prepare_graph_summary": graph["_summary_path"],
         "prepare_graph_summary_sha256": graph["_summary_sha256"],
         "environment": environment_provenance(args.device),
         "repo": repo_identity(args.repo),
         **input_provenance(split),
+        **predictor_report,
     }
     write_json(output / "benchmark_fit_summary.json", report)
     print(json.dumps(plain(report), indent=2, sort_keys=True))
@@ -591,10 +755,13 @@ def command_fit_loto(args: argparse.Namespace) -> None:
 def command_validate_model(args: argparse.Namespace) -> None:
     split = read_split_input(args.input_manifest, args.split)
     data = load_training_data(split)
-    reference_config = (
+    reference_config_path = (
         None
         if args.training_config is None
-        else load_yaml(args.training_config.expanduser().resolve())
+        else args.training_config.expanduser().resolve()
+    )
+    reference_config = (
+        None if reference_config_path is None else load_yaml(reference_config_path)
     )
     report = {
         "status": "complete",
@@ -611,6 +778,11 @@ def command_validate_model(args: argparse.Namespace) -> None:
             device=args.device,
             probe_load=True,
             reference_config=reference_config,
+            reference_config_sha256=(
+                None
+                if reference_config_path is None
+                else sha256_file(reference_config_path)
+            ),
         ),
         "repo": repo_identity(args.repo),
         "environment": environment_provenance(args.device),
@@ -722,6 +894,64 @@ def _seed_runtime() -> None:
         torch.backends.cudnn.deterministic = True
 
 
+def _validated_interaction_m(model: Any, requested: int) -> int:
+    """Bind simulator grouping exactly to the loaded checkpoint model."""
+    configured = getattr(model, "interaction_group_size", None)
+    if isinstance(configured, (bool, np.bool_)):
+        raise ContractError(
+            "loaded checkpoint model.interaction_group_size is not a positive integer"
+        )
+    try:
+        configured_int = int(configured)
+    except (TypeError, ValueError) as exc:
+        raise ContractError(
+            "loaded checkpoint model.interaction_group_size is not a positive integer"
+        ) from exc
+    if configured_int <= 0 or configured_int != configured:
+        raise ContractError(
+            "loaded checkpoint model.interaction_group_size is not a positive integer"
+        )
+    if isinstance(requested, (bool, np.bool_)):
+        raise ContractError("--interaction-m must be a positive integer")
+    try:
+        requested_int = int(requested)
+    except (TypeError, ValueError) as exc:
+        raise ContractError("--interaction-m must be a positive integer") from exc
+    if requested_int <= 0 or requested_int != requested:
+        raise ContractError("--interaction-m must be a positive integer")
+    if requested_int != configured_int:
+        raise ContractError(
+            "--interaction-m must exactly match loaded checkpoint "
+            "model.interaction_group_size; "
+            f"checkpoint={configured_int}, requested={requested}"
+        )
+    return configured_int
+
+
+def _compact_prediction_summaries(
+    summaries: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build one run-summary row per unique target, preserving target order."""
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for report in summaries:
+        target_key = json.dumps(report["target"], sort_keys=True)
+        if target_key in seen:
+            raise ContractError(
+                f"full-data prediction summaries repeat target {report['target']!r}"
+            )
+        seen.add(target_key)
+        result.append(
+            {
+                "target": report["target"],
+                "prediction_npz": report["prediction_npz"],
+                "prediction_npz_sha256": report["prediction_npz_sha256"],
+                "predicted_mass": report["predicted_mass"],
+            }
+        )
+    return result
+
+
 def _simulate(
     *,
     repo: Path,
@@ -732,6 +962,7 @@ def _simulate(
     device: str,
     dt: float,
     interaction_m: int,
+    expected_edge_prior_mode: str,
 ) -> tuple[list[np.ndarray], list[np.ndarray], dict[str, Any]]:
     if str(repo.resolve()) not in sys.path:
         sys.path.insert(0, str(repo.resolve()))
@@ -767,7 +998,13 @@ def _simulate(
         loaded = load_dynamical_model_from_dir(
             model_dir, dim=data.joint_dim, device=str(device)
         )
-    validate_training_config(loaded.config, runtime_resolved=True)
+    loaded_profile = validate_training_config(loaded.config, runtime_resolved=True)
+    loaded_edge_prior_mode = str(loaded_profile["edge_prior_mode"])
+    if loaded_edge_prior_mode != expected_edge_prior_mode:
+        raise ContractError(
+            "loaded model interaction edge-prior mode differs from the validated "
+            "checkpoint inventory"
+        )
     if loaded.weight_stage != "Finetune":
         raise ContractError(
             f"inference must load Finetune weights, found {loaded.weight_stage!r}"
@@ -776,6 +1013,9 @@ def _simulate(
         raise ContractError(
             f"inference must load Score_Refine score, found {loaded.score_stage!r}"
         )
+    loaded_interaction_group_size = _validated_interaction_m(
+        loaded.model, interaction_m
+    )
     # Model construction consumes torch RNG while initializing modules before
     # checkpoint loading. Reset after loading so SDE noise itself starts from
     # the declared benchmark seed, independent of constructor implementation.
@@ -790,7 +1030,7 @@ def _simulate(
         dt=float(dt),
         sigma=SIGMA,
         include_score=True,
-        interaction_m=int(interaction_m),
+        interaction_m=loaded_interaction_group_size,
         device=str(device),
         time_key=data.time_key,
         obsm_key=data.state_key,
@@ -823,6 +1063,11 @@ def _simulate(
             "simulation_mode": "continuous_non_split_weighted_sde",
             "weight_stage": loaded.weight_stage,
             "score_stage": loaded.score_stage,
+            "edge_prior_mode": loaded_edge_prior_mode,
+            "edge_predictor_used": loaded_edge_prior_mode == "learned",
+            "interaction_m": loaded_interaction_group_size,
+            "loaded_model_interaction_group_size": (loaded_interaction_group_size),
+            "interaction_group_binding": "exact_checkpoint_model_match",
             "weights_semantics": "native_unnormalised_growth_mass",
             "torch_version": torch.__version__,
         },
@@ -909,6 +1154,8 @@ def _prediction_summary(
         "dt": float(dt),
         "include_score": True,
         "include_interaction": True,
+        "edge_prior_mode": simulation["edge_prior_mode"],
+        "edge_predictor_used": simulation["edge_predictor_used"],
         "interaction_m": int(interaction_m),
         "seed": SEED,
         "device": str(device),
@@ -943,16 +1190,24 @@ def command_infer_loto(args: argparse.Namespace) -> None:
     _require_loto(split)
     data = load_training_data(split)
     _input_report(split, data)
-    reference_config = (
+    reference_config_path = (
         None
         if args.training_config is None
-        else load_yaml(args.training_config.expanduser().resolve())
+        else args.training_config.expanduser().resolve()
+    )
+    reference_config = (
+        None if reference_config_path is None else load_yaml(reference_config_path)
     )
     model_report = _model_report(
         args.model_dir,
         split,
         data,
         reference_config=reference_config,
+        reference_config_sha256=(
+            None
+            if reference_config_path is None
+            else sha256_file(reference_config_path)
+        ),
     )
     output = new_output_dir(args.output_dir)
     source, schedule = inference_schedule(split)
@@ -968,6 +1223,7 @@ def command_infer_loto(args: argparse.Namespace) -> None:
         device=args.device,
         dt=args.dt,
         interaction_m=args.interaction_m,
+        expected_edge_prior_mode=model_report["training_profile"]["edge_prior_mode"],
     )
     prediction = output / "prediction.npz"
     _atomic_prediction(prediction, points[-1], weights[-1], data, source, target)
@@ -996,16 +1252,24 @@ def command_infer_full(args: argparse.Namespace) -> None:
     _require_full(split)
     data = load_training_data(split)
     _input_report(split, data)
-    reference_config = (
+    reference_config_path = (
         None
         if args.training_config is None
-        else load_yaml(args.training_config.expanduser().resolve())
+        else args.training_config.expanduser().resolve()
+    )
+    reference_config = (
+        None if reference_config_path is None else load_yaml(reference_config_path)
     )
     model_report = _model_report(
         args.model_dir,
         split,
         data,
         reference_config=reference_config,
+        reference_config_sha256=(
+            None
+            if reference_config_path is None
+            else sha256_file(reference_config_path)
+        ),
     )
     output = new_output_dir(args.output_dir)
     source, times = inference_schedule(split)
@@ -1023,6 +1287,7 @@ def command_infer_full(args: argparse.Namespace) -> None:
         device=args.device,
         dt=args.dt,
         interaction_m=args.interaction_m,
+        expected_edge_prior_mode=model_report["training_profile"]["edge_prior_mode"],
     )
     summaries: list[dict[str, Any]] = []
     for index, target in enumerate(targets, start=1):
@@ -1061,15 +1326,7 @@ def command_infer_full(args: argparse.Namespace) -> None:
         "prediction_n": PREDICTION_N,
         "seed": SEED,
         "source_roster": roster,
-        "prediction_summaries": [
-            {
-                "target": report["target"],
-                "prediction_npz": report["prediction_npz"],
-                "prediction_npz_sha256": report["prediction_npz_sha256"],
-                "predicted_mass": report["predicted_mass"],
-            }
-            for report in summaries
-        ],
+        "prediction_summaries": _compact_prediction_summaries(summaries),
         **input_provenance(split),
     }
     write_json(output / "run_summary.json", run_report)
@@ -1113,11 +1370,17 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.set_defaults(func=command_preflight)
 
     graph = sub.add_parser(
-        "prepare-loto", help="rebuild LOTO graphs and edge classifier from train rows"
+        "prepare-loto",
+        help="prepare the configured LOTO interaction prior from train rows",
     )
     _repo_argument(graph)
     _input_arguments(graph)
-    graph.add_argument("--database", required=True, type=Path)
+    graph.add_argument("--training-config", required=True, type=Path)
+    graph.add_argument(
+        "--database",
+        type=Path,
+        help="required only for learned edge-prior training; unused by all_spatial",
+    )
     graph.add_argument("--output-dir", required=True, type=Path)
     graph.add_argument("--device", default="cuda")
     graph.add_argument("--expression-layer", default="counts")

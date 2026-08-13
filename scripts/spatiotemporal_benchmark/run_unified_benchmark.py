@@ -89,8 +89,10 @@ def cytobridge_commands(python, cfg, formal, manifest, root, split, targets, dev
     target, graph = targets[0], root / "graphs" / split
     loto_model = root / "fits" / "cytobridge" / split
     output = root / "predictions" / "loto" / "cytobridge" / f"t{target}"
-    database = REPO / cfg["benchmark"]["graph_database"]
-    return [command(module, python, "prepare-loto", *shared, "--database", database,
+    prepare_args = ["--training-config", training_config]
+    if cfg["benchmark"].get("edge_prior_mode", "learned") == "learned":
+        prepare_args += ["--database", REPO / cfg["benchmark"]["graph_database"]]
+    return [command(module, python, "prepare-loto", *shared, *prepare_args,
                     "--expression-layer", cfg["benchmark"]["expression_layer"],
                     "--output-dir", graph, "--device", device),
             command(module, python, "fit-loto", *shared, "--training-config", training_config,

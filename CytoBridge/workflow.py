@@ -157,6 +157,8 @@ def _selected_steps(
             selected.index("downstream") if "downstream" in selected else len(selected)
         )
         selected.insert(insert_at, "train")
+    if options.train:
+        _validate_training_edge_prior_options(config, options)
     if (
         options.train
         and "preprocess" in selected
@@ -170,6 +172,35 @@ def _selected_steps(
             "predictor only with its matched --aligned-h5ad and without the "
             "preprocess step."
         )
+    if (
+        options.train
+        and "preprocess" in selected
+        and options.training_config is not None
+    ):
+        expected_cutoff = (
+            _read_training_config(options.training_config)
+            .get("model", {})
+            .get("interaction_net", {})
+            .get("cutoff")
+        )
+        preset_cutoff = config.get("train", {}).get("interaction_cutoff")
+        if (
+            options.interaction_cutoff is None
+            and expected_cutoff is not None
+            and preset_cutoff is not None
+            and not math.isclose(
+                float(expected_cutoff),
+                float(preset_cutoff),
+                rel_tol=1e-9,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError(
+                "A custom training config changes the interaction cutoff while "
+                "preprocessing is selected. Supply the matching workflow preset or "
+                "an explicit --interaction-cutoff so graph construction, negative "
+                "sampling, training, and downstream use one cutoff."
+            )
     if not options.train and {"preprocess", "downstream"}.issubset(selected):
         raise ValueError(
             "Preprocessing and downstream inference cannot share one command "
@@ -178,6 +209,120 @@ def _selected_steps(
             "for a de novo workflow, or run downstream from matched artifacts."
         )
     return tuple(dict.fromkeys(str(step) for step in selected))
+
+
+def _validate_training_edge_prior_options(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+) -> dict[str, Any]:
+    """Reject predictor settings that cannot affect the selected training prior."""
+
+    train_config = config.get("train", {})
+    config_name = options.training_config or str(train_config["config"])
+    resolved = _read_training_config(config_name)
+    model = resolved.get("model", {})
+    interaction = model.get("interaction_net", {})
+    mode = str(interaction.get("edge_prior_mode", "learned")).strip().lower()
+    if mode not in {"learned", "all_spatial"}:
+        raise ValueError(
+            "Training config model.interaction_net.edge_prior_mode must be "
+            f"'learned' or 'all_spatial'; got {mode!r}."
+        )
+    uses_learned = bool(
+        "interaction" in model.get("components", [])
+        and str(model.get("interaction_type", "potential")).lower() == "gnn"
+        and mode == "learned"
+    )
+    if not uses_learned:
+        stale_config_values = {
+            key: interaction.get(key)
+            for key in ("edge_predictor_path", "edge_predictor_thre")
+            if interaction.get(key) is not None
+        }
+        supplied = {
+            "--edge-predictor-path": options.edge_predictor_path,
+            "--edge-predictor-threshold": options.edge_predictor_threshold,
+        }
+        supplied = {key: value for key, value in supplied.items() if value is not None}
+        if stale_config_values or supplied:
+            raise ValueError(
+                f"edge_prior_mode={mode!r} does not use an edge predictor. Remove "
+                "predictor path/threshold settings instead of recording ignored "
+                f"scientific parameters; config={stale_config_values}, runtime={supplied}."
+            )
+    return resolved
+
+
+def _training_uses_learned_edge_prior(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+) -> bool:
+    """Return whether the effective training config needs a learned edge gate."""
+
+    if options.training_config is None:
+        # This fast path keeps dependency-free installed-wheel dry-runs usable.
+        # Execution and train planning call _validate_builtin_training_contract,
+        # which parses the YAML and fails closed on any duplicated-field drift.
+        return bool(config.get("train", {}).get("requires_edge_predictor", False))
+    resolved = _read_training_config(options.training_config)
+    model = resolved.get("model", {})
+    uses_learned = bool(
+        "interaction" in model.get("components", [])
+        and str(model.get("interaction_type", "potential")).lower() == "gnn"
+        and str(
+            model.get("interaction_net", {}).get("edge_prior_mode", "learned")
+        ).lower()
+        == "learned"
+    )
+    return uses_learned
+
+
+def _validate_builtin_training_contract(config: Mapping[str, Any]) -> None:
+    """Fail closed when duplicated workflow JSON and training YAML fields drift."""
+
+    train_config = config.get("train", {})
+    resolved = _read_training_config(str(train_config["config"]))
+    model = resolved.get("model", {})
+    interaction = model.get("interaction_net", {})
+    yaml_mode = str(interaction.get("edge_prior_mode", "learned")).lower()
+    yaml_learned = bool(
+        "interaction" in model.get("components", [])
+        and str(model.get("interaction_type", "potential")).lower() == "gnn"
+        and yaml_mode == "learned"
+    )
+    json_learned = bool(train_config.get("requires_edge_predictor", False))
+    if json_learned != yaml_learned:
+        raise ValueError(
+            "Workflow preset train.requires_edge_predictor does not match its "
+            f"training YAML edge-prior mode: JSON={json_learned}, YAML={yaml_mode!r}."
+        )
+    pairs = (
+        (
+            "interaction cutoff",
+            train_config.get("interaction_cutoff"),
+            interaction.get("cutoff"),
+        ),
+        (
+            "edge predictor threshold",
+            train_config.get("edge_predictor_threshold"),
+            interaction.get("edge_predictor_thre"),
+        ),
+    )
+    for label, json_value, yaml_value in pairs:
+        if label == "edge predictor threshold" and not yaml_learned:
+            if json_value is None and yaml_value is None:
+                continue
+        if (
+            json_value is None
+            or yaml_value is None
+            or not math.isclose(
+                float(json_value), float(yaml_value), rel_tol=0.0, abs_tol=1e-12
+            )
+        ):
+            raise ValueError(
+                f"Workflow preset {label} does not match its training YAML: "
+                f"JSON={json_value!r}, YAML={yaml_value!r}."
+            )
 
 
 def _output_paths(
@@ -202,7 +347,7 @@ def _output_paths(
         and options.train
         and "preprocess" in _selected_steps(config, options)
         and config.get("preprocess", {}).get("enabled", True)
-        and config.get("train", {}).get("requires_edge_predictor", False)
+        and _training_uses_learned_edge_prior(config, options)
     ):
         edge_predictor = (
             output_dir
@@ -254,7 +399,13 @@ def _effective_downstream_analyses(
             str(config["dataset"]["name"]),
             filename=config.get("train", {}).get("graph_database"),
         )
-        lr_source = "bundled species-matched CellChatDB used for graph construction"
+        lr_source = (
+            "bundled species-matched CellChatDB used for graph construction and "
+            "downstream strict LR projection"
+            if _training_uses_learned_edge_prior(config, options)
+            else "bundled species-matched CellChatDB used only for downstream "
+            "strict LR projection"
+        )
 
     preferred_species_tag = options.preferred_species_tag
     if preferred_species_tag is None:
@@ -456,7 +607,7 @@ def _loaded_model_scientific_contract(
             "six-stage contract. Use a dedicated historical compatibility "
             "comparison; do not label a legacy checkpoint as a formal packaged run."
         )
-    source = loaded_config
+    source = deepcopy(loaded_config)
     expected_config = deepcopy(
         _read_training_config(options.training_config or str(config["train"]["config"]))
     )
@@ -474,17 +625,62 @@ def _loaded_model_scientific_contract(
     )
     actual_interaction = source.get("model", {}).get("interaction_net", {})
 
+    # Current GNN configs spell out the learned prior explicitly. Checkpoints
+    # made before that field was added have identical runtime semantics because
+    # ``learned`` has always been the GNN constructor default. Normalize only
+    # that historical omission; do not invent an interaction config for models
+    # that do not have one or weaken any other scientific field.
+    if (
+        isinstance(actual_interaction, dict)
+        and actual_interaction
+        and "edge_prior_mode" not in actual_interaction
+        and str(expected_interaction.get("edge_prior_mode", "learned")).lower()
+        == "learned"
+    ):
+        actual_interaction["edge_prior_mode"] = "learned"
+
     requested_cutoff = options.interaction_cutoff
-    if requested_cutoff is None:
+    if requested_cutoff is None and options.training_config is None:
         requested_cutoff = config.get("train", {}).get("interaction_cutoff")
     if requested_cutoff is not None:
         expected_interaction["cutoff"] = float(requested_cutoff)
+
+    expected_edge_mode = (
+        str(expected_interaction.get("edge_prior_mode", "learned")).strip().lower()
+    )
+    actual_edge_mode = (
+        str(actual_interaction.get("edge_prior_mode", "learned")).strip().lower()
+    )
+    if actual_edge_mode != expected_edge_mode:
+        raise ValueError(
+            "Loaded model edge-prior mode does not match the requested training "
+            f"config: loaded={actual_edge_mode!r}, expected={expected_edge_mode!r}."
+        )
+    if expected_edge_mode != "learned":
+        stale_actual = {
+            key: actual_interaction.get(key)
+            for key in ("edge_predictor_path", "edge_predictor_thre")
+            if actual_interaction.get(key) is not None
+        }
+        if (
+            options.edge_predictor_path is not None
+            or options.edge_predictor_threshold is not None
+        ):
+            raise ValueError(
+                f"edge_prior_mode={expected_edge_mode!r} does not accept predictor "
+                "path or threshold overrides."
+            )
+        if stale_actual:
+            raise ValueError(
+                f"Loaded {expected_edge_mode!r} model records predictor settings that "
+                f"cannot affect its edge prior: {stale_actual}."
+            )
 
     requested_threshold = options.edge_predictor_threshold
     threshold_source = None
     if requested_threshold is not None:
         threshold_source = "explicit workflow override"
-    else:
+    elif expected_edge_mode == "learned":
         # A de novo run selects this value on its edge-predictor validation
         # split, then records the effective value in the checkpoint config.
         # That recorded value is the scientific contract for later standalone
@@ -610,13 +806,26 @@ def _loaded_model_scientific_contract(
     alpha_spatial = float(defaults["alpha_spatial"])
     seed = int(source["seed"])
     cutoff = interaction.get("cutoff")
-    threshold = interaction.get("edge_predictor_thre")
+    threshold = (
+        interaction.get("edge_predictor_thre")
+        if str(interaction.get("edge_prior_mode", "learned")).lower() == "learned"
+        else None
+    )
+    interaction_group_size = int(
+        source.get("model", {}).get("interaction_group_size", 1024)
+    )
     return {
         "status": "matches requested preset",
         "alpha_express": alpha_express,
         "alpha_spatial": alpha_spatial,
         "seed": int(seed),
         "interaction_cutoff": None if cutoff is None else float(cutoff),
+        "edge_prior_mode": str(interaction.get("edge_prior_mode", "learned")).lower(),
+        "interaction_group_size": interaction_group_size,
+        "interaction_group_max_size": 2 * interaction_group_size - 1,
+        "interaction_group_remainder_policy": (
+            "merge a nonzero remainder into the final base-size group"
+        ),
         "edge_predictor_threshold": (None if threshold is None else float(threshold)),
         "edge_predictor_threshold_check": threshold_source,
         "weight_stage": loaded.weight_stage,
@@ -633,6 +842,8 @@ def build_workflow_plan(
     """Build the concise execution plan shown by ``--dry-run``."""
 
     options = _resolve_workflow_options(config, options)
+    if options.train and options.training_config is None:
+        _validate_builtin_training_contract(config)
     selected = _selected_steps(config, options)
     paths = _output_paths(config, options)
     dataset = config["dataset"]
@@ -667,8 +878,9 @@ def build_workflow_plan(
             missing.append("--input-h5ad")
         if options.output_dir is None:
             missing.append("--output-dir")
+        effective_learned_prior = _training_uses_learned_edge_prior(config, options)
         auto_edge_predictor = (
-            train_config.get("requires_edge_predictor", False)
+            effective_learned_prior
             and options.train
             and options.edge_predictor_path is None
             and "preprocess" in selected
@@ -753,13 +965,27 @@ def build_workflow_plan(
         training_preset = options.training_config or train_config.get("config")
         if not training_preset:
             missing.append("--training-config")
+        effective_training = _read_training_config(
+            options.training_config or str(train_config["config"])
+        )
+        effective_interaction = effective_training.get("model", {}).get(
+            "interaction_net", {}
+        )
+        planned_interaction_cutoff = (
+            float(options.interaction_cutoff)
+            if options.interaction_cutoff is not None
+            else effective_interaction.get("cutoff")
+            if options.training_config is not None
+            else train_config.get("interaction_cutoff")
+        )
+        effective_learned_prior = _training_uses_learned_edge_prior(config, options)
         auto_edge_predictor = (
-            train_config.get("requires_edge_predictor", False)
+            effective_learned_prior
             and options.edge_predictor_path is None
             and "preprocess" in selected
             and preprocess_config.get("enabled", True)
         )
-        if train_config.get("requires_edge_predictor", False) and not (
+        if effective_learned_prior and not (
             options.edge_predictor_path is not None or auto_edge_predictor
         ):
             missing.append("--edge-predictor-path")
@@ -774,9 +1000,12 @@ def build_workflow_plan(
             threshold_source = "explicit --edge-predictor-threshold"
         elif auto_edge_predictor:
             threshold_source = "validation-selected during preprocessing"
-        elif train_config.get("requires_edge_predictor", False):
-            planned_edge_threshold = train_config.get("edge_predictor_threshold")
-            threshold_source = "packaged historical matched threshold"
+        elif effective_learned_prior:
+            planned_edge_threshold = effective_interaction.get(
+                "edge_predictor_thre",
+                train_config.get("edge_predictor_threshold"),
+            )
+            threshold_source = "packaged corrected artifact threshold"
         else:
             threshold_source = None
         steps.append(
@@ -786,11 +1015,7 @@ def build_workflow_plan(
                 "compute": "GPU required for production training",
                 "missing": missing,
                 "training_config": training_preset,
-                "interaction_cutoff": (
-                    float(options.interaction_cutoff)
-                    if options.interaction_cutoff is not None
-                    else train_config.get("interaction_cutoff")
-                ),
+                "interaction_cutoff": planned_interaction_cutoff,
                 "edge_predictor_threshold": planned_edge_threshold,
                 "edge_predictor_threshold_source": threshold_source,
                 "edge_predictor_path": None
@@ -943,6 +1168,16 @@ def build_workflow_plan(
                         else int(downstream_config["sde_n_samples"])
                     ),
                     "split_dt": float(downstream_config.get("split_sde_dt", 0.01)),
+                    "split_resample_dt": (
+                        None
+                        if downstream_config.get("split_resample_dt") is None
+                        else float(downstream_config["split_resample_dt"])
+                    ),
+                    "split_max_particles": (
+                        None
+                        if downstream_config.get("split_max_particles") is None
+                        else int(downstream_config["split_max_particles"])
+                    ),
                     "sigma": float(downstream_config.get("split_sigma", 0.03)),
                     "growth_alpha": float(
                         downstream_config.get("split_growth_alpha", 1.0)
@@ -1337,8 +1572,7 @@ def _run_train(
 
     dataset = config["dataset"]
     train_config = config.get("train", {})
-    config_name = options.training_config or str(train_config["config"])
-    resolved = _read_training_config(config_name)
+    resolved = _validate_training_edge_prior_options(config, options)
     scientific = config["scientific"]
     resolved["seed"] = int(scientific["seed"])
     resolved["ckpt_dir"] = str(model_dir)
@@ -1346,19 +1580,44 @@ def _run_train(
     defaults["alpha_spatial"] = float(scientific.get("alpha_spatial", 10.0))
     defaults["alpha_express"] = float(scientific["alpha_express"])
     interaction = resolved.setdefault("model", {}).setdefault("interaction_net", {})
-    effective_edge_path = edge_predictor_path or options.edge_predictor_path
-    if effective_edge_path is not None:
-        interaction["edge_predictor_path"] = str(
-            effective_edge_path.expanduser().resolve()
+    edge_prior_mode = str(interaction.get("edge_prior_mode", "learned")).lower()
+    if edge_prior_mode != "learned" and (
+        edge_predictor_path is not None or edge_predictor_threshold is not None
+    ):
+        raise ValueError(
+            f"edge_prior_mode={edge_prior_mode!r} cannot receive a generated edge "
+            "predictor path or threshold."
         )
-    threshold = edge_predictor_threshold
-    if threshold is None:
-        threshold = options.edge_predictor_threshold
-    if threshold is None:
-        threshold = train_config.get("edge_predictor_threshold")
+    effective_edge_path = None
+    if edge_prior_mode == "learned":
+        supplied_edge_path = edge_predictor_path or options.edge_predictor_path
+        if supplied_edge_path is None:
+            raise ValueError(
+                "Training with edge_prior_mode='learned' requires an explicit "
+                "edge predictor produced by this workflow or supplied with "
+                "--edge-predictor-path. The relative path stored in a packaged "
+                "training YAML is a resource placeholder and is never resolved "
+                "against the current working directory."
+            )
+        effective_edge_path = Path(supplied_edge_path).expanduser().resolve()
+        if not effective_edge_path.is_file():
+            raise FileNotFoundError(
+                "Learned edge predictor not found at the explicit run-bound path: "
+                f"{effective_edge_path}"
+            )
+        interaction["edge_predictor_path"] = str(effective_edge_path)
+    threshold = None
+    if edge_prior_mode == "learned":
+        threshold = edge_predictor_threshold
+        if threshold is None:
+            threshold = options.edge_predictor_threshold
+        if threshold is None and options.training_config is None:
+            threshold = train_config.get("edge_predictor_threshold")
     if threshold is not None:
         interaction["edge_predictor_thre"] = float(threshold)
     cutoff = options.interaction_cutoff
+    if cutoff is None and options.training_config is not None:
+        cutoff = interaction.get("cutoff")
     if cutoff is None:
         cutoff = train_config.get("interaction_cutoff")
     if cutoff is not None:
@@ -1378,9 +1637,7 @@ def _run_train(
         ckpt_dir=model_dir,
         interaction_cutoff=None if cutoff is None else float(cutoff),
         edge_predictor_path=(
-            None
-            if effective_edge_path is None
-            else str(effective_edge_path.expanduser().resolve())
+            None if effective_edge_path is None else str(effective_edge_path)
         ),
         edge_predictor_threshold=(None if threshold is None else float(threshold)),
         evaluate_after_training=bool(
@@ -1608,10 +1865,28 @@ def _write_communication_outputs(
                 )
     table_path = output_dir / "communication_by_celltype.csv"
     pd.DataFrame(rows).to_csv(table_path, index=False)
+    interaction_net = getattr(getattr(runtime, "f_net", None), "interaction_net", None)
     return (
         {
             "status": "completed",
             "representation": "sparse model-edge attention",
+            "edge_prior_mode": str(
+                getattr(interaction_net, "edge_prior_mode", "learned")
+            ).lower(),
+            "interpretation": communication_config.get("interpretation"),
+            "attention_scope": (
+                "full time-slice radius candidate graph"
+                if communication_config.get("max_cells_per_timepoint") is None
+                else "seeded time-slice subsample radius candidate graph"
+            ),
+            "training_interaction_scope": (
+                "stochastic interaction groups with base size "
+                f"{int(getattr(runtime.f_net, 'interaction_group_size', 1024))}; "
+                "a nonzero remainder is merged into the final group (at most "
+                f"{2 * int(getattr(runtime.f_net, 'interaction_group_size', 1024)) - 1}); "
+                "radius candidates are evaluated only within each group during "
+                "model training and dynamics"
+            ),
             "remove_self_loop": bool(
                 communication_config.get("remove_self_loop", False)
             ),
@@ -1816,6 +2091,7 @@ def _write_lr_outputs(
     spatial_dim: int,
     output_dir: Path,
     allow_complete_reference_pca_center_fallback: bool = False,
+    analysis_scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Project sparse communication through a strict, fully supported LR database."""
 
@@ -1868,6 +2144,7 @@ def _write_lr_outputs(
         "pca_loadings_key": "varm['PCs']",
         "pca_center_source": _pca_center_source(reference_adata),
         "preferred_species_tag": preferred_species_tag,
+        "analysis_scope": None if analysis_scope is None else dict(analysis_scope),
         "tables": paths,
     }
 
@@ -2011,6 +2288,28 @@ def _run_downstream(
         config=config,
         options=options,
     )
+    effective_edge_mode = str(model_contract["edge_prior_mode"]).lower()
+    effective_downstream = dict(downstream)
+    effective_communication = dict(downstream.get("communication", {}))
+    effective_lr_scope = downstream.get("lr_scope")
+    if effective_edge_mode == "all_spatial":
+        effective_communication["interpretation"] = (
+            "Spatial-attention summaries over within-cutoff candidates without a "
+            "learned ligand-receptor edge gate. This is a no-LR-prior ablation, "
+            "not the production main model and not a global cell-cell "
+            "communication screen."
+        )
+        if str(dataset.get("name")) == "admouse":
+            effective_lr_scope = {
+                "strict_supported_pair_count": 7,
+                "interpretation": (
+                    "The downstream strict complete-subunit projection remains "
+                    "limited to the seven CellChatDB pairs represented by the AD "
+                    "expression panel; those labels did not gate the all-spatial "
+                    "ablation model and do not form a global CCI screen."
+                ),
+            }
+    effective_downstream["communication"] = effective_communication
     runtime = cb.tl.build_dynamical_runtime(loaded)
     observed = [float(value) for value in downstream["observed"]]
     interpolated = [float(value) for value in downstream.get("interpolated", [])]
@@ -2050,6 +2349,17 @@ def _run_downstream(
         split_sde_dt=float(downstream.get("split_sde_dt", 0.01)),
         split_sigma_scalar=float(downstream.get("split_sigma", 0.03)),
         split_growth_alpha=float(downstream.get("split_growth_alpha", 1.0)),
+        split_interaction_m=int(model_contract["interaction_group_size"]),
+        split_resample_dt=(
+            None
+            if downstream.get("split_resample_dt") is None
+            else float(downstream["split_resample_dt"])
+        ),
+        split_max_particles=(
+            None
+            if downstream.get("split_max_particles") is None
+            else int(downstream["split_max_particles"])
+        ),
         spatial_warp_to_observed_piecewise=False,
         spatial_warp_visualization_only=True,
         random_seed=int(scientific["seed"]),
@@ -2107,7 +2417,7 @@ def _run_downstream(
         annotation_key=annotation_key,
         output_dir=output_dir / "communication",
         device=options.device,
-        downstream=downstream,
+        downstream=effective_downstream,
         seed=int(scientific["seed"]),
     )
     analyses["communication"] = communication_summary
@@ -2163,6 +2473,7 @@ def _run_downstream(
             allow_complete_reference_pca_center_fallback=(
                 options.allow_complete_reference_pca_center_fallback
             ),
+            analysis_scope=effective_lr_scope,
         )
     else:
         analyses["ligand_receptor"] = {"status": "not requested"}
@@ -2203,9 +2514,13 @@ def _run_downstream(
                 result.communication_adata_dict[result.time_keys[0]].n_obs
             ),
             "configured_particle_cap": downstream.get("sde_n_samples"),
+            "initial_particle_cap": downstream.get("sde_n_samples"),
+            "split_particle_ceiling": downstream.get("split_max_particles"),
             "split_dt": float(downstream.get("split_sde_dt", 0.01)),
+            "split_resample_dt": downstream.get("split_resample_dt"),
             "sigma": float(downstream.get("split_sigma", 0.03)),
             "growth_alpha": float(downstream.get("split_growth_alpha", 1.0)),
+            "interaction_group_size": int(model_contract["interaction_group_size"]),
             "non_split_lineage_rollout": bool(downstream.get("lineage_enabled", False)),
         },
         "classifier_accuracy": result.classifier_accuracy,
@@ -2214,6 +2529,7 @@ def _run_downstream(
             None
             if result.classifier_evaluation is None
             else {
+                "cache_protocol_version": 8,
                 "per_class_counts": result.classifier_evaluation.get(
                     "per_class_split_counts", {}
                 ),
@@ -2222,6 +2538,9 @@ def _run_downstream(
                 ),
                 "singleton_class_policy": result.classifier_evaluation.get(
                     "singleton_class_policy"
+                ),
+                "stratification_repairs": result.classifier_evaluation.get(
+                    "stratification_repairs", []
                 ),
             }
         ),
@@ -2245,6 +2564,8 @@ def run_workflow(
     """Execute selected steps after the caller has checked the dry-run plan."""
 
     options = _resolve_workflow_options(config, options)
+    if options.training_config is None:
+        _validate_builtin_training_contract(config)
     selected = _selected_steps(config, options)
     paths = _output_paths(config, options)
     output_dir = paths["output_dir"]
@@ -2264,7 +2585,7 @@ def run_workflow(
         if (
             options.train
             and options.edge_predictor_path is None
-            and config.get("train", {}).get("requires_edge_predictor", False)
+            and _training_uses_learned_edge_prior(config, options)
         ):
             assert edge_predictor_path is not None
             edge_result = _run_edge_predictor(

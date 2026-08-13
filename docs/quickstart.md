@@ -19,12 +19,12 @@ cytobridge workflow --config zebrafish --step downstream \
 ```
 
 The shared downstream step produces interpolated slices, classifier metrics,
-time-slice velocity, growth, composition, sparse communication, readable
+time-slice velocity, growth, composition, sparse spatial-attention summaries, readable
 tables, and standard figures. It does not silently train a model.
 
-Current checkpoints embed the edge predictor and can be copied between
-machines. Older current-format checkpoints without embedded predictor weights
-also need `--edge-predictor-path /path/to/edge_model.pt`.
+Current predictor-gated checkpoints embed the edge predictor and can be copied
+between machines. Older predictor-gated current-format checkpoints without
+embedded weights also need `--edge-predictor-path /path/to/edge_model.pt`.
 
 ## Optional gene and ligand–receptor analyses
 
@@ -64,3 +64,25 @@ command preprocesses and aligns the raw input, constructs interaction graphs
 with the bundled mouse CellChatDB, trains a new edge predictor in that same
 feature space, fits the six-stage dynamical model, and runs the shared
 downstream chain. Supplying an old edge predictor to a raw-H5AD run is rejected.
+
+The AD command uses the same graph-label, edge-predictor, six-stage training,
+and downstream chain. Its targeted panel contains seven strict complete pairs;
+those labels fit the corrected main predictor, whose validation-selected
+threshold is `0.9956824779510498`. This is explicitly panel-limited evidence,
+not a global CCI screen.
+
+## Run the matched AD no-LR-prior ablation
+
+The corrected predictor-gated artifact is the main. The radius-only condition
+is an explicit matched ablation and must select its own packaged contract:
+
+```bash
+cytobridge workflow --config admouse --step downstream \
+  --training-config admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml \
+  --aligned-h5ad /runs/admouse-no-lr/preprocess/admouse_aligned.h5ad \
+  --model-dir /runs/admouse-no-lr/training \
+  --output-dir /results/admouse-no-lr-reuse \
+  --device cuda
+```
+
+This all-spatial profile intentionally contains no predictor path or threshold.

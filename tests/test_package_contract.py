@@ -8,6 +8,8 @@ import runpy
 import subprocess
 import sys
 
+import pytest
+
 from packaging.requirements import Requirement
 
 try:
@@ -64,7 +66,10 @@ def _run_source_python(
 def _authoritative_version() -> str:
     namespace: dict[str, object] = {}
     version_file = PROJECT_ROOT / "CytoBridge" / "_version.py"
-    exec(compile(version_file.read_text(encoding="utf-8"), version_file, "exec"), namespace)
+    exec(
+        compile(version_file.read_text(encoding="utf-8"), version_file, "exec"),
+        namespace,
+    )
     version = namespace["__version__"]
     assert isinstance(version, str)
     return version
@@ -75,7 +80,9 @@ def _installed_smoke_namespace() -> dict[str, object]:
 
 
 def test_version_has_one_authoritative_source() -> None:
-    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
     project = pyproject["project"]
     dynamic = pyproject["tool"]["setuptools"]["dynamic"]
 
@@ -250,10 +257,10 @@ else:
 
 
 def test_cli_entry_point_version_and_read_only_doctor(tmp_path: Path) -> None:
-    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert pyproject["project"]["scripts"] == {
-        "cytobridge": "CytoBridge.cli:main"
-    }
+    pyproject = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    assert pyproject["project"]["scripts"] == {"cytobridge": "CytoBridge.cli:main"}
 
     version = subprocess.run(
         [sys.executable, "-m", "CytoBridge.cli", "--version"],
@@ -308,7 +315,9 @@ print(json.dumps(sorted(
 
 
 def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
-    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pyproject = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
     project = pyproject["project"]
     dynamic = pyproject["tool"]["setuptools"]["dynamic"]
 
@@ -321,25 +330,25 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
     optional = dynamic["optional-dependencies"]
     assert set(optional) == EXTRA_NAMES
     assert optional == {
-        name: {"file": [f"requirements/{name}.txt"]}
-        for name in EXTRA_NAMES
+        name: {"file": [f"requirements/{name}.txt"]} for name in EXTRA_NAMES
     }
 
     def load_requirements(name: str) -> dict[str, Requirement]:
         requirements: dict[str, Requirement] = {}
-        for raw_line in (PROJECT_ROOT / "requirements" / f"{name}.txt").read_text(
-            encoding="utf-8"
-        ).splitlines():
+        for raw_line in (
+            (PROJECT_ROOT / "requirements" / f"{name}.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ):
             line = raw_line.strip()
             if not line or line.startswith("#"):
                 continue
             parsed = Requirement(line)
             assert parsed.name not in requirements
             specifiers = {specifier.operator for specifier in parsed.specifier}
-            bounded_range = (
-                any(operator in specifiers for operator in {">", ">="})
-                and any(operator in specifiers for operator in {"<", "<="})
-            )
+            bounded_range = any(
+                operator in specifiers for operator in {">", ">="}
+            ) and any(operator in specifiers for operator in {"<", "<="})
             assert bounded_range or specifiers == {"=="}
             requirements[parsed.name] = parsed
         return requirements
@@ -370,7 +379,9 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
 
     compatibility_lines = {
         line.strip()
-        for line in (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+        for line in (PROJECT_ROOT / "requirements.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     }
     assert compatibility_lines == {
@@ -432,7 +443,7 @@ print(json.dumps(_DEPENDENCY_PROFILES, sort_keys=True))
         assert set(modules) == expected_modules
 
 
-def test_installed_wheel_smoke_runner_is_a_simple_install_check() -> None:
+def test_installed_wheel_smoke_runner_is_a_simple_install_check(tmp_path) -> None:
     runner = _installed_smoke_namespace()
     source = PROJECT_ROOT
     wheel_directory = PROJECT_ROOT / "dist"
@@ -452,6 +463,12 @@ def test_installed_wheel_smoke_runner_is_a_simple_install_check() -> None:
     }.issubset(build_command)
     assert build_command[-1] == str(source)
 
+    stale_build_config = PROJECT_ROOT / "build" / "lib" / "CytoBridge" / "configs"
+    staged_source = runner["_stage_clean_source"](tmp_path / "staged-source")
+    assert not (staged_source / "build").exists()
+    assert not (staged_source / "CytoBridge.egg-info").exists()
+    assert not (staged_source / stale_build_config.relative_to(PROJECT_ROOT)).exists()
+
     installed_python = runner["_venv_python"](venv_directory)
     install_command = runner["_install_command"](installed_python, wheel)
     assert install_command[:4] == [
@@ -460,9 +477,7 @@ def test_installed_wheel_smoke_runner_is_a_simple_install_check() -> None:
         "pip",
         "install",
     ]
-    assert {"--no-deps", "--no-index", "--no-cache-dir"}.issubset(
-        install_command
-    )
+    assert {"--no-deps", "--no-index", "--no-cache-dir"}.issubset(install_command)
     assert install_command[-1] == str(wheel)
 
     installed_test = PROJECT_ROOT / "tests" / "test_installed_package_contract.py"
@@ -477,3 +492,9 @@ def test_installed_wheel_smoke_runner_is_a_simple_install_check() -> None:
     assert "PYTHONPATH" not in environment
     assert environment["PIP_NO_INDEX"] == "1"
     assert environment["PYTHONNOUSERSITE"] == "1"
+
+
+def test_installed_wheel_smoke_rejects_workspace_inside_source_tree(tmp_path) -> None:
+    runner = _installed_smoke_namespace()
+    with pytest.raises(RuntimeError, match="outside the source tree"):
+        runner["run_smoke"](PROJECT_ROOT / "wheel-smoke-inside-source")

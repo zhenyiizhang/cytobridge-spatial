@@ -638,16 +638,47 @@ def validate_training_config(
     cutoff = float(interaction.get("cutoff", np.nan))
     if not np.isfinite(cutoff) or cutoff <= 0:
         raise ContractError("config.model.interaction_net.cutoff must be positive")
-    threshold = float(interaction.get("edge_predictor_thre", np.nan))
-    if not np.isfinite(threshold) or not 0 < threshold < 1:
+    edge_prior_mode = str(interaction.get("edge_prior_mode", "learned")).strip().lower()
+    if edge_prior_mode not in {"learned", "all_spatial"}:
         raise ContractError(
-            "config.model.interaction_net.edge_predictor_thre must lie between zero and one"
+            "config.model.interaction_net.edge_prior_mode must be 'learned' or "
+            f"'all_spatial', found {edge_prior_mode!r}"
         )
-    edge_path = interaction.get("edge_predictor_path")
-    if not isinstance(edge_path, str) or not edge_path.strip():
-        raise ContractError(
-            "config.model.interaction_net.edge_predictor_path must be a non-empty string"
+    if edge_prior_mode == "learned":
+        try:
+            threshold = float(interaction.get("edge_predictor_thre", np.nan))
+        except (TypeError, ValueError) as exc:
+            raise ContractError(
+                "config.model.interaction_net.edge_predictor_thre must lie "
+                "between zero and one when edge_prior_mode='learned'"
+            ) from exc
+        if not np.isfinite(threshold) or not 0 < threshold < 1:
+            raise ContractError(
+                "config.model.interaction_net.edge_predictor_thre must lie "
+                "between zero and one when edge_prior_mode='learned'"
+            )
+        edge_path = interaction.get("edge_predictor_path")
+        if not isinstance(edge_path, str) or not edge_path.strip():
+            raise ContractError(
+                "config.model.interaction_net.edge_predictor_path must be a "
+                "non-empty string when edge_prior_mode='learned'"
+            )
+    else:
+        inert_predictor_keys = sorted(
+            key
+            for key in (
+                "edge_predictor_path",
+                "edge_predictor_thre",
+                "edge_predictor_threshold",
+            )
+            if key in interaction
         )
+        if inert_predictor_keys:
+            raise ContractError(
+                "config.model.interaction_net edge_prior_mode='all_spatial' does "
+                "not use an edge predictor; remove inert predictor keys "
+                f"{inert_predictor_keys!r}"
+            )
     if runtime_resolved and int(model.get("spatial_dim", -1)) != 2:
         raise ContractError("runtime config.model.spatial_dim must be 2")
 
@@ -677,7 +708,24 @@ def validate_training_config(
 
     scientific_profile = _scientific_config(config)
     if reference is not None:
-        validate_training_config(reference)
+        reference_profile = validate_training_config(reference)
+        reference_interaction = _require_mapping(
+            _require_mapping(reference.get("model"), "reference.model").get(
+                "interaction_net"
+            ),
+            "reference.model.interaction_net",
+        )
+        if edge_prior_mode == "all_spatial":
+            if reference_profile["edge_prior_mode"] != "all_spatial":
+                raise ContractError(
+                    "resolved all_spatial training config differs in edge-prior mode "
+                    "from its package YAML"
+                )
+            _require_close(
+                cutoff,
+                float(reference_interaction.get("cutoff", np.nan)),
+                "resolved all_spatial interaction cutoff",
+            )
         scientific_text = json.dumps(
             scientific_profile, sort_keys=True, separators=(",", ":")
         )
@@ -695,14 +743,20 @@ def validate_training_config(
             "ckpt_dir": config["ckpt_dir"],
             "model.spatial_dim": model.get("spatial_dim"),
             "model.interaction_net.cutoff": interaction["cutoff"],
-            "model.interaction_net.edge_predictor_path": interaction[
-                "edge_predictor_path"
-            ],
-            "model.interaction_net.edge_predictor_thre": interaction[
-                "edge_predictor_thre"
-            ],
+            "model.interaction_net.edge_prior_mode": edge_prior_mode,
             "stage_sigma": runtime_sigma,
         }
+        if edge_prior_mode == "learned":
+            runtime_fields.update(
+                {
+                    "model.interaction_net.edge_predictor_path": interaction[
+                        "edge_predictor_path"
+                    ],
+                    "model.interaction_net.edge_predictor_thre": interaction[
+                        "edge_predictor_thre"
+                    ],
+                }
+            )
     return {
         "seed": SEED,
         "reverse": True,
@@ -710,6 +764,7 @@ def validate_training_config(
         "alpha_spatial": ALPHA_SPATIAL,
         "sigma": SIGMA,
         "components": list(COMPONENTS),
+        "edge_prior_mode": edge_prior_mode,
         "defaults_profile": plain(defaults),
         "model_profile": plain(model),
         "stage_profile": observed_profile,
@@ -791,11 +846,52 @@ def _checkpoint_runtime_binding(
         raise ContractError(
             "saved config.model.spatial_dim differs from benchmark data"
         )
+    edge_prior_mode = (
+        str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
+        .strip()
+        .lower()
+    )
+    if edge_prior_mode not in {"learned", "all_spatial"}:
+        raise ContractError(
+            "checkpoint inventory records an invalid interaction edge-prior mode"
+        )
+    expected_mode = (
+        str(expected.get("edge_prior_mode", edge_prior_mode)).strip().lower()
+    )
+    if expected_mode != edge_prior_mode:
+        raise ContractError(
+            "saved interaction edge-prior mode differs from benchmark expectation"
+        )
     cutoff = _require_close(
         fields.get("model.interaction_net.cutoff"),
         float(expected["interaction_cutoff"]),
         "saved interaction cutoff",
     )
+    if edge_prior_mode == "all_spatial":
+        inert_fields = sorted(
+            key
+            for key in (
+                "model.interaction_net.edge_predictor_path",
+                "model.interaction_net.edge_predictor_thre",
+            )
+            if key in fields
+        )
+        if inert_fields:
+            raise ContractError(
+                "all_spatial checkpoint inventory contains inert predictor fields "
+                f"{inert_fields!r}"
+            )
+        return {
+            "model_dir": str(model_dir),
+            "recorded_ckpt_dir": recorded_dir,
+            "spatial_dim": data.spatial_dim,
+            "interaction_cutoff": cutoff,
+            "edge_prior_mode": edge_prior_mode,
+            "edge_threshold": None,
+            "recorded_edge_predictor_path": None,
+            "edge_predictor_source": None,
+            "external_edge_predictor_required": False,
+        }
     threshold = _require_close(
         fields.get("model.interaction_net.edge_predictor_thre"),
         float(expected["edge_threshold"]),
@@ -807,6 +903,7 @@ def _checkpoint_runtime_binding(
         "recorded_ckpt_dir": recorded_dir,
         "spatial_dim": data.spatial_dim,
         "interaction_cutoff": cutoff,
+        "edge_prior_mode": edge_prior_mode,
         "edge_threshold": threshold,
         "recorded_edge_predictor_path": str(recorded_edge_path),
         "edge_predictor_source": "embedded_finetune_checkpoint",
@@ -814,22 +911,42 @@ def _checkpoint_runtime_binding(
     }
 
 
-def _full_runtime_expectation(data: TrainingData) -> dict[str, Any]:
+def _full_runtime_expectation(
+    data: TrainingData, inventory: Mapping[str, Any]
+) -> dict[str, Any]:
+    profile = inventory.get("training_profile")
+    fields = (
+        profile.get("runtime_resolved_fields") if isinstance(profile, Mapping) else None
+    )
+    if not isinstance(fields, Mapping):
+        raise ContractError("checkpoint inventory lacks resolved runtime fields")
+    edge_prior_mode = (
+        str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
+        .strip()
+        .lower()
+    )
     graph = data.interaction_graph
-    required = {
-        "neighborhood_threshold",
-        "edge_predictor_threshold",
-    }
+    required = {"neighborhood_threshold"}
+    if edge_prior_mode == "learned":
+        required.add("edge_predictor_threshold")
     missing = required - set(graph)
-    if missing:
+    if missing and edge_prior_mode == "learned":
         raise ContractError(
             "full-data input lacks frozen interaction provenance fields "
             f"{sorted(missing)}"
         )
-    return {
-        "interaction_cutoff": graph["neighborhood_threshold"],
-        "edge_threshold": graph["edge_predictor_threshold"],
+    cutoff = (
+        fields.get("model.interaction_net.cutoff")
+        if edge_prior_mode == "all_spatial"
+        else graph.get("neighborhood_threshold")
+    )
+    result = {
+        "interaction_cutoff": cutoff,
+        "edge_prior_mode": edge_prior_mode,
     }
+    if edge_prior_mode == "learned":
+        result["edge_threshold"] = graph["edge_predictor_threshold"]
+    return result
 
 
 def checkpoint_training_match(
@@ -838,6 +955,7 @@ def checkpoint_training_match(
     data: TrainingData,
     inventory: Mapping[str, Any] | None = None,
     runtime_binding: Mapping[str, Any] | None = None,
+    reference_config_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Prove that a reusable checkpoint was fitted to this training reference.
 
@@ -864,6 +982,19 @@ def checkpoint_training_match(
             raise ContractError("model fit summary split_id does not match")
         if str(payload.get("regime")) != split.regime:
             raise ContractError("model fit summary regime does not match")
+        if reference_config_sha256 is not None:
+            expected_source_sha = _valid_digest(
+                reference_config_sha256, "current training config"
+            )
+            declared_source_sha = _valid_digest(
+                payload.get("training_config_source_sha256"),
+                "model fit summary training config",
+            )
+            if declared_source_sha != expected_source_sha:
+                raise ContractError(
+                    "model fit summary training-config SHA differs from the current "
+                    "training config"
+                )
         current = checkpoint_inventory(model_dir) if inventory is None else inventory
         declared_config = str(
             payload.get("saved_config_sha256", payload.get("config_sha256", ""))
@@ -884,7 +1015,7 @@ def checkpoint_training_match(
                 "model stage checkpoint hashes changed after benchmark fit"
             )
         if split.regime == "full_data":
-            expected_runtime = _full_runtime_expectation(data)
+            expected_runtime = _full_runtime_expectation(data, current)
         else:
             prepare_summary = (
                 Path(str(payload.get("prepare_graph_summary", "")))
@@ -903,8 +1034,21 @@ def checkpoint_training_match(
                 )
             expected_runtime = {
                 "interaction_cutoff": payload.get("interaction_cutoff"),
-                "edge_threshold": payload.get("edge_threshold"),
             }
+            profile = current.get("training_profile")
+            fields = (
+                profile.get("runtime_resolved_fields")
+                if isinstance(profile, Mapping)
+                else None
+            )
+            edge_prior_mode = (
+                str(fields.get("model.interaction_net.edge_prior_mode", "learned"))
+                if isinstance(fields, Mapping)
+                else "learned"
+            )
+            expected_runtime["edge_prior_mode"] = edge_prior_mode
+            if edge_prior_mode == "learned":
+                expected_runtime["edge_threshold"] = payload.get("edge_threshold")
         runtime_report = _checkpoint_runtime_binding(
             model_dir, data, current, expected_runtime
         )
@@ -959,7 +1103,7 @@ def checkpoint_training_match(
         if runtime_binding is not None:
             expected_runtime = runtime_binding
         elif split.regime == "full_data":
-            expected_runtime = _full_runtime_expectation(data)
+            expected_runtime = _full_runtime_expectation(data, inventory)
         else:
             raise ContractError(
                 "new LOTO checkpoint validation requires prepared graph runtime binding"

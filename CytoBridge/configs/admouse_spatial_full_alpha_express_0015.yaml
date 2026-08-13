@@ -1,10 +1,11 @@
-# AD mouse six-stage profile used by the matched alpha_express=0.015 run.
+# AD mouse corrected six-stage production profile at alpha_express=0.015.
 #
-# The graph cutoff, edge threshold, network sizes, batch sizes, optimizer
-# choices, and stage durations below are the resolved values from that run.
-# A raw-H5AD workflow fits a new edge predictor in the newly aligned feature
-# space. The historical matched artifacts remain available through a separate
-# downstream-only compatibility path.
+# The targeted expression panel supports seven complete ligand-receptor pairs
+# under strict all-subunit matching.  Those database-derived graph labels fit
+# the learned edge predictor used by the production model.  The small panel is
+# an explicit biological limitation, not a reason to silently replace the
+# learned prior with a different radius-only model.  The threshold below is the
+# validation-selected value from the corrected de novo run.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
@@ -32,8 +33,9 @@ model:
     num_rbf: 8
     cutoff: 0.012106042891492197
     use_spatial: true
+    edge_prior_mode: learned
     edge_predictor_path: edge_classifier/admouse.pt
-    edge_predictor_thre: 0.32999998331069946
+    edge_predictor_thre: 0.9956824779510498
 
 ckpt_dir: results/admouse_spatial_full_alpha_express_0015
 reverse: true

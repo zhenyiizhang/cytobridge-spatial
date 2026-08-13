@@ -72,10 +72,30 @@ def test_all_spatial_ablation_removes_only_pretrained_edge_gate() -> None:
 
     assert output.shape == points.shape
     assert not hasattr(model, "link_predictor")
-    assert {
-        tuple(edge)
-        for edge in model.edge_index.t().detach().cpu().tolist()
-    } == {(0, 1), (1, 0)}
+    assert {tuple(edge) for edge in model.edge_index.t().detach().cpu().tolist()} == {
+        (0, 1),
+        (1, 0),
+    }
+
+    output.square().mean().backward()
+    assert any(
+        parameter.grad is not None
+        for parameter in model.parameters()
+        if parameter.requires_grad
+    )
+
+    reloaded = GNNInteraction(
+        in_out_dim=4,
+        hidden_dim=8,
+        num_heads=2,
+        num_layers=1,
+        num_rbf=4,
+        cutoff=0.5,
+        edge_prior_mode="all_spatial",
+        edge_predictor_path=None,
+    )
+    reloaded.load_state_dict(model.state_dict(), strict=True)
+    assert not hasattr(reloaded, "link_predictor")
 
 
 def test_edge_prior_mode_is_validated_before_loading_predictor() -> None:

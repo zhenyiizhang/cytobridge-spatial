@@ -70,7 +70,7 @@
     "graph_database": "CellChatDB.ligrec.zebrafish.csv",
     "interaction_cutoff": 0.09606367405591873,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.4999999701976776,
+    "edge_predictor_threshold": 0.6063615679740906,
     "evaluate_after_training": false
   },
   "downstream": {
@@ -89,6 +89,8 @@
     "sde_n_samples": null,
     "sde_dt": 0.05,
     "split_sde_dt": 0.05,
+    "split_resample_dt": 0.05,
+    "split_max_particles": 100000,
     "split_sigma": 0.03,
     "split_growth_alpha": 1.0
   }

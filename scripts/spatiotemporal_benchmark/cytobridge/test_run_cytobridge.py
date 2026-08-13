@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 import anndata as ad
 import numpy as np
@@ -21,6 +23,7 @@ from common import (  # noqa: E402
     PREDICTION_N,
     ContractError,
     _checkpoint_runtime_binding,
+    _full_runtime_expectation,
     bootstrap_indices,
     checkpoint_inventory,
     checkpoint_training_match,
@@ -32,7 +35,13 @@ from common import (  # noqa: E402
     validate_training_config,
 )
 from run_cytobridge import (  # noqa: E402
+    _all_spatial_cutoff,
     _atomic_prediction,
+    _compact_prediction_summaries,
+    _load_graph_summary,
+    _validated_interaction_m,
+    command_fit_loto,
+    command_prepare_loto,
     inference_schedule,
     ordered_graph_plan,
 )
@@ -44,6 +53,10 @@ PACKAGE_CONFIGS = {
     "arista": "arista_spatial_full.yaml",
     "admouse": "admouse_spatial_full_alpha_express_0015.yaml",
 }
+ALL_SPATIAL_CONFIG = (
+    HERE.parents[2]
+    / "CytoBridge/configs/admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml"
+)
 
 
 def package_config(dataset: str = "zebrafish") -> dict:
@@ -55,6 +68,12 @@ def package_config(dataset: str = "zebrafish") -> dict:
 
 def locked_config() -> dict:
     return package_config("zebrafish")
+
+
+def all_spatial_config() -> dict:
+    payload = yaml.safe_load(ALL_SPATIAL_CONFIG.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload
 
 
 def runtime_config() -> dict:
@@ -215,6 +234,7 @@ class ConfigContractTests(unittest.TestCase):
             with self.subTest(dataset=dataset):
                 report = validate_training_config(package_config(dataset))
                 self.assertEqual(report["alpha_express"], 0.015)
+                self.assertEqual(report["edge_prior_mode"], "learned")
                 self.assertEqual(
                     report["stage_profile"][3]["epochs"], expected_score_epochs[dataset]
                 )
@@ -227,9 +247,13 @@ class ConfigContractTests(unittest.TestCase):
                 resolved["ckpt_dir"] = f"/runs/{dataset}/training"
                 resolved["spatial_dim"] = 2
                 resolved["model"]["spatial_dim"] = 2
-                resolved["model"]["interaction_net"][
-                    "edge_predictor_path"
-                ] = f"/runs/{dataset}/preprocess/edge_classifier/{dataset}.pt"
+                interaction = resolved["model"]["interaction_net"]
+                interaction["cutoff"] = 0.08
+                if interaction.get("edge_prior_mode", "learned") == "learned":
+                    interaction[
+                        "edge_predictor_path"
+                    ] = f"/runs/{dataset}/preprocess/edge_classifier/{dataset}.pt"
+                    interaction["edge_predictor_thre"] = 0.57
                 for stage in resolved["training"]["plan"]:
                     stage["sigma"] = 0.03
                 report = validate_training_config(
@@ -238,6 +262,75 @@ class ConfigContractTests(unittest.TestCase):
                     reference=source,
                 )
                 self.assertTrue(report["runtime_resolved"])
+                fields = report["runtime_resolved_fields"]
+                self.assertEqual(
+                    fields["model.interaction_net.edge_prior_mode"],
+                    "learned",
+                )
+                self.assertEqual(
+                    fields["model.interaction_net.edge_predictor_thre"], 0.57
+                )
+
+    def test_edge_prior_mode_controls_predictor_fields(self) -> None:
+        learned_mutations = (
+            (
+                "missing path",
+                lambda value: value["model"]["interaction_net"].pop(
+                    "edge_predictor_path"
+                ),
+                "edge_predictor_path",
+            ),
+            (
+                "blank path",
+                lambda value: value["model"]["interaction_net"].__setitem__(
+                    "edge_predictor_path", "  "
+                ),
+                "edge_predictor_path",
+            ),
+            (
+                "missing threshold",
+                lambda value: value["model"]["interaction_net"].pop(
+                    "edge_predictor_thre"
+                ),
+                "edge_predictor_thre",
+            ),
+            (
+                "invalid threshold",
+                lambda value: value["model"]["interaction_net"].__setitem__(
+                    "edge_predictor_thre", 1.0
+                ),
+                "edge_predictor_thre",
+            ),
+            (
+                "non-numeric threshold",
+                lambda value: value["model"]["interaction_net"].__setitem__(
+                    "edge_predictor_thre", "not-a-number"
+                ),
+                "edge_predictor_thre",
+            ),
+        )
+        for label, mutation, match in learned_mutations:
+            with self.subTest(mode="learned", case=label):
+                config = package_config("zebrafish")
+                mutation(config)
+                with self.assertRaisesRegex(ContractError, match):
+                    validate_training_config(config)
+
+        for key, value in (
+            ("edge_predictor_path", None),
+            ("edge_predictor_thre", 0.57),
+            ("edge_predictor_threshold", 0.57),
+        ):
+            with self.subTest(mode="all_spatial", key=key):
+                config = all_spatial_config()
+                config["model"]["interaction_net"][key] = value
+                with self.assertRaisesRegex(ContractError, "inert predictor keys"):
+                    validate_training_config(config)
+
+        config = all_spatial_config()
+        config["model"]["interaction_net"]["edge_prior_mode"] = "unsupported"
+        with self.assertRaisesRegex(ContractError, "edge_prior_mode"):
+            validate_training_config(config)
 
     def test_wrong_shared_alpha_and_stage_role_are_rejected(self) -> None:
         config = locked_config()
@@ -334,6 +427,20 @@ class ConfigContractTests(unittest.TestCase):
                 runtime_config(), runtime_resolved=True, runtime_sigma=0.05
             )
 
+    def test_all_spatial_runtime_cutoff_must_match_reference_config(self) -> None:
+        reference = all_spatial_config()
+        resolved = copy.deepcopy(reference)
+        resolved["ckpt_dir"] = "/runs/no_lr/model"
+        resolved["model"]["spatial_dim"] = 2
+        validate_training_config(resolved, runtime_resolved=True, reference=reference)
+        resolved["model"]["interaction_net"]["cutoff"] *= 2
+        with self.assertRaisesRegex(
+            ContractError, "resolved all_spatial interaction cutoff"
+        ):
+            validate_training_config(
+                resolved, runtime_resolved=True, reference=reference
+            )
+
     def test_embedded_predictor_does_not_require_the_recorded_external_file(
         self,
     ) -> None:
@@ -364,6 +471,311 @@ class ConfigContractTests(unittest.TestCase):
             self.assertEqual(
                 report["edge_predictor_source"], "embedded_finetune_checkpoint"
             )
+
+    def test_all_spatial_checkpoint_binding_has_no_predictor_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary).resolve()
+
+            class Data:
+                spatial_dim = 2
+                interaction_graph = {}
+
+            inventory = {
+                "training_profile": {
+                    "runtime_resolved_fields": {
+                        "ckpt_dir": str(model),
+                        "model.spatial_dim": 2,
+                        "model.interaction_net.cutoff": 0.08,
+                        "model.interaction_net.edge_prior_mode": "all_spatial",
+                    }
+                }
+            }
+            expected = _full_runtime_expectation(Data(), inventory)
+            self.assertEqual(
+                expected,
+                {"interaction_cutoff": 0.08, "edge_prior_mode": "all_spatial"},
+            )
+            report = _checkpoint_runtime_binding(model, Data(), inventory, expected)
+            self.assertEqual(report["edge_prior_mode"], "all_spatial")
+            self.assertIsNone(report["edge_threshold"])
+            self.assertIsNone(report["recorded_edge_predictor_path"])
+            self.assertFalse(report["external_edge_predictor_required"])
+
+            inventory["training_profile"]["runtime_resolved_fields"][
+                "model.interaction_net.edge_predictor_path"
+            ] = "/inert/edge.pt"
+            with self.assertRaisesRegex(ContractError, "inert predictor fields"):
+                _checkpoint_runtime_binding(model, Data(), inventory, expected)
+
+
+class ModeAwareExecutionTests(unittest.TestCase):
+    def test_inference_group_size_must_match_loaded_model(self) -> None:
+        model = SimpleNamespace(interaction_group_size=1024)
+        self.assertEqual(_validated_interaction_m(model, 1024), 1024)
+        with self.assertRaisesRegex(ContractError, "must exactly match"):
+            _validated_interaction_m(model, 512)
+        for invalid in (None, 0, -1, 1.5, True):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                ContractError, "positive integer"
+            ):
+                _validated_interaction_m(
+                    SimpleNamespace(interaction_group_size=invalid), 1024
+                )
+
+    def test_learned_prepare_requires_database_at_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs")
+            with self.assertRaisesRegex(ContractError, "--database is required"):
+                command_prepare_loto(
+                    SimpleNamespace(
+                        input_manifest=manifest,
+                        split="loto_t1",
+                        training_config=(
+                            HERE.parents[2]
+                            / "CytoBridge/configs/zebrafish_spatial_full_alpha_express_0015.yaml"
+                        ),
+                        output_dir=root / "prior",
+                        database=None,
+                        repo=HERE.parents[2],
+                        device="cpu",
+                        expression_layer="counts",
+                        interaction_cutoff=None,
+                        spot_diameter=None,
+                        edge_threshold=None,
+                        edge_epochs=1,
+                        edge_batch_size=8,
+                        edge_learning_rate=0.001,
+                        edge_train_sample_ratio=1.0,
+                        edge_max_train_edges=None,
+                        edge_num_workers=0,
+                        seed=42,
+                        quiet=True,
+                    )
+                )
+
+    def test_all_spatial_prepare_writes_no_graph_or_predictor_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs")
+            output = root / "prior"
+            args = SimpleNamespace(
+                input_manifest=manifest,
+                split="loto_t1",
+                training_config=ALL_SPATIAL_CONFIG,
+                output_dir=output,
+                database=None,
+                repo=HERE.parents[2],
+                device="cpu",
+                expression_layer="counts",
+                interaction_cutoff=None,
+                spot_diameter=None,
+                edge_threshold=None,
+                edge_epochs=100,
+                edge_batch_size=1024,
+                edge_learning_rate=0.001,
+                edge_train_sample_ratio=1.0,
+                edge_max_train_edges=None,
+                edge_num_workers=0,
+                seed=42,
+                quiet=True,
+            )
+            command_prepare_loto(args)
+            summary_path = output / "prepare_graph_summary.json"
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(summary["edge_prior_mode"], "all_spatial")
+            self.assertEqual(summary["artifact_sha256"], {})
+            self.assertEqual(
+                summary["interaction_cutoff_source"],
+                "training_config.model.interaction_net.cutoff",
+            )
+            for key in (
+                "database",
+                "edge_model",
+                "edge_meta",
+                "edge_threshold",
+            ):
+                self.assertNotIn(key, summary)
+            self.assertEqual(
+                [path.name for path in output.iterdir()],
+                ["prepare_graph_summary.json"],
+            )
+
+            split = read_split_input(manifest, "loto_t1")
+            loaded = _load_graph_summary(
+                output,
+                split,
+                edge_prior_mode="all_spatial",
+                training_config_sha256=sha256_file(ALL_SPATIAL_CONFIG),
+            )
+            self.assertAlmostEqual(loaded["interaction_cutoff"], 0.012106042891492197)
+            with self.assertRaisesRegex(ContractError, "training-config SHA differs"):
+                _load_graph_summary(
+                    output,
+                    split,
+                    edge_prior_mode="all_spatial",
+                    training_config_sha256="f" * 64,
+                )
+
+            summary["edge_threshold"] = 0.5
+            summary_path.write_text(json.dumps(summary), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "inert learned predictor"):
+                _load_graph_summary(
+                    output,
+                    split,
+                    edge_prior_mode="all_spatial",
+                    training_config_sha256=sha256_file(ALL_SPATIAL_CONFIG),
+                )
+
+    def test_all_spatial_cli_values_are_fail_closed(self) -> None:
+        configured = all_spatial_config()["model"]["interaction_net"]["cutoff"]
+        value, source = _all_spatial_cutoff(all_spatial_config(), configured + 1e-13)
+        self.assertEqual(value, configured)
+        self.assertEqual(source, "explicit_cli_matches_training_config")
+        with self.assertRaisesRegex(ContractError, "must match"):
+            _all_spatial_cutoff(all_spatial_config(), configured * 2)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = write_mock_inputs(root / "inputs")
+            base = dict(
+                input_manifest=manifest,
+                split="loto_t1",
+                training_config=ALL_SPATIAL_CONFIG,
+                output_dir=root / "prior",
+                database=None,
+                repo=HERE.parents[2],
+                device="cpu",
+                expression_layer="counts",
+                interaction_cutoff=None,
+                edge_epochs=1,
+                edge_batch_size=8,
+                edge_learning_rate=0.001,
+                edge_train_sample_ratio=1.0,
+                edge_max_train_edges=None,
+                edge_num_workers=0,
+                seed=42,
+                quiet=True,
+            )
+            for field, flag in (
+                ("edge_threshold", "--edge-threshold"),
+                ("spot_diameter", "--spot-diameter"),
+            ):
+                args = SimpleNamespace(
+                    **base,
+                    edge_threshold=0.5 if field == "edge_threshold" else None,
+                    spot_diameter=0.1 if field == "spot_diameter" else None,
+                )
+                with self.subTest(option=flag), self.assertRaisesRegex(
+                    ContractError, flag
+                ):
+                    command_prepare_loto(args)
+                self.assertFalse((root / "prior").exists())
+
+            mismatch = SimpleNamespace(
+                **{
+                    **base,
+                    "interaction_cutoff": configured * 2,
+                    "edge_threshold": None,
+                    "spot_diameter": None,
+                }
+            )
+            with self.assertRaisesRegex(ContractError, "must match"):
+                command_prepare_loto(mismatch)
+            self.assertFalse((root / "prior").exists())
+
+    def test_all_spatial_fit_passes_no_predictor_config_or_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "model"
+            split = SimpleNamespace(
+                regime="loto",
+                holdout_time=1.0,
+                split_id="loto_t1",
+                train_h5ad=root / "train.h5ad",
+            )
+            data = SimpleNamespace(
+                spatial_dim=2,
+                state_key="benchmark_state",
+                spatial_key="benchmark_spatial",
+                time_key="benchmark_time",
+            )
+            config_source = ALL_SPATIAL_CONFIG
+            cutoff = all_spatial_config()["model"]["interaction_net"]["cutoff"]
+            graph = {
+                "edge_prior_mode": "all_spatial",
+                "interaction_cutoff": cutoff,
+                "_summary_path": str(root / "prior/prepare_graph_summary.json"),
+                "_summary_sha256": "a" * 64,
+            }
+            inventory = {
+                "config_sha256": "b" * 64,
+                "stage_complete": True,
+                "checkpoints": {},
+            }
+            captured_binding = {}
+
+            def new_output(path):
+                path.mkdir(parents=True)
+                return path
+
+            def match(*unused, **kwargs):
+                captured_binding.update(kwargs["runtime_binding"])
+                return {"proof": "mock"}
+
+            fit = mock.Mock()
+            fake_cytobridge = SimpleNamespace(tl=SimpleNamespace(fit=fit))
+            with (
+                mock.patch("run_cytobridge.read_split_input", return_value=split),
+                mock.patch("run_cytobridge.load_training_data", return_value=data),
+                mock.patch("run_cytobridge._input_report", return_value={}),
+                mock.patch("run_cytobridge._load_graph_summary", return_value=graph),
+                mock.patch("run_cytobridge.new_output_dir", side_effect=new_output),
+                mock.patch(
+                    "run_cytobridge.checkpoint_inventory", return_value=inventory
+                ),
+                mock.patch(
+                    "run_cytobridge.checkpoint_training_match", side_effect=match
+                ),
+                mock.patch("run_cytobridge.input_provenance", return_value={}),
+                mock.patch("run_cytobridge.environment_provenance", return_value={}),
+                mock.patch("run_cytobridge.repo_identity", return_value={}),
+                mock.patch.dict(sys.modules, {"CytoBridge": fake_cytobridge}),
+            ):
+                command_fit_loto(
+                    SimpleNamespace(
+                        input_manifest=root / "manifest.json",
+                        split="loto_t1",
+                        training_config=config_source,
+                        graph_dir=root / "prior",
+                        output_dir=output,
+                        repo=HERE.parents[2],
+                        device="cpu",
+                        sigma=0.03,
+                        seed=42,
+                    )
+                )
+
+            fit_kwargs = fit.call_args.kwargs
+            self.assertNotIn("edge_predictor_path", fit_kwargs)
+            self.assertNotIn("edge_predictor_threshold", fit_kwargs)
+            interaction = fit_kwargs["config"]["model"]["interaction_net"]
+            self.assertEqual(interaction["edge_prior_mode"], "all_spatial")
+            self.assertNotIn("edge_predictor_path", interaction)
+            self.assertNotIn("edge_predictor_thre", interaction)
+            self.assertEqual(
+                captured_binding,
+                {
+                    "interaction_cutoff": cutoff,
+                    "edge_prior_mode": "all_spatial",
+                },
+            )
+            report = json.loads(
+                (output / "benchmark_fit_summary.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(report["edge_prior_mode"], "all_spatial")
+            self.assertNotIn("edge_model", report)
+            self.assertNotIn("edge_threshold", report)
 
 
 class InputContractTests(unittest.TestCase):
@@ -434,6 +846,24 @@ class PopulationAndOutputTests(unittest.TestCase):
                 self.assertEqual(archive["state"].shape, (PREDICTION_N, 3))
                 np.testing.assert_array_equal(archive["weights"], weights)
 
+    def test_run_summary_contains_one_compact_record_per_target(self) -> None:
+        summaries = [
+            {
+                "target": target,
+                "prediction_npz": f"t{target}/prediction.npz",
+                "prediction_npz_sha256": str(target) * 64,
+                "predicted_mass": float(target),
+                "unrelated_detail": "not copied",
+            }
+            for target in (1, 2, 3, 4)
+        ]
+        compact = _compact_prediction_summaries(summaries)
+        self.assertEqual([row["target"] for row in compact], [1, 2, 3, 4])
+        self.assertEqual(len(compact), len(summaries))
+        self.assertTrue(all("unrelated_detail" not in row for row in compact))
+        with self.assertRaisesRegex(ContractError, "repeat target"):
+            _compact_prediction_summaries([summaries[0], summaries[0]])
+
 
 class CheckpointTests(unittest.TestCase):
     def test_fit_summary_must_carry_matching_row_identity_proof(self) -> None:
@@ -499,6 +929,25 @@ class CheckpointTests(unittest.TestCase):
             report = checkpoint_training_match(model, split, data, inventory=inventory)
             self.assertEqual(report["proof"], "benchmark_fit_summary")
 
+            payload["training_config_source_sha256"] = "c" * 64
+            summary.write_text(json.dumps(payload), encoding="utf-8")
+            report = checkpoint_training_match(
+                model,
+                split,
+                data,
+                inventory=inventory,
+                reference_config_sha256="c" * 64,
+            )
+            self.assertEqual(report["proof"], "benchmark_fit_summary")
+            with self.assertRaisesRegex(ContractError, "training-config SHA differs"):
+                checkpoint_training_match(
+                    model,
+                    split,
+                    data,
+                    inventory=inventory,
+                    reference_config_sha256="d" * 64,
+                )
+
     def test_all_six_stage_files_are_required(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             model = Path(temporary)
@@ -512,7 +961,11 @@ class CheckpointTests(unittest.TestCase):
                 filename = (
                     "score_model.pth"
                     if stage["mode"] == "score_matching"
-                    else "best_model.pth"
+                    else (
+                        "last_model.pth"
+                        if str(stage.get("save_strategy", "best")).lower() == "last"
+                        else "best_model.pth"
+                    )
                 )
                 (folder / filename).write_bytes(b"mock checkpoint")
             report = checkpoint_inventory(model)
@@ -522,6 +975,39 @@ class CheckpointTests(unittest.TestCase):
             (model / "Score_Refine" / "score_model.pth").unlink()
             with self.assertRaisesRegex(ContractError, "incomplete six-stage"):
                 checkpoint_inventory(model)
+
+    def test_all_spatial_checkpoint_cutoff_matches_reference_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary)
+            reference = all_spatial_config()
+            resolved = copy.deepcopy(reference)
+            resolved["ckpt_dir"] = str(model)
+            resolved["model"]["spatial_dim"] = 2
+            (model / "config.yaml").write_text(
+                yaml.safe_dump(resolved), encoding="utf-8"
+            )
+            for stage in resolved["training"]["plan"]:
+                folder = model / stage["name"]
+                folder.mkdir()
+                filename = (
+                    "score_model.pth"
+                    if stage["mode"] == "score_matching"
+                    else (
+                        "last_model.pth"
+                        if str(stage.get("save_strategy", "best")).lower() == "last"
+                        else "best_model.pth"
+                    )
+                )
+                (folder / filename).write_bytes(b"mock checkpoint")
+            checkpoint_inventory(model, reference_config=reference)
+            resolved["model"]["interaction_net"]["cutoff"] *= 2
+            (model / "config.yaml").write_text(
+                yaml.safe_dump(resolved), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                ContractError, "resolved all_spatial interaction cutoff"
+            ):
+                checkpoint_inventory(model, reference_config=reference)
 
     def test_contracted_row_id_proves_exact_identity_and_order(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

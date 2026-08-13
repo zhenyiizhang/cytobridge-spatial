@@ -263,6 +263,7 @@ def _apply_runtime_overrides(
         "interaction_cutoff": None,
         "edge_predictor_path": None,
         "edge_predictor_threshold": None,
+        "removed_input_interaction_graph_metadata": False,
         "ckpt_dir": None,
         "sigma": None,
     }
@@ -283,6 +284,57 @@ def _apply_runtime_overrides(
         else "learned"
     )
     uses_learned_edge_prior = is_gnn_interaction and edge_prior_mode == "learned"
+
+    if (
+        is_gnn_interaction
+        and not uses_learned_edge_prior
+        and isinstance(interaction_cfg, dict)
+    ):
+        inert_config = {
+            key: interaction_cfg.get(key)
+            for key in ("edge_predictor_path", "edge_predictor_thre")
+            if interaction_cfg.get(key) is not None
+        }
+        if inert_config:
+            raise ValueError(
+                f"edge_prior_mode={edge_prior_mode!r} does not use an edge "
+                "predictor, but the training config records inert predictor "
+                f"settings: {inert_config}. Remove them before fitting."
+            )
+
+    if not uses_learned_edge_prior:
+        inert_adata = {
+            key: adata_overrides.get(key)
+            for key in (
+                "edge_predictor_path",
+                "edge_predictor_threshold",
+                "edge_predictor_thre",
+            )
+            if adata_overrides.get(key) is not None
+        }
+        if inert_adata:
+            graph_only = "interaction_graph" in adata.uns and not any(
+                isinstance(adata.uns.get(namespace), dict)
+                and any(
+                    adata.uns[namespace].get(key) is not None
+                    for key in (
+                        "edge_predictor_path",
+                        "edge_predictor_threshold",
+                        "edge_predictor_thre",
+                    )
+                )
+                for namespace in ("fit_params", "cytobridge_fit", "training_params")
+            )
+            if not graph_only:
+                raise ValueError(
+                    f"edge_prior_mode={edge_prior_mode!r} does not use an edge "
+                    "predictor, but the input AnnData records inert predictor "
+                    f"overrides: {inert_adata}. Remove them before fitting."
+                )
+            used["removed_input_interaction_graph_metadata"] = (
+                adata.uns.pop("interaction_graph", None) is not None
+            )
+            adata_overrides = _collect_adata_fit_overrides(adata)
 
     # Explicit fit args always win, but warn if they conflict with adata.uns values.
     _warn_if_explicit_conflicts_with_adata(
@@ -342,8 +394,7 @@ def _apply_runtime_overrides(
                 f"interaction_type='{interaction_type}' (not 'gnn'); edge predictor settings "
                 "will be ignored."
             )
-        print(msg)
-        warnings.warn(msg, UserWarning, stacklevel=2)
+        raise ValueError(msg.replace("[fit][warning] ", ""))
 
     # cutoff
     raw_cutoff, cutoff_source = _resolve_override(
@@ -438,6 +489,62 @@ def _apply_runtime_overrides(
         )
 
     return used
+
+
+def _edge_prior_artifact_metadata(
+    model,
+    resolved_config: Dict[str, Any],
+    *,
+    used_edge_predictor_path: str | None,
+    used_edge_predictor_threshold: float | None,
+) -> Dict[str, Any]:
+    """Describe the effective edge prior without serializing inert defaults."""
+
+    components = set(getattr(model, "components", []))
+    interaction_net = getattr(model, "interaction_net", None)
+    interaction_type = str(getattr(model, "interaction_type", "potential")).lower()
+    mode = (
+        str(getattr(interaction_net, "edge_prior_mode", "learned")).lower()
+        if "interaction" in components and interaction_net is not None
+        else None
+    )
+    learned = (
+        "interaction" in components and interaction_type == "gnn" and mode == "learned"
+    )
+    if not learned:
+        return {
+            "edge_prior_mode": mode,
+            "edge_predictor_path": None,
+            "edge_predictor_threshold": None,
+            "uses_learned_edge_prior": False,
+        }
+    configured = resolved_config.get("model", {}).get("interaction_net", {})
+    path = (
+        str(used_edge_predictor_path)
+        if used_edge_predictor_path is not None
+        else configured.get("edge_predictor_path")
+    )
+    threshold = (
+        float(used_edge_predictor_threshold)
+        if used_edge_predictor_threshold is not None
+        else float(getattr(interaction_net, "edge_predictor_thre", np.nan))
+    )
+    if path is None or not str(path).strip():
+        raise ValueError(
+            "A learned edge prior must record the edge predictor path used for "
+            "training."
+        )
+    if not np.isfinite(threshold) or not 0.0 < threshold < 1.0:
+        raise ValueError(
+            "A learned edge prior must record a finite predictor threshold "
+            f"strictly between 0 and 1; got {threshold!r}."
+        )
+    return {
+        "edge_prior_mode": mode,
+        "edge_predictor_path": path,
+        "edge_predictor_threshold": threshold,
+        "uses_learned_edge_prior": True,
+    }
 
 
 def _ensure_time_point_processed(adata: sc.AnnData, *, time_key: str) -> sc.AnnData:
@@ -679,6 +786,20 @@ def _fit_adata(
     interaction_group_size = int(getattr(model, "interaction_group_size", 1024))
     interaction_net = getattr(model, "interaction_net", None)
     interaction_cutoff_model = float(getattr(interaction_net, "cutoff", 1000.0))
+    edge_prior_artifact = _edge_prior_artifact_metadata(
+        model,
+        resolved_config,
+        used_edge_predictor_path=used_edge_predictor_path,
+        used_edge_predictor_threshold=used_edge_predictor_threshold,
+    )
+    ignored_input_interaction_graph_metadata = bool(
+        used_overrides.get("removed_input_interaction_graph_metadata", False)
+    )
+    if not edge_prior_artifact["uses_learned_edge_prior"]:
+        ignored_input_interaction_graph_metadata = bool(
+            ignored_input_interaction_graph_metadata
+            or adata.uns.pop("interaction_graph", None) is not None
+        )
 
     velocity_np = np.zeros((n_obs, output_dim), dtype=np.float32)
     interaction_np = np.zeros((n_obs, output_dim), dtype=np.float32)
@@ -763,32 +884,11 @@ def _fit_adata(
                 getattr(getattr(model, "interaction_net", None), "cutoff", np.nan)
             )
         ),
-        "edge_predictor_threshold": (
-            float(used_edge_predictor_threshold)
-            if used_edge_predictor_threshold is not None
-            else float(
-                getattr(
-                    getattr(model, "interaction_net", None),
-                    "edge_predictor_thre",
-                    np.nan,
-                )
-            )
-        ),
-        "edge_predictor_path": (
-            str(used_edge_predictor_path)
-            if used_edge_predictor_path is not None
-            else (
-                resolved_config.get("model", {})
-                .get("interaction_net", {})
-                .get("edge_predictor_path")
-            )
-        ),
-        "edge_prior_mode": (
-            resolved_config.get("model", {})
-            .get("interaction_net", {})
-            .get("edge_prior_mode", "learned")
-            if "interaction" in components
-            else None
+        "edge_predictor_threshold": (edge_prior_artifact["edge_predictor_threshold"]),
+        "edge_predictor_path": edge_prior_artifact["edge_predictor_path"],
+        "edge_prior_mode": edge_prior_artifact["edge_prior_mode"],
+        "ignored_input_interaction_graph_metadata": bool(
+            ignored_input_interaction_graph_metadata
         ),
         "ckpt_dir": (
             str(used_ckpt_dir)

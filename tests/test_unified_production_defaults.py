@@ -56,16 +56,12 @@ def test_public_scientific_api_defaults_match_the_production_protocol() -> None:
     )
     assert _default(classification.predict_labels_for_points, "knn_neighbors") == 10
     assert (
-        _default(classification.predict_labels_for_trajectories, "knn_neighbors")
-        == 10
+        _default(classification.predict_labels_for_trajectories, "knn_neighbors") == 10
     )
     assert _default(classification.smooth_spatial_labels, "k") == 10
 
     assert _default(train_legacy_mlp_classifier, "hidden_size") == 128
-    assert (
-        _default(train_legacy_mlp_classifier, "train_mlp_classifier_epoches")
-        == 500
-    )
+    assert _default(train_legacy_mlp_classifier, "train_mlp_classifier_epoches") == 500
     assert _default(train_legacy_mlp_classifier, "lr") == 1e-3
     assert _default(train_legacy_mlp_classifier, "seed") == 42
 
@@ -131,7 +127,7 @@ def test_training_pipeline_materializes_missing_seed_and_ot_weights(
     assert config["training"]["defaults"]["alpha_express"] == 0.015
 
 
-def test_released_spatial_configs_share_weights_but_keep_graph_thresholds() -> None:
+def test_released_spatial_configs_share_training_weights() -> None:
     production_configs = (
         "admouse_spatial_full_alpha_express_0015.yaml",
         "arista_spatial_full.yaml",
@@ -156,26 +152,46 @@ def test_released_spatial_configs_share_weights_but_keep_graph_thresholds() -> N
         assert defaults["alpha_express"] == 0.015, name
 
     expected_graph_contracts = {
-        "admouse_spatial_full_alpha_express_0015.yaml": (
-            0.012106042891492197,
-            0.32999998331069946,
-        ),
         "arista_spatial_full.yaml": (
             0.03154105148551745,
-            0.23999999463558197,
+            0.5884028673171997,
         ),
         "mosta_spatial_full_alpha_express_0015.yaml": (
             0.02400244047956264,
-            0.44999998807907104,
+            0.1192110925912857,
         ),
         "zebrafish_spatial_full.yaml": (
             0.09606367405591873,
-            0.4999999701976776,
+            0.6063615679740906,
+        ),
+        "zebrafish_spatial_full_alpha_express_0015.yaml": (
+            0.09606367405591873,
+            0.6063615679740906,
         ),
     }
     for name, expected in expected_graph_contracts.items():
         interaction = _load_config(name)["model"]["interaction_net"]
         assert (interaction["cutoff"], interaction["edge_predictor_thre"]) == expected
+
+
+def test_admouse_main_profile_uses_corrected_strict_panel_edge_predictor() -> None:
+    config = _load_config("admouse_spatial_full_alpha_express_0015.yaml")
+    interaction = config["model"]["interaction_net"]
+
+    assert interaction["cutoff"] == 0.012106042891492197
+    assert interaction["edge_prior_mode"] == "learned"
+    assert interaction["edge_predictor_path"] == "edge_classifier/admouse.pt"
+    assert interaction["edge_predictor_thre"] == 0.9956824779510498
+
+
+def test_admouse_no_lr_prior_ablation_is_explicitly_all_spatial() -> None:
+    config = _load_config("admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml")
+    interaction = config["model"]["interaction_net"]
+
+    assert interaction["cutoff"] == 0.012106042891492197
+    assert interaction["edge_prior_mode"] == "all_spatial"
+    assert "edge_predictor_path" not in interaction
+    assert "edge_predictor_thre" not in interaction
 
 
 def test_admouse_profile_preserves_the_resolved_six_stage_schedule() -> None:

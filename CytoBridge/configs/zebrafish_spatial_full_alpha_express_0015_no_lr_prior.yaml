@@ -1,6 +1,8 @@
 # Matched zebrafish reviewer ablation: preserve the complete trainable
 # interaction GNN and spatial cutoff, but remove the pretrained LR-informed
-# edge gate by exposing every within-cutoff spatial neighbor to message passing.
+# edge gate by retaining every within-cutoff candidate inside each stochastic
+# interaction group. The base group size is 1,024; a remainder is merged into
+# the final group, so that group can contain at most 2,047 particles.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn

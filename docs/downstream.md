@@ -17,12 +17,24 @@ Spatial radius pairs are constructed without a dense cell-by-cell matrix.
 Edges retain sender/source to receiver/target direction, and attention is
 aggregated into cell-type tables without changing the underlying model output.
 
+For AD main, distinguish the downstream reporting graph from the stochastic
+interaction groups used by the dynamical model. Downstream constructs the full
+radius candidate graph for the analyzed time-slice cohort, or for an explicit
+seeded subsample, and applies the learned edge predictor in memory batches. The
+predictor is supported by seven strict panel-covered LR pairs, so the result is
+a panel-limited spatial-attention summary rather than global CCI inference.
+
 ## Ligand–receptor projection
 
 Generated inverse-PCA log1p expression is clipped to non-negative values per
 cell before scoring. A complex is eligible only when every required subunit is
 present. The formal score uses the minimum across subunits; geometric mean is a
 sensitivity option.
+
+The AD panel contains seven complete pairs under this rule. The main workflow
+uses their database-derived graph labels to fit its learned edge predictor and
+also reports their downstream projection. The separately packaged all-spatial
+condition removes this LR-informed gate as a no-LR-prior ablation.
 
 ## Gene and module dynamics
 

@@ -25,5 +25,6 @@ preprocess_contract:
   external_audits: []
 benchmark:
   training_config: training/config.yaml
+  edge_prior_mode: learned
   graph_database: CytoBridge/workflow_databases/CellChatDB.ligrec.mouse.csv
   expression_layer: counts

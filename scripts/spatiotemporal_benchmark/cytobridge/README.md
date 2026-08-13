@@ -15,6 +15,10 @@ The shared scientific profile is:
 - the exact architecture, epochs, batch sizes, losses and scheduler loaded
   from the selected data-set package YAML. These intentionally differ where
   the package recipe differs (for example, AD uses 3,001 score epochs);
+- the interaction prior declared by that YAML: `learned` profiles require a
+  validated edge-predictor path and threshold, while `all_spatial` profiles
+  retain every within-cutoff candidate inside each stochastic interaction
+  group and reject predictor fields;
 - exactly 5,000 source particles from the builder-frozen, method-independent
   canonical source roster, verified before any truth artifact is opened;
 - raw two-dimensional frozen spatial coordinates followed by the frozen state
@@ -31,19 +35,25 @@ manifest's `inputs/` directory and never resolve/open `truth*` artifacts.
 
 ### LOTO (`loto_t1`, `loto_t2`, `loto_t3`)
 
-For every fold, the held-out target rows must be physically absent. The adapter
-regenerates the within-stage ligand-receptor interaction graphs for the
-remaining stages, retrains the edge classifier, runs all six model-training
-stages from scratch, and then continuously simulates from the nearest previous
-observed training stage to the held-out target. No held-out graph is reused.
+For every fold, the held-out target rows must be physically absent. For a
+`learned` prior, the adapter regenerates the within-stage ligand-receptor
+interaction graphs for the remaining stages and retrains the edge classifier.
+For an `all_spatial` no-LR-prior ablation, it prepares only the cutoff declared
+by the matched training config: no LR graph or edge-classifier artifact is
+created, recorded, or passed to fitting. The adapter then runs all six stages
+from scratch and continuously simulates from the nearest previous observed
+training stage to the held-out target. The AD production benchmark remains the
+corrected learned predictor trained from its seven strictly retained LR pairs;
+radius-only AD is reported only as an ablation or sensitivity analysis.
 
 ### Full data / no holdout (`full_data`)
 
 The complete `alpha_express=0.015` checkpoint is reused only after all six stage
-files, its resolved package config and its training data are verified. Current
-Finetune checkpoints embed the learned edge-predictor parameters, so a model
-remains loadable after it is moved and does not require the old external edge
-file or its original absolute path. A new adapter fit proves linkage via
+files, its resolved package config, interaction-prior mode, and training data
+are verified. Learned-mode Finetune checkpoints embed the predictor parameters,
+so they remain loadable after being moved. An `all_spatial` checkpoint has no
+predictor dependency at all; validation rejects stale predictor metadata. A new
+adapter fit proves linkage via
 `benchmark_fit_summary.json`; an existing locked fit without that summary is
 accepted only when its saved `adata.h5ad` has the exact frozen state, spatial,
 time, and row-order arrays in `training_reference.npz`.
@@ -91,6 +101,7 @@ for TARGET in 1 2 3; do
   $PYTHON $ADAPTER prepare-loto \
     --input-manifest "$INPUTS" \
     --split "$SPLIT" \
+    --training-config "$CONFIG" \
     --database "$DB" \
     --output-dir "$RUN/$SPLIT/graph_and_edge" \
     --device "$DEVICE"
@@ -113,12 +124,17 @@ for TARGET in 1 2 3; do
 done
 ```
 
-When `--interaction-cutoff` is omitted, `prepare-loto` reads the frozen
-preprocessing threshold from
-`train.h5ad:uns['interaction_graph']['neighborhood_threshold']`. It still
-recomputes graph edges from training rows. When `--edge-threshold` is omitted,
-the newly trained fold-specific classifier uses its validation-selected
-threshold. Pass explicit values only for a declared threshold sensitivity run.
+In learned mode, omitting `--interaction-cutoff` reads the frozen preprocessing
+threshold from
+`train.h5ad:uns['interaction_graph']['neighborhood_threshold']`; the adapter
+then recomputes graph edges from training rows. When `--edge-threshold` is
+omitted, the new fold-specific classifier uses its validation-selected
+threshold. In `all_spatial` mode, the cutoff comes from the validated training
+YAML; an explicit `--interaction-cutoff` is accepted only when numerically
+equal to that value. `--edge-threshold` and `--spot-diameter` are rejected in
+that mode, and no learned-graph artifacts are written. In learned mode,
+`--database` is required. The AD production benchmark uses learned mode; its
+all-spatial profile is a separately labelled no-LR-prior ablation.
 
 Validate and reuse an existing complete full-data `.015` model, then create all
 four snapshots in one continuous call:
@@ -144,6 +160,10 @@ $PYTHON $ADAPTER infer-full \
 
 `preflight --model-dir "$FULL_MODEL"` combines config/input/model checks in a
 single read-only report.
+
+Inference also binds `--interaction-m` exactly to the loaded checkpoint's
+`model.interaction_group_size`; a mismatch is rejected instead of silently
+changing the stochastic interaction grouping.
 
 ## Outputs
 
@@ -190,5 +210,5 @@ python -m unittest -v \
 They verify train-only artifact resolution even when truth is deliberately
 missing, physical LOTO removal, the single full-data t0-to-all-target schedule,
 fixed deterministic 5,000-particle bootstrapping, raw-weight export, all four
-package profiles, embedded edge-predictor portability, and six-stage
-checkpoint completeness.
+package profiles, learned-predictor portability, radius-only execution without
+predictor artifacts or arguments, and six-stage checkpoint completeness.

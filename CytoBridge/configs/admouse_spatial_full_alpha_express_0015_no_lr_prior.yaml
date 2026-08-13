@@ -1,9 +1,10 @@
-# Corrected clean-counts MOSTA six-stage training profile.
+# AD mouse no-LR-prior ablation at alpha_express=0.015.
 #
-# The graph settings are the resolved values from the formal clean-counts run.
-# The workflow also passes these values explicitly to training, together with
-# the user-supplied edge-classifier checkpoint. Durations and batch sizes
-# preserve the recovered published MOSTA recipe. The expression weight is 0.015.
+# This matched ablation preserves the production architecture, cutoff, and
+# six-stage schedule but removes the learned edge gate. Every directed
+# cutoff-qualified candidate inside each stochastic interaction group is kept.
+# It is not the AD production main model and must be reported as an all-spatial
+# / radius-only no-LR-prior ablation.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
@@ -20,23 +21,20 @@ model:
     residual: false
     activation: leaky_relu
   score_net:
-    hidden_dim: 400
-    n_layers: 3
+    hidden_dim: 256
+    n_layers: 5
     activation: leaky_relu
   interaction_net:
-    edge_prior_mode: learned
     hidden_dim: 256
     num_heads: 8
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 0.02400244047956264
+    cutoff: 0.012106042891492197
     use_spatial: true
-    rbf_trainable: false
-    edge_predictor_path: edge_classifier/mosta.pt
-    edge_predictor_thre: 0.1192110925912857
+    edge_prior_mode: all_spatial
 
-ckpt_dir: results/mosta_spatial_full_alpha_express_0015
+ckpt_dir: results/admouse_spatial_full_alpha_express_0015_no_lr_prior
 reverse: true
 seed: 42
 
@@ -47,7 +45,9 @@ training:
     lambda_mass: 10.0
     lambda_energy: 0.01
     sigma: 0.03
-    batch_size: 1024
+    batch_size: 512
+    scheduler_step_size: 100
+    scheduler_gamma: 0.5
     alpha_spatial: 10.0
     alpha_express: 0.015
     global_mass: true
@@ -56,7 +56,7 @@ training:
     - name: Pretrain
       mode: neural_ode
       epochs: 100
-      batch_size: 1024
+      batch_size: 512
       OT_loss: weighted_emd_detach
       train_strategy: v+g
       lambda_ot: 1.0
@@ -65,12 +65,11 @@ training:
       global_mass: false
       reverse_mass_norm: true
       reverse_mass_offset: false
-      checkpoint_metric: legacy_forward_last_ot
 
     - name: Refine
       mode: neural_ode
       epochs: 100
-      batch_size: 1024
+      batch_size: 512
       OT_loss: weighted_emd
       train_strategy: v+g
       lambda_ot: 1.0
@@ -79,12 +78,11 @@ training:
       global_mass: true
       reverse_mass_norm: true
       reverse_mass_offset: false
-      checkpoint_metric: legacy_forward_last_ot
 
     - name: Init_interaction
       mode: neural_ode
       epochs: 50
-      batch_size: 1024
+      batch_size: 512
       OT_loss: weighted_emd
       train_strategy: v+g+i
       lambda_ot: 10.0
@@ -93,48 +91,42 @@ training:
       global_mass: true
       reverse_mass_norm: false
       reverse_mass_offset: true
-      checkpoint_metric: legacy_forward_last_ot
 
     - name: Train_Score
       mode: score_matching
-      epochs: 2001
-      batch_size: 512
+      epochs: 3001
+      batch_size: 256
       sigma: 0.03
       train_strategy: s
       optimizer_type: adamw
       lr: 0.0001
       lambda_penalty: 0
-      save_strategy: last
+      scheduler_type: cosine
+      scheduler_eta_min: 0.00001
 
     - name: Finetune
       mode: neural_ode
       epochs: 1000
-      batch_size: 1024
+      batch_size: 512
       OT_loss: weighted_emd
       train_strategy: v+g+i
       score_use: true
       lr: 0.0001
-      lambda_ot: 10.0
-      lambda_mass: 10.0
-      lambda_energy: 0.01
       global_mass: true
       reverse_mass_norm: false
       reverse_mass_offset: true
-      scheduler_type: plateau
-      scheduler_metric: forward_last_ot
-      scheduler_step_before_reverse: true
-      scheduler_gamma: 0.8
-      max_grad_norm: 10.0
-      checkpoint_metric: legacy_forward_last_ot
-      save_strategy: best
+      scheduler_type: cosine
+      scheduler_patience: 50
+      save_strategy: last
 
     - name: Score_Refine
       mode: score_matching
-      epochs: 2001
-      batch_size: 512
+      epochs: 3001
+      batch_size: 256
       sigma: 0.03
       train_strategy: s
       optimizer_type: adamw
       lr: 0.0001
       lambda_penalty: 0
-      save_strategy: last
+      scheduler_type: cosine
+      scheduler_eta_min: 0.00001

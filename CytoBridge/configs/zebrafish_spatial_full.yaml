@@ -23,6 +23,7 @@ model:
     n_layers: 3
     activation: leaky_relu
   interaction_net:
+    edge_prior_mode: learned
     hidden_dim: 256
     num_heads: 8
     num_layers: 1
@@ -32,7 +33,7 @@ model:
     use_spatial: true
     rbf_trainable: false
     edge_predictor_path: edge_classifier/zebrafish.pt
-    edge_predictor_thre: 0.4999999701976776
+    edge_predictor_thre: 0.6063615679740906
 
 ckpt_dir: results/zebrafish_spatial_full
 reverse: true

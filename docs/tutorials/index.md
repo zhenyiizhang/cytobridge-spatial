@@ -30,7 +30,7 @@ user's current working directory.
 
 All four notebooks implement the same compact sequence: load the formal preset,
 optionally fit or load a model, interpolate and classify, summarize composition,
-velocity, growth and sparse communication, project strict ligand-receptor
+velocity, growth and sparse spatial attention, project strict ligand-receptor
 trajectories, and evaluate unwarped distributions. Dataset-specific paper
 panels, gene-program selections, perturbations, and cross-method benchmark runs
 remain explicit analyses rather than hidden notebook side effects.

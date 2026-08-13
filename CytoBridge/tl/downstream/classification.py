@@ -1174,6 +1174,91 @@ def _split_classifier_indices(
         random_state=seed,
         stratify=split_labels if can_stratify else None,
     )
+    stratification_repairs = []
+    if can_stratify:
+        split_train_indices = np.asarray(split_train_indices, dtype=np.int64)
+        validation_indices = np.asarray(validation_indices, dtype=np.int64)
+        train_counts = np.bincount(encoded[split_train_indices], minlength=n_classes)
+        validation_counts = np.bincount(
+            encoded[validation_indices],
+            minlength=n_classes,
+        )
+        missing_validation_classes = np.flatnonzero(
+            (class_counts >= 2) & (validation_counts == 0)
+        )
+        rng = np.random.default_rng(seed)
+        for missing_class in missing_validation_classes:
+            donor_classes = np.flatnonzero(validation_counts >= 2)
+            if donor_classes.size == 0:
+                raise ValueError(
+                    "Strict stratification could not be honored: no validation "
+                    f"class can donate a row to class {names[missing_class]!r}."
+                )
+            expected_validation = float(test_size) * class_counts[donor_classes]
+            donor_surplus = validation_counts[donor_classes] - expected_validation
+            donor_class = int(donor_classes[np.argmax(donor_surplus)])
+            incoming_candidates = split_train_indices[
+                encoded[split_train_indices] == missing_class
+            ]
+            outgoing_candidates = validation_indices[
+                encoded[validation_indices] == donor_class
+            ]
+            incoming = int(rng.choice(incoming_candidates))
+            outgoing = int(rng.choice(outgoing_candidates))
+            split_train_indices[split_train_indices == incoming] = outgoing
+            validation_indices[validation_indices == outgoing] = incoming
+            train_counts[missing_class] -= 1
+            train_counts[donor_class] += 1
+            validation_counts[missing_class] += 1
+            validation_counts[donor_class] -= 1
+            stratification_repairs.append(
+                {
+                    "validation_added_class": names[missing_class],
+                    "validation_donor_class": names[donor_class],
+                }
+            )
+        missing_training_classes = np.flatnonzero(
+            (class_counts >= 2) & (train_counts == 0)
+        )
+        for missing_class in missing_training_classes:
+            donor_classes = np.flatnonzero(train_counts >= 2)
+            if donor_classes.size == 0:
+                raise ValueError(
+                    "Strict stratification could not be honored: no training "
+                    f"class can donate a row to class {names[missing_class]!r}."
+                )
+            expected_training = (1.0 - float(test_size)) * class_counts[donor_classes]
+            donor_surplus = train_counts[donor_classes] - expected_training
+            donor_class = int(donor_classes[np.argmax(donor_surplus)])
+            incoming_candidates = validation_indices[
+                encoded[validation_indices] == missing_class
+            ]
+            outgoing_candidates = split_train_indices[
+                encoded[split_train_indices] == donor_class
+            ]
+            incoming = int(rng.choice(incoming_candidates))
+            outgoing = int(rng.choice(outgoing_candidates))
+            validation_indices[validation_indices == incoming] = outgoing
+            split_train_indices[split_train_indices == outgoing] = incoming
+            train_counts[missing_class] += 1
+            train_counts[donor_class] -= 1
+            validation_counts[missing_class] -= 1
+            validation_counts[donor_class] += 1
+            stratification_repairs.append(
+                {
+                    "training_added_class": names[missing_class],
+                    "training_donor_class": names[donor_class],
+                }
+            )
+        unresolved = np.flatnonzero(
+            (class_counts >= 2) & ((train_counts == 0) | (validation_counts == 0))
+        )
+        if unresolved.size:
+            raise ValueError(
+                "Strict stratification could not be honored after deterministic "
+                "repair; missing train/validation support for classes "
+                f"{[names[index] for index in unresolved]}."
+            )
     train_indices = np.concatenate(
         (np.asarray(split_train_indices, dtype=np.int64), singleton_indices)
     )
@@ -1184,6 +1269,7 @@ def _split_classifier_indices(
         "strict_stratification": bool(strict_stratification),
         "stratify_used": bool(can_stratify),
         "stratification_scope": "classes_with_at_least_two_rows",
+        "stratification_repairs": stratification_repairs,
         "stratification_fallback_reason": (
             None
             if can_stratify
@@ -1457,6 +1543,7 @@ def _train_mlp_classifier_arrays_detailed(
         "stratification_fallback_reason": split_metadata[
             "stratification_fallback_reason"
         ],
+        "stratification_repairs": split_metadata.get("stratification_repairs", []),
         "per_class_split_counts": split_metadata["per_class_counts"],
         "training_only_singleton_classes": split_metadata[
             "training_only_singleton_classes"
@@ -1598,7 +1685,7 @@ def train_cached_mlp_classifier_from_adata(
         class_names=classes,
     )
     metadata = {
-        "version": 7,
+        "version": 8,
         "cache_tag": str(cache_tag or ""),
         "feature_cols": feature_cols,
         "label_col": str(label_col),
@@ -1621,6 +1708,7 @@ def train_cached_mlp_classifier_from_adata(
         ),
         "class_split": {
             "strategy": split_metadata["strategy"],
+            "stratification_repairs": split_metadata.get("stratification_repairs", []),
             "per_class_counts": split_metadata["per_class_counts"],
             "training_only_singleton_classes": split_metadata[
                 "training_only_singleton_classes"

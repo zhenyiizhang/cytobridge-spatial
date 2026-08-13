@@ -3,8 +3,8 @@
 
 This is an artifact-level scientific acceptance check.  It reads the outputs
 created by ``cytobridge workflow --train`` and verifies the shared protocol,
-the complete six-stage fit, the generated edge prior, and the numerical
-downstream products.  It does not modify the run directory.
+the complete six-stage fit, each dataset's declared edge prior, and the
+numerical downstream products.  It does not modify the run directory.
 
 Example
 -------
@@ -16,7 +16,9 @@ python scripts/validate_corrected_de_novo_run.py \
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -46,10 +48,14 @@ DATASETS = {
         "annotation_key": "Annotation",
         "classifier_k": 10,
         "cutoff": 0.09606367405591873,
+        "edge_prior_mode": "learned",
+        "edge_predictor_threshold": 0.6063615679740906,
         "observed_counts": {0.0: 563, 1.0: 1036, 2.0: 2081, 3.0: 3048, 4.0: 5271},
         "interpolated": (0.5, 1.5, 2.5, 3.5),
         "score_epochs": 2001,
         "species": "zebrafish",
+        "lr_database_name": "CellChatDB.ligrec.zebrafish.csv",
+        "lr_database_sha256": "27fd0eb35da035a371ef68783d3e2dcf0729668fd58c2bb59f203173ea1b3f37",
     },
     "mosta": {
         "shape": (344603, 23761),
@@ -57,10 +63,14 @@ DATASETS = {
         "annotation_key": "Annotation",
         "classifier_k": 10,
         "cutoff": 0.02400244047956264,
+        "edge_prior_mode": "learned",
+        "edge_predictor_threshold": 0.1192110925912857,
         "observed_counts": {0.0: 51365, 1.0: 77369, 2.0: 102519, 3.0: 113350},
         "interpolated": (0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2.25, 2.5, 2.75),
         "score_epochs": 2001,
         "species": "mouse",
+        "lr_database_name": "CellChatDB.ligrec.mouse.csv",
+        "lr_database_sha256": "851c7ac12f4b2ba355eb991cda76646bf215fcab6e3819f7453bce2d3bc77673",
     },
     "arista": {
         "shape": (46209, 16379),
@@ -68,10 +78,14 @@ DATASETS = {
         "annotation_key": "Annotation",
         "classifier_k": 10,
         "cutoff": 0.03154105148551745,
+        "edge_prior_mode": "learned",
+        "edge_predictor_threshold": 0.5884028673171997,
         "observed_counts": {0.0: 7668, 1.0: 8106, 2.0: 9440, 3.0: 9676, 4.0: 11319},
         "interpolated": (0.5, 1.5, 2.5, 3.5),
         "score_epochs": 2001,
         "species": "hs",
+        "lr_database_name": "CellChatDB.ligrec.human.csv",
+        "lr_database_sha256": "8bfb86da81206cc4c1d8ab15a0086e9fc6cd38a7206450a427e4e77bfb32731c",
     },
     "admouse": {
         "shape": (172092, 347),
@@ -79,14 +93,31 @@ DATASETS = {
         "annotation_key": "major_annotation",
         "classifier_k": 1,
         "cutoff": 0.012106042891492197,
+        "edge_prior_mode": "learned",
+        "edge_predictor_threshold": 0.9956824779510498,
         "observed_counts": {0.0: 53615, 1.0: 58447, 2.0: 60030},
         "interpolated": tuple(
             round(value / 10, 1) for value in range(1, 26) if value not in (10, 20)
         ),
         "score_epochs": 3001,
         "species": "mouse",
+        "lr_database_name": "CellChatDB.ligrec.mouse.csv",
+        "lr_database_sha256": "851c7ac12f4b2ba355eb991cda76646bf215fcab6e3819f7453bce2d3bc77673",
+        "strict_lr_pairs": 7,
     },
 }
+
+ABLATION_PROFILES = {
+    "admouse_no_lr_prior": {
+        **DATASETS["admouse"],
+        "artifact_dataset": "admouse",
+        "edge_prior_mode": "all_spatial",
+        "edge_predictor_threshold": None,
+        "run_role": "no-LR-prior ablation",
+        "training_config": ("admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml"),
+    }
+}
+VALIDATION_PROFILES = {**DATASETS, **ABLATION_PROFILES}
 
 
 @dataclass
@@ -201,29 +232,508 @@ def expected_epochs(spec: dict[str, Any]) -> dict[str, int]:
     }
 
 
-def required_files(run_dir: Path, dataset: str) -> dict[str, Path]:
+def _mapping(value: Any) -> dict[str, Any]:
+    """Return a plain mapping when possible, otherwise an empty mapping."""
+
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _finite_probability(value: Any) -> float | None:
+    """Normalize a strict probability, returning ``None`` for invalid values."""
+
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(normalized) or not 0.0 < normalized < 1.0:
+        return None
+    return normalized
+
+
+def _resolved_optional_path(value: Any) -> Path | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return Path(text).expanduser().resolve()
+
+
+def _file_sha256(path: Path | None) -> str | None:
+    if path is None or not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def edge_threshold_provenance_contract(
+    predictor_metadata: Any,
+    *,
+    expected_threshold: float,
+) -> tuple[bool, str]:
+    """Require the validation-selected threshold frozen for a production run."""
+
+    metadata = _mapping(predictor_metadata)
+    effective = _finite_probability(metadata.get("edge_predictor_threshold"))
+    selected = _finite_probability(metadata.get("edge_predictor_threshold_selected"))
+    expected = _finite_probability(expected_threshold)
+    ok = (
+        metadata.get("selection_source") == "validation"
+        and effective is not None
+        and selected is not None
+        and expected is not None
+        and close_enough(effective, selected)
+        and close_enough(effective, expected)
+    )
+    return ok, (
+        f"effective={metadata.get('edge_predictor_threshold')!r}, "
+        f"selected={metadata.get('edge_predictor_threshold_selected')!r}, "
+        f"expected={expected_threshold!r}, source={metadata.get('selection_source')!r}"
+    )
+
+
+def lr_database_provenance_contract(
+    *,
+    graph_metadata: Any,
+    graph_metadata_present: bool,
+    downstream_analysis: Any,
+    spec: Mapping[str, Any],
+    allow_ignored_input_graph: bool = False,
+) -> tuple[bool, str]:
+    """Validate the exact LR database and its role in graph and projection steps."""
+
+    graph = _mapping(graph_metadata)
+    graph_present = bool(graph_metadata_present or graph_metadata is not None)
+    downstream = _mapping(downstream_analysis)
+    expected_name = str(spec["lr_database_name"])
+    expected_digest = str(spec["lr_database_sha256"])
+    expected_species = str(spec["species"])
+    mode = str(spec["edge_prior_mode"]).strip().lower()
+
+    downstream_path = _resolved_optional_path(downstream.get("database"))
+    downstream_digest = _file_sha256(downstream_path)
+    downstream_ok = (
+        downstream_path is not None
+        and downstream_path.name == expected_name
+        and downstream_digest == expected_digest
+        and str(downstream.get("complex_mode", "")).lower() in {"min", "minimum"}
+        and downstream.get("require_all_subunits") is True
+        and str(downstream.get("preferred_species_tag", "")) == expected_species
+    )
+
+    graph_path = _resolved_optional_path(graph.get("lr_database_path"))
+    graph_digest = _file_sha256(graph_path)
+    resolved_pairs = graph.get("lr_unique_resolved_pairs")
+    if mode == "learned":
+        try:
+            pair_count_ok = int(resolved_pairs) > 0
+            if spec.get("strict_lr_pairs") is not None:
+                pair_count_ok = pair_count_ok and int(resolved_pairs) == int(
+                    spec["strict_lr_pairs"]
+                )
+        except (TypeError, ValueError):
+            pair_count_ok = False
+        graph_ok = (
+            graph_present
+            and graph_path is not None
+            and graph_path.name == expected_name
+            and graph_digest == expected_digest
+            and graph.get("lr_matching_rule")
+            == "selected_symbol_exact_case_insensitive_all_complex_subunits"
+            and graph.get("lr_complex_expression_rule") == "minimum"
+            and str(graph.get("preferred_species_tag", "")) == expected_species
+            and pair_count_ok
+        )
+    elif mode == "all_spatial":
+        # A matched no-LR ablation may deliberately reuse the main run's exact
+        # aligned H5AD.  That input can retain immutable learned-graph provenance,
+        # provided training records that it stripped/ignored the metadata and the
+        # trained artifact itself is clean.  It is evidence about the shared input,
+        # not an edge prior used by the ablation.
+        if not graph_present:
+            graph_ok = True
+        elif allow_ignored_input_graph:
+            try:
+                ignored_pair_count_ok = int(resolved_pairs) > 0
+                if spec.get("strict_lr_pairs") is not None:
+                    ignored_pair_count_ok = int(resolved_pairs) == int(
+                        spec["strict_lr_pairs"]
+                    )
+            except (TypeError, ValueError):
+                ignored_pair_count_ok = False
+            graph_ok = (
+                graph_path is not None
+                and graph_path.name == expected_name
+                and graph_digest == expected_digest
+                and graph.get("lr_matching_rule")
+                == "selected_symbol_exact_case_insensitive_all_complex_subunits"
+                and graph.get("lr_complex_expression_rule") == "minimum"
+                and str(graph.get("preferred_species_tag", "")) == expected_species
+                and ignored_pair_count_ok
+            )
+        else:
+            graph_ok = False
+    else:
+        graph_ok = False
+
+    ok = graph_ok and downstream_ok
+    return ok, (
+        f"mode={mode!r}, graph_present={graph_present}, "
+        f"allow_ignored_input_graph={allow_ignored_input_graph}, "
+        f"graph_database={None if graph_path is None else graph_path.name!r}, "
+        f"graph_sha256={graph_digest}, graph_pairs={resolved_pairs!r}, "
+        f"downstream_database={None if downstream_path is None else downstream_path.name!r}, "
+        f"downstream_sha256={downstream_digest}, expected={expected_name!r}/"
+        f"{expected_digest}"
+    )
+
+
+def trained_edge_prior_contract(
+    all_model: Any,
+    interaction_graph: Any,
+    *,
+    expected_mode: str,
+    expected_threshold: float | None,
+    expected_edge_path: Path | None,
+    predictor_metadata: Any = None,
+    interaction_graph_present: bool | None = None,
+) -> tuple[bool, str]:
+    """Validate the edge-prior provenance serialized in a trained AnnData.
+
+    A learned prior must retain one internally consistent predictor identity in
+    ``all_model``, the aligned interaction-graph metadata, and the predictor
+    sidecar.  A radius-only model must serialize no inert predictor values and
+    must not carry a stale ``interaction_graph`` into the trained artifact.
+    """
+
+    model_meta = _mapping(all_model)
+    graph_meta = _mapping(interaction_graph)
+    predictor_meta = _mapping(predictor_metadata)
+    graph_present = bool(
+        interaction_graph is not None
+        or (interaction_graph_present is not None and bool(interaction_graph_present))
+    )
+    mode = str(model_meta.get("edge_prior_mode", "")).strip().lower()
+    recorded_path = _resolved_optional_path(model_meta.get("edge_predictor_path"))
+    recorded_threshold = _finite_probability(model_meta.get("edge_predictor_threshold"))
+    detail = (
+        f"mode={mode!r}, path={recorded_path}, "
+        f"threshold={model_meta.get('edge_predictor_threshold')!r}, "
+        f"interaction_graph_present={graph_present}"
+    )
+
+    if expected_mode == "all_spatial":
+        clean = (
+            mode == "all_spatial"
+            and model_meta.get("edge_predictor_path") is None
+            and model_meta.get("edge_predictor_threshold") is None
+            and not graph_present
+        )
+        return clean, detail
+
+    if expected_mode != "learned":
+        return False, f"unsupported expected mode={expected_mode!r}; {detail}"
+
+    expected_path = (
+        None
+        if expected_edge_path is None
+        else expected_edge_path.expanduser().resolve()
+    )
+    expected_probability = _finite_probability(expected_threshold)
+    sidecar_threshold = _finite_probability(
+        predictor_meta.get("edge_predictor_threshold")
+    )
+    sidecar_selected = _finite_probability(
+        predictor_meta.get("edge_predictor_threshold_selected")
+    )
+    graph_path = _resolved_optional_path(graph_meta.get("edge_predictor_path"))
+    graph_model_path = _resolved_optional_path(
+        graph_meta.get("edge_predictor_model_path")
+    )
+    graph_threshold = _finite_probability(graph_meta.get("edge_predictor_threshold"))
+    graph_selected = _finite_probability(
+        graph_meta.get("edge_predictor_threshold_selected")
+    )
+    learned_ok = (
+        mode == "learned"
+        and expected_path is not None
+        and expected_path.is_file()
+        and graph_present
+        and recorded_path == expected_path
+        and graph_path == expected_path
+        and graph_model_path == expected_path
+        and expected_probability is not None
+        and recorded_threshold is not None
+        and sidecar_threshold is not None
+        and sidecar_selected is not None
+        and graph_threshold is not None
+        and graph_selected is not None
+        and close_enough(recorded_threshold, expected_probability)
+        and close_enough(sidecar_threshold, expected_probability)
+        and close_enough(sidecar_selected, expected_probability)
+        and close_enough(graph_threshold, expected_probability)
+        and close_enough(graph_selected, expected_probability)
+    )
+    return learned_ok, detail
+
+
+def classifier_split_contract(
+    split: Any,
+    *,
+    expected_class_counts: Mapping[str, int] | None = None,
+) -> tuple[bool, str]:
+    """Validate strict class support in the cached classifier holdout."""
+
+    split_meta = _mapping(split)
+    per_class = _mapping(split_meta.get("per_class_counts"))
+    listed_raw = split_meta.get("training_only_singleton_classes", [])
+    listed = (
+        [str(value) for value in listed_raw] if isinstance(listed_raw, list) else []
+    )
+    singleton_policy = split_meta.get("singleton_class_policy")
+    expected_singletons: list[str] = []
+    class_errors: list[str] = []
+    recorded_totals: dict[str, int] = {}
+    for class_name, raw_counts in per_class.items():
+        counts = _mapping(raw_counts)
+        try:
+            total = int(counts["total"])
+            train = int(counts["train"])
+            validation = int(counts["validation"])
+        except (KeyError, TypeError, ValueError):
+            class_errors.append(f"{class_name}:malformed")
+            continue
+        recorded_totals[str(class_name)] = total
+        if min(total, train, validation) < 0 or train + validation != total:
+            class_errors.append(
+                f"{class_name}:total={total},train={train},validation={validation}"
+            )
+        elif total == 1:
+            expected_singletons.append(str(class_name))
+            if (train, validation) != (1, 0):
+                class_errors.append(
+                    f"{class_name}:singleton train={train},validation={validation}"
+                )
+        elif total >= 2 and (train <= 0 or validation <= 0):
+            class_errors.append(
+                f"{class_name}:missing support train={train},validation={validation}"
+            )
+        elif total == 0:
+            class_errors.append(f"{class_name}:empty class")
+
+    singleton_listing_ok = len(listed) == len(set(listed)) and set(listed) == set(
+        expected_singletons
+    )
+    expected_totals = (
+        None
+        if expected_class_counts is None
+        else {str(key): int(value) for key, value in expected_class_counts.items()}
+    )
+    cohort_matches = expected_totals is None or recorded_totals == expected_totals
+    ok = (
+        split_meta.get("cache_protocol_version") == 8
+        and bool(per_class)
+        and not class_errors
+        and singleton_listing_ok
+        and cohort_matches
+        and isinstance(singleton_policy, str)
+        and bool(singleton_policy.strip())
+    )
+    detail = (
+        f"protocol={split_meta.get('cache_protocol_version')!r}, "
+        f"classes={len(per_class)}, listed_singletons={listed}, "
+        f"expected_singletons={expected_singletons}, errors={class_errors}"
+        f", cohort_matches={cohort_matches}, recorded_total={sum(recorded_totals.values())}, "
+        f"expected_total={None if expected_totals is None else sum(expected_totals.values())}"
+    )
+    return ok, detail
+
+
+def zebrafish_split_sde_contract(simulation: Any) -> tuple[bool, str]:
+    simulation_meta = _mapping(simulation)
+    resample_dt = simulation_meta.get("split_resample_dt")
+    ceiling = simulation_meta.get("split_particle_ceiling")
+    try:
+        ok = close_enough(resample_dt, 0.05) and int(ceiling) == 100_000
+    except (TypeError, ValueError):
+        ok = False
+    return ok, f"split_resample_dt={resample_dt!r}, split_particle_ceiling={ceiling!r}"
+
+
+def retained_top_level_lr_pairs(frame: pd.DataFrame) -> tuple[int | None, str]:
+    """Count retained pair trajectories, excluding pair-cell-type children."""
+
+    required = {"trajectory_kind", "retained", "pair_id"}
+    if not required.issubset(frame.columns):
+        missing = sorted(required.difference(frame.columns))
+        return None, f"missing_columns={missing}"
+    retained = frame["retained"].astype(str).str.strip().str.lower().eq("true")
+    top_level = frame["trajectory_kind"].astype(str).eq("pair")
+    rows = frame.loc[retained & top_level, "pair_id"].astype(str)
+    unique = int(rows.nunique())
+    if unique != len(rows):
+        return None, f"retained_pair_rows={len(rows)}, unique_pair_ids={unique}"
+    return unique, f"retained_pair_rows={len(rows)}, unique_pair_ids={unique}"
+
+
+def complete_lr_pair_time_grid(
+    trajectory_coverage: pd.DataFrame,
+    pair_timecourse: pd.DataFrame,
+    *,
+    expected_times: Sequence[float],
+) -> tuple[bool, str]:
+    """Require identical retained pair IDs and one row per pair and time."""
+
+    coverage_columns = {"trajectory_kind", "retained", "pair_id"}
+    timecourse_columns = {"pair_id", "time"}
+    if not coverage_columns.issubset(trajectory_coverage.columns) or not (
+        timecourse_columns.issubset(pair_timecourse.columns)
+    ):
+        return False, "missing pair identity or time columns"
+    retained_mask = (
+        trajectory_coverage["retained"].astype(str).str.strip().str.lower().eq("true")
+    )
+    top_level_mask = trajectory_coverage["trajectory_kind"].astype(str).eq("pair")
+    retained_ids = set(
+        trajectory_coverage.loc[retained_mask & top_level_mask, "pair_id"].astype(str)
+    )
+    pair_ids = pair_timecourse["pair_id"].astype(str)
+    times = pd.to_numeric(pair_timecourse["time"], errors="coerce")
+    keys = list(zip(pair_ids, times))
+    expected_keys = {
+        (pair_id, float(time)) for pair_id in retained_ids for time in expected_times
+    }
+    actual_keys = {(pair_id, float(time)) for pair_id, time in keys if pd.notna(time)}
+    pair_id_match = retained_ids == set(pair_ids)
+    unique_rows = len(keys) == len(actual_keys)
+    complete = pair_id_match and unique_rows and actual_keys == expected_keys
+    return complete, (
+        f"retained_ids={len(retained_ids)}, timecourse_ids={pair_ids.nunique()}, "
+        f"rows={len(keys)}, expected_rows={len(expected_keys)}, "
+        f"pair_id_match={pair_id_match}, unique_rows={unique_rows}"
+    )
+
+
+def downstream_scope_contract(
+    summary: Any,
+    *,
+    expected_edge_mode: str,
+    expected_ad_lr_pairs: int | None = None,
+) -> tuple[bool, str]:
+    """Check that human-readable communication and LR scope matches the model."""
+
+    summary_meta = _mapping(summary)
+    analyses = _mapping(summary_meta.get("analyses"))
+    communication = _mapping(analyses.get("communication"))
+    communication_interpretation = communication.get("interpretation")
+    training_scope = communication.get("training_interaction_scope")
+    attention_scope = communication.get("attention_scope")
+    communication_ok = (
+        str(communication.get("edge_prior_mode", "")).lower() == expected_edge_mode
+        and attention_scope == "full time-slice radius candidate graph"
+        and isinstance(training_scope, str)
+        and "stochastic interaction groups" in training_scope
+        and "only within each group" in training_scope
+        and "base size 1024" in training_scope
+        and "at most 2047" in training_scope
+    )
+
+    lr_scope = _mapping(_mapping(analyses.get("ligand_receptor")).get("analysis_scope"))
+    lr_ok = True
+    if expected_ad_lr_pairs is not None:
+        lr_interpretation = lr_scope.get("interpretation")
+        communication_text = (
+            communication_interpretation.lower()
+            if isinstance(communication_interpretation, str)
+            else ""
+        )
+        lr_text = (
+            lr_interpretation.lower() if isinstance(lr_interpretation, str) else ""
+        )
+        communication_ok = communication_ok and (
+            "within-cutoff" in communication_text
+            and "global cell-cell communication" in communication_text
+        )
+        if expected_edge_mode == "learned":
+            communication_ok = (
+                communication_ok
+                and "learned-predictor-gated" in communication_text
+                and "trained from seven" in communication_text
+                and "no-lr-prior ablation" not in communication_text
+            )
+        elif expected_edge_mode == "all_spatial":
+            communication_ok = (
+                communication_ok
+                and "without a learned ligand-receptor edge gate" in communication_text
+                and "no-lr-prior ablation" in communication_text
+                and "not the production main model" in communication_text
+                and "trained from seven" not in communication_text
+            )
+        else:
+            communication_ok = False
+        try:
+            pair_count_ok = (
+                int(lr_scope.get("strict_supported_pair_count")) == expected_ad_lr_pairs
+            )
+        except (TypeError, ValueError):
+            pair_count_ok = False
+        lr_ok = (
+            pair_count_ok
+            and ("seven" in lr_text or "7" in lr_text)
+            and "expression panel" in lr_text
+            and "global cci screen" in lr_text
+        )
+        if expected_edge_mode == "learned":
+            lr_ok = lr_ok and "not a global cci screen" in lr_text
+        elif expected_edge_mode == "all_spatial":
+            lr_ok = lr_ok and "did not gate the all-spatial ablation model" in lr_text
+    ok = communication_ok and lr_ok
+    detail = (
+        f"communication_mode={communication.get('edge_prior_mode')!r}, "
+        f"attention_scope={attention_scope!r}, training_scope={training_scope!r}, "
+        f"lr_scope={lr_scope}"
+    )
+    return ok, detail
+
+
+def required_files(
+    run_dir: Path,
+    dataset: str,
+    spec: dict[str, Any],
+) -> dict[str, Path]:
+    artifact_dataset = str(spec.get("artifact_dataset", dataset))
     training = run_dir / "training"
     downstream = run_dir / "downstream"
-    edge_model = run_dir / "preprocess" / "edge_classifier" / f"{dataset}_edge_model.pt"
-    return {
-        "aligned H5AD": run_dir / "preprocess" / f"{dataset}_aligned.h5ad",
-        "generated edge model": edge_model,
-        "generated edge metadata": edge_model.with_suffix(
-            edge_model.suffix + ".meta.json"
-        ),
+    paths = {
+        "aligned H5AD": run_dir / "preprocess" / f"{artifact_dataset}_aligned.h5ad",
         "resolved training config": training / "config.yaml",
         "training history": training / "training_history.csv",
         "training run summary": training / "training_run_summary.json",
         "trained AnnData": training / "adata.h5ad",
         "downstream summary": downstream / "summary.json",
     }
+    if spec["edge_prior_mode"] == "learned":
+        edge_model = (
+            run_dir
+            / "preprocess"
+            / "edge_classifier"
+            / f"{artifact_dataset}_edge_model.pt"
+        )
+        paths["generated edge model"] = edge_model
+        paths["generated edge metadata"] = edge_model.with_suffix(
+            edge_model.suffix + ".meta.json"
+        )
+    return paths
 
 
 def validate_aligned(
     audit: Audit,
     paths: dict[str, Path],
     spec: dict[str, Any],
-) -> tuple[int, int]:
+) -> tuple[int, int, dict[str, int]]:
     aligned_path = paths["aligned H5AD"]
     shape, obs, obs_names, uns = read_metadata(aligned_path)
     audit.check(
@@ -254,6 +764,10 @@ def validate_aligned(
     audit.check(
         valid_annotation, "cell annotations", f"column={spec['annotation_key']!r}"
     )
+    annotation_counts = {
+        str(key): int(value)
+        for key, value in annotation.astype(str).value_counts().items()
+    }
 
     preprocess_info = uns.get("preprocess_info", {})
     raw_layer = str(preprocess_info.get("raw_counts_layer", ""))
@@ -294,7 +808,7 @@ def validate_aligned(
             "nonnegative finite raw counts",
             f"stored_values={counts_stats[1]}, range=({counts_stats[2]:.6g}, {counts_stats[3]:.6g})",
         )
-    return int(shape[0]), 52
+    return int(shape[0]), 52, annotation_counts
 
 
 def validate_edge_predictor(
@@ -305,12 +819,14 @@ def validate_edge_predictor(
 ) -> float:
     meta = json.loads(paths["generated edge metadata"].read_text(encoding="utf-8"))
     threshold = float(meta["edge_predictor_threshold"])
-    selected = float(meta["edge_predictor_threshold_selected"])
+    threshold_ok, threshold_detail = edge_threshold_provenance_contract(
+        meta,
+        expected_threshold=float(spec["edge_predictor_threshold"]),
+    )
     audit.check(
-        meta.get("selection_source") == "validation"
-        and close_enough(threshold, selected),
-        "validation-selected edge threshold",
-        f"threshold={threshold:.9g}, source={meta.get('selection_source')!r}",
+        threshold_ok,
+        "validation-selected corrected production edge threshold",
+        threshold_detail,
     )
     audit.check(
         0.0 <= threshold <= 1.0
@@ -371,7 +887,7 @@ def validate_training(
     audit: Audit,
     paths: dict[str, Path],
     spec: dict[str, Any],
-    threshold: float,
+    threshold: float | None,
     model_dim: int,
 ) -> None:
     config = yaml.safe_load(
@@ -386,14 +902,38 @@ def validate_training(
         "shared training constants",
         f"seed={config['seed']}, alpha_express={defaults['alpha_express']}, alpha_spatial={defaults['alpha_spatial']}",
     )
-    edge_path = paths["generated edge model"].resolve()
-    configured_edge_path = Path(interaction["edge_predictor_path"]).resolve()
+    actual_edge_prior = str(interaction.get("edge_prior_mode", "learned")).lower()
+    if spec["edge_prior_mode"] == "learned":
+        edge_path = paths["generated edge model"].resolve()
+        configured_edge_path = Path(interaction["edge_predictor_path"]).resolve()
+        edge_prior_ok = (
+            threshold is not None
+            and actual_edge_prior == "learned"
+            and configured_edge_path == edge_path
+            and close_enough(interaction["edge_predictor_thre"], threshold)
+            and close_enough(interaction["cutoff"], spec["cutoff"])
+        )
+        edge_prior_detail = (
+            f"mode={actual_edge_prior}, path={configured_edge_path}, "
+            f"threshold={interaction['edge_predictor_thre']}"
+        )
+    else:
+        edge_prior_ok = (
+            threshold is None
+            and actual_edge_prior == "all_spatial"
+            and close_enough(interaction["cutoff"], spec["cutoff"])
+            and "edge_predictor_path" not in interaction
+            and "edge_predictor_thre" not in interaction
+        )
+        edge_prior_detail = (
+            f"mode={actual_edge_prior}, cutoff={interaction.get('cutoff')}, "
+            f"predictor_path={interaction.get('edge_predictor_path')}, "
+            f"predictor_threshold={interaction.get('edge_predictor_thre')}"
+        )
     audit.check(
-        configured_edge_path == edge_path
-        and close_enough(interaction["edge_predictor_thre"], threshold)
-        and close_enough(interaction["cutoff"], spec["cutoff"]),
-        "generated edge prior wired into training",
-        f"path={configured_edge_path}, threshold={interaction['edge_predictor_thre']}",
+        edge_prior_ok,
+        "declared edge prior wired into training",
+        edge_prior_detail,
     )
 
     plan = config["training"]["plan"]
@@ -459,12 +999,41 @@ def validate_training(
         f"wall_seconds={run_summary['timing']['run_wall_time_seconds']:.3f}",
     )
 
-    trained_shape, _, _, _ = read_metadata(paths["trained AnnData"])
+    trained_shape, _, _, trained_uns = read_metadata(paths["trained AnnData"])
     audit.check(
         tuple(trained_shape) == tuple(spec["shape"]),
         "trained AnnData cohort",
         f"shape={trained_shape}",
     )
+    predictor_metadata = None
+    expected_edge_path = None
+    if spec["edge_prior_mode"] == "learned":
+        expected_edge_path = paths["generated edge model"]
+        predictor_metadata = json.loads(
+            paths["generated edge metadata"].read_text(encoding="utf-8")
+        )
+    edge_artifact_ok, edge_artifact_detail = trained_edge_prior_contract(
+        trained_uns.get("all_model"),
+        trained_uns.get("interaction_graph"),
+        expected_mode=spec["edge_prior_mode"],
+        expected_threshold=threshold,
+        expected_edge_path=expected_edge_path,
+        predictor_metadata=predictor_metadata,
+        interaction_graph_present="interaction_graph" in trained_uns,
+    )
+    audit.check(
+        edge_artifact_ok,
+        "trained AnnData edge-prior provenance",
+        edge_artifact_detail,
+    )
+    if spec["edge_prior_mode"] == "all_spatial":
+        all_model = _mapping(trained_uns.get("all_model"))
+        audit.check(
+            all_model.get("ignored_input_interaction_graph_metadata") is True,
+            "matched no-LR input graph metadata was explicitly ignored",
+            "ignored_input_interaction_graph_metadata="
+            f"{all_model.get('ignored_input_interaction_graph_metadata')!r}",
+        )
     with h5py.File(paths["trained AnnData"], "r") as handle:
         expected_vectors = (
             "obsm/velocity_model",
@@ -506,17 +1075,22 @@ def validate_training(
         load_workflow_config,
     )
 
+    load_options = {}
+    if spec["edge_prior_mode"] == "learned":
+        load_options["edge_predictor_path"] = paths["generated edge model"]
     loaded = cb.tl.load_dynamical_model_from_dir(
         paths["resolved training config"].parent,
         dim=model_dim,
         device="cpu",
-        edge_predictor_path=paths["generated edge model"],
+        **load_options,
     )
-    preset, _ = load_workflow_config(audit.dataset)
+    preset_name = str(spec.get("artifact_dataset", audit.dataset))
+    preset, _ = load_workflow_config(preset_name)
+    training_config = spec.get("training_config")
     contract = _loaded_model_scientific_contract(
         loaded,
         config=preset,
-        options=WorkflowOptions(train=True),
+        options=WorkflowOptions(train=True, training_config=training_config),
     )
     parameters_finite = all(
         bool(np.isfinite(value.detach().cpu().numpy()).all())
@@ -537,7 +1111,7 @@ def validate_slice(
     path: Path,
     annotation_key: str,
     model_dim: int,
-) -> int:
+) -> tuple[int, set[str]]:
     shape, obs, _, _ = read_metadata(path)
     annotations_ok = annotation_key in obs and obs[annotation_key].notna().all()
     with h5py.File(path, "r") as handle:
@@ -573,7 +1147,36 @@ def validate_slice(
         f"finite state {path.stem}",
         f"shape={shape}",
     )
-    return int(shape[0])
+    labels = set(obs[annotation_key].astype(str)) if annotation_key in obs else set()
+    return int(shape[0]), labels
+
+
+def valid_color_map(
+    value: Any,
+    *,
+    required_labels: set[str],
+) -> tuple[bool, str]:
+    """Reject missing, incomplete, invalid, or single-color label palettes."""
+
+    mapping = _mapping(value)
+    colors = [str(mapping.get(label, "")) for label in sorted(required_labels)]
+    valid_hex = all(
+        len(color) == 7
+        and color.startswith("#")
+        and all(character in "0123456789abcdefABCDEF" for character in color[1:])
+        for color in colors
+    )
+    distinct = len({color.lower() for color in colors})
+    ok = (
+        len(required_labels) > 1
+        and set(required_labels).issubset(mapping)
+        and valid_hex
+        and distinct > 1
+    )
+    return ok, (
+        f"required_labels={len(required_labels)}, mapped={len(mapping)}, "
+        f"distinct_required_colors={distinct}"
+    )
 
 
 def finite_numeric_frame(frame: pd.DataFrame, *, allow_na: bool = False) -> bool:
@@ -593,8 +1196,9 @@ def validate_downstream(
     run_dir: Path,
     paths: dict[str, Path],
     spec: dict[str, Any],
-    threshold: float,
+    threshold: float | None,
     model_dim: int,
+    aligned_class_counts: Mapping[str, int],
 ) -> None:
     downstream = run_dir / "downstream"
     summary = json.loads(paths["downstream summary"].read_text(encoding="utf-8"))
@@ -602,7 +1206,7 @@ def validate_downstream(
     expected_times = tuple(sorted(set(observed + tuple(spec["interpolated"]))))
     actual_times = tuple(float(value) for value in summary["time_points"])
     audit.check(
-        summary["dataset"] == audit.dataset
+        summary["dataset"] == str(spec.get("artifact_dataset", audit.dataset))
         and int(summary["seed"]) == 42
         and close_enough(summary["alpha_express"], 0.015)
         and int(summary["classifier_k"]) == int(spec["classifier_k"]),
@@ -613,15 +1217,52 @@ def validate_downstream(
         actual_times == expected_times, "downstream time grid", f"times={actual_times}"
     )
     model_contract = summary["model"]["scientific_contract"]
+    recorded_threshold = model_contract.get("edge_predictor_threshold")
+    threshold_matches = (
+        recorded_threshold is None
+        if threshold is None
+        else recorded_threshold is not None
+        and close_enough(recorded_threshold, threshold)
+    )
+    try:
+        group_size_matches = (
+            int(model_contract.get("interaction_group_size")) == 1024
+            and int(model_contract.get("interaction_group_max_size")) == 2047
+            and int(summary.get("simulation", {}).get("interaction_group_size"))
+            == int(model_contract.get("interaction_group_size"))
+            and "remainder"
+            in str(model_contract.get("interaction_group_remainder_policy", ""))
+        )
+    except (TypeError, ValueError):
+        group_size_matches = False
     audit.check(
         model_contract["status"] == "matches requested preset"
         and close_enough(model_contract["interaction_cutoff"], spec["cutoff"])
-        and close_enough(model_contract["edge_predictor_threshold"], threshold)
+        and model_contract.get("edge_prior_mode") == spec["edge_prior_mode"]
+        and group_size_matches
+        and threshold_matches
         and summary["model"]["weight_stage"] == "Finetune"
         and summary["model"]["score_stage"] == "Score_Refine",
         "downstream loaded corrected checkpoint",
-        f"cutoff={model_contract['interaction_cutoff']}, threshold={model_contract['edge_predictor_threshold']}",
+        f"mode={model_contract.get('edge_prior_mode')}, cutoff={model_contract['interaction_cutoff']}, "
+        f"group_size={model_contract.get('interaction_group_size')}, "
+        f"simulation_group_size={summary.get('simulation', {}).get('interaction_group_size')}, "
+        f"threshold={recorded_threshold}",
     )
+    split_ok, split_detail = classifier_split_contract(
+        summary.get("classifier_split"),
+        expected_class_counts=aligned_class_counts,
+    )
+    audit.check(split_ok, "classifier holdout class support", split_detail)
+    if audit.dataset == "zebrafish":
+        split_sde_ok, split_sde_detail = zebrafish_split_sde_contract(
+            summary.get("simulation")
+        )
+        audit.check(
+            split_sde_ok,
+            "bounded zebrafish split-SDE simulation",
+            split_sde_detail,
+        )
     classifier_metrics = (
         float(summary["classifier_accuracy"]),
         float(summary["classifier_balanced_accuracy"]),
@@ -656,14 +1297,45 @@ def validate_downstream(
             for name in expected_analyses
         ),
     )
+    _, _, _, aligned_uns = read_metadata(paths["aligned H5AD"])
+    trained_all_model = _mapping(
+        read_metadata(paths["trained AnnData"])[3].get("all_model")
+    )
+    ignored_input_graph = (
+        spec["edge_prior_mode"] == "all_spatial"
+        and trained_all_model.get("ignored_input_interaction_graph_metadata") is True
+    )
+    database_ok, database_detail = lr_database_provenance_contract(
+        graph_metadata=aligned_uns.get("interaction_graph"),
+        graph_metadata_present="interaction_graph" in aligned_uns,
+        downstream_analysis=analyses.get("ligand_receptor"),
+        spec=spec,
+        allow_ignored_input_graph=ignored_input_graph,
+    )
+    audit.check(
+        database_ok,
+        "species-matched LR database provenance and role",
+        database_detail,
+    )
+    scope_ok, scope_detail = downstream_scope_contract(
+        summary,
+        expected_edge_mode=spec["edge_prior_mode"],
+        expected_ad_lr_pairs=spec.get("strict_lr_pairs"),
+    )
+    audit.check(
+        scope_ok,
+        "readable downstream scientific scope",
+        scope_detail,
+    )
 
     slice_counts: dict[float, int] = {}
+    slice_labels: dict[float, set[str]] = {}
     for time_value in expected_times:
         path = downstream / "slice_data" / f"time_{safe_time_name(time_value)}.h5ad"
         if not path.is_file():
             audit.check(False, f"slice file t={time_value:g}", str(path))
             continue
-        slice_counts[time_value] = validate_slice(
+        slice_counts[time_value], slice_labels[time_value] = validate_slice(
             audit, path, spec["annotation_key"], model_dim
         )
     observed_slice_counts = {time: slice_counts.get(time) for time in observed}
@@ -672,6 +1344,47 @@ def validate_downstream(
         "observed states retain real cells",
         f"counts={observed_slice_counts}",
     )
+    observed_labels = set().union(*(slice_labels.get(time, set()) for time in observed))
+    generated_times = tuple(
+        time for time in expected_times if time not in spec["observed_counts"]
+    )
+    generated_labels = set().union(
+        *(slice_labels.get(time, set()) for time in generated_times)
+    )
+    generated_label_counts = {
+        time: len(slice_labels.get(time, set())) for time in generated_times
+    }
+    audit.check(
+        len(observed_labels) > 1
+        and bool(generated_label_counts)
+        and all(count > 1 for count in generated_label_counts.values()),
+        "noncollapsed observed and generated labels",
+        f"observed_labels={len(observed_labels)}, generated_per_slice={generated_label_counts}",
+    )
+    if audit.dataset == "zebrafish":
+        generated_particle_counts = {
+            time: slice_counts.get(time) for time in generated_times
+        }
+        audit.check(
+            bool(generated_particle_counts)
+            and all(
+                count is not None and 0 < int(count) <= 100_000
+                for count in generated_particle_counts.values()
+            ),
+            "zebrafish generated particle ceiling",
+            f"counts={generated_particle_counts}",
+        )
+    color_path = downstream / "label_to_color.json"
+    color_mapping = (
+        json.loads(color_path.read_text(encoding="utf-8"))
+        if color_path.is_file()
+        else None
+    )
+    color_ok, color_detail = valid_color_map(
+        color_mapping,
+        required_labels=observed_labels | generated_labels,
+    )
+    audit.check(color_ok, "nondegenerate label color mapping", color_detail)
 
     velocity_path = downstream / "velocity" / "velocity_components.npz"
     velocity_ok = velocity_path.is_file()
@@ -837,10 +1550,25 @@ def validate_downstream(
         and retained is not None
         and bool(retained.astype(str).str.lower().eq("true").any())
     )
+    retained_pair_count, retained_pair_detail = retained_top_level_lr_pairs(
+        lr_tables["trajectory_coverage"]
+    )
+    if "strict_lr_pairs" in spec:
+        lr_ok = lr_ok and retained_pair_count == int(spec["strict_lr_pairs"])
+        complete_pair_times, pair_grid_detail = complete_lr_pair_time_grid(
+            lr_tables["trajectory_coverage"],
+            lr_tables["pair_timecourse"],
+            expected_times=expected_times,
+        )
+        lr_ok = lr_ok and complete_pair_times
+        retained_pair_detail += (
+            f", complete_pair_times={complete_pair_times}, {pair_grid_detail}"
+        )
     audit.check(
         lr_ok,
         "strict complete-trajectory LR dynamics",
-        f"pair_rows={len(lr_tables['pair_timecourse'])}, celltype_rows={len(lr_tables['celltype_timecourse'])}",
+        f"pair_rows={len(lr_tables['pair_timecourse'])}, "
+        f"celltype_rows={len(lr_tables['celltype_timecourse'])}, {retained_pair_detail}",
     )
 
     expected_visuals = (
@@ -861,27 +1589,71 @@ def validate_downstream(
 
 def validate_dataset(run_root: Path, dataset: str) -> Audit:
     audit = Audit(dataset)
-    spec = DATASETS[dataset]
+    spec = VALIDATION_PROFILES[dataset]
     run_dir = run_root / dataset
-    paths = required_files(run_dir, dataset)
+    paths = required_files(run_dir, dataset, spec)
     missing = False
     for label, path in paths.items():
         present = path.is_file() and path.stat().st_size > 0
         audit.check(present, label, str(path))
         missing = missing or not present
+    if spec["edge_prior_mode"] == "all_spatial":
+        clean, cleanliness_detail = validate_no_lr_ablation_artifact_cleanliness(
+            run_dir
+        )
+        audit.check(
+            clean,
+            "no learned LR graph or predictor artifacts for all-spatial run",
+            cleanliness_detail,
+        )
     if missing:
         return audit
 
-    n_cells, model_dim = validate_aligned(audit, paths, spec)
+    n_cells, model_dim, aligned_class_counts = validate_aligned(audit, paths, spec)
     audit.check(
         n_cells == sum(spec["observed_counts"].values()),
         "cohort count total",
         f"n_cells={n_cells}",
     )
-    threshold = validate_edge_predictor(audit, run_dir, paths, spec)
+    threshold = None
+    if spec["edge_prior_mode"] == "learned":
+        threshold = validate_edge_predictor(audit, run_dir, paths, spec)
     validate_training(audit, paths, spec, threshold, model_dim)
-    validate_downstream(audit, run_dir, paths, spec, threshold, model_dim)
+    validate_downstream(
+        audit,
+        run_dir,
+        paths,
+        spec,
+        threshold,
+        model_dim,
+        aligned_class_counts,
+    )
     return audit
+
+
+def validate_no_lr_ablation_artifact_cleanliness(run_dir: Path) -> tuple[bool, str]:
+    """Reject newly generated learned artifacts in an all-spatial ablation tree.
+
+    The matched input ``admouse_aligned.h5ad`` may itself retain immutable graph
+    provenance from the main run; fit strips that metadata in memory and records
+    the action in the trained AnnData.  Separate graph/model files in the
+    ablation run remain forbidden.
+    """
+
+    preprocess = run_dir / "preprocess"
+    artifacts = sorted(
+        path
+        for relative in ("edge_classifier", "input_graph", "metadata")
+        for root in (preprocess / relative,)
+        if root.is_dir()
+        for path in root.rglob("*")
+        if path.is_file()
+    )
+    return (not artifacts), (
+        "none"
+        if not artifacts
+        else ", ".join(str(path.relative_to(preprocess)) for path in artifacts)
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -890,9 +1662,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--datasets",
         nargs="+",
-        choices=tuple(DATASETS),
+        choices=tuple(VALIDATION_PROFILES),
         default=tuple(DATASETS),
-        help="Datasets to validate (default: all four).",
+        help=(
+            "Datasets or explicit ablation profiles to validate "
+            "(default: four production main runs)."
+        ),
     )
     parser.add_argument(
         "--report", type=Path, help="Optional human-readable JSON report."

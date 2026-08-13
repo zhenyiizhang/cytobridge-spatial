@@ -89,7 +89,7 @@
     "graph_database": "CellChatDB.ligrec.human.csv",
     "interaction_cutoff": 0.03154105148551745,
     "requires_edge_predictor": true,
-    "edge_predictor_threshold": 0.23999999463558197,
+    "edge_predictor_threshold": 0.5884028673171997,
     "evaluate_after_training": false
   },
   "downstream": {

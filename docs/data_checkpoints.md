@@ -2,9 +2,11 @@
 
 CytoBridge does not bundle multi-gigabyte datasets or trained checkpoints in
 the wheel. It does bundle the small species-matched CellChatDB tables used by
-both formal interaction-graph construction and the packaged default strict LR
-projection; `--lr-database` remains an explicit downstream override. Raw study
-data are public:
+the packaged default strict LR projection and by the predictor-gated graph
+workflows. In AD main, seven strict complete panel-covered pairs from this table
+label the learned edge predictor and define the downstream projection. This is
+panel-limited evidence, not a global CCI screen. `--lr-database` remains an
+explicit downstream override. Raw study data are public:
 
 | Application | Raw-data source | Raw time / label keys | Raw expression / coordinates |
 | --- | --- | --- | --- |
@@ -37,11 +39,14 @@ inputs; the preset removes only those named keys before preprocessing and
 records the removal while retaining annotations, colors, coordinates, and
 expression data.
 
-The processed aligned H5ADs and formal 0.015 checkpoints are currently project
-artifacts and do not yet have a public archive DOI. They must be deposited and
-linked here before the 1.5 stable release. Until then, the release candidate is
-fully installable and supports user-provided inputs, but a new reader cannot
-download the exact manuscript artifacts from the package documentation alone.
+The processed aligned H5ADs and completed 0.015 checkpoints are currently
+project artifacts and do not yet have a public archive DOI. The corrected AD
+learned-predictor main and historical matched checkpoint are complete; the
+matched no-LR-prior ablation remains pending. Completed artifacts must be
+deposited and linked here before the 1.5 stable release. Until then, the release
+candidate is fully installable and supports user-provided inputs, but a new
+reader cannot download the exact manuscript artifacts from the package
+documentation alone.
 
 ## Aligned AnnData contract
 
@@ -77,10 +82,10 @@ model_dir/
     └── score_model.pth       # optional final score stage
 ```
 
-The workflow loader follows the training plan in `config.yaml`. Current checkpoints
-embed learned edge-predictor weights and are portable between machines. Older
-current-format checkpoints without those embedded weights need an explicit
-`--edge-predictor-path`. Legacy ST-1104 checkpoints use `params.yml`,
+The workflow loader follows the training plan in `config.yaml`. Current
+predictor-gated checkpoints, including AD main, embed learned edge-predictor
+weights and are portable between machines. Older predictor-gated current-format checkpoints without embedded
+weights need an explicit `--edge-predictor-path`. Legacy ST-1104 checkpoints use `params.yml`,
 `model_final`, and `score_model`; load those through
 `cb.tl.load_legacy_dynamical_model_from_dir` for an explicitly labelled
 historical analysis. The formal package workflow does not relabel them as the
@@ -95,6 +100,9 @@ subunits and uses their minimum expression; geometric mean is an explicit
 sensitivity setting. The graph-building CellChatDB resources bundled with
 CytoBridge are GPL-3.0 and documented under `CytoBridge/workflow_databases/`;
 licensing of a custom downstream database remains the user's responsibility.
+The AD expression panel fully represents seven pairs under this strict rule.
+They label the main learned edge predictor and its downstream projection;
+report both as panel-limited, not as a global CCI screen.
 
 ## Main downstream output tree
 

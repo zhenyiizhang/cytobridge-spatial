@@ -155,6 +155,73 @@ def test_singleton_class_is_training_only_while_other_classes_stay_stratified():
     assert 3 not in validation_indices
 
 
+def test_strict_stratification_repairs_rounding_that_omits_a_rare_class():
+    counts = [
+        256,
+        378,
+        475,
+        19,
+        73,
+        411,
+        474,
+        126,
+        157,
+        434,
+        212,
+        138,
+        5,
+        129,
+        205,
+        322,
+        275,
+        44,
+        15,
+        433,
+        377,
+        419,
+        269,
+        409,
+        166,
+        227,
+        394,
+        63,
+        152,
+        63,
+        227,
+        488,
+        68,
+    ]
+    encoded = np.concatenate(
+        [np.full(count, index, dtype=np.int64) for index, count in enumerate(counts)]
+        + [np.asarray([len(counts)], dtype=np.int64)]
+    )
+
+    train_indices, validation_indices, metadata = _split_classifier_indices(
+        encoded,
+        test_size=0.1,
+        seed=42,
+        stratify_split=True,
+        strict_stratification=True,
+        train_on_full_data=False,
+        class_names=[f"class_{index}" for index in range(len(counts))] + ["Singleton"],
+    )
+
+    validation_counts = np.bincount(
+        encoded[validation_indices], minlength=len(counts) + 1
+    )
+    train_counts = np.bincount(encoded[train_indices], minlength=len(counts) + 1)
+    assert np.all(validation_counts[:-1] >= 1)
+    assert np.all(train_counts[:-1] >= 1)
+    assert validation_counts[-1] == 0
+    assert train_counts[-1] == 1
+    assert metadata["stratification_repairs"] == [
+        {
+            "validation_added_class": "class_12",
+            "validation_donor_class": "class_2",
+        }
+    ]
+
+
 def test_strict_stratification_still_fails_for_too_small_validation_split():
     encoded = np.repeat(np.arange(3, dtype=np.int64), 2)
 
@@ -167,6 +234,36 @@ def test_strict_stratification_still_fails_for_too_small_validation_split():
             strict_stratification=True,
             train_on_full_data=False,
         )
+
+
+def test_strict_stratification_repairs_a_rare_class_missing_from_training():
+    encoded = np.concatenate(
+        (
+            np.zeros(2, dtype=np.int64),
+            np.ones(100, dtype=np.int64),
+        )
+    )
+
+    train_indices, validation_indices, metadata = _split_classifier_indices(
+        encoded,
+        test_size=0.9,
+        seed=42,
+        stratify_split=True,
+        strict_stratification=True,
+        train_on_full_data=False,
+        class_names=["Rare", "Common"],
+    )
+
+    train_counts = np.bincount(encoded[train_indices], minlength=2)
+    validation_counts = np.bincount(encoded[validation_indices], minlength=2)
+    assert np.all(train_counts >= 1)
+    assert np.all(validation_counts >= 1)
+    assert metadata["stratification_repairs"] == [
+        {
+            "training_added_class": "Rare",
+            "training_donor_class": "Common",
+        }
+    ]
 
 
 def test_cached_classifier_records_otic_vesicle_singleton_split(tmp_path):
@@ -190,7 +287,7 @@ def test_cached_classifier_records_otic_vesicle_singleton_split(tmp_path):
     )
 
     expected = {"total": 1, "train": 1, "validation": 0}
-    assert cached.metadata["version"] == 7
+    assert cached.metadata["version"] == 8
     assert (
         cached.metadata["class_split"]["per_class_counts"]["Otic Vesicle"] == expected
     )
@@ -324,7 +421,7 @@ def test_cached_refit_persists_protocol_and_keeps_phase_a_metrics(tmp_path):
     )
 
     assert cache_path.exists()
-    assert cached.metadata["version"] == 7
+    assert cached.metadata["version"] == 8
     assert cached.metadata["selection_scope"] == "held_out_validation_phase_a"
     assert cached.metadata["refit_on_full_data_after_selection"] is True
     assert cached.metadata["strict_stratification"] is True

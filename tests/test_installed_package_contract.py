@@ -29,7 +29,10 @@ class InstalledPackageContractTests(unittest.TestCase):
         distribution = metadata.distribution("CytoBridge")
         self.assertEqual(distribution.metadata["Name"], "CytoBridge")
         self.assertEqual(
-            {part.strip() for part in distribution.metadata["Requires-Python"].split(",")},
+            {
+                part.strip()
+                for part in distribution.metadata["Requires-Python"].split(",")
+            },
             {">=3.10", "<3.12"},
         )
         self.assertEqual(distribution.version, CytoBridge.__version__)
@@ -51,14 +54,14 @@ class InstalledPackageContractTests(unittest.TestCase):
         requirements = distribution.requires or []
         # Core Metadata permits either quote style around marker values.
         normalized_requirements = [
-            item.replace(" ", "").replace('"', "'").lower()
-            for item in requirements
+            item.replace(" ", "").replace('"', "'").lower() for item in requirements
         ]
-        self.assertTrue(any(item.startswith("numpy<2,>=1.24") for item in normalized_requirements))
+        self.assertTrue(
+            any(item.startswith("numpy<2,>=1.24") for item in normalized_requirements)
+        )
         self.assertTrue(
             any(
-                "torch-geometric<3,>=2.4" in item
-                and "extra=='graph'" in item
+                "torch-geometric<3,>=2.4" in item and "extra=='graph'" in item
                 for item in normalized_requirements
             )
         )
@@ -79,7 +82,9 @@ class InstalledPackageContractTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertEqual(completed.stdout.strip(), f"cytobridge {CytoBridge.__version__}")
+        self.assertEqual(
+            completed.stdout.strip(), f"cytobridge {CytoBridge.__version__}"
+        )
 
     def test_top_level_import_and_doctor_need_no_installed_dependencies(self) -> None:
         import CytoBridge
@@ -101,7 +106,9 @@ class InstalledPackageContractTests(unittest.TestCase):
         report = json.loads(completed.stdout)
         self.assertEqual(report["package"]["installed_version"], CytoBridge.__version__)
         self.assertTrue(report["package"]["version_match"])
-        self.assertTrue(all(value is False for value in report["dependencies"].values()))
+        self.assertTrue(
+            all(value is False for value in report["dependencies"].values())
+        )
         self.assertEqual(
             set(report["profiles"]),
             {
@@ -118,7 +125,9 @@ class InstalledPackageContractTests(unittest.TestCase):
             },
         )
         self.assertTrue(
-            all(profile["available"] is False for profile in report["profiles"].values())
+            all(
+                profile["available"] is False for profile in report["profiles"].values()
+            )
         )
 
     def test_config_package_data_is_present(self) -> None:
@@ -127,14 +136,21 @@ class InstalledPackageContractTests(unittest.TestCase):
             {path.name for path in configs.iterdir() if path.suffix == ".yaml"},
             {
                 "admouse_spatial_full_alpha_express_0015.yaml",
+                "admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml",
                 "arista_spatial_full.yaml",
                 "mosta_spatial_full_alpha_express_0015.yaml",
                 "zebrafish_spatial_full_alpha_express_0015.yaml",
+                "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml",
+                "zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml",
             },
         )
         workflow_configs = resources.files("CytoBridge").joinpath("workflow_configs")
         self.assertEqual(
-            {path.name for path in workflow_configs.iterdir() if path.suffix == ".json"},
+            {
+                path.name
+                for path in workflow_configs.iterdir()
+                if path.suffix == ".json"
+            },
             {"zebrafish.json", "mosta.json", "arista.json", "admouse.json"},
         )
 

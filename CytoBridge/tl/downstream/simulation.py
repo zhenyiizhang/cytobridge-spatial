@@ -48,15 +48,23 @@ def _coerce_feature_matrix_from_adata(
     if obsm_key in adata.obsm:
         latent = np.asarray(adata.obsm[obsm_key], dtype=np.float32)
     else:
-        latent = adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+        latent = (
+            adata.X.toarray() if hasattr(adata.X, "toarray") else np.asarray(adata.X)
+        )
         latent = np.asarray(latent, dtype=np.float32)
 
-    use_spatial = bool(concat_spatial) if concat_spatial is not None else (spatial_key in adata.obsm)
+    use_spatial = (
+        bool(concat_spatial)
+        if concat_spatial is not None
+        else (spatial_key in adata.obsm)
+    )
     if not use_spatial:
         return latent, 0
 
     if spatial_key not in adata.obsm:
-        raise KeyError(f"concat_spatial=True but adata.obsm['{spatial_key}'] is missing.")
+        raise KeyError(
+            f"concat_spatial=True but adata.obsm['{spatial_key}'] is missing."
+        )
     spatial = np.asarray(adata.obsm[spatial_key], dtype=np.float32)
     if spatial.shape[0] != latent.shape[0]:
         raise ValueError(
@@ -77,11 +85,13 @@ def _prepare_adata_arrays(
 ) -> tuple[np.ndarray, np.ndarray, list[float], int]:
     if not (hasattr(adata, "obs") and hasattr(adata, "obsm")):
         raise TypeError(
-            "Downstream simulation APIs require AnnData input. "
-            f"Got: {type(adata)}"
+            "Downstream simulation APIs require AnnData input. " f"Got: {type(adata)}"
         )
 
-    from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
+    from CytoBridge.tl.downstream.downstream_data import (
+        infer_time_key,
+        parse_time_value,
+    )
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
     raw_times = adata.obs[resolved_time_key].values
@@ -98,7 +108,9 @@ def _prepare_adata_arrays(
     else:
         dim = int(dim)
         if dim > X.shape[1]:
-            raise ValueError(f"Requested dim={dim}, but feature matrix has dim={X.shape[1]}.")
+            raise ValueError(
+                f"Requested dim={dim}, but feature matrix has dim={X.shape[1]}."
+            )
     X = X[:, :dim]
     unique_times = _sorted_unique(times)
     return X, times, unique_times, dim
@@ -161,7 +173,9 @@ def _build_perturbation_keep_mask(
     return keep
 
 
-def _freeze_model_for_inference(model) -> Optional[list[tuple[torch.nn.Parameter, bool]]]:
+def _freeze_model_for_inference(
+    model,
+) -> Optional[list[tuple[torch.nn.Parameter, bool]]]:
     if not isinstance(model, nn.Module):
         return None
     state: list[tuple[torch.nn.Parameter, bool]] = []
@@ -172,7 +186,9 @@ def _freeze_model_for_inference(model) -> Optional[list[tuple[torch.nn.Parameter
     return state
 
 
-def _restore_model_after_inference(state: Optional[list[tuple[torch.nn.Parameter, bool]]]) -> None:
+def _restore_model_after_inference(
+    state: Optional[list[tuple[torch.nn.Parameter, bool]]]
+) -> None:
     if not state:
         return
     for param, requires_grad in state:
@@ -223,13 +239,49 @@ def _apply_split_event(
     initial_count: int,
     noise_std: float,
     max_particles: Optional[int] = None,
+    event_time: Optional[float] = None,
 ):
     new_z, new_lnw = current_state
     device = new_z.device
+    if int(initial_count) <= 0:
+        raise ValueError("initial_count must be > 0.")
+    if max_particles is not None and int(max_particles) <= 0:
+        raise ValueError("max_particles must be > 0 when provided.")
     if new_z.shape[0] == 0:
         return current_state, torch.exp(new_lnw)
 
+    if not torch.isfinite(new_lnw).all():
+        raise FloatingPointError("Split-SDE log-weights must remain finite.")
+    if not torch.isfinite(previous_weights).all() or not torch.all(
+        previous_weights > 0
+    ):
+        raise FloatingPointError(
+            "Split-SDE previous weights must be finite and strictly positive."
+        )
+
+    time_suffix = "" if event_time is None else f" at t={float(event_time):g}"
+    n_before = int(new_z.shape[0])
+    if max_particles is not None and n_before > int(max_particles):
+        raise RuntimeError(
+            f"Split-SDE particle limit exceeded before allocation{time_suffix}: "
+            f"current={n_before}, max_particles={int(max_particles)}. "
+            "The ceiling is a fail-fast invariant and never downsamples particles."
+        )
+
     r = (torch.exp(new_lnw) / previous_weights).reshape(-1)
+    if not torch.isfinite(r).all():
+        if max_particles is not None:
+            raise RuntimeError(
+                f"Split-SDE particle limit exceeded before allocation{time_suffix}: "
+                f"requested_at_least={int(max_particles) + 1}, "
+                f"max_particles={int(max_particles)}, current={n_before}. "
+                "The offspring ratio overflowed; the ceiling never downsamples "
+                "particles."
+            )
+        raise FloatingPointError(
+            f"Split-SDE offspring ratios overflowed{time_suffix}; configure an "
+            "explicit max_particles ceiling and inspect the learned growth field."
+        )
     mask_split = r >= 1
     mask_extinct = ~mask_split
 
@@ -239,10 +291,25 @@ def _apply_split_event(
     if mask_split.any():
         r_split = r[mask_split]
         r_floor = torch.floor(r_split)
+        if max_particles is not None and torch.any(r_floor > int(max_particles)):
+            max_source_offspring = int(r_floor.max().item())
+            raise RuntimeError(
+                f"Split-SDE particle limit exceeded before allocation{time_suffix}: "
+                f"requested_at_least={max_source_offspring}, "
+                f"max_particles={int(max_particles)}, current={n_before}. "
+                "The ceiling is a fail-fast invariant and never downsamples "
+                "particles; inspect learned growth outside the observed support."
+            )
+        if torch.any(r_floor > torch.iinfo(torch.int64).max):
+            raise RuntimeError(
+                f"Split-SDE offspring count exceeds int64{time_suffix}; configure "
+                "an explicit max_particles ceiling and inspect the learned growth "
+                "field."
+            )
         r_frac = r_split - r_floor
-        m_j = r_floor.to(torch.int64) + (
-            torch.rand_like(r_frac) < r_frac
-        ).to(torch.int64)
+        m_j = r_floor.to(torch.int64) + (torch.rand_like(r_frac) < r_frac).to(
+            torch.int64
+        )
         valid_mask = m_j > 0
         if valid_mask.any():
             repeated_source_z = new_z[mask_split][valid_mask]
@@ -259,15 +326,15 @@ def _apply_split_event(
     n_after = n_split + n_extinct
     if max_particles is not None and n_after > int(max_particles):
         raise RuntimeError(
-            "Split-SDE particle limit exceeded before allocation: "
-            f"requested={n_after}, max_particles={int(max_particles)}. "
-            "Reduce the time horizon/growth multiplier or raise the explicit limit."
+            f"Split-SDE particle limit exceeded before allocation{time_suffix}: "
+            f"requested={n_after}, max_particles={int(max_particles)}, "
+            f"current={n_before}. The ceiling is a fail-fast invariant and never "
+            "downsamples particles; inspect learned growth outside the observed "
+            "support."
         )
 
     if repeat_counts is not None:
-        repeated_z = torch.repeat_interleave(
-            repeated_source_z, repeat_counts, dim=0
-        )
+        repeated_z = torch.repeat_interleave(repeated_source_z, repeat_counts, dim=0)
         repeated_lnw = torch.repeat_interleave(
             repeated_source_lnw, repeat_counts, dim=0
         )
@@ -320,6 +387,15 @@ def _euler_sdeint_split(
         raise ValueError("ts must contain at least one output time.")
     if max_particles is not None and int(max_particles) <= 0:
         raise ValueError("max_particles must be > 0 when provided.")
+    if max_particles is not None and int(initial_state[0].shape[0]) > int(
+        max_particles
+    ):
+        raise RuntimeError(
+            "Split-SDE particle limit exceeded at initial state: "
+            f"initial={int(initial_state[0].shape[0])}, "
+            f"max_particles={int(max_particles)}. The ceiling is a fail-fast "
+            "invariant and never downsamples particles."
+        )
     device = initial_state[0].device
     ts_list = [float(x) for x in ts.tolist()]
     if not all(math.isfinite(value) for value in ts_list):
@@ -357,9 +433,7 @@ def _euler_sdeint_split(
         current_time = t0
         initial_count = int(initial_state[0].shape[0])
         previous_weights = torch.exp(initial_state[1])
-        output_by_step = {
-            int(step): index for index, step in enumerate(aligned_steps)
-        }
+        output_by_step = {int(step): index for index, step in enumerate(aligned_steps)}
         final_step = int(aligned_steps[-1])
         for event_step in range(1, final_step + 1):
             event_time = t0 + event_step * event_dt
@@ -385,6 +459,7 @@ def _euler_sdeint_split(
                 initial_count=initial_count,
                 noise_std=noise_std,
                 max_particles=max_particles,
+                event_time=event_time,
             )
             if event_step in output_by_step:
                 output_states.append(current_state)
@@ -428,6 +503,7 @@ def _euler_sdeint_split(
             initial_count=int(initial_state[0].shape[0]),
             noise_std=noise_std,
             max_particles=max_particles,
+            event_time=target_time,
         )
         output_states.append(current_state)
         next_output_idx += 1
@@ -597,7 +673,9 @@ def simulate_sde_points_split_from_x0(
                     raise ValueError(
                         f"sigma_by_dim must have length {x0_t.shape[1]}, got {sigma_arr.shape[0]}"
                     )
-                self.register_buffer("sigma_vec", torch.tensor(sigma_arr, dtype=torch.float32))
+                self.register_buffer(
+                    "sigma_vec", torch.tensor(sigma_arr, dtype=torch.float32)
+                )
                 self.sigma = None
 
         def f(self, t, y):
@@ -619,7 +697,11 @@ def simulate_sde_points_split_from_x0(
         def g(self, t, y):
             if self.sigma_vec is None:
                 return torch.ones_like(y) * self.sigma
-            return self.sigma_vec.to(device=y.device, dtype=y.dtype).unsqueeze(0).expand_as(y)
+            return (
+                self.sigma_vec.to(device=y.device, dtype=y.dtype)
+                .unsqueeze(0)
+                .expand_as(y)
+            )
 
     if verbose:
         try:
@@ -698,9 +780,7 @@ def apply_spatial_warp_to_segments(
             index = ts_index.get(time_value)
             if index is None:
                 continue
-            source_xy = np.asarray(
-                sde_points_split[index], dtype=np.float32
-            )[:, :2]
+            source_xy = np.asarray(sde_points_split[index], dtype=np.float32)[:, :2]
             if source_xy.shape[0] == 0:
                 continue
             target, _ = sample_observed_x0(
@@ -715,9 +795,7 @@ def apply_spatial_warp_to_segments(
             if target_xy.shape[0] > 0:
                 boundary_anchors[time_value] = (source_xy, target_xy)
 
-        for t_start, t_end in zip(
-            observed_time_points[:-1], observed_time_points[1:]
-        ):
+        for t_start, t_end in zip(observed_time_points[:-1], observed_time_points[1:]):
             t_start = float(t_start)
             t_end = float(t_end)
             if t_start not in boundary_anchors or t_end not in boundary_anchors:
@@ -725,9 +803,7 @@ def apply_spatial_warp_to_segments(
             source_start, target_start = boundary_anchors[t_start]
             source_end, target_end = boundary_anchors[t_end]
             segment_times = [
-                float(value)
-                for value in ts_points
-                if t_start < float(value) < t_end
+                float(value) for value in ts_points if t_start < float(value) < t_end
             ]
             if not use_real_for_observed:
                 segment_times.extend([t_start, t_end])
@@ -762,7 +838,9 @@ def apply_spatial_warp_to_segments(
     for t_start, t_end in zip(observed_time_points[:-1], observed_time_points[1:]):
         t_start = float(t_start)
         t_end = float(t_end)
-        interior_ts = sorted([float(t) for t in ts_points if t_start < float(t) < t_end])
+        interior_ts = sorted(
+            [float(t) for t in ts_points if t_start < float(t) < t_end]
+        )
 
         if piecewise:
             if not piecewise_include_end or not piecewise_endpoint_by_observed:
@@ -773,14 +851,18 @@ def apply_spatial_warp_to_segments(
                 continue
             source_endpoint = piecewise_endpoint_by_observed.get(t_end)
             if source_endpoint is None:
-                print(f"[spatial-warp] skip segment {t_start}->{t_end}: missing simulated endpoint cache")
+                print(
+                    f"[spatial-warp] skip segment {t_start}->{t_end}: missing simulated endpoint cache"
+                )
                 continue
             source_endpoint_xy = np.asarray(source_endpoint, dtype=np.float32)[:, :2]
         else:
             idx_end = ts_index.get(t_end)
             if idx_end is None:
                 continue
-            source_endpoint_xy = np.asarray(sde_points_out[idx_end], dtype=np.float32)[:, :2]
+            source_endpoint_xy = np.asarray(sde_points_out[idx_end], dtype=np.float32)[
+                :, :2
+            ]
 
         if source_endpoint_xy.shape[0] == 0:
             continue
@@ -856,7 +938,11 @@ def simulate_piecewise_spatially_warped_split(
     max_particles: Optional[int] = None,
 ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     ts_sorted = [float(t) for t in ts_points]
-    observed_sorted = [float(t) for t in observed_time_points if ts_sorted[0] <= float(t) <= ts_sorted[-1]]
+    observed_sorted = [
+        float(t)
+        for t in observed_time_points
+        if ts_sorted[0] <= float(t) <= ts_sorted[-1]
+    ]
     if len(observed_sorted) < 2:
         fallback = simulate_sde_points_split_from_x0(
             x0=x0,
@@ -928,11 +1014,15 @@ def simulate_piecewise_spatially_warped_split(
     prewarp_points_by_time: Dict[float, np.ndarray] = {}
 
     for t_start, t_end in zip(observed_sorted[:-1], observed_sorted[1:]):
-        seg_ts = [float(t) for t in ts_sorted if float(t_start) <= float(t) <= float(t_end)]
+        seg_ts = [
+            float(t) for t in ts_sorted if float(t_start) <= float(t) <= float(t_end)
+        ]
         if len(seg_ts) == 0:
             continue
         if len(seg_ts) == 1:
-            points_by_time[float(seg_ts[0])] = np.asarray(current_x0, dtype=np.float32).copy()
+            points_by_time[float(seg_ts[0])] = np.asarray(
+                current_x0, dtype=np.float32
+            ).copy()
             prewarp_points_by_time[float(seg_ts[0])] = np.asarray(
                 current_x0, dtype=np.float32
             ).copy()
@@ -961,7 +1051,10 @@ def simulate_piecewise_spatially_warped_split(
             time_value=float(t_end),
             feature_cols=feature_cols_full,
             label_col=label_col,
-            n_samples_cap=min(int(source_endpoint_xy.shape[0]), int((df["samples"] == float(t_end)).sum())),
+            n_samples_cap=min(
+                int(source_endpoint_xy.shape[0]),
+                int((df["samples"] == float(t_end)).sum()),
+            ),
             rng=rng,
         )
         target_endpoint_xy = np.asarray(X_target, dtype=np.float32)[:, :2]
@@ -982,7 +1075,9 @@ def simulate_piecewise_spatially_warped_split(
             prewarp_points_by_time.setdefault(
                 float(t_val), np.asarray(pts_raw, dtype=np.float32).copy()
             )
-            alpha = (float(t_val) - float(t_start)) / max(float(t_end - t_start), float(eps))
+            alpha = (float(t_val) - float(t_start)) / max(
+                float(t_end - t_start), float(eps)
+            )
             if warp_visualization_only and start_display_xy is not None:
                 start_disp = _compute_spatial_warp_displacements(
                     pts[:, :2],
@@ -1022,7 +1117,9 @@ def simulate_piecewise_spatially_warped_split(
 
     missing = [float(t) for t in ts_sorted if float(t) not in points_by_time]
     if missing:
-        raise ValueError(f"Piecewise spatial-warp split-SDE missing timepoints: {missing}")
+        raise ValueError(
+            f"Piecewise spatial-warp split-SDE missing timepoints: {missing}"
+        )
 
     warped = np.array([points_by_time[float(t)] for t in ts_sorted], dtype=object)
     if not return_prewarp:
@@ -1077,11 +1174,15 @@ def simulate_sde_points(
 
         time_points = df["samples"].unique()
         if time_index < 0 or time_index >= len(time_points):
-            raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+            raise ValueError(
+                f"time_index={time_index} out of range [0, {len(time_points)-1}]"
+            )
 
         t0 = time_points[time_index]
         numeric_cols = ["samples"] + [f"x{i}" for i in range(1, int(dim) + 1)]
-        data = torch.tensor(df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32)
+        data = torch.tensor(
+            df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32
+        )
         x0 = data[:, 1:].requires_grad_().to(device)
 
         if x0.shape[0] > n_samples:
@@ -1139,7 +1240,9 @@ def simulate_sde_points(
                 f"t_range=({t_min},{t_max}), est_steps={est_steps}"
             )
 
-        sde = SDE(f_net.v_net, f_net.g_net, score_net, f_net.interaction_net, sigma=sigma)
+        sde = SDE(
+            f_net.v_net, f_net.g_net, score_net, f_net.interaction_net, sigma=sigma
+        )
         ts_tensor = torch.tensor(ts_points, dtype=torch.float32, device=device)
         sde_point, traj_lnw = _euler_sdeint(sde, initial_state, dt=dt, ts=ts_tensor)
         weight = torch.exp(traj_lnw)
@@ -1151,7 +1254,10 @@ def simulate_sde_points(
                 f"timepoints={len(sde_point_np)}, "
                 f"shape0={sde_point_np[0].shape if sde_point_np else None}"
             )
-        return np.array(sde_point_np, dtype=object), weight_normed.detach().cpu().numpy()
+        return (
+            np.array(sde_point_np, dtype=object),
+            weight_normed.detach().cpu().numpy(),
+        )
 
     X, times, time_points, dim = _prepare_adata_arrays(
         adata,
@@ -1164,7 +1270,9 @@ def simulate_sde_points(
     if ts_points is None:
         ts_points = [0, 1, 2, 3, 4]
     if time_index < 0 or time_index >= len(time_points):
-        raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+        raise ValueError(
+            f"time_index={time_index} out of range [0, {len(time_points)-1}]"
+        )
 
     t0 = time_points[time_index]
     mask = _time_mask(times, t0)
@@ -1298,11 +1406,15 @@ def simulate_sde_points_split(
 
         time_points = df["samples"].unique()
         if time_index < 0 or time_index >= len(time_points):
-            raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+            raise ValueError(
+                f"time_index={time_index} out of range [0, {len(time_points)-1}]"
+            )
 
         t0 = time_points[time_index]
         numeric_cols = ["samples"] + [f"x{i}" for i in range(1, int(dim) + 1)]
-        data = torch.tensor(df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32)
+        data = torch.tensor(
+            df[df["samples"] == t0][numeric_cols].values, dtype=torch.float32
+        )
         x0 = data[:, 1:].to(device)
 
         if x0.shape[0] > n_samples:
@@ -1336,7 +1448,9 @@ def simulate_sde_points_split(
     if ts_points is None:
         ts_points = [0, 1, 2, 3, 4]
     if time_index < 0 or time_index >= len(time_points):
-        raise ValueError(f"time_index={time_index} out of range [0, {len(time_points)-1}]")
+        raise ValueError(
+            f"time_index={time_index} out of range [0, {len(time_points)-1}]"
+        )
 
     t0 = time_points[time_index]
     mask = _time_mask(times, t0)
@@ -1452,7 +1566,9 @@ def compute_velocity_components(
     data = np.asarray(data, dtype=np.float32)
     n_cells = data.shape[0]
     data_tensor = torch.tensor(data, device=device, dtype=torch.float32)
-    t_tensor = torch.full((n_cells, 1), float(time_value), device=device, dtype=torch.float32)
+    t_tensor = torch.full(
+        (n_cells, 1), float(time_value), device=device, dtype=torch.float32
+    )
     interaction_net = getattr(model, "interaction_net", None)
     components = set(getattr(model, "components", []))
     use_mass = bool(getattr(model, "use_growth_in_ode_inter", True))
@@ -1465,10 +1581,14 @@ def compute_velocity_components(
             drift = model.predict_velocity(t=t_tensor, x=data_tensor)
         drift_np = drift.detach().cpu().numpy()
 
-        lnw = torch.log(torch.ones(n_cells, 1, device=device, dtype=torch.float32) / float(n_cells))
+        lnw = torch.log(
+            torch.ones(n_cells, 1, device=device, dtype=torch.float32) / float(n_cells)
+        )
         interaction_np = np.zeros_like(drift_np)
         if "interaction" in components and interaction_net is not None:
-            t_scalar = torch.tensor([float(time_value)], dtype=torch.float32, device=device)
+            t_scalar = torch.tensor(
+                [float(time_value)], dtype=torch.float32, device=device
+            )
             if getattr(interaction_net, "requires_time", False):
                 with torch.no_grad():
                     interaction_t = cal_interaction(
@@ -1557,14 +1677,24 @@ def compute_velocity_components_from_adata(
         concat_spatial=concat_spatial,
     )
 
-    use_spatial = bool(concat_spatial) if concat_spatial is not None else (spatial_key in adata.obsm)
-    spatial_dim = int(adata.obsm[spatial_key].shape[1]) if use_spatial and spatial_key in adata.obsm else 0
+    use_spatial = (
+        bool(concat_spatial)
+        if concat_spatial is not None
+        else (spatial_key in adata.obsm)
+    )
+    spatial_dim = (
+        int(adata.obsm[spatial_key].shape[1])
+        if use_spatial and spatial_key in adata.obsm
+        else 0
+    )
 
     components = set(getattr(model, "components", []))
     has_interaction = "interaction" in components
     has_score = "score" in components
     if interaction_threshold is None:
-        interaction_threshold = float(getattr(getattr(model, "interaction_net", None), "cutoff", 1000.0))
+        interaction_threshold = float(
+            getattr(getattr(model, "interaction_net", None), "cutoff", 1000.0)
+        )
 
     if write_to_adata and reuse_if_present:
         required = ["velocity_model", "full_drift_model"]
@@ -1616,10 +1746,18 @@ def compute_velocity_components_from_adata(
         full_all[mask] = comp["full"]
 
     if write_to_adata:
-        _store_vector_component(adata, name="velocity", values=drift_all, spatial_dim=spatial_dim)
-        _store_vector_component(adata, name="interaction", values=interaction_all, spatial_dim=spatial_dim)
-        _store_vector_component(adata, name="score_gradient", values=score_all, spatial_dim=spatial_dim)
-        _store_vector_component(adata, name="full_drift", values=full_all, spatial_dim=spatial_dim)
+        _store_vector_component(
+            adata, name="velocity", values=drift_all, spatial_dim=spatial_dim
+        )
+        _store_vector_component(
+            adata, name="interaction", values=interaction_all, spatial_dim=spatial_dim
+        )
+        _store_vector_component(
+            adata, name="score_gradient", values=score_all, spatial_dim=spatial_dim
+        )
+        _store_vector_component(
+            adata, name="full_drift", values=full_all, spatial_dim=spatial_dim
+        )
 
     return {
         "drift": drift_all,

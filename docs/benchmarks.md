@@ -66,8 +66,9 @@ The production selection rules are:
 - spatial cutoff: compute the median within-slice nearest-neighbour distance,
   set the recommended spot diameter to `1.2 × median(NN1)`, and use
   `4 × mean(spot diameter)` across observed slices;
-- edge threshold: maximize validation F1 over candidate probability thresholds,
-  using accuracy only as a tie-break;
+- edge threshold: for all four main runs, maximize validation F1 over candidate
+  probability thresholds, using accuracy only as a tie-break; corrected AD
+  selected `0.9956824779510498` from its strict-seven-pair graph labels;
 - score batch: use the dataset recipe and recheck joint, state, and spatial
   metrics if memory constraints require a change;
 - scheduler: report the scheduler that actually ran. The historical

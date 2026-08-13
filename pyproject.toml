@@ -63,9 +63,12 @@ velocity = { file = ["requirements/velocity.txt"] }
 [tool.setuptools.package-data]
 CytoBridge = [
   "configs/admouse_spatial_full_alpha_express_0015.yaml",
+  "configs/admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml",
   "configs/arista_spatial_full.yaml",
   "configs/mosta_spatial_full_alpha_express_0015.yaml",
   "configs/zebrafish_spatial_full_alpha_express_0015.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml",
   "workflow_configs/*.json",
   "workflow_databases/*.csv",
   "workflow_databases/README.md",

@@ -139,6 +139,46 @@ def test_split_integrator_particle_limit_fails_before_repeat_allocation():
         )
 
 
+def test_explosive_growth_fails_before_repeat_allocation(monkeypatch):
+    class ExplosiveGrowthSDE:
+        def f(self, _t, state):
+            z, lnw = state
+            return torch.zeros_like(z), torch.full_like(lnw, 1000.0)
+
+        def g(self, _t, z):
+            return torch.zeros_like(z)
+
+    def unexpected_repeat(*_args, **_kwargs):
+        raise AssertionError("repeat_interleave must not run above the ceiling")
+
+    monkeypatch.setattr(torch, "repeat_interleave", unexpected_repeat)
+    with pytest.raises(
+        RuntimeError,
+        match=r"particle limit exceeded before allocation at t=0.1",
+    ) as error:
+        _euler_sdeint_split(
+            ExplosiveGrowthSDE(),
+            _initial_state(),
+            dt=0.1,
+            ts=torch.tensor([0.0, 0.1]),
+            resample_dt=0.1,
+            max_particles=100_000,
+        )
+
+    assert "never downsamples particles" in str(error.value)
+
+
+def test_particle_ceiling_applies_to_the_initial_state_without_downsampling():
+    with pytest.raises(RuntimeError, match="limit exceeded at initial state"):
+        _euler_sdeint_split(
+            _UnitDriftNoGrowthSDE(),
+            _initial_state(),
+            dt=0.1,
+            ts=torch.tensor([0.0]),
+            max_particles=1,
+        )
+
+
 def test_split_particle_count_encodes_equal_mass_after_resampling():
     z = torch.tensor([[0.0], [1.0]], dtype=torch.float32)
     previous_weights = torch.full((2, 1), 0.5, dtype=torch.float32)
@@ -149,6 +189,7 @@ def test_split_particle_count_encodes_equal_mass_after_resampling():
         previous_weights=previous_weights,
         initial_count=2,
         noise_std=0.0,
+        max_particles=4,
     )
 
     assert resampled_z.shape[0] == 4

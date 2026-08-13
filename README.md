@@ -167,15 +167,22 @@ The plan prints the dataset policy, scientific parameters, steps, compute
 requirements, and any missing input. The primary settings are seed 42,
 `alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
 `k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse. The packaged
-training profiles retain the fixed interaction cutoffs and historical matched
-edge thresholds resolved in the accepted runs:
+training profiles retain the fixed interaction cutoffs. All four main models
+use learned edge priors. AD's targeted panel represents only seven complete
+ligand-receptor pairs under strict all-subunit matching; the corrected main
+model deliberately uses those labels and its validation-selected predictor
+threshold rather than silently changing the model class.
 
-| preset | interaction cutoff | historical matched edge threshold |
-|---|---:|---:|
-| MOSTA | 0.02400244047956264 | 0.44999998807907104 |
-| ARISTA | 0.03154105148551745 | 0.23999999463558197 |
-| Zebrafish | 0.09606367405591873 | 0.4999999701976776 |
-| AD mouse | 0.012106042891492197 | 0.32999998331069946 |
+| preset | interaction cutoff | main edge prior | current corrected predictor threshold | historical matched predictor threshold |
+|---|---:|---|---:|---:|
+| MOSTA | 0.02400244047956264 | learned predictor | 0.1192110925912857 | 0.44999998807907104 |
+| ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 | 0.23999999463558197 |
+| Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 | 0.4999999701976776 |
+| AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 | 0.32999998331069946 |
+
+The final column contains separate historical matched-run thresholds; those
+values are not the corrected main thresholds. The AD all-spatial/radius-only
+variant is packaged separately as a no-LR-prior ablation.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:
@@ -195,21 +202,29 @@ cytobridge workflow --config zebrafish --step downstream \
   --device cuda
 ```
 
-Current CytoBridge checkpoints contain the learned edge-predictor weights, so
-copied model directories do not depend on the original training-machine path.
-For an older current-format checkpoint that lacks those embedded weights, add
+Current predictor-gated CytoBridge checkpoints contain their learned
+edge-predictor weights, so copied model directories do not depend on the
+original training-machine path. For an older predictor-gated current-format
+checkpoint that lacks those embedded weights, add
 `--edge-predictor-path /path/to/edge_model.pt` when running downstream.
 
 The downstream step now executes the common quantitative chain, rather than
 stopping after interpolation. It writes generated H5AD slices, classifier
 scores, observed-slice velocity components, per-cell growth, cell-type
-composition, sparse model-edge communication, and readable CSV tables. It also
+composition, model-attention summaries evaluated on the downstream reporting
+radius graph, and readable CSV tables. It also
 renders the shared white-background snapshot/mosaic, velocity, growth,
 composition, and 3D communication figures. Lineage is emitted only when the
 dataset config explicitly declares a persistent fixed-particle identity
 contract; the current generic presets conservatively omit it. The package
-workflow does not apply spatial warping, and communication, growth, gene,
+workflow does not apply spatial warping, and attention, growth, gene,
 LR, and reconstruction diagnostics all use the unwarped model states.
+For AD, downstream attention is recomputed on a full time-slice radius graph,
+or on the explicitly configured seeded time-slice subsample. That reporting
+graph is distinct from the stochastic interaction groups used by training and
+dynamics. The main AD checkpoint applies its learned edge gate; because that
+gate is supported by only seven strict panel-covered pairs, its attention
+summaries must not be described as a global cell-cell communication screen.
 
 The packaged downstream profiles also keep the formal simulation scope:
 Zebrafish uses every observed t0 cell on its nine analysis slices; MOSTA uses
@@ -221,9 +236,14 @@ Temporal gene reconstruction and strict ligand-receptor projection run by
 default in all four packaged downstream presets. Package preprocessing retains
 the fitted PCA loadings in `varm['PCs']`, the fitted center in
 `var['pca_center']`, and the matching gene order, so the aligned H5AD produced
-earlier in the same command is the default reference. LR projection reuses the
-same bundled species-matched CellChatDB used to construct the interaction
-graph. Complexes require every subunit and use minimum subunit expression. The
+earlier in the same command is the default reference. For Zebrafish, MOSTA, and
+ARISTA, LR projection reuses the bundled species-matched CellChatDB used for
+the learned edge prior. AD follows the same code path: its 347-gene panel
+retains seven complete pairs under strict all-subunit matching, and those
+database-derived labels train the main edge predictor. Both the model prior and
+downstream projection are therefore panel-limited rather than global CCI.
+Complexes
+require every subunit and use minimum subunit expression. The
 CLI options remain available for an explicit reference, database, species tag,
 or geometric-mean sensitivity override. Historical references missing
 `var['pca_center']` fail closed unless
@@ -247,12 +267,11 @@ named a fitted-model reconstruction diagnostic: it is not a training holdout
 and not a cross-method benchmark. Use the matched benchmark pipeline for those
 claims.
 
-Training never runs implicitly. For all four packaged raw-data
-presets, adding `--train` to the normal preprocessing workflow now builds the
-per-timepoint interaction graphs, trains the edge predictor, and passes the
-generated model and its validation-selected decision threshold directly into
-model training. `--edge-predictor-threshold` is an explicit fixed-threshold
-override:
+Training never runs implicitly. For all four datasets, adding
+`--train` to the raw-data workflow builds per-timepoint LR graphs, trains an
+edge predictor, and passes its validation-selected threshold into model
+training. `--edge-predictor-threshold` remains an explicit override for
+predictor-gated runs:
 
 ```bash
 cytobridge workflow --config mosta --train \
@@ -262,16 +281,16 @@ cytobridge workflow --config mosta --train \
 ```
 
 Each preset uses its species-matched formal CellChatDB resource bundled in the
-wheel: zebrafish for Zebrafish, mouse for MOSTA and AD mouse, and human for
-ARISTA. The same resource is used for graph construction and downstream strict
-LR projection; no database download or repository checkout is needed. Pass
-`--graph-database /path/to/database.csv` to override graph construction, or
+wheel for downstream strict LR projection: zebrafish for Zebrafish, mouse for
+MOSTA and AD mouse, and human for ARISTA. All four use that resource to fit
+their learned edge prior. Pass `--graph-database /path/to/database.csv` to override graph construction
+in a predictor-gated workflow, or
 `--lr-database /path/to/database.csv` to override only the downstream LR
 projection. An existing edge predictor may be supplied only with the aligned
 H5AD and main model that were fitted in the same feature space. A raw-H5AD
-`--train` run always builds new interaction graphs and fits a new edge
-predictor; it rejects `--edge-predictor-path` rather than mixing an old
-predictor with a newly fitted PCA basis.
+predictor-gated `--train` run always fits a new edge predictor; it rejects
+`--edge-predictor-path` rather than mixing an old predictor with a newly fitted
+PCA basis.
 The bundled tables come from the GPL-3.0
 [CellChat project](https://github.com/jinworks/CellChat); cite CellChatDB when
 reporting results derived from them.
@@ -281,20 +300,34 @@ preset. The AD mouse preset now includes the resolved six-stage
 `100/100/50/3001/1000/3001` profile. Its default is now a corrected de novo
 raw-H5AD workflow: `obs['Timepoint']` values 1/2/3 map to model times 0/1/2,
 `layers['counts']` is normalized to 10,000 and log1p transformed, all three
-batches are aligned, and the bundled mouse CellChatDB trains a fresh edge
-predictor at the fixed formal cutoff with a validation-selected threshold. This
-is distinct from the
-historical matched 0.015 run, which reused released aligned H5AD and edge-model
-artifacts. To audit that historical path, select `--step downstream` and pass
-the released `--aligned-h5ad` and `--model-dir`; older checkpoints without
-embedded edge weights also need `--edge-predictor-path`.
+batches are aligned, and a learned edge predictor is fitted from the seven
+strict complete panel-supported pairs. The corrected main run selected
+`0.9956824779510498`, recorded identically in its resolved training config and
+edge metadata. Historical matched 0.015
+artifacts, including the `0.32999998331069946` threshold in the table above,
+remain a separate compatibility path. The matched radius-only alternative is
+an explicit no-LR-prior ablation:
+
+```bash
+cytobridge workflow --config admouse --step downstream \
+  --training-config admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml \
+  --aligned-h5ad /runs/admouse-no-lr/preprocess/admouse_aligned.h5ad \
+  --model-dir /runs/admouse-no-lr/training \
+  --output-dir /results/admouse-no-lr-reuse \
+  --device cuda
+```
+
+Current-format checkpoints embed the predictor weights. An older
+predictor-gated checkpoint without embedded weights additionally needs its
+matched `--edge-predictor-path`. Never load a radius-only ablation with the
+main learned-predictor training contract, or vice versa.
 
 ### Run the tutorials
 
 The four dataset notebooks are package-facing walkthroughs for Zebrafish,
 MOSTA, ARISTA, and AD mouse. They read the wheel-bundled presets, keep training
 explicit, and cover interpolation/classification, time-slice velocity, growth,
-sparse communication, strict ligand-receptor analysis, and pre-warp evaluation:
+sparse spatial attention, strict ligand-receptor analysis, and pre-warp evaluation:
 
 ```bash
 python -m pip install -e '.[all]'
@@ -733,8 +766,10 @@ nearly identical scale (median nearest-neighbor distance `0.003160` versus
 about `15.8` historical median-neighbor distances, whereas the full-data
 preprocessing cutoff `0.031543` spans about `10.0`. The intermediate
 clean-counts audit selected an edge threshold of `0.35`, compared with the
-historical `0.45`. The later formal alpha-0.015 package preset resolved the
-threshold to `0.23999999463558197`; that formal value is the shipped default.
+historical `0.45`. The corrected de novo alpha-0.015 package run selected
+`0.5884028673171997`; that validation-selected value is the current shipped
+default. The former `0.23999999463558197` package value is retained only as
+historical matched-run provenance.
 
 The formal full-data comparison uses mean metrics across the five observed
 times. The strict threshold control reuses the exact same aligned H5AD and edge

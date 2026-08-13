@@ -28,6 +28,7 @@ model:
     n_layers: 3
     activation: leaky_relu
   interaction_net:
+    edge_prior_mode: learned
     hidden_dim: 256
     num_heads: 8
     num_layers: 1
@@ -37,7 +38,7 @@ model:
     use_spatial: true
     rbf_trainable: false
     edge_predictor_path: edge_classifier/arista.pt
-    edge_predictor_thre: 0.23999999463558197
+    edge_predictor_thre: 0.5884028673171997
 
 ckpt_dir: results/arista_spatial_full
 reverse: true

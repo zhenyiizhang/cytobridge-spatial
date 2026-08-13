@@ -134,7 +134,9 @@ def run_interpolation_workflow(
     score_net = runtime.score_net
 
     observed_time_points = sorted(df["samples"].unique().tolist())
-    required_obs_points = set(requested_plot_points) if requested_plot_points is not None else set()
+    required_obs_points = (
+        set(requested_plot_points) if requested_plot_points is not None else set()
+    )
 
     if max_observed_timepoints is not None:
         max_obs = int(max_observed_timepoints)
@@ -149,12 +151,16 @@ def run_interpolation_workflow(
                 )
             remaining = [t for t in observed_time_points if t not in set(required_obs)]
             keep_extra = max_obs - len(required_obs)
-            extra = select_evenly_spaced(remaining, keep_extra) if keep_extra > 0 else []
+            extra = (
+                select_evenly_spaced(remaining, keep_extra) if keep_extra > 0 else []
+            )
             observed_time_points = sorted(set(required_obs + extra))
             print("Capped observed timepoints:", observed_time_points)
 
     interp_points = [] if no_interp else [float(t) for t in interp_time_points]
-    interp_points = [float(t) for t in interp_points if float(t) not in observed_time_points]
+    interp_points = [
+        float(t) for t in interp_points if float(t) not in observed_time_points
+    ]
 
     # Spatial anchoring is a rendering transform. Keep the model trajectory,
     # classifier labels, lineage, attention, LR scores, and other quantitative
@@ -163,19 +169,33 @@ def run_interpolation_workflow(
         spatial_warp_visualization_only = True
 
     if split_sde_piecewise and len(interp_points) == 0:
-        print("[warn] split_sde_piecewise has no effect without interpolation points; disabling it.")
+        print(
+            "[warn] split_sde_piecewise has no effect without interpolation points; disabling it."
+        )
         split_sde_piecewise = False
     if spatial_warp_to_observed_piecewise and len(interp_points) == 0:
-        print("[warn] spatial_warp_to_observed_piecewise has no effect without interpolation points; disabling it.")
+        print(
+            "[warn] spatial_warp_to_observed_piecewise has no effect without interpolation points; disabling it."
+        )
         spatial_warp_to_observed_piecewise = False
     if target_total_slices is not None and split_sde_piecewise:
-        print("[warn] target_total_slices is ignored when split_sde_piecewise is enabled.")
+        print(
+            "[warn] target_total_slices is ignored when split_sde_piecewise is enabled."
+        )
     if target_total_slices is not None and spatial_warp_to_observed_piecewise:
-        print("[warn] target_total_slices is ignored when spatial_warp_to_observed_piecewise is enabled.")
-    if target_total_slices is not None and (not split_sde_piecewise) and (not spatial_warp_to_observed_piecewise):
+        print(
+            "[warn] target_total_slices is ignored when spatial_warp_to_observed_piecewise is enabled."
+        )
+    if (
+        target_total_slices is not None
+        and (not split_sde_piecewise)
+        and (not spatial_warp_to_observed_piecewise)
+    ):
         keep_observed = max(1, int(target_total_slices) - len(interp_points))
         if keep_observed < len(observed_time_points):
-            observed_time_points = select_evenly_spaced(observed_time_points, keep_observed)
+            observed_time_points = select_evenly_spaced(
+                observed_time_points, keep_observed
+            )
             print("Selected observed timepoints:", observed_time_points)
 
     ts_points = sorted(set(observed_time_points + interp_points))
@@ -187,7 +207,9 @@ def run_interpolation_workflow(
         ts_set = {float(t) for t in ts_points}
         missing = [float(t) for t in requested_plot_points if float(t) not in ts_set]
         if missing:
-            raise ValueError(f"requested_plot_points contains values not in ts_points: {missing} (ts_points={ts_points})")
+            raise ValueError(
+                f"requested_plot_points contains values not in ts_points: {missing} (ts_points={ts_points})"
+            )
         plot_3d_ts_points = [float(t) for t in requested_plot_points]
     plot_3d_time_keys = [str(t) for t in plot_3d_ts_points]
 
@@ -221,11 +243,18 @@ def run_interpolation_workflow(
         )
         t_train0 = time.perf_counter()
         if classifier_adata is not None:
-            cache_dir_resolved = classifier_cache_dir or os.path.join(output_dir, "classifier_cache")
-            cached_classifier, classifier_cache_resolved = train_cached_mlp_classifier_from_adata(
+            cache_dir_resolved = classifier_cache_dir or os.path.join(
+                output_dir, "classifier_cache"
+            )
+            (
+                cached_classifier,
+                classifier_cache_resolved,
+            ) = train_cached_mlp_classifier_from_adata(
                 classifier_adata,
                 cache_path=classifier_cache_path,
-                cache_dir=None if classifier_cache_path is not None else cache_dir_resolved,
+                cache_dir=None
+                if classifier_cache_path is not None
+                else cache_dir_resolved,
                 cache_tag=classifier_cache_tag,
                 label_col=annotation_key,
                 time_key=classifier_time_key,
@@ -254,7 +283,9 @@ def run_interpolation_workflow(
                 cache_dir=classifier_cache_dir,
                 output_dir=output_dir,
             )
-            cached_classifier = load_cached_mlp_classifier(classifier_cache_resolved, device=device)
+            cached_classifier = load_cached_mlp_classifier(
+                classifier_cache_resolved, device=device
+            )
         classifier_model = cached_classifier.model
         label_encoder = cached_classifier.label_encoder
         classifier_feature_dim = int(cached_classifier.feature_dim)
@@ -297,7 +328,10 @@ def run_interpolation_workflow(
             n_samples = min(n_samples, int(sde_n_samples))
         print("SDE n_samples (from t0):", n_samples)
         if split_sde_piecewise:
-            print("Piecewise observed-start sampling mode:", piecewise_observed_sample_mode)
+            print(
+                "Piecewise observed-start sampling mode:",
+                piecewise_observed_sample_mode,
+            )
 
         sde_points = None
         if skip_nonsplit_sde:
@@ -320,6 +354,7 @@ def run_interpolation_workflow(
                 dt=sde_dt,
                 sigma=0.0,
                 include_score=False,
+                interaction_m=int(split_interaction_m),
                 device=device,
             )
             print(f"Non-split SDE done in {time.perf_counter() - t_sde0:.1f}s")
@@ -345,7 +380,10 @@ def run_interpolation_workflow(
                 n_samples_cap=n_samples,
                 rng=rng_warp_piecewise,
             )
-            sde_points_split, sde_points_split_prewarp = simulate_piecewise_spatially_warped_split(
+            (
+                sde_points_split,
+                sde_points_split_prewarp,
+            ) = simulate_piecewise_spatially_warped_split(
                 x0=x0_warp,
                 f_net=f_net,
                 score_net=score_net,
@@ -370,7 +408,9 @@ def run_interpolation_workflow(
                 max_particles=split_max_particles,
             )
         elif split_sde_piecewise:
-            rng_piecewise = np.random.default_rng(0 if random_seed is None else int(random_seed))
+            rng_piecewise = np.random.default_rng(
+                0 if random_seed is None else int(random_seed)
+            )
             x0_by_observed: Dict[float, np.ndarray] = {}
             labels0_by_observed: Dict[float, np.ndarray] = {}
             if piecewise_observed_sample_mode == "per_timepoint":
@@ -397,14 +437,24 @@ def run_interpolation_workflow(
                 points_by_time[float(t_obs)] = x0_by_observed[float(t_obs)]
 
             observed_set = {float(t) for t in observed_time_points}
-            for t_start, t_end in zip(observed_time_points[:-1], observed_time_points[1:]):
-                mids = sorted([t for t in interp_points if float(t_start) < float(t) < float(t_end)])
+            for t_start, t_end in zip(
+                observed_time_points[:-1], observed_time_points[1:]
+            ):
+                mids = sorted(
+                    [
+                        t
+                        for t in interp_points
+                        if float(t_start) < float(t) < float(t_end)
+                    ]
+                )
                 if (not mids) and (not split_sde_piecewise_include_end):
                     continue
                 seg_ts: list[float] = [float(t_start)] + [float(t) for t in mids]
                 if split_sde_piecewise_include_end:
                     seg_ts.append(float(t_end))
-                print(f"[piecewise split-SDE] segment {t_start}->{t_end} | targets={seg_ts}")
+                print(
+                    f"[piecewise split-SDE] segment {t_start}->{t_end} | targets={seg_ts}"
+                )
                 seg_points = simulate_sde_points_split_from_x0(
                     x0=x0_by_observed[float(t_start)],
                     f_net=f_net,
@@ -422,15 +472,21 @@ def run_interpolation_workflow(
                 )
                 for t_val, pts in zip(seg_ts, seg_points):
                     if float(t_val) in observed_set:
-                        if split_sde_piecewise_include_end and float(t_val) == float(t_end):
-                            piecewise_endpoint_by_observed[float(t_end)] = np.asarray(pts, dtype=np.float32)
+                        if split_sde_piecewise_include_end and float(t_val) == float(
+                            t_end
+                        ):
+                            piecewise_endpoint_by_observed[float(t_end)] = np.asarray(
+                                pts, dtype=np.float32
+                            )
                         continue
                     points_by_time[float(t_val)] = np.asarray(pts, dtype=np.float32)
 
             missing = [float(t) for t in ts_points if float(t) not in points_by_time]
             if missing:
                 raise ValueError(f"Piecewise split-SDE missing timepoints: {missing}")
-            sde_points_split = np.array([points_by_time[float(t)] for t in ts_points], dtype=object)
+            sde_points_split = np.array(
+                [points_by_time[float(t)] for t in ts_points], dtype=object
+            )
         else:
             # Keep legacy parity here: the original MOSTA workflow sampled x0
             # inside simulate_sde_points_split(...) via torch.randperm, not via
@@ -539,10 +595,18 @@ def run_interpolation_workflow(
             X = subset[feature_cols_full].values.astype(np.float32)
             labels = subset[annotation_key].astype(str).values
             model_X = X
-        elif (not use_real_for_observed) and split_sde_piecewise and (t in observed_time_points):
+        elif (
+            (not use_real_for_observed)
+            and split_sde_piecewise
+            and (t in observed_time_points)
+        ):
             if sde_points_split is None or slice_labels_split is None:
-                raise ValueError("Piecewise split-SDE observed slice requested but split outputs are missing.")
-            if spatial_warp_to_observed and float(t) != float(min(observed_time_points)):
+                raise ValueError(
+                    "Piecewise split-SDE observed slice requested but split outputs are missing."
+                )
+            if spatial_warp_to_observed and float(t) != float(
+                min(observed_time_points)
+            ):
                 idx = ts_points.index(t)
                 X = np.array(sde_points_split[idx], dtype=np.float32)
                 labels = np.asarray(slice_labels_split[idx]).astype(str)
@@ -553,14 +617,21 @@ def run_interpolation_workflow(
                     else X
                 )
             else:
-                if piecewise_x0_by_observed is None or piecewise_labels_by_observed is None:
-                    raise ValueError("Piecewise split-SDE enabled but observed x0/labels cache is missing.")
+                if (
+                    piecewise_x0_by_observed is None
+                    or piecewise_labels_by_observed is None
+                ):
+                    raise ValueError(
+                        "Piecewise split-SDE enabled but observed x0/labels cache is missing."
+                    )
                 X = np.asarray(piecewise_x0_by_observed[float(t)], dtype=np.float32)
                 labels = np.asarray(piecewise_labels_by_observed[float(t)]).astype(str)
                 model_X = X
         else:
             if sde_points_split is None or slice_labels_split is None:
-                raise ValueError("Interpolation requested but split SDE outputs are missing.")
+                raise ValueError(
+                    "Interpolation requested but split SDE outputs are missing."
+                )
             idx = ts_points.index(t)
             X = np.array(sde_points_split[idx], dtype=np.float32)
             labels = np.asarray(slice_labels_split[idx]).astype(str)
@@ -571,9 +642,8 @@ def run_interpolation_workflow(
                 else X
             )
 
-        if (
-            slice_max_cells_per_timepoint is not None
-            and X.shape[0] > int(slice_max_cells_per_timepoint)
+        if slice_max_cells_per_timepoint is not None and X.shape[0] > int(
+            slice_max_cells_per_timepoint
         ):
             indices = np.sort(
                 rng.choice(
@@ -665,7 +735,9 @@ def compute_timepoint_communications(
                     break
         if explicit_indices is not None:
             if explicit_indices.ndim != 1:
-                raise ValueError(f"cell indices for time {key} must be one-dimensional.")
+                raise ValueError(
+                    f"cell indices for time {key} must be one-dimensional."
+                )
             if len(np.unique(explicit_indices)) != explicit_indices.size:
                 raise ValueError(f"cell indices for time {key} contain duplicates.")
             if explicit_indices.size and (
@@ -675,9 +747,8 @@ def compute_timepoint_communications(
                     f"cell indices for time {key} are outside [0, {adata_t.n_obs - 1}]."
                 )
             attention_adata = adata_t[explicit_indices].copy()
-        elif (
-            max_cells_per_timepoint is not None
-            and adata_t.n_obs > int(max_cells_per_timepoint)
+        elif max_cells_per_timepoint is not None and adata_t.n_obs > int(
+            max_cells_per_timepoint
         ):
             indices = np.sort(
                 rng.choice(
@@ -804,8 +875,12 @@ def plot_spatiotemporal_3d(
         ]
 
     plot_time_point_set = set(float(t) for t in plot_time_points)
-    observed_time_points_3d = [float(t) for t in observed_time_points if float(t) in plot_time_point_set]
-    interp_points_3d = [float(t) for t in interp_points if float(t) in plot_time_point_set]
+    observed_time_points_3d = [
+        float(t) for t in observed_time_points if float(t) in plot_time_point_set
+    ]
+    interp_points_3d = [
+        float(t) for t in interp_points if float(t) in plot_time_point_set
+    ]
 
     if plot_fn is None:
         from CytoBridge.pl import plot_3d_spatial_sankey_style

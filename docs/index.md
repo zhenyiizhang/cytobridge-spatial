@@ -3,7 +3,7 @@
 CytoBridge is a Python package for learning continuous cell-state and spatial
 dynamics from snapshot data. The package unifies preprocessing, spatial
 alignment, six-stage model fitting, interpolation, velocity, growth, sparse
-cell–cell communication, strict ligand–receptor analysis, gene programs, and
+spatial-attention summaries, strict ligand–receptor analysis, gene programs, and
 manuscript-style visualization behind one public API. Matched cross-method
 benchmarks and manuscript-specific perturbations use the same saved outputs but
 remain explicit analysis pipelines rather than implicit workflow side effects.
