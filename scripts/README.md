@@ -68,6 +68,13 @@ python scripts/run_chicken_heart_paper_downstream.py \
   --device cuda:0
 ```
 
+`refresh_velocity_outputs.py` regenerates only the observed-slice velocity
+archive and vector PDFs from an accepted aligned H5AD and checkpoint directory.
+Use it when a completed downstream bank predates the current direct spatial
+vector contract. Spatial arrows use the first two model dimensions directly;
+scVelo projection is reserved for expression/gene displays. The command writes
+to a new directory and binds the exact aligned H5AD and training-summary hashes.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
