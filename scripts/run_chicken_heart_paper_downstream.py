@@ -168,6 +168,12 @@ def _plot_metric_summary(table: pd.DataFrame, output_path: Path, title: str) -> 
             for (variant, space), group in selected.groupby(
                 ["variant", "space"], sort=True
             ):
+                display_variant = {
+                    "interaction_off": "Without interaction",
+                    "remove_endocardial": "Endocardial-cell removal",
+                    "remove_valve": "Valve-cell removal",
+                    "remove_immature_myocardial": "Immature-myocardial-cell removal",
+                }.get(str(variant), str(variant).replace("_", " "))
                 ax.plot(
                     group["time"],
                     group[metric],
@@ -176,7 +182,7 @@ def _plot_metric_summary(table: pd.DataFrame, output_path: Path, title: str) -> 
                     linewidth=1.1,
                     color=colors[str(space)],
                     alpha=0.72 if len(selected["variant"].unique()) > 1 else 1.0,
-                    label=f"{variant} · {space}",
+                    label=f"{display_variant} · {space}",
                 )
             ax.set_xlabel("Processed developmental time")
             ax.set_ylabel(label)
@@ -297,33 +303,41 @@ def _write_lr_attention_figures(
             )
             matrices.append(np.log1p(matrix))
         vmax = max(float(np.max(matrix)) for matrix in matrices)
-        fig, axes = plt.subplots(
+        short_region = {
+            "Compact LV and inter-ventricular septum": "Compact LV/septum",
+            "Trabecular LV and endocardium": "Trabecular LV",
+        }
+        display_regions = [short_region.get(region, region) for region in regions]
+        fig = plt.figure(figsize=(11.7, 4.6))
+        grid = fig.add_gridspec(
             1,
-            len(selected_times),
-            figsize=(3.1 * len(selected_times) + 1.0, 3.5),
-            squeeze=False,
+            len(selected_times) + 1,
+            width_ratios=[1.0] * len(selected_times) + [0.055],
+            wspace=0.18,
         )
+        axes = [
+            fig.add_subplot(grid[0, column]) for column in range(len(selected_times))
+        ]
+        colorbar_axis = fig.add_subplot(grid[0, -1])
         image = None
         for column, (time_value, matrix) in enumerate(
             zip(selected_times, matrices, strict=True)
         ):
-            ax = axes[0, column]
+            ax = axes[column]
             image = ax.imshow(matrix, cmap="magma", vmin=0.0, vmax=vmax, aspect="equal")
             ax.set_title(f"t={time_value:g}")
-            ax.set_xticks(range(len(regions)), regions, rotation=90, fontsize=6)
+            ax.set_xticks(range(len(regions)), display_regions, rotation=90, fontsize=6)
             if column == 0:
-                ax.set_yticks(range(len(regions)), regions, fontsize=6)
+                ax.set_yticks(range(len(regions)), display_regions, fontsize=6)
                 ax.set_ylabel("Sender anatomical region")
             else:
                 ax.set_yticks([])
             ax.set_xlabel("Receiver anatomical region")
         assert image is not None
-        colorbar = fig.colorbar(
-            image, ax=axes.ravel().tolist(), fraction=0.025, pad=0.02
-        )
+        colorbar = fig.colorbar(image, cax=colorbar_axis)
         colorbar.set_label("log(1 + attention per source)")
         fig.suptitle("Learned communication-attention evolution", fontweight="bold")
-        fig.subplots_adjust(left=0.12, right=0.93, top=0.83, bottom=0.30, wspace=0.10)
+        fig.subplots_adjust(left=0.12, right=0.96, top=0.82, bottom=0.31)
         for extension in ("pdf", "png"):
             path = output_dir / f"communication_attention_heatmaps.{extension}"
             fig.savefig(path, dpi=320, facecolor="white", bbox_inches="tight")
@@ -353,15 +367,25 @@ def _save_comparison_grid(
     colors: Mapping[str, str],
     output_stem: Path,
     title: str,
+    display_names: Mapping[str, str] | None = None,
 ) -> list[Path]:
     paths: list[Path] = []
+    display_names = {} if display_names is None else dict(display_names)
+    plotted_trajectories = {
+        display_names.get(condition, condition): values
+        for condition, values in trajectories.items()
+    }
+    plotted_labels = {
+        display_names.get(condition, condition): values
+        for condition, values in labels.items()
+    }
     for extension in ("pdf", "png"):
         path = output_stem.with_suffix(f".{extension}")
         figure = cb.pl.plot_trajectory_comparison_grid(
-            trajectories,
+            plotted_trajectories,
             TIME_POINTS,
             out_path=str(path),
-            labels_by_condition=labels,
+            labels_by_condition=plotted_labels,
             label_to_color=colors,
             selected_times=DISPLAY_TIMES,
             dim_pair=(0, 1),
@@ -528,7 +552,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 },
                 colors=colors,
                 output_stem=results_dir / variant / "paper_spatial_comparison",
-                title=(f"D4-origin fixed-population sensitivity: remove {label}"),
+                title=(f"D4-origin fixed-population sensitivity: {label} removal"),
+                display_names={
+                    "baseline": "Baseline",
+                    variant: f"Without {label}",
+                },
             )
         )
 
@@ -590,6 +618,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             colors=colors,
             output_stem=(results_dir / "interaction_off" / "paper_spatial_comparison"),
             title="D4-origin interaction-force sensitivity",
+            display_names={
+                "interaction_on": "With interaction",
+                "interaction_off": "Without interaction",
+            },
         )
     )
     interaction_metric_figure = (
