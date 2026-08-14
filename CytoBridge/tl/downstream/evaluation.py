@@ -140,14 +140,51 @@ def compute_distribution_metrics(
         max_ot_points=max_ot_points,
         rng=np.random.default_rng(int(random_seed)),
     )
-    distances = cdist(pred, obs, metric="euclidean")
-    w1 = float(ot.emd2(pred_w, obs_w, distances, numItermax=int(1e7)))
-    w2_sq = float(ot.emd2(pred_w, obs_w, distances**2, numItermax=int(1e7)))
+    retained_predicted_points = int(pred.shape[0])
+    retained_observed_points = int(obs.shape[0])
+
+    # Coupling/barycenter adapters and weighted bootstrap samples can contain
+    # many byte-identical support points.  Keeping those as separate network
+    # simplex nodes is mathematically redundant and can make exact EMD orders
+    # of magnitude slower.  Coalescing them and summing their masses preserves
+    # the empirical measures exactly; the reported retained-point counts still
+    # describe the deterministic sample selected above.
+    def coalesce(
+        values: np.ndarray, weights: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        unique, inverse = np.unique(values, axis=0, return_inverse=True)
+        if unique.shape[0] == values.shape[0]:
+            return values, weights
+        combined = np.bincount(
+            inverse, weights=weights, minlength=unique.shape[0]
+        ).astype(np.float64, copy=False)
+        combined /= combined.sum()
+        return unique, combined
+
+    pred_support, pred_support_w = coalesce(pred, pred_w)
+    obs_support, obs_support_w = coalesce(obs, obs_w)
+    distances = cdist(pred_support, obs_support, metric="euclidean")
+    w1 = float(
+        ot.emd2(
+            pred_support_w,
+            obs_support_w,
+            distances,
+            numItermax=int(1e7),
+        )
+    )
+    w2_sq = float(
+        ot.emd2(
+            pred_support_w,
+            obs_support_w,
+            distances**2,
+            numItermax=int(1e7),
+        )
+    )
     return {
         "w1": w1,
         "w2": float(np.sqrt(max(w2_sq, 0.0))),
-        "ot_predicted_points": int(pred.shape[0]),
-        "ot_observed_points": int(obs.shape[0]),
+        "ot_predicted_points": retained_predicted_points,
+        "ot_observed_points": retained_observed_points,
     }
 
 
@@ -177,7 +214,9 @@ def compute_local_structure_metrics(
             f"Feature mismatch: predicted={pred.shape[1]}, observed={obs.shape[1]}."
         )
     if pred.shape[0] < 2 or obs.shape[0] < 2:
-        raise ValueError("Local-structure metrics require at least two points per cloud.")
+        raise ValueError(
+            "Local-structure metrics require at least two points per cloud."
+        )
     if not np.isfinite(pred).all() or not np.isfinite(obs).all():
         raise ValueError("predicted and observed must be finite.")
 
@@ -504,9 +543,7 @@ def plot_generated_vs_observed(
             # proportional to relative particle mass with mean area
             # ``point_size`` before any display-only subsampling.
             generated_sizes: float | np.ndarray = (
-                float(point_size)
-                * predicted_weights
-                * original_predicted_count
+                float(point_size) * predicted_weights * original_predicted_count
             )
         else:
             generated_sizes = float(point_size)
@@ -690,9 +727,7 @@ def compare_distribution_metric_tables(
             )
         table.insert(0, "model", name)
         frames.append(table)
-        grids[name] = set(
-            zip(table["time"].astype(float), table["space"].astype(str))
-        )
+        grids[name] = set(zip(table["time"].astype(float), table["space"].astype(str)))
 
     baseline_grid = grids[baseline]
     mismatched = {
