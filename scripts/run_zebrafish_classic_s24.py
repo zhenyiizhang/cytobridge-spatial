@@ -512,7 +512,7 @@ def _load_seed(seed_dir: Path, *, expected_seed: int) -> dict[str, Any]:
         actual_times = rows.sort_values("time", kind="stable")["time"].to_numpy(
             dtype=float
         )
-        if not np.array_equal(actual_times, expected_times):
+        if not np.allclose(actual_times, expected_times, rtol=0.0, atol=1e-12):
             raise RuntimeError(
                 f"Seed {expected_seed} support audit has wrong times for {condition}."
             )

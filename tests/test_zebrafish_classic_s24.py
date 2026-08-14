@@ -51,6 +51,15 @@ def test_trajectory_hashes_use_package_artifact_case(tmp_path: Path) -> None:
     assert all(len(value) == 64 for value in hashes.values())
 
 
+def test_support_time_grid_survives_formal_csv_round_trip(tmp_path: Path) -> None:
+    path = tmp_path / "support.csv"
+    expected = MODULE._time_grid(3.0)
+    pd.DataFrame({"time": expected}).to_csv(path, index=False, float_format="%.12g")
+    actual = pd.read_csv(path)["time"].to_numpy(dtype=float)
+    assert not np.array_equal(actual, expected)
+    assert np.allclose(actual, expected, rtol=0.0, atol=1e-12)
+
+
 def test_direct_runner_binds_package_and_helper_to_same_release() -> None:
     MODULE._require_import_origins()
     assert Path(MODULE.cb.__file__).resolve().is_relative_to(ROOT)
