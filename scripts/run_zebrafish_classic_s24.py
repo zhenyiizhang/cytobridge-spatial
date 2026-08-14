@@ -67,6 +67,23 @@ REPLAY_METRIC_DISCRETE_COLUMNS = (
     "ot_ablation_points",
     "ot_random_seed",
 )
+PANEL_A_HEADER_Y = 0.985
+PANEL_A_GRID_TOP = 0.85
+COUNT_HEADROOM_MULTIPLIER = 1.12
+MORPHOLOGY_COUNT_POSITION = (0.02, 0.02)
+FIGURE_ROLES = {
+    "zebrafish_classic_s24_unequalN_five_seed": "primary quantitative figure",
+    "zebrafish_classic_s24_morphology_grid": "supplementary 4x3 morphology grid",
+}
+MORPHOLOGY_COLOR_INTERPRETATION = (
+    "Point colors are classifier-assigned cell-type labels from the formal time + "
+    "spatial2 + PCA10 classifier. They are not lineage identities and do not "
+    "constitute lineage tracing."
+)
+POPULATION_AXIS_INTERPRETATION = (
+    "Panel c shows growth-resampled simulated particle count, not observed biological "
+    "abundance."
+)
 REPLAY_SEED = 42
 YSL_LABEL = "Yolk Syncytial Layer"
 EVL_LABEL = "EVL"
@@ -911,10 +928,17 @@ def _plot_quantitative(
             ax.set(xlim=limits[:2], ylim=limits[2:])
             ax.set_aspect("equal", adjustable="box")
             ax.axis("off")
-        fig.text(0.02, 0.965, "a", fontsize=14, fontweight="bold", va="top")
+        fig.text(
+            0.02,
+            PANEL_A_HEADER_Y,
+            "a",
+            fontsize=14,
+            fontweight="bold",
+            va="top",
+        )
         fig.text(
             0.055,
-            0.965,
+            PANEL_A_HEADER_Y,
             f"Spatial distributions at t = {endpoint:g}",
             fontsize=12,
             fontweight="bold",
@@ -942,6 +966,7 @@ def _plot_quantitative(
             ylabel="Spatial W1 from baseline",
             xlim=(0, endpoint),
         )
+        ax_w1.set_ylim(bottom=0.0)
         ax_w1.legend(frameon=False)
         ax_w1.spines[["top", "right"]].set_visible(False)
         ax_w1.grid(color="#DCE1E5", lw=0.6, alpha=0.7)
@@ -950,6 +975,7 @@ def _plot_quantitative(
         )
         ax_w1.set_title("Spatial W1", loc="left", fontweight="bold")
 
+        maximum_mean_count = 0.0
         for name in CONDITION_LABELS:
             values_by_seed = []
             for seed, run in seed_runs.items():
@@ -960,13 +986,17 @@ def _plot_quantitative(
             times = _time_grid(endpoint)
             mean = counts.mean(axis=0)
             sem = counts.std(axis=0, ddof=1) / np.sqrt(counts.shape[0])
+            maximum_mean_count = max(maximum_mean_count, float(np.max(mean)))
             color = CONDITION_COLORS[name]
             ax_n.plot(times, mean, color=color, lw=1.7, label=CONDITION_LABELS[name])
             ax_n.fill_between(
                 times, mean - sem, mean + sem, color=color, alpha=0.15, linewidth=0
             )
         ax_n.set(
-            xlabel="Developmental stage", ylabel="Particle count", xlim=(0, endpoint)
+            xlabel="Developmental stage",
+            ylabel="Simulated particle count",
+            xlim=(0, endpoint),
+            ylim=(0, maximum_mean_count * COUNT_HEADROOM_MULTIPLIER),
         )
         ax_n.legend(frameon=False)
         ax_n.spines[["top", "right"]].set_visible(False)
@@ -974,7 +1004,7 @@ def _plot_quantitative(
         ax_n.text(
             -0.16, 1.08, "c", transform=ax_n.transAxes, fontsize=14, fontweight="bold"
         )
-        ax_n.set_title("Learned population trajectory", loc="left", fontweight="bold")
+        ax_n.set_title("Growth-resampled particle count", loc="left", fontweight="bold")
 
         variants = ("remove_YSL", "remove_EVL")
         positions = np.arange(2)
@@ -1013,7 +1043,12 @@ def _plot_quantitative(
             f"Centroid shift at t = {endpoint:g}", loc="left", fontweight="bold"
         )
 
-        fig.subplots_adjust(left=0.075, right=0.985, bottom=0.10, top=0.91)
+        fig.subplots_adjust(
+            left=0.075,
+            right=0.985,
+            bottom=0.10,
+            top=PANEL_A_GRID_TOP,
+        )
         fig.savefig(output.with_suffix(".pdf"), bbox_inches="tight", facecolor="white")
         fig.savefig(
             output.with_suffix(".png"), dpi=320, bbox_inches="tight", facecolor="white"
@@ -1127,22 +1162,20 @@ def _plot_time_grid(
                     ax.text(
                         -0.02,
                         0.5,
-                        f"t = {time:g}\nn = {len(points):,}",
+                        f"t = {time:g}",
                         transform=ax.transAxes,
                         ha="right",
                         va="center",
                         fontsize=8,
                     )
-                else:
-                    ax.text(
-                        0.02,
-                        0.02,
-                        f"n = {len(points):,}",
-                        transform=ax.transAxes,
-                        ha="left",
-                        va="bottom",
-                        fontsize=7,
-                    )
+                ax.text(
+                    *MORPHOLOGY_COUNT_POSITION,
+                    f"n = {len(points):,}",
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="bottom",
+                    fontsize=7,
+                )
                 ax.set(xlim=limits[:2], ylim=limits[2:])
                 ax.set_aspect("equal", adjustable="box")
                 ax.axis("off")
@@ -1181,6 +1214,40 @@ def _plot_time_grid(
             output.with_suffix(".png"), dpi=320, bbox_inches="tight", facecolor="white"
         )
         plt.close(fig)
+
+
+def _report_caption(endpoint: float) -> dict[str, Any]:
+    endpoint = float(endpoint)
+    return {
+        "title": "Classic unequal-population zebrafish virtual-removal sensitivity",
+        "text": (
+            f"Five simulation seeds (42–46) propagate one complete 563-cell t=0 "
+            f"cohort continuously to t={endpoint:g}. The YSL and EVL branches are "
+            "exact initial subsets after removing 29 YSL cells (n=534) or 272 EVL "
+            "cells (n=291), respectively. Learned growth-driven split/extinction, "
+            "diffusion, score correction, velocity drift, and interaction remain "
+            "enabled; no observed slice re-anchors or warps a trajectory. Spatial "
+            "snapshots and the morphology grid show the preregistered seed-42 run. "
+            "W1 uses uniform empirical OT on deterministic supports capped at "
+            "1,024 points per cloud and therefore measures shape/location rather "
+            "than total population. Panel c reports growth-resampled simulated "
+            "particle count separately; it is not observed biological abundance. "
+            "Spatial-W1 and simulated-particle-count curves show the five-seed "
+            "mean ± SEM; centroid bars show the mean with a two-sided 95% t interval "
+            "and all individual seed values. Seeds quantify simulation-stream "
+            "variability conditional on one frozen checkpoint, not biological or "
+            "training uncertainty. This is a virtual-removal model sensitivity, "
+            "not a causal knockout. The formal endpoint is the latest observed time "
+            "for which every frame through that endpoint passes the predeclared "
+            "latent-support gate for all 15 trajectories."
+        ),
+        "endpoint": endpoint,
+        "t4_used": bool(np.isclose(endpoint, 4.0)),
+        "matched_equal_n_control_is_separate": True,
+        "figure_roles": dict(FIGURE_ROLES),
+        "morphology_color_interpretation": MORPHOLOGY_COLOR_INTERPRETATION,
+        "population_axis_interpretation": POPULATION_AXIS_INTERPRETATION,
+    }
 
 
 def report(args: argparse.Namespace) -> int:
@@ -1264,33 +1331,7 @@ def report(args: argparse.Namespace) -> int:
     endpoint_path = output_dir / "endpoint_summary.csv"
     endpoint_summary.to_csv(endpoint_path, index=False, float_format="%.12g")
 
-    caption = {
-        "title": "Classic unequal-population zebrafish virtual-removal sensitivity",
-        "text": (
-            f"Five simulation seeds (42–46) propagate one complete 563-cell t=0 "
-            f"cohort continuously to t={endpoint:g}. The YSL and EVL branches are "
-            "exact initial subsets after removing 29 YSL cells (n=534) or 272 EVL "
-            "cells (n=291), respectively. Learned growth-driven split/extinction, "
-            "diffusion, score correction, velocity drift, and interaction remain "
-            "enabled; no observed slice re-anchors or warps a trajectory. Spatial "
-            "snapshots and the morphology grid show the preregistered seed-42 run. "
-            "W1 uses uniform empirical OT on deterministic supports capped at "
-            "1,024 points per cloud and therefore measures shape/location rather "
-            "than total population; N(t) reports the learned "
-            "population response separately. Spatial-W1 and N(t) curves show the "
-            "five-seed mean ± SEM; "
-            "centroid bars show the mean with a two-sided 95% t interval and all "
-            "individual seed values. Seeds quantify simulation-stream "
-            "variability conditional on one frozen checkpoint, not biological or "
-            "training uncertainty. This is a virtual-removal model sensitivity, "
-            "not a causal knockout. The formal endpoint is the latest observed time "
-            "for which every frame through that endpoint passes the predeclared "
-            "latent-support gate for all 15 trajectories."
-        ),
-        "endpoint": endpoint,
-        "t4_used": bool(np.isclose(endpoint, 4.0)),
-        "matched_equal_n_control_is_separate": True,
-    }
+    caption = _report_caption(endpoint)
     caption_path = output_dir / "CAPTION.json"
     _write_json(caption_path, caption)
 
@@ -1309,6 +1350,11 @@ def report(args: argparse.Namespace) -> int:
         "status": "complete",
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "formal_endpoint": endpoint,
+        "figure_roles": dict(FIGURE_ROLES),
+        "interpretation": {
+            "morphology_colors": MORPHOLOGY_COLOR_INTERPRETATION,
+            "population_axis": POPULATION_AXIS_INTERPRETATION,
+        },
         "support_gate": {
             "all_15_trajectories_required": True,
             "nonfinite_allowed": False,

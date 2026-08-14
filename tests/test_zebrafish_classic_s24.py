@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+from matplotlib.figure import Figure
 import numpy as np
 import pandas as pd
 import pytest
@@ -41,6 +42,10 @@ def test_fixed_protocol_constants() -> None:
         "remove_YSL": "remove_YSL_points.npy",
         "remove_EVL": "remove_EVL_points.npy",
     }
+    assert MODULE.PANEL_A_HEADER_Y == 0.985
+    assert MODULE.PANEL_A_GRID_TOP == 0.85
+    assert MODULE.COUNT_HEADROOM_MULTIPLIER == 1.12
+    assert MODULE.MORPHOLOGY_COUNT_POSITION == (0.02, 0.02)
 
 
 def test_trajectory_hashes_use_package_artifact_case(tmp_path: Path) -> None:
@@ -371,7 +376,9 @@ def test_report_rejects_primary_seed_as_fake_replay(tmp_path: Path) -> None:
         MODULE.report(args)
 
 
-def test_quantitative_plot_keeps_full_spatial_extent(tmp_path: Path) -> None:
+def test_quantitative_plot_uses_layered_zero_based_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     trajectories = {}
     for name, scale in (("baseline", 1.0), ("remove_YSL", 1.1), ("remove_EVL", 1.2)):
         frames = np.empty(81, dtype=object)
@@ -410,7 +417,120 @@ def test_quantitative_plot_keeps_full_spatial_extent(tmp_path: Path) -> None:
     per_seed = frame.iloc[: 2 * 81].copy()
     for run in runs.values():
         run["metrics"] = per_seed.copy()
+    captured: dict[str, object] = {}
+    original_savefig = Figure.savefig
+
+    def inspect_layout(figure: Figure, *args, **kwargs):
+        if not captured:
+            figure.canvas.draw()
+            renderer = figure.canvas.get_renderer()
+            header = next(
+                text
+                for text in figure.texts
+                if text.get_text().startswith("Spatial distributions at t")
+            )
+            header_box = header.get_window_extent(renderer=renderer)
+            title_boxes = [
+                axis.title.get_window_extent(renderer=renderer)
+                for axis in figure.axes[:3]
+            ]
+            ax_w1, ax_count = figure.axes[3], figure.axes[4]
+            captured.update(
+                {
+                    "header_y": header.get_position()[1],
+                    "subplot_top": figure.subplotpars.top,
+                    "header_collision": any(
+                        header_box.overlaps(title_box) for title_box in title_boxes
+                    ),
+                    "snapshot_xlim": figure.axes[0].get_xlim(),
+                    "w1_ylim": ax_w1.get_ylim(),
+                    "count_ylim": ax_count.get_ylim(),
+                    "count_line_max": max(
+                        float(np.max(line.get_ydata())) for line in ax_count.lines
+                    ),
+                    "count_title": ax_count.get_title(loc="left"),
+                    "count_ylabel": ax_count.get_ylabel(),
+                }
+            )
+        return original_savefig(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", inspect_layout)
     stem = tmp_path / "figure"
     MODULE._plot_quantitative(runs, 4.0, stem)
     assert stem.with_suffix(".pdf").stat().st_size > 0
     assert stem.with_suffix(".png").stat().st_size > 0
+    assert captured["header_y"] == pytest.approx(MODULE.PANEL_A_HEADER_Y)
+    assert captured["subplot_top"] == pytest.approx(MODULE.PANEL_A_GRID_TOP)
+    assert captured["header_collision"] is False
+    assert captured["snapshot_xlim"][0] < -1.2
+    assert captured["snapshot_xlim"][1] > 1.2
+    assert captured["w1_ylim"][0] == pytest.approx(0.0)
+    assert captured["count_ylim"][0] == pytest.approx(0.0)
+    assert captured["count_ylim"][1] == pytest.approx(
+        captured["count_line_max"] * MODULE.COUNT_HEADROOM_MULTIPLIER
+    )
+    assert captured["count_title"] == "Growth-resampled particle count"
+    assert captured["count_ylabel"] == "Simulated particle count"
+
+
+def test_morphology_grid_uses_uniform_count_positions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    trajectories = {}
+    for name, scale in (("baseline", 1.0), ("remove_YSL", 1.1), ("remove_EVL", 1.2)):
+        frames = np.empty(61, dtype=object)
+        for index in range(61):
+            frames[index] = np.asarray(
+                [[-scale, -scale, 0.0], [scale, scale, 0.0]], dtype=np.float32
+            )
+        trajectories[name] = frames
+    runs = {seed: {"trajectories": trajectories.copy()} for seed in MODULE.FORMAL_SEEDS}
+    captured: dict[str, object] = {}
+    original_savefig = Figure.savefig
+
+    def inspect_layout(figure: Figure, *args, **kwargs):
+        if not captured:
+            count_positions = []
+            time_positions = []
+            time_axis_indices = []
+            for axis_index, axis in enumerate(figure.axes):
+                count_texts = [
+                    text for text in axis.texts if text.get_text().startswith("n = ")
+                ]
+                assert len(count_texts) == 1
+                count_positions.append(count_texts[0].get_position())
+                time_texts = [
+                    text for text in axis.texts if text.get_text().startswith("t = ")
+                ]
+                if time_texts:
+                    assert len(time_texts) == 1
+                    time_positions.append(time_texts[0].get_position())
+                    time_axis_indices.append(axis_index)
+            captured.update(
+                {
+                    "count_positions": count_positions,
+                    "time_positions": time_positions,
+                    "time_axis_indices": time_axis_indices,
+                }
+            )
+        return original_savefig(figure, *args, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", inspect_layout)
+    stem = tmp_path / "morphology"
+    MODULE._plot_time_grid(runs, 3.0, stem)
+    assert stem.with_suffix(".pdf").stat().st_size > 0
+    assert stem.with_suffix(".png").stat().st_size > 0
+    assert captured["count_positions"] == [MODULE.MORPHOLOGY_COUNT_POSITION] * 12
+    assert captured["time_positions"] == [(-0.02, 0.5)] * 4
+    assert captured["time_axis_indices"] == [0, 3, 6, 9]
+
+
+def test_report_caption_disambiguates_classifier_and_simulated_counts() -> None:
+    caption = MODULE._report_caption(3.0)
+    assert caption["figure_roles"] == MODULE.FIGURE_ROLES
+    assert "classifier-assigned" in caption["morphology_color_interpretation"]
+    assert "not lineage identities" in caption["morphology_color_interpretation"]
+    assert (
+        "not observed biological abundance" in caption["population_axis_interpretation"]
+    )
+    assert "growth-resampled simulated particle count" in caption["text"]
