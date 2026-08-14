@@ -168,24 +168,24 @@ requirements, and any missing input. The primary settings are seed 42,
 `alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
 `k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse and chicken
 heart. The packaged
-training profiles retain the fixed interaction cutoffs. All four main models
+training profiles retain the fixed interaction cutoffs. All five main models
 use learned edge priors. AD's targeted panel represents only seven complete
 ligand-receptor pairs under strict all-subunit matching; the corrected main
 model deliberately uses those labels and its validation-selected predictor
 threshold rather than silently changing the model class.
 
-| preset | interaction cutoff | main edge prior | accepted matched-full predictor threshold |
+| preset | interaction cutoff | main edge prior | validation-selected full predictor threshold |
 |---|---:|---|---:|
 | MOSTA | 0.02400244047956264 | learned predictor | 0.1192110925912857 |
 | ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 |
 | Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 |
 | AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 |
-| Chicken heart | 0.21681429373719752 | learned predictor | validation-selected for the new fit |
+| Chicken heart | 0.21681429373719752 | learned predictor | 0.14988678693771362 |
 
 The formal matched matrix now contains 12 completed training and package
 downstream runs: full learned prior, no-LR-prior (`all_spatial`), and
-no-interaction for every dataset. All 12 profiles and all four three-arm
-families pass acceptance SHA-256
+no-interaction for each of those four datasets. All 12 profiles and all four
+three-arm families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
 No-interaction retains velocity, growth, and score; communication and LR are
 `NA` by construction. The formal matched reconstruction comparison is complete:
@@ -194,16 +194,29 @@ mean paired relative sliced-W2 changes for no-LR versus full are +25.46% (AD),
 changes are -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are
 full-data in-sample reconstruction comparisons, not LOTO or significance
 tests; the interaction effect is dataset-dependent, and no uniform full-model
-superiority is claimed. The primary four-dataset cross-method benchmark is
-also complete: all 90 LOTO executions completed, CytoBridge has the lowest
-spatial sliced-W2 for 7/9 held-out targets, and a linear control wins most
-joint/state comparisons. Four ARISTA stVCR full-data targets remain explicit
-`NA` after a method-native numerical failure. The formal Zebrafish paper
+superiority is claimed. The five-application cross-method benchmark is also
+complete: all 110 LOTO executions completed, CytoBridge has the lowest spatial
+sliced-W2 for 8/11 held-out targets, and a linear control wins 17/22
+joint/state comparisons. Seven stVCR full-data targets remain explicit `NA`
+after method-native numerical failures (four ARISTA and three chicken heart).
+The formal Zebrafish paper
 downstream completed all seven signed stages. The paper-specific S22 panel is a
 single generated global-t0 rollout from `t=0` through `t=4`; observed integer
 slices are exported separately as references and never replace generated
 frames. S25 and communication retain their explicitly separate interval-local,
 observed-anchored state contract.
+
+Developing chicken heart is the fifth package-native application. Its reviewed
+D4/D7/D10/D14 alignment, full learned-prior fit, standard downstream,
+continuous D4-to-D14 perturbation/LR analysis, and corrected velocity figures
+were rerun through the current package. It is a completed single full-model
+application, not a fifth family in the accepted four-dataset three-arm
+ablation matrix. Its separate 10-method LOTO/full-data benchmark is reported
+under signed evaluation manifests. All 20 chicken-heart LOTO executions
+completed; CytoBridge wins D7 joint/spatial, and the spatial winners across
+D7/D10 are CytoBridge and MOSCOT. Its full-data diagnostic is explicitly
+in-sample: CytoBridge wins aggregate spatial sliced-W2, while random
+interpolation wins aggregate joint/state sliced-W2.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:

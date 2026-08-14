@@ -35,6 +35,13 @@
   explicit, distance-preserving repair for the known legacy D7 horizontal
   mirror; chicken-heart raw-count preparation records before/after coordinate
   hashes and never refits the reviewed alignment;
+- completed a current-package chicken-heart full learned-prior fit, standard
+  downstream, continuous D4-to-D14 perturbation/LR analysis, and paper-style
+  figure bank; this is a single full-model application rather than a fifth
+  matched three-arm family;
+- bounded learned spatial-GNN inference memory by chunking only the no-gradient
+  edge-message pass, preserving prediction count, interaction grouping, model
+  weights, and the training path;
 - made the primary workflow and tutorials ordinary package entry points rather
   than release-audit launchers;
 - removed checksum-only fields from the public downstream result objects;
@@ -47,12 +54,13 @@ relative sliced-W2 changes for no-LR versus full are +25.46% (AD), +59.44%
 -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are full-data
 in-sample comparisons, not LOTO or significance tests, and support a
 dataset-dependent interaction effect rather than uniform full-model
-superiority. The primary four-dataset cross-method benchmark is complete: all
-90 LOTO executions completed, CytoBridge has the lowest spatial sliced-W2 for
-7/9 held-out targets, and the linear control wins 15/18 joint/state
-comparisons. Four ARISTA stVCR full-data targets remain explicit `NA` after a
-method-native numerical failure. Old benchmark and ablation summaries are not
-promoted into release conclusions. The matched report manifest SHA-256 is
+superiority. The five-application cross-method benchmark is complete: all 110
+LOTO executions completed, CytoBridge has the lowest spatial sliced-W2 for
+8/11 held-out targets, and the linear control wins 17/22 joint/state
+comparisons. Seven stVCR full-data targets remain explicit `NA` after
+method-native numerical failures (four ARISTA and three chicken heart). Old
+benchmark and ablation summaries are not promoted into release conclusions.
+The matched report manifest SHA-256 is
 `b96de0c13023b6a4727e76ba8f67b84f3442f9c989b4d7a14dc03f5c1b904fdb`.
 
 This is a release candidate. It should be merged to `main` only after source,

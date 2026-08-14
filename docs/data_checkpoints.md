@@ -46,11 +46,14 @@ expression data.
 
 The processed aligned H5ADs and completed 0.015 checkpoints are currently
 project artifacts and do not yet have a public archive DOI. The authoritative
-matrix now contains 12 completed training and package-downstream profiles: the
+matched matrix contains 12 completed training and package-downstream profiles: the
 full learned-prior, no-LR-prior (`all_spatial`), and no-interaction arms for
 each of the four datasets. All 12 profiles and all four matched three-arm
 families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
+Developing chicken heart adds one separately completed full learned-prior
+profile and package-downstream chain. It uses the anatomy-reviewed aligned
+H5AD and is not represented as a matched no-LR/no-interaction family.
 These artifacts must be deposited and linked here before the 1.5 stable
 release. Until then, the release candidate is fully installable and supports
 user-provided inputs, but a new reader cannot download the exact manuscript
