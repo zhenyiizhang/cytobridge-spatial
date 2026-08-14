@@ -860,12 +860,42 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
     )
 
     assert result["status"] == "completed"
-    assert len(result["figures"]) == 6
+    assert len(result["figures"]) == 12
+    assert len(result["spatial_figures"]) == 6
+    assert len(result["latent_figures"]) == 6
+    assert result["projection_contract"] == {
+        "spatial": "direct_model_spatial_components",
+        "latent": "scvelo_transition_graph_to_spatial_display",
+        "spatial_dim": 2,
+    }
     assert {call["title"].split(" (")[0] for call in calls} == {
         "Intrinsic velocity",
         "Interaction velocity",
         "Full velocity",
     }
+    spatial_calls = [call for call in calls if "spatial direct" in call["title"]]
+    latent_calls = [call for call in calls if "latent to spatial" in call["title"]]
+    assert len(spatial_calls) == 6
+    assert len(latent_calls) == 6
+    expected_component_value = {
+        "Intrinsic velocity": 1.0,
+        "Interaction velocity": 2.0,
+        "Full velocity": 6.0,
+    }
+    for call in spatial_calls:
+        assert call["feature_matrix"] is None
+        component = call["title"].split(" (")[0]
+        np.testing.assert_array_equal(
+            call["velocity"],
+            np.full((2, 2), expected_component_value[component]),
+        )
+    for call in latent_calls:
+        component = call["title"].split(" (")[0]
+        assert call["feature_matrix"].shape == (2, 1)
+        np.testing.assert_array_equal(
+            call["velocity"],
+            np.full((2, 1), expected_component_value[component]),
+        )
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_allclose(archive["full"], components["full"])
 
@@ -915,7 +945,9 @@ def test_velocity_no_interaction_retains_zero_sentinel_without_false_panel(
 
     assert result["interaction_component"] is False
     assert result["interaction_cutoff"] is None
-    assert len(result["figures"]) == 2
+    assert len(result["figures"]) == 4
+    assert len(result["spatial_figures"]) == 2
+    assert len(result["latent_figures"]) == 2
     assert {call["title"].split(" (")[0] for call in calls} == {
         "Intrinsic velocity",
         "Full velocity",

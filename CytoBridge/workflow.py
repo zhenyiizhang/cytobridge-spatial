@@ -1913,6 +1913,8 @@ def _write_velocity_outputs(
     np.savez_compressed(archive_path, **components)
 
     figures: list[str] = []
+    spatial_figures: list[str] = []
+    latent_figures: list[str] = []
     use_spatial = (
         bool(concat_spatial)
         if concat_spatial is not None
@@ -1941,15 +1943,36 @@ def _write_velocity_outputs(
                 )
                 cb.pl.plot_velocity_component(
                     coords=coords,
-                    velocity=components[component_name][mask],
-                    feature_matrix=components["features"][mask],
+                    velocity=components[component_name][mask, :2],
+                    feature_matrix=None,
                     labels=labels_at_time,
                     label_to_color=dict(label_to_color),
-                    title=f"{title} (t={time_value:g})",
+                    title=f"{title} (spatial direct, t={time_value:g})",
                     out_path=str(figure_path),
                     show_legend=False,
                 )
                 figures.append(str(figure_path))
+                spatial_figures.append(str(figure_path))
+
+                latent_features = components["features"][mask, spatial_dim:]
+                latent_velocity = components[component_name][mask, spatial_dim:]
+                if latent_features.shape[1] > 0:
+                    latent_figure_path = output_dir / (
+                        "latent_to_spatial_"
+                        f"{component_name}_time_{_safe_time_name(time_value)}.pdf"
+                    )
+                    cb.pl.plot_velocity_component(
+                        coords=coords,
+                        velocity=latent_velocity,
+                        feature_matrix=latent_features,
+                        labels=labels_at_time,
+                        label_to_color=dict(label_to_color),
+                        title=f"{title} (latent to spatial, t={time_value:g})",
+                        out_path=str(latent_figure_path),
+                        show_legend=False,
+                    )
+                    figures.append(str(latent_figure_path))
+                    latent_figures.append(str(latent_figure_path))
     return {
         "status": "completed",
         "component_archive": str(archive_path),
@@ -1960,6 +1983,13 @@ def _write_velocity_outputs(
             if has_interaction
             else "not applicable; zero sentinel retained in the component archive"
         ),
+        "projection_contract": {
+            "spatial": "direct_model_spatial_components",
+            "latent": "scvelo_transition_graph_to_spatial_display",
+            "spatial_dim": spatial_dim,
+        },
+        "spatial_figures": spatial_figures,
+        "latent_figures": latent_figures,
         "figures": figures,
     }
 
