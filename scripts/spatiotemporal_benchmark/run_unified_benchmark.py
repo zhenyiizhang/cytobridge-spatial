@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare, run, and evaluate the four-dataset benchmark with one small CLI."""
+"""Prepare, run, and evaluate the unified five-dataset benchmark."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ import yaml
 # fmt: off
 REPO = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO / "configs" / "unified_benchmark"
-DATASETS = ("zebrafish", "mosta", "arista", "admouse")
+DATASETS = ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
 DYNAMIC = ("stvcr", "stories", "mioflow")
 STATIC = ("moscot", "wot", "paste", "spateo", "linear_centroid_shift", "random_independent_pairs")
 PRIMARY_METHODS = ("cytobridge", *DYNAMIC, *STATIC)
@@ -149,6 +149,13 @@ def load_datasets(names):
     return {name: yaml.safe_load((CONFIG_DIR / f"{name}.yaml").read_text(encoding="utf-8")) for name in names}
 
 
+def formal_dataset_root(name, cfg, args):
+    explicit = cfg.get("benchmark", {}).get("formal_run_root")
+    if explicit is not None:
+        return Path(explicit).expanduser().resolve()
+    return (args.formal_root / name).expanduser().resolve()
+
+
 def assignments(values, *, preserve_symlinks=False):
     result = {}
     for value in values:
@@ -231,7 +238,7 @@ def cytobridge_commands(python, cfg, formal, manifest, root, split, targets, dev
 
 
 def jobs_for_dataset(name, cfg, args, pythons, sources):
-    root, formal = args.run_root / name, args.formal_root / name
+    root, formal = args.run_root / name, formal_dataset_root(name, cfg, args)
     manifest, jobs = root / "inputs" / "manifest.json", []
     for method in args.methods:
         for track in args.tracks:
@@ -1811,7 +1818,7 @@ def prepare(name, _cfg, args):
     root = args.run_root / name
     build = command("scripts.spatiotemporal_benchmark.build_inputs", sys.executable,
                     "--config", CONFIG_DIR / f"{name}.yaml", "--h5ad",
-                    args.formal_root / name / "preprocess" / f"{name}_aligned.h5ad", "--output-dir", root)
+                    Path(_cfg["input_h5ad"]).expanduser().resolve(), "--output-dir", root)
     if args.overwrite: build.append("--overwrite")
     verify = command("scripts.spatiotemporal_benchmark.verify_inputs", sys.executable, "--output-dir", root)
     run_or_print([build, verify], args.dry_run)
@@ -1819,7 +1826,7 @@ def prepare(name, _cfg, args):
 
 def run_dataset(name, cfg, args, pythons, sources):
     root = args.run_root / name
-    formal = args.formal_root / name
+    formal = formal_dataset_root(name, cfg, args)
     validation_cache = ResumeValidationCache()
     rows = []
     for method, track, targets, commands, required, fixed in jobs_for_dataset(name, cfg, args, pythons, sources):
@@ -1881,7 +1888,7 @@ def run_dataset(name, cfg, args, pythons, sources):
 
 def evaluate(name, cfg, args):
     root = args.run_root / name
-    formal = args.formal_root / name
+    formal = formal_dataset_root(name, cfg, args)
     validation_cache = ResumeValidationCache()
     for track in args.tracks:
         targets = cfg["loto_targets"] if track == "loto" else cfg["full_data_targets"]
