@@ -178,6 +178,12 @@ class GNNInteraction(nn.Module):
         r_ij = pairwise_distances[edge_index[0], edge_index[1]]
         edge_index = edge_index[:, r_ij > 1e-6]
         r_ij = r_ij[r_ij > 1e-6]
+        # Candidate-edge tensors can be much larger than the retained graph.
+        # Release them before the attention pass so inference memory is
+        # proportional to retained edges rather than both graphs at once.
+        if self.edge_prior_mode == "learned":
+            del features_i, features_j, pair_features, pred_probs, connected
+        del mask, rows, cols, pairwise_distances, indices
         # Cache for downstream attention/communication analysis (does not affect forward output).
         self.edge_index = edge_index.detach()
 
@@ -196,6 +202,7 @@ class GNNInteraction(nn.Module):
         edge_attr = (
             x_embed[edge_index[0]] + x_embed[edge_index[1]]
         ) * self.distance_projection(rbf_ij)
+        del rbf_ij
 
         for layer in self.gnn_layers:
             x_embed, vec = layer(
@@ -216,6 +223,13 @@ class GNNInteraction(nn.Module):
 
 
 class GraphAttentionLayer(_MessagePassingBase):
+    # A full interaction group may contain up to 2 * group_size - 1 cells under
+    # the released remainder contract.  Applying out_transform to every edge
+    # at once materializes [E, heads, hidden_dim] and can exceed 24 GiB even
+    # though the graph itself fits.  Chunk only the inference message pass;
+    # training retains the original single-pass graph and gradients.
+    inference_edge_chunk_size = 65_536
+
     def __init__(self, hidden_dim: int, num_heads: int, activation: str = "Tanh"):
         if MessagePassing is None:
             raise ImportError(
@@ -261,11 +275,26 @@ class GraphAttentionLayer(_MessagePassingBase):
         q = self.q_proj(x).reshape(-1, self.num_heads, self.head_dim)
         k = self.k_proj(x).reshape(-1, self.num_heads, self.head_dim)
         v = self.v_proj(x).reshape(-1, self.num_heads, self.head_dim)
-        dk = self.dk_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
-        dv = self.dv_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
         w = torch.exp(lnw) * lnw.shape[0]
 
         self.return_attn = return_attn
+        if not torch.is_grad_enabled() and edge_index.shape[1] > int(
+            self.inference_edge_chunk_size
+        ):
+            return self._propagate_inference_chunks(
+                edge_index=edge_index,
+                q=q,
+                k=k,
+                v=v,
+                w=w,
+                x_orig=x_res,
+                vec=vec,
+                edge_attr=edge_attr,
+                edge_vec=edge_vec,
+            )
+
+        dk = self.dk_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
+        dv = self.dv_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
         x, vec_out = self.propagate(
             edge_index,
             q=q,
@@ -281,6 +310,71 @@ class GraphAttentionLayer(_MessagePassingBase):
             size=None,
         )
         return x, vec_out
+
+    def _propagate_inference_chunks(
+        self,
+        *,
+        edge_index,
+        q,
+        k,
+        v,
+        w,
+        x_orig,
+        vec,
+        edge_attr,
+        edge_vec,
+    ):
+        """Evaluate the exact released message formula in bounded edge chunks."""
+
+        n_nodes = int(q.shape[0])
+        output_x = torch.zeros(
+            (n_nodes, self.hidden_dim), dtype=q.dtype, device=q.device
+        )
+        output_vec = torch.zeros(
+            (n_nodes, vec.shape[1], self.hidden_dim),
+            dtype=q.dtype,
+            device=q.device,
+        )
+        weight_sum = torch.zeros((n_nodes, 1), dtype=w.dtype, device=w.device)
+        attention_chunks = [] if self.return_attn else None
+        chunk_size = int(self.inference_edge_chunk_size)
+
+        for start in range(0, int(edge_index.shape[1]), chunk_size):
+            stop = min(start + chunk_size, int(edge_index.shape[1]))
+            source = edge_index[0, start:stop]
+            target = edge_index[1, start:stop]
+            edge_attr_chunk = edge_attr[start:stop]
+            dk = self.dk_proj(edge_attr_chunk).reshape(
+                -1, self.num_heads, self.head_dim
+            )
+            dv = self.dv_proj(edge_attr_chunk).reshape(
+                -1, self.num_heads, self.head_dim
+            )
+            message_x, message_vec, message_weight = self.message(
+                q[target],
+                k[source],
+                v[source],
+                vec[source],
+                w[source],
+                x_orig[target],
+                dk,
+                dv,
+                edge_attr_chunk,
+                edge_vec[start:stop],
+            )
+            output_x.index_add_(0, target, message_x)
+            output_vec.index_add_(0, target, message_vec)
+            weight_sum.index_add_(0, target, message_weight)
+            if attention_chunks is not None:
+                attention_chunks.append(self.attn)
+
+        safe_weight = weight_sum.clone()
+        safe_weight[safe_weight == 0] = 1
+        output_x = output_x / safe_weight
+        output_vec = output_vec / safe_weight.unsqueeze(1)
+        if attention_chunks is not None:
+            self.attn = torch.cat(attention_chunks, dim=0)
+        return output_x, output_vec
 
     def message(self, q_i, k_j, v_j, vec_j, w_j, x_orig_i, dk, dv, r_ij, d_ij):
         attn = (q_i * k_j * dk).sum(dim=-1)
