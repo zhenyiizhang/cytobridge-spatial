@@ -23,7 +23,7 @@ REPO = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO / "configs" / "unified_benchmark"
 DATASETS = ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
 DYNAMIC = ("stvcr", "stories", "mioflow")
-STATIC = ("moscot", "wot", "paste", "spateo", "linear_centroid_shift", "random_independent_pairs")
+STATIC = ("moscot", "wot", "paste", "spateo", "linear_centroid_shift", "exact_ot_displacement", "random_independent_pairs")
 PRIMARY_METHODS = ("cytobridge", *DYNAMIC, *STATIC)
 METHODS = (*PRIMARY_METHODS, "spatrack")
 METHOD_NAME = {"cytobridge": "CytoBridge-0.015", **{name: name for name in METHODS[1:]}}
@@ -40,6 +40,7 @@ OUTPUT_SCOPE_BY_METHOD = {
     "paste": "hybrid_joint",
     "spateo": "hybrid_joint",
     "linear_centroid_shift": "native_joint",
+    "exact_ot_displacement": "native_joint",
     "random_independent_pairs": "native_joint",
 }
 NATIVE_VS_ADAPTER_BY_METHOD = {
@@ -52,6 +53,7 @@ NATIVE_VS_ADAPTER_BY_METHOD = {
     "paste": "hybrid_coupling_adapter",
     "spateo": "hybrid_coupling_adapter",
     "linear_centroid_shift": "explicit_control",
+    "exact_ot_displacement": "explicit_control",
     "random_independent_pairs": "explicit_control",
 }
 EVALUATION_NON_NUMERIC_STATUSES = {

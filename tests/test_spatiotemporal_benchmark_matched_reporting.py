@@ -564,6 +564,7 @@ def test_production_registry_grid_has_72_target_and_24_method_space_rows(
         "Spateo": "spateo",
         "Waddington-OT": "wot",
         "Linear interpolation": "linear_centroid_shift",
+        "OT displacement": "exact_ot_displacement",
         "Random interpolation": "random_independent_pairs",
     }
     manifest, paired, registry = _inputs(
@@ -579,12 +580,12 @@ def test_production_registry_grid_has_72_target_and_24_method_space_rows(
     method_space = pd.read_csv(
         output / "tables" / "matched_method_space_across_targets_summary.csv"
     )
-    assert len(target) == result["n_target_rows"] == 72
-    assert len(method_space) == result["n_method_space_rows"] == 24
+    assert len(target) == result["n_target_rows"] == 81
+    assert len(method_space) == result["n_method_space_rows"] == 27
     assert target.groupby("space").size().to_dict() == {
-        "joint": 21,
-        "spatial": 21,
-        "state": 30,
+        "joint": 24,
+        "spatial": 24,
+        "state": 33,
     }
     state_only = {"STORIES", "MIOFlow", "Waddington-OT"}
     assert set(target.loc[target["canonical_method"].isin(state_only), "space"]) == {
@@ -594,9 +595,5 @@ def test_production_registry_grid_has_72_target_and_24_method_space_rows(
     assert set(target["canonical_method"]) == set(raw_by_canonical)
     wot_target = target[target["canonical_method"] == "Waddington-OT"]
     assert set(wot_target["scope"]) == {"state_coupling_barycenter_adapter"}
-    wot_method_space = method_space[
-        method_space["canonical_method"] == "Waddington-OT"
-    ]
-    assert set(wot_method_space["scope"]) == {
-        "state_coupling_barycenter_adapter"
-    }
+    wot_method_space = method_space[method_space["canonical_method"] == "Waddington-OT"]
+    assert set(wot_method_space["scope"]) == {"state_coupling_barycenter_adapter"}

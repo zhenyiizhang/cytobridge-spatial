@@ -94,6 +94,15 @@
       "color": "#17becf"
     },
     {
+      "method": "OT displacement",
+      "display_name": "OT displacement",
+      "aliases": ["exact_ot_displacement", "Exact OT displacement"],
+      "scope": "explicit_control",
+      "spaces": ["joint", "state", "spatial"],
+      "status": "evaluated",
+      "color": "#6f3cc3"
+    },
+    {
       "method": "Random interpolation",
       "display_name": "Random interpolation",
       "aliases": ["random", "random_independent_pairs"],

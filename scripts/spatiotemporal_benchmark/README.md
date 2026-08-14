@@ -69,6 +69,12 @@ the SHA-256 plus both the per-profile and matched-family PASS entries of the
 current-package training summary, aligned-H5AD/model-input hashes, exact
 four-stage counts, and explicit formal training root.
 
+The primary control set includes `exact_ot_displacement`: exact balanced POT
+OT between training-only adjacent anchors in the frozen joint benchmark space,
+followed by barycentric displacement interpolation (LOTO) or composed adjacent
+maps from the fixed t0 roster (full-data). It uses 800 fitted support cells and
+the same 5,000-particle source roster as every other method.
+
 Each original four-dataset YAML binds the exact aligned-H5AD SHA-256 and hashed
 matched acceptance report. The resolved input manifest may record the aligned H5AD's
 physical accepted-r2 target because the formal matched root uses immutable
@@ -168,7 +174,7 @@ python scripts/spatiotemporal_benchmark/evaluate_predictions.py \
   --status-table "$OUT/status/method_target_status.csv" \
   --output-dir "$OUT/reports/evaluation/loto" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
-            linear_centroid_shift random_independent_pairs
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
 
 python scripts/spatiotemporal_benchmark/summarize_results.py \
   --metrics-long "$OUT/reports/evaluation/loto/loto_metrics_long.csv" \
@@ -212,7 +218,7 @@ python scripts/spatiotemporal_benchmark/evaluate_matched_tracks.py \
   --anchor-times 0 4 \
   --output-dir "$OUT/reports/evaluation/matched" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
-            linear_centroid_shift random_independent_pairs
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
 ```
 
 Before evaluating predictions, the script also proves directly from NPZ arrays

@@ -189,6 +189,7 @@ def _write_complete_prediction(
         "paste",
         "spateo",
         "linear_centroid_shift",
+        "exact_ot_displacement",
         "random_independent_pairs",
     }:
         arrays["spatial"] = np.ones(
@@ -1606,6 +1607,7 @@ def test_resume_requires_spatial_for_every_joint_static_scope(tmp_path):
         "paste",
         "spateo",
         "linear_centroid_shift",
+        "exact_ot_displacement",
         "random_independent_pairs",
     ):
         output = _write_complete_prediction(root, method, "full_data", 1, cfg)
