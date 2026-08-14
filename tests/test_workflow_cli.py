@@ -12,6 +12,7 @@ from CytoBridge.cli import main
 from CytoBridge.workflow import (
     WorkflowOptions,
     _loaded_model_scientific_contract,
+    _read_training_config,
     _run_edge_predictor,
     build_workflow_plan,
     load_workflow_config,
@@ -134,6 +135,21 @@ def test_packaged_presets_plan_the_formal_graph_contract(
     assert training["edge_predictor_threshold_source"] == (
         "validation-selected during preprocessing"
     )
+
+
+def test_chicken_heart_training_batches_fit_the_earliest_observed_stage():
+    training = _read_training_config(
+        "chicken_heart_spatial_full_alpha_express_0015.yaml"
+    )
+    stage_batch_sizes = [
+        int(stage["batch_size"]) for stage in training["training"]["plan"]
+    ]
+
+    # D4 contains 147 spots and neural-ODE sampling is deliberately without
+    # replacement. Keep every formal stage below that observed population.
+    assert training["training"]["defaults"]["batch_size"] == 128
+    assert stage_batch_sizes == [128, 128, 128, 128, 128, 128]
+    assert max(stage_batch_sizes) <= 147
 
 
 def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path):

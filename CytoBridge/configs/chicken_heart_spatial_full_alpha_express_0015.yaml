@@ -42,7 +42,7 @@ training:
     lambda_mass: 10.0
     lambda_energy: 0.01
     sigma: 0.03
-    batch_size: 512
+    batch_size: 128
     alpha_spatial: 10.0
     alpha_express: 0.015
     global_mass: true
@@ -52,7 +52,7 @@ training:
     - name: Pretrain
       mode: neural_ode
       epochs: 100
-      batch_size: 512
+      batch_size: 128
       OT_loss: weighted_emd_detach
       train_strategy: v+g
       lambda_ot: 1.0
@@ -66,7 +66,7 @@ training:
     - name: Refine
       mode: neural_ode
       epochs: 100
-      batch_size: 512
+      batch_size: 128
       OT_loss: weighted_emd
       train_strategy: v+g
       lambda_ot: 1.0
@@ -80,7 +80,7 @@ training:
     - name: Init_interaction
       mode: neural_ode
       epochs: 50
-      batch_size: 512
+      batch_size: 128
       OT_loss: weighted_emd
       train_strategy: v+g+i
       lambda_ot: 10.0
@@ -105,7 +105,7 @@ training:
     - name: Finetune
       mode: neural_ode
       epochs: 1000
-      batch_size: 512
+      batch_size: 128
       OT_loss: weighted_emd
       train_strategy: v+g+i
       score_use: true
