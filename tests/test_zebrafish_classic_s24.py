@@ -36,6 +36,19 @@ def test_fixed_protocol_constants() -> None:
     assert MODULE.GROWTH_ALPHA == 1.0
     assert MODULE.INTERACTION_M == 1024
     assert MODULE.MAX_PARTICLES == 100_000
+    assert MODULE.TRAJECTORY_FILENAMES == {
+        "baseline": "baseline_points.npy",
+        "remove_YSL": "remove_YSL_points.npy",
+        "remove_EVL": "remove_EVL_points.npy",
+    }
+
+
+def test_trajectory_hashes_use_package_artifact_case(tmp_path: Path) -> None:
+    for filename in MODULE.TRAJECTORY_FILENAMES.values():
+        np.save(tmp_path / filename, np.asarray([1.0], dtype=np.float32))
+    hashes = MODULE._trajectory_hashes(tmp_path)
+    assert set(hashes) == {"baseline", "remove_YSL", "remove_EVL"}
+    assert all(len(value) == 64 for value in hashes.values())
 
 
 def test_direct_runner_binds_package_and_helper_to_same_release() -> None:

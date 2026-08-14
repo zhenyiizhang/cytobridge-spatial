@@ -47,6 +47,11 @@ import run_zebrafish_paper_downstream as paper
 
 SCHEMA_VERSION = 1
 FORMAL_SEEDS = (42, 43, 44, 45, 46)
+TRAJECTORY_FILENAMES = {
+    "baseline": "baseline_points.npy",
+    "remove_YSL": "remove_YSL_points.npy",
+    "remove_EVL": "remove_EVL_points.npy",
+}
 REPLAY_SEED = 42
 YSL_LABEL = "Yolk Syncytial Layer"
 EVL_LABEL = "EVL"
@@ -484,13 +489,8 @@ def _load_seed(seed_dir: Path, *, expected_seed: int) -> dict[str, Any]:
             )
     trajectory_dir = seed_dir / "experiment" / "trajectories"
     trajectories = {
-        "baseline": np.load(trajectory_dir / "baseline_points.npy", allow_pickle=True),
-        "remove_YSL": np.load(
-            trajectory_dir / "remove_ysl_points.npy", allow_pickle=True
-        ),
-        "remove_EVL": np.load(
-            trajectory_dir / "remove_evl_points.npy", allow_pickle=True
-        ),
+        name: np.load(trajectory_dir / filename, allow_pickle=True)
+        for name, filename in TRAJECTORY_FILENAMES.items()
     }
     metrics = pd.read_csv(seed_dir / "experiment" / "ablation_metrics.csv")
     audit = pd.read_csv(seed_dir / "trajectory_support_audit.csv")
@@ -558,11 +558,7 @@ def _latest_common_endpoint(seed_runs: Mapping[int, Mapping[str, Any]]) -> float
 def _trajectory_hashes(trajectory_dir: Path) -> dict[str, str]:
     return {
         name: _sha256(trajectory_dir / filename)
-        for name, filename in {
-            "baseline": "baseline_points.npy",
-            "remove_YSL": "remove_ysl_points.npy",
-            "remove_EVL": "remove_evl_points.npy",
-        }.items()
+        for name, filename in TRAJECTORY_FILENAMES.items()
     }
 
 
