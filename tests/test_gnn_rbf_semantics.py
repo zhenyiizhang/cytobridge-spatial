@@ -140,6 +140,22 @@ def test_no_grad_edge_chunking_matches_historical_propagation() -> None:
     torch.testing.assert_close(actual_vec, expected_vec, rtol=1e-5, atol=1e-6)
 
 
+def test_no_grad_edge_chunking_is_repeatable_with_repeated_targets() -> None:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    layer = GraphAttentionLayer(hidden_dim=8, num_heads=2).to(device)
+    inputs = tuple(
+        value.to(device) for value in _attention_inputs(n_nodes=7, n_edges=5_003)
+    )
+    layer.inference_edge_chunk_size = 127
+
+    with torch.no_grad():
+        first_x, first_vec = layer(*inputs)
+        second_x, second_vec = layer(*inputs)
+
+    torch.testing.assert_close(first_x, second_x, rtol=0.0, atol=0.0)
+    torch.testing.assert_close(first_vec, second_vec, rtol=0.0, atol=0.0)
+
+
 def test_grad_enabled_attention_keeps_historical_propagation(monkeypatch) -> None:
     layer = GraphAttentionLayer(hidden_dim=8, num_heads=2)
     layer.inference_edge_chunk_size = 1

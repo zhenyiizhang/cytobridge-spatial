@@ -8,10 +8,11 @@ PDFs.  Every biological result is regenerated through public CytoBridge APIs.
 
 The manuscript stages use two explicitly separated state contracts:
 
-* S22 is a single unwarped global-t0 simulation on a fixed dense grid.  The
-  model is initialized once from the real t=0 population and evolves
-  continuously through t=4.  Real integer-time slices are exported only as a
-  separate reference series and never replace generated trajectory frames.
+* S22 is a single unwarped global-t0 fixed-population state transport on a
+  fixed dense grid.  One real t=0 cohort evolves continuously through t=4
+  under drift, score, interaction, and diffusion; learned growth-driven
+  birth/extinction is disabled.  Real integer-time slices are exported only as
+  a separate reference series and never replace generated trajectory frames.
 * S25 and communication retain their historical hybrid reconstruction contract
   for now: observed cells at integer times and interval-local generated cells
   at intermediate times.  They do not implicitly consume the S22 global-t0
@@ -89,13 +90,16 @@ ALL_STAGES = (
 OBSERVED_TIMES = (0.0, 1.0, 2.0, 3.0, 4.0)
 HALF_TIMES = tuple(float(value) for value in np.arange(0.0, 4.0 + 0.5, 0.5))
 MAIN_CLASSIFIER_CACHE_TAG = "zebrafish-paper-main-spatial2-latent10"
-S22_TRAJECTORY_MODE = "global_t0_extrapolation"
+S22_FIXED_GROWTH_ALPHA = 0.0
+S22_TRAJECTORY_MODE = "global_t0_fixed_population_state_transport"
 S22_TRAJECTORY_SCOPE = (
-    "single continuous unwarped full-model simulation initialized once from "
-    "the real t=0 population and propagated through t=4; every displayed "
-    "trajectory frame, including integer times after t=0, is generated from "
-    "that same t=0 initialization; observed integer-time slices are separate "
-    "references only"
+    "single continuous unwarped fixed-population state transport initialized "
+    "once from the real t=0 cohort and propagated through t=4 with learned "
+    "drift, score, interaction, and stochastic diffusion retained but learned "
+    "growth-driven birth/extinction disabled; every displayed trajectory frame, "
+    "including integer times after t=0, is generated from that same t=0 "
+    "initialization; observed integer-time slices are separate references only; "
+    "not an abundance forecast or reconstruction of observed stages"
 )
 S25_COMMUNICATION_TRAJECTORY_SCOPE = (
     "piecewise observed-anchored interval-local one-sided forward simulation; "
@@ -680,15 +684,20 @@ def _require_current_stage_manifest(ctx: RunContext, stage: str) -> dict[str, ob
     return manifest
 
 
-def _expected_s22_state_settings(ctx: RunContext) -> dict[str, object]:
+def _expected_s22_state_settings(
+    ctx: RunContext, *, growth_alpha: Optional[float] = None
+) -> dict[str, object]:
     """Return the current settings that determine reusable canonical S22 states."""
 
+    effective_growth_alpha = (
+        float(ctx.args.growth_alpha) if growth_alpha is None else float(growth_alpha)
+    )
     return {
         "dt": float(ctx.args.sde_dt),
         "split_resample_dt": float(ctx.args.sde_dt),
         "sigma": float(ctx.args.sde_sigma),
         "daughter_noise_std": 0.0,
-        "growth_alpha": float(ctx.args.growth_alpha),
+        "growth_alpha": effective_growth_alpha,
         "interaction_m": int(ctx.args.interaction_m),
         "sde_n_samples": (
             int(ctx.args.smoke_n_samples)
@@ -1073,6 +1082,7 @@ def _run_interpolation(
     output_dir: Path,
     time_points: Sequence[float],
     trajectory_mode: str,
+    split_growth_alpha: float,
     display_piecewise_warp: bool,
 ):
     valid_modes = {S22_TRAJECTORY_MODE, "interval_local_observed_anchored"}
@@ -1131,7 +1141,7 @@ def _run_interpolation(
         split_sde_dt=float(ctx.args.sde_dt),
         split_sigma_scalar=float(ctx.args.sde_sigma),
         split_daughter_noise_std=0.0,
-        split_growth_alpha=float(ctx.args.growth_alpha),
+        split_growth_alpha=float(split_growth_alpha),
         split_interaction_m=int(ctx.args.interaction_m),
         split_resample_dt=float(ctx.args.sde_dt),
         split_max_particles=int(ctx.args.sde_max_particles),
@@ -1164,6 +1174,7 @@ def _require_global_t0_generated_states(
         raise RuntimeError("S22 global-t0 simulation grid must be strictly increasing.")
 
     feature_dim: Optional[int] = None
+    particle_count: Optional[int] = None
     for time_value in times:
         key = str(float(time_value))
         if key not in states:
@@ -1176,10 +1187,17 @@ def _require_global_t0_generated_states(
             )
         if feature_dim is None:
             feature_dim = int(points.shape[1])
+            particle_count = int(points.shape[0])
         if points.shape[1] != feature_dim:
             raise RuntimeError(
                 "S22 global-t0 frames changed feature dimension: "
                 f"time={time_value:g}, expected={feature_dim}, actual={points.shape[1]}."
+            )
+        if points.shape[0] != particle_count:
+            raise RuntimeError(
+                "S22 fixed-population transport changed particle count: "
+                f"time={time_value:g}, expected={particle_count}, "
+                f"actual={points.shape[0]}."
             )
         if not np.isfinite(points).all():
             raise RuntimeError(
@@ -1250,6 +1268,29 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         "use_real_for_observed_trajectory_frames": False,
         "simulation": S22_TRAJECTORY_SCOPE,
         "trajectory_mode": S22_TRAJECTORY_MODE,
+        "population_mode": "fixed_population_state_transport",
+        "particle_count_contract": "exactly constant at the sampled t=0 count",
+        "retained_dynamics": [
+            "learned_velocity_drift",
+            "learned_score_gradient",
+            "learned_interaction_force_with_uniform_particle_mass",
+            "stochastic_diffusion",
+        ],
+        "disabled_dynamics": [
+            "learned_growth_driven_birth_extinction",
+            "growth_weight_feedback_into_interaction_mass",
+            "cell_abundance_forecasting",
+        ],
+        "trained_growth_head": {
+            "present_in_checkpoint": True,
+            "applied_to_s22_transport": False,
+            "reported_separately": "S23 observed-state growth maps",
+        },
+        "scientific_claim": (
+            "conditional fixed-population state transport from one t=0 cohort; "
+            "not an abundance forecast, adjacent-anchor interpolation, or "
+            "reconstruction of observed stages"
+        ),
         "split_sde_piecewise": False,
         "piecewise_observed_sample_mode": None,
         "piecewise_include_end": None,
@@ -1269,12 +1310,12 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             "communication": "consumes the S25 hybrid reconstruction",
             "implicit_s22_reuse": False,
         },
-        **_expected_s22_state_settings(ctx),
+        **_expected_s22_state_settings(ctx, growth_alpha=S22_FIXED_GROWTH_ALPHA),
         "display_warp": {
             "applied": False,
             "reason": (
                 "disabled so the displayed coordinates remain the direct output "
-                "of the single global-t0 model simulation"
+                "of the single global-t0 fixed-population model transport"
             ),
         },
         "generated_label_knn_neighbors": 10,
@@ -1283,9 +1324,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         ),
         "trajectory_support_audit": {
             "reference": "maximum observed norm in original latent coordinates",
-            "maximum_fraction_outside_observed_max": (
-                S24_SUPPORT_MAX_OUTSIDE_FRACTION
-            ),
+            "maximum_fraction_outside_observed_max": (S24_SUPPORT_MAX_OUTSIDE_FRACTION),
             "maximum_generated_norm_multiplier": S24_SUPPORT_MAX_NORM_MULTIPLIER,
             "publication_blocking": False,
             "reason": (
@@ -1307,6 +1346,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             output_dir=stage_dir / "workflow_shared_dense",
             time_points=simulation_times,
             trajectory_mode=S22_TRAJECTORY_MODE,
+            split_growth_alpha=S22_FIXED_GROWTH_ALPHA,
             display_piecewise_warp=False,
         )
         actual_simulation_times = [float(value) for value in dense_result.ts_points]
@@ -1330,7 +1370,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         ]
         support_audit, support_summary = _compute_trajectory_support_audit(
             np.asarray(ctx.adata.obsm[ctx.args.latent_key], dtype=np.float32),
-            {"global_t0": support_frames},
+            {"global_t0_fixed_population": support_frames},
             simulation_times,
             spatial_dim=2,
             max_outside_fraction=S24_SUPPORT_MAX_OUTSIDE_FRACTION,
@@ -1347,7 +1387,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             float(value): (
                 "sampled_observed_t0_initial_condition"
                 if np.isclose(value, 0.0, rtol=0.0, atol=1e-9)
-                else "generated_global_t0_continuous"
+                else "generated_global_t0_fixed_population_state_transport"
             )
             for value in HALF_TIMES
         }
@@ -1392,7 +1432,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         global_outputs = _write_state_bundle(
             canonical_states,
             HALF_TIMES,
-            stage_dir / "global_t0_states",
+            stage_dir / "global_t0_fixed_population_states",
             annotation_key=ctx.args.annotation_key,
             source_by_time=canonical_source_by_time,
         )
@@ -1421,6 +1461,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 "canonical_state_source": [
                     canonical_source_by_time[float(value)] for value in HALF_TIMES
                 ],
+                "population_mode": [
+                    "fixed_population_state_transport" for _ in HALF_TIMES
+                ],
+                "growth_alpha": [S22_FIXED_GROWTH_ALPHA for _ in HALF_TIMES],
                 "source_anchor_time": [0.0 for _ in HALF_TIMES],
                 "observed_reference_available": [
                     bool(float(value) in OBSERVED_TIMES) for value in HALF_TIMES
@@ -1472,7 +1516,9 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             mosaic_labels.append(
                 state.obs[ctx.args.annotation_key].astype(str).to_numpy()
             )
-        mosaic_pdf = stage_dir / "S22_global_t0_continuous_mosaic.pdf"
+        mosaic_pdf = (
+            stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.pdf"
+        )
         fig = cb.pl.plot_trajectory_grid(
             sde_points=mosaic_points,
             time_values=HALF_TIMES,
@@ -1483,7 +1529,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             figsize_per_panel=(2.6, 2.6),
             point_size=float(ctx.args.point_size),
             alpha=0.9,
-            title="Zebrafish global-t0 simulated dynamics",
+            title="Global-t0 fixed-population state transport (growth disabled)",
             n_cols=S22_MOSAIC_COLUMNS,
             show_axes=False,
             show_legend=True,
@@ -1491,7 +1537,9 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             legend_title="Cell type",
             legend_fontsize=6.0,
         )
-        mosaic_png = stage_dir / "S22_global_t0_continuous_mosaic.png"
+        mosaic_png = (
+            stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.png"
+        )
         fig.savefig(mosaic_png, dpi=240, bbox_inches="tight", facecolor="white")
         plt.close(fig)
         outputs.extend([mosaic_pdf, mosaic_png])
@@ -1530,6 +1578,27 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         plt.close(reference_fig)
         outputs.extend([reference_pdf, reference_png])
 
+        fixed_particle_count = int(
+            dense_result.adata_dict[str(float(simulation_times[0]))].n_obs
+        )
+        panel_caption = (
+            "One observed t=0 cohort is propagated continuously to t=4 with "
+            "learned velocity drift, score-gradient correction, interaction "
+            f"forces, and stochastic diffusion (fixed N={fixed_particle_count}). "
+            "Learned growth-driven birth/extinction is disabled. Every post-t=0 "
+            "frame is generated from the same initialization without real-slice "
+            "re-anchoring; observed stages are shown only in the separate reference "
+            "panel. This is fixed-population model state transport, not a cell-"
+            "abundance forecast, adjacent-anchor interpolation, or reconstruction "
+            "of observed stages."
+        )
+        caption_path = stage_dir / "S22_panel_caption.json"
+        caption_path.write_text(
+            json.dumps({"S22": panel_caption}, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        outputs.append(caption_path)
+
         dense_points = np.empty(len(video_times), dtype=object)
         dense_labels: list[np.ndarray] = []
         for index, time_value in enumerate(video_times):
@@ -1540,7 +1609,10 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             )
         animation_errors: dict[str, str] = {}
         for extension in formats:
-            animation_path = stage_dir / f"S22_global_t0_continuous_dense.{extension}"
+            animation_path = (
+                stage_dir
+                / f"S22_global_t0_fixed_population_state_transport_dense.{extension}"
+            )
             if extension == "mp4" and shutil.which("ffmpeg") is None:
                 animation_errors[extension] = "ffmpeg is not installed"
                 continue
@@ -1573,6 +1645,15 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             "video_frame_count": int(len(video_times)),
             "simulation_frame_count": int(len(simulation_times)),
             "single_global_t0_simulation_for_mosaic_and_video": True,
+            "population_mode": "fixed_population_state_transport",
+            "fixed_particle_count": fixed_particle_count,
+            "particle_count_constant_across_all_frames": True,
+            "growth_alpha": S22_FIXED_GROWTH_ALPHA,
+            "growth_head_applied_to_transport": False,
+            "retained_dynamics": settings["retained_dynamics"],
+            "disabled_dynamics": settings["disabled_dynamics"],
+            "scientific_claim": settings["scientific_claim"],
+            "panel_caption": panel_caption,
             "observed_integer_frames_substituted_into_trajectory": False,
             "observed_reference_times": list(OBSERVED_TIMES),
             "animation_errors": animation_errors,
@@ -1580,11 +1661,13 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             "trajectory_scope": S22_TRAJECTORY_SCOPE,
             "trajectory_support_audit": support_summary,
             "trajectory_support_audit_publication_blocking": False,
-            "global_t0_state_index": str(
-                (stage_dir / "global_t0_states" / "index.json").resolve()
+            "global_t0_fixed_population_state_index": str(
+                (
+                    stage_dir / "global_t0_fixed_population_states" / "index.json"
+                ).resolve()
             ),
-            "global_t0_state_index_sha256": _sha256(
-                stage_dir / "global_t0_states" / "index.json"
+            "global_t0_fixed_population_state_index_sha256": _sha256(
+                stage_dir / "global_t0_fixed_population_states" / "index.json"
             ),
             "observed_reference_state_index": str(
                 (stage_dir / "observed_reference_states" / "index.json").resolve()
@@ -2524,6 +2607,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 output_dir=stage_dir / "workflow",
                 time_points=HALF_TIMES,
                 trajectory_mode="interval_local_observed_anchored",
+                split_growth_alpha=float(ctx.args.growth_alpha),
                 display_piecewise_warp=False,
             )
             states = result.adata_dict
@@ -4100,9 +4184,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.1,
         help=(
-            "Output grid for the single S22 global-t0 simulation. Mosaic and video "
-            "frames are selected from this continuous generated path; split/"
-            "resampling events remain fixed by --sde-dt."
+            "Output grid for the single S22 global-t0 fixed-population state "
+            "transport. Mosaic and video frames are selected from this continuous "
+            "generated path; S22 hard-codes growth_alpha=0 and requires constant N."
         ),
     )
     parser.add_argument("--video-step", type=float, default=0.1)

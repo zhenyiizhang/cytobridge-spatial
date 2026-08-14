@@ -21,8 +21,10 @@
   lineage limitations;
 - completed all seven signed Zebrafish paper-downstream stages and the
   80-run interval-local daughter-noise sensitivity; paper S22 now uses one
-  generated global-t0 path while S25/communication remain explicitly
-  interval-local and observed-anchored;
+  generated global-t0 fixed-population state transport (`growth_alpha=0`) with
+  constant N and explicit non-abundance/non-reconstruction labeling, while
+  S25/communication remain growth-enabled, interval-local, and
+  observed-anchored;
 - replaced the unstable unequal-N, growth-resampling S24 EVL panel with
   target-specific equal-N fixed-population YSL/EVL sensitivities, an independent
   interaction-grouping random stream, and a publication-blocking latent-support
@@ -30,6 +32,10 @@
 - corrected the model-derived velocity renderer so direct 2D fields are not
   projected twice and scVelo's one-component NaN grid mask cannot erase finite
   vector streamlines in PDF output;
+- stabilized bounded-memory GNN inference by replacing repeated-target CUDA
+  atomic accumulation with target-sorted segment reduction and float64
+  accumulation; the message formula and training path are unchanged, while
+  five formal-scale replays now reproduce byte-identical trajectories;
 - made the primary workflow and tutorials ordinary package entry points rather
   than release-audit launchers;
 - removed checksum-only fields from the public downstream result objects;

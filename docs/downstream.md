@@ -11,10 +11,15 @@ observed stages with these interval-local generated stages; they do not
 describe one lineage-continuous rollout or global t0 extrapolation.
 
 The paper-specific S22 reproduction is deliberately different: it generates
-one continuous global-t0 path through `t=4` and exports observed integer slices
-only as a separate reference figure. S25 and communication continue to use the
-interval-local contract above; a global-t0 S22 bundle cannot be silently reused
-for those analyses.
+one continuous global-t0 fixed-population state transport through `t=4` and
+exports observed integer slices only as a separate reference figure. Velocity
+drift, score-gradient correction, interaction forces, and stochastic diffusion
+remain active. Learned growth-driven birth/extinction is disabled, so N remains
+equal to the sampled t=0 cohort. The panel is not a cell-abundance forecast,
+adjacent-anchor interpolation, or reconstruction of observed stages. S25 and
+communication continue to use the interval-local contract above with learned
+growth enabled; a global-t0 S22 bundle cannot be silently reused for those
+analyses.
 
 ## Velocity
 
@@ -28,9 +33,11 @@ preserved in vector PDF output.
 
 ## Growth
 
-Growth values use the pre-warp joint state. `growth_alpha=1.0` is explicit in
-the formal workflows and is applied consistently to AnnData and dataframe
-simulation paths.
+Growth values use the pre-warp joint state. `growth_alpha=1.0` remains explicit
+for the standard/interval-local workflows and is applied consistently to
+AnnData and dataframe simulation paths. Paper S22 is the documented exception:
+it hard-codes `growth_alpha=0.0` for fixed-population state transport, while S23
+reports the trained growth head separately on observed states.
 
 ## Sparse communication
 

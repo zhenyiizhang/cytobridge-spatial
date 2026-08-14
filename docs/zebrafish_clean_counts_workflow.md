@@ -529,22 +529,26 @@ that consumes that classifier. Cache writers are serialized and checkpoints
 are published by atomic rename, so two workers cannot leave a partially written
 classifier file.
 
-Split-SDE population events use a fixed `resample_dt=0.05`, independent of the
-frames requested for plotting. This matters because birth/extinction sampling
-is part of the dynamics: changing a video from 9 to 41 frames must not change
-the generated slices. Paper S22 uses one global-t0 simulation on its 0.1 grid:
-every displayed frame, including `t=1,2,3,4`, is generated from the same `t=0`
-initialization. The actual observed integer slices are written to a separate
-reference bundle and never replace generated frames. No endpoint-directed
-display warp is applied. A frame-level latent-support audit reports p99, max,
-and the fraction beyond observed radial support without clipping any points.
-S25 and communication retain their separate
+Standard split-SDE population events use a fixed `resample_dt=0.05`, independent
+of the frames requested for plotting. Paper S22 is an explicit exception: it
+hard-codes `growth_alpha=0.0` and requires particle count to remain exactly
+equal to the sampled t=0 cohort. It retains learned drift, score-gradient
+correction, interaction forces with uniform particle mass, and stochastic
+diffusion. Every displayed frame on its 0.1 grid, including `t=1,2,3,4`, is
+generated from the same `t=0` initialization. The actual observed integer
+slices are written to a separate reference bundle and never replace generated
+frames. No endpoint-directed display warp is applied. This is fixed-population
+state transport, not an abundance forecast, adjacent-anchor interpolation, or
+reconstruction of observed stages. A frame-level latent-support audit reports
+p99, max, and the fraction beyond observed radial support without clipping any
+points. S25 and communication retain their separate growth-enabled,
 interval-local observed-anchor contract and do not silently reuse the global-t0
 S22 bundle. The runner also applies a fail-fast particle ceiling before split
 allocation; this guard never downsamples a valid run.
 
 The manuscript redraws are assembled by reusable plotting APIs rather than by
-copying historical PDFs. S22 exports a global-t0 trajectory mosaic/video and a
+copying historical PDFs. S22 exports a global-t0 fixed-population state-
+transport mosaic/video, its exact constant-N state bundle and caption, and a
 separate observed-reference mosaic with one figure-level cell-type legend.
 S23 exports the raw per-cell growth table and a
 3-by-2 observed-time grid; each time point is robust-scaled from its own 5th to

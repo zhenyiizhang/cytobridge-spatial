@@ -56,9 +56,12 @@ reconstruction diagnostic. It is not the cross-method holdout benchmark above.
 
 The matched Zebrafish paper downstream completed all seven signed stages:
 classifier, velocity, global-t0 S22, growth, S24 sensitivity, S25, and
-communication. Paper S22 is one continuous generated path from `t=0` through
-`t=4`; observed integer slices are separate references and are not substituted
-into that path. S25 and communication intentionally retain their separate
+communication. Paper S22 is one continuous generated fixed-population state
+transport from `t=0` through `t=4`; learned drift, score, interaction, and
+diffusion are retained, while growth-driven birth/extinction is disabled and N
+remains fixed. Observed integer slices are separate references and are not
+substituted into that path. It is not an abundance forecast or reconstruction
+of observed stages. S25 and communication intentionally retain their separate
 interval-local, observed-anchored state contract. S22 also exports a full
 latent-support audit; because it is an explicit demonstration, rare tail OOD is
 reported rather than hidden or replaced with observed slices. S24 consists of separate

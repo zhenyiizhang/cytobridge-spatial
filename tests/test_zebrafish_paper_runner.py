@@ -916,6 +916,18 @@ def test_global_t0_state_guard_rejects_nonzero_anchor_and_foreign_t0():
         )
 
     states, observed_t0 = _global_t0_states_for_test()
+    expanded = np.vstack((states["1.5"].X, states["1.5"].X[:1]))
+    states["1.5"] = runner._minimal_state_adata(
+        expanded, ["A", "B", "A"], annotation_key="Annotation"
+    )
+    states["1.5"].uns["slice_origin"] = "generated_global_t0"
+    states["1.5"].uns["source_anchor_time"] = 0.0
+    with pytest.raises(RuntimeError, match="fixed-population.*changed particle count"):
+        runner._require_global_t0_generated_states(
+            states, runner.HALF_TIMES, observed_t0_points=observed_t0
+        )
+
+    states, observed_t0 = _global_t0_states_for_test()
     states["0.0"].X[0, 0] = 99.0
     with pytest.raises(RuntimeError, match="exact sample of the real observed t=0"):
         runner._require_global_t0_generated_states(
@@ -960,6 +972,10 @@ def test_s22_stage_manifest_contract_is_global_t0_and_reference_only(
     assert captured["observed_integer_frames"] == "separate_reference_only"
     assert captured["simulation_grid"] == list(runner.HALF_TIMES)
     assert captured["downstream_state_contract"]["implicit_s22_reuse"] is False
+    assert captured["population_mode"] == "fixed_population_state_transport"
+    assert captured["growth_alpha"] == 0.0
+    assert captured["trained_growth_head"]["applied_to_s22_transport"] is False
+    assert "not an abundance forecast" in captured["scientific_claim"]
 
 
 def test_s22_stage_keeps_generated_integer_frames_and_observed_references_separate(
@@ -998,6 +1014,7 @@ def test_s22_stage_keeps_generated_integer_frames_and_observed_references_separa
 
     def fake_interpolation(*args, **kwargs):
         assert kwargs["trajectory_mode"] == runner.S22_TRAJECTORY_MODE
+        assert kwargs["split_growth_alpha"] == runner.S22_FIXED_GROWTH_ALPHA
         return interpolation
 
     monkeypatch.setattr(runner, "_run_interpolation", fake_interpolation)
@@ -1048,23 +1065,37 @@ def test_s22_stage_keeps_generated_integer_frames_and_observed_references_separa
     import pandas as pd
 
     sources = pd.read_csv(tmp_path / "s22" / "frame_sources.csv")
+    assert set(sources["population_mode"]) == {"fixed_population_state_transport"}
+    assert set(sources["growth_alpha"]) == {0.0}
     after_t0 = sources.loc[sources["time"].gt(0.0)]
     assert (
-        after_t0["trajectory_display_source"].eq("generated_global_t0_continuous").all()
+        after_t0["trajectory_display_source"]
+        .eq("generated_global_t0_fixed_population_state_transport")
+        .all()
     )
     integer_after_t0 = sources.loc[sources["time"].isin([1.0, 2.0, 3.0, 4.0])]
     assert integer_after_t0["observed_reference_available"].all()
     assert set(integer_after_t0["observed_reference_source"]) == {
         "observed_reference_only"
     }
-    assert (tmp_path / "s22" / "global_t0_states" / "index.json").is_file()
+    assert (
+        tmp_path / "s22" / "global_t0_fixed_population_states" / "index.json"
+    ).is_file()
     assert (tmp_path / "s22" / "observed_reference_states" / "index.json").is_file()
     assert (tmp_path / "s22" / "S22_trajectory_support_audit.csv").is_file()
     assert (tmp_path / "s22" / "S22_trajectory_support_audit.json").is_file()
+    assert (tmp_path / "s22" / "S22_panel_caption.json").is_file()
+    assert (
+        tmp_path / "s22" / "S22_global_t0_fixed_population_state_transport_mosaic.pdf"
+    ).is_file()
     assert manifest["details"]["trajectory_support_audit"]["n_frames"] == len(
         runner.HALF_TIMES
     )
     assert manifest["details"]["trajectory_support_audit_publication_blocking"] is False
+    assert manifest["details"]["fixed_particle_count"] == 2
+    assert manifest["details"]["particle_count_constant_across_all_frames"] is True
+    assert manifest["details"]["growth_head_applied_to_transport"] is False
+    assert "not a cell-abundance forecast" in manifest["details"]["panel_caption"]
     assert (
         manifest["details"]["observed_integer_frames_substituted_into_trajectory"]
         is False
@@ -1115,6 +1146,7 @@ def test_interpolation_separates_global_t0_and_interval_local_contracts(
         output_dir=tmp_path / "workflow",
         time_points=(0.0, 0.5, 1.0),
         trajectory_mode=runner.S22_TRAJECTORY_MODE,
+        split_growth_alpha=runner.S22_FIXED_GROWTH_ALPHA,
         display_piecewise_warp=False,
     )
     assert captured["classifier_cache_tag"] == runner.MAIN_CLASSIFIER_CACHE_TAG
@@ -1122,6 +1154,7 @@ def test_interpolation_separates_global_t0_and_interval_local_contracts(
     assert captured["split_sde_piecewise"] is False
     assert captured["split_sde_piecewise_include_end"] is False
     assert captured["split_daughter_noise_std"] == 0.0
+    assert captured["split_growth_alpha"] == 0.0
     assert captured["piecewise_observed_sample_mode"] == "t0_fixed"
     assert captured["spatial_warp_to_observed"] is False
     assert captured["spatial_warp_to_observed_piecewise"] is False
@@ -1129,6 +1162,7 @@ def test_interpolation_separates_global_t0_and_interval_local_contracts(
     assert "initialized once" in runner.S22_TRAJECTORY_SCOPE
     assert "integer times after t=0" in runner.S22_TRAJECTORY_SCOPE
     assert "references only" in runner.S22_TRAJECTORY_SCOPE
+    assert "not an abundance forecast" in runner.S22_TRAJECTORY_SCOPE
 
     captured.clear()
     runner._run_interpolation(
@@ -1136,11 +1170,13 @@ def test_interpolation_separates_global_t0_and_interval_local_contracts(
         output_dir=tmp_path / "workflow_interval_local",
         time_points=(0.0, 0.5, 1.0),
         trajectory_mode="interval_local_observed_anchored",
+        split_growth_alpha=1.0,
         display_piecewise_warp=False,
     )
     assert captured["use_real_for_observed"] is True
     assert captured["split_sde_piecewise"] is True
     assert captured["piecewise_observed_sample_mode"] == "per_timepoint"
+    assert captured["split_growth_alpha"] == 1.0
     assert "one-sided" in runner.S25_COMMUNICATION_TRAJECTORY_SCOPE
     assert "not global-t0" in runner.S25_COMMUNICATION_TRAJECTORY_SCOPE
 
@@ -1191,6 +1227,7 @@ def test_interpolation_rejects_legacy_endpoint_directed_display_warp(
             output_dir=tmp_path / "workflow",
             time_points=(0.0, 0.5, 1.0),
             trajectory_mode=runner.S22_TRAJECTORY_MODE,
+            split_growth_alpha=runner.S22_FIXED_GROWTH_ALPHA,
             display_piecewise_warp=True,
         )
     assert not called

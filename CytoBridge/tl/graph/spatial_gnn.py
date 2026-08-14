@@ -333,13 +333,26 @@ class GraphAttentionLayer(_MessagePassingBase):
         if chunk_size <= 0:
             raise ValueError("inference_edge_chunk_size must be > 0.")
 
-        x_sum = torch.zeros((n_nodes, self.hidden_dim), dtype=q.dtype, device=q.device)
+        # Accumulate accepted edge messages in a fixed target-sorted order and
+        # in float64.  CUDA ``index_add_`` with repeated target indices uses
+        # atomic additions whose order can change when apparently unrelated
+        # synchronization is introduced.  The per-layer discrepancy is tiny,
+        # but split-population inference can amplify it through the coupled
+        # interaction -> growth -> branching feedback.  Reducing each target
+        # segment first leaves only unique-target writes and makes the bounded-
+        # memory path numerically stable without changing the message formula.
+        accumulator_dtype = torch.float64
+        x_sum = torch.zeros(
+            (n_nodes, self.hidden_dim),
+            dtype=accumulator_dtype,
+            device=q.device,
+        )
         vec_sum = torch.zeros(
             (n_nodes, vec.shape[1], self.hidden_dim),
-            dtype=vec.dtype,
+            dtype=accumulator_dtype,
             device=vec.device,
         )
-        weight_sum = torch.zeros((n_nodes, 1), dtype=w.dtype, device=w.device)
+        weight_sum = torch.zeros((n_nodes, 1), dtype=accumulator_dtype, device=w.device)
         attention_chunks = [] if return_attn else None
 
         for start in range(0, edge_count, chunk_size):
@@ -361,9 +374,29 @@ class GraphAttentionLayer(_MessagePassingBase):
                 r_ij=chunk_attr,
                 d_ij=edge_vec[start:stop],
             )
-            x_sum.index_add_(0, target, x_message)
-            vec_sum.index_add_(0, target, vec_message)
-            weight_sum.index_add_(0, target, weight_message)
+            order = torch.argsort(target, stable=True)
+            sorted_target = target[order]
+            unique_target, counts = torch.unique_consecutive(
+                sorted_target, return_counts=True
+            )
+            x_segment = torch.segment_reduce(
+                x_message[order].to(accumulator_dtype),
+                "sum",
+                lengths=counts,
+            )
+            vec_segment = torch.segment_reduce(
+                vec_message[order].to(accumulator_dtype),
+                "sum",
+                lengths=counts,
+            )
+            weight_segment = torch.segment_reduce(
+                weight_message[order].to(accumulator_dtype),
+                "sum",
+                lengths=counts,
+            )
+            x_sum[unique_target] = x_sum[unique_target] + x_segment
+            vec_sum[unique_target] = vec_sum[unique_target] + vec_segment
+            weight_sum[unique_target] = weight_sum[unique_target] + weight_segment
             if attention_chunks is not None:
                 attention_chunks.append(self.attn)
 
@@ -371,7 +404,10 @@ class GraphAttentionLayer(_MessagePassingBase):
         denominator[denominator == 0] = 1
         if attention_chunks is not None:
             self.attn = torch.cat(attention_chunks, dim=0)
-        return x_sum / denominator, vec_sum / denominator.unsqueeze(1)
+        return (
+            (x_sum / denominator).to(q.dtype),
+            (vec_sum / denominator.unsqueeze(1)).to(vec.dtype),
+        )
 
     def message(self, q_i, k_j, v_j, vec_j, w_j, x_orig_i, dk, dv, r_ij, d_ij):
         attn = (q_i * k_j * dk).sum(dim=-1)
