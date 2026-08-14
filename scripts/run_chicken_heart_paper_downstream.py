@@ -161,7 +161,7 @@ def _plot_metric_summary(table: pd.DataFrame, output_path: Path, title: str) -> 
         colors = {"spatial": "#2C7FB8", "latent": "#D95F0E"}
         for ax, metric, label in zip(
             axes,
-            ("wasserstein_2", "centroid_shift"),
+            ("w2", "centroid_shift"),
             ("Wasserstein-2", "Centroid shift"),
             strict=True,
         ):
@@ -188,6 +188,162 @@ def _plot_metric_summary(table: pd.DataFrame, output_path: Path, title: str) -> 
         fig.subplots_adjust(left=0.10, right=0.98, top=0.83, bottom=0.27, wspace=0.32)
         fig.savefig(output_path, dpi=320, facecolor="white")
         plt.close(fig)
+
+
+def _write_lr_attention_figures(
+    standard_downstream: Path,
+    output_dir: Path,
+) -> list[Path]:
+    """Render package LR/attention tables as manuscript-ready vector panels."""
+
+    lr_dir = standard_downstream / "ligand_receptor"
+    pair = pd.read_csv(lr_dir / "pair_timecourse.csv")
+    pattern = pd.read_csv(lr_dir / "pattern_summary.csv")
+    coverage = pd.read_csv(lr_dir / "coverage.csv")
+    communication = pd.read_csv(
+        standard_downstream / "communication" / "communication_by_celltype.csv"
+    )
+    required_pair = {"time", "pair", "score"}
+    required_pattern = {"pair", "auc", "peak_time", "peak_score"}
+    required_communication = {"time", "source", "target", "attention_per_source"}
+    if not required_pair.issubset(pair.columns):
+        raise KeyError("LR pair_timecourse.csv lacks the formal score columns.")
+    if not required_pattern.issubset(pattern.columns):
+        raise KeyError("LR pattern_summary.csv lacks the formal AUC columns.")
+    if not required_communication.issubset(communication.columns):
+        raise KeyError("Communication table lacks source/target attention columns.")
+    if pair.empty or pattern.empty or communication.empty or coverage.empty:
+        raise ValueError("LR/attention tables must be non-empty.")
+
+    output_dir.mkdir(parents=True, exist_ok=False)
+    top_pairs = (
+        pattern.sort_values(["auc", "pair"], ascending=[False, True], kind="stable")
+        .head(8)["pair"]
+        .astype(str)
+        .tolist()
+    )
+    selected = pair.loc[pair["pair"].astype(str).isin(top_pairs)].copy()
+    selected["pair"] = pd.Categorical(
+        selected["pair"].astype(str), categories=top_pairs, ordered=True
+    )
+    selected = selected.sort_values(["pair", "time"], kind="stable")
+    selected_path = output_dir / "top_lr_pair_timecourses.csv"
+    selected.to_csv(selected_path, index=False)
+
+    figure_paths: list[Path] = [selected_path]
+    with mpl.rc_context(
+        {
+            "font.family": "Arial",
+            "font.size": 8,
+            "axes.titlesize": 10,
+            "axes.labelsize": 9,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    ):
+        fig, ax = plt.subplots(figsize=(7.2, 4.0))
+        colors = mpl.colormaps["tab10"].resampled(len(top_pairs))
+        for index, lr_pair in enumerate(top_pairs):
+            group = selected.loc[selected["pair"].astype(str) == lr_pair]
+            ax.plot(
+                group["time"],
+                np.log1p(group["score"].to_numpy(float)),
+                marker="o",
+                markersize=3,
+                linewidth=1.25,
+                color=colors(index),
+                label=lr_pair.replace("_", "–"),
+            )
+        ax.set_xlabel("Processed developmental time")
+        ax.set_ylabel("log(1 + model-derived LR score)")
+        ax.set_xticks(TIME_POINTS)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.grid(False)
+        ax.legend(
+            bbox_to_anchor=(1.02, 1.0), loc="upper left", frameon=False, fontsize=7
+        )
+        ax.set_title("Top conserved-symbol ligand–receptor trajectories")
+        fig.tight_layout()
+        for extension in ("pdf", "png"):
+            path = output_dir / f"top_lr_pair_timecourses.{extension}"
+            fig.savefig(path, dpi=320, facecolor="white", bbox_inches="tight")
+            figure_paths.append(path)
+        plt.close(fig)
+
+        regions = sorted(
+            set(communication["source"].astype(str))
+            | set(communication["target"].astype(str))
+        )
+        selected_times = [
+            time
+            for time in DISPLAY_TIMES
+            if np.isclose(communication["time"].to_numpy(float), time, atol=1e-8).any()
+        ]
+        matrices: list[np.ndarray] = []
+        for time_value in selected_times:
+            frame = communication.loc[
+                np.isclose(communication["time"].to_numpy(float), time_value, atol=1e-8)
+            ]
+            matrix = (
+                frame.pivot_table(
+                    index="source",
+                    columns="target",
+                    values="attention_per_source",
+                    aggfunc="sum",
+                    fill_value=0.0,
+                )
+                .reindex(index=regions, columns=regions, fill_value=0.0)
+                .to_numpy(float)
+            )
+            matrices.append(np.log1p(matrix))
+        vmax = max(float(np.max(matrix)) for matrix in matrices)
+        fig, axes = plt.subplots(
+            1,
+            len(selected_times),
+            figsize=(3.1 * len(selected_times) + 1.0, 3.5),
+            squeeze=False,
+        )
+        image = None
+        for column, (time_value, matrix) in enumerate(
+            zip(selected_times, matrices, strict=True)
+        ):
+            ax = axes[0, column]
+            image = ax.imshow(matrix, cmap="magma", vmin=0.0, vmax=vmax, aspect="equal")
+            ax.set_title(f"t={time_value:g}")
+            ax.set_xticks(range(len(regions)), regions, rotation=90, fontsize=6)
+            if column == 0:
+                ax.set_yticks(range(len(regions)), regions, fontsize=6)
+                ax.set_ylabel("Sender anatomical region")
+            else:
+                ax.set_yticks([])
+            ax.set_xlabel("Receiver anatomical region")
+        assert image is not None
+        colorbar = fig.colorbar(
+            image, ax=axes.ravel().tolist(), fraction=0.025, pad=0.02
+        )
+        colorbar.set_label("log(1 + attention per source)")
+        fig.suptitle("Learned communication-attention evolution", fontweight="bold")
+        fig.subplots_adjust(left=0.12, right=0.93, top=0.83, bottom=0.30, wspace=0.10)
+        for extension in ("pdf", "png"):
+            path = output_dir / f"communication_attention_heatmaps.{extension}"
+            fig.savefig(path, dpi=320, facecolor="white", bbox_inches="tight")
+            figure_paths.append(path)
+        plt.close(fig)
+
+    coverage_summary = {
+        "database_pairs": int(coverage["n_lr_pairs_database"].iloc[0]),
+        "scored_complete_pairs": int(coverage["n_lr_pairs_scored"].iloc[0]),
+        "active_lr_features": int(coverage["n_active_lr_features"].iloc[0]),
+        "requested_lr_symbols": int(coverage["n_requested_lr_symbols"].iloc[0]),
+        "scope": "human CellChatDB conserved-symbol proxy; not species-complete",
+        "score_interpretation": "model-derived attention weighted by reconstructed expression",
+    }
+    coverage_path = output_dir / "lr_coverage_summary.json"
+    coverage_path.write_text(
+        json.dumps(coverage_summary, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    figure_paths.append(coverage_path)
+    return figure_paths
 
 
 def _save_comparison_grid(
@@ -311,6 +467,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     results_dir = output_dir / "perturbations"
     results_dir.mkdir(parents=True, exist_ok=False)
     generated_files: list[Path] = [classifier_path]
+    generated_files.extend(
+        _write_lr_attention_figures(
+            standard_downstream,
+            output_dir / "lr_attention",
+        )
+    )
     ablation_metrics: list[pd.DataFrame] = []
     composition_tables: list[pd.DataFrame] = []
 
@@ -454,6 +616,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                 "branch seed with the learned interaction force set to zero. These are ",
                 "single-seed model-sensitivity analyses, not causal knockouts or ",
                 "uncertainty estimates.",
+                "The LR and communication panels summarize model-derived attention ",
+                "and reconstructed-expression scores using the human CellChatDB ",
+                "conserved-symbol proxy; they are not direct ligand-flux measurements ",
+                "or a species-complete chicken interaction atlas.",
                 "",
             )
         ),

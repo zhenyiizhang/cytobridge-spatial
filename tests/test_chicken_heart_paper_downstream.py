@@ -71,6 +71,81 @@ def test_interaction_composition_rows_sum_to_one():
     }
 
 
+def test_lr_attention_renderer_uses_formal_tables(tmp_path):
+    downstream = tmp_path / "downstream"
+    lr = downstream / "ligand_receptor"
+    communication = downstream / "communication"
+    lr.mkdir(parents=True)
+    communication.mkdir()
+    pairs = [f"L{index}_R{index}" for index in range(9)]
+    pd.DataFrame(
+        [
+            {"time": time, "pair": pair, "score": float(index + time)}
+            for index, pair in enumerate(pairs)
+            for time in MODULE.TIME_POINTS
+        ]
+    ).to_csv(lr / "pair_timecourse.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "pair": pair,
+                "auc": float(index + 1),
+                "peak_time": 3.0,
+                "peak_score": float(index + 3),
+            }
+            for index, pair in enumerate(pairs)
+        ]
+    ).to_csv(lr / "pattern_summary.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "n_lr_pairs_database": 100,
+                "n_lr_pairs_scored": 9,
+                "n_active_lr_features": 20,
+                "n_requested_lr_symbols": 40,
+            }
+        ]
+    ).to_csv(lr / "coverage.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "time": time,
+                "source": source,
+                "target": target,
+                "attention_per_source": float(1 + int(source == target)),
+            }
+            for time in MODULE.DISPLAY_TIMES
+            for source in ("Atria", "Ventricle")
+            for target in ("Atria", "Ventricle")
+        ]
+    ).to_csv(communication / "communication_by_celltype.csv", index=False)
+
+    files = MODULE._write_lr_attention_figures(downstream, tmp_path / "figures")
+    assert len(files) == 6
+    assert all(path.is_file() for path in files)
+    selected = pd.read_csv(tmp_path / "figures" / "top_lr_pair_timecourses.csv")
+    assert selected["pair"].nunique() == 8
+
+
+def test_metric_summary_uses_public_ablation_w2_schema(tmp_path):
+    table = pd.DataFrame(
+        [
+            {
+                "variant": "remove_A",
+                "time": time,
+                "space": space,
+                "w2": 0.1 + time,
+                "centroid_shift": 0.2 + time,
+            }
+            for time in MODULE.TIME_POINTS
+            for space in ("joint", "spatial", "latent")
+        ]
+    )
+    output = tmp_path / "metric.pdf"
+    MODULE._plot_metric_summary(table, output, "test")
+    assert output.is_file()
+
+
 def test_output_root_must_be_new_or_empty(tmp_path):
     fresh = MODULE._require_empty_output(tmp_path / "fresh")
     assert fresh.is_dir()
