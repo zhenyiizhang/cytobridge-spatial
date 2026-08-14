@@ -216,6 +216,14 @@ class GNNInteraction(nn.Module):
 
 
 class GraphAttentionLayer(_MessagePassingBase):
+    # Inference can contain hundreds of thousands of accepted edges.  PyG's
+    # ordinary propagate path materializes every projected edge message at
+    # once, which exceeds 24 GB for the formal 1024-particle interaction
+    # groups.  Training deliberately keeps the historical path byte-for-byte;
+    # no-grad inference uses contiguous chunks and accumulates the identical
+    # weighted scatter-mean sufficient statistics.
+    inference_edge_chunk_size = 32_768
+
     def __init__(self, hidden_dim: int, num_heads: int, activation: str = "Tanh"):
         if MessagePassing is None:
             raise ImportError(
@@ -261,11 +269,27 @@ class GraphAttentionLayer(_MessagePassingBase):
         q = self.q_proj(x).reshape(-1, self.num_heads, self.head_dim)
         k = self.k_proj(x).reshape(-1, self.num_heads, self.head_dim)
         v = self.v_proj(x).reshape(-1, self.num_heads, self.head_dim)
-        dk = self.dk_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
-        dv = self.dv_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
         w = torch.exp(lnw) * lnw.shape[0]
 
         self.return_attn = return_attn
+        if not torch.is_grad_enabled() and int(edge_index.shape[1]) > int(
+            self.inference_edge_chunk_size
+        ):
+            return self._propagate_inference_chunks(
+                edge_index=edge_index,
+                q=q,
+                k=k,
+                v=v,
+                w=w,
+                x_orig=x_res,
+                edge_attr=edge_attr,
+                vec=vec,
+                edge_vec=edge_vec,
+                return_attn=return_attn,
+            )
+
+        dk = self.dk_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
+        dv = self.dv_proj(edge_attr).reshape(-1, self.num_heads, self.head_dim)
         x, vec_out = self.propagate(
             edge_index,
             q=q,
@@ -281,6 +305,73 @@ class GraphAttentionLayer(_MessagePassingBase):
             size=None,
         )
         return x, vec_out
+
+    def _propagate_inference_chunks(
+        self,
+        *,
+        edge_index,
+        q,
+        k,
+        v,
+        w,
+        x_orig,
+        edge_attr,
+        vec,
+        edge_vec,
+        return_attn: bool,
+    ):
+        """No-grad equivalent of ``propagate`` with bounded edge memory."""
+
+        if torch.is_grad_enabled():
+            raise RuntimeError(
+                "Chunked graph attention is inference-only; grad-enabled calls "
+                "must retain the historical MessagePassing path."
+            )
+        n_nodes = int(q.shape[0])
+        edge_count = int(edge_index.shape[1])
+        chunk_size = int(self.inference_edge_chunk_size)
+        if chunk_size <= 0:
+            raise ValueError("inference_edge_chunk_size must be > 0.")
+
+        x_sum = torch.zeros((n_nodes, self.hidden_dim), dtype=q.dtype, device=q.device)
+        vec_sum = torch.zeros(
+            (n_nodes, vec.shape[1], self.hidden_dim),
+            dtype=vec.dtype,
+            device=vec.device,
+        )
+        weight_sum = torch.zeros((n_nodes, 1), dtype=w.dtype, device=w.device)
+        attention_chunks = [] if return_attn else None
+
+        for start in range(0, edge_count, chunk_size):
+            stop = min(start + chunk_size, edge_count)
+            source = edge_index[0, start:stop]
+            target = edge_index[1, start:stop]
+            chunk_attr = edge_attr[start:stop]
+            dk = self.dk_proj(chunk_attr).reshape(-1, self.num_heads, self.head_dim)
+            dv = self.dv_proj(chunk_attr).reshape(-1, self.num_heads, self.head_dim)
+            x_message, vec_message, weight_message = self.message(
+                q_i=q[target],
+                k_j=k[source],
+                v_j=v[source],
+                vec_j=vec[source],
+                w_j=w[source],
+                x_orig_i=x_orig[target],
+                dk=dk,
+                dv=dv,
+                r_ij=chunk_attr,
+                d_ij=edge_vec[start:stop],
+            )
+            x_sum.index_add_(0, target, x_message)
+            vec_sum.index_add_(0, target, vec_message)
+            weight_sum.index_add_(0, target, weight_message)
+            if attention_chunks is not None:
+                attention_chunks.append(self.attn)
+
+        denominator = weight_sum.clone()
+        denominator[denominator == 0] = 1
+        if attention_chunks is not None:
+            self.attn = torch.cat(attention_chunks, dim=0)
+        return x_sum / denominator, vec_sum / denominator.unsqueeze(1)
 
     def message(self, q_i, k_j, v_j, vec_j, w_j, x_orig_i, dk, dv, r_ij, d_ij):
         attn = (q_i * k_j * dk).sum(dim=-1)
