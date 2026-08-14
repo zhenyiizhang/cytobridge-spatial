@@ -553,15 +553,24 @@ separate observed-reference mosaic with one figure-level cell-type legend.
 S23 exports the raw per-cell growth table and a
 3-by-2 observed-time grid; each time point is robust-scaled from its own 5th to
 95th percentiles for display, while the unscaled predictions remain in
-`growth_per_cell.csv`. S24 runs YSL and EVL separately. For each target, the
-baseline and target-excluded cohorts are independently sampled without
-replacement at equal initial particle count, use the same branch and dedicated
-interaction-grouping seeds, and keep particle count fixed by disabling learned
-growth resampling. Each target has its own un-clipped comparison grid and must
-pass the recorded latent-support audit before a publication panel is emitted.
-These are single-seed model sensitivities, not absolute tissue-mass deletion or
-causal knockout estimates. The former unequal-N EVL branch with learned growth
-resampling is retained only as an OOD diagnostic and must not be reused.
+`growth_per_cell.csv`. S24 runs YSL and EVL separately under the
+`preterminal_t3_sigma0` protocol. For each target, the baseline and
+target-excluded cohorts are independently sampled without replacement at equal
+initial particle count and propagated once from `t=0` through observed `t=3`.
+The protocol hard-codes `sigma=0`, `dt=resample_dt=0.005`,
+`growth_alpha=0`, and `interaction_m=1024`; it does not inherit the CLI SDE
+sigma or integration step. Learned velocity drift, score-gradient correction,
+and interactions are retained. Brownian diffusion and growth-driven
+birth/extinction are disabled. A shared explicit interaction-grouping seed
+provides deterministic replay, not cell-ID-matched stochastic increments. All
+four baseline/exclusion branches must pass the unchanged latent-support audit
+before either un-clipped comparison grid is emitted. Publication snapshots are
+`t=0,1,2,3`. The preterminal protocol is defined through observed `t=3`;
+terminal `t=4` is not evaluated or claimed. These are single-seed conditional
+spatial sensitivities, not terminal or full joint-state terminal evidence,
+stochastic forecasts, absolute tissue-mass deletion, or causal knockout
+estimates. The former unequal-N EVL branch with learned growth resampling is
+retained only as an OOD diagnostic and must not be reused.
 
 S25 follows the manuscript wording "observed and interpolated time points":
 integer stages use the actual observed cells and annotations, while half-time
@@ -624,10 +633,12 @@ reproducing the legacy figure. The neighbor-continuity table remains a
 measurement-source diagnostic, not proof that the biological dynamics or
 communication matrix should be linear in time.
 
-Virtual-ablation branches reset to the same branch-level seed for manuscript
-parity, but removing cells changes tensor shape and row order. The random
-increments are therefore not matched by cell ID; use multiple seeds and report
-uncertainty for inferential use beyond the single-seed manuscript reproduction.
+The S24 publication protocol has no Brownian random increments because
+`sigma=0`. Its equal branch-level seed and explicit interaction-grouping seed
+are recorded for deterministic replay of independently sampled equal-N
+cohorts, not as cell-ID matching or inferential uncertainty. Use multiple
+cohort seeds and report uncertainty for inference beyond this single-seed
+conditional sensitivity.
 
 S25 globally orders the top temporal-variance genes once, then lays that order
 out as two contiguous 125-gene blocks with one shared z-score scale. The split

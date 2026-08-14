@@ -971,6 +971,9 @@ def test_s22_stage_manifest_contract_is_global_t0_and_reference_only(
     )
     assert captured["observed_integer_frames"] == "separate_reference_only"
     assert captured["simulation_grid"] == list(runner.HALF_TIMES)
+    assert captured["simulation_grid"][0] == 0.0
+    assert captured["simulation_grid"][-1] == 4.0
+    assert captured["sigma"] == pytest.approx(0.03)
     assert captured["downstream_state_contract"]["implicit_s22_reuse"] is False
     assert captured["population_mode"] == "fixed_population_state_transport"
     assert captured["growth_alpha"] == 0.0
@@ -1155,6 +1158,7 @@ def test_interpolation_separates_global_t0_and_interval_local_contracts(
     assert captured["split_sde_piecewise_include_end"] is False
     assert captured["split_daughter_noise_std"] == 0.0
     assert captured["split_growth_alpha"] == 0.0
+    assert captured["split_sigma_scalar"] == pytest.approx(0.03)
     assert captured["piecewise_observed_sample_mode"] == "t0_fixed"
     assert captured["spatial_warp_to_observed"] is False
     assert captured["spatial_warp_to_observed_piecewise"] is False
@@ -1289,8 +1293,9 @@ def test_trajectory_support_audit_is_pure_and_publication_guard_fails_ood():
     )
 
 
-def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize("support_gate_fails", [False, True])
+def test_s24_stage_runs_preterminal_t3_sigma0_spatial_protocol(
+    tmp_path, monkeypatch, support_gate_fails
 ):
     labels = [
         "Yolk Syncytial Layer",
@@ -1322,6 +1327,10 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
             str(tmp_path),
             "--profile",
             "smoke",
+            "--sde-dt",
+            "0.123",
+            "--sde-sigma",
+            "0.17",
             "--force",
         ]
     )
@@ -1357,7 +1366,7 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
         calls.append(kwargs)
         variant = next(iter(kwargs["ablations"]))
         n_points = 4
-        frames = tuple(
+        frames = [
             np.column_stack(
                 (
                     np.zeros((n_points, 2), dtype=np.float32),
@@ -1366,7 +1375,11 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
                 )
             ).astype(np.float32)
             for index in range(len(kwargs["time_points"]))
-        )
+        ]
+        if support_gate_fails and variant == "remove_EVL":
+            frames[-1] = frames[-1].copy()
+            frames[-1][0, 2] = 30.0
+        frames = tuple(frames)
         labels_by_time = tuple(
             np.asarray(["A"] * n_points) for _ in kwargs["time_points"]
         )
@@ -1376,16 +1389,28 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
         artifact.write_bytes(b"result")
         return SimpleNamespace(
             initial_obs_names=tuple(f"cell_{index}" for index in range(n_points)),
+            time_points=tuple(kwargs["time_points"]),
             baseline_points=frames,
             ablation_points={variant: tuple(frame.copy() for frame in frames)},
             baseline_labels=labels_by_time,
             ablation_labels={variant: labels_by_time},
-            metrics=runner.pd.DataFrame(
-                {"variant": [variant], "time": [4.0], "w2": [0.0]}
+            metrics=runner.pd.DataFrame.from_records(
+                {
+                    "variant": variant,
+                    "time": float(time_value),
+                    "space": space,
+                    "w2": 0.0,
+                }
+                for time_value in kwargs["time_points"]
+                for space in ("joint", "spatial")
             ),
             files=(artifact,),
             settings={
                 "mass_control": kwargs["mass_control"],
+                "dt": kwargs["dt"],
+                "resample_dt": kwargs["resample_dt"],
+                "sigma": kwargs["sigma"],
+                "sigma_by_dim": None,
                 "growth_alpha": kwargs["growth_alpha"],
                 "interaction_m": kwargs["interaction_m"],
                 "interaction_seed": kwargs["interaction_seed"],
@@ -1397,15 +1422,56 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
             },
         )
 
+    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
+    rc_keys = (
+        "font.family",
+        "font.size",
+        "axes.titlesize",
+        "axes.labelsize",
+        "xtick.labelsize",
+        "ytick.labelsize",
+        "legend.fontsize",
+        "pdf.fonttype",
+        "ps.fonttype",
+    )
+
+    def rc_snapshot():
+        return {
+            key: tuple(value) if isinstance(value, list) else value
+            for key in rc_keys
+            for value in (mpl.rcParams[key],)
+        }
+
+    rc_before = rc_snapshot()
+
+    plot_calls = []
+    plot_rc_snapshots = []
+
     def fake_grid(**kwargs):
+        plot_calls.append(kwargs)
+        plot_rc_snapshots.append(rc_snapshot())
         Path(kwargs["out_path"]).write_bytes(b"figure")
         return plt.figure()
 
     monkeypatch.setattr(runner, "_ablation_classifier", fake_classifier)
     monkeypatch.setattr(runner.cb.tl, "run_virtual_cell_type_ablation", fake_ablation)
     monkeypatch.setattr(runner.cb.pl, "plot_trajectory_comparison_grid", fake_grid)
+
+    if support_gate_fails:
+        with pytest.raises(RuntimeError, match="publication latent-support gate"):
+            runner._stage_ablation(context)
+        assert len(calls) == 2
+        assert plot_calls == []
+        assert rc_snapshot() == rc_before
+        assert (
+            tmp_path
+            / "ablation"
+            / "S24_preterminal_t3_sigma0_trajectory_support_audit.csv"
+        ).is_file()
+        assert not list((tmp_path / "ablation").glob("S24_*_grid.*"))
+        return
 
     manifest = runner._stage_ablation(context)
     assert len(calls) == 2
@@ -1414,16 +1480,29 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
         {"remove_EVL": ["EVL"]},
     ]
     for call in calls:
+        assert call["time_points"] == [0.0, 1.0, 2.0, 3.0]
+        assert 4.0 not in call["time_points"]
         assert call["mass_control"] is True
         assert call["growth_alpha"] == 0.0
+        assert call["sigma"] == 0.0
         assert call["common_random_seed"] is True
         assert call["random_seed"] == 42
         assert call["interaction_seed"] == 10043
         assert call["interaction_m"] == 1024
-        assert call["resample_dt"] == call["dt"] == 0.05
+        assert call["resample_dt"] == call["dt"] == 0.005
         assert call["save_snapshots"] is False
 
     settings = manifest["settings"]
+    assert settings["publication_protocol"] == "preterminal_t3_sigma0"
+    assert settings["time_points"] == [0.0, 1.0, 2.0, 3.0]
+    assert settings["publication_snapshot_times"] == [0.0, 1.0, 2.0, 3.0]
+    assert settings["dt"] == settings["split_resample_dt"] == 0.005
+    assert settings["sigma"] == 0.0
+    assert settings["s24_fixed_numerics"] == {
+        "source": "hard-coded publication protocol; CLI SDE values do not apply",
+        "cli_sde_dt": 0.123,
+        "cli_sde_sigma": 0.17,
+    }
     assert settings["mass_control"] is True
     assert settings["growth_alpha"] == 0.0
     assert settings["interaction_seed"] == 10043
@@ -1431,23 +1510,124 @@ def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
         "superseded_diagnostic_only"
     )
     assert settings["superseded_legacy_result"]["reused"] is False
+    assert settings["terminal_t4_scope"]["included"] is False
+    assert settings["terminal_t4_scope"]["evaluated"] is False
+    assert settings["terminal_t4_scope"]["claimed"] is False
+    assert "t=4 is not evaluated or claimed" in settings["terminal_t4_scope"]["reason"]
+    assert "binding_to_external_failed_run" not in settings["terminal_t4_scope"]
+    assert settings["trajectory_support_audit"][
+        "maximum_fraction_outside_observed_max"
+    ] == pytest.approx(0.01)
+    assert settings["trajectory_support_audit"][
+        "maximum_generated_norm_multiplier"
+    ] == pytest.approx(2.0)
     assert manifest["details"]["matched_initial_particle_counts"] == {
         "YSL": 4,
         "EVL": 4,
     }
     assert manifest["details"]["trajectory_support_audit"]["status"] == "PASS"
+    assert manifest["details"]["trajectory_support_audit"]["n_frames"] == 16
+    assert manifest["details"]["publication_protocol"] == "preterminal_t3_sigma0"
+    assert manifest["details"]["end_time"] == 3.0
+    assert manifest["details"]["sigma"] == 0.0
 
     expected = [
-        tmp_path / "ablation" / f"S24_{target}_matched_fixed_population_grid.{ext}"
+        tmp_path / "ablation" / f"S24_{target}_preterminal_t3_sigma0_grid.{ext}"
         for target in ("YSL", "EVL")
         for ext in ("pdf", "png")
     ]
     assert all(path.is_file() for path in expected)
+    assert len(plot_calls) == 4
+    assert all(
+        call["selected_times"] == runner.S24_PUBLICATION_TIMES for call in plot_calls
+    )
+    assert all("through t=3" in call["title"] for call in plot_calls)
+    expected_plot_rc = {
+        "font.family": ("Arial",),
+        "font.size": 9.0,
+        "axes.titlesize": 9.0,
+        "axes.labelsize": 9.0,
+        "xtick.labelsize": 9.0,
+        "ytick.labelsize": 9.0,
+        "legend.fontsize": 9.0,
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+    }
+    assert plot_rc_snapshots == [expected_plot_rc] * 4
+    assert rc_snapshot() == rc_before
     assert not (tmp_path / "ablation" / "S24_virtual_ablation_grid.pdf").exists()
     captions = json.loads(
-        (tmp_path / "ablation" / "S24_panel_captions.json").read_text(encoding="utf-8")
+        (
+            tmp_path / "ablation" / "S24_preterminal_t3_sigma0_panel_captions.json"
+        ).read_text(encoding="utf-8")
     )
     assert all(
-        "not total-mass deletion or a causal knockout" in value
+        "preterminal_t3_sigma0" in value
+        and "not a stochastic forecast" in value
+        and "causal knockout" in value
+        and "full joint-state terminal result" in value
+        and "Terminal t=4 is not evaluated or claimed" in value
         for value in captions.values()
     )
+    for target in ("YSL", "EVL"):
+        metrics = runner.pd.read_csv(
+            tmp_path / "ablation" / f"S24_{target}_preterminal_t3_sigma0_metrics.csv"
+        )
+        assert set(metrics["space"]) == {"spatial"}
+        assert metrics["time"].max() == 3.0
+        assert 4.0 not in set(metrics["time"])
+
+
+@pytest.mark.parametrize(
+    ("protocol_drift", "error_match"),
+    [
+        ("sigma", "did not use sigma=0"),
+        ("dt", "did not use dt=resample_dt"),
+        ("resample_dt", "did not use dt=resample_dt"),
+        ("end_time", "wrong output-time grid"),
+        ("fixed_n", "changed particle count"),
+    ],
+)
+def test_s24_result_validator_rejects_protocol_drift(protocol_drift, error_match):
+    variant = "remove_EVL"
+    n_points = 4
+    frame = np.zeros((n_points, 4), dtype=np.float32)
+    frames = tuple(frame.copy() for _ in runner.S24_PUBLICATION_TIMES)
+    result = SimpleNamespace(
+        initial_obs_names=tuple(f"cell_{index}" for index in range(n_points)),
+        time_points=runner.S24_PUBLICATION_TIMES,
+        baseline_points=frames,
+        ablation_points={variant: tuple(value.copy() for value in frames)},
+        settings={
+            "mass_control": True,
+            "dt": runner.S24_FIXED_DT,
+            "resample_dt": runner.S24_FIXED_DT,
+            "sigma": runner.S24_FIXED_SIGMA,
+            "sigma_by_dim": None,
+            "growth_alpha": runner.S24_FIXED_GROWTH_ALPHA,
+            "interaction_m": runner.S24_INTERACTION_M,
+            "interaction_seed": 10043,
+            "variant_initial_counts": {variant: n_points},
+            "simulation_seeds": {"baseline": 42, variant: 42},
+        },
+    )
+    if protocol_drift == "sigma":
+        result.settings["sigma"] = 0.03
+    elif protocol_drift == "dt":
+        result.settings["dt"] = 0.01
+    elif protocol_drift == "resample_dt":
+        result.settings["resample_dt"] = 0.01
+    elif protocol_drift == "end_time":
+        result.time_points = (0.0, 1.0, 2.0, 4.0)
+    elif protocol_drift == "fixed_n":
+        result.baseline_points = (*frames[:-1], frame[:-1].copy())
+
+    with pytest.raises(RuntimeError, match=error_match):
+        runner._require_s24_preterminal_t3_sigma0_result(
+            result,
+            variant=variant,
+            time_points=runner.S24_PUBLICATION_TIMES,
+            random_seed=42,
+            interaction_seed=10043,
+            interaction_m=runner.S24_INTERACTION_M,
+        )

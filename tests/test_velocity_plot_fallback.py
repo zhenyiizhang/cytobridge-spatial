@@ -91,6 +91,72 @@ def test_direct_spatial_velocity_skips_transition_reprojection(
     assert result.uns["velocity_plot_render"] == "scvelo_stream_vector"
 
 
+def test_stream_plot_uses_local_vector_publication_style(tmp_path, monkeypatch) -> None:
+    import matplotlib as mpl
+    import scvelo as scv
+
+    captured = {}
+
+    def fake_stream(*args, ax=None, **kwargs):
+        captured["rasterized"] = kwargs.get("rasterized")
+        captured["font_family"] = tuple(mpl.rcParams["font.family"])
+        captured["font_size"] = mpl.rcParams["font.size"]
+        captured["title_size"] = mpl.rcParams["axes.titlesize"]
+        captured["label_size"] = mpl.rcParams["axes.labelsize"]
+        captured["xtick_size"] = mpl.rcParams["xtick.labelsize"]
+        captured["ytick_size"] = mpl.rcParams["ytick.labelsize"]
+        captured["legend_size"] = mpl.rcParams["legend.fontsize"]
+        captured["pdf_fonttype"] = mpl.rcParams["pdf.fonttype"]
+        captured["ps_fonttype"] = mpl.rcParams["ps.fonttype"]
+        ax.plot([0.0, 1.0], [0.0, 1.0], color="black")
+
+    monkeypatch.setattr(scv.pl, "velocity_embedding_stream", fake_stream)
+
+    tracked_keys = (
+        "font.family",
+        "font.sans-serif",
+        "font.size",
+        "axes.titlesize",
+        "axes.labelsize",
+        "xtick.labelsize",
+        "ytick.labelsize",
+        "legend.fontsize",
+        "pdf.fonttype",
+        "ps.fonttype",
+        "figure.facecolor",
+        "axes.facecolor",
+        "savefig.facecolor",
+        "savefig.transparent",
+    )
+    before = {key: mpl.rcParams[key] for key in tracked_keys}
+
+    rng = np.random.default_rng(11)
+    coords = rng.normal(size=(96, 2))
+    velocity = rng.normal(scale=0.05, size=(96, 2))
+    output = tmp_path / "publication-style.pdf"
+    plot_velocity_component(
+        coords=coords,
+        velocity=velocity,
+        feature_matrix=None,
+        out_path=str(output),
+    )
+
+    assert output.is_file()
+    assert captured == {
+        "rasterized": False,
+        "font_family": ("Arial",),
+        "font_size": 9.0,
+        "title_size": 9.0,
+        "label_size": 9.0,
+        "xtick_size": 9.0,
+        "ytick_size": 9.0,
+        "legend_size": 9.0,
+        "pdf_fonttype": 42,
+        "ps_fonttype": 42,
+    }
+    assert {key: mpl.rcParams[key] for key in tracked_keys} == before
+
+
 def test_nonfinite_streamline_linewidth_is_sanitized_before_pdf_save(
     tmp_path, monkeypatch
 ) -> None:

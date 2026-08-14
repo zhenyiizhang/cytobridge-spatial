@@ -25,10 +25,13 @@
   constant N and explicit non-abundance/non-reconstruction labeling, while
   S25/communication remain growth-enabled, interval-local, and
   observed-anchored;
-- replaced the unstable unequal-N, growth-resampling S24 EVL panel with
-  target-specific equal-N fixed-population YSL/EVL sensitivities, an independent
-  interaction-grouping random stream, and a publication-blocking latent-support
-  audit;
+- replaced the unstable unequal-N, growth-resampling S24 EVL panel with the
+  `preterminal_t3_sigma0` protocol: target-specific equal-N deterministic
+  spatial sensitivities through observed `t=3`, fixed
+  `dt=resample_dt=0.005`, and a publication-blocking four-branch latent-support
+  audit. The protocol is defined through observed `t=3`; terminal `t=4` is not
+  evaluated or claimed, and stochastic-forecast and causal interpretations are
+  explicitly out of scope;
 - corrected the model-derived velocity renderer so direct 2D fields are not
   projected twice and scVelo's one-component NaN grid mask cannot erase finite
   vector streamlines in PDF output;

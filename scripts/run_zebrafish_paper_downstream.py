@@ -17,9 +17,12 @@ The manuscript stages use two explicitly separated state contracts:
   for now: observed cells at integer times and interval-local generated cells
   at intermediate times.  They do not implicitly consume the S22 global-t0
   bundle, because doing so would silently change their scientific estimand.
-* S24 uses separate YSL- and EVL-excluded, equal-N, fixed-population global-t0
-  cohorts.  It is a model-sensitivity analysis, not total-mass deletion, a
-  causal knockout, canonical reconstruction evidence, or a lineage analysis.
+* S24 uses separate YSL- and EVL-excluded, equal-N, deterministic
+  fixed-population global-t0 cohorts through observed t=3.  Diffusion and
+  learned growth are disabled while drift, score, and interaction remain
+  active.  It is a preterminal spatial model-sensitivity analysis, not
+  terminal t=4 evidence, total-mass deletion, a causal knockout, canonical
+  reconstruction evidence, or a lineage analysis.
 * Communication uses a hybrid state population: observed cells at integer
   times and interval-local generated cells at intermediate times. This
   state-source choice is separate from the LR expression measurement policy.
@@ -109,6 +112,11 @@ S25_COMMUNICATION_TRAJECTORY_SCOPE = (
 )
 S22_MOSAIC_COLUMNS = 3
 S25_HEATMAP_COLUMNS = 2
+S24_PROTOCOL = "preterminal_t3_sigma0"
+S24_END_TIME = 3.0
+S24_PUBLICATION_TIMES = (0.0, 1.0, 2.0, 3.0)
+S24_FIXED_DT = 0.005
+S24_FIXED_SIGMA = 0.0
 S24_FIXED_GROWTH_ALPHA = 0.0
 S24_INTERACTION_M = 1024
 S24_INTERACTION_SEED_OFFSET = 10_001
@@ -2017,19 +2025,41 @@ def _require_trajectory_support_audit_pass(
     )
 
 
-def _require_s24_fixed_population_result(
+def _require_s24_preterminal_t3_sigma0_result(
     result,
     *,
     variant: str,
+    time_points: Sequence[float],
     random_seed: int,
     interaction_seed: int,
     interaction_m: int,
 ) -> int:
-    """Validate the equal-N, fixed-population, common-stream S24 contract."""
+    """Validate the deterministic preterminal spatial-sensitivity contract."""
 
     matched_n = int(len(result.initial_obs_names))
     if matched_n <= 0:
         raise RuntimeError(f"S24 {variant} returned an empty matched cohort.")
+    expected_times = tuple(float(value) for value in time_points)
+    actual_times = tuple(float(value) for value in result.time_points)
+    if len(actual_times) != len(expected_times) or not np.allclose(
+        actual_times,
+        expected_times,
+        rtol=0.0,
+        atol=1e-10,
+    ):
+        raise RuntimeError(
+            f"S24 {variant} returned the wrong output-time grid: "
+            f"expected={expected_times}, actual={actual_times}."
+        )
+    if (
+        not actual_times
+        or not np.isclose(actual_times[0], 0.0, rtol=0.0, atol=1e-10)
+        or not np.isclose(actual_times[-1], S24_END_TIME, rtol=0.0, atol=1e-10)
+    ):
+        raise RuntimeError(
+            f"S24 {variant} must run globally from t=0 through preterminal "
+            f"t={S24_END_TIME:g}, not from a re-anchor or to a terminal endpoint."
+        )
     settings = result.settings
     variant_counts = settings.get("variant_initial_counts", {})
     variant_n = int(variant_counts.get(variant, -1))
@@ -2040,6 +2070,32 @@ def _require_s24_fixed_population_result(
         )
     if settings.get("mass_control") is not True:
         raise RuntimeError(f"S24 {variant} did not use mass_control=True.")
+    if not np.isclose(
+        float(settings.get("dt", np.nan)),
+        S24_FIXED_DT,
+        rtol=0.0,
+        atol=0.0,
+    ) or not np.isclose(
+        float(settings.get("resample_dt", np.nan)),
+        S24_FIXED_DT,
+        rtol=0.0,
+        atol=0.0,
+    ):
+        raise RuntimeError(
+            f"S24 {variant} did not use dt=resample_dt={S24_FIXED_DT:g}."
+        )
+    if not np.isclose(
+        float(settings.get("sigma", np.nan)),
+        S24_FIXED_SIGMA,
+        rtol=0.0,
+        atol=0.0,
+    ):
+        raise RuntimeError(f"S24 {variant} did not use sigma=0.")
+    sigma_by_dim = settings.get("sigma_by_dim")
+    if sigma_by_dim is not None and not np.all(
+        np.asarray(sigma_by_dim, dtype=np.float64) == S24_FIXED_SIGMA
+    ):
+        raise RuntimeError(f"S24 {variant} used nonzero dimension-wise diffusion.")
     if not np.isclose(
         float(settings.get("growth_alpha", np.nan)),
         S24_FIXED_GROWTH_ALPHA,
@@ -2056,7 +2112,7 @@ def _require_s24_fixed_population_result(
         seeds.get(variant, -1)
     ) != int(random_seed):
         raise RuntimeError(
-            f"S24 {variant} did not use the same branch-level common random seed."
+            f"S24 {variant} did not use the same deterministic replay seed."
         )
     if int(interaction_m) <= matched_n:
         raise RuntimeError(
@@ -2070,6 +2126,13 @@ def _require_s24_fixed_population_result(
     ablation_counts = [
         int(np.asarray(frame).shape[0]) for frame in result.ablation_points[variant]
     ]
+    if len(baseline_counts) != len(expected_times) or len(ablation_counts) != len(
+        expected_times
+    ):
+        raise RuntimeError(
+            f"S24 {variant} did not return one fixed-population frame per "
+            "requested preterminal output time."
+        )
     if any(count != matched_n for count in baseline_counts + ablation_counts):
         raise RuntimeError(
             f"S24 {variant} changed particle count despite fixed-population "
@@ -2080,7 +2143,7 @@ def _require_s24_fixed_population_result(
 
 def _stage_ablation(ctx: RunContext) -> dict[str, object]:
     step = 1.0 if ctx.args.profile == "smoke" else float(ctx.args.ablation_step)
-    time_points = _time_grid(0.0, 4.0, step)
+    time_points = _time_grid(0.0, S24_END_TIME, step)
     interaction_seed = int(ctx.args.random_seed) + S24_INTERACTION_SEED_OFFSET
     experiments = (
         {
@@ -2098,24 +2161,43 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
     )
     settings = {
         "time_points": time_points,
+        "output_step": step,
+        "publication_snapshot_times": list(S24_PUBLICATION_TIMES),
         "simulation": (
-            "two target-specific global-t0 matched equal-N fixed-population model "
-            "sensitivities; each branch is initialized once at t=0 and propagated "
-            "continuously through t=4 with no re-anchoring or spatial warp"
+            "two target-specific global-t0 deterministic matched equal-N "
+            "fixed-population spatial sensitivities; each branch is initialized "
+            "once at t=0 and propagated continuously through preterminal t=3 with "
+            "no re-anchoring or spatial warp"
         ),
         "canonical_reconstruction": False,
-        "publication_protocol": (
-            "target_specific_matched_equal_n_fixed_population_sensitivity"
+        "publication_protocol": S24_PROTOCOL,
+        "counterfactual_scope": (
+            "global_t0_preterminal_t3_deterministic_spatial_sensitivity"
         ),
-        "counterfactual_scope": "global_t0_cohort_exclusion_model_sensitivity",
         "interpretation": (
-            "model sensitivity to a target-excluded initial cohort; not total-mass "
-            "deletion, a causal knockout, lineage evidence, or an uncertainty estimate"
+            "conditional spatial model sensitivity to a target-excluded initial "
+            "cohort through observed t=3; not total-mass deletion, a causal knockout, "
+            "a stochastic forecast, terminal t=4 evidence, full joint-state terminal "
+            "evidence, lineage evidence, or an uncertainty estimate"
         ),
-        "dt": float(ctx.args.sde_dt),
-        "split_resample_dt": float(ctx.args.sde_dt),
-        "sigma": float(ctx.args.sde_sigma),
+        "dt": S24_FIXED_DT,
+        "split_resample_dt": S24_FIXED_DT,
+        "sigma": S24_FIXED_SIGMA,
+        "s24_fixed_numerics": {
+            "source": "hard-coded publication protocol; CLI SDE values do not apply",
+            "cli_sde_dt": float(ctx.args.sde_dt),
+            "cli_sde_sigma": float(ctx.args.sde_sigma),
+        },
         "growth_alpha": S24_FIXED_GROWTH_ALPHA,
+        "dynamics_retained": [
+            "learned_velocity_drift",
+            "score_gradient_correction",
+            "learned_interaction",
+        ],
+        "dynamics_disabled": [
+            "stochastic_diffusion",
+            "growth_driven_birth_extinction",
+        ],
         "growth_resampling": (
             "disabled for publication analysis; particle count must remain fixed"
         ),
@@ -2142,8 +2224,8 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             "cross_target_axis_sharing": False,
             "outlier_clipping_or_removal": False,
             "semantics": (
-                "matched equal-N fixed-population model sensitivity; not total-mass "
-                "deletion or a causal knockout"
+                "preterminal t=3, sigma=0 matched equal-N fixed-population spatial "
+                "model sensitivity; not terminal or causal evidence"
             ),
         },
         "max_particles": int(ctx.args.sde_max_particles),
@@ -2161,6 +2243,12 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             "nonfinite_allowed": False,
             "maximum_fraction_outside_observed_max": (S24_SUPPORT_MAX_OUTSIDE_FRACTION),
             "maximum_generated_norm_multiplier": S24_SUPPORT_MAX_NORM_MULTIPLIER,
+            "required_conditions": [
+                "YSL_matched_baseline",
+                "YSL_remove_YSL",
+                "EVL_matched_baseline",
+                "EVL_remove_EVL",
+            ],
             "publication_stage_fails_on_violation": True,
         },
         "classifier": {
@@ -2176,10 +2264,20 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             "knn_neighbors": 10,
         },
         "random_stream_coupling": (
-            "same branch-level SDE seed and explicit interaction-grouping seed for "
-            "baseline and target-excluded equal-shape tensors; Brownian rows are "
-            "coupled by row order, not cell identity; single-seed sensitivity"
+            "Brownian diffusion is disabled at sigma=0. The same branch-level seed "
+            "is retained for deterministic replay of independently sampled equal-N "
+            "cohorts, and the explicit interaction-grouping seed is shared across "
+            "baseline and target-excluded branches; single-seed conditional sensitivity"
         ),
+        "terminal_t4_scope": {
+            "included": False,
+            "evaluated": False,
+            "claimed": False,
+            "reason": (
+                "the preterminal protocol is defined through observed t=3; "
+                "t=4 is not evaluated or claimed"
+            ),
+        },
         "superseded_legacy_result": {
             "description": (
                 "combined unequal-N YSL/EVL virtual-removal run with learned "
@@ -2197,6 +2295,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
     }
 
     def action(stage_dir: Path):
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
 
         if ctx.args.profile == "full":
@@ -2238,16 +2337,16 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
                 ctx.runtime,
                 ablations={variant: [str(spec["label"])]},
                 time_points=time_points,
-                output_dir=stage_dir / f"experiment_{target}",
+                output_dir=stage_dir / f"experiment_{target}_{S24_PROTOCOL}",
                 time_index=0,
                 n_samples=(
                     int(ctx.args.smoke_n_samples)
                     if ctx.args.profile == "smoke"
                     else None
                 ),
-                dt=float(ctx.args.sde_dt),
-                resample_dt=float(ctx.args.sde_dt),
-                sigma=float(ctx.args.sde_sigma),
+                dt=S24_FIXED_DT,
+                resample_dt=S24_FIXED_DT,
+                sigma=S24_FIXED_SIGMA,
                 growth_alpha=S24_FIXED_GROWTH_ALPHA,
                 interaction_m=S24_INTERACTION_M,
                 interaction_seed=interaction_seed,
@@ -2268,9 +2367,10 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
                 label_to_color=ctx.label_to_color,
                 verbose=True,
             )
-            matched_n = _require_s24_fixed_population_result(
+            matched_n = _require_s24_preterminal_t3_sigma0_result(
                 result,
                 variant=variant,
+                time_points=time_points,
                 random_seed=int(ctx.args.random_seed),
                 interaction_seed=interaction_seed,
                 interaction_m=S24_INTERACTION_M,
@@ -2286,10 +2386,21 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             matched_counts[target] = matched_n
             outputs.extend(Path(path) for path in result.files)
 
-            metrics_path = (
-                stage_dir / f"S24_{target}_matched_fixed_population_metrics.csv"
-            )
-            result.metrics.to_csv(metrics_path, index=False)
+            if "space" not in result.metrics.columns:
+                raise RuntimeError(
+                    f"S24 {target} metrics do not declare a feature-space scope."
+                )
+            spatial_metrics = result.metrics.loc[
+                result.metrics["space"].astype(str).eq("spatial")
+            ].copy()
+            if spatial_metrics.empty or spatial_metrics["time"].astype(float).max() > (
+                S24_END_TIME + 1e-10
+            ):
+                raise RuntimeError(
+                    f"S24 {target} did not return preterminal spatial metrics."
+                )
+            metrics_path = stage_dir / f"S24_{target}_{S24_PROTOCOL}_metrics.csv"
+            spatial_metrics.to_csv(metrics_path, index=False)
             outputs.append(metrics_path)
             publication_metrics[target] = str(metrics_path)
             support_trajectories[f"{target}_matched_baseline"] = result.baseline_points
@@ -2305,15 +2416,19 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             max_outside_fraction=S24_SUPPORT_MAX_OUTSIDE_FRACTION,
             max_norm_multiplier=S24_SUPPORT_MAX_NORM_MULTIPLIER,
         )
-        audit_path = stage_dir / "S24_trajectory_support_audit.csv"
+        audit_path = stage_dir / f"S24_{S24_PROTOCOL}_trajectory_support_audit.csv"
         audit.to_csv(audit_path, index=False)
-        audit_summary_path = stage_dir / "S24_trajectory_support_audit.json"
+        audit_summary_path = (
+            stage_dir / f"S24_{S24_PROTOCOL}_trajectory_support_audit.json"
+        )
         audit_summary_path.write_text(
             json.dumps(_json_ready(audit_summary), indent=2, sort_keys=True),
             encoding="utf-8",
         )
         outputs.extend([audit_path, audit_summary_path])
-        _require_trajectory_support_audit_pass(audit_summary, stage="S24")
+        _require_trajectory_support_audit_pass(
+            audit_summary, stage=f"S24 {S24_PROTOCOL}"
+        )
 
         captions: dict[str, str] = {}
         publication_grids: dict[str, list[str]] = {}
@@ -2336,44 +2451,58 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
                 "baseline": f"{target}-matched baseline (N={matched_n})",
                 variant: f"{target}-excluded matched cohort (N={matched_n})",
             }
-            title = (
-                f"{target}-excluded equal-N fixed-population model sensitivity "
-                "from t=0"
-            )
+            title = f"{target}-excluded spatial sensitivity through t=3 " "(sigma=0)"
             captions[target] = (
-                f"Independent no-replacement baseline and {target}-excluded t=0 "
-                f"cohorts were matched at N={matched_n} and propagated continuously "
-                "from t=0 to t=4 with the same branch and interaction-grouping "
-                "random seeds. Learned growth was disabled. This is a model "
-                "sensitivity analysis, not total-mass deletion or a causal knockout."
+                f"The {S24_PROTOCOL} panel compares independently sampled baseline "
+                f"and {target}-excluded t=0 cohorts matched at N={matched_n}. Both "
+                "cohorts were propagated continuously from t=0 through observed t=3 "
+                f"with dt={S24_FIXED_DT:g}, sigma=0, no growth-driven resampling, no "
+                "re-anchoring, and no spatial warp. Learned velocity drift, "
+                "score-gradient correction, and interactions were retained. Brownian "
+                "diffusion was disabled, and one explicit interaction-grouping seed "
+                "was shared for deterministic replay. This is a conditional spatial "
+                "model sensitivity, not a stochastic forecast, total-mass deletion, "
+                "causal knockout, or full joint-state terminal result. Terminal t=4 "
+                "is not evaluated or claimed because this preterminal protocol is "
+                "defined through observed t=3."
             )
             publication_grids[target] = []
             for extension in ("pdf", "png"):
-                path = (
-                    stage_dir
-                    / f"S24_{target}_matched_fixed_population_grid.{extension}"
-                )
-                figure = cb.pl.plot_trajectory_comparison_grid(
-                    trajectories=comparison_trajectories,
-                    time_values=time_points,
-                    labels_by_condition=comparison_labels,
-                    label_to_color=ctx.label_to_color,
-                    selected_times=OBSERVED_TIMES,
-                    condition_titles=condition_titles,
-                    dim_pair=(0, 1),
-                    point_size=float(ctx.args.point_size),
-                    alpha=0.9,
-                    shared_axis_limits=True,
-                    show_counts=True,
-                    show_legend=False,
-                    title=title,
-                    out_path=str(path),
-                )
+                path = stage_dir / f"S24_{target}_{S24_PROTOCOL}_grid.{extension}"
+                with mpl.rc_context(
+                    {
+                        "font.family": "Arial",
+                        "font.size": 9.0,
+                        "axes.titlesize": 9.0,
+                        "axes.labelsize": 9.0,
+                        "xtick.labelsize": 9.0,
+                        "ytick.labelsize": 9.0,
+                        "legend.fontsize": 9.0,
+                        "pdf.fonttype": 42,
+                        "ps.fonttype": 42,
+                    }
+                ):
+                    figure = cb.pl.plot_trajectory_comparison_grid(
+                        trajectories=comparison_trajectories,
+                        time_values=time_points,
+                        labels_by_condition=comparison_labels,
+                        label_to_color=ctx.label_to_color,
+                        selected_times=S24_PUBLICATION_TIMES,
+                        condition_titles=condition_titles,
+                        dim_pair=(0, 1),
+                        point_size=float(ctx.args.point_size),
+                        alpha=0.9,
+                        shared_axis_limits=True,
+                        show_counts=True,
+                        show_legend=False,
+                        title=title,
+                        out_path=str(path),
+                    )
                 plt.close(figure)
                 outputs.append(path)
                 publication_grids[target].append(str(path))
 
-        captions_path = stage_dir / "S24_panel_captions.json"
+        captions_path = stage_dir / f"S24_{S24_PROTOCOL}_panel_captions.json"
         captions_path.write_text(
             json.dumps(captions, indent=2, sort_keys=True), encoding="utf-8"
         )
@@ -2389,7 +2518,16 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             },
             "interaction_seed": interaction_seed,
             "interaction_m": S24_INTERACTION_M,
+            "publication_protocol": S24_PROTOCOL,
+            "time_points": time_points,
+            "publication_snapshot_times": list(S24_PUBLICATION_TIMES),
+            "end_time": S24_END_TIME,
+            "dt": S24_FIXED_DT,
+            "resample_dt": S24_FIXED_DT,
+            "sigma": S24_FIXED_SIGMA,
             "growth_alpha": S24_FIXED_GROWTH_ALPHA,
+            "publication_metric_scope": "spatial only through observed t=3",
+            "terminal_t4_included": False,
             "trajectory_support_audit": audit_summary,
             "publication_metrics": publication_metrics,
             "publication_grids": publication_grids,

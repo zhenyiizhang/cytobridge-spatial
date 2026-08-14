@@ -64,12 +64,19 @@ substituted into that path. It is not an abundance forecast or reconstruction
 of observed stages. S25 and communication intentionally retain their separate
 interval-local, observed-anchored state contract. S22 also exports a full
 latent-support audit; because it is an explicit demonstration, rare tail OOD is
-reported rather than hidden or replaced with observed slices. S24 consists of separate
-YSL- and EVL-exclusion, equal-N, fixed-population model sensitivities. Learned
-growth resampling is disabled, every trajectory must pass the recorded latent
-support gate, and the panels are neither total-mass deletion nor causal
-knockout estimates. The older unequal-N, growth-resampling EVL result is an OOD
-diagnostic and is not final-model evidence.
+reported rather than hidden or replaced with observed slices. S24 uses the
+`preterminal_t3_sigma0` protocol for separate YSL- and EVL-exclusion spatial
+sensitivities. Each analysis propagates independently sampled, equal-N cohorts
+once from `t=0` through observed `t=3`, with `sigma=0`,
+`dt=resample_dt=0.005`, and learned growth resampling disabled. Learned velocity
+drift, score-gradient correction, and interactions remain active. All four
+baseline/exclusion branches must pass the unchanged latent-support gate before
+either panel is drawn, and no points are clipped. The preterminal protocol is
+defined through observed `t=3`; terminal `t=4` is not evaluated or claimed.
+These panels are not terminal or full joint-state terminal evidence, stochastic
+forecasts, total-mass deletions, or causal knockout estimates. The older
+unequal-N, growth-resampling EVL result is an OOD diagnostic and is not
+final-model evidence.
 
 The interval-local daughter-noise analysis used four observed intervals,
 daughter-noise SD `0`, `0.01`, `0.03`, and `0.06`, and five paired seeds (80

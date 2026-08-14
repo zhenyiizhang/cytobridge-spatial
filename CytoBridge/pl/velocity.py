@@ -7,6 +7,7 @@ for post-hoc visualization only (does not affect training).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
@@ -20,6 +21,37 @@ __all__ = [
     "embed_velocity_to_spatial",
     "plot_spatial_component_direction_correlation_roi_from_adata",
 ]
+
+
+_VELOCITY_FIGURE_RC = {
+    "font.family": "Arial",
+    "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans", "sans-serif"],
+    "font.size": 9.0,
+    "axes.titlesize": 9.0,
+    "axes.labelsize": 9.0,
+    "xtick.labelsize": 9.0,
+    "ytick.labelsize": 9.0,
+    "legend.fontsize": 9.0,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
+    "savefig.facecolor": "white",
+    "savefig.transparent": False,
+}
+
+
+def _with_velocity_figure_style(function):
+    """Apply manuscript styling without changing process-wide Matplotlib state."""
+
+    @wraps(function)
+    def styled(*args, **kwargs):
+        import matplotlib as mpl
+
+        with mpl.rc_context(_VELOCITY_FIGURE_RC):
+            return function(*args, **kwargs)
+
+    return styled
 
 
 @dataclass(frozen=True)
@@ -268,6 +300,7 @@ def plot_spatial_component_direction_correlation_roi_from_adata(
     )
 
 
+@_with_velocity_figure_style
 def plot_velocity_component(
     coords: "np.ndarray",
     velocity: "np.ndarray",
@@ -487,7 +520,6 @@ def plot_velocity_component(
             projected_velocity=embedded_velocity,
         )
     adata.uns["velocity_streamline_grid_masked_cells"] = int(invalid_grid.sum())
-    scv.settings.set_figure_params("scvelo")
 
     fig, ax = plt.subplots(figsize=(6, 6))
     legend_loc = "right margin" if show_legend else "none"
@@ -501,6 +533,8 @@ def plot_velocity_component(
         show=False,
         title=title,
         legend_loc=legend_loc,
+        frameon=False,
+        rasterized=False,
         X=coords,
         V=embedded_velocity,
         X_grid=x_grid,

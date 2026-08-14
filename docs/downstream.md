@@ -39,6 +39,18 @@ AnnData and dataframe simulation paths. Paper S22 is the documented exception:
 it hard-codes `growth_alpha=0.0` for fixed-population state transport, while S23
 reports the trained growth head separately on observed states.
 
+## S24 preterminal spatial sensitivity
+
+S24 uses the hard-coded `preterminal_t3_sigma0` protocol independently for YSL
+and EVL exclusion. Equal-N cohorts are propagated once from `t=0` through
+observed `t=3` with `sigma=0`, `dt=resample_dt=0.005`, growth disabled, and the
+learned drift, score-gradient correction, and interaction retained. All four
+baseline/exclusion branches must pass the unchanged support gate before plots
+are written. The preterminal protocol is defined through observed `t=3`;
+terminal `t=4` is not evaluated or claimed. The result is a conditional spatial
+sensitivity, not a stochastic forecast, causal knockout, or full joint-state
+terminal result.
+
 ## Sparse communication
 
 Spatial radius pairs are constructed without a dense cell-by-cell matrix.
