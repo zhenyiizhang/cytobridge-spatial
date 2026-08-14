@@ -16,6 +16,10 @@ FORMAL_GRAPH_DATABASES = {
     "mosta": "CellChatDB.ligrec.mouse.csv",
     "arista": "CellChatDB.ligrec.human.csv",
     "admouse": "CellChatDB.ligrec.mouse.csv",
+    # Gallus gallus has no CellChatDB release.  The chicken-heart workflow uses
+    # the human collection only as an explicitly labelled conserved-symbol
+    # prior; exact feature matching and coverage are recorded by preprocessing.
+    "chicken_heart": "CellChatDB.ligrec.human.csv",
 }
 
 _LIGAND_COLUMN_NAMES = ("ligand", "ligand_symbol", "source", "gene_a", "0")

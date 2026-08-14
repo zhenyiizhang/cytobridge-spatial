@@ -6,6 +6,7 @@ missing inputs but performs no computation.
 ```bash
 cytobridge workflow --config zebrafish --dry-run
 cytobridge workflow --config admouse --dry-run --json
+cytobridge workflow --config chicken_heart --dry-run
 ```
 
 ## Analyze an existing model
@@ -64,6 +65,17 @@ command preprocesses and aligns the raw input, constructs interaction graphs
 with the bundled mouse CellChatDB, trains a new edge predictor in that same
 feature space, fits the six-stage dynamical model, and runs the shared
 downstream chain. Supplying an old edge predictor to a raw-H5AD run is rejected.
+
+Chicken heart first uses the anatomy-reviewed adapter shown in its dataset
+tutorial. Then the same package workflow validates the fixed H5AD, fits the
+graph and predictor, trains, and runs downstream without refitting coordinates:
+
+```bash
+cytobridge workflow --config chicken_heart --train \
+  --input-h5ad /runs/chicken-input/chicken_heart_aligned_package.h5ad \
+  --output-dir /results/chicken-heart \
+  --device cuda:0
+```
 
 The AD command uses the same graph-label, edge-predictor, six-stage training,
 and downstream chain. Its targeted panel contains seven strict complete pairs;

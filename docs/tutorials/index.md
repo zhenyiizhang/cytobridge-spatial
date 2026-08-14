@@ -16,6 +16,7 @@ zebrafish
 mosta
 arista
 admouse
+chicken_heart
 ```
 
 Release checks parse every notebook and run a small synthetic API-wiring smoke
@@ -28,7 +29,9 @@ shown there assume a Git source checkout; a wheel install provides the runtime
 dependencies and package presets, not a new `notebooks/` directory in the
 user's current working directory.
 
-All four notebooks implement the same compact sequence: load the formal preset,
+The first four notebooks implement the same compact downstream sequence. The
+chicken-heart notebook adds the required raw-count and fixed-anatomy preparation
+before entering the same package workflow. Together they load the preset,
 optionally fit or load a model, interpolate and classify, summarize composition,
 velocity, growth and sparse spatial attention, project strict ligand-receptor
 trajectories, and evaluate unwarped distributions. Dataset-specific paper

@@ -62,6 +62,67 @@ def test_preprocess_and_align_forwards_explicit_time_mapping(monkeypatch):
     assert result.obs["time_point_processed"].tolist() == [0.0, 1.0, 2.0, 3.0, 4.0]
 
 
+def test_fixed_spatial_preprocessing_preserves_external_reference(monkeypatch):
+    coordinates = np.asarray([[-1.0, 0.5], [0.0, 1.5], [1.0, 2.5]], dtype=np.float64)
+    adata = ad.AnnData(
+        X=np.ones((3, 4), dtype=np.float32),
+        obs=pd.DataFrame(
+            {"stage": ["D4", "D7", "D14"]},
+            index=["spot-a", "spot-b", "spot-c"],
+        ),
+    )
+    adata.obsm["spatial_aligned"] = coordinates.copy()
+
+    def fake_preprocess(*, adata, time_key, time_mapping, **kwargs):
+        assert time_key == "stage"
+        adata.obs["time_point_processed"] = (
+            adata.obs[time_key].map(time_mapping).astype(float)
+        )
+        adata.obsm["X_latent"] = np.arange(6, dtype=float).reshape(3, 2)
+        return adata
+
+    monkeypatch.setattr(spatial_align, "preprocess", fake_preprocess)
+    result, table = spatial_align.preprocess_fixed_spatial(
+        adata,
+        time_key="stage",
+        cfg=spatial_align.AlignConfig(
+            spatial_dim=2,
+            time_mapping={"D4": 0.0, "D7": 1.0, "D14": 3.0},
+        ),
+    )
+
+    np.testing.assert_array_equal(result.obsm["spatial_aligned"], coordinates)
+    assert result.obs_names.tolist() == ["spot-a", "spot-b", "spot-c"]
+    assert result.uns["spatial_alignment_info"]["mode"] == "fixed_external_reference"
+    assert len(result.uns["spatial_alignment_info"]["coordinate_sha256"]) == 64
+    np.testing.assert_array_equal(table["samples"], [0.0, 1.0, 3.0])
+    np.testing.assert_array_equal(table[["x1", "x2"]], coordinates)
+
+
+def test_fixed_spatial_preprocessing_fails_if_preprocess_changes_coordinates(
+    monkeypatch,
+):
+    adata = ad.AnnData(
+        X=np.ones((2, 2), dtype=np.float32),
+        obs=pd.DataFrame({"stage": ["D4", "D7"]}, index=["a", "b"]),
+    )
+    adata.obsm["spatial_aligned"] = np.zeros((2, 2), dtype=float)
+
+    def mutate_coordinates(*, adata, **kwargs):
+        adata.obs["time_point_processed"] = [0.0, 1.0]
+        adata.obsm["X_latent"] = np.zeros((2, 1), dtype=float)
+        adata.obsm["spatial_aligned"][0, 0] = 1.0
+        return adata
+
+    monkeypatch.setattr(spatial_align, "preprocess", mutate_coordinates)
+    with np.testing.assert_raises_regex(RuntimeError, "changed fixed spatial"):
+        spatial_align.preprocess_fixed_spatial(
+            adata,
+            time_key="stage",
+            cfg=spatial_align.AlignConfig(spatial_dim=2),
+        )
+
+
 def test_numeric_time_mapping_in_alignment_config_is_h5ad_safe(tmp_path):
     cfg = spatial_align.AlignConfig(
         time_mapping={1: 0.0, 2: 1.0},

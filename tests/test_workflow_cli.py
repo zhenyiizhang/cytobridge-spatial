@@ -22,7 +22,13 @@ from CytoBridge.workflow import (
 
 @pytest.mark.parametrize(
     ("name", "classifier_k"),
-    (("zebrafish", 10), ("mosta", 10), ("arista", 10), ("admouse", 1)),
+    (
+        ("zebrafish", 10),
+        ("mosta", 10),
+        ("arista", 10),
+        ("admouse", 1),
+        ("chicken_heart", 1),
+    ),
 )
 def test_packaged_presets_share_formal_scientific_defaults(name, classifier_k):
     config, source = load_workflow_config(name)
@@ -97,6 +103,12 @@ def test_cli_exposes_explicit_complete_reference_pca_center_opt_in(capsys):
             "CellChatDB.ligrec.zebrafish.csv",
             0.09606367405591873,
             0.6063615679740906,
+        ),
+        (
+            "chicken_heart",
+            "CellChatDB.ligrec.human.csv",
+            0.21681429373719752,
+            None,
         ),
     ),
 )
@@ -942,7 +954,9 @@ def test_dry_run_json_is_machine_readable(capsys):
     assert plan["scientific"]["alpha_spatial"] == 10.0
 
 
-@pytest.mark.parametrize("name", ("zebrafish", "mosta", "arista", "admouse"))
+@pytest.mark.parametrize(
+    "name", ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
+)
 def test_builtin_dry_run_never_parses_training_yaml(monkeypatch, name):
     config, source = load_workflow_config(name)
 

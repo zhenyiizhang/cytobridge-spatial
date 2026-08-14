@@ -1,3 +1,4 @@
+import hashlib
 import os
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
@@ -731,6 +732,97 @@ def preprocess_and_align(
         log_every=log_every,
         batch_values=batch_values,
     )
+
+
+def _coordinate_sha256(values: np.ndarray) -> str:
+    """Hash a coordinate matrix with an explicit portable numeric contract."""
+
+    array = np.ascontiguousarray(np.asarray(values, dtype="<f8"))
+    digest = hashlib.sha256()
+    digest.update(str(tuple(int(value) for value in array.shape)).encode("ascii"))
+    digest.update(b"|float64-little-endian|")
+    digest.update(array.tobytes(order="C"))
+    return digest.hexdigest()
+
+
+def preprocess_fixed_spatial(
+    adata: sc.AnnData,
+    time_key: str,
+    *,
+    spatial_key: str = "spatial_aligned",
+    cfg: Optional[AlignConfig] = None,
+    copy_adata: bool = False,
+) -> Tuple[sc.AnnData, pd.DataFrame]:
+    """Preprocess expression while preserving a validated external alignment.
+
+    Some datasets require anatomy-aware, dataset-specific registration before
+    the generic CytoBridge preprocessing stage.  This entry point applies the
+    same raw-count validation, normalization, HVG selection, and PCA contract as
+    :func:`preprocess_and_align`, but treats ``obsm[spatial_key]`` as a frozen
+    upstream reference.  It never fits or applies ``CoordTransformer``.
+    """
+
+    if cfg is None:
+        cfg = AlignConfig()
+    target = adata.copy() if copy_adata else adata
+    spatial_key = str(spatial_key).strip()
+    if not spatial_key or spatial_key not in target.obsm:
+        raise KeyError(
+            f"Fixed spatial preprocessing requires adata.obsm[{spatial_key!r}]."
+        )
+    fixed = np.asarray(target.obsm[spatial_key], dtype=np.float64)
+    if fixed.ndim != 2 or fixed.shape != (target.n_obs, int(cfg.spatial_dim)):
+        raise ValueError(
+            f"adata.obsm[{spatial_key!r}] must have shape "
+            f"({target.n_obs}, {int(cfg.spatial_dim)}), found {fixed.shape}."
+        )
+    if not np.isfinite(fixed).all():
+        raise ValueError(f"adata.obsm[{spatial_key!r}] contains non-finite values.")
+    fixed = np.ascontiguousarray(fixed).copy()
+    coordinate_sha256 = _coordinate_sha256(fixed)
+    original_names = target.obs_names.astype(str).to_numpy(copy=True)
+
+    processed = preprocess(
+        adata=target,
+        time_key=time_key,
+        n_top_genes=cfg.n_top_genes,
+        dim_reduction="pca",
+        n_pcs=cfg.n_pcs,
+        normalization=True,
+        normalization_target_sum=cfg.normalization_target_sum,
+        log1p=True,
+        select_hvg=True,
+        time_mapping=cfg.time_mapping,
+        expression_layer=cfg.expression_layer,
+        allow_retransform_preprocessed_x=cfg.allow_retransform_preprocessed_x,
+        counts_layer=cfg.counts_layer,
+        raw_count_validation=cfg.raw_count_validation,
+        raw_count_integer_tolerance=cfg.raw_count_integer_tolerance,
+        required_latent_features=cfg.required_latent_features,
+        observation_id_keys=cfg.observation_id_keys,
+        hvg_batch_key=cfg.hvg_batch_key,
+    )
+    if not np.array_equal(processed.obs_names.astype(str), original_names):
+        raise RuntimeError("Expression preprocessing changed fixed-spatial row order.")
+    observed = np.asarray(processed.obsm[spatial_key], dtype=np.float64)
+    if not np.array_equal(observed, fixed):
+        raise RuntimeError(
+            "Expression preprocessing changed fixed spatial coordinates."
+        )
+    processed.obsm["spatial_aligned"] = fixed.copy()
+    processed.uns["spatial_alignment_info"] = {
+        "mode": "fixed_external_reference",
+        "source_spatial_key": spatial_key,
+        "coordinate_sha256": coordinate_sha256,
+        "time_key": str(time_key),
+        "config": _align_config_for_uns(cfg),
+    }
+
+    times = processed.obs["time_point_processed"].to_numpy(dtype=np.float64)
+    latent = np.asarray(processed.obsm["X_latent"], dtype=np.float64)
+    combined = np.column_stack((times, fixed, latent))
+    columns = ["samples"] + [f"x{i}" for i in range(1, combined.shape[1])]
+    return processed, pd.DataFrame(combined, columns=columns)
 
 
 def preprocess_align_to_files(

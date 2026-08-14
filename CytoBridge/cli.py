@@ -215,7 +215,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     workflow.add_argument(
         "--config",
-        help="packaged preset (zebrafish, mosta, arista, admouse) or JSON/YAML path",
+        help=(
+            "packaged preset (zebrafish, mosta, arista, admouse, chicken_heart) "
+            "or JSON/YAML path"
+        ),
     )
     workflow.add_argument("--list-configs", action="store_true")
     workflow.add_argument("--dry-run", action="store_true")

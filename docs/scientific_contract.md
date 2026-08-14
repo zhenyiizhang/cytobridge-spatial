@@ -32,6 +32,14 @@ than copied implementations.
 | ARISTA | 0.0315410515 | learned predictor | 0.5884028673 | 10 | 7,668 |
 | AD | 0.0121060429 | learned predictor | 0.9956824780 | 1 | all 53,615 observed t0 cells |
 
+The fifth package preset, developing chicken heart, uses cutoff
+`0.21681429373719752`, `k=1`, all 3,550 reviewed spots, and a newly fitted
+learned predictor whose threshold must be selected on its own validation split.
+It uses the human CellChatDB only as a declared conserved-symbol proxy. It is
+not part of the already accepted four-dataset matched three-arm matrix, so no
+accepted predictor threshold or ablation result is claimed before its fresh run
+passes the same artifact gates.
+
 All four corrected de novo workflows keep the preset cutoff, train a new edge
 predictor, and use its validation-selected threshold. AD has only seven strict
 complete LR pairs in its targeted panel; the main model uses that learned prior

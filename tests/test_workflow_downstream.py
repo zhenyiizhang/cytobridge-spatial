@@ -866,6 +866,11 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
         "Interaction velocity",
         "Full velocity",
     }
+    assert result["spatial_projection_mode"] == "direct_model_spatial_vector"
+    assert all(call["feature_matrix"] is None for call in calls)
+    for call in calls:
+        assert call["velocity"].shape == (2, 2)
+        np.testing.assert_array_equal(call["coords"], np.zeros((2, 2)))
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_allclose(archive["full"], components["full"])
 
@@ -920,6 +925,8 @@ def test_velocity_no_interaction_retains_zero_sentinel_without_false_panel(
         "Intrinsic velocity",
         "Full velocity",
     }
+    assert all(call["feature_matrix"] is None for call in calls)
+    assert all(call["velocity"].shape == (2, 2) for call in calls)
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_array_equal(archive["interaction"], 0.0)
 

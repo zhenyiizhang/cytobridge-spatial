@@ -15,6 +15,7 @@ NOTEBOOKS = {
     "04_admouse.ipynb": ("admouse", 1),
 }
 SMOKE_RUNNER = ROOT / "scripts" / "smoke_dataset_notebooks.py"
+CHICKEN_NOTEBOOK = ROOT / "notebooks" / "05_chicken_heart.ipynb"
 
 
 @pytest.mark.parametrize(("filename", "expected"), NOTEBOOKS.items())
@@ -127,6 +128,7 @@ def test_notebook_smoke_runner_is_explicitly_limited_and_parseable() -> None:
     source = SMOKE_RUNNER.read_text(encoding="utf-8")
     ast.parse(source)
     assert all(filename in source for filename in NOTEBOOKS)
+    assert CHICKEN_NOTEBOOK.name in source
     assert "NotebookClient" in source
     assert "estimate_neighborhood_threshold_from_aligned_spatial" in source
     assert "summarize_label_composition" in source
@@ -134,6 +136,31 @@ def test_notebook_smoke_runner_is_explicitly_limited_and_parseable() -> None:
     assert "does not train or load a model" in source
     assert "not a formal dataset execution" in source
     assert '"training_or_checkpoint_load": False' in source
+
+
+def test_chicken_heart_notebook_carries_fixed_anatomy_and_velocity_contract() -> None:
+    notebook = json.loads(CHICKEN_NOTEBOOK.read_text(encoding="utf-8"))
+    assert notebook["nbformat"] == 4
+    text_parts = []
+    for cell in notebook["cells"]:
+        source = "".join(cell.get("source", []))
+        text_parts.append(source)
+        if cell["cell_type"] == "code":
+            assert cell["execution_count"] is None
+            assert cell["outputs"] == []
+            ast.parse(source)
+    text = "\n".join(text_parts)
+    prose = " ".join(text.split())
+
+    assert "load_workflow_config('chicken_heart')" in text
+    assert "validate_prepared_chicken_heart_input" in text
+    assert "--repair-legacy-d7-left-right" in text
+    assert "RUN_PREPROCESS = False" in text
+    assert "RUN_TRAIN_AND_DOWNSTREAM = False" in text
+    assert "direct_model_spatial_vector" in text
+    assert "50D gene/state velocity" in prose
+    assert "conserved-symbol proxy" in prose
+    assert "D7 and D10" in prose
 
 
 def test_admouse_notebook_uses_corrected_learned_main_and_scopes_lr_claims() -> None:
@@ -162,10 +189,11 @@ def test_readme_and_docs_publish_all_dataset_notebooks() -> None:
 
     for filename in NOTEBOOKS:
         assert filename in notebook_readme
+    assert CHICKEN_NOTEBOOK.name in notebook_readme
     assert "cb.pp.bundled_graph_database_path(DATASET_PRESET)" in notebook_readme
     assert "no external LR CSV is required" in notebook_readme_prose
     assert "LR_DATABASE_OVERRIDE" in notebook_readme
-    for dataset in ("zebrafish", "mosta", "arista", "admouse"):
+    for dataset in ("zebrafish", "mosta", "arista", "admouse", "chicken_heart"):
         assert dataset in tutorial_index
-    assert "four dataset notebooks" in readme
+    assert "five dataset notebooks" in readme
     assert "docs/" in readme

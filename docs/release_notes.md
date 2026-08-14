@@ -2,7 +2,8 @@
 
 ## 1.5.0rc1
 
-- unified the formal Zebrafish, MOSTA, ARISTA, and AD workflow presets;
+- unified the formal Zebrafish, MOSTA, ARISTA, and AD workflow presets and
+  added the anatomy-reviewed GSE149457 chicken-heart preset;
 - completed the 12-run matched matrix (full learned prior, no-LR-prior
   `all_spatial`, and no-interaction for all four datasets), including package
   downstream; all 12 profiles and all four three-arm families pass acceptance
@@ -16,7 +17,7 @@
   summed mass, eliminating network-simplex degeneracy without changing the
   empirical measure or the reported point cap;
 - added the shared classifier protocol and dataset formal-k policy;
-- added four package notebooks and ReadTheDocs guides;
+- added five package notebooks and ReadTheDocs guides;
 - documented honest W2, sensitivity, ablation, training-curve, compute, and
   lineage limitations;
 - completed all seven signed Zebrafish paper-downstream stages and the
@@ -30,6 +31,10 @@
 - corrected the model-derived velocity renderer so direct 2D fields are not
   projected twice and scVelo's one-component NaN grid mask cannot erase finite
   vector streamlines in PDF output;
+- added fail-closed D4/D7/D10/D14 anatomical orientation validation and an
+  explicit, distance-preserving repair for the known legacy D7 horizontal
+  mirror; chicken-heart raw-count preparation records before/after coordinate
+  hashes and never refits the reviewed alignment;
 - made the primary workflow and tutorials ordinary package entry points rather
   than release-audit launchers;
 - removed checksum-only fields from the public downstream result objects;

@@ -9,7 +9,7 @@ This is the release-candidate package and methods repository. New analyses and d
 extend these public APIs rather than copy training or downstream pipelines into
 separate code trees. Large raw datasets and trained checkpoints are not bundled
 here. The wheel does include the small species-matched CellChatDB tables used
-by its four supported workflow presets; users can override them with another
+by its five supported workflow presets; users can override them with another
 compatible database.
 
 Raw-data accessions, aligned-AnnData keys, checkpoint layout, LR-table format,
@@ -23,7 +23,7 @@ This repository contains:
 
 - the installable Python package `CytoBridge/`
 - preprocessing and training scripts in `scripts/`
-- four dataset tutorials plus one small synthetic preprocessing tutorial in
+- five dataset tutorials plus one small synthetic preprocessing tutorial in
   `notebooks/`
 - ReadTheDocs source in `docs/`
 - training configuration files in `CytoBridge/configs/`
@@ -34,7 +34,7 @@ This repository does not aim to store:
 
 - large raw or processed datasets
 - large generated manuscript artifacts and raw result bundles
-- large or custom ligand-receptor databases beyond the four bundled preset
+- large or custom ligand-receptor databases beyond the bundled preset
   tables
 
 ## Repository Layout
@@ -47,7 +47,7 @@ cytobridge-spatial/
 │   ├── pl/        # visualization helpers
 │   └── configs/   # YAML training configs
 ├── scripts/       # end-to-end preprocessing / training / evaluation scripts
-├── notebooks/     # four dataset workflows + one synthetic tutorial
+├── notebooks/     # five dataset workflows + one synthetic tutorial
 ├── docs/          # ReadTheDocs user guide, tutorials, and API reference
 ├── edge_classifier/
 ├── environment.yml
@@ -154,7 +154,7 @@ modify caches, data, or configuration.
 ### Package-native workflow command
 
 The installed wheel includes readable presets for Zebrafish, MOSTA, ARISTA,
-and AD mouse. Install `CytoBridge[all]` for the complete model, graph, and
+AD mouse, and developing chicken heart. Install `CytoBridge[all]` for the complete model, graph, and
 figure stack, then inspect a complete plan before supplying large inputs:
 
 ```bash
@@ -166,7 +166,8 @@ cytobridge workflow --config admouse --dry-run --json
 The plan prints the dataset policy, scientific parameters, steps, compute
 requirements, and any missing input. The primary settings are seed 42,
 `alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
-`k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse. The packaged
+`k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse and chicken
+heart. The packaged
 training profiles retain the fixed interaction cutoffs. All four main models
 use learned edge priors. AD's targeted panel represents only seven complete
 ligand-receptor pairs under strict all-subunit matching; the corrected main
@@ -179,6 +180,7 @@ threshold rather than silently changing the model class.
 | ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 |
 | Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 |
 | AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 |
+| Chicken heart | 0.21681429373719752 | learned predictor | validation-selected for the new fit |
 
 The formal matched matrix now contains 12 completed training and package
 downstream runs: full learned prior, no-LR-prior (`all_spatial`), and
@@ -292,7 +294,7 @@ named a fitted-model reconstruction diagnostic: it is not a training holdout
 and not a cross-method benchmark. Use the matched benchmark pipeline for those
 claims.
 
-Training never runs implicitly. For all four datasets, adding
+Training never runs implicitly. For the four generic-alignment datasets, adding
 `--train` to the raw-data workflow builds per-timepoint LR graphs, trains an
 edge predictor, and passes its validation-selected threshold into model
 training. `--edge-predictor-threshold` remains an explicit override for
@@ -307,7 +309,9 @@ cytobridge workflow --config mosta --train \
 
 Each preset uses its species-matched formal CellChatDB resource bundled in the
 wheel for downstream strict LR projection: zebrafish for Zebrafish, mouse for
-MOSTA and AD mouse, and human for ARISTA. All four use that resource to fit
+MOSTA and AD mouse, and human for ARISTA. Chicken heart uses the human table as
+an explicitly labeled conserved-symbol proxy because no Gallus gallus CellChatDB
+release is bundled. All five use the declared resource to fit
 their learned edge prior. Pass `--graph-database /path/to/database.csv` to override graph construction
 in a predictor-gated workflow, or
 `--lr-database /path/to/database.csv` to override only the downstream LR
@@ -349,8 +353,8 @@ main learned-predictor training contract, or vice versa.
 
 ### Run the tutorials
 
-The four dataset notebooks are package-facing walkthroughs for Zebrafish,
-MOSTA, ARISTA, and AD mouse. They read the wheel-bundled presets, keep training
+The five dataset notebooks are package-facing walkthroughs for Zebrafish,
+MOSTA, ARISTA, AD mouse, and developing chicken heart. They read the wheel-bundled presets, keep training
 explicit, and cover interpolation/classification, time-slice velocity, growth,
 sparse spatial attention, strict ligand-receptor analysis, and pre-warp evaluation:
 
@@ -365,7 +369,7 @@ the `notebook` and `all` extras install its runtime but do not copy notebooks
 into the current directory.
 
 Zebrafish, MOSTA, and ARISTA use the formal spatial-domain label setting
-`k=10`; AD uses `k=1`. The notebooks are committed without outputs. Their
+`k=10`; AD and chicken heart use `k=1`. The notebooks are committed without outputs. Their
 release smoke uses synthetic data and verifies package wiring; the formal
 scientific results come from the corresponding full-data runs.
 
@@ -1161,7 +1165,7 @@ Git repository and are supplied explicitly by users:
 
 ## Documentation and citation
 
-The complete user guide, four dataset tutorials, and API reference are built
+The complete user guide, five dataset tutorials, and API reference are built
 from `docs/` and published through Read the Docs. To preview only the
 documentation pages locally, install the base package plus the documentation
 tools; install `.[all]` when you also want to execute the scientific examples:
