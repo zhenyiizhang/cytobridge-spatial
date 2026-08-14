@@ -77,6 +77,16 @@ expression dimensions and project it onto the same observed spatial
 coordinates. The command writes to a new directory and binds the exact aligned
 H5AD and training-summary hashes.
 
+`run_five_dataset_virtual_interaction_ablation.py` evaluates the five accepted
+full-model checkpoints with the learned interaction force retained or set to
+zero at inference. It never retrains. Each pair starts from the same earliest
+observed cells, uses the same stochastic seed, disables growth-dependent
+resampling, and evolves continuously without observed-slice re-anchoring. The
+`run` subcommand writes one dataset result; `report` aggregates all five into
+spatial/expression metrics and A4 figure banks. This is a fixed-model,
+single-seed sensitivity analysis rather than a causal knockout or matched
+retraining ablation.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
