@@ -23,6 +23,9 @@ def test_fixed_protocol_constants() -> None:
     np.testing.assert_array_equal(
         MODULE._time_grid(), np.linspace(0.0, 4.0, 81, dtype=np.float64)
     )
+    np.testing.assert_array_equal(
+        MODULE._time_grid(3.0), np.linspace(0.0, 3.0, 61, dtype=np.float64)
+    )
     assert MODULE.ABLATIONS == {
         "remove_YSL": ("Yolk Syncytial Layer",),
         "remove_EVL": ("EVL",),
@@ -190,6 +193,8 @@ def test_parser_has_parallel_seed_and_report_commands(tmp_path: Path) -> None:
             "a" * 64,
             "--seed",
             "42",
+            "--end-time",
+            "3",
             "--output-dir",
             str(tmp_path / "seed42"),
         ]

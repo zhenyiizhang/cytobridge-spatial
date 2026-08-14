@@ -91,8 +91,16 @@ def _require_import_origins() -> None:
         )
 
 
-def _time_grid() -> np.ndarray:
-    return np.linspace(0.0, 4.0, 81, dtype=np.float64)
+def _time_grid(end_time: float = 4.0) -> np.ndarray:
+    end_time = float(end_time)
+    if end_time not in {3.0, 4.0}:
+        raise ValueError("Classic S24 end_time must be exactly 3 or 4.")
+    return np.linspace(
+        0.0,
+        end_time,
+        int(round(end_time / OUTPUT_STEP)) + 1,
+        dtype=np.float64,
+    )
 
 
 def _sha256(path: str | Path) -> str:
@@ -221,8 +229,8 @@ def _validate_formal_t0(ctx: Any) -> None:
         )
 
 
-def _validate_result_contract(result: Any, *, seed: int) -> None:
-    expected_times = _time_grid()
+def _validate_result_contract(result: Any, *, seed: int, end_time: float = 4.0) -> None:
+    expected_times = _time_grid(end_time)
     if not np.array_equal(np.asarray(result.time_points), expected_times):
         raise RuntimeError("Classic S24 returned a non-canonical output grid.")
     settings = result.settings
@@ -271,7 +279,8 @@ def run_seed(args: argparse.Namespace) -> int:
     seed_dir = _fresh_directory(Path(args.output_dir), label="seed output directory")
     ctx = _paper_context(args, seed_dir)
     _validate_formal_t0(ctx)
-    time_points = _time_grid()
+    end_time = float(args.end_time)
+    time_points = _time_grid(end_time)
     experiment_dir = seed_dir / "experiment"
     result = cb.tl.run_virtual_cell_type_ablation(
         ctx.adata,
@@ -304,7 +313,7 @@ def run_seed(args: argparse.Namespace) -> int:
         save_snapshots=False,
         verbose=True,
     )
-    _validate_result_contract(result, seed=seed)
+    _validate_result_contract(result, seed=seed, end_time=end_time)
     trajectories = {
         "baseline": result.baseline_points,
         "remove_YSL": result.ablation_points["remove_YSL"],
@@ -346,6 +355,7 @@ def run_seed(args: argparse.Namespace) -> int:
             "dt": DT,
             "resample_dt": RESAMPLE_DT,
             "time_points": time_points.tolist(),
+            "end_time": end_time,
             "continuous_global_t0": True,
             "reanchoring": False,
             "spatial_warp": False,
@@ -421,6 +431,7 @@ def _load_seed(seed_dir: Path, *, expected_seed: int) -> dict[str, Any]:
         "state_clipping_or_outlier_removal": False,
         "trajectory_downsampling": False,
         "ot_max_points": MAX_OT_POINTS,
+        "end_time": protocol.get("end_time"),
     }
     for key, value in required.items():
         if protocol.get(key) != value:
@@ -496,7 +507,7 @@ def _load_seed(seed_dir: Path, *, expected_seed: int) -> dict[str, Any]:
         "remove_EVL",
     }:
         raise RuntimeError(f"Seed {expected_seed} support audit has wrong conditions.")
-    expected_times = _time_grid()
+    expected_times = _time_grid(float(protocol.get("end_time")))
     for condition, rows in audit.groupby("condition", sort=False):
         actual_times = rows.sort_values("time", kind="stable")["time"].to_numpy(
             dtype=float
@@ -516,7 +527,12 @@ def _load_seed(seed_dir: Path, *, expected_seed: int) -> dict[str, Any]:
 
 def _latest_common_endpoint(seed_runs: Mapping[int, Mapping[str, Any]]) -> float:
     latest = None
-    for endpoint in OBSERVED_ENDPOINTS:
+    maximum_common_time = min(
+        float(run["audit"]["time"].max()) for run in seed_runs.values()
+    )
+    for endpoint in (
+        value for value in OBSERVED_ENDPOINTS if value <= maximum_common_time + 1e-9
+    ):
         passed = True
         for run in seed_runs.values():
             rows = run["audit"]
@@ -680,7 +696,7 @@ def _plot_quantitative(
                     [len(frame) for frame in run["trajectories"][name][: index + 1]]
                 )
             counts = np.asarray(values_by_seed, dtype=float)
-            times = _time_grid()[: index + 1]
+            times = _time_grid(endpoint)
             mean = counts.mean(axis=0)
             sem = counts.std(axis=0, ddof=1) / np.sqrt(counts.shape[0])
             color = CONDITION_COLORS[name]
@@ -926,11 +942,16 @@ def report(args: argparse.Namespace) -> int:
     replay = _require_seed42_replay(run_root, replay_dir)
 
     reference_inputs = seed_runs[42]["summary"]["inputs"]
+    reference_end_time = float(seed_runs[42]["summary"]["protocol"]["end_time"])
     for seed, run in seed_runs.items():
         if run["summary"]["inputs"] != reference_inputs:
             raise RuntimeError(f"Seed {seed} does not bind the same accepted inputs.")
+        if float(run["summary"]["protocol"]["end_time"]) != reference_end_time:
+            raise RuntimeError(f"Seed {seed} uses a different simulation horizon.")
     if replay_run["summary"]["inputs"] != reference_inputs:
         raise RuntimeError("The seed-42 replay does not bind the accepted inputs.")
+    if float(replay_run["summary"]["protocol"]["end_time"]) != reference_end_time:
+        raise RuntimeError("The seed-42 replay uses a different simulation horizon.")
     endpoint = _latest_common_endpoint(seed_runs)
     quantitative_stem = output_dir / "zebrafish_classic_s24_unequalN_five_seed"
     time_grid_stem = output_dir / "zebrafish_classic_s24_morphology_grid"
@@ -1080,6 +1101,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_common_inputs(seed_parser)
     seed_parser.add_argument("--seed", type=int, required=True)
+    seed_parser.add_argument(
+        "--end-time", type=float, choices=(3.0, 4.0), required=True
+    )
     seed_parser.add_argument("--output-dir", type=Path, required=True)
     report_parser = subparsers.add_parser(
         "report", help="Validate and plot seeds 42–46."
