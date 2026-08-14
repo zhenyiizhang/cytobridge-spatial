@@ -192,10 +192,13 @@ mean paired relative sliced-W2 changes for no-LR versus full are +25.46% (AD),
 changes are -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are
 full-data in-sample reconstruction comparisons, not LOTO or significance
 tests; the interaction effect is dataset-dependent, and no uniform full-model
-superiority is claimed. The primary four-dataset cross-method benchmark remains
-pending. The formal Zebrafish paper downstream completed all seven signed
-stages; its canonical reconstruction is interval-local and observed-anchored,
-not a global-t0 rollout.
+superiority is claimed. The primary four-dataset cross-method benchmark is
+also complete: all 90 LOTO executions completed, CytoBridge has the lowest
+spatial sliced-W2 for 7/9 held-out targets, and a linear control wins most
+joint/state comparisons. Four ARISTA stVCR full-data targets remain explicit
+`NA` after a method-native numerical failure. The formal Zebrafish paper
+downstream completed all seven signed stages; its canonical reconstruction is
+interval-local and observed-anchored, not a global-t0 rollout.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:

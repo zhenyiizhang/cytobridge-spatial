@@ -13,7 +13,10 @@
   full-data/in-sample rather than LOTO and is not a significance test.
   Interaction effects are dataset-dependent; no uniform full-model superiority
   is claimed.
-- The primary four-dataset cross-method benchmark remains pending.
+- The primary four-dataset cross-method benchmark is complete, but projection
+  repeats are numerical rather than biological replicates and no cross-space
+  overall score is defined. Four ARISTA stVCR full-data targets are `NA` after
+  a method-native numerical failure.
 - WOT has no native joint or spatial prediction and is NA in those spaces.
 - The original Heart Figure 3 application is outside the four-dataset formal
   chain; later Heart-v2 benchmark evidence is a separate context.

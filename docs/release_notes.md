@@ -12,6 +12,9 @@
 - corrected time-slice interaction velocity, pre-warp growth, sparse attention,
   generated expression, strict LR, gene/module, and distribution-evaluation
   semantics;
+- coalesced byte-identical exact-OT support points while preserving their
+  summed mass, eliminating network-simplex degeneracy without changing the
+  empirical measure or the reported point cap;
 - added the shared classifier protocol and dataset formal-k policy;
 - added four package notebooks and ReadTheDocs guides;
 - documented honest W2, sensitivity, ablation, training-curve, compute, and
@@ -31,9 +34,12 @@ relative sliced-W2 changes for no-LR versus full are +25.46% (AD), +59.44%
 -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are full-data
 in-sample comparisons, not LOTO or significance tests, and support a
 dataset-dependent interaction effect rather than uniform full-model
-superiority. The primary four-dataset cross-method benchmark remains pending;
-legacy winner and old ablation summaries are not promoted into release
-conclusions. The matched report manifest SHA-256 is
+superiority. The primary four-dataset cross-method benchmark is complete: all
+90 LOTO executions completed, CytoBridge has the lowest spatial sliced-W2 for
+7/9 held-out targets, and the linear control wins 15/18 joint/state
+comparisons. Four ARISTA stVCR full-data targets remain explicit `NA` after a
+method-native numerical failure. Old benchmark and ablation summaries are not
+promoted into release conclusions. The matched report manifest SHA-256 is
 `b96de0c13023b6a4727e76ba8f67b84f3442f9c989b4d7a14dc03f5c1b904fdb`.
 
 This is a release candidate. It should be merged to `main` only after source,

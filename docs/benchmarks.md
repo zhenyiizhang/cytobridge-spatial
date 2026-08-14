@@ -7,23 +7,47 @@ values.
 
 ## Unified sliced-W2 benchmark
 
-The primary four-dataset benchmark is being recomputed against the accepted
-matched models. Its result table is pending; no current winner count, rank, or
-cross-method superiority conclusion is released yet. The run removes an
-internal target from model fitting, fixes the source cohort and output count
-before opening target truth, fits transforms on observed training slices, and
-evaluates joint/state/spatial sliced W2 with 256 projections for seeds 42–46.
-Unsupported method/space combinations remain `NA`, not surrogate values.
+The primary four-dataset benchmark is complete against the accepted matched
+models. The run removes an internal target from model fitting, fixes the source
+cohort and output count before opening target truth, fits transforms on
+observed training slices, and evaluates joint/state/spatial sliced W2 with 256
+projections for seeds 42–46. Unsupported method/space combinations remain
+`NA`, not surrogate values. All 90 LOTO method×target executions completed.
+Of the 130 full-data executions, 126 completed; stVCR failed numerically for
+the four ARISTA targets because its OT training weights became non-finite, so
+those entries remain explicit `NA`.
 
-The shipped {download}`unified_w2_winners.csv
-<data/unified_w2_winners.csv>` is a superseded pre-acceptance snapshot retained
-only for provenance. It must not be used as the primary release benchmark or
-as evidence for the final matched models. The legacy summary can be inspected
-with:
+The authoritative {download}`unified_w2_winners.csv
+<data/unified_w2_winners.csv>` records the lowest LOTO sliced-W2 method for
+each of the 27 dataset×target×space comparisons. Winner counts are 15 for the
+linear-interpolation control, 9 for CytoBridge, 2 for PASTE, and 1 for stVCR.
+CytoBridge is lowest in the spatial space for 7 of 9 held-out targets; stVCR
+and the linear control each win one. Joint/state results are less favourable:
+the linear control wins 15 of 18 such comparisons, CytoBridge wins the two
+Zebrafish t1 comparisons, and PASTE wins the two Zebrafish t3 comparisons.
+These within-space results do not define a cross-space overall score, and the
+five projection repeats measure numerical projection variability rather than
+independent biological or training replicates. The compact table can be
+inspected with:
 
 ```bash
 python scripts/summarize_release_evidence.py
 ```
+
+Full-data results are in-sample reconstruction diagnostics rather than
+forecasts. The lowest aggregate sliced-W2 method in each space is:
+
+| Dataset | Joint | Spatial | State |
+| --- | --- | --- | --- |
+| AD mouse | PASTE | PASTE | PASTE |
+| ARISTA | PASTE | CytoBridge | PASTE |
+| MOSTA | PASTE | PASTE | PASTE |
+| Zebrafish | Random interpolation | CytoBridge | Random interpolation |
+
+The eight signed evaluation/summary manifest hashes are shipped in
+{download}`unified_benchmark_manifests.csv
+<data/unified_benchmark_manifests.csv>`. Full-data rankings must not be
+described as held-out forecasting performance.
 
 `cytobridge workflow --reconstruction-diagnostic` is a fitted-model
 reconstruction diagnostic. It is not the cross-method holdout benchmark above.
@@ -117,8 +141,9 @@ authoritative matched-ablation reporting artifacts.
 The full, no-LR-prior, and no-interaction arms have now been re-fit in one
 matched four-dataset grid. This does not make the retained graph-threshold,
 score-batch, OT:mass, or scheduler diagnostics exhaustive sweeps around every
-formal value. The separate primary cross-method four-dataset benchmark remains
-pending.
+formal value. The separate primary cross-method four-dataset benchmark is
+complete; its LOTO findings above remain distinct from the in-sample
+three-arm reconstruction comparison.
 
 The run-resolved values used by the four formal presets are available in
 {download}`formal_hyperparameter_settings.csv
