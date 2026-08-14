@@ -30,6 +30,7 @@ include scripts/launch_mosta_formal_full_alignment.sh
 include scripts/launch_mosta_paired_alpha.sh
 include scripts/preprocess_pipeline.py
 include scripts/prepare_chicken_heart_input.py
+include scripts/run_chicken_heart_paper_downstream.py
 include scripts/run_arista_end_to_end.py
 include scripts/run_downstream_workflow_example.py
 include scripts/run_mosta_alignment_sensitivity.py

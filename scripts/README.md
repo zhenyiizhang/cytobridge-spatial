@@ -47,6 +47,27 @@ python scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py \
   --output-dir <new-publication-bundle-dir>
 ```
 
+`run_chicken_heart_paper_downstream.py` adds the formal chicken-heart
+perturbation bank after the standard `cytobridge workflow --config
+chicken_heart` downstream is complete. Every branch starts once from the real
+D4 population (processed time 0) and evolves continuously to D14: the runner
+does not replace generated states with D7/D10 observations. It runs three
+equal-particle, fixed-population cell-type-removal sensitivities and one paired
+interaction-on/off sensitivity, then exports spatial comparison grids,
+composition/transport tables, captions, and a hash manifest. These are
+single-seed model-sensitivity analyses rather than causal knockout or
+uncertainty estimates.
+
+```text
+python scripts/run_chicken_heart_paper_downstream.py \
+  --run-root <formal-training-root> \
+  --input-h5ad <formal-training-root>/preprocess/chicken_heart_aligned.h5ad \
+  --model-dir <formal-training-root>/training \
+  --standard-downstream <formal-downstream-root>/downstream \
+  --output-dir <new-chicken-paper-root> \
+  --device cuda:0
+```
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
