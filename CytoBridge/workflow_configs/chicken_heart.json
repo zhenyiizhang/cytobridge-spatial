@@ -64,7 +64,10 @@
     "gene_dynamics_enabled": true,
     "lr_enabled": true,
     "preferred_species_tag": "chicken",
-    "lr_scope": "human CellChatDB conserved-symbol proxy",
+    "lr_scope": {
+      "species_database": "human CellChatDB conserved-symbol proxy",
+      "interpretation": "Gallus gallus has no CellChatDB release. Only complete ligand-receptor subunits recovered through exact conserved chicken/human gene symbols are scored; this is not a species-complete chicken communication screen."
+    },
     "model_format": "current",
     "observed": [0.0, 1.0, 2.0, 3.0],
     "interpolated": [0.5, 1.5, 2.5],

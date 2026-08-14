@@ -152,6 +152,15 @@ def test_chicken_heart_training_batches_fit_the_earliest_observed_stage():
     assert max(stage_batch_sizes) <= 147
 
 
+def test_chicken_heart_lr_scope_is_structured_for_summary_serialization():
+    config, _ = load_workflow_config("chicken_heart")
+    scope = config["downstream"]["lr_scope"]
+    assert scope["species_database"] == "human CellChatDB conserved-symbol proxy"
+    assert (
+        "not a species-complete chicken communication screen" in scope["interpretation"]
+    )
+
+
 def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path):
     config, source = load_workflow_config("admouse")
     de_novo = build_workflow_plan(
