@@ -60,6 +60,120 @@ def test_support_time_grid_survives_formal_csv_round_trip(tmp_path: Path) -> Non
     assert np.allclose(actual, expected, rtol=0.0, atol=1e-12)
 
 
+def _replay_frames() -> np.ndarray:
+    frames = np.empty(2, dtype=object)
+    frames[0] = np.asarray([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]], dtype=np.float32)
+    frames[1] = np.asarray(
+        [[0.1, 1.1, 2.1], [3.1, 4.1, 5.1], [6.1, 7.1, 8.1]],
+        dtype=np.float32,
+    )
+    return frames
+
+
+def _replay_metrics() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "variant": ["remove_YSL", "remove_EVL"] * 2,
+            "time_index": [0, 0, 1, 1],
+            "time": [0.0, 0.0, 0.05, 0.05],
+            "space": ["spatial"] * 4,
+            "w1": [0.1, 0.2, 0.11, 0.21],
+            "w2": [0.12, 0.22, 0.13, 0.23],
+            "centroid_shift": [0.01, 0.02, 0.011, 0.021],
+            "n_baseline": [2, 2, 3, 3],
+            "n_ablation": [2, 2, 3, 3],
+            "count_ratio": [1.0, 1.0, 1.0, 1.0],
+            "count_delta": [0, 0, 0, 0],
+            "baseline_rms_radius": [1.0, 1.0, 1.1, 1.1],
+            "ablation_rms_radius": [1.0, 1.0, 1.1, 1.1],
+            "rms_radius_delta": [0.0, 0.0, 0.0, 0.0],
+            "ot_baseline_points": [2, 2, 3, 3],
+            "ot_ablation_points": [2, 2, 3, 3],
+            "ot_random_seed": [42, 42, 43, 43],
+        }
+    )
+
+
+def _write_replay_bundle(
+    tmp_path: Path,
+    *,
+    state_delta: float = 0.0,
+    shape_mismatch: bool = False,
+    metric_delta: float = 0.0,
+    discrete_delta: int = 0,
+) -> tuple[Path, Path]:
+    run_root = tmp_path / "run"
+    replay_dir = tmp_path / "repeat"
+    primary_experiment = run_root / "seeds" / "seed_42" / "experiment"
+    replay_experiment = replay_dir / "experiment"
+    primary_trajectories = primary_experiment / "trajectories"
+    replay_trajectories = replay_experiment / "trajectories"
+    primary_trajectories.mkdir(parents=True)
+    replay_trajectories.mkdir(parents=True)
+    for name, filename in MODULE.TRAJECTORY_FILENAMES.items():
+        primary = _replay_frames()
+        replay = _replay_frames()
+        if name == "baseline":
+            replay[1][0, 0] += np.float32(state_delta)
+            if shape_mismatch:
+                replay[1] = replay[1][:-1].copy()
+        np.save(primary_trajectories / filename, primary)
+        np.save(replay_trajectories / filename, replay)
+
+    primary_metrics = _replay_metrics()
+    replay_metrics = _replay_metrics()
+    replay_metrics.loc[2, "time"] += 5e-13
+    replay_metrics.loc[2, "w1"] += metric_delta
+    replay_metrics.loc[2, "n_ablation"] += discrete_delta
+    primary_metrics.to_csv(primary_experiment / "ablation_metrics.csv", index=False)
+    replay_metrics.to_csv(replay_experiment / "ablation_metrics.csv", index=False)
+    return run_root, replay_dir
+
+
+def test_seed42_replay_accepts_tiny_gpu_drift_and_records_audit(
+    tmp_path: Path,
+) -> None:
+    run_root, replay_dir = _write_replay_bundle(
+        tmp_path, state_delta=2e-6, metric_delta=1e-10
+    )
+    audit = MODULE._require_seed42_replay(run_root, replay_dir)
+    assert audit["status"] == "PASS"
+    assert audit["trajectory_tolerance"] == {"rtol": 1e-6, "atol": 1e-5}
+    assert audit["trajectories"]["baseline"]["byte_exact"] is False
+    assert audit["trajectories"]["baseline"]["frame_shapes_exact"] is True
+    assert audit["trajectories"]["baseline"]["particle_counts_exact"] is True
+    assert audit["trajectories"]["baseline"]["max_abs_difference"] > 0.0
+    assert audit["metrics"]["byte_exact"] is False
+    assert audit["metrics"]["time"]["max_abs_difference"] <= 1e-12
+    assert audit["metrics"]["numeric_columns"]["w1"]["max_abs_difference"] > 0
+
+
+def test_seed42_replay_rejects_shape_or_particle_count_drift(tmp_path: Path) -> None:
+    run_root, replay_dir = _write_replay_bundle(tmp_path, shape_mismatch=True)
+    with pytest.raises(RuntimeError, match="shape/count differs"):
+        MODULE._require_seed42_replay(run_root, replay_dir)
+
+
+def test_seed42_replay_rejects_state_drift_beyond_tolerance(tmp_path: Path) -> None:
+    run_root, replay_dir = _write_replay_bundle(tmp_path, state_delta=1e-3)
+    with pytest.raises(RuntimeError, match="exceeds the numerical replay tolerance"):
+        MODULE._require_seed42_replay(run_root, replay_dir)
+
+
+def test_seed42_replay_rejects_continuous_metric_drift(tmp_path: Path) -> None:
+    run_root, replay_dir = _write_replay_bundle(tmp_path, metric_delta=1e-4)
+    with pytest.raises(RuntimeError, match="metric column 'w1' exceeds tolerance"):
+        MODULE._require_seed42_replay(run_root, replay_dir)
+
+
+def test_seed42_replay_rejects_discrete_metric_drift(tmp_path: Path) -> None:
+    run_root, replay_dir = _write_replay_bundle(tmp_path, discrete_delta=1)
+    with pytest.raises(
+        RuntimeError, match="discrete metric column 'n_ablation' differs"
+    ):
+        MODULE._require_seed42_replay(run_root, replay_dir)
+
+
 def test_direct_runner_binds_package_and_helper_to_same_release() -> None:
     MODULE._require_import_origins()
     assert Path(MODULE.cb.__file__).resolve().is_relative_to(ROOT)

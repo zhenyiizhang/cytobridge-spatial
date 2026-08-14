@@ -52,6 +52,21 @@ TRAJECTORY_FILENAMES = {
     "remove_YSL": "remove_YSL_points.npy",
     "remove_EVL": "remove_EVL_points.npy",
 }
+REPLAY_STATE_RTOL = 1e-6
+REPLAY_STATE_ATOL = 1e-5
+REPLAY_METRIC_RTOL = 1e-8
+REPLAY_METRIC_ATOL = 1e-8
+REPLAY_TIME_ATOL = 1e-12
+REPLAY_METRIC_CATEGORICAL_COLUMNS = ("variant", "space")
+REPLAY_METRIC_DISCRETE_COLUMNS = (
+    "time_index",
+    "n_baseline",
+    "n_ablation",
+    "count_delta",
+    "ot_baseline_points",
+    "ot_ablation_points",
+    "ot_random_seed",
+)
 REPLAY_SEED = 42
 YSL_LABEL = "Yolk Syncytial Layer"
 EVL_LABEL = "EVL"
@@ -563,15 +578,265 @@ def _trajectory_hashes(trajectory_dir: Path) -> dict[str, str]:
 
 
 def _require_seed42_replay(run_root: Path, replay_dir: Path) -> dict[str, Any]:
-    primary = run_root / "seeds" / "seed_42" / "experiment" / "trajectories"
-    replay = replay_dir / "experiment" / "trajectories"
-    primary_hashes = _trajectory_hashes(primary)
-    replay_hashes = _trajectory_hashes(replay)
-    if primary_hashes != replay_hashes:
+    primary_experiment = run_root / "seeds" / "seed_42" / "experiment"
+    replay_experiment = replay_dir / "experiment"
+    primary_trajectories = primary_experiment / "trajectories"
+    replay_trajectories = replay_experiment / "trajectories"
+    primary_hashes = _trajectory_hashes(primary_trajectories)
+    replay_hashes = _trajectory_hashes(replay_trajectories)
+
+    trajectory_audit: dict[str, dict[str, Any]] = {}
+    for name, filename in TRAJECTORY_FILENAMES.items():
+        primary = np.load(primary_trajectories / filename, allow_pickle=True)
+        replay = np.load(replay_trajectories / filename, allow_pickle=True)
+        if primary.ndim != 1 or replay.ndim != 1:
+            raise RuntimeError(
+                f"Seed 42 replay trajectory {name} is not a one-dimensional "
+                "frame container."
+            )
+        if len(primary) != len(replay):
+            raise RuntimeError(
+                f"Seed 42 replay trajectory {name} frame count differs: "
+                f"primary={len(primary)}, replay={len(replay)}."
+            )
+
+        squared_error_sum = 0.0
+        compared_values = 0
+        max_abs_difference = 0.0
+        maximum_particle_count = 0
+        for frame_index, (primary_frame, replay_frame) in enumerate(
+            zip(primary, replay)
+        ):
+            primary_values = np.asarray(primary_frame)
+            replay_values = np.asarray(replay_frame)
+            if primary_values.ndim != 2 or replay_values.ndim != 2:
+                raise RuntimeError(
+                    f"Seed 42 replay trajectory {name} frame {frame_index} is "
+                    "not two-dimensional."
+                )
+            if primary_values.shape != replay_values.shape:
+                raise RuntimeError(
+                    f"Seed 42 replay trajectory {name} frame {frame_index} "
+                    "shape/count differs: "
+                    f"primary={primary_values.shape}, replay={replay_values.shape}."
+                )
+            if not (
+                np.issubdtype(primary_values.dtype, np.number)
+                and np.issubdtype(replay_values.dtype, np.number)
+            ):
+                raise RuntimeError(
+                    f"Seed 42 replay trajectory {name} frame {frame_index} is "
+                    "not numeric."
+                )
+            if not (
+                np.isfinite(primary_values).all() and np.isfinite(replay_values).all()
+            ):
+                raise RuntimeError(
+                    f"Seed 42 replay trajectory {name} frame {frame_index} "
+                    "contains non-finite values."
+                )
+            if not np.allclose(
+                primary_values,
+                replay_values,
+                rtol=REPLAY_STATE_RTOL,
+                atol=REPLAY_STATE_ATOL,
+            ):
+                difference = np.abs(
+                    primary_values.astype(np.float64) - replay_values.astype(np.float64)
+                )
+                raise RuntimeError(
+                    f"Seed 42 replay trajectory {name} frame {frame_index} "
+                    "exceeds the numerical replay tolerance: "
+                    f"max_abs={float(difference.max()):.12g}, "
+                    f"rtol={REPLAY_STATE_RTOL:g}, atol={REPLAY_STATE_ATOL:g}."
+                )
+            difference = primary_values.astype(np.float64) - replay_values.astype(
+                np.float64
+            )
+            if difference.size:
+                max_abs_difference = max(
+                    max_abs_difference, float(np.max(np.abs(difference)))
+                )
+                squared_error_sum += float(np.sum(np.square(difference)))
+                compared_values += int(difference.size)
+            maximum_particle_count = max(
+                maximum_particle_count, int(primary_values.shape[0])
+            )
+
+        trajectory_audit[name] = {
+            "primary_sha256": primary_hashes[name],
+            "replay_sha256": replay_hashes[name],
+            "byte_exact": primary_hashes[name] == replay_hashes[name],
+            "n_frames": int(len(primary)),
+            "frame_shapes_exact": True,
+            "particle_counts_exact": True,
+            "finite": True,
+            "maximum_particle_count": maximum_particle_count,
+            "max_abs_difference": max_abs_difference,
+            "rmse_difference": (
+                float(np.sqrt(squared_error_sum / compared_values))
+                if compared_values
+                else 0.0
+            ),
+        }
+
+    primary_metrics_path = primary_experiment / "ablation_metrics.csv"
+    replay_metrics_path = replay_experiment / "ablation_metrics.csv"
+    primary_metrics = pd.read_csv(primary_metrics_path)
+    replay_metrics = pd.read_csv(replay_metrics_path)
+    if list(primary_metrics.columns) != list(replay_metrics.columns):
         raise RuntimeError(
-            "Seed 42 deterministic replay differs byte-for-byte from the primary run."
+            "Seed 42 replay metric schema differs from the primary run: "
+            f"primary={list(primary_metrics.columns)}, "
+            f"replay={list(replay_metrics.columns)}."
         )
-    return {"status": "PASS", "primary": primary_hashes, "repeat": replay_hashes}
+    if len(primary_metrics) != len(replay_metrics):
+        raise RuntimeError(
+            "Seed 42 replay metric row count differs from the primary run: "
+            f"primary={len(primary_metrics)}, replay={len(replay_metrics)}."
+        )
+    if primary_metrics.empty:
+        raise RuntimeError("Seed 42 replay metrics are empty.")
+    required_metric_columns = {
+        *REPLAY_METRIC_CATEGORICAL_COLUMNS,
+        *REPLAY_METRIC_DISCRETE_COLUMNS,
+        "time",
+    }
+    missing_metric_columns = sorted(
+        required_metric_columns - set(primary_metrics.columns)
+    )
+    if missing_metric_columns:
+        raise RuntimeError(
+            "Seed 42 replay metrics lack required contract columns: "
+            f"{missing_metric_columns}."
+        )
+
+    for column in REPLAY_METRIC_CATEGORICAL_COLUMNS:
+        primary_values = primary_metrics[column]
+        replay_values = replay_metrics[column]
+        if (
+            primary_values.isna().any()
+            or replay_values.isna().any()
+            or not np.array_equal(
+                primary_values.to_numpy(dtype=object),
+                replay_values.to_numpy(dtype=object),
+            )
+        ):
+            raise RuntimeError(
+                f"Seed 42 replay categorical metric column {column!r} differs."
+            )
+
+    for column in REPLAY_METRIC_DISCRETE_COLUMNS:
+        if not (
+            pd.api.types.is_numeric_dtype(primary_metrics[column])
+            and pd.api.types.is_numeric_dtype(replay_metrics[column])
+        ):
+            raise RuntimeError(
+                f"Seed 42 replay discrete metric column {column!r} is not numeric."
+            )
+        primary_values = primary_metrics[column].to_numpy(dtype=np.float64)
+        replay_values = replay_metrics[column].to_numpy(dtype=np.float64)
+        if not (
+            np.isfinite(primary_values).all()
+            and np.isfinite(replay_values).all()
+            and np.equal(primary_values, np.rint(primary_values)).all()
+            and np.equal(replay_values, np.rint(replay_values)).all()
+            and np.array_equal(primary_values, replay_values)
+        ):
+            raise RuntimeError(
+                f"Seed 42 replay discrete metric column {column!r} differs."
+            )
+
+    primary_time = primary_metrics["time"].to_numpy(dtype=np.float64)
+    replay_time = replay_metrics["time"].to_numpy(dtype=np.float64)
+    if not (
+        np.isfinite(primary_time).all()
+        and np.isfinite(replay_time).all()
+        and np.allclose(
+            primary_time,
+            replay_time,
+            rtol=0.0,
+            atol=REPLAY_TIME_ATOL,
+        )
+    ):
+        raise RuntimeError(
+            "Seed 42 replay metric time column differs beyond "
+            f"atol={REPLAY_TIME_ATOL:g}."
+        )
+
+    excluded_columns = {
+        *REPLAY_METRIC_CATEGORICAL_COLUMNS,
+        *REPLAY_METRIC_DISCRETE_COLUMNS,
+        "time",
+    }
+    numeric_columns = [
+        column for column in primary_metrics.columns if column not in excluded_columns
+    ]
+    if not numeric_columns:
+        raise RuntimeError("Seed 42 replay metrics contain no continuous columns.")
+    numeric_audit: dict[str, dict[str, float]] = {}
+    for column in numeric_columns:
+        if not (
+            pd.api.types.is_numeric_dtype(primary_metrics[column])
+            and pd.api.types.is_numeric_dtype(replay_metrics[column])
+        ):
+            raise RuntimeError(
+                f"Seed 42 replay metric column {column!r} is not numeric."
+            )
+        primary_values = primary_metrics[column].to_numpy(dtype=np.float64)
+        replay_values = replay_metrics[column].to_numpy(dtype=np.float64)
+        if not (np.isfinite(primary_values).all() and np.isfinite(replay_values).all()):
+            raise RuntimeError(
+                f"Seed 42 replay metric column {column!r} contains non-finite values."
+            )
+        difference = primary_values - replay_values
+        if not np.allclose(
+            primary_values,
+            replay_values,
+            rtol=REPLAY_METRIC_RTOL,
+            atol=REPLAY_METRIC_ATOL,
+        ):
+            raise RuntimeError(
+                f"Seed 42 replay metric column {column!r} exceeds tolerance: "
+                f"max_abs={float(np.max(np.abs(difference))):.12g}, "
+                f"rtol={REPLAY_METRIC_RTOL:g}, atol={REPLAY_METRIC_ATOL:g}."
+            )
+        numeric_audit[column] = {
+            "max_abs_difference": float(np.max(np.abs(difference))),
+            "rmse_difference": float(np.sqrt(np.mean(np.square(difference)))),
+        }
+
+    metric_audit = {
+        "primary_sha256": _sha256(primary_metrics_path),
+        "replay_sha256": _sha256(replay_metrics_path),
+        "byte_exact": _sha256(primary_metrics_path) == _sha256(replay_metrics_path),
+        "schema_exact": True,
+        "n_rows": int(len(primary_metrics)),
+        "categorical_columns_exact": list(REPLAY_METRIC_CATEGORICAL_COLUMNS),
+        "discrete_columns_exact": list(REPLAY_METRIC_DISCRETE_COLUMNS),
+        "time": {
+            "atol": REPLAY_TIME_ATOL,
+            "max_abs_difference": float(np.max(np.abs(primary_time - replay_time))),
+        },
+        "numeric_columns": numeric_audit,
+    }
+    return {
+        "status": "PASS",
+        "comparison": "fail-closed numerical replay audit",
+        "trajectory_tolerance": {
+            "rtol": REPLAY_STATE_RTOL,
+            "atol": REPLAY_STATE_ATOL,
+        },
+        "metric_tolerance": {
+            "rtol": REPLAY_METRIC_RTOL,
+            "atol": REPLAY_METRIC_ATOL,
+            "time_atol": REPLAY_TIME_ATOL,
+        },
+        "primary": primary_hashes,
+        "repeat": replay_hashes,
+        "trajectories": trajectory_audit,
+        "metrics": metric_audit,
+    }
 
 
 def _paper_rc() -> dict[str, Any]:

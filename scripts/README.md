@@ -138,6 +138,27 @@ replicate experiment. The
 equal-N fixed-population S24 produced by `run_zebrafish_paper_downstream.py`
 remains a distinct shape-control analysis.
 
+`plot_zebrafish_s22_article_style.py` is a read-only publication renderer for
+the accepted formal S22 stage. It requires the exact SHA-256 values of both the
+S22 `stage_manifest.json` and its sibling formal `run_manifest.json`, verifies
+every stage-recorded artifact, and renders the original article-style 3 x 3
+sequence `Observed t=0`, `Generated t=0.5`, ..., `Observed t=4`. Generated
+half-time panels are selected only from the signed continuous global-t0 path;
+integer-time panels are independent observed references. The renderer performs
+no simulation, adjacent-slice re-anchoring, display warp, or clipping, and does
+not replace or modify the retained all-generated fixed-N S22 support audit. It
+writes an Arial/Type-42 vector PDF, a 320-dpi PNG, panel-source table, caption,
+provenance, and a hashed figure manifest into a new or empty directory:
+
+```text
+python scripts/plot_zebrafish_s22_article_style.py \
+  --stage-root <formal-run>/s22 \
+  --expected-stage-manifest-sha256 <s22-stage-manifest-sha256> \
+  --run-manifest <formal-run>/run_manifest.json \
+  --expected-run-manifest-sha256 <run-manifest-sha256> \
+  --output-dir <new-article-style-s22-bundle>
+```
+
 Other top-level files under `scripts/` in the Git repository are retained as
 historical research records. Some contain workstation-specific paths or calls
 from earlier package versions. They are not installed, are not included in the

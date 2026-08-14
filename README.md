@@ -203,8 +203,12 @@ single generated global-t0 fixed-population state transport from `t=0` through
 growth-driven birth/extinction is disabled and particle count stays fixed.
 Observed integer slices are exported separately as references and never replace
 generated frames. S22 is not an abundance forecast or reconstruction of
-observed stages. S25 and communication retain their explicitly separate
-interval-local, observed-anchored state contract with learned growth enabled.
+observed stages. A separate package-owned article-style renderer alternates the
+independent observed integer slices with signed global-t0 generated half-time
+states in the original 3 x 3 layout while preserving the full all-generated
+S22 output and support audit. S25 and communication retain their explicitly
+separate interval-local, observed-anchored state contract with learned growth
+enabled.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:
