@@ -51,6 +51,19 @@ def test_paired_displacement_rejects_population_or_time_mismatch():
         )
 
 
+def test_coupled_distribution_metrics_has_zero_sampling_floor():
+    points = np.arange(120, dtype=float).reshape(20, 6)
+    table = MODULE.coupled_distribution_metrics(
+        [points], [points.copy()], [0.0], spatial_dim=2, max_ot_points=5
+    )
+    assert table["w1"].eq(0.0).all()
+    assert table["w2"].eq(0.0).all()
+    assert table["ot_ablation_points"].eq(5).all()
+    assert (
+        table["ot_sampling"].eq("shared_paired_row_indices_without_replacement").all()
+    )
+
+
 def test_time_grid_uses_observed_and_interpolated_without_reanchoring():
     config = {
         "downstream": {

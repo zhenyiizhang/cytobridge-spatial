@@ -170,6 +170,99 @@ def paired_displacement_metrics(
     return pd.DataFrame(rows)
 
 
+def coupled_distribution_metrics(
+    interaction_on: Sequence[np.ndarray],
+    interaction_off: Sequence[np.ndarray],
+    time_points: Sequence[float],
+    *,
+    spatial_dim: int = SPATIAL_DIM,
+    max_ot_points: int = MAX_OT_POINTS,
+    random_seed: int = RANDOM_SEED,
+) -> pd.DataFrame:
+    """Compute exact OT on one shared deterministic row subset per pair.
+
+    The generic evaluator independently subsamples its two input clouds. That
+    is appropriate for unrelated empirical samples, but it creates a positive
+    sampling floor here even at t0, where the paired on/off rows are identical.
+    This fixed-population experiment instead retains the same row indices from
+    both branches before solving exact OT.
+    """
+
+    if not (len(interaction_on) == len(interaction_off) == len(time_points)):
+        raise ValueError("Both trajectories must match the declared time grid.")
+    spaces = {
+        "joint": slice(None),
+        "spatial": slice(0, int(spatial_dim)),
+        "latent": slice(int(spatial_dim), None),
+    }
+    rows: list[dict[str, Any]] = []
+    for time_index, (time_value, on_frame, off_frame) in enumerate(
+        zip(time_points, interaction_on, interaction_off)
+    ):
+        on = np.asarray(on_frame, dtype=np.float64)
+        off = np.asarray(off_frame, dtype=np.float64)
+        if on.shape != off.shape or on.ndim != 2:
+            raise ValueError(
+                f"Paired trajectory shape mismatch at t={time_value}: "
+                f"on={on.shape}, off={off.shape}."
+            )
+        n_cells = int(on.shape[0])
+        for space_index, (space, columns) in enumerate(spaces.items()):
+            on_space = on[:, columns]
+            off_space = off[:, columns]
+            seed = int(random_seed) + 100 * int(time_index) + int(space_index)
+            if n_cells > int(max_ot_points):
+                indices = np.sort(
+                    np.random.default_rng(seed).choice(
+                        n_cells, size=int(max_ot_points), replace=False
+                    )
+                )
+            else:
+                indices = np.arange(n_cells, dtype=int)
+            retained_on = on_space[indices]
+            retained_off = off_space[indices]
+            distances = cb.tl.compute_distribution_metrics(
+                retained_off,
+                retained_on,
+                max_ot_points=None,
+                random_seed=seed,
+            )
+            centroid_shift = float(
+                np.linalg.norm(np.mean(off_space, axis=0) - np.mean(on_space, axis=0))
+            )
+            on_centered = on_space - np.mean(on_space, axis=0, keepdims=True)
+            off_centered = off_space - np.mean(off_space, axis=0, keepdims=True)
+            on_radius = float(
+                np.sqrt(np.mean(np.sum(on_centered * on_centered, axis=1)))
+            )
+            off_radius = float(
+                np.sqrt(np.mean(np.sum(off_centered * off_centered, axis=1)))
+            )
+            rows.append(
+                {
+                    "variant": "interaction_off",
+                    "time_index": int(time_index),
+                    "time": float(time_value),
+                    "space": space,
+                    "n_baseline": n_cells,
+                    "n_ablation": n_cells,
+                    "count_delta": 0,
+                    "count_ratio": 1.0,
+                    "w1": float(distances["w1"]),
+                    "w2": float(distances["w2"]),
+                    "ot_ablation_points": int(len(indices)),
+                    "ot_baseline_points": int(len(indices)),
+                    "ot_random_seed": seed,
+                    "ot_sampling": "shared_paired_row_indices_without_replacement",
+                    "centroid_shift": centroid_shift,
+                    "baseline_rms_radius": on_radius,
+                    "ablation_rms_radius": off_radius,
+                    "rms_radius_delta": float(off_radius - on_radius),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def _workflow_config_artifact(config_name: str, config_source: str) -> dict[str, Any]:
     if str(config_source).startswith("packaged preset:"):
         path = (
@@ -295,7 +388,15 @@ def run_dataset(args: argparse.Namespace) -> Path:
     paired_path = output_dir / "paired_displacement_metrics.csv"
     paired.to_csv(paired_path, index=False)
     distribution_path = output_dir / "ablation" / "interaction_ablation_metrics.csv"
-    distribution = pd.read_csv(distribution_path)
+    distribution = coupled_distribution_metrics(
+        result.baseline_points,
+        result.ablated_points,
+        time_points,
+        spatial_dim=SPATIAL_DIM,
+        max_ot_points=MAX_OT_POINTS,
+        random_seed=RANDOM_SEED,
+    )
+    distribution.to_csv(distribution_path, index=False)
     if set(distribution["space"]) != {"joint", "spatial", "latent"}:
         raise RuntimeError("Interaction-ablation distribution spaces are incomplete.")
 
@@ -357,6 +458,9 @@ def run_dataset(args: argparse.Namespace) -> Path:
             "spatial_dimensions": SPATIAL_DIM,
             "expression_dimensions": 50,
             "distribution_ot_max_points": MAX_OT_POINTS,
+            "distribution_ot_sampling": (
+                "exact OT on shared deterministic paired-row support"
+            ),
             "interpretation": (
                 "single-seed model sensitivity; not a matched retraining ablation, "
                 "causal knockout, or uncertainty estimate"
