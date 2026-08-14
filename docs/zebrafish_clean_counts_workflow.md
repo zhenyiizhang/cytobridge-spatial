@@ -532,29 +532,40 @@ classifier file.
 Split-SDE population events use a fixed `resample_dt=0.05`, independent of the
 frames requested for plotting. This matters because birth/extinction sampling
 is part of the dynamics: changing a video from 9 to 41 frames must not change
-the generated slices. S22 uses the canonical piecewise observed-anchor mode on
-its 0.1 grid: each non-integer slice is simulated forward from the preceding
-observed time point, is not conditioned on the following endpoint, and is not
-part of a global-t0 or lineage-continuous trajectory. No endpoint-directed
-display warp is applied. S24 is separate: it is an explicitly labelled
-global-t0 virtual-removal sensitivity, not canonical reconstruction or lineage
-evidence. The runner also applies a fail-fast particle ceiling before split
+the generated slices. Paper S22 uses one global-t0 simulation on its 0.1 grid:
+every displayed frame, including `t=1,2,3,4`, is generated from the same `t=0`
+initialization. The actual observed integer slices are written to a separate
+reference bundle and never replace generated frames. No endpoint-directed
+display warp is applied. A frame-level latent-support audit reports p99, max,
+and the fraction beyond observed radial support without clipping any points.
+S25 and communication retain their separate
+interval-local observed-anchor contract and do not silently reuse the global-t0
+S22 bundle. The runner also applies a fail-fast particle ceiling before split
 allocation; this guard never downsamples a valid run.
 
 The manuscript redraws are assembled by reusable plotting APIs rather than by
-copying historical PDFs. S22 uses a 3-by-3 wrapped trajectory grid with one
-figure-level cell-type legend. S23 exports the raw per-cell growth table and a
+copying historical PDFs. S22 exports a global-t0 trajectory mosaic/video and a
+separate observed-reference mosaic with one figure-level cell-type legend.
+S23 exports the raw per-cell growth table and a
 3-by-2 observed-time grid; each time point is robust-scaled from its own 5th to
 95th percentiles for display, while the unscaled predictions remain in
-`growth_per_cell.csv`. S24 uses the generic time-by-condition trajectory grid
-for baseline, virtual YSL removal, and virtual EVL removal. These panels are a
-single-seed virtual sensitivity analysis, not causal knockout estimates.
+`growth_per_cell.csv`. S24 runs YSL and EVL separately. For each target, the
+baseline and target-excluded cohorts are independently sampled without
+replacement at equal initial particle count, use the same branch and dedicated
+interaction-grouping seeds, and keep particle count fixed by disabling learned
+growth resampling. Each target has its own un-clipped comparison grid and must
+pass the recorded latent-support audit before a publication panel is emitted.
+These are single-seed model sensitivities, not absolute tissue-mass deletion or
+causal knockout estimates. The former unequal-N EVL branch with learned growth
+resampling is retained only as an OOD diagnostic and must not be reused.
 
 S25 follows the manuscript wording "observed and interpolated time points":
 integer stages use the actual observed cells and annotations, while half-time
-stages reuse S22's canonical interval-local one-sided generated states. Every generated
-Zebrafish annotation uses the formal `k=10` spatial-majority policy, including
-the S22 trajectory, the S25 target-cell analysis, and communication/LR. The
+stages use a stage-local interval-local one-sided simulation (or an explicitly
+validated historical interval-local bundle). They do not reuse the new
+global-t0 S22 bundle. Every generated Zebrafish annotation uses the formal
+`k=10` spatial-majority policy, including the S22 trajectory, the S25
+target-cell analysis, and communication/LR. The
 direct classifier (`k=1`) is retained as a separately labeled sensitivity
 setting; every per-timepoint YSL count is recorded and a full run still fails
 rather than fabricating cells if no target cells are predicted.
@@ -569,12 +580,13 @@ hash and fingerprint, per-cell inherited versus analysis labels, per-time label
 counts, and the fraction changed, so display smoothing cannot silently alter
 biological communication scores.
 
-For a downstream-only audit that must reuse an already published S22
-trajectory byte-for-byte, pass its `canonical_prewarp_states` directory with
-`--s25-canonical-state-bundle`. The runner validates the bundle index, every
-frame SHA-256, and the adjacent S22 stage manifest before S25 or communication
-opens it. This option is deliberately an adapter-level provenance hook; it does
-not change the generic simulation or temporal-analysis APIs.
+For a downstream-only audit that must reuse an already published historical
+interval-local trajectory byte-for-byte, pass its `canonical_prewarp_states`
+directory with `--s25-canonical-state-bundle`. The runner validates the bundle
+index, every frame SHA-256, and the adjacent historical S22 stage manifest
+before S25 or communication opens it. A current global-t0 S22 bundle is
+deliberately incompatible. This option is an adapter-level provenance hook; it
+does not change the generic simulation or temporal-analysis APIs.
 
 Gene dynamics at observed and generated times use the same retained-PCA inverse
 map and its persisted fit-time center. Only features with a nonzero retained

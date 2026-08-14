@@ -10,10 +10,21 @@ two-endpoint bridge. Communication and ligand–receptor tables combine real
 observed stages with these interval-local generated stages; they do not
 describe one lineage-continuous rollout or global t0 extrapolation.
 
+The paper-specific S22 reproduction is deliberately different: it generates
+one continuous global-t0 path through `t=4` and exports observed integer slices
+only as a separate reference figure. S25 and communication continue to use the
+interval-local contract above; a global-t0 S22 bundle cannot be silently reused
+for those analyses.
+
 ## Velocity
 
 Interaction velocity is recomputed independently within each real time slice.
 The workflow does not reuse historical cross-time interaction caches.
+The plotted arrows are model-derived state derivatives. Direct 2D derivatives
+are interpolated in their existing coordinates; only higher-dimensional state
+derivatives pass through scVelo's transition projection. Unsupported grid
+locations receive a common two-component mask so finite vector streamlines are
+preserved in vector PDF output.
 
 ## Growth
 

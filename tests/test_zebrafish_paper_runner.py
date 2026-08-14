@@ -287,9 +287,9 @@ def test_acceptance_binding_is_explicit_in_stage_and_final_manifests(tmp_path):
     )
 
 
-def test_canonical_s22_manifest_semantics_reject_legacy_global_bundle(tmp_path):
+def test_s25_interval_local_manifest_semantics_reject_global_t0_bundle(tmp_path):
     manifest_path = tmp_path / "stage_manifest.json"
-    canonical = {
+    interval_local = {
         "settings": {
             "trajectory_mode": (
                 "piecewise_observed_anchored_interval_forward_simulation"
@@ -299,36 +299,55 @@ def test_canonical_s22_manifest_semantics_reject_legacy_global_bundle(tmp_path):
             "piecewise_include_end": False,
             "daughter_noise_std": 0.0,
             "display_warp": {"applied": False},
-            "simulation": runner.CANONICAL_TRAJECTORY_SCOPE,
+            "simulation": runner.S25_COMMUNICATION_TRAJECTORY_SCOPE,
         },
         "details": {
-            "trajectory_scope": runner.CANONICAL_TRAJECTORY_SCOPE,
+            "trajectory_scope": runner.S25_COMMUNICATION_TRAJECTORY_SCOPE,
             "display_warp_applied": False,
         },
     }
-    runner._require_canonical_s22_manifest_semantics(canonical, manifest_path)
+    runner._require_s25_interval_local_manifest_semantics(interval_local, manifest_path)
 
-    legacy = json.loads(json.dumps(canonical))
-    legacy["settings"]["trajectory_mode"] = "global_t0_continuous"
-    legacy["settings"]["split_sde_piecewise"] = False
-    legacy["settings"]["display_warp"]["applied"] = True
-    with pytest.raises(RuntimeError, match="refusing legacy/global-t0"):
-        runner._require_canonical_s22_manifest_semantics(legacy, manifest_path)
+    global_t0 = json.loads(json.dumps(interval_local))
+    global_t0["settings"]["trajectory_mode"] = runner.S22_TRAJECTORY_MODE
+    global_t0["settings"]["split_sde_piecewise"] = False
+    global_t0["settings"]["piecewise_observed_sample_mode"] = None
+    global_t0["settings"]["piecewise_include_end"] = None
+    global_t0["settings"]["simulation"] = runner.S22_TRAJECTORY_SCOPE
+    global_t0["details"]["trajectory_scope"] = runner.S22_TRAJECTORY_SCOPE
+    with pytest.raises(RuntimeError, match="refusing incompatible/global-t0"):
+        runner._require_s25_interval_local_manifest_semantics(global_t0, manifest_path)
 
 
-def test_s25_refuses_stale_existing_s22_trajectory(tmp_path):
-    common = {"model_config_sha256": "old"}
-    _write_current_stage_manifest(tmp_path, stage="s22", common=common)
+def test_s25_does_not_implicitly_consume_neighboring_s22_bundle(tmp_path, monkeypatch):
     canonical = tmp_path / "s22" / "canonical_prewarp_states"
-    canonical.mkdir()
+    canonical.mkdir(parents=True)
     (canonical / "index.json").write_text("{}\n", encoding="utf-8")
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(tmp_path / "aligned.h5ad"),
+            "--model-dir",
+            str(tmp_path / "model"),
+            "--output-dir",
+            str(tmp_path),
+        ]
+    )
     context = SimpleNamespace(
         output_dir=tmp_path,
-        common_signature={"model_config_sha256": "new"},
-        args=SimpleNamespace(profile="full", s25_top_genes=250),
+        shared_cache_dir=tmp_path / "cache",
+        common_signature={"model_config_sha256": "current"},
+        args=args,
     )
-    with pytest.raises(RuntimeError, match="different data/model/code"):
-        runner._stage_s25(context)
+    captured = {}
+
+    def fake_execute(_ctx, stage, settings, action):
+        captured.update(settings)
+        return {"stage": stage}
+
+    monkeypatch.setattr(runner, "_execute_stage", fake_execute)
+    assert runner._stage_s25(context) == {"stage": "s25"}
+    assert captured["canonical_trajectory"] is None
 
 
 def _external_s22_test_context(tmp_path, *, common):
@@ -369,7 +388,7 @@ def _write_external_s22_bundle(bundle, *, common, settings):
         ),
         "settings": settings,
         "details": {
-            "trajectory_scope": runner.CANONICAL_TRAJECTORY_SCOPE,
+            "trajectory_scope": runner.S25_COMMUNICATION_TRAJECTORY_SCOPE,
             "display_warp_applied": False,
         },
         "outputs": [str(index.resolve())],
@@ -395,7 +414,7 @@ def _canonical_s22_test_settings(context):
         "piecewise_observed_sample_mode": "per_timepoint",
         "piecewise_include_end": False,
         "display_warp": {"applied": False},
-        "simulation": runner.CANONICAL_TRAJECTORY_SCOPE,
+        "simulation": runner.S25_COMMUNICATION_TRAJECTORY_SCOPE,
     }
     settings.update(runner._expected_s22_state_settings(context))
     return settings
@@ -858,7 +877,203 @@ def test_s25_missing_target_is_strict_outside_smoke(tmp_path, monkeypatch):
         runner._stage_s25(context)
 
 
-def test_interpolation_uses_the_classifier_stage_cache_tag(tmp_path, monkeypatch):
+def _global_t0_states_for_test():
+    observed_t0 = np.asarray([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]], dtype=np.float32)
+    states = {}
+    for time_value in runner.HALF_TIMES:
+        points = observed_t0.copy()
+        if float(time_value) > 0.0:
+            points = points + np.float32(time_value)
+        state = runner._minimal_state_adata(
+            points, ["A", "B"], annotation_key="Annotation"
+        )
+        state.uns["slice_origin"] = "generated_global_t0"
+        state.uns["source_anchor_time"] = 0.0
+        states[str(float(time_value))] = state
+    return states, observed_t0
+
+
+def test_global_t0_state_guard_rejects_observed_integer_substitution():
+    states, observed_t0 = _global_t0_states_for_test()
+    runner._require_global_t0_generated_states(
+        states, runner.HALF_TIMES, observed_t0_points=observed_t0
+    )
+
+    states["2.0"].uns["slice_origin"] = "observed_real"
+    states["2.0"].uns["source_anchor_time"] = 2.0
+    with pytest.raises(RuntimeError, match="observed-substituted or re-anchored"):
+        runner._require_global_t0_generated_states(
+            states, runner.HALF_TIMES, observed_t0_points=observed_t0
+        )
+
+
+def test_global_t0_state_guard_rejects_nonzero_anchor_and_foreign_t0():
+    states, observed_t0 = _global_t0_states_for_test()
+    states["3.5"].uns["source_anchor_time"] = 3.0
+    with pytest.raises(RuntimeError, match="single t=0 anchor"):
+        runner._require_global_t0_generated_states(
+            states, runner.HALF_TIMES, observed_t0_points=observed_t0
+        )
+
+    states, observed_t0 = _global_t0_states_for_test()
+    states["0.0"].X[0, 0] = 99.0
+    with pytest.raises(RuntimeError, match="exact sample of the real observed t=0"):
+        runner._require_global_t0_generated_states(
+            states, runner.HALF_TIMES, observed_t0_points=observed_t0
+        )
+
+
+def test_s22_stage_manifest_contract_is_global_t0_and_reference_only(
+    tmp_path, monkeypatch
+):
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(tmp_path / "aligned.h5ad"),
+            "--model-dir",
+            str(tmp_path / "model"),
+            "--output-dir",
+            str(tmp_path),
+            "--profile",
+            "smoke",
+        ]
+    )
+    context = SimpleNamespace(
+        args=args,
+        output_dir=tmp_path,
+        shared_cache_dir=tmp_path / "cache",
+    )
+    captured = {}
+
+    def fake_execute(_ctx, stage, settings, action):
+        captured.update(settings)
+        return {"stage": stage}
+
+    monkeypatch.setattr(runner, "_execute_stage", fake_execute)
+    assert runner._stage_s22(context) == {"stage": "s22"}
+    assert captured["trajectory_mode"] == runner.S22_TRAJECTORY_MODE
+    assert captured["split_sde_piecewise"] is False
+    assert captured["use_real_for_observed_trajectory_frames"] is False
+    assert captured["trajectory_frames"] == (
+        "generated_at_every_time_including_integer_times"
+    )
+    assert captured["observed_integer_frames"] == "separate_reference_only"
+    assert captured["simulation_grid"] == list(runner.HALF_TIMES)
+    assert captured["downstream_state_contract"]["implicit_s22_reuse"] is False
+
+
+def test_s22_stage_keeps_generated_integer_frames_and_observed_references_separate(
+    tmp_path, monkeypatch
+):
+    data = ad.AnnData(X=np.zeros((10, 1), dtype=np.float32))
+    data.obs["Annotation"] = ["A", "B"] * 5
+    data.obs["time_point_processed"] = np.repeat(runner.OBSERVED_TIMES, 2)
+    data.obsm["spatial_aligned"] = np.column_stack(
+        (
+            data.obs["time_point_processed"].to_numpy(dtype=np.float32),
+            np.tile([0, 1], 5),
+        )
+    ).astype(np.float32)
+    data.obsm["X_latent"] = np.zeros((10, 1), dtype=np.float32)
+    observed_t0 = runner._joint_features(
+        data, latent_key="X_latent", spatial_key="spatial_aligned"
+    )[:2]
+    states = {}
+    for time_value in runner.HALF_TIMES:
+        points = observed_t0 + np.float32(time_value)
+        state = runner._minimal_state_adata(
+            points, ["A", "B"], annotation_key="Annotation"
+        )
+        state.uns["slice_origin"] = "generated_global_t0"
+        state.uns["source_anchor_time"] = 0.0
+        states[str(float(time_value))] = state
+    interpolation = SimpleNamespace(
+        adata_dict=states,
+        ts_points=list(runner.HALF_TIMES),
+        classifier_cache_path="classifier.pt",
+        classifier_accuracy=1.0,
+        classifier_balanced_accuracy=1.0,
+        simulation_seeds={"split_population": 43},
+    )
+
+    def fake_interpolation(*args, **kwargs):
+        assert kwargs["trajectory_mode"] == runner.S22_TRAJECTORY_MODE
+        return interpolation
+
+    monkeypatch.setattr(runner, "_run_interpolation", fake_interpolation)
+    monkeypatch.setattr(
+        runner.cb.tl, "save_timepoint_snapshots", lambda *args, **kwargs: None
+    )
+
+    import matplotlib.pyplot as plt
+
+    def fake_grid(*args, **kwargs):
+        Path(kwargs["out_path"]).write_bytes(b"%PDF-test")
+        return plt.figure()
+
+    def fake_animation(*args, **kwargs):
+        Path(kwargs["out_path"]).write_bytes(b"GIF-test")
+
+    monkeypatch.setattr(runner.cb.pl, "plot_trajectory_grid", fake_grid)
+    monkeypatch.setattr(runner.cb.pl, "plot_trajectory_gif", fake_animation)
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(tmp_path / "aligned.h5ad"),
+            "--model-dir",
+            str(tmp_path / "model"),
+            "--output-dir",
+            str(tmp_path),
+            "--profile",
+            "smoke",
+            "--video-formats",
+            "gif",
+        ]
+    )
+    context = runner.RunContext(
+        args=args,
+        adata=data,
+        df=None,
+        loaded=None,
+        runtime=None,
+        dim=3,
+        spatial_dim=2,
+        output_dir=tmp_path,
+        shared_cache_dir=tmp_path / "cache",
+        label_to_color={"A": "#111111", "B": "#eeeeee"},
+        common_signature={"test": True},
+    )
+    manifest = runner._stage_s22(context)
+
+    import pandas as pd
+
+    sources = pd.read_csv(tmp_path / "s22" / "frame_sources.csv")
+    after_t0 = sources.loc[sources["time"].gt(0.0)]
+    assert (
+        after_t0["trajectory_display_source"].eq("generated_global_t0_continuous").all()
+    )
+    integer_after_t0 = sources.loc[sources["time"].isin([1.0, 2.0, 3.0, 4.0])]
+    assert integer_after_t0["observed_reference_available"].all()
+    assert set(integer_after_t0["observed_reference_source"]) == {
+        "observed_reference_only"
+    }
+    assert (tmp_path / "s22" / "global_t0_states" / "index.json").is_file()
+    assert (tmp_path / "s22" / "observed_reference_states" / "index.json").is_file()
+    assert (tmp_path / "s22" / "S22_trajectory_support_audit.csv").is_file()
+    assert (tmp_path / "s22" / "S22_trajectory_support_audit.json").is_file()
+    assert manifest["details"]["trajectory_support_audit"]["n_frames"] == len(
+        runner.HALF_TIMES
+    )
+    assert manifest["details"]["trajectory_support_audit_publication_blocking"] is False
+    assert (
+        manifest["details"]["observed_integer_frames_substituted_into_trajectory"]
+        is False
+    )
+
+
+def test_interpolation_separates_global_t0_and_interval_local_contracts(
+    tmp_path, monkeypatch
+):
     captured = {}
 
     def fake_workflow(**kwargs):
@@ -899,23 +1114,35 @@ def test_interpolation_uses_the_classifier_stage_cache_tag(tmp_path, monkeypatch
         context,
         output_dir=tmp_path / "workflow",
         time_points=(0.0, 0.5, 1.0),
-        use_real_for_observed=True,
+        trajectory_mode=runner.S22_TRAJECTORY_MODE,
         display_piecewise_warp=False,
     )
     assert captured["classifier_cache_tag"] == runner.MAIN_CLASSIFIER_CACHE_TAG
-    assert captured["split_sde_piecewise"] is True
+    assert captured["use_real_for_observed"] is False
+    assert captured["split_sde_piecewise"] is False
     assert captured["split_sde_piecewise_include_end"] is False
     assert captured["split_daughter_noise_std"] == 0.0
-    assert captured["piecewise_observed_sample_mode"] == "per_timepoint"
+    assert captured["piecewise_observed_sample_mode"] == "t0_fixed"
     assert captured["spatial_warp_to_observed"] is False
     assert captured["spatial_warp_to_observed_piecewise"] is False
     assert captured["spatial_warp_visualization_only"] is False
-    assert "one-sided" in runner.CANONICAL_TRAJECTORY_SCOPE
-    assert "not conditioned on the following observed endpoint" in (
-        runner.CANONICAL_TRAJECTORY_SCOPE
+    assert "initialized once" in runner.S22_TRAJECTORY_SCOPE
+    assert "integer times after t=0" in runner.S22_TRAJECTORY_SCOPE
+    assert "references only" in runner.S22_TRAJECTORY_SCOPE
+
+    captured.clear()
+    runner._run_interpolation(
+        context,
+        output_dir=tmp_path / "workflow_interval_local",
+        time_points=(0.0, 0.5, 1.0),
+        trajectory_mode="interval_local_observed_anchored",
+        display_piecewise_warp=False,
     )
-    assert "not global-t0" in runner.CANONICAL_TRAJECTORY_SCOPE
-    assert "not lineage-continuous" in runner.CANONICAL_TRAJECTORY_SCOPE
+    assert captured["use_real_for_observed"] is True
+    assert captured["split_sde_piecewise"] is True
+    assert captured["piecewise_observed_sample_mode"] == "per_timepoint"
+    assert "one-sided" in runner.S25_COMMUNICATION_TRAJECTORY_SCOPE
+    assert "not global-t0" in runner.S25_COMMUNICATION_TRAJECTORY_SCOPE
 
 
 def test_interpolation_rejects_legacy_endpoint_directed_display_warp(
@@ -963,7 +1190,227 @@ def test_interpolation_rejects_legacy_endpoint_directed_display_warp(
             context,
             output_dir=tmp_path / "workflow",
             time_points=(0.0, 0.5, 1.0),
-            use_real_for_observed=True,
+            trajectory_mode=runner.S22_TRAJECTORY_MODE,
             display_piecewise_warp=True,
         )
     assert not called
+
+
+def test_trajectory_support_audit_is_pure_and_publication_guard_fails_ood():
+    observed_latent = np.asarray([[1.0, 0.0], [2.0, 0.0], [0.0, 1.5]], dtype=np.float32)
+    good_frame = np.asarray(
+        [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.5, 0.0]],
+        dtype=np.float32,
+    )
+    good_audit, good_summary = runner._compute_trajectory_support_audit(
+        observed_latent,
+        {"matched": (good_frame, good_frame.copy())},
+        (0.0, 1.0),
+        spatial_dim=2,
+    )
+    assert good_summary["status"] == "PASS"
+    assert good_summary["observed_reference"]["latent_norm_max"] == 2.0
+    assert good_audit["passes_publication_support_gate"].all()
+    # Inputs are untouched: the reusable helper has no file or array mutation.
+    np.testing.assert_array_equal(
+        good_frame,
+        np.asarray(
+            [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.5, 0.0]],
+            dtype=np.float32,
+        ),
+    )
+
+    outlier_frame = np.repeat(good_frame[:1], 100, axis=0)
+    outlier_frame[:2, 2:] = np.asarray([5.0, 0.0], dtype=np.float32)
+    bad_audit, bad_summary = runner._compute_trajectory_support_audit(
+        observed_latent,
+        {"EVL_remove_EVL": (outlier_frame,)},
+        (4.0,),
+        spatial_dim=2,
+    )
+    assert bad_summary["status"] == "FAIL"
+    row = bad_audit.iloc[0]
+    assert row["fraction_outside_observed_max"] == pytest.approx(0.02)
+    assert row["latent_norm_max"] == pytest.approx(5.0)
+    assert "outside_observed_max_fraction" in row["failure_reasons"]
+    assert "maximum_norm_multiplier" in row["failure_reasons"]
+    with pytest.raises(RuntimeError, match="publication latent-support gate"):
+        runner._require_trajectory_support_audit_pass(bad_summary, stage="S24")
+
+    nonfinite_frame = good_frame.copy()
+    nonfinite_frame[0, 2] = np.nan
+    _, nonfinite_summary = runner._compute_trajectory_support_audit(
+        observed_latent,
+        {"YSL_remove_YSL": (nonfinite_frame,)},
+        (1.0,),
+        spatial_dim=2,
+    )
+    assert nonfinite_summary["status"] == "FAIL"
+    assert (
+        "nonfinite_generated_values"
+        in nonfinite_summary["failed_frames"][0]["failure_reasons"]
+    )
+
+
+def test_s24_stage_runs_two_separate_matched_fixed_population_protocols(
+    tmp_path, monkeypatch
+):
+    labels = [
+        "Yolk Syncytial Layer",
+        "EVL",
+        "A",
+        "A",
+        "A",
+        "A",
+        "A",
+        "A",
+        "A",
+        "A",
+    ]
+    times = [0.0] * 6 + [1.0, 2.0, 3.0, 4.0]
+    data = ad.AnnData(X=np.zeros((10, 1), dtype=np.float32))
+    data.obs["Annotation"] = labels
+    data.obs["time_point_processed"] = times
+    data.obsm["spatial_aligned"] = np.zeros((10, 2), dtype=np.float32)
+    data.obsm["X_latent"] = np.asarray(
+        [[10.0, 0.0]] + [[1.0, 0.0]] * 9, dtype=np.float32
+    )
+    args = runner._build_parser().parse_args(
+        [
+            "--aligned-h5ad",
+            str(tmp_path / "aligned.h5ad"),
+            "--model-dir",
+            str(tmp_path / "model"),
+            "--output-dir",
+            str(tmp_path),
+            "--profile",
+            "smoke",
+            "--force",
+        ]
+    )
+    context = runner.RunContext(
+        args=args,
+        adata=data,
+        df=data.obs.copy(),
+        loaded=None,
+        runtime=object(),
+        dim=4,
+        spatial_dim=2,
+        output_dir=tmp_path,
+        shared_cache_dir=tmp_path / "cache",
+        label_to_color={
+            "Yolk Syncytial Layer": "#111111",
+            "EVL": "#222222",
+            "A": "#333333",
+        },
+        common_signature={"test": True},
+    )
+
+    def fake_classifier(_ctx, stage_dir):
+        cache_path = stage_dir / "classifier.pt"
+        pca_path = stage_dir / "classifier_pca.npz"
+        cache_path.write_bytes(b"classifier")
+        pca_path.write_bytes(b"pca")
+        cached = SimpleNamespace(accuracy=0.9, balanced_accuracy=0.8)
+        return cached, cache_path, pca_path, lambda *args, **kwargs: None
+
+    calls = []
+
+    def fake_ablation(_adata, _runtime, **kwargs):
+        calls.append(kwargs)
+        variant = next(iter(kwargs["ablations"]))
+        n_points = 4
+        frames = tuple(
+            np.column_stack(
+                (
+                    np.zeros((n_points, 2), dtype=np.float32),
+                    np.full((n_points, 1), 1.0 + 0.01 * index, dtype=np.float32),
+                    np.zeros((n_points, 1), dtype=np.float32),
+                )
+            ).astype(np.float32)
+            for index in range(len(kwargs["time_points"]))
+        )
+        labels_by_time = tuple(
+            np.asarray(["A"] * n_points) for _ in kwargs["time_points"]
+        )
+        output_dir = Path(kwargs["output_dir"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        artifact = output_dir / "mock_result.npz"
+        artifact.write_bytes(b"result")
+        return SimpleNamespace(
+            initial_obs_names=tuple(f"cell_{index}" for index in range(n_points)),
+            baseline_points=frames,
+            ablation_points={variant: tuple(frame.copy() for frame in frames)},
+            baseline_labels=labels_by_time,
+            ablation_labels={variant: labels_by_time},
+            metrics=runner.pd.DataFrame(
+                {"variant": [variant], "time": [4.0], "w2": [0.0]}
+            ),
+            files=(artifact,),
+            settings={
+                "mass_control": kwargs["mass_control"],
+                "growth_alpha": kwargs["growth_alpha"],
+                "interaction_m": kwargs["interaction_m"],
+                "interaction_seed": kwargs["interaction_seed"],
+                "variant_initial_counts": {variant: n_points},
+                "simulation_seeds": {
+                    "baseline": kwargs["random_seed"],
+                    variant: kwargs["random_seed"],
+                },
+            },
+        )
+
+    import matplotlib.pyplot as plt
+
+    def fake_grid(**kwargs):
+        Path(kwargs["out_path"]).write_bytes(b"figure")
+        return plt.figure()
+
+    monkeypatch.setattr(runner, "_ablation_classifier", fake_classifier)
+    monkeypatch.setattr(runner.cb.tl, "run_virtual_cell_type_ablation", fake_ablation)
+    monkeypatch.setattr(runner.cb.pl, "plot_trajectory_comparison_grid", fake_grid)
+
+    manifest = runner._stage_ablation(context)
+    assert len(calls) == 2
+    assert [call["ablations"] for call in calls] == [
+        {"remove_YSL": ["Yolk Syncytial Layer"]},
+        {"remove_EVL": ["EVL"]},
+    ]
+    for call in calls:
+        assert call["mass_control"] is True
+        assert call["growth_alpha"] == 0.0
+        assert call["common_random_seed"] is True
+        assert call["random_seed"] == 42
+        assert call["interaction_seed"] == 10043
+        assert call["interaction_m"] == 1024
+        assert call["resample_dt"] == call["dt"] == 0.05
+        assert call["save_snapshots"] is False
+
+    settings = manifest["settings"]
+    assert settings["mass_control"] is True
+    assert settings["growth_alpha"] == 0.0
+    assert settings["interaction_seed"] == 10043
+    assert settings["superseded_legacy_result"]["status"] == (
+        "superseded_diagnostic_only"
+    )
+    assert settings["superseded_legacy_result"]["reused"] is False
+    assert manifest["details"]["matched_initial_particle_counts"] == {
+        "YSL": 4,
+        "EVL": 4,
+    }
+    assert manifest["details"]["trajectory_support_audit"]["status"] == "PASS"
+
+    expected = [
+        tmp_path / "ablation" / f"S24_{target}_matched_fixed_population_grid.{ext}"
+        for target in ("YSL", "EVL")
+        for ext in ("pdf", "png")
+    ]
+    assert all(path.is_file() for path in expected)
+    assert not (tmp_path / "ablation" / "S24_virtual_ablation_grid.pdf").exists()
+    captions = json.loads(
+        (tmp_path / "ablation" / "S24_panel_captions.json").read_text(encoding="utf-8")
+    )
+    assert all(
+        "not total-mass deletion or a causal knockout" in value
+        for value in captions.values()
+    )

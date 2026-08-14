@@ -97,13 +97,15 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
     adata = _toy_adata()
     simulated_x0 = []
     simulation_options = []
+    interaction_seeds = []
 
     def fake_simulate_sde_points_split_from_x0(
-        *, x0, ts_points, growth_alpha, sigma_by_dim, **_kwargs
+        *, x0, ts_points, growth_alpha, sigma_by_dim, interaction_seed, **_kwargs
     ):
         initial = np.asarray(x0, dtype=np.float32)
         simulated_x0.append(initial.copy())
         simulation_options.append((growth_alpha, sigma_by_dim))
+        interaction_seeds.append(interaction_seed)
         return _trajectory(
             *(initial + float(time_value) for time_value in ts_points)
         )
@@ -144,6 +146,7 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
     np.testing.assert_array_equal(simulated_x0[1], [[2, 0, 2], [3, 0, 3]])
     np.testing.assert_array_equal(simulated_x0[2], [[3, 0, 3]])
     assert simulation_options == [(0.5, None)] * 3
+    assert interaction_seeds == [10_043] * 3
     assert [len(frame) for frame in result.baseline_points] == [4, 4, 4]
     assert [len(frame) for frame in result.ablation_points["remove_A"]] == [2, 2, 2]
     assert result.settings["variant_initial_counts"] == {
@@ -151,6 +154,12 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
         "remove_A_and_B": 1,
     }
     assert result.settings["growth_alpha"] == pytest.approx(0.5)
+    assert result.settings["interaction_seed"] == 10_043
+    assert result.settings["interaction_seed_source"] == "random_seed + 10001"
+    assert (
+        "baseline and every ablation branch"
+        in result.settings["interaction_seed_scope"]
+    )
     assert result.settings["max_ot_points"] == 1024
     assert result.settings["simulation"].endswith("no replacement")
 
@@ -175,6 +184,11 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
 
     manifest = json.loads((tmp_path / "manifest.json").read_text())
     assert manifest["schema_version"] == 1
+    assert manifest["settings"]["interaction_seed"] == 10_043
+    assert (
+        manifest["settings"]["interaction_seed_scope"]
+        == result.settings["interaction_seed_scope"]
+    )
     assert manifest["trajectory_shapes"]["remove_A"] == [[2, 3]] * 3
 
     cohort = pd.read_csv(tmp_path / "initial_cohort.csv")
@@ -185,6 +199,49 @@ def test_virtual_ablation_workflow_shares_cohort_exports_data_and_snapshots(
     ).iloc[0]
     assert row["baseline_count"] == 4
     assert row["ablation_count"] == 2
+
+
+def test_virtual_ablation_explicit_interaction_seed_is_shared_across_branches(
+    monkeypatch,
+):
+    calls = []
+
+    def fake_simulate_sde_points_split_from_x0(
+        *, x0, ts_points, interaction_seed, **_kwargs
+    ):
+        calls.append(interaction_seed)
+        initial = np.asarray(x0, dtype=np.float32)
+        return _trajectory(*(initial.copy() for _ in ts_points))
+
+    monkeypatch.setattr(
+        ablation_module,
+        "simulate_sde_points_split_from_x0",
+        fake_simulate_sde_points_split_from_x0,
+    )
+    runtime = SimpleNamespace(model=object(), f_net=object(), score_net=object())
+
+    result = run_virtual_cell_type_ablation(
+        _toy_adata(),
+        runtime,
+        ablations={"remove_A": ["A"], "remove_B": ["B"]},
+        time_points=[0.0, 1.0],
+        output_dir=None,
+        random_seed=7,
+        interaction_seed=1_234,
+        common_random_seed=False,
+        device="cpu",
+        save_snapshots=False,
+        verbose=False,
+    )
+
+    assert calls == [1_234] * 3
+    assert result.settings["simulation_seeds"] == {
+        "baseline": 7,
+        "remove_A": 8,
+        "remove_B": 9,
+    }
+    assert result.settings["interaction_seed"] == 1_234
+    assert result.settings["interaction_seed_source"] == "explicit interaction_seed"
 
 
 def test_virtual_ablation_rejects_unknown_or_total_removal_before_simulation():

@@ -197,8 +197,11 @@ also complete: all 90 LOTO executions completed, CytoBridge has the lowest
 spatial sliced-W2 for 7/9 held-out targets, and a linear control wins most
 joint/state comparisons. Four ARISTA stVCR full-data targets remain explicit
 `NA` after a method-native numerical failure. The formal Zebrafish paper
-downstream completed all seven signed stages; its canonical reconstruction is
-interval-local and observed-anchored, not a global-t0 rollout.
+downstream completed all seven signed stages. The paper-specific S22 panel is a
+single generated global-t0 rollout from `t=0` through `t=4`; observed integer
+slices are exported separately as references and never replace generated
+frames. S25 and communication retain their explicitly separate interval-local,
+observed-anchored state contract.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:

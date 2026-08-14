@@ -556,6 +556,7 @@ def run_virtual_cell_type_ablation(
     concat_spatial: Optional[bool] = True,
     spatial_dim: int = 2,
     random_seed: int = 42,
+    interaction_seed: Optional[int] = None,
     common_random_seed: bool = True,
     max_ot_points: Optional[int] = 1024,
     mass_control: bool = False,
@@ -607,6 +608,12 @@ def run_virtual_cell_type_ablation(
         mass-control mode the two cohorts are independently sampled.  Equal
         branch seeds therefore do not provide cell-ID-matched Brownian
         increments; use multiple seeds for inferential uncertainty.
+    interaction_seed
+        Seed for the dedicated stochastic interaction-grouping RNG.  When
+        omitted, it is deterministically derived as ``random_seed + 10001``.
+        The same resolved seed is reused for the baseline and every ablation
+        branch so interaction grouping is paired independently of the global
+        SDE RNG stream.
     mass_control
         Match the baseline and ablated initial particle counts by independently
         sampling their respective pools without replacement.  This reproduces
@@ -663,6 +670,11 @@ def run_virtual_cell_type_ablation(
         raise ValueError("max_particles must be positive or None.")
     if max_ot_points is not None and int(max_ot_points) <= 0:
         raise ValueError("max_ot_points must be positive or None.")
+    resolved_interaction_seed = (
+        int(random_seed) + 10_001
+        if interaction_seed is None
+        else int(interaction_seed)
+    )
 
     normalized_ablations: dict[str, tuple[str, ...]] = {}
     file_stems: set[str] = set()
@@ -862,6 +874,7 @@ def run_virtual_cell_type_ablation(
             verbose=bool(verbose),
             resample_dt=resample_dt,
             max_particles=max_particles,
+            interaction_seed=resolved_interaction_seed,
         )
         return _as_trajectory(points, name=name, n_times=len(times))
 
@@ -972,6 +985,16 @@ def run_virtual_cell_type_ablation(
         ),
         "device": str(device),
         "random_seed": int(random_seed),
+        "interaction_seed": int(resolved_interaction_seed),
+        "interaction_seed_source": (
+            "random_seed + 10001"
+            if interaction_seed is None
+            else "explicit interaction_seed"
+        ),
+        "interaction_seed_scope": (
+            "same dedicated interaction-grouping RNG seed reused for baseline "
+            "and every ablation branch"
+        ),
         "common_random_seed": bool(common_random_seed),
         "max_ot_points": (
             None if max_ot_points is None else int(max_ot_points)

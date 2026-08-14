@@ -6,18 +6,19 @@ six-stage training directory.  It intentionally does not read historical
 interpolated H5AD files, cached communication pickles, or copied manuscript
 PDFs.  Every biological result is regenerated through public CytoBridge APIs.
 
-The canonical reconstruction stages use interval-local, observed-anchored
-split-SDE simulation.  Each generated slice is simulated forward from the
-preceding observed time point and is not conditioned on the following observed
-endpoint.  It is therefore neither a global-t0 nor a lineage-continuous
-trajectory:
+The manuscript stages use two explicitly separated state contracts:
 
-* S22 uses the canonical unwarped interval-local states on a fixed dense grid;
-  integer frames are observed cells and non-integer frames are one-sided model
-  simulations from the preceding observed anchor.
-* S25 and communication reuse those same unwarped generated states.
-* S24 remains a separately labelled global-t0 virtual-removal counterfactual;
-  it is not canonical reconstruction evidence or a lineage analysis.
+* S22 is a single unwarped global-t0 simulation on a fixed dense grid.  The
+  model is initialized once from the real t=0 population and evolves
+  continuously through t=4.  Real integer-time slices are exported only as a
+  separate reference series and never replace generated trajectory frames.
+* S25 and communication retain their historical hybrid reconstruction contract
+  for now: observed cells at integer times and interval-local generated cells
+  at intermediate times.  They do not implicitly consume the S22 global-t0
+  bundle, because doing so would silently change their scientific estimand.
+* S24 uses separate YSL- and EVL-excluded, equal-N, fixed-population global-t0
+  cohorts.  It is a model-sensitivity analysis, not total-mass deletion, a
+  causal knockout, canonical reconstruction evidence, or a lineage analysis.
 * Communication uses a hybrid state population: observed cells at integer
   times and interval-local generated cells at intermediate times. This
   state-source choice is separate from the LR expression measurement policy.
@@ -88,7 +89,15 @@ ALL_STAGES = (
 OBSERVED_TIMES = (0.0, 1.0, 2.0, 3.0, 4.0)
 HALF_TIMES = tuple(float(value) for value in np.arange(0.0, 4.0 + 0.5, 0.5))
 MAIN_CLASSIFIER_CACHE_TAG = "zebrafish-paper-main-spatial2-latent10"
-CANONICAL_TRAJECTORY_SCOPE = (
+S22_TRAJECTORY_MODE = "global_t0_extrapolation"
+S22_TRAJECTORY_SCOPE = (
+    "single continuous unwarped full-model simulation initialized once from "
+    "the real t=0 population and propagated through t=4; every displayed "
+    "trajectory frame, including integer times after t=0, is generated from "
+    "that same t=0 initialization; observed integer-time slices are separate "
+    "references only"
+)
+S25_COMMUNICATION_TRAJECTORY_SCOPE = (
     "piecewise observed-anchored interval-local one-sided forward simulation; "
     "each generated slice starts from the preceding observed anchor and is not "
     "conditioned on the following observed endpoint; not global-t0 and not "
@@ -96,6 +105,11 @@ CANONICAL_TRAJECTORY_SCOPE = (
 )
 S22_MOSAIC_COLUMNS = 3
 S25_HEATMAP_COLUMNS = 2
+S24_FIXED_GROWTH_ALPHA = 0.0
+S24_INTERACTION_M = 1024
+S24_INTERACTION_SEED_OFFSET = 10_001
+S24_SUPPORT_MAX_OUTSIDE_FRACTION = 0.01
+S24_SUPPORT_MAX_NORM_MULTIPLIER = 2.0
 MATCHED_ACCEPTANCE_KEY = "canonical_matched_acceptance"
 MATCHED_ACCEPTANCE_REQUIRED_EXACT = {
     "status": "PASS",
@@ -726,10 +740,10 @@ def _require_s22_state_settings_match(
         )
 
 
-def _require_canonical_s22_manifest_semantics(
+def _require_s25_interval_local_manifest_semantics(
     manifest: Mapping[str, object], manifest_path: str | Path
 ) -> None:
-    """Reject S22 bundles that do not prove canonical interval-local semantics."""
+    """Reject external S25 bundles without proven interval-local semantics."""
 
     source = Path(manifest_path)
     settings = manifest.get("settings")
@@ -759,16 +773,16 @@ def _require_canonical_s22_manifest_semantics(
         or display_warp.get("applied") is not False
     ):
         failures.append("display_warp.applied")
-    if settings.get("simulation") != CANONICAL_TRAJECTORY_SCOPE:
+    if settings.get("simulation") != S25_COMMUNICATION_TRAJECTORY_SCOPE:
         failures.append("simulation/trajectory_scope")
-    if details.get("trajectory_scope") != CANONICAL_TRAJECTORY_SCOPE:
+    if details.get("trajectory_scope") != S25_COMMUNICATION_TRAJECTORY_SCOPE:
         failures.append("details.trajectory_scope")
     if details.get("display_warp_applied") is not False:
         failures.append("details.display_warp_applied")
     if failures:
         raise RuntimeError(
-            "S22 state bundle is not proven to use canonical interval-local, "
-            "one-sided observed-anchor semantics; refusing legacy/global-t0 "
+            "S25 source bundle is not proven to use interval-local, one-sided "
+            "observed-anchor semantics; refusing incompatible/global-t0 "
             f"states ({', '.join(failures)}): {source}"
         )
 
@@ -1058,14 +1072,21 @@ def _run_interpolation(
     *,
     output_dir: Path,
     time_points: Sequence[float],
-    use_real_for_observed: bool,
+    trajectory_mode: str,
     display_piecewise_warp: bool,
 ):
+    valid_modes = {S22_TRAJECTORY_MODE, "interval_local_observed_anchored"}
+    if trajectory_mode not in valid_modes:
+        raise ValueError(
+            f"trajectory_mode must be exactly one of {sorted(valid_modes)}, "
+            f"got {trajectory_mode!r}"
+        )
+    global_t0 = trajectory_mode == S22_TRAJECTORY_MODE
     if display_piecewise_warp:
         raise ValueError(
             "Canonical zebrafish paper reconstruction does not permit the legacy "
             "endpoint-directed display warp. Consume the canonical unwarped "
-            "piecewise states instead."
+            "model states instead."
         )
     interp = [
         float(value)
@@ -1085,7 +1106,7 @@ def _run_interpolation(
         requested_plot_points=[float(value) for value in time_points],
         interp_time_points=interp,
         no_interp=False,
-        use_real_for_observed=bool(use_real_for_observed),
+        use_real_for_observed=not global_t0,
         classifier_cache_dir=str(ctx.shared_cache_dir / "trajectory_classifier"),
         classifier_cache_tag=MAIN_CLASSIFIER_CACHE_TAG,
         classifier_adata=ctx.adata,
@@ -1114,9 +1135,9 @@ def _run_interpolation(
         split_interaction_m=int(ctx.args.interaction_m),
         split_resample_dt=float(ctx.args.sde_dt),
         split_max_particles=int(ctx.args.sde_max_particles),
-        split_sde_piecewise=True,
+        split_sde_piecewise=not global_t0,
         split_sde_piecewise_include_end=False,
-        piecewise_observed_sample_mode="per_timepoint",
+        piecewise_observed_sample_mode=("t0_fixed" if global_t0 else "per_timepoint"),
         spatial_warp_to_observed=False,
         spatial_warp_to_observed_piecewise=False,
         spatial_warp_visualization_only=False,
@@ -1126,11 +1147,79 @@ def _run_interpolation(
     )
 
 
+def _require_global_t0_generated_states(
+    states: Mapping[str, ad.AnnData],
+    time_points: Sequence[float],
+    *,
+    observed_t0_points: np.ndarray,
+) -> None:
+    """Fail closed unless every requested frame belongs to one global-t0 path."""
+
+    times = [float(value) for value in time_points]
+    if not times or not np.isclose(times[0], 0.0, rtol=0.0, atol=1e-9):
+        raise RuntimeError("S22 global-t0 simulation grid must start at t=0.")
+    if not np.isclose(times[-1], 4.0, rtol=0.0, atol=1e-9):
+        raise RuntimeError("S22 global-t0 simulation grid must end at t=4.")
+    if any(right <= left for left, right in zip(times, times[1:])):
+        raise RuntimeError("S22 global-t0 simulation grid must be strictly increasing.")
+
+    feature_dim: Optional[int] = None
+    for time_value in times:
+        key = str(float(time_value))
+        if key not in states:
+            raise RuntimeError(f"S22 global-t0 result is missing time {key}.")
+        state = states[key]
+        points = np.asarray(state.X, dtype=np.float32)
+        if points.ndim != 2 or points.shape[0] == 0:
+            raise RuntimeError(
+                f"S22 global-t0 frame t={time_value:g} must be a non-empty matrix."
+            )
+        if feature_dim is None:
+            feature_dim = int(points.shape[1])
+        if points.shape[1] != feature_dim:
+            raise RuntimeError(
+                "S22 global-t0 frames changed feature dimension: "
+                f"time={time_value:g}, expected={feature_dim}, actual={points.shape[1]}."
+            )
+        if not np.isfinite(points).all():
+            raise RuntimeError(
+                f"S22 global-t0 frame t={time_value:g} contains non-finite values."
+            )
+        actual_origin = str(state.uns.get("slice_origin", ""))
+        if actual_origin != "generated_global_t0":
+            raise RuntimeError(
+                "S22 trajectory contains an observed-substituted or re-anchored "
+                f"frame: time={time_value:g}, expected origin="
+                f"'generated_global_t0', actual={actual_origin!r}."
+            )
+        actual_anchor = state.uns.get("source_anchor_time")
+        if actual_anchor is None or not np.isclose(
+            float(actual_anchor), 0.0, rtol=0.0, atol=1e-9
+        ):
+            raise RuntimeError(
+                "S22 trajectory was not propagated from the single t=0 anchor: "
+                f"time={time_value:g}, source_anchor_time={actual_anchor!r}."
+            )
+
+    generated_t0 = np.ascontiguousarray(np.asarray(states["0.0"].X, dtype=np.float32))
+    observed_t0 = np.ascontiguousarray(np.asarray(observed_t0_points, dtype=np.float32))
+    if observed_t0.ndim != 2 or observed_t0.shape[1] != generated_t0.shape[1]:
+        raise RuntimeError(
+            "Observed t=0 reference does not match the generated state dimension."
+        )
+    observed_rows = {row.tobytes() for row in observed_t0}
+    if any(row.tobytes() not in observed_rows for row in generated_t0):
+        raise RuntimeError(
+            "S22 t=0 state is not an exact sample of the real observed t=0 "
+            "population."
+        )
+
+
 def _stage_s22(ctx: RunContext) -> dict[str, object]:
     video_step = 1.0 if ctx.args.profile == "smoke" else float(ctx.args.video_step)
     video_times = _time_grid(0.0, 4.0, video_step)
     if ctx.args.profile == "smoke":
-        # Retain at least one generated frame in every observed interval.
+        # Exercise the entire global-t0 trajectory, including every integer time.
         video_times = list(HALF_TIMES)
         simulation_times = list(HALF_TIMES)
     else:
@@ -1156,37 +1245,55 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
     settings = {
         "mosaic_times": list(HALF_TIMES),
         "video_times": video_times,
-        "observed_integer_frames": True,
-        "generated_noninteger_frames": True,
-        "simulation": CANONICAL_TRAJECTORY_SCOPE,
-        "trajectory_mode": "piecewise_observed_anchored_interval_forward_simulation",
-        "split_sde_piecewise": True,
-        "piecewise_observed_sample_mode": "per_timepoint",
-        "piecewise_include_end": False,
+        "trajectory_frames": "generated_at_every_time_including_integer_times",
+        "observed_integer_frames": "separate_reference_only",
+        "use_real_for_observed_trajectory_frames": False,
+        "simulation": S22_TRAJECTORY_SCOPE,
+        "trajectory_mode": S22_TRAJECTORY_MODE,
+        "split_sde_piecewise": False,
+        "piecewise_observed_sample_mode": None,
+        "piecewise_include_end": None,
         "simulation_grid": list(simulation_times),
         "simulation_step": (
             None if ctx.args.profile == "smoke" else float(ctx.args.s22_simulation_step)
         ),
-        "mosaic_is_subsample_of_dense_piecewise_slices": True,
+        "mosaic_is_subsample_of_single_global_t0_simulation": True,
         "mosaic_layout": {
             "columns": S22_MOSAIC_COLUMNS,
             "show_axes": False,
             "show_legend": True,
         },
-        "canonical_state_consumers": ["s25", "communication"],
+        "canonical_state_consumers": [],
+        "downstream_state_contract": {
+            "s25": "retains separate interval-local hybrid reconstruction",
+            "communication": "consumes the S25 hybrid reconstruction",
+            "implicit_s22_reuse": False,
+        },
         **_expected_s22_state_settings(ctx),
         "display_warp": {
             "applied": False,
             "reason": (
-                "disabled because endpoint-directed display warping assumes a "
-                "cross-interval trajectory incompatible with canonical one-sided "
-                "observed-anchor reconstruction"
+                "disabled so the displayed coordinates remain the direct output "
+                "of the single global-t0 model simulation"
             ),
         },
         "generated_label_knn_neighbors": 10,
         "generated_label_policy": (
             "shared Zebrafish annotation policy for every generated frame"
         ),
+        "trajectory_support_audit": {
+            "reference": "maximum observed norm in original latent coordinates",
+            "maximum_fraction_outside_observed_max": (
+                S24_SUPPORT_MAX_OUTSIDE_FRACTION
+            ),
+            "maximum_generated_norm_multiplier": S24_SUPPORT_MAX_NORM_MULTIPLIER,
+            "publication_blocking": False,
+            "reason": (
+                "S22 is an explicit global-t0 demonstration; any tail-support "
+                "failure is recorded and must be disclosed rather than hidden, "
+                "clipped, or silently converted into an observed-anchored path"
+            ),
+        },
         "video_fps": int(ctx.args.video_fps),
         "video_formats": formats,
         "point_size": float(ctx.args.point_size),
@@ -1199,17 +1306,48 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             ctx,
             output_dir=stage_dir / "workflow_shared_dense",
             time_points=simulation_times,
-            use_real_for_observed=True,
+            trajectory_mode=S22_TRAJECTORY_MODE,
             display_piecewise_warp=False,
+        )
+        actual_simulation_times = [float(value) for value in dense_result.ts_points]
+        if actual_simulation_times != [float(value) for value in simulation_times]:
+            raise RuntimeError(
+                "S22 workflow returned a different simulation grid: "
+                f"expected={simulation_times}, actual={actual_simulation_times}."
+            )
+        observed_states = _observed_state_dict(ctx)
+        _require_global_t0_generated_states(
+            dense_result.adata_dict,
+            simulation_times,
+            observed_t0_points=np.asarray(observed_states[0.0].X, dtype=np.float32),
+        )
+        support_frames = [
+            np.asarray(
+                dense_result.adata_dict[str(float(time_value))].X,
+                dtype=np.float32,
+            )
+            for time_value in simulation_times
+        ]
+        support_audit, support_summary = _compute_trajectory_support_audit(
+            np.asarray(ctx.adata.obsm[ctx.args.latent_key], dtype=np.float32),
+            {"global_t0": support_frames},
+            simulation_times,
+            spatial_dim=2,
+            max_outside_fraction=S24_SUPPORT_MAX_OUTSIDE_FRACTION,
+            max_norm_multiplier=S24_SUPPORT_MAX_NORM_MULTIPLIER,
+        )
+        support_path = stage_dir / "S22_trajectory_support_audit.csv"
+        support_audit.to_csv(support_path, index=False)
+        support_summary_path = stage_dir / "S22_trajectory_support_audit.json"
+        support_summary_path.write_text(
+            json.dumps(_json_ready(support_summary), indent=2, sort_keys=True),
+            encoding="utf-8",
         )
         source_by_time = {
             float(value): (
-                "observed_actual_annotation"
-                if any(
-                    np.isclose(value, obs, rtol=0.0, atol=1e-9)
-                    for obs in OBSERVED_TIMES
-                )
-                else "generated_interval_local_one_sided"
+                "sampled_observed_t0_initial_condition"
+                if np.isclose(value, 0.0, rtol=0.0, atol=1e-9)
+                else "generated_global_t0_continuous"
             )
             for value in HALF_TIMES
         }
@@ -1220,39 +1358,28 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             annotation_key=ctx.args.annotation_key,
             source_by_time=source_by_time,
         )
+        outputs.extend([support_path, support_summary_path])
         canonical_states: dict[str, ad.AnnData] = {}
         for time_value in HALF_TIMES:
             key = str(float(time_value))
             if key not in dense_result.adata_dict:
                 raise RuntimeError(f"Canonical S22 result is missing time {key}.")
             state = dense_result.adata_dict[key]
-            expected_origin = (
-                "observed_real"
-                if float(time_value) in OBSERVED_TIMES
-                else "generated_interval_local"
-            )
+            expected_origin = "generated_global_t0"
             actual_origin = str(state.uns.get("slice_origin", ""))
             if actual_origin != expected_origin:
                 raise RuntimeError(
-                    "Canonical S22 slice provenance is not interval-local: "
+                    "Canonical S22 slice provenance is not global-t0 generated: "
                     f"time={time_value}, expected origin={expected_origin!r}, "
                     f"actual={actual_origin!r}."
                 )
-            expected_anchor = (
-                float(time_value)
-                if float(time_value) in OBSERVED_TIMES
-                else max(
-                    observed
-                    for observed in OBSERVED_TIMES
-                    if observed < float(time_value)
-                )
-            )
+            expected_anchor = 0.0
             actual_anchor = state.uns.get("source_anchor_time")
             if actual_anchor is None or not np.isclose(
                 float(actual_anchor), expected_anchor, rtol=0.0, atol=1e-9
             ):
                 raise RuntimeError(
-                    "Canonical S22 slice has the wrong observed anchor: "
+                    "Canonical S22 slice was not propagated from t=0: "
                     f"time={time_value}, expected={expected_anchor}, "
                     f"actual={actual_anchor}."
                 )
@@ -1262,38 +1389,56 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 annotation_key=ctx.args.annotation_key,
             )
         canonical_source_by_time = dict(source_by_time)
-        prewarp_outputs = _write_state_bundle(
+        global_outputs = _write_state_bundle(
             canonical_states,
             HALF_TIMES,
-            stage_dir / "canonical_prewarp_states",
+            stage_dir / "global_t0_states",
             annotation_key=ctx.args.annotation_key,
             source_by_time=canonical_source_by_time,
         )
-        outputs.extend(prewarp_outputs)
+        outputs.extend(global_outputs)
+        observed_reference_by_key = {
+            str(float(time_value)): observed_states[float(time_value)]
+            for time_value in OBSERVED_TIMES
+        }
+        outputs.extend(
+            _write_state_bundle(
+                observed_reference_by_key,
+                OBSERVED_TIMES,
+                stage_dir / "observed_reference_states",
+                annotation_key=ctx.args.annotation_key,
+                source_by_time={
+                    float(value): "observed_reference_only" for value in OBSERVED_TIMES
+                },
+            )
+        )
         source_table = pd.DataFrame(
             {
                 "time": list(HALF_TIMES),
-                "display_source": [
+                "trajectory_display_source": [
                     source_by_time[float(value)] for value in HALF_TIMES
                 ],
                 "canonical_state_source": [
                     canonical_source_by_time[float(value)] for value in HALF_TIMES
                 ],
-                "s25_analysis_source": [
+                "source_anchor_time": [0.0 for _ in HALF_TIMES],
+                "observed_reference_available": [
+                    bool(float(value) in OBSERVED_TIMES) for value in HALF_TIMES
+                ],
+                "observed_reference_source": [
                     (
-                        "observed_actual_annotation"
+                        "observed_reference_only"
                         if float(value) in OBSERVED_TIMES
-                        else "generated_interval_local_direct_classifier"
+                        else None
                     )
                     for value in HALF_TIMES
                 ],
+                "s25_analysis_source": [
+                    "separate_interval_local_hybrid_not_implicit_s22_reuse"
+                    for _ in HALF_TIMES
+                ],
                 "communication_source": [
-                    (
-                        "observed_actual_annotation"
-                        if float(value) in OBSERVED_TIMES
-                        else "generated_interval_local_reclassified_by_communication_stage"
-                    )
-                    for value in HALF_TIMES
+                    "separate_s25_hybrid_not_implicit_s22_reuse" for _ in HALF_TIMES
                 ],
             }
         )
@@ -1327,7 +1472,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             mosaic_labels.append(
                 state.obs[ctx.args.annotation_key].astype(str).to_numpy()
             )
-        mosaic_pdf = stage_dir / "S22_observed_anchored_piecewise_mosaic.pdf"
+        mosaic_pdf = stage_dir / "S22_global_t0_continuous_mosaic.pdf"
         fig = cb.pl.plot_trajectory_grid(
             sde_points=mosaic_points,
             time_values=HALF_TIMES,
@@ -1338,10 +1483,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             figsize_per_panel=(2.6, 2.6),
             point_size=float(ctx.args.point_size),
             alpha=0.9,
-            title=(
-                "Zebrafish observed and interval-local generated slices "
-                "(one-sided from preceding anchors)"
-            ),
+            title="Zebrafish global-t0 simulated dynamics",
             n_cols=S22_MOSAIC_COLUMNS,
             show_axes=False,
             show_legend=True,
@@ -1349,10 +1491,44 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             legend_title="Cell type",
             legend_fontsize=6.0,
         )
-        mosaic_png = stage_dir / "S22_observed_anchored_piecewise_mosaic.png"
+        mosaic_png = stage_dir / "S22_global_t0_continuous_mosaic.png"
         fig.savefig(mosaic_png, dpi=240, bbox_inches="tight", facecolor="white")
         plt.close(fig)
         outputs.extend([mosaic_pdf, mosaic_png])
+
+        reference_points = np.empty(len(OBSERVED_TIMES), dtype=object)
+        reference_labels: list[np.ndarray] = []
+        for index, time_value in enumerate(OBSERVED_TIMES):
+            state = observed_states[float(time_value)]
+            reference_points[index] = np.asarray(state.X, dtype=np.float32)
+            reference_labels.append(
+                state.obs[ctx.args.annotation_key].astype(str).to_numpy()
+            )
+        reference_pdf = stage_dir / "S22_observed_reference_mosaic.pdf"
+        reference_fig = cb.pl.plot_trajectory_grid(
+            sde_points=reference_points,
+            time_values=OBSERVED_TIMES,
+            dim_pairs=((0, 1),),
+            labels_list=reference_labels,
+            label_to_color=ctx.label_to_color,
+            out_path=str(reference_pdf),
+            figsize_per_panel=(2.6, 2.6),
+            point_size=float(ctx.args.point_size),
+            alpha=0.9,
+            title="Observed zebrafish reference slices",
+            n_cols=S22_MOSAIC_COLUMNS,
+            show_axes=False,
+            show_legend=True,
+            equal_aspect=True,
+            legend_title="Cell type",
+            legend_fontsize=6.0,
+        )
+        reference_png = stage_dir / "S22_observed_reference_mosaic.png"
+        reference_fig.savefig(
+            reference_png, dpi=240, bbox_inches="tight", facecolor="white"
+        )
+        plt.close(reference_fig)
+        outputs.extend([reference_pdf, reference_png])
 
         dense_points = np.empty(len(video_times), dtype=object)
         dense_labels: list[np.ndarray] = []
@@ -1364,9 +1540,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             )
         animation_errors: dict[str, str] = {}
         for extension in formats:
-            animation_path = (
-                stage_dir / f"S22_observed_anchored_piecewise_dense.{extension}"
-            )
+            animation_path = stage_dir / f"S22_global_t0_continuous_dense.{extension}"
             if extension == "mp4" and shutil.which("ffmpeg") is None:
                 animation_errors[extension] = "ffmpeg is not installed"
                 continue
@@ -1398,16 +1572,25 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
             },
             "video_frame_count": int(len(video_times)),
             "simulation_frame_count": int(len(simulation_times)),
-            "shared_piecewise_slices_for_mosaic_and_video": True,
+            "single_global_t0_simulation_for_mosaic_and_video": True,
+            "observed_integer_frames_substituted_into_trajectory": False,
+            "observed_reference_times": list(OBSERVED_TIMES),
             "animation_errors": animation_errors,
             "display_warp_applied": False,
-            "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
-            "canonical_state_directory_legacy_name": "canonical_prewarp_states",
-            "canonical_prewarp_state_index": str(
-                (stage_dir / "canonical_prewarp_states" / "index.json").resolve()
+            "trajectory_scope": S22_TRAJECTORY_SCOPE,
+            "trajectory_support_audit": support_summary,
+            "trajectory_support_audit_publication_blocking": False,
+            "global_t0_state_index": str(
+                (stage_dir / "global_t0_states" / "index.json").resolve()
             ),
-            "canonical_prewarp_state_index_sha256": _sha256(
-                stage_dir / "canonical_prewarp_states" / "index.json"
+            "global_t0_state_index_sha256": _sha256(
+                stage_dir / "global_t0_states" / "index.json"
+            ),
+            "observed_reference_state_index": str(
+                (stage_dir / "observed_reference_states" / "index.json").resolve()
+            ),
+            "observed_reference_state_index_sha256": _sha256(
+                stage_dir / "observed_reference_states" / "index.json"
             ),
             "simulation_seeds": dense_result.simulation_seeds,
         }
@@ -1569,38 +1752,333 @@ def _ablation_classifier(ctx: RunContext, stage_dir: Path):
     return cached, Path(cache_path), pca_path, labeler
 
 
+def _compute_trajectory_support_audit(
+    observed_latent: np.ndarray,
+    trajectories: Mapping[str, Sequence[np.ndarray]],
+    time_points: Sequence[float],
+    *,
+    spatial_dim: int,
+    max_outside_fraction: float = S24_SUPPORT_MAX_OUTSIDE_FRACTION,
+    max_norm_multiplier: float = S24_SUPPORT_MAX_NORM_MULTIPLIER,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Pure latent-support audit for generated joint-space trajectories.
+
+    The observed reference defines one transparent radial support boundary: the
+    maximum Euclidean norm in the original latent coordinates.  Every generated
+    frame is summarized without clipping or dropping outliers.  This helper only
+    computes and classifies the audit; callers decide whether a failed audit is
+    diagnostic or publication-blocking.
+    """
+
+    observed = np.asarray(observed_latent, dtype=np.float64)
+    if observed.ndim != 2 or observed.shape[0] == 0 or observed.shape[1] == 0:
+        raise ValueError(
+            "observed_latent must be a non-empty two-dimensional matrix, "
+            f"got {observed.shape}."
+        )
+    times = tuple(float(value) for value in time_points)
+    if not times:
+        raise ValueError("time_points must be non-empty for a support audit.")
+    spatial_dim = int(spatial_dim)
+    if spatial_dim < 0:
+        raise ValueError("spatial_dim must be >= 0.")
+    max_outside_fraction = float(max_outside_fraction)
+    max_norm_multiplier = float(max_norm_multiplier)
+    if not np.isfinite(max_outside_fraction) or not 0.0 <= max_outside_fraction <= 1.0:
+        raise ValueError("max_outside_fraction must be finite and in [0, 1].")
+    if not np.isfinite(max_norm_multiplier) or max_norm_multiplier <= 0.0:
+        raise ValueError("max_norm_multiplier must be finite and > 0.")
+
+    observed_finite_rows = np.isfinite(observed).all(axis=1)
+    observed_is_finite = bool(observed_finite_rows.all())
+    observed_norms = np.linalg.norm(observed[observed_finite_rows], axis=1)
+    observed_norm_max = float(np.max(observed_norms)) if observed_norms.size else None
+    observed_failure = None
+    if not observed_is_finite:
+        observed_failure = "observed_latent_contains_nonfinite_values"
+    elif observed_norm_max is None:
+        observed_failure = "observed_latent_has_no_finite_rows"
+
+    rows: list[dict[str, object]] = []
+    violations: list[dict[str, object]] = []
+    for condition, raw_frames in trajectories.items():
+        frames = tuple(raw_frames)
+        if len(frames) != len(times):
+            raise ValueError(
+                f"Trajectory {condition!r} has {len(frames)} frames for "
+                f"{len(times)} requested times."
+            )
+        for frame_index, (time_value, raw_frame) in enumerate(zip(times, frames)):
+            frame = np.asarray(raw_frame, dtype=np.float64)
+            expected_dim = spatial_dim + int(observed.shape[1])
+            if frame.ndim != 2 or frame.shape[1] != expected_dim:
+                raise ValueError(
+                    f"Trajectory {condition!r} frame {frame_index} must have "
+                    f"shape N x {expected_dim}, got {frame.shape}."
+                )
+            latent = frame[:, spatial_dim:]
+            finite_rows = np.isfinite(frame).all(axis=1)
+            n_points = int(latent.shape[0])
+            n_finite = int(np.count_nonzero(finite_rows))
+            n_nonfinite = int(n_points - n_finite)
+            n_nonfinite_values = int(np.count_nonzero(~np.isfinite(frame)))
+            finite_norms = np.linalg.norm(latent[finite_rows], axis=1)
+            p99_norm = (
+                float(np.quantile(finite_norms, 0.99)) if finite_norms.size else None
+            )
+            max_norm = float(np.max(finite_norms)) if finite_norms.size else None
+            if observed_norm_max is not None and n_points > 0:
+                outside_count = int(np.count_nonzero(finite_norms > observed_norm_max))
+                outside_fraction = float(outside_count / n_points)
+            else:
+                outside_count = 0
+                outside_fraction = None
+
+            reasons: list[str] = []
+            if n_points == 0:
+                reasons.append("empty_frame")
+            if n_nonfinite > 0:
+                reasons.append("nonfinite_generated_values")
+            if outside_fraction is not None and outside_fraction > max_outside_fraction:
+                reasons.append("outside_observed_max_fraction")
+            if (
+                observed_norm_max is not None
+                and max_norm is not None
+                and max_norm > max_norm_multiplier * observed_norm_max
+            ):
+                reasons.append("maximum_norm_multiplier")
+            if observed_failure is not None:
+                reasons.append(observed_failure)
+            passed = not reasons
+            record = {
+                "condition": str(condition),
+                "frame_index": int(frame_index),
+                "time": float(time_value),
+                "n_points": n_points,
+                "n_finite_points": n_finite,
+                "n_nonfinite_points": n_nonfinite,
+                "n_nonfinite_values": n_nonfinite_values,
+                "latent_norm_p99": p99_norm,
+                "latent_norm_max": max_norm,
+                "observed_latent_norm_max": observed_norm_max,
+                "n_outside_observed_max": outside_count,
+                "fraction_outside_observed_max": outside_fraction,
+                "max_outside_fraction_threshold": max_outside_fraction,
+                "max_norm_multiplier_threshold": max_norm_multiplier,
+                "passes_publication_support_gate": passed,
+                "failure_reasons": ";".join(reasons),
+            }
+            rows.append(record)
+            if not passed:
+                violations.append(
+                    {
+                        "condition": str(condition),
+                        "frame_index": int(frame_index),
+                        "time": float(time_value),
+                        "failure_reasons": list(reasons),
+                        "fraction_outside_observed_max": outside_fraction,
+                        "latent_norm_max": max_norm,
+                    }
+                )
+
+    audit = pd.DataFrame(rows)
+    summary: dict[str, object] = {
+        "schema_version": 1,
+        "status": "PASS" if not violations and observed_failure is None else "FAIL",
+        "semantics": (
+            "latent radial-support publication guard; reports all generated "
+            "points without clipping or outlier removal"
+        ),
+        "observed_reference": {
+            "n_points": int(observed.shape[0]),
+            "latent_dim": int(observed.shape[1]),
+            "all_finite": observed_is_finite,
+            "latent_norm_max": observed_norm_max,
+        },
+        "thresholds": {
+            "nonfinite_generated_values_allowed": False,
+            "maximum_fraction_outside_observed_latent_norm_max": max_outside_fraction,
+            "maximum_generated_latent_norm_multiplier": max_norm_multiplier,
+            "comparison_operators": {
+                "fraction": ">",
+                "maximum_norm": ">",
+            },
+        },
+        "n_frames": int(len(rows)),
+        "n_failed_frames": int(len(violations)),
+        "failed_frames": violations,
+    }
+    return audit, summary
+
+
+def _require_trajectory_support_audit_pass(
+    summary: Mapping[str, object], *, stage: str
+) -> None:
+    """Fail a publication stage when its precomputed support audit failed."""
+
+    if summary.get("status") == "PASS":
+        return
+    failures = summary.get("failed_frames", [])
+    examples = []
+    if isinstance(failures, Sequence):
+        for item in failures[:3]:
+            if isinstance(item, Mapping):
+                examples.append(
+                    f"{item.get('condition')}@t={item.get('time')}:"
+                    f"{','.join(str(value) for value in item.get('failure_reasons', []))}"
+                )
+    suffix = f" Examples: {'; '.join(examples)}." if examples else ""
+    raise RuntimeError(
+        f"{stage} failed the publication latent-support gate; no publication "
+        f"panel was emitted.{suffix}"
+    )
+
+
+def _require_s24_fixed_population_result(
+    result,
+    *,
+    variant: str,
+    random_seed: int,
+    interaction_seed: int,
+    interaction_m: int,
+) -> int:
+    """Validate the equal-N, fixed-population, common-stream S24 contract."""
+
+    matched_n = int(len(result.initial_obs_names))
+    if matched_n <= 0:
+        raise RuntimeError(f"S24 {variant} returned an empty matched cohort.")
+    settings = result.settings
+    variant_counts = settings.get("variant_initial_counts", {})
+    variant_n = int(variant_counts.get(variant, -1))
+    if variant_n != matched_n:
+        raise RuntimeError(
+            f"S24 {variant} is not equal-N at initialization: "
+            f"baseline={matched_n}, variant={variant_n}."
+        )
+    if settings.get("mass_control") is not True:
+        raise RuntimeError(f"S24 {variant} did not use mass_control=True.")
+    if not np.isclose(
+        float(settings.get("growth_alpha", np.nan)),
+        S24_FIXED_GROWTH_ALPHA,
+        rtol=0.0,
+        atol=0.0,
+    ):
+        raise RuntimeError(f"S24 {variant} did not disable learned growth.")
+    if int(settings.get("interaction_m", -1)) != int(interaction_m):
+        raise RuntimeError(f"S24 {variant} used the wrong interaction_m.")
+    if int(settings.get("interaction_seed", -1)) != int(interaction_seed):
+        raise RuntimeError(f"S24 {variant} used the wrong interaction seed.")
+    seeds = settings.get("simulation_seeds", {})
+    if int(seeds.get("baseline", -1)) != int(random_seed) or int(
+        seeds.get(variant, -1)
+    ) != int(random_seed):
+        raise RuntimeError(
+            f"S24 {variant} did not use the same branch-level common random seed."
+        )
+    if int(interaction_m) <= matched_n:
+        raise RuntimeError(
+            f"S24 {variant} requires one full interaction context group: "
+            f"interaction_m={interaction_m}, matched_n={matched_n}."
+        )
+
+    baseline_counts = [
+        int(np.asarray(frame).shape[0]) for frame in result.baseline_points
+    ]
+    ablation_counts = [
+        int(np.asarray(frame).shape[0]) for frame in result.ablation_points[variant]
+    ]
+    if any(count != matched_n for count in baseline_counts + ablation_counts):
+        raise RuntimeError(
+            f"S24 {variant} changed particle count despite fixed-population "
+            f"settings: baseline={baseline_counts}, variant={ablation_counts}."
+        )
+    return matched_n
+
+
 def _stage_ablation(ctx: RunContext) -> dict[str, object]:
     step = 1.0 if ctx.args.profile == "smoke" else float(ctx.args.ablation_step)
     time_points = _time_grid(0.0, 4.0, step)
+    interaction_seed = int(ctx.args.random_seed) + S24_INTERACTION_SEED_OFFSET
+    experiments = (
+        {
+            "target": "YSL",
+            "variant": "remove_YSL",
+            "label": str(ctx.args.ysl_label),
+            "formal_matched_n": 534,
+        },
+        {
+            "target": "EVL",
+            "variant": "remove_EVL",
+            "label": str(ctx.args.evl_label),
+            "formal_matched_n": 291,
+        },
+    )
     settings = {
         "time_points": time_points,
         "simulation": (
-            "separate global-t0 virtual-removal counterfactual with no re-anchoring; "
-            "sensitivity only, not canonical reconstruction, forecasting, or "
-            "lineage-continuous evidence"
+            "two target-specific global-t0 matched equal-N fixed-population model "
+            "sensitivities; each branch is initialized once at t=0 and propagated "
+            "continuously through t=4 with no re-anchoring or spatial warp"
         ),
         "canonical_reconstruction": False,
-        "counterfactual_scope": "global_t0_virtual_removal_sensitivity",
+        "publication_protocol": (
+            "target_specific_matched_equal_n_fixed_population_sensitivity"
+        ),
+        "counterfactual_scope": "global_t0_cohort_exclusion_model_sensitivity",
+        "interpretation": (
+            "model sensitivity to a target-excluded initial cohort; not total-mass "
+            "deletion, a causal knockout, lineage evidence, or an uncertainty estimate"
+        ),
         "dt": float(ctx.args.sde_dt),
         "split_resample_dt": float(ctx.args.sde_dt),
         "sigma": float(ctx.args.sde_sigma),
-        "growth_alpha": float(ctx.args.growth_alpha),
-        "interaction_m": int(ctx.args.interaction_m),
+        "growth_alpha": S24_FIXED_GROWTH_ALPHA,
+        "growth_resampling": (
+            "disabled for publication analysis; particle count must remain fixed"
+        ),
+        "mass_control": True,
+        "cohort_matching": (
+            "independent no-replacement baseline and target-excluded draws at the "
+            "same initial particle count"
+        ),
+        "interaction_m": S24_INTERACTION_M,
+        "interaction_seed": interaction_seed,
+        "interaction_context": (
+            "one full context group per formal matched cohort because interaction_m "
+            "exceeds both formal matched particle counts"
+        ),
         "n_samples": (
             int(ctx.args.smoke_n_samples) if ctx.args.profile == "smoke" else None
         ),
         "snapshot_point_size": float(ctx.args.point_size),
         "composite_layout": {
             "rows": "observed times",
-            "columns": ["baseline", "remove_YSL", "remove_EVL"],
-            "shared_axis_limits": True,
-            "semantics": "virtual sensitivity analysis; not a causal knockout estimate",
+            "separate_panels": ["YSL", "EVL"],
+            "columns_within_each_panel": ["matched_baseline", "target_excluded"],
+            "shared_axis_limits_within_target": True,
+            "cross_target_axis_sharing": False,
+            "outlier_clipping_or_removal": False,
+            "semantics": (
+                "matched equal-N fixed-population model sensitivity; not total-mass "
+                "deletion or a causal knockout"
+            ),
         },
-        "animation_fps": int(ctx.args.video_fps),
         "max_particles": int(ctx.args.sde_max_particles),
-        "ablations": {
-            "remove_YSL": [ctx.args.ysl_label],
-            "remove_EVL": [ctx.args.evl_label],
+        "experiments": {
+            str(spec["target"]): {
+                "variant": str(spec["variant"]),
+                "excluded_label": str(spec["label"]),
+                "ablations_per_call": 1,
+                "formal_matched_particle_count": int(spec["formal_matched_n"]),
+            }
+            for spec in experiments
+        },
+        "trajectory_support_audit": {
+            "reference": "maximum observed norm in original latent coordinates",
+            "nonfinite_allowed": False,
+            "maximum_fraction_outside_observed_max": (S24_SUPPORT_MAX_OUTSIDE_FRACTION),
+            "maximum_generated_norm_multiplier": S24_SUPPORT_MAX_NORM_MULTIPLIER,
+            "publication_stage_fails_on_violation": True,
         },
         "classifier": {
             "contract": "time + spatial2 + fresh PCA10(original latent50)",
@@ -1615,9 +2093,24 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             "knn_neighbors": 10,
         },
         "random_stream_coupling": (
-            "same branch-level seed; not cell-ID-matched after cohort removal; "
-            "single-seed manuscript parity"
+            "same branch-level SDE seed and explicit interaction-grouping seed for "
+            "baseline and target-excluded equal-shape tensors; Brownian rows are "
+            "coupled by row order, not cell identity; single-seed sensitivity"
         ),
+        "superseded_legacy_result": {
+            "description": (
+                "combined unequal-N YSL/EVL virtual-removal run with learned "
+                "growth/resampling enabled"
+            ),
+            "status": "superseded_diagnostic_only",
+            "reused": False,
+            "publication_eligible": False,
+            "reason": (
+                "particle-count, Monte Carlo context, and learned-growth amplification "
+                "were confounded with target exclusion; its EVL branch left model "
+                "support"
+            ),
+        },
     }
 
     def action(stage_dir: Path):
@@ -1648,120 +2141,177 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
                     f"contract: expected {expected}, got {actual}."
                 )
         cached, cache_path, pca_path, labeler = _ablation_classifier(ctx, stage_dir)
-        result = cb.tl.run_virtual_cell_type_ablation(
-            ctx.adata,
-            ctx.runtime,
-            ablations=settings["ablations"],
-            time_points=time_points,
-            output_dir=stage_dir / "experiment",
-            time_index=0,
-            n_samples=(
-                int(ctx.args.smoke_n_samples) if ctx.args.profile == "smoke" else None
-            ),
-            dt=float(ctx.args.sde_dt),
-            resample_dt=float(ctx.args.sde_dt),
-            sigma=float(ctx.args.sde_sigma),
-            growth_alpha=float(ctx.args.growth_alpha),
-            interaction_m=int(ctx.args.interaction_m),
-            max_particles=int(ctx.args.sde_max_particles),
-            device=ctx.args.device,
-            time_key=ctx.args.time_key,
-            annotation_key=ctx.args.annotation_key,
-            obsm_key=ctx.args.latent_key,
-            spatial_key=ctx.args.spatial_key,
-            concat_spatial=True,
-            spatial_dim=2,
-            random_seed=int(ctx.args.random_seed),
-            common_random_seed=True,
-            trajectory_labeler=labeler,
-            save_data=True,
-            save_snapshots=True,
-            snapshot_times=OBSERVED_TIMES,
-            snapshot_plot_dims=(0, 1),
-            snapshot_point_size=float(ctx.args.point_size),
-            snapshot_alpha=0.9,
-            snapshot_formats=("png", "pdf"),
-            label_to_color=ctx.label_to_color,
-            verbose=True,
-        )
-        outputs = [cache_path, pca_path, *result.files]
-        if ctx.args.profile == "full":
-            expected_variant_counts = {"remove_YSL": 534, "remove_EVL": 291}
-            actual_variant_counts = {
-                str(key): int(value)
-                for key, value in result.settings["variant_initial_counts"].items()
-            }
-            if actual_variant_counts != expected_variant_counts:
+        outputs: list[Path] = [cache_path, pca_path]
+        results: dict[str, object] = {}
+        matched_counts: dict[str, int] = {}
+        publication_metrics: dict[str, str] = {}
+        support_trajectories: dict[str, Sequence[np.ndarray]] = {}
+
+        for spec in experiments:
+            target = str(spec["target"])
+            variant = str(spec["variant"])
+            result = cb.tl.run_virtual_cell_type_ablation(
+                ctx.adata,
+                ctx.runtime,
+                ablations={variant: [str(spec["label"])]},
+                time_points=time_points,
+                output_dir=stage_dir / f"experiment_{target}",
+                time_index=0,
+                n_samples=(
+                    int(ctx.args.smoke_n_samples)
+                    if ctx.args.profile == "smoke"
+                    else None
+                ),
+                dt=float(ctx.args.sde_dt),
+                resample_dt=float(ctx.args.sde_dt),
+                sigma=float(ctx.args.sde_sigma),
+                growth_alpha=S24_FIXED_GROWTH_ALPHA,
+                interaction_m=S24_INTERACTION_M,
+                interaction_seed=interaction_seed,
+                max_particles=int(ctx.args.sde_max_particles),
+                device=ctx.args.device,
+                time_key=ctx.args.time_key,
+                annotation_key=ctx.args.annotation_key,
+                obsm_key=ctx.args.latent_key,
+                spatial_key=ctx.args.spatial_key,
+                concat_spatial=True,
+                spatial_dim=2,
+                random_seed=int(ctx.args.random_seed),
+                common_random_seed=True,
+                mass_control=True,
+                trajectory_labeler=labeler,
+                save_data=True,
+                save_snapshots=False,
+                label_to_color=ctx.label_to_color,
+                verbose=True,
+            )
+            matched_n = _require_s24_fixed_population_result(
+                result,
+                variant=variant,
+                random_seed=int(ctx.args.random_seed),
+                interaction_seed=interaction_seed,
+                interaction_m=S24_INTERACTION_M,
+            )
+            if ctx.args.profile == "full" and matched_n != int(
+                spec["formal_matched_n"]
+            ):
                 raise RuntimeError(
-                    "Unexpected S24 ablation cohort sizes: expected "
-                    f"{expected_variant_counts}, got {actual_variant_counts}."
+                    f"Unexpected formal S24 {target} matched cohort size: "
+                    f"expected {spec['formal_matched_n']}, got {matched_n}."
                 )
-        comparison_trajectories = {
-            "baseline": result.baseline_points,
-            **result.ablation_points,
-        }
-        comparison_labels = None
-        if result.baseline_labels is not None:
-            comparison_labels = {
-                "baseline": result.baseline_labels,
-                **result.ablation_labels,
+            results[target] = result
+            matched_counts[target] = matched_n
+            outputs.extend(Path(path) for path in result.files)
+
+            metrics_path = (
+                stage_dir / f"S24_{target}_matched_fixed_population_metrics.csv"
+            )
+            result.metrics.to_csv(metrics_path, index=False)
+            outputs.append(metrics_path)
+            publication_metrics[target] = str(metrics_path)
+            support_trajectories[f"{target}_matched_baseline"] = result.baseline_points
+            support_trajectories[f"{target}_{variant}"] = result.ablation_points[
+                variant
+            ]
+
+        audit, audit_summary = _compute_trajectory_support_audit(
+            np.asarray(ctx.adata.obsm[ctx.args.latent_key], dtype=np.float32),
+            support_trajectories,
+            time_points,
+            spatial_dim=2,
+            max_outside_fraction=S24_SUPPORT_MAX_OUTSIDE_FRACTION,
+            max_norm_multiplier=S24_SUPPORT_MAX_NORM_MULTIPLIER,
+        )
+        audit_path = stage_dir / "S24_trajectory_support_audit.csv"
+        audit.to_csv(audit_path, index=False)
+        audit_summary_path = stage_dir / "S24_trajectory_support_audit.json"
+        audit_summary_path.write_text(
+            json.dumps(_json_ready(audit_summary), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        outputs.extend([audit_path, audit_summary_path])
+        _require_trajectory_support_audit_pass(audit_summary, stage="S24")
+
+        captions: dict[str, str] = {}
+        publication_grids: dict[str, list[str]] = {}
+        for spec in experiments:
+            target = str(spec["target"])
+            variant = str(spec["variant"])
+            result = results[target]
+            matched_n = matched_counts[target]
+            comparison_trajectories = {
+                "baseline": result.baseline_points,
+                variant: result.ablation_points[variant],
             }
-        condition_titles = {
-            "baseline": "Baseline",
-            "remove_YSL": "Virtual YSL removal",
-            "remove_EVL": "Virtual EVL removal",
-        }
-        for extension in ("pdf", "png"):
-            path = stage_dir / f"S24_virtual_ablation_grid.{extension}"
-            figure = cb.pl.plot_trajectory_comparison_grid(
-                trajectories=comparison_trajectories,
-                time_values=time_points,
-                labels_by_condition=comparison_labels,
-                label_to_color=ctx.label_to_color,
-                selected_times=OBSERVED_TIMES,
-                condition_titles=condition_titles,
-                dim_pair=(0, 1),
-                point_size=float(ctx.args.point_size),
-                alpha=0.9,
-                shared_axis_limits=True,
-                show_counts=False,
-                show_legend=False,
-                title="Virtual cell-type-removal sensitivity across zebrafish stages",
-                out_path=str(path),
+            comparison_labels = None
+            if result.baseline_labels is not None:
+                comparison_labels = {
+                    "baseline": result.baseline_labels,
+                    variant: result.ablation_labels[variant],
+                }
+            condition_titles = {
+                "baseline": f"{target}-matched baseline (N={matched_n})",
+                variant: f"{target}-excluded matched cohort (N={matched_n})",
+            }
+            title = (
+                f"{target}-excluded equal-N fixed-population model sensitivity "
+                "from t=0"
             )
-            plt.close(figure)
-            outputs.append(path)
-        animation_dir = stage_dir / "animations"
-        animation_dir.mkdir(parents=True, exist_ok=True)
-        animation_points = {
-            "baseline": result.baseline_points,
-            **result.ablation_points,
-        }
-        animation_labels = {
-            "baseline": result.baseline_labels,
-            **result.ablation_labels,
-        }
-        for name, points in animation_points.items():
-            path = animation_dir / f"{name}.gif"
-            cb.pl.plot_trajectory_gif(
-                sde_points=points,
-                time_values=time_points,
-                labels_list=animation_labels.get(name),
-                label_to_color=ctx.label_to_color,
-                out_path=str(path),
-                dim_pair=(0, 1),
-                point_size=max(1.0, float(ctx.args.point_size)),
-                alpha=0.9,
-                fps=int(ctx.args.video_fps),
+            captions[target] = (
+                f"Independent no-replacement baseline and {target}-excluded t=0 "
+                f"cohorts were matched at N={matched_n} and propagated continuously "
+                "from t=0 to t=4 with the same branch and interaction-grouping "
+                "random seeds. Learned growth was disabled. This is a model "
+                "sensitivity analysis, not total-mass deletion or a causal knockout."
             )
-            outputs.append(path)
+            publication_grids[target] = []
+            for extension in ("pdf", "png"):
+                path = (
+                    stage_dir
+                    / f"S24_{target}_matched_fixed_population_grid.{extension}"
+                )
+                figure = cb.pl.plot_trajectory_comparison_grid(
+                    trajectories=comparison_trajectories,
+                    time_values=time_points,
+                    labels_by_condition=comparison_labels,
+                    label_to_color=ctx.label_to_color,
+                    selected_times=OBSERVED_TIMES,
+                    condition_titles=condition_titles,
+                    dim_pair=(0, 1),
+                    point_size=float(ctx.args.point_size),
+                    alpha=0.9,
+                    shared_axis_limits=True,
+                    show_counts=True,
+                    show_legend=False,
+                    title=title,
+                    out_path=str(path),
+                )
+                plt.close(figure)
+                outputs.append(path)
+                publication_grids[target].append(str(path))
+
+        captions_path = stage_dir / "S24_panel_captions.json"
+        captions_path.write_text(
+            json.dumps(captions, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        outputs.append(captions_path)
         return outputs, {
             "classifier_cache_path": str(cache_path),
             "classifier_accuracy": cached.accuracy,
             "classifier_balanced_accuracy": cached.balanced_accuracy,
-            "n_initial": int(len(result.initial_obs_names)),
-            "variant_initial_counts": result.settings["variant_initial_counts"],
-            "simulation_seeds": result.settings["simulation_seeds"],
+            "matched_initial_particle_counts": matched_counts,
+            "simulation_seeds": {
+                target: results[target].settings["simulation_seeds"]
+                for target in results
+            },
+            "interaction_seed": interaction_seed,
+            "interaction_m": S24_INTERACTION_M,
+            "growth_alpha": S24_FIXED_GROWTH_ALPHA,
+            "trajectory_support_audit": audit_summary,
+            "publication_metrics": publication_metrics,
+            "publication_grids": publication_grids,
+            "panel_captions": captions,
+            "superseded_legacy_result_reused": False,
         }
 
     return _execute_stage(ctx, "ablation", settings, action)
@@ -1778,12 +2328,14 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             "external S25 canonical interval-local state bundle",
         )
     )
+    # S22 now represents a different scientific estimand (one global-t0 path).
+    # Reuse an interval-local bundle only when the caller opts in explicitly;
+    # never infer compatibility from a neighboring S22 directory name.
     canonical_index = (
-        external_bundle / "index.json"
-        if external_bundle is not None
-        else ctx.output_dir / "s22" / "canonical_prewarp_states" / "index.json"
+        external_bundle / "index.json" if external_bundle is not None else None
     )
     if external_bundle is not None:
+        assert canonical_index is not None
         canonical_index = _require_file(
             canonical_index, "external S25 canonical state index"
         )
@@ -1801,7 +2353,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             external_manifest_path,
             stage="s22",
         )
-        _require_canonical_s22_manifest_semantics(
+        _require_s25_interval_local_manifest_semantics(
             external_s22_manifest, external_manifest_path
         )
         _require_s22_state_settings_match(
@@ -1822,18 +2374,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 f"S22 manifest: {canonical_index}"
             )
     else:
-        upstream_s22_manifest = (
-            _require_current_stage_manifest(ctx, "s22")
-            if canonical_index.exists()
-            else None
-        )
-        if upstream_s22_manifest is not None:
-            _require_canonical_s22_manifest_semantics(
-                upstream_s22_manifest, _stage_manifest_path(ctx, "s22")
-            )
-            _require_s22_state_settings_match(
-                ctx, upstream_s22_manifest, _stage_manifest_path(ctx, "s22")
-            )
+        upstream_s22_manifest = None
         external_s22_manifest = None
         external_manifest_path = None
     settings = {
@@ -1843,7 +2384,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             "interval-local one-sided half-time states simulated from the preceding "
             "observed anchor"
         ),
-        "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
+        "trajectory_scope": S25_COMMUNICATION_TRAJECTORY_SCOPE,
         "trajectory_mode": "piecewise_observed_anchored_interval_forward_simulation",
         "split_sde_piecewise": True,
         "piecewise_observed_sample_mode": "per_timepoint",
@@ -1920,7 +2461,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                     else None
                 ),
             }
-            if canonical_index.exists()
+            if canonical_index is not None and canonical_index.exists()
             else None
         ),
         "missing_target_policy": (
@@ -1931,14 +2472,14 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
     }
 
     def action(stage_dir: Path):
-        if canonical_index.exists():
+        if canonical_index is not None and canonical_index.exists():
             states, canonical_times, canonical_sources = _read_state_bundle(
                 canonical_index.parent,
                 annotation_key=ctx.args.annotation_key,
             )
             if canonical_times != list(HALF_TIMES):
                 raise RuntimeError(
-                    "S22 canonical interval-local slices do not match the S25 grid."
+                    "External interval-local slices do not match the S25 grid."
                 )
             invalid_sources = {
                 time_value: source
@@ -1982,7 +2523,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 ctx,
                 output_dir=stage_dir / "workflow",
                 time_points=HALF_TIMES,
-                use_real_for_observed=True,
+                trajectory_mode="interval_local_observed_anchored",
                 display_piecewise_warp=False,
             )
             states = result.adata_dict
@@ -2973,7 +3514,7 @@ def _stage_communication(ctx: RunContext) -> dict[str, object]:
             "observed integer frames plus unwarped interval-local one-sided "
             "half-time frames from the preceding observed anchor"
         ),
-        "trajectory_scope": CANONICAL_TRAJECTORY_SCOPE,
+        "trajectory_scope": S25_COMMUNICATION_TRAJECTORY_SCOPE,
         "attention_matrix": "M_per_source",
         "remove_self_loop": False,
         "winsor_quantile": float(ctx.args.communication_winsor_quantile),
@@ -3559,9 +4100,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.1,
         help=(
-            "Output grid for the S22 interval-local simulations. Mosaic and video "
-            "frames are selected from these one-sided observed-anchor slices; "
-            "split/resampling events remain fixed by --sde-dt."
+            "Output grid for the single S22 global-t0 simulation. Mosaic and video "
+            "frames are selected from this continuous generated path; split/"
+            "resampling events remain fixed by --sde-dt."
         ),
     )
     parser.add_argument("--video-step", type=float, default=0.1)
@@ -3581,11 +4122,10 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "Optional existing canonical interval-local state bundle (the legacy "
-            "directory name is canonical_prewarp_states). The index and frame "
-            "hashes are validated, and an adjacent complete S22 manifest is "
-            "validated when present. Use this for downstream-only recomputation "
-            "without silently simulating different slice semantics."
+            "Optional historical interval-local state bundle for S25 only (the "
+            "legacy directory name is canonical_prewarp_states). The index, frame "
+            "hashes, and adjacent complete historical S22 manifest are validated. "
+            "The current global-t0 S22 bundle is intentionally incompatible."
         ),
     )
     parser.add_argument(

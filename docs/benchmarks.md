@@ -55,12 +55,18 @@ reconstruction diagnostic. It is not the cross-method holdout benchmark above.
 ## Zebrafish formal downstream and daughter-noise sensitivity
 
 The matched Zebrafish paper downstream completed all seven signed stages:
-classifier, velocity, observed-anchored S22, growth, S24 sensitivity, S25, and
-communication. The canonical reconstruction panels are interval-local and
-observed-anchored, not global-t0 rollouts. S24 remains a separately labelled
-global-t0 virtual-removal sensitivity and is neither a canonical
-reconstruction nor a causal knockout estimate. Older global-t0 reconstruction
-and ablation values are not final-model evidence.
+classifier, velocity, global-t0 S22, growth, S24 sensitivity, S25, and
+communication. Paper S22 is one continuous generated path from `t=0` through
+`t=4`; observed integer slices are separate references and are not substituted
+into that path. S25 and communication intentionally retain their separate
+interval-local, observed-anchored state contract. S22 also exports a full
+latent-support audit; because it is an explicit demonstration, rare tail OOD is
+reported rather than hidden or replaced with observed slices. S24 consists of separate
+YSL- and EVL-exclusion, equal-N, fixed-population model sensitivities. Learned
+growth resampling is disabled, every trajectory must pass the recorded latent
+support gate, and the panels are neither total-mass deletion nor causal
+knockout estimates. The older unequal-N, growth-resampling EVL result is an OOD
+diagnostic and is not final-model evidence.
 
 The interval-local daughter-noise analysis used four observed intervals,
 daughter-noise SD `0`, `0.01`, `0.03`, and `0.06`, and five paired seeds (80

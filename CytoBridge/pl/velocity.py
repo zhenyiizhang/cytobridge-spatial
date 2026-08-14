@@ -281,16 +281,19 @@ def plot_velocity_component(
     show_legend: bool = False,
     n_neighbors: int = 30,
 ):
-    """Plot a single velocity field using scVelo streamlines.
+    """Plot a model-derived velocity field using scVelo-style streamlines.
 
     Parameters
     ----------
     coords
         Coordinates of shape (N, 2) to plot in.
     velocity
-        Velocity vectors.
-        - If `feature_matrix` is None: shape must be (N, 2).
-        - If `feature_matrix` is provided: shape must match `feature_matrix` (e.g., N x 50).
+        Velocity vectors. If ``feature_matrix`` is ``None``, shape must be
+        ``(N, 2)``. The vectors are already in the plotted coordinate system
+        and are interpolated directly without a second scVelo transition
+        projection. If ``feature_matrix`` is provided, shape must match that
+        matrix (for example, ``N x 50``); scVelo constructs a transition graph
+        in that state space and projects the state derivative to ``coords``.
     feature_matrix
         Optional high-dimensional feature space used to build velocity graph.
         When provided, streamlines can be projected to `coords` (spatial basis) while
@@ -304,12 +307,13 @@ def plot_velocity_component(
 
     Notes
     -----
-    scVelo cannot construct a meaningful streamline grid when the raw field is
-    nearly zero or fewer than 50 finite, non-zero embedded velocity vectors are
-    available. In those legitimate edge cases (for example, a small sample
-    with no predicted interaction edges), this function renders a labeled
-    scatter/quiver fallback and records the reason in
-    ``adata.uns["velocity_plot_fallback"]``.
+    This visualizes a model-derived vector field; it is not splicing-based RNA
+    velocity unless the caller explicitly supplies such a derivative. scVelo's
+    streamline grid masks unsupported locations by writing NaNs to only one
+    velocity component. Some Matplotlib vector backends then reject the NaN
+    linewidths generated from that grid. This function applies one common mask
+    to both components and clears masked linewidths before saving. Legitimately
+    near-zero or under-supported fields use a labeled scatter/quiver fallback.
     """
     import anndata as ad
     import matplotlib.pyplot as plt
@@ -322,7 +326,8 @@ def plot_velocity_component(
         raise ValueError("n_neighbors must be > 0.")
     if coords.ndim != 2 or coords.shape[1] != 2:
         raise ValueError("coords must be of shape (N, 2)")
-    if feature_matrix is None:
+    direct_spatial = feature_matrix is None
+    if direct_spatial:
         if velocity.shape != coords.shape:
             raise ValueError("velocity must have the same shape as coords when feature_matrix is None")
         graph_X = coords
@@ -339,6 +344,11 @@ def plot_velocity_component(
     adata.obsm[f"X_{basis}"] = coords
     adata.layers["Ms"] = graph_X
     adata.layers["velocity"] = velocity
+    adata.uns["velocity_projection_mode"] = (
+        "direct_plot_coordinates"
+        if direct_spatial
+        else "model_state_velocity_to_plot_coordinates"
+    )
 
     palette_list = None
     if labels is not None:
@@ -427,10 +437,16 @@ def plot_velocity_component(
     if int(valid_vectors.sum()) < 2:
         return _render_velocity_fallback("near_zero_velocity", valid_vectors)
 
-    sc.pp.neighbors(adata, n_neighbors=int(n_neighbors), use_rep="X")
-    scv.tl.velocity_graph(adata, vkey="velocity")
-    scv.tl.velocity_embedding(adata, basis=basis, vkey="velocity")
-    embedded_velocity = np.asarray(adata.obsm.get(f"velocity_{basis}"), dtype=float)
+    if direct_spatial:
+        embedded_velocity = velocity.copy()
+        adata.obsm[f"velocity_{basis}"] = embedded_velocity
+    else:
+        sc.pp.neighbors(adata, n_neighbors=int(n_neighbors), use_rep="X")
+        scv.tl.velocity_graph(adata, vkey="velocity", xkey="Ms")
+        scv.tl.velocity_embedding(adata, basis=basis, vkey="velocity")
+        embedded_velocity = np.asarray(
+            adata.obsm.get(f"velocity_{basis}"), dtype=float
+        )
     valid_embedded = np.isfinite(embedded_velocity).all(axis=1) & (
         np.linalg.norm(embedded_velocity, axis=1) > 1e-12
     )
@@ -440,6 +456,37 @@ def plot_velocity_component(
             valid_embedded,
             projected_velocity=embedded_velocity,
         )
+
+    from scvelo.plotting.velocity_embedding_grid import compute_velocity_on_grid
+
+    x_grid, velocity_grid = compute_velocity_on_grid(
+        X_emb=coords,
+        V_emb=embedded_velocity,
+        density=1,
+        smooth=None,
+        min_mass=None,
+        n_neighbors=None,
+        autoscale=False,
+        adjust_for_stream=True,
+        cutoff_perc=None,
+    )
+    velocity_grid = np.asarray(velocity_grid, dtype=float)
+    invalid_grid = ~np.isfinite(velocity_grid).all(axis=0)
+    velocity_grid = np.ma.array(
+        velocity_grid,
+        mask=np.broadcast_to(invalid_grid, velocity_grid.shape),
+        copy=False,
+    )
+    finite_grid_magnitude = np.linalg.norm(
+        np.asarray(velocity_grid.filled(0.0), dtype=float), axis=0
+    )
+    if int(np.count_nonzero(finite_grid_magnitude > 1e-12)) < 2:
+        return _render_velocity_fallback(
+            "insufficient_streamline_grid",
+            valid_embedded,
+            projected_velocity=embedded_velocity,
+        )
+    adata.uns["velocity_streamline_grid_masked_cells"] = int(invalid_grid.sum())
     scv.settings.set_figure_params("scvelo")
 
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -454,24 +501,35 @@ def plot_velocity_component(
         show=False,
         title=title,
         legend_loc=legend_loc,
+        X=coords,
+        V=embedded_velocity,
+        X_grid=x_grid,
+        V_grid=velocity_grid,
     )
+
+    sanitized_linewidths = 0
+    for collection in ax.collections:
+        linewidths = np.ma.asarray(collection.get_linewidths(), dtype=float)
+        if linewidths.size == 0:
+            continue
+        finite_linewidths = np.asarray(linewidths.filled(np.nan), dtype=float)
+        invalid_linewidths = ~np.isfinite(finite_linewidths)
+        if np.any(invalid_linewidths):
+            sanitized_linewidths += int(invalid_linewidths.sum())
+            collection.set_linewidths(
+                np.where(invalid_linewidths, 0.0, finite_linewidths)
+            )
+    adata.uns["velocity_streamline_sanitized_linewidths"] = sanitized_linewidths
+
     if out_path:
         try:
             fig.savefig(out_path, dpi=300, bbox_inches="tight")
-        except ValueError as exc:
-            # scVelo's streamline interpolator can leave a non-finite path in
-            # an otherwise finite embedded field.  The PDF backend rejects
-            # that path at render time.  Preserve the scientifically useful
-            # embedded directions with a finite quiver fallback instead of
-            # emitting a corrupt/missing panel.
-            if "finite" not in str(exc).lower():
-                raise
+        except Exception:
             plt.close(fig)
-            return _render_velocity_fallback(
-                "nonfinite_streamline_render",
-                valid_embedded,
-                projected_velocity=embedded_velocity,
-            )
+            raise
+        adata.uns["velocity_plot_render"] = "scvelo_stream_vector"
+    else:
+        adata.uns["velocity_plot_render"] = "scvelo_stream_not_saved"
     plt.close(fig)
     return adata
 
