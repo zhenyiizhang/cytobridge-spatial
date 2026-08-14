@@ -1351,7 +1351,10 @@ def simulate_sde_points(
         if ts_points is None:
             ts_points = [0, 1, 2, 3, 4]
 
-        time_points = df["samples"].unique()
+        # Formal aligned artifacts may store rows in reverse time order.  The
+        # public ``time_index`` contract is chronological, matching AnnData
+        # mode, so never let dataframe row order choose the simulation anchor.
+        time_points = _sorted_unique(df["samples"].unique())
         if time_index < 0 or time_index >= len(time_points):
             raise ValueError(
                 f"time_index={time_index} out of range [0, {len(time_points)-1}]"
@@ -1597,7 +1600,9 @@ def simulate_sde_points_split(
         if ts_points is None:
             ts_points = [0, 1, 2, 3, 4]
 
-        time_points = df["samples"].unique()
+        # Keep legacy dataframe mode consistent with AnnData mode: time_index
+        # indexes chronological time, not first appearance in the row order.
+        time_points = _sorted_unique(df["samples"].unique())
         if time_index < 0 or time_index >= len(time_points):
             raise ValueError(
                 f"time_index={time_index} out of range [0, {len(time_points)-1}]"

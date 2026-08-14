@@ -542,6 +542,69 @@ def test_anndata_split_simulation_applies_growth_alpha(monkeypatch):
     np.testing.assert_allclose(recorded_growth[1], 4.0)
 
 
+def _reverse_time_dataframe():
+    return pd.DataFrame(
+        {
+            "samples": [4.0, 4.0, 0.0, 0.0],
+            "x1": [40.0, 41.0, 0.0, 1.0],
+        }
+    )
+
+
+def test_legacy_simulation_time_index_uses_chronological_order(monkeypatch):
+    captured = {}
+
+    def capture_initial_state(_sde, initial_state, **_kwargs):
+        z, lnw = initial_state
+        captured["x0"] = z.detach().cpu().numpy().copy()
+        return z.unsqueeze(0), lnw.unsqueeze(0)
+
+    monkeypatch.setattr(simulation, "_euler_sdeint", capture_initial_state)
+    f_net = SimpleNamespace(
+        v_net=lambda _t, z: torch.zeros_like(z),
+        g_net=lambda _t, z: torch.zeros((z.shape[0], 1), dtype=z.dtype),
+        interaction_net=None,
+    )
+
+    simulation.simulate_sde_points(
+        df=_reverse_time_dataframe(),
+        f_net=f_net,
+        score_net=object(),
+        dim=1,
+        time_index=0,
+        n_samples=10,
+        ts_points=[0.0],
+        device="cpu",
+        verbose=False,
+    )
+
+    np.testing.assert_array_equal(captured["x0"], [[0.0], [1.0]])
+
+
+def test_legacy_split_simulation_time_index_uses_chronological_order(monkeypatch):
+    captured = {}
+
+    def capture_x0(*, x0, **_kwargs):
+        captured["x0"] = np.asarray(x0).copy()
+        return np.asarray([x0], dtype=object)
+
+    monkeypatch.setattr(simulation, "simulate_sde_points_split_from_x0", capture_x0)
+
+    simulation.simulate_sde_points_split(
+        df=_reverse_time_dataframe(),
+        f_net=object(),
+        score_net=object(),
+        dim=1,
+        time_index=0,
+        n_samples=10,
+        ts_points=[0.0],
+        device="cpu",
+        verbose=False,
+    )
+
+    np.testing.assert_array_equal(captured["x0"], [[0.0], [1.0]])
+
+
 def test_visualization_only_warp_uses_one_global_model_trajectory(monkeypatch):
     segment_starts = []
     daughter_noises = []
