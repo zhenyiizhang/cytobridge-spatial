@@ -121,6 +121,23 @@ python scripts/run_matched_ablation_benchmark_evaluation.py render \
   --run-root <new-evaluation-root>
 ```
 
+`run_zebrafish_classic_s24.py` restores the original unequal-population
+zebrafish virtual-removal estimand as a separate, auditable analysis. For each
+of simulation seeds 42–46 it starts from the complete 563-cell observed t=0
+cohort, deletes the exact YSL (29 cells) or EVL (272 cells) subset without
+replacement, and propagates all three branches continuously with learned
+growth-driven split/extinction enabled. Five `run-seed` jobs can run in
+parallel. `report` requires all five jobs plus a byte-identical seed-42 replay,
+selects the latest observed endpoint that passes the predeclared latent-support
+gate at every preceding frame for all 15 trajectories, and creates the
+manuscript-style morphology, spatial-W1, population-count, and centroid panels.
+Spatial W1 uses uniform empirical OT on deterministic supports capped at 1,024
+points per cloud; raw trajectories and plotted states retain every particle.
+This one-checkpoint virtual removal is not a causal knockout or a biological-
+replicate experiment. The
+equal-N fixed-population S24 produced by `run_zebrafish_paper_downstream.py`
+remains a distinct shape-control analysis.
+
 Other top-level files under `scripts/` in the Git repository are retained as
 historical research records. Some contain workstation-specific paths or calls
 from earlier package versions. They are not installed, are not included in the

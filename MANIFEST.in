@@ -39,6 +39,7 @@ include scripts/run_spatial_training.py
 include scripts/run_spatiotemporal_downstream.py
 include scripts/run_zebrafish_end_to_end.py
 include scripts/run_zebrafish_interval_daughter_noise_sensitivity.py
+include scripts/run_zebrafish_classic_s24.py
 include scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py
 include scripts/run_zebrafish_paper_downstream.py
 include scripts/smoke_dataset_notebooks.py
