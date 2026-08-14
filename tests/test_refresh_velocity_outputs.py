@@ -20,7 +20,15 @@ def test_velocity_refresh_contract_separates_spatial_and_expression_projection()
         "vectors": "first two fitted model dimensions",
         "projection": "direct; no scVelo projection",
     }
-    assert "scVelo" in contract["expression_velocity"]["display_projection"]
+    assert contract["expression_velocity"] == {
+        "state": "fitted 50-dimensional expression representation",
+        "vectors": "fitted 50-dimensional expression-state derivative",
+        "display_projection": (
+            "scVelo transition graph in expression state projected onto "
+            "observed spatial_aligned[:, :2] coordinates"
+        ),
+        "rendered": True,
+    }
     assert contract["simulation"] is False
     assert contract["observed_slice_reanchoring"] is False
 

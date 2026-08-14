@@ -6,8 +6,9 @@ downstream bank predates the direct spatial-vector plotting contract. It loads
 the accepted aligned H5AD and checkpoint directory, recomputes all model
 velocity components, and writes a fresh immutable output directory. Spatial
 arrows are the model's first two dimensions and are never projected through
-scVelo. Expression velocity remains in the fitted state and is available in
-the component archive for expression-specific displays.
+scVelo. Gene-velocity panels use the remaining 50 expression-state dimensions
+to build a scVelo transition graph and project that derivative onto the same
+observed spatial coordinates.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def sha256_file(path: Path) -> str:
@@ -71,8 +72,13 @@ def scientific_contract() -> dict[str, Any]:
             "projection": "direct; no scVelo projection",
         },
         "expression_velocity": {
-            "vectors": "fitted expression-state derivative",
-            "display_projection": "scVelo may be used only for expression/gene displays",
+            "state": "fitted 50-dimensional expression representation",
+            "vectors": "fitted 50-dimensional expression-state derivative",
+            "display_projection": (
+                "scVelo transition graph in expression state projected onto "
+                "observed spatial_aligned[:, :2] coordinates"
+            ),
+            "rendered": True,
         },
         "simulation": False,
         "observed_slice_reanchoring": False,
@@ -159,8 +165,19 @@ def run(args: argparse.Namespace) -> Path:
     nonfinite = [key for key, value in arrays.items() if not np.isfinite(value).all()]
     if nonfinite:
         raise RuntimeError(f"velocity archive contains non-finite arrays: {nonfinite}")
+    if int(velocity["expression_dimensions"]) != 50:
+        raise RuntimeError(
+            "Formal velocity refresh requires exactly 50 expression-state "
+            f"dimensions; observed {velocity['expression_dimensions']}."
+        )
 
-    figures = [_artifact(Path(path)) for path in velocity["figures"]]
+    spatial_figures = [_artifact(Path(path)) for path in velocity["spatial_figures"]]
+    gene_figures = [_artifact(Path(path)) for path in velocity["gene_figures"]]
+    if not spatial_figures or not gene_figures:
+        raise RuntimeError(
+            "Velocity refresh must render both spatial- and gene-velocity panels."
+        )
+    figures = [*spatial_figures, *gene_figures]
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "status": "complete",
@@ -181,6 +198,8 @@ def run(args: argparse.Namespace) -> Path:
             "component_archive": _artifact(archive),
             "array_shapes": {key: list(value.shape) for key, value in arrays.items()},
             "all_finite": True,
+            "spatial_figures": spatial_figures,
+            "gene_figures": gene_figures,
             "figures": figures,
         },
     }

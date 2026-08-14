@@ -62,14 +62,15 @@ as a chicken-specific interaction database.
 
 ## Velocity and figure semantics
 
-Expression/gene velocity is evaluated in the 50-PC state and may use scVelo to
-project high-dimensional derivatives into an expression display. Spatial
+Expression/gene velocity is evaluated in the 50-PC state. Its scVelo transition
+graph is built from the 50-dimensional expression state and derivative, then
+projected onto the observed `spatial_aligned[:, :2]` coordinates. Spatial
 velocity already occupies the first two model dimensions and is plotted
-directly on `spatial_aligned[:, :2]`; it is never projected through scVelo a
-second time.
+directly on those coordinates; it is never projected through scVelo a second
+time.
 
 The standard downstream bank contains generated slices, the time mosaic,
-growth, composition, intrinsic/interaction/full spatial velocity, sparse
-cell-type attention, strict LR tables, temporal gene programs, and 3D
-communication. Formal manuscript panels must be assembled from a signed fresh
-run, not from notebook previews or the historical D7-mirrored artifact.
+growth, composition, paired intrinsic/interaction/full spatial and gene
+velocity, sparse cell-type attention, strict LR tables, temporal gene programs,
+and 3D communication. Formal manuscript panels must be assembled from a signed
+fresh run, not from notebook previews or the historical D7-mirrored artifact.

@@ -1960,7 +1960,8 @@ def _write_velocity_outputs(
     archive_path = output_dir / "velocity_components.npz"
     np.savez_compressed(archive_path, **components)
 
-    figures: list[str] = []
+    spatial_figures: list[str] = []
+    gene_figures: list[str] = []
     use_spatial = (
         bool(concat_spatial)
         if concat_spatial is not None
@@ -1974,6 +1975,15 @@ def _write_velocity_outputs(
     if spatial_dim >= 2:
         labels = adata.obs[annotation_key].astype(str).to_numpy()
         spatial_coordinates = np.asarray(adata.obsm[spatial_key], dtype=float)[:, :2]
+        fitted_features = np.asarray(components["features"], dtype=float)
+        if fitted_features.ndim != 2 or fitted_features.shape[1] <= spatial_dim:
+            raise ValueError(
+                "Velocity components do not contain expression-state dimensions "
+                "after the spatial coordinates."
+            )
+        expression_features = fitted_features[:, spatial_dim:]
+        gene_dir = output_dir / "gene"
+        gene_dir.mkdir(parents=True, exist_ok=True)
         for time_value in sorted(np.unique(components["times"]).astype(float)):
             mask = np.isclose(components["times"], time_value)
             coords = spatial_coordinates[mask]
@@ -1998,7 +2008,23 @@ def _write_velocity_outputs(
                     out_path=str(figure_path),
                     show_legend=False,
                 )
-                figures.append(str(figure_path))
+                spatial_figures.append(str(figure_path))
+
+                gene_figure_path = gene_dir / (
+                    f"{component_name}_time_{_safe_time_name(time_value)}.pdf"
+                )
+                cb.pl.plot_velocity_component(
+                    coords=coords,
+                    velocity=components[component_name][mask, spatial_dim:],
+                    feature_matrix=expression_features[mask],
+                    labels=labels_at_time,
+                    label_to_color=dict(label_to_color),
+                    title=f"Gene {title.lower()} (t={time_value:g})",
+                    out_path=str(gene_figure_path),
+                    show_legend=False,
+                )
+                gene_figures.append(str(gene_figure_path))
+    figures = [*spatial_figures, *gene_figures]
     return {
         "status": "completed",
         "component_archive": str(archive_path),
@@ -2010,6 +2036,14 @@ def _write_velocity_outputs(
             else "not applicable; zero sentinel retained in the component archive"
         ),
         "spatial_projection_mode": "direct_model_spatial_vector",
+        "gene_projection_mode": (
+            "scvelo_expression_state_to_observed_spatial_coordinates"
+        ),
+        "expression_dimensions": (
+            int(expression_features.shape[1]) if spatial_dim >= 2 else 0
+        ),
+        "spatial_figures": spatial_figures,
+        "gene_figures": gene_figures,
         "figures": figures,
     }
 

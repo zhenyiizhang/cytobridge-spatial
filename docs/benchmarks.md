@@ -195,9 +195,10 @@ expression state plus the first two fitted spatial dimensions. Its six-stage
 training, standard package downstream, corrected velocity outputs, continuous
 D4-to-D14 perturbation analysis, and LR/attention figure bank are complete.
 The formal classifier policy is k1. Direct spatial velocity uses the two fitted
-spatial dimensions; expression/gene velocity is reconstructed from the full
-50-dimensional latent state. The perturbation panels are single-seed
-model-sensitivity demonstrations, not causal knockouts.
+spatial dimensions. Expression/gene velocity is reconstructed from the full
+50-dimensional expression state and projected by scVelo onto the observed
+spatial coordinates. The perturbation panels are single-seed model-sensitivity
+demonstrations, not causal knockouts.
 
 Chicken heart is a completed single full-model application, not a fifth arm
 family in the accepted four-dataset matched ablation matrix. Its separate
