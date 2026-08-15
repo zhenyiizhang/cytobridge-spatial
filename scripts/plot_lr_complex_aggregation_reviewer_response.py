@@ -354,7 +354,7 @@ def render(analyses: dict[str, Path], output_dir: Path) -> Path:
     _panel_heading(
         fig.add_subplot(grid[2, :]),
         "c",
-        "Top-pair overlap",
+        "Top-10 LR overlap",
     )
     _top_overlap(fig.add_subplot(grid[3, :]), records)
 
