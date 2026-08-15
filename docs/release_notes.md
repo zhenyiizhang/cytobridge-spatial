@@ -12,6 +12,12 @@
 - corrected time-slice interaction velocity, pre-warp growth, sparse attention,
   generated expression, strict LR, gene/module, and distribution-evaluation
   semantics;
+- added a formal LR-complex aggregation sensitivity that holds trajectories,
+  expression support, communication attention, database, and scored pair
+  universe fixed while replacing the primary minimum gate with a
+  zero-preserving geometric mean. Zebrafish, MOSTA, ARISTA, and Chicken Heart
+  primary tables were reproduced to at most `4.55e-13` absolute error before
+  comparison; AD mouse has no scored multi-subunit complex and is invariant;
 - coalesced byte-identical exact-OT support points while preserving their
   summed mass, eliminating network-simplex degeneracy without changing the
   empirical measure or the reported point cap;

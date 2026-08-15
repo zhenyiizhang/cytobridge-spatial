@@ -107,6 +107,27 @@ The AD expression panel fully represents seven pairs under this strict rule.
 They label the main learned edge predictor and its downstream projection;
 report both as panel-limited, not as a global CCI screen.
 
+The formal minimum-versus-geometric-mean sensitivity reuses saved expression
+states and communication matrices, and first reproduces the primary minimum
+table before changing the aggregation rule. Its server root is:
+
+```text
+/data/cytobridge/projects/CytoBridge-ST-1104/runs/
+  lr-complex-sensitivity-20260815-1f8ac66-r1/
+```
+
+The signed dataset manifest SHA-256 values are:
+
+| Dataset | `run_manifest.json` SHA-256 |
+| --- | --- |
+| Zebrafish | `7c1a8247a30878a5467f29690fa92162311e2be8cdecb7dadbff55db649dc234` |
+| MOSTA | `0b26ecc8b44837718aa3ac5ec6e301f2a2e82c86939dfc175178a78a753b62f9` |
+| ARISTA | `0ec09548be8f587dd297b56f320fa6d4580ff51919605cc962e4c7963fa4c08e` |
+| Chicken Heart | `b1a22a138b13c6547d0467d70bc99a2d89233086d1cf785c8cf9fac8a232a7dd` |
+
+AD mouse is recorded as mathematically invariant rather than rerun because all
+seven scored pairs are single-subunit on both sides.
+
 ## Main downstream output tree
 
 ```text

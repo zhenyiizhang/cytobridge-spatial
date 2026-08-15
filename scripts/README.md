@@ -121,6 +121,24 @@ python scripts/run_matched_ablation_benchmark_evaluation.py render \
   --run-root <new-evaluation-root>
 ```
 
+`run_lr_complex_aggregation_sensitivity.py` answers the multi-subunit
+aggregation sensitivity without rerunning training or trajectory simulation.
+It consumes one completed package-workflow `summary.json`, reconstructs the
+saved communication matrices and expression-state snapshots, and requires its
+recomputed minimum-gate pair table to match the formal primary output before
+writing a zero-preserving geometric-mean result. It then invokes the maintained
+comparison renderer to produce paired scores, per-time and per-pair stability,
+PDF/PNG, and signed manifests in a new output directory:
+
+```text
+python scripts/run_lr_complex_aggregation_sensitivity.py \
+  --workflow-summary <formal-downstream>/summary.json \
+  --output-dir <new-sensitivity-root>/<dataset>
+```
+
+Every subunit remains required in both branches; this is an aggregation-rule
+sensitivity, not partial-complex imputation.
+
 `run_zebrafish_classic_s24.py` restores the original unequal-population
 zebrafish virtual-removal estimand as a separate, auditable analysis. For each
 of simulation seeds 42–46 it starts from the complete 563-cell observed t=0

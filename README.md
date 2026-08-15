@@ -878,9 +878,15 @@ Temporal gene and ligand-receptor panels use the same separation of concerns:
   `(ligand, receptor)` tuple and a reversible JSON `pair_id`; the historical
   underscore-joined `pair` is display-only because complex names can collide.
   The formal rule is `complex_mode="min"` with every subunit required;
-  `complex_mode="geometric_mean"` is a separately labelled sensitivity.
-  Unsupported cell types stay unavailable/NaN,
-  never an invented zero;
+  `complex_mode="geometric_mean"` is a separately labelled, zero-preserving
+  sensitivity that still requires every subunit. Unsupported cell types stay
+  unavailable/NaN, never an invented zero. Formal comparisons on
+  Zebrafish, MOSTA, ARISTA, and Chicken Heart found pooled Spearman agreement
+  of 0.961--0.999, while top-pair stability was lower for ARISTA and Chicken
+  Heart. AD mouse has no scored multi-subunit complex and is therefore
+  mathematically unchanged by this choice. These results justify retaining
+  the minimum gate as the declared primary estimand, but pair-specific claims
+  should be checked against the sensitivity output;
 - `compute_focal_lr_type_hotspots` implements the article-style focal-panel
   estimand `mean_sender(ligand) * mean_receiver(receptor_complex) *
   M_per_source(sender, receiver)`. It exports the sender-by-receiver type

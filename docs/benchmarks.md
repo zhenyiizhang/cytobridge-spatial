@@ -97,9 +97,31 @@ policy is available as {download}`formal_k_policy.csv
 
 ## LR complex aggregation
 
-The Zebrafish minimum-versus-geometric-mean comparison has nearly identical
-pooled rank correlation but material top-pair changes. ARISTA contains no
-strict scored multi-subunit pair and is non-diagnostic for this question.
+The primary LR score is a strict AND gate: all subunits must be present and the
+least-expressed subunit determines complex activity. A zero-preserving
+geometric mean, still requiring every subunit, was evaluated as a one-factor
+sensitivity on the saved formal expression states and communication matrices.
+Before comparison, the rerun had to reproduce every primary minimum-gate score;
+the maximum absolute reproduction error was at most `4.55e-13`.
+
+| Dataset | Scored pairs | Multi-subunit | Pooled Spearman | Minimum per-time Spearman | Minimum top-10 Jaccard |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Zebrafish | 1,832 | 973 | 0.9986 | 0.9546 | 1.000 |
+| MOSTA | 1,757 | 887 | 0.9859 | 0.9831 | 1.000 |
+| ARISTA | 530 | 293 | 0.9611 | 0.9515 | 0.818 |
+| Chicken Heart | 745 | 386 | 0.9771 | 0.9577 | 0.429 |
+| AD mouse | 7 | 0 | 1.0000 | 1.0000 | 1.000 |
+
+Thus the broad LR ranking is stable, especially in Zebrafish and MOSTA, but the
+choice is not immaterial: ARISTA and especially Chicken Heart show changes
+among the strongest pairs, and individual multi-subunit magnitudes can change
+substantially. AD mouse is mathematically invariant because none of its seven
+strict panel-supported pairs contains a multi-subunit ligand or receptor. The
+machine-readable table is {download}`formal_lr_complex_aggregation_sensitivity.csv
+<data/formal_lr_complex_aggregation_sensitivity.csv>`. These results support
+the minimum gate as the declared primary estimand while requiring top-pair and
+pair-specific biological claims to be checked against the geometric-mean
+sensitivity rather than presented as aggregation-independent.
 
 ## Interaction/LR-prior ablations
 

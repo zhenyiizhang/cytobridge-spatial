@@ -35,6 +35,7 @@ include scripts/run_mosta_alignment_sensitivity.py
 include scripts/run_mosta_end_to_end.py
 include scripts/run_matched_ablation_matrix.py
 include scripts/run_matched_ablation_benchmark_evaluation.py
+include scripts/run_lr_complex_aggregation_sensitivity.py
 include scripts/run_spatial_training.py
 include scripts/run_spatiotemporal_downstream.py
 include scripts/run_zebrafish_end_to_end.py

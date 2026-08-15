@@ -81,7 +81,13 @@ a panel-limited spatial-attention summary rather than global CCI inference.
 Generated inverse-PCA log1p expression is clipped to non-negative values per
 cell before scoring. A complex is eligible only when every required subunit is
 present. The formal score uses the minimum across subunits; geometric mean is a
-sensitivity option.
+sensitivity option. The geometric-mean implementation is zero preserving: if
+any required subunit has zero expression in a cell type, the complex remains
+zero; otherwise the geometric mean replaces only the minimum aggregation.
+It does not relax the complete-subunit requirement. Formal five-dataset
+sensitivity results show high overall rank agreement but non-negligible
+top-pair changes in ARISTA and Chicken Heart; see
+{doc}`benchmarks` and its downloadable result table.
 
 The AD panel contains seven complete pairs under this rule. The main workflow
 uses their database-derived graph labels to fit its learned edge predictor and
