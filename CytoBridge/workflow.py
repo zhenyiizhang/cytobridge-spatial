@@ -2981,6 +2981,13 @@ def _run_downstream(
         }
     summary = {
         "dataset": dataset["name"],
+        "annotation_key": annotation_key,
+        "annotation_semantics": (
+            "cell type"
+            if str(dataset["name"]) == "chicken_heart"
+            and annotation_key == "celltype_prediction"
+            else "dataset annotation"
+        ),
         "seed": int(scientific["seed"]),
         "alpha_spatial": float(scientific.get("alpha_spatial", 10.0)),
         "alpha_express": float(scientific["alpha_express"]),

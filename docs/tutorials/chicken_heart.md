@@ -27,6 +27,14 @@ around its stage mean x, preserves every within-D7 pairwise distance, leaves
 D4/D10/D14 byte-identical, and records before/after coordinate hashes. It may
 not repair any other orientation failure.
 
+`region` is retained only for these anatomical orientation checks. The
+downstream MLP, generated-slice labels, composition, lineage, and grouped
+communication summaries use the unsmoothed `celltype_prediction` column. A
+legacy schema-2 prepared H5AD may still be paired with its original checkpoint:
+the workflow ignores its historical `Annotation = region` alias and reads
+`celltype_prediction` explicitly, leaving the 52-dimensional model state
+unchanged.
+
 ```bash
 python scripts/prepare_chicken_heart_input.py \
   --raw-dir /data/GSE149457_RAW \

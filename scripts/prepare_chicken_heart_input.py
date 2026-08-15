@@ -32,7 +32,7 @@ from CytoBridge.pp import (
 )
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 TIMEPOINTS = ("D4", "D7", "D10", "D14")
 TIME_MAPPING = {"D4": 0.0, "D7": 1.0, "D10": 2.0, "D14": 3.0}
 EXPECTED_COUNTS = {"D4": 147, "D7": 528, "D10": 908, "D14": 1967}
@@ -212,7 +212,13 @@ def assemble_reviewed_counts(
     assembled = ad.AnnData(X=counts.copy(), obs=obs, var=var)
     assembled.obs_names = aligned.obs_names.copy()
     assembled.layers["counts"] = counts
-    assembled.obs["Annotation"] = assembled.obs["region"].astype(str).to_numpy()
+    # Keep region for anatomy/orientation QC, but use the unsmoothed cell-type
+    # calls as the downstream classification target.  The compatibility
+    # Annotation column must never silently turn anatomical regions into
+    # purported cell types.
+    assembled.obs["Annotation"] = (
+        assembled.obs["celltype_prediction"].astype(str).to_numpy()
+    )
     assembled.obsm["spatial_original"] = np.asarray(
         metadata[aligned.obs_names].obsm["spatial"], dtype=np.float64
     )
@@ -322,6 +328,17 @@ def prepare(
         {
             "schema_version": SCHEMA_VERSION,
             "reference": reference_contract,
+            "downstream_annotation": {
+                "key": "celltype_prediction",
+                "compatibility_key": "Annotation",
+                "source": "metadata_h5ad",
+                "n_classes": int(
+                    processed.obs["celltype_prediction"].astype(str).nunique()
+                ),
+                "ordered_label_sha256": _text_sha256(
+                    processed.obs["celltype_prediction"].astype(str).tolist()
+                ),
+            },
             "coordinate_repair": coordinate_repair,
             "anatomical_orientation_qc": _anatomical_orientation_qc(processed),
             "orientation_qc": _orientation_qc(processed),

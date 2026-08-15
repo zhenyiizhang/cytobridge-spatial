@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import anndata as ad
@@ -8,6 +9,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from scipy.spatial.distance import pdist
+
+from CytoBridge.pp import validate_prepared_chicken_heart_input
 
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "prepare_chicken_heart_input.py"
@@ -58,6 +61,12 @@ def test_assemble_reviewed_counts_preserves_reference_order_and_coordinates(
 
     assert result.obs_names.tolist() == aligned.obs_names.tolist()
     assert result.obs["Annotation"].tolist() == [
+        "a",
+        "b",
+        "c",
+        "d",
+    ]
+    assert result.obs["region"].tolist() == [
         "Atria",
         "Atria",
         "Ventricle",
@@ -214,3 +223,75 @@ def test_d7_compatibility_repair_refuses_other_orientation_failures():
         MODULE._apply_anatomical_coordinate_contract(
             fixture, repair_legacy_d7_left_right=True
         )
+
+
+def _prepared_annotation_fixture() -> ad.AnnData:
+    fixture = _anatomical_fixture(mirrored_d7=False)
+    fixture.obs["celltype_prediction"] = [
+        f"celltype-{index % 4}" for index in range(fixture.n_obs)
+    ]
+    fixture.obs["Annotation"] = fixture.obs["celltype_prediction"].astype(str)
+    fixture.obs["time_point_processed"] = fixture.obs["timepoint"].map(
+        MODULE.TIME_MAPPING
+    )
+    fixture.obsm["X_latent"] = np.zeros((fixture.n_obs, 50), dtype=np.float32)
+    fixture.layers["counts"] = sparse.csr_matrix(
+        np.ones((fixture.n_obs, fixture.n_vars), dtype=np.float32)
+    )
+    repair = MODULE._apply_anatomical_coordinate_contract(
+        fixture, repair_legacy_d7_left_right=False
+    )
+    labels = fixture.obs["celltype_prediction"].astype(str).tolist()
+    fixture.uns["chicken_heart_input_contract_json"] = json.dumps(
+        {
+            "schema_version": 3,
+            "coordinate_repair": repair,
+            "downstream_annotation": {
+                "key": "celltype_prediction",
+                "compatibility_key": "Annotation",
+                "source": "metadata_h5ad",
+                "n_classes": len(set(labels)),
+                "ordered_label_sha256": MODULE._text_sha256(labels),
+            },
+        }
+    )
+    return fixture
+
+
+def test_prepared_contract_binds_celltype_labels_separately_from_region():
+    fixture = _prepared_annotation_fixture()
+
+    contract = validate_prepared_chicken_heart_input(fixture)
+
+    assert contract["schema_version"] == 3
+    assert contract["downstream_annotation_key"] == "celltype_prediction"
+
+    fixture.obs["Annotation"] = fixture.obs["region"].astype(str)
+    with np.testing.assert_raises_regex(
+        MODULE.ContractError, "must match.*celltype_prediction"
+    ):
+        validate_prepared_chicken_heart_input(fixture)
+
+
+def test_prepared_contract_rejects_celltype_label_drift():
+    fixture = _prepared_annotation_fixture()
+    fixture.obs.loc[fixture.obs_names[0], "celltype_prediction"] = "changed"
+    fixture.obs["Annotation"] = fixture.obs["celltype_prediction"].astype(str)
+
+    with np.testing.assert_raises_regex(MODULE.ContractError, "labels do not match"):
+        validate_prepared_chicken_heart_input(fixture)
+
+
+def test_legacy_prepared_input_reuses_exact_state_but_ignores_region_alias():
+    fixture = _prepared_annotation_fixture()
+    contract = json.loads(fixture.uns["chicken_heart_input_contract_json"])
+    contract["schema_version"] = 2
+    contract.pop("downstream_annotation")
+    fixture.uns["chicken_heart_input_contract_json"] = json.dumps(contract)
+    fixture.obs["Annotation"] = fixture.obs["region"].astype(str)
+
+    validated = validate_prepared_chicken_heart_input(fixture)
+
+    assert validated["schema_version"] == 2
+    assert validated["downstream_annotation_key"] == "celltype_prediction"
+    assert validated["legacy_annotation_alias_ignored"] is True
