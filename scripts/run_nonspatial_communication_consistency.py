@@ -27,7 +27,6 @@ import numpy as np
 import pandas as pd
 import torch
 from matplotlib.lines import Line2D
-from scipy.stats import hypergeom
 
 try:
     from CytoBridge.nonspatial.communication_consistency import (
@@ -602,7 +601,8 @@ DATASET_STYLE = {
     "weinreb": ("#59616A", "o"),
     "scnt_cortex": ("#CC6677", "s"),
 }
-EXTERNAL_METHODS = ("CellChat", "CellAgentChat", "NicheNet")
+FIGURE_METHODS = ("CytoBridge", "CellChat", "NicheNet")
+EXTERNAL_METHODS = ("CellChat", "NicheNet")
 SELECTED_INTERACTIONS = (
     ("weinreb", "Baso", "Monocyte", "CSF1–CSF1R"),
     ("weinreb", "Monocyte", "Neutrophil", "TNF–TNFRSF1A"),
@@ -668,59 +668,10 @@ def _agreement_summary(metrics: pd.DataFrame) -> pd.DataFrame:
         (metrics.left_method == "CytoBridge")
         & metrics.right_method.isin(EXTERNAL_METHODS)
     ].copy()
-    if len(result) != 6:
-        raise ValueError("expected six CytoBridge-to-external metric rows")
-    result["expected_top_intersection"] = (
-        result["top_k"] ** 2 / result["n_directed_pairs"]
-    )
-    result["top_overlap_enrichment"] = (
-        result["top_k_intersection"] / result["expected_top_intersection"]
-    )
-    result["top_overlap_pvalue"] = [
-        float(
-            hypergeom.sf(
-                int(row.top_k_intersection) - 1,
-                int(row.n_directed_pairs),
-                int(row.top_k),
-                int(row.top_k),
-            )
-        )
-        for row in result.itertuples()
-    ]
+    if len(result) != 4:
+        raise ValueError("expected four CytoBridge-to-external metric rows")
     result["dataset_label"] = result.dataset.map(DATASET_LABELS)
     return result.sort_values(["right_method", "dataset"], kind="mergesort")
-
-
-def _harmonization_summary(
-    native_metrics: pd.DataFrame, shared_metrics: pd.DataFrame
-) -> pd.DataFrame:
-    keys = ["dataset", "left_method", "right_method"]
-    methods = ("CellAgentChat", "NicheNet")
-    native = native_metrics[
-        (native_metrics.left_method == "CytoBridge")
-        & native_metrics.right_method.isin(methods)
-    ][keys + ["spearman_rho", "top_k_jaccard"]].rename(
-        columns={
-            "spearman_rho": "native_spearman",
-            "top_k_jaccard": "native_jaccard",
-        }
-    )
-    shared = shared_metrics[
-        (shared_metrics.left_method == "CytoBridge")
-        & shared_metrics.right_method.isin(methods)
-    ][keys + ["spearman_rho", "top_k_jaccard"]].rename(
-        columns={
-            "spearman_rho": "shared_spearman",
-            "top_k_jaccard": "shared_jaccard",
-        }
-    )
-    result = native.merge(shared, on=keys, validate="one_to_one")
-    if len(result) != 4:
-        raise ValueError("expected four database-harmonization rows")
-    result["spearman_change"] = result.shared_spearman - result.native_spearman
-    result["jaccard_change"] = result.shared_jaccard - result.native_jaccard
-    result["dataset_label"] = result.dataset.map(DATASET_LABELS)
-    return result.sort_values(["dataset", "right_method"], kind="mergesort")
 
 
 def _selected_interaction_ranks(consensus: pd.DataFrame) -> pd.DataFrame:
@@ -736,7 +687,7 @@ def _selected_interaction_ranks(consensus: pd.DataFrame) -> pd.DataFrame:
                 f"missing unique selected interaction {dataset}/{sender}->{receiver}"
             )
         source = selected.iloc[0]
-        for method in METHODS:
+        for method in FIGURE_METHODS:
             rows.append(
                 {
                     "dataset": dataset,
@@ -796,8 +747,46 @@ def _selected_biological_programs(biology: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _lr_program_summary(selected: pd.DataFrame) -> pd.DataFrame:
+    columns = [
+        "program_id",
+        "dataset",
+        "program_order",
+        "ligand_order",
+        "sender",
+        "receiver",
+        "ligand",
+        "receptor",
+        "sender_fraction",
+        "receiver_fraction",
+        "activity_rank",
+        "lr_evidence",
+        "program_color",
+    ]
+    result = selected[columns].drop_duplicates(["program_id", "ligand", "receptor"])
+    expected_rows = sum(len(spec["ligands"]) for spec in BIOLOGICAL_PROGRAMS)
+    if len(result) != expected_rows:
+        raise ValueError(
+            f"expected {expected_rows} unique ligand-receptor program rows, got {len(result)}"
+        )
+    result["program_display"] = (
+        result.dataset.map(DATASET_LABELS)
+        + " · "
+        + result.sender.astype(str)
+        + " → "
+        + result.receiver.astype(str)
+        + "\n"
+        + result.ligand.str.upper()
+        + "–"
+        + result.receptor.str.upper()
+    )
+    return result.sort_values(
+        ["program_order", "ligand_order"], kind="mergesort"
+    ).reset_index(drop=True)
+
+
 def _plot_global_agreement(axis_rho, axis_overlap, summary, figure_style) -> None:
-    y_base = {method: value for method, value in zip(EXTERNAL_METHODS, (2, 1, 0))}
+    y_base = {"CellChat": 1, "NicheNet": 0}
     offsets = {"weinreb": 0.13, "scnt_cortex": -0.13}
     for dataset, (color, marker) in DATASET_STYLE.items():
         subset = summary[summary.dataset == dataset].set_index("right_method")
@@ -814,49 +803,26 @@ def _plot_global_agreement(axis_rho, axis_overlap, summary, figure_style) -> Non
                 linewidth=0.5,
                 zorder=3,
             )
-            axis_rho.text(
-                row.spearman_rho + 0.035,
-                y,
-                f"{row.spearman_rho:.2f}",
-                va="center",
-                ha="left",
-                fontsize=7.2,
-            )
-            significant = row.top_overlap_pvalue < 0.05
             axis_overlap.scatter(
-                row.top_overlap_enrichment,
+                row.top_k_jaccard,
                 y,
                 s=42,
                 marker=marker,
-                facecolor=color if significant else "white",
-                edgecolor=color,
-                linewidth=1.1,
+                color=color,
+                edgecolor="white",
+                linewidth=0.5,
                 zorder=3,
             )
-            axis_overlap.text(
-                row.top_overlap_enrichment + 0.09,
-                y,
-                f"{row.top_overlap_enrichment:.1f}×",
-                va="center",
-                ha="left",
-                fontsize=7.2,
-            )
     for axis in (axis_rho, axis_overlap):
-        axis.set_yticks([2, 1, 0], ["CellChat", "CellAgentChat", "NicheNet"])
-        axis.set_ylim(-0.45, 2.45)
+        axis.set_yticks([1, 0], ["CellChat", "NicheNet"])
+        axis.set_ylim(-0.40, 1.40)
         figure_style.clean_axis(axis, grid=True)
-    axis_rho.axvline(0, color="#8A949C", linewidth=0.8, zorder=1)
-    axis_rho.set_xlim(-0.57, 0.90)
+    axis_rho.set_xlim(0, 0.85)
     axis_rho.set_xlabel("Spearman rank correlation (ρ)")
     axis_rho.set_title("Complete directed-pair ranks", color="black", pad=4)
-    axis_overlap.axvline(1, color="#8A949C", linewidth=0.8, zorder=1)
-    axis_overlap.set_xlim(0, 3.85)
-    axis_overlap.set_xlabel("Top-20% overlap / random expectation")
-    axis_overlap.set_title(
-        "CytoBridge top-edge enrichment\nfilled: exact P < 0.05",
-        color="black",
-        pad=4,
-    )
+    axis_overlap.set_xlim(0, 0.60)
+    axis_overlap.set_xlabel("Jaccard index")
+    axis_overlap.set_title("Top-20% directed-pair overlap", color="black", pad=4)
     axis_rho.legend(
         handles=[
             Line2D(
@@ -876,78 +842,11 @@ def _plot_global_agreement(axis_rho, axis_overlap, summary, figure_style) -> Non
     )
 
 
-def _plot_harmonization(axis, summary, figure_style) -> None:
-    display_order = [
-        ("weinreb", "CellAgentChat"),
-        ("weinreb", "NicheNet"),
-        ("scnt_cortex", "CellAgentChat"),
-        ("scnt_cortex", "NicheNet"),
-    ]
-    labels = []
-    for y, (dataset, method) in enumerate(reversed(display_order)):
-        row = summary[
-            (summary.dataset == dataset) & (summary.right_method == method)
-        ].iloc[0]
-        color = PALETTE[method]
-        axis.annotate(
-            "",
-            xy=(row.shared_spearman, y),
-            xytext=(row.native_spearman, y),
-            arrowprops={
-                "arrowstyle": "-|>",
-                "color": color,
-                "linewidth": 1.8,
-                "mutation_scale": 10,
-            },
-        )
-        axis.scatter(
-            row.native_spearman,
-            y,
-            s=38,
-            facecolor="white",
-            edgecolor=color,
-            linewidth=1.2,
-            zorder=3,
-        )
-        axis.scatter(
-            row.shared_spearman,
-            y,
-            s=38,
-            facecolor=color,
-            edgecolor="white",
-            linewidth=0.5,
-            zorder=4,
-        )
-        axis.text(
-            max(row.native_spearman, row.shared_spearman) + 0.04,
-            y,
-            f"Δρ {row.spearman_change:+.2f}",
-            va="center",
-            fontsize=7.5,
-        )
-        labels.append(f"{DATASET_LABELS[dataset]}\n{method}")
-    axis.set_yticks(range(len(labels)), labels)
-    axis.axvline(0, color="#8A949C", linewidth=0.8)
-    axis.set_xlim(-0.58, 0.72)
-    axis.set_xlabel("CytoBridge Spearman correlation (ρ)")
-    axis.text(
-        0.01,
-        1.04,
-        "open: method-native database     filled: shared CellChatDB",
-        transform=axis.transAxes,
-        ha="left",
-        va="bottom",
-        fontsize=7.4,
-        color="#59616A",
-    )
-    figure_style.clean_axis(axis, grid=True)
-
-
 def _plot_selected_interactions(axis, selected, figure_style) -> None:
-    method_order = list(METHODS)
+    method_order = list(FIGURE_METHODS)
+    method_offsets = {"CytoBridge": 0.17, "CellChat": 0.0, "NicheNet": -0.17}
     row_keys = list(SELECTED_INTERACTIONS)
     labels = []
-    cmap = plt.get_cmap("GnBu")
     for row_index, (dataset, sender, receiver, program) in enumerate(row_keys):
         labels.append(f"{DATASET_LABELS[dataset]}  ·  {sender} → {receiver}\n{program}")
         subset = selected[
@@ -955,38 +854,96 @@ def _plot_selected_interactions(axis, selected, figure_style) -> None:
             & (selected.sender_type == sender)
             & (selected.receiver_type == receiver)
         ].set_index("method")
-        for method_index, method in enumerate(method_order):
+        for method in method_order:
             value = float(subset.loc[method, "rank_percentile"])
             axis.scatter(
-                method_index,
-                row_index,
-                s=120 + 260 * value,
-                color=cmap(0.15 + 0.8 * value),
+                value,
+                row_index + method_offsets[method],
+                s=48,
+                color=PALETTE[method],
                 edgecolor="white",
-                linewidth=0.8,
+                linewidth=0.6,
                 zorder=3,
             )
-            axis.text(
-                method_index,
-                row_index,
-                f"{value:.2f}",
-                ha="center",
-                va="center",
-                fontsize=7.1,
-                color="white" if value >= 0.65 else "#24313A",
-                fontweight="bold" if value >= 0.8 else "normal",
-                zorder=4,
-            )
-    axis.set_xticks(range(len(method_order)), method_order)
-    axis.xaxis.tick_top()
-    axis.tick_params(axis="x", pad=3)
     axis.set_yticks(range(len(labels)), labels, fontsize=7.7)
     axis.set_ylim(len(labels) - 0.5, -0.5)
-    axis.set_xlim(-0.55, len(method_order) - 0.45)
+    axis.set_xlim(0.35, 1.02)
     axis.axhline(1.5, color="#B7C0C7", linewidth=0.8)
+    axis.axvline(0.8, color="#8A949C", linewidth=0.8, linestyle="--")
+    axis.text(
+        0.805,
+        0.03,
+        "top 20%",
+        transform=axis.get_xaxis_transform(),
+        ha="left",
+        va="bottom",
+        fontsize=7.2,
+        color="#59616A",
+    )
     axis.set_xlabel("Within-method directed-pair rank percentile")
-    axis.xaxis.set_label_position("bottom")
-    axis.tick_params(axis="x", bottom=False, labelbottom=False, top=True, labeltop=True)
+    axis.grid(axis="x", color=figure_style.GRID_COLOR, linewidth=0.45, alpha=0.6)
+    axis.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=PALETTE[method],
+                markeredgecolor="white",
+                markersize=6,
+                label=method,
+            )
+            for method in method_order
+        ],
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.01),
+        ncol=3,
+        frameon=False,
+    )
+    for side in axis.spines.values():
+        side.set_visible(False)
+
+
+def _plot_lr_evidence(axis, summary, figure_style) -> None:
+    metric_columns = (
+        ("sender_fraction", "Ligand+ sender"),
+        ("receiver_fraction", "Receptor+ receiver"),
+        ("activity_rank", "Ligand activity rank"),
+    )
+    cmap = plt.get_cmap("GnBu")
+    labels = summary.program_display.tolist()
+    for row_index, row in enumerate(summary.itertuples()):
+        for column_index, (field, _) in enumerate(metric_columns):
+            value = float(getattr(row, field))
+            axis.scatter(
+                column_index,
+                row_index,
+                s=75 + 220 * value,
+                color=cmap(0.18 + 0.78 * value),
+                edgecolor="white",
+                linewidth=0.7,
+                zorder=3,
+            )
+            label = (
+                f"{100 * value:.0f}%" if field != "activity_rank" else f"{value:.2f}"
+            )
+            axis.text(
+                column_index,
+                row_index,
+                label,
+                ha="center",
+                va="center",
+                fontsize=7.2,
+                color="white" if value >= 0.55 else "#24313A",
+                zorder=4,
+            )
+    axis.set_xticks(range(len(metric_columns)), [label for _, label in metric_columns])
+    axis.xaxis.tick_top()
+    axis.set_yticks(range(len(labels)), labels, fontsize=7.5)
+    axis.set_ylim(len(labels) - 0.5, -0.5)
+    axis.set_xlim(-0.55, len(metric_columns) - 0.45)
+    axis.axhline(1.5, color="#B7C0C7", linewidth=0.8)
     axis.grid(axis="x", color=figure_style.GRID_COLOR, linewidth=0.45, alpha=0.6)
     for side in axis.spines.values():
         side.set_visible(False)
@@ -1050,66 +1007,47 @@ def plot_figure(args: argparse.Namespace) -> None:
     from CytoBridge.nonspatial import scnt_figure_style as figure_style
 
     source = Path(args.source_dir).resolve()
-    native_source = Path(args.native_source_dir).resolve()
     output = Path(args.output_dir).resolve()
     if output.exists():
         raise FileExistsError(f"output directory exists: {output}")
     output.mkdir(parents=True)
     metrics = pd.read_csv(source / "pairwise_rank_metrics.csv")
-    native_metrics = pd.read_csv(native_source / "pairwise_rank_metrics.csv")
     consensus = pd.read_csv(source / "directed_pair_consensus.csv")
     biology = pd.read_csv(source / "nichenet_ligand_target_evidence.csv")
     agreement = _agreement_summary(metrics)
-    harmonization = _harmonization_summary(native_metrics, metrics)
     selected_ranks = _selected_interaction_ranks(consensus)
     selected_biology = _selected_biological_programs(biology)
+    lr_summary = _lr_program_summary(selected_biology)
     figure_style.apply_style()
     fig = plt.figure(figsize=figure_style.A4_PORTRAIT, constrained_layout=False)
     outer = fig.add_gridspec(
-        8,
+        7,
         1,
-        height_ratios=[0.24, 1.42, 0.24, 1.10, 0.24, 1.75, 0.24, 2.20],
+        height_ratios=[0.24, 1.14, 0.24, 1.48, 0.24, 1.55, 2.18],
         left=0.22,
         right=0.96,
         top=0.975,
         bottom=0.06,
-        hspace=0.46,
+        hspace=0.43,
     )
 
     ax_ah = fig.add_subplot(outer[0])
-    _panel_heading(
-        ax_ah, figure_style, "a", "Global agreement is method- and dataset-dependent"
-    )
+    _panel_heading(ax_ah, figure_style, "a", "Cross-method rank agreement")
     grid_a = outer[1].subgridspec(1, 2, wspace=0.42)
     ax_a1 = fig.add_subplot(grid_a[0, 0])
     ax_a2 = fig.add_subplot(grid_a[0, 1])
     _plot_global_agreement(ax_a1, ax_a2, agreement, figure_style)
 
     ax_bh = fig.add_subplot(outer[2])
-    _panel_heading(
-        ax_bh, figure_style, "b", "A shared LR universe improves external concordance"
-    )
+    _panel_heading(ax_bh, figure_style, "b", "Conserved communication programs")
     ax_b = fig.add_subplot(outer[3])
-    _plot_harmonization(ax_b, harmonization, figure_style)
+    _plot_selected_interactions(ax_b, selected_ranks, figure_style)
 
     ax_ch = fig.add_subplot(outer[4])
-    _panel_heading(
-        ax_ch,
-        figure_style,
-        "c",
-        "High-confidence communication programs recur across methods",
-    )
+    _panel_heading(ax_ch, figure_style, "c", "Ligand–receptor and target support")
     ax_c = fig.add_subplot(outer[5])
-    _plot_selected_interactions(ax_c, selected_ranks, figure_style)
-
-    ax_dh = fig.add_subplot(outer[6])
-    _panel_heading(
-        ax_dh,
-        figure_style,
-        "d",
-        "Lineage-relevant ligand–target programs support selected interactions",
-    )
-    grid_d = outer[7].subgridspec(1, 2, wspace=0.48)
+    _plot_lr_evidence(ax_c, lr_summary, figure_style)
+    grid_d = outer[6].subgridspec(1, 2, wspace=0.48)
     ax_d1 = fig.add_subplot(grid_d[0, 0])
     ax_d2 = fig.add_subplot(grid_d[0, 1])
     _plot_biological_programs(ax_d1, selected_biology, "weinreb", figure_style)
@@ -1121,8 +1059,8 @@ def plot_figure(args: argparse.Namespace) -> None:
     plt.close(fig)
 
     agreement.to_csv(output / "global_agreement_summary.csv", index=False)
-    harmonization.to_csv(output / "database_harmonization_summary.csv", index=False)
     selected_ranks.to_csv(output / "selected_program_method_ranks.csv", index=False)
+    lr_summary.to_csv(output / "selected_lr_program_evidence.csv", index=False)
     selected_biology.to_csv(output / "selected_biological_programs.csv", index=False)
 
     def _metric(dataset: str, method: str, field: str) -> float:
@@ -1137,31 +1075,27 @@ def plot_figure(args: argparse.Namespace) -> None:
 
     caption = (
         "**Non-spatial communication support under a shared CellChatDB ligand–receptor universe.** "
-        "(a) CytoBridge agreement with CellChat, official non-spatial CellAgentChat CTPS, and sender-focused NicheNet on "
-        "complete directed cell-type-pair ranks (left) and enrichment of top-20% overlap over the random-set expectation "
-        "(right). Filled overlap symbols pass the exact hypergeometric P<0.05 set-enrichment threshold. "
-        "(b) Spearman agreement before and after placing CellAgentChat and NicheNet on the same package-bundled mouse "
-        "CellChatDB LR universe used by CytoBridge and CellChat. Database harmonization improves all four comparisons but "
-        "does not eliminate the weak Weinreb CellAgentChat rank agreement. "
-        "(c) Within-method rank percentiles for four preselected, externally supported communication programs. "
-        "(d) NicheNet-supported ligand-target responses for the same cell-type programs: CSF1-CSF1R and TNF-TNFRSF1A "
-        "in Weinreb myeloid differentiation, and BDNF-NTRK2 plus DLL1/JAG1-NOTCH1 in the scNT cortical progenitor response. "
-        "Evidence combines within-receiver ligand-activity rank, sender ligand expression, receiver receptor expression, "
-        "and the NicheNet ligand-target weight. "
+        "(a) Agreement of CytoBridge with CellChat and sender-focused NicheNet across complete directed cell-type-pair "
+        "ranks and top-20% pair sets. "
+        "(b) Within-method ranks for four communication programs supported by both external methods. "
+        "(c) Sender ligand detection, receiver receptor detection, NicheNet ligand-activity rank, and supported response "
+        "targets for these programs. CSF1-CSF1R supports a myeloid maturation program involving Gpnmb, Ctsb, Dab2, and "
+        "Ctsd. TNF-TNFRSF1A links Monocyte-to-Neutrophil communication to Nfkbia, Plaur, and Noct. BDNF-NTRK2 supports "
+        "an activity-response program involving Egr1, Gadd45g, Trib2, and Coro1c. DLL1/JAG1-NOTCH1 converges on the "
+        "progenitor-state regulator Hes5. "
         "CytoBridge–CellChat Spearman rho was "
         f"{_metric('weinreb', 'CellChat', 'spearman_rho'):.3f} in Weinreb and "
         f"{_metric('scnt_cortex', 'CellChat', 'spearman_rho'):.3f} in scNT; corresponding top-20% Jaccard values were "
         f"{_metric('weinreb', 'CellChat', 'top_k_jaccard'):.3f} and "
         f"{_metric('scnt_cortex', 'CellChat', 'top_k_jaccard'):.3f}. "
-        "All four methods used the same package-bundled mouse CellChatDB source; raw method scores were never pooled, and "
-        "the comparison is descriptive rather than causal or independent experimental validation."
+        "CellChat and the LR filtering applied to NicheNet used the same package-bundled mouse CellChatDB source. Raw "
+        "method scores were not pooled. The comparison is descriptive rather than causal validation."
     )
     (output / "caption.md").write_text(caption + "\n")
     provenance_note = (
         "# Non-spatial communication consistency figure provenance\n\n"
         "## Source paths\n\n"
         f"- Aggregate manifest: `{(source / 'manifest.json').resolve()}`\n"
-        f"- Native-database manifest: `{(native_source / 'manifest.json').resolve()}`\n"
         f"- Directed-pair scores: `{(source / 'directed_pair_method_scores.csv').resolve()}`\n"
         f"- Pairwise metrics: `{(source / 'pairwise_rank_metrics.csv').resolve()}`\n"
         f"- NicheNet evidence: `{(source / 'nichenet_ligand_target_evidence.csv').resolve()}`\n\n"
@@ -1169,26 +1103,20 @@ def plot_figure(args: argparse.Namespace) -> None:
         "```bash\n"
         "python scripts/run_nonspatial_communication_consistency.py plot \\\n"
         f"  --source-dir {source} \\\n"
-        f"  --native-source-dir {native_source} \\\n"
         "  --output-dir <new-empty-output-directory>\n"
         "```\n\n"
         "## SHA-256\n\n"
         f"- Aggregate manifest: `{sha256_file(source / 'manifest.json')}`\n"
-        f"- Native-database manifest: `{sha256_file(native_source / 'manifest.json')}`\n"
         f"- PDF: `{sha256_file(pdf)}`\n"
         f"- PNG: `{sha256_file(png)}`\n"
         f"- Caption: `{sha256_file(output / 'caption.md')}`\n"
     )
     (output / "provenance.md").write_text(provenance_note)
     provenance = {
-        "schema_version": 2,
+        "schema_version": 3,
         "source_manifest": {
             "path": str((source / "manifest.json").resolve()),
             "sha256": sha256_file(source / "manifest.json"),
-        },
-        "native_source_manifest": {
-            "path": str((native_source / "manifest.json").resolve()),
-            "sha256": sha256_file(native_source / "manifest.json"),
         },
         "figure": {
             pdf.name: {"sha256": sha256_file(pdf), "size_bytes": pdf.stat().st_size},
@@ -1249,7 +1177,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     plot_parser = sub.add_parser("plot")
     plot_parser.add_argument("--source-dir", required=True)
-    plot_parser.add_argument("--native-source-dir", required=True)
     plot_parser.add_argument("--output-dir", required=True)
     plot_parser.set_defaults(function=plot_figure)
     return parser
