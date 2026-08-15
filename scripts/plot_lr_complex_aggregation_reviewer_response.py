@@ -262,7 +262,7 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
 def _top_overlap(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
     boundaries = np.array([0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0001])
     color_map = mpl.colors.ListedColormap(
-        mpl.colormaps["viridis"](np.linspace(0.0, 1.0, len(boundaries) - 1))
+        ["#B85C6B", "#D78993", "#E8B8B8", "#BFDAD7", "#66AFA9", "#087F8C"]
     )
     color_norm = mpl.colors.BoundaryNorm(boundaries, color_map.N)
     scatter = None
