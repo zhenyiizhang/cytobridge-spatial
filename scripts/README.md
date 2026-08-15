@@ -139,6 +139,14 @@ python scripts/run_lr_complex_aggregation_sensitivity.py \
 Every subunit remains required in both branches; this is an aggregation-rule
 sensitivity, not partial-complex imputation.
 
+`plot_lr_complex_aggregation_reviewer_response.py` combines the four formal
+comparison bundles and the formal AD pair table into one A4 reviewer-response
+figure. The panels explain the two aggregation rules, report multi-subunit
+coverage and rank stability, show top-ten overlap through time, and list the
+actual ARISTA and Chicken Heart top-pair changes at their most sensitive time
+points. It writes vector PDF, 320-dpi PNG, caption, panel-source table,
+plotting-script snapshot, provenance note, and signed figure manifest.
+
 `run_zebrafish_classic_s24.py` restores the original unequal-population
 zebrafish virtual-removal estimand as a separate, auditable analysis. For each
 of simulation seeds 42–46 it starts from the complete 563-cell observed t=0
