@@ -85,6 +85,7 @@ _DEPENDENCY_PROFILES = {
         "sphinx",
         "sphinx_copybutton",
         "sphinx_design",
+        "statsmodels",
     ),
 }
 _PROFILE_INCLUDES = {

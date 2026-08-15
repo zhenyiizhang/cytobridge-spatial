@@ -5,3 +5,4 @@ myst-parser>=3,<5
 nbsphinx>=0.9,<1
 sphinx-copybutton>=0.5,<1
 sphinx-design>=0.6,<1
+statsmodels>=0.14,<0.15

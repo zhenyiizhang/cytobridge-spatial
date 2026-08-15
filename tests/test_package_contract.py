@@ -419,6 +419,7 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "sphinx": "sphinx",
         "sphinx-copybutton": "sphinx_copybutton",
         "sphinx-design": "sphinx_design",
+        "statsmodels": "statsmodels",
         "furo": "furo",
         "torch": "torch",
         "torch-geometric": "torch_geometric",
