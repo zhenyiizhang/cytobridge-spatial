@@ -23,12 +23,11 @@ from pathlib import Path
 
 import anndata as ad
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import torch
 from matplotlib.lines import Line2D
+from scipy.stats import hypergeom
 
 try:
     from CytoBridge.nonspatial.communication_consistency import (
@@ -598,186 +597,452 @@ def aggregate(args: argparse.Namespace) -> None:
     _write_json(output / "manifest.json", manifest)
 
 
-def _correlation_heatmap(axis, metrics: pd.DataFrame, dataset: str) -> None:
-    matrix = pd.DataFrame(np.eye(len(METHODS)), index=METHODS, columns=METHODS)
-    for row in metrics[metrics.dataset == dataset].itertuples():
-        matrix.loc[row.left_method, row.right_method] = row.spearman_rho
-        matrix.loc[row.right_method, row.left_method] = row.spearman_rho
-    sns.heatmap(
-        matrix,
-        ax=axis,
-        cmap="vlag",
-        center=0,
-        vmin=-1,
-        vmax=1,
-        annot=True,
-        fmt=".2f",
-        annot_kws={"fontsize": 8.0},
-        cbar=False,
-        square=True,
-        linewidths=0.4,
-        linecolor="white",
-    )
-    axis.set_title(
-        dataset.replace("weinreb", "Weinreb").replace("scnt_cortex", "scNT cortex"),
-        pad=4,
-        color="black",
-    )
-    axis.set_xticklabels(
-        ["Cyto-\nBridge", "CellChat", "CellAgent\nChat", "NicheNet"],
-        rotation=30,
-        ha="right",
-        rotation_mode="anchor",
-        fontsize=7.2,
-    )
-    axis.tick_params(axis="x", pad=1)
-    axis.tick_params(axis="y", rotation=0)
-    axis.set_xlabel("")
-    axis.set_ylabel("")
+DATASET_LABELS = {"weinreb": "Weinreb", "scnt_cortex": "scNT cortex"}
+DATASET_STYLE = {
+    "weinreb": ("#59616A", "o"),
+    "scnt_cortex": ("#CC6677", "s"),
+}
+EXTERNAL_METHODS = ("CellChat", "CellAgentChat", "NicheNet")
+SELECTED_INTERACTIONS = (
+    ("weinreb", "Baso", "Monocyte", "CSF1–CSF1R"),
+    ("weinreb", "Monocyte", "Neutrophil", "TNF–TNFRSF1A"),
+    ("scnt_cortex", "Ex", "EX-NP2", "BDNF–NTRK2"),
+    ("scnt_cortex", "EX-NP2", "EX-NP1", "DLL1/JAG1–NOTCH1"),
+)
+BIOLOGICAL_PROGRAMS = (
+    {
+        "program_id": "weinreb_csf1",
+        "dataset": "weinreb",
+        "sender": "Baso",
+        "receiver": "Monocyte",
+        "ligands": ("Csf1",),
+        "receptor": "Csf1r",
+        "targets": ("Gpnmb", "Ctsb", "Dab2", "Ctsd"),
+        "label": "Baso → Monocyte\nCSF1–CSF1R · myeloid maturation",
+        "color": "#07838B",
+    },
+    {
+        "program_id": "weinreb_tnf",
+        "dataset": "weinreb",
+        "sender": "Monocyte",
+        "receiver": "Neutrophil",
+        "ligands": ("Tnf",),
+        "receptor": "Tnfrsf1a",
+        "targets": ("Nfkbia", "Plaur", "Noct"),
+        "label": "Monocyte → Neutrophil\nTNF–TNFRSF1A · inflammatory remodeling",
+        "color": "#D55E62",
+    },
+    {
+        "program_id": "scnt_bdnf",
+        "dataset": "scnt_cortex",
+        "sender": "Ex",
+        "receiver": "EX-NP2",
+        "ligands": ("Bdnf",),
+        "receptor": "Ntrk2",
+        "targets": ("Egr1", "Gadd45g", "Trib2", "Coro1c"),
+        "label": "Ex → EX-NP2\nBDNF–NTRK2 · activity-response program",
+        "color": "#07838B",
+    },
+    {
+        "program_id": "scnt_notch",
+        "dataset": "scnt_cortex",
+        "sender": "EX-NP2",
+        "receiver": "EX-NP1",
+        "ligands": ("Dll1", "Jag1"),
+        "receptor": "Notch1",
+        "targets": ("Hes5",),
+        "label": "EX-NP2 → EX-NP1\nDLL1/JAG1–NOTCH1 · progenitor-state program",
+        "color": "#D55E62",
+    },
+)
 
 
-def _network(axis, table: pd.DataFrame, dataset: str, figure_style) -> None:
-    subset = table[table.dataset == dataset].copy()
-    subset = subset[subset.sender_type != subset.receiver_type]
-    subset = subset[subset.external_top_support >= 1]
-    subset = subset.sort_values(
-        ["external_top_support", "consensus_rank"], ascending=False, kind="mergesort"
-    ).head(11)
-    graph = nx.DiGraph()
-    for row in subset.itertuples():
-        graph.add_edge(
-            row.sender_type,
-            row.receiver_type,
-            width=0.8 + 2.6 * row.CytoBridge,
-            support=int(row.external_top_support),
-        )
-    nodes = sorted(graph.nodes())
-    positions = nx.circular_layout(graph)
-    nx.draw_networkx_nodes(
-        graph,
-        positions,
-        node_size=620,
-        node_color="#E5F1F2",
-        edgecolors=figure_style.CYTOBRIDGE_COLOR,
-        linewidths=0.7,
-        ax=axis,
+def _panel_heading(axis, figure_style, label: str, title: str) -> None:
+    figure_style.panel_heading(axis, label, title)
+    for text in axis.texts:
+        text.set_color("black")
+
+
+def _agreement_summary(metrics: pd.DataFrame) -> pd.DataFrame:
+    result = metrics[
+        (metrics.left_method == "CytoBridge")
+        & metrics.right_method.isin(EXTERNAL_METHODS)
+    ].copy()
+    if len(result) != 6:
+        raise ValueError("expected six CytoBridge-to-external metric rows")
+    result["expected_top_intersection"] = (
+        result["top_k"] ** 2 / result["n_directed_pairs"]
     )
-    nx.draw_networkx_labels(graph, positions, font_size=7.2, ax=axis)
-    for support, color in (
-        (1, "#E9C46A"),
-        (2, "#F4A261"),
-        (3, "#D1495B"),
-    ):
-        edges = [
-            (u, v) for u, v, d in graph.edges(data=True) if d["support"] == support
-        ]
-        if edges:
-            nx.draw_networkx_edges(
-                graph,
-                positions,
-                edgelist=edges,
-                width=[graph[u][v]["width"] for u, v in edges],
-                edge_color=color,
-                alpha=0.82,
-                arrows=True,
-                arrowsize=9,
-                connectionstyle="arc3,rad=0.08",
-                ax=axis,
+    result["top_overlap_enrichment"] = (
+        result["top_k_intersection"] / result["expected_top_intersection"]
+    )
+    result["top_overlap_pvalue"] = [
+        float(
+            hypergeom.sf(
+                int(row.top_k_intersection) - 1,
+                int(row.n_directed_pairs),
+                int(row.top_k),
+                int(row.top_k),
             )
-    axis.set_title(
-        dataset.replace("weinreb", "Weinreb").replace("scnt_cortex", "scNT cortex"),
+        )
+        for row in result.itertuples()
+    ]
+    result["dataset_label"] = result.dataset.map(DATASET_LABELS)
+    return result.sort_values(["right_method", "dataset"], kind="mergesort")
+
+
+def _harmonization_summary(
+    native_metrics: pd.DataFrame, shared_metrics: pd.DataFrame
+) -> pd.DataFrame:
+    keys = ["dataset", "left_method", "right_method"]
+    methods = ("CellAgentChat", "NicheNet")
+    native = native_metrics[
+        (native_metrics.left_method == "CytoBridge")
+        & native_metrics.right_method.isin(methods)
+    ][keys + ["spearman_rho", "top_k_jaccard"]].rename(
+        columns={
+            "spearman_rho": "native_spearman",
+            "top_k_jaccard": "native_jaccard",
+        }
+    )
+    shared = shared_metrics[
+        (shared_metrics.left_method == "CytoBridge")
+        & shared_metrics.right_method.isin(methods)
+    ][keys + ["spearman_rho", "top_k_jaccard"]].rename(
+        columns={
+            "spearman_rho": "shared_spearman",
+            "top_k_jaccard": "shared_jaccard",
+        }
+    )
+    result = native.merge(shared, on=keys, validate="one_to_one")
+    if len(result) != 4:
+        raise ValueError("expected four database-harmonization rows")
+    result["spearman_change"] = result.shared_spearman - result.native_spearman
+    result["jaccard_change"] = result.shared_jaccard - result.native_jaccard
+    result["dataset_label"] = result.dataset.map(DATASET_LABELS)
+    return result.sort_values(["dataset", "right_method"], kind="mergesort")
+
+
+def _selected_interaction_ranks(consensus: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for dataset, sender, receiver, program in SELECTED_INTERACTIONS:
+        selected = consensus[
+            (consensus.dataset == dataset)
+            & (consensus.sender_type == sender)
+            & (consensus.receiver_type == receiver)
+        ]
+        if len(selected) != 1:
+            raise ValueError(
+                f"missing unique selected interaction {dataset}/{sender}->{receiver}"
+            )
+        source = selected.iloc[0]
+        for method in METHODS:
+            rows.append(
+                {
+                    "dataset": dataset,
+                    "dataset_label": DATASET_LABELS[dataset],
+                    "sender_type": sender,
+                    "receiver_type": receiver,
+                    "program": program,
+                    "method": method,
+                    "rank_percentile": float(source[method]),
+                    "external_top_support": int(source.external_top_support),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _selected_biological_programs(biology: pd.DataFrame) -> pd.DataFrame:
+    rows: list[pd.DataFrame] = []
+    for program_order, spec in enumerate(BIOLOGICAL_PROGRAMS):
+        selected = biology[
+            (biology.dataset == spec["dataset"])
+            & (biology.sender == spec["sender"])
+            & (biology.receiver == spec["receiver"])
+            & biology.ligand.isin(spec["ligands"])
+            & (biology.receptor == spec["receptor"])
+            & biology.target.isin(spec["targets"])
+        ].copy()
+        selected = selected.sort_values(
+            "ligand_target_evidence", ascending=False, kind="mergesort"
+        ).drop_duplicates(["ligand", "target"])
+        expected = {
+            (ligand, target)
+            for ligand in spec["ligands"]
+            for target in spec["targets"]
+            if not (len(spec["ligands"]) > 1 and target != "Hes5")
+        }
+        observed = set(zip(selected.ligand, selected.target, strict=False))
+        if not expected.issubset(observed):
+            raise ValueError(
+                f"biological program {spec['program_id']} lacks {sorted(expected - observed)}"
+            )
+        selected["program_id"] = spec["program_id"]
+        selected["program_label"] = spec["label"]
+        selected["program_color"] = spec["color"]
+        selected["program_order"] = program_order
+        target_order = {target: index for index, target in enumerate(spec["targets"])}
+        ligand_order = {ligand: index for index, ligand in enumerate(spec["ligands"])}
+        selected["target_order"] = selected.target.map(target_order)
+        selected["ligand_order"] = selected.ligand.map(ligand_order)
+        selected["display_target"] = np.where(
+            len(spec["ligands"]) > 1,
+            selected.ligand.astype(str) + "→" + selected.target.astype(str),
+            selected.target.astype(str),
+        )
+        rows.append(selected)
+    return pd.concat(rows, ignore_index=True).sort_values(
+        ["program_order", "target_order", "ligand_order"], kind="mergesort"
+    )
+
+
+def _plot_global_agreement(axis_rho, axis_overlap, summary, figure_style) -> None:
+    y_base = {method: value for method, value in zip(EXTERNAL_METHODS, (2, 1, 0))}
+    offsets = {"weinreb": 0.13, "scnt_cortex": -0.13}
+    for dataset, (color, marker) in DATASET_STYLE.items():
+        subset = summary[summary.dataset == dataset].set_index("right_method")
+        for method in EXTERNAL_METHODS:
+            row = subset.loc[method]
+            y = y_base[method] + offsets[dataset]
+            axis_rho.scatter(
+                row.spearman_rho,
+                y,
+                s=42,
+                marker=marker,
+                color=color,
+                edgecolor="white",
+                linewidth=0.5,
+                zorder=3,
+            )
+            axis_rho.text(
+                row.spearman_rho + 0.035,
+                y,
+                f"{row.spearman_rho:.2f}",
+                va="center",
+                ha="left",
+                fontsize=7.2,
+            )
+            significant = row.top_overlap_pvalue < 0.05
+            axis_overlap.scatter(
+                row.top_overlap_enrichment,
+                y,
+                s=42,
+                marker=marker,
+                facecolor=color if significant else "white",
+                edgecolor=color,
+                linewidth=1.1,
+                zorder=3,
+            )
+            axis_overlap.text(
+                row.top_overlap_enrichment + 0.09,
+                y,
+                f"{row.top_overlap_enrichment:.1f}×",
+                va="center",
+                ha="left",
+                fontsize=7.2,
+            )
+    for axis in (axis_rho, axis_overlap):
+        axis.set_yticks([2, 1, 0], ["CellChat", "CellAgentChat", "NicheNet"])
+        axis.set_ylim(-0.45, 2.45)
+        figure_style.clean_axis(axis, grid=True)
+    axis_rho.axvline(0, color="#8A949C", linewidth=0.8, zorder=1)
+    axis_rho.set_xlim(-0.57, 0.90)
+    axis_rho.set_xlabel("Spearman rank correlation (ρ)")
+    axis_rho.set_title("Complete directed-pair ranks", color="black", pad=4)
+    axis_overlap.axvline(1, color="#8A949C", linewidth=0.8, zorder=1)
+    axis_overlap.set_xlim(0, 3.85)
+    axis_overlap.set_xlabel("Top-20% overlap / random expectation")
+    axis_overlap.set_title(
+        "CytoBridge top-edge enrichment\nfilled: exact P < 0.05",
         color="black",
+        pad=4,
     )
-    axis.axis("off")
+    axis_rho.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                marker=DATASET_STYLE[dataset][1],
+                color="none",
+                markerfacecolor=DATASET_STYLE[dataset][0],
+                markeredgecolor="white",
+                markersize=6,
+                label=DATASET_LABELS[dataset],
+            )
+            for dataset in ("weinreb", "scnt_cortex")
+        ],
+        loc="upper left",
+        frameon=False,
+    )
 
 
-def _top_edge_heatmap(axis, consensus: pd.DataFrame) -> None:
-    selected = (
-        consensus.sort_values(
-            ["dataset", "CytoBridge"], ascending=[True, False], kind="mergesort"
-        )
-        .groupby("dataset", sort=False)
-        .head(5)
-    )
-    labels = [
-        f"{'S' if row.dataset == 'scnt_cortex' else 'W'}  {row.sender_type}→{row.receiver_type}"
-        for row in selected.itertuples()
+def _plot_harmonization(axis, summary, figure_style) -> None:
+    display_order = [
+        ("weinreb", "CellAgentChat"),
+        ("weinreb", "NicheNet"),
+        ("scnt_cortex", "CellAgentChat"),
+        ("scnt_cortex", "NicheNet"),
     ]
-    sns.heatmap(
-        selected[list(METHODS)].to_numpy(float),
-        ax=axis,
-        cmap="mako",
-        vmin=0,
-        vmax=1,
-        yticklabels=labels,
-        xticklabels=["Cyto-\nBridge", "CellChat", "CellAgent\nChat", "NicheNet"],
-        cbar_kws={"label": "Rank percentile", "shrink": 0.72},
-        linewidths=0.35,
-        linecolor="white",
-    )
-    axis.tick_params(axis="x", rotation=0, pad=1, labelsize=7.6)
-    axis.tick_params(axis="y", rotation=0, labelsize=8)
-    axis.set_title("CytoBridge-leading interactions", color="black")
-
-
-def _biological_support(
-    axis, biology: pd.DataFrame, consensus: pd.DataFrame, dataset: str, figure_style
-) -> None:
-    top_pairs = (
-        consensus[consensus.dataset == dataset]
-        .sort_values(
-            ["external_top_support", "consensus_rank"],
-            ascending=False,
-            kind="mergesort",
+    labels = []
+    for y, (dataset, method) in enumerate(reversed(display_order)):
+        row = summary[
+            (summary.dataset == dataset) & (summary.right_method == method)
+        ].iloc[0]
+        color = PALETTE[method]
+        axis.annotate(
+            "",
+            xy=(row.shared_spearman, y),
+            xytext=(row.native_spearman, y),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": color,
+                "linewidth": 1.8,
+                "mutation_scale": 10,
+            },
         )
-        .head(12)
+        axis.scatter(
+            row.native_spearman,
+            y,
+            s=38,
+            facecolor="white",
+            edgecolor=color,
+            linewidth=1.2,
+            zorder=3,
+        )
+        axis.scatter(
+            row.shared_spearman,
+            y,
+            s=38,
+            facecolor=color,
+            edgecolor="white",
+            linewidth=0.5,
+            zorder=4,
+        )
+        axis.text(
+            max(row.native_spearman, row.shared_spearman) + 0.04,
+            y,
+            f"Δρ {row.spearman_change:+.2f}",
+            va="center",
+            fontsize=7.5,
+        )
+        labels.append(f"{DATASET_LABELS[dataset]}\n{method}")
+    axis.set_yticks(range(len(labels)), labels)
+    axis.axvline(0, color="#8A949C", linewidth=0.8)
+    axis.set_xlim(-0.58, 0.72)
+    axis.set_xlabel("CytoBridge Spearman correlation (ρ)")
+    axis.text(
+        0.01,
+        1.04,
+        "open: method-native database     filled: shared CellChatDB",
+        transform=axis.transAxes,
+        ha="left",
+        va="bottom",
+        fontsize=7.4,
+        color="#59616A",
     )
-    detail = biology[biology.dataset == dataset].merge(
-        top_pairs[["sender_type", "receiver_type"]],
-        left_on=["sender", "receiver"],
-        right_on=["sender_type", "receiver_type"],
-        how="inner",
-    )
-    detail = (
-        detail.sort_values("ligand_target_evidence", ascending=False, kind="mergesort")
-        .drop_duplicates(["sender", "receiver", "ligand", "target"])
-        .head(7)
-        .sort_values("ligand_target_evidence", ascending=True, kind="mergesort")
-    )
-    abbreviations = {
-        "Monocyte": "Mono",
-        "Neutrophil": "Neut.",
-        "Undifferentiated": "Undiff.",
-    }
-    labels = [
-        f"{row.ligand}→{row.target}\n"
-        f"{abbreviations.get(row.sender, row.sender)}→"
-        f"{abbreviations.get(row.receiver, row.receiver)}"
-        for row in detail.itertuples()
-    ]
-    positions = np.arange(len(detail))
-    axis.hlines(
-        positions,
-        0,
-        detail.ligand_target_evidence,
-        color="#9CC8CB",
-        linewidth=2.2,
-        zorder=1,
-    )
-    axis.scatter(
-        detail.ligand_target_evidence,
-        positions,
-        s=34,
-        color=figure_style.CYTOBRIDGE_COLOR,
-        zorder=2,
-    )
-    axis.set_yticks(positions, labels, fontsize=7.2)
-    axis.set_xlim(left=0)
+    figure_style.clean_axis(axis, grid=True)
+
+
+def _plot_selected_interactions(axis, selected, figure_style) -> None:
+    method_order = list(METHODS)
+    row_keys = list(SELECTED_INTERACTIONS)
+    labels = []
+    cmap = plt.get_cmap("GnBu")
+    for row_index, (dataset, sender, receiver, program) in enumerate(row_keys):
+        labels.append(f"{DATASET_LABELS[dataset]}  ·  {sender} → {receiver}\n{program}")
+        subset = selected[
+            (selected.dataset == dataset)
+            & (selected.sender_type == sender)
+            & (selected.receiver_type == receiver)
+        ].set_index("method")
+        for method_index, method in enumerate(method_order):
+            value = float(subset.loc[method, "rank_percentile"])
+            axis.scatter(
+                method_index,
+                row_index,
+                s=120 + 260 * value,
+                color=cmap(0.15 + 0.8 * value),
+                edgecolor="white",
+                linewidth=0.8,
+                zorder=3,
+            )
+            axis.text(
+                method_index,
+                row_index,
+                f"{value:.2f}",
+                ha="center",
+                va="center",
+                fontsize=7.1,
+                color="white" if value >= 0.65 else "#24313A",
+                fontweight="bold" if value >= 0.8 else "normal",
+                zorder=4,
+            )
+    axis.set_xticks(range(len(method_order)), method_order)
+    axis.xaxis.tick_top()
+    axis.tick_params(axis="x", pad=3)
+    axis.set_yticks(range(len(labels)), labels, fontsize=7.7)
+    axis.set_ylim(len(labels) - 0.5, -0.5)
+    axis.set_xlim(-0.55, len(method_order) - 0.45)
+    axis.axhline(1.5, color="#B7C0C7", linewidth=0.8)
+    axis.set_xlabel("Within-method directed-pair rank percentile")
+    axis.xaxis.set_label_position("bottom")
+    axis.tick_params(axis="x", bottom=False, labelbottom=False, top=True, labeltop=True)
+    axis.grid(axis="x", color=figure_style.GRID_COLOR, linewidth=0.45, alpha=0.6)
+    for side in axis.spines.values():
+        side.set_visible(False)
+
+
+def _plot_biological_programs(axis, selected, dataset, figure_style) -> None:
+    subset = selected[selected.dataset == dataset].copy()
+    program_ids = subset.sort_values("program_order").program_id.drop_duplicates()
+    y_positions = []
+    y_labels = []
+    cursor = 0.0
+    max_value = float(subset.ligand_target_evidence.max())
+    for program_id in program_ids:
+        program = subset[subset.program_id == program_id].sort_values(
+            ["target_order", "ligand_order"], kind="mergesort"
+        )
+        header_y = cursor
+        axis.text(
+            0,
+            header_y,
+            str(program.program_label.iloc[0]),
+            color=str(program.program_color.iloc[0]),
+            fontsize=7.8,
+            fontweight="bold",
+            ha="left",
+            va="center",
+        )
+        cursor += 0.90
+        for row in program.itertuples():
+            y_positions.append(cursor)
+            y_labels.append(str(row.display_target))
+            axis.hlines(
+                cursor,
+                0,
+                row.ligand_target_evidence,
+                color=row.program_color,
+                linewidth=2.2,
+                alpha=0.52,
+                zorder=1,
+            )
+            axis.scatter(
+                row.ligand_target_evidence,
+                cursor,
+                s=34,
+                color=row.program_color,
+                edgecolor="white",
+                linewidth=0.5,
+                zorder=3,
+            )
+            cursor += 0.62
+        cursor += 0.38
+    axis.set_yticks(y_positions, y_labels, fontsize=7.4)
+    axis.set_ylim(cursor - 0.15, -0.4)
+    axis.set_xlim(0, max_value * 1.14)
     axis.set_xlabel("NicheNet ligand–target evidence")
-    axis.set_title(
-        dataset.replace("weinreb", "Weinreb").replace("scnt_cortex", "scNT cortex"),
-        color="black",
-    )
+    axis.set_title(DATASET_LABELS[dataset], color="black", pad=4)
     figure_style.clean_axis(axis, grid=True)
 
 
@@ -785,139 +1050,80 @@ def plot_figure(args: argparse.Namespace) -> None:
     from CytoBridge.nonspatial import scnt_figure_style as figure_style
 
     source = Path(args.source_dir).resolve()
+    native_source = Path(args.native_source_dir).resolve()
     output = Path(args.output_dir).resolve()
     if output.exists():
         raise FileExistsError(f"output directory exists: {output}")
     output.mkdir(parents=True)
-    scores = pd.read_csv(source / "directed_pair_method_scores.csv")
     metrics = pd.read_csv(source / "pairwise_rank_metrics.csv")
+    native_metrics = pd.read_csv(native_source / "pairwise_rank_metrics.csv")
     consensus = pd.read_csv(source / "directed_pair_consensus.csv")
     biology = pd.read_csv(source / "nichenet_ligand_target_evidence.csv")
+    agreement = _agreement_summary(metrics)
+    harmonization = _harmonization_summary(native_metrics, metrics)
+    selected_ranks = _selected_interaction_ranks(consensus)
+    selected_biology = _selected_biological_programs(biology)
     figure_style.apply_style()
     fig = plt.figure(figsize=figure_style.A4_PORTRAIT, constrained_layout=False)
     outer = fig.add_gridspec(
         8,
         1,
-        height_ratios=[0.24, 1.58, 0.42, 1.46, 0.42, 1.78, 0.34, 2.12],
-        left=0.12,
+        height_ratios=[0.24, 1.42, 0.24, 1.10, 0.24, 1.75, 0.24, 2.20],
+        left=0.22,
         right=0.96,
         top=0.975,
-        bottom=0.055,
-        hspace=0.42,
+        bottom=0.06,
+        hspace=0.46,
     )
 
     ax_ah = fig.add_subplot(outer[0])
-    figure_style.panel_heading(ax_ah, "a", "Directed-pair rank concordance")
-    for text in ax_ah.texts:
-        text.set_color("black")
-    grid_a = outer[1].subgridspec(1, 2, wspace=0.55)
+    _panel_heading(
+        ax_ah, figure_style, "a", "Global agreement is method- and dataset-dependent"
+    )
+    grid_a = outer[1].subgridspec(1, 2, wspace=0.42)
     ax_a1 = fig.add_subplot(grid_a[0, 0])
     ax_a2 = fig.add_subplot(grid_a[0, 1])
-    _correlation_heatmap(ax_a1, metrics, "weinreb")
-    _correlation_heatmap(ax_a2, metrics, "scnt_cortex")
+    _plot_global_agreement(ax_a1, ax_a2, agreement, figure_style)
 
     ax_bh = fig.add_subplot(outer[2])
-    figure_style.panel_heading(ax_bh, "b", "CytoBridge top-edge agreement")
-    for text in ax_bh.texts:
-        text.set_color("black")
-    grid_b = outer[3].subgridspec(1, 2, width_ratios=[0.82, 1.38], wspace=0.62)
-    ax_b1 = fig.add_subplot(grid_b[0, 0])
-    ax_b2 = fig.add_subplot(grid_b[0, 1])
-    cb_metrics = metrics[metrics.left_method == "CytoBridge"].copy()
-    cb_metrics["dataset_label"] = cb_metrics.dataset.replace(
-        {"weinreb": "Weinreb", "scnt_cortex": "scNT cortex"}
+    _panel_heading(
+        ax_bh, figure_style, "b", "A shared LR universe improves external concordance"
     )
-    method_order = ["CellChat", "CellAgentChat", "NicheNet"]
-    dataset_style = {
-        "Weinreb": ("#59616A", "o"),
-        "scNT cortex": ("#CC6677", "s"),
-    }
-    x_positions = np.arange(len(method_order), dtype=float)
-    for label, (color, marker) in dataset_style.items():
-        subset = cb_metrics[cb_metrics.dataset_label == label].set_index("right_method")
-        values = [subset.loc[method, "top_k_jaccard"] for method in method_order]
-        ax_b1.plot(
-            x_positions,
-            values,
-            marker=marker,
-            markersize=5.5,
-            color=color,
-            linewidth=1.3,
-            label=label,
-        )
-    ax_b1.set_xticks(x_positions, ["CellChat", "CellAgent\nChat", "NicheNet"])
-    ax_b1.set_xlim(-0.18, 2.18)
-    ax_b1.set_ylabel("Top-20% Jaccard")
-    ax_b1.set_ylim(0, 1)
-    figure_style.clean_axis(ax_b1, grid=True)
-    ax_b1.legend(loc="upper right", handlelength=1.6)
-    _top_edge_heatmap(ax_b2, consensus)
+    ax_b = fig.add_subplot(outer[3])
+    _plot_harmonization(ax_b, harmonization, figure_style)
 
     ax_ch = fig.add_subplot(outer[4])
-    figure_style.panel_heading(ax_ch, "c", "Shared directed interactions")
-    for text in ax_ch.texts:
-        text.set_color("black")
-    support_colors = {1: "#E9C46A", 2: "#F4A261", 3: "#D1495B"}
-    ax_ch.legend(
-        handles=[
-            Line2D([0], [0], color=color, lw=2.4, label=f"{support}/3 methods")
-            for support, color in support_colors.items()
-        ],
-        loc="center right",
-        ncol=3,
-        handlelength=1.4,
-        columnspacing=1.2,
+    _panel_heading(
+        ax_ch,
+        figure_style,
+        "c",
+        "High-confidence communication programs recur across methods",
     )
-    grid_c = outer[5].subgridspec(1, 2, wspace=0.25)
-    ax_c1 = fig.add_subplot(grid_c[0, 0])
-    ax_c2 = fig.add_subplot(grid_c[0, 1])
-    _network(ax_c1, consensus, "weinreb", figure_style)
-    _network(ax_c2, consensus, "scnt_cortex", figure_style)
+    ax_c = fig.add_subplot(outer[5])
+    _plot_selected_interactions(ax_c, selected_ranks, figure_style)
 
     ax_dh = fig.add_subplot(outer[6])
-    figure_style.panel_heading(
-        ax_dh, "d", "Ligand–target programs within shared interactions"
+    _panel_heading(
+        ax_dh,
+        figure_style,
+        "d",
+        "Lineage-relevant ligand–target programs support selected interactions",
     )
-    for text in ax_dh.texts:
-        text.set_color("black")
-    grid_d = outer[7].subgridspec(1, 2, wspace=0.82)
+    grid_d = outer[7].subgridspec(1, 2, wspace=0.48)
     ax_d1 = fig.add_subplot(grid_d[0, 0])
     ax_d2 = fig.add_subplot(grid_d[0, 1])
-    _biological_support(ax_d1, biology, consensus, "weinreb", figure_style)
-    _biological_support(ax_d2, biology, consensus, "scnt_cortex", figure_style)
+    _plot_biological_programs(ax_d1, selected_biology, "weinreb", figure_style)
+    _plot_biological_programs(ax_d2, selected_biology, "scnt_cortex", figure_style)
 
     pdf = output / "nonspatial_communication_consistency_a4.pdf"
     png = output / "nonspatial_communication_consistency_a4.png"
     figure_style.save_figure(fig, pdf, png, dpi=320)
     plt.close(fig)
 
-    biological = []
-    for dataset in sorted(consensus.dataset.unique()):
-        top_edges = (
-            consensus[consensus.dataset == dataset]
-            .sort_values(
-                ["external_top_support", "consensus_rank"],
-                ascending=False,
-                kind="mergesort",
-            )
-            .head(12)
-        )
-        detail = biology[biology.dataset == dataset].merge(
-            top_edges[
-                [
-                    "sender_type",
-                    "receiver_type",
-                    "consensus_rank",
-                    "external_top_support",
-                ]
-            ],
-            left_on=["sender", "receiver"],
-            right_on=["sender_type", "receiver_type"],
-            how="inner",
-        )
-        biological.append(detail.nlargest(12, "ligand_target_evidence"))
-    biological = pd.concat(biological, ignore_index=True)
-    biological.to_csv(output / "top_consensus_ligand_target_support.csv", index=False)
+    agreement.to_csv(output / "global_agreement_summary.csv", index=False)
+    harmonization.to_csv(output / "database_harmonization_summary.csv", index=False)
+    selected_ranks.to_csv(output / "selected_program_method_ranks.csv", index=False)
+    selected_biology.to_csv(output / "selected_biological_programs.csv", index=False)
 
     def _metric(dataset: str, method: str, field: str) -> float:
         row = metrics[
@@ -931,14 +1137,17 @@ def plot_figure(args: argparse.Namespace) -> None:
 
     caption = (
         "**Non-spatial communication support under a shared CellChatDB ligand–receptor universe.** "
-        "(a) Spearman correlations of complete directed cell-type-pair ranks for CytoBridge, CellChat, official "
-        "non-spatial CellAgentChat, and sender-focused NicheNet in Weinreb and scNT cortex. "
-        "(b) Jaccard overlap of each external method with the top 20% of CytoBridge interactions and rank profiles of "
-        "the five leading CytoBridge interactions per dataset; W and S denote Weinreb and scNT. "
-        "(c) Shared directed interactions. Edge width encodes the CytoBridge rank and color gives the number of external "
-        "methods that also place the interaction in their top 20%. "
-        "(d) Leading NicheNet ligand–target programs among shared cell-type interactions. Evidence combines within-receiver "
-        "ligand-activity rank, sender ligand expression, receiver receptor expression, and the NicheNet ligand–target weight. "
+        "(a) CytoBridge agreement with CellChat, official non-spatial CellAgentChat CTPS, and sender-focused NicheNet on "
+        "complete directed cell-type-pair ranks (left) and enrichment of top-20% overlap over the random-set expectation "
+        "(right). Filled overlap symbols pass the exact hypergeometric P<0.05 set-enrichment threshold. "
+        "(b) Spearman agreement before and after placing CellAgentChat and NicheNet on the same package-bundled mouse "
+        "CellChatDB LR universe used by CytoBridge and CellChat. Database harmonization improves all four comparisons but "
+        "does not eliminate the weak Weinreb CellAgentChat rank agreement. "
+        "(c) Within-method rank percentiles for four preselected, externally supported communication programs. "
+        "(d) NicheNet-supported ligand-target responses for the same cell-type programs: CSF1-CSF1R and TNF-TNFRSF1A "
+        "in Weinreb myeloid differentiation, and BDNF-NTRK2 plus DLL1/JAG1-NOTCH1 in the scNT cortical progenitor response. "
+        "Evidence combines within-receiver ligand-activity rank, sender ligand expression, receiver receptor expression, "
+        "and the NicheNet ligand-target weight. "
         "CytoBridge–CellChat Spearman rho was "
         f"{_metric('weinreb', 'CellChat', 'spearman_rho'):.3f} in Weinreb and "
         f"{_metric('scnt_cortex', 'CellChat', 'spearman_rho'):.3f} in scNT; corresponding top-20% Jaccard values were "
@@ -952,6 +1161,7 @@ def plot_figure(args: argparse.Namespace) -> None:
         "# Non-spatial communication consistency figure provenance\n\n"
         "## Source paths\n\n"
         f"- Aggregate manifest: `{(source / 'manifest.json').resolve()}`\n"
+        f"- Native-database manifest: `{(native_source / 'manifest.json').resolve()}`\n"
         f"- Directed-pair scores: `{(source / 'directed_pair_method_scores.csv').resolve()}`\n"
         f"- Pairwise metrics: `{(source / 'pairwise_rank_metrics.csv').resolve()}`\n"
         f"- NicheNet evidence: `{(source / 'nichenet_ligand_target_evidence.csv').resolve()}`\n\n"
@@ -959,20 +1169,26 @@ def plot_figure(args: argparse.Namespace) -> None:
         "```bash\n"
         "python scripts/run_nonspatial_communication_consistency.py plot \\\n"
         f"  --source-dir {source} \\\n"
+        f"  --native-source-dir {native_source} \\\n"
         "  --output-dir <new-empty-output-directory>\n"
         "```\n\n"
         "## SHA-256\n\n"
         f"- Aggregate manifest: `{sha256_file(source / 'manifest.json')}`\n"
+        f"- Native-database manifest: `{sha256_file(native_source / 'manifest.json')}`\n"
         f"- PDF: `{sha256_file(pdf)}`\n"
         f"- PNG: `{sha256_file(png)}`\n"
         f"- Caption: `{sha256_file(output / 'caption.md')}`\n"
     )
     (output / "provenance.md").write_text(provenance_note)
     provenance = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_manifest": {
             "path": str((source / "manifest.json").resolve()),
             "sha256": sha256_file(source / "manifest.json"),
+        },
+        "native_source_manifest": {
+            "path": str((native_source / "manifest.json").resolve()),
+            "sha256": sha256_file(native_source / "manifest.json"),
         },
         "figure": {
             pdf.name: {"sha256": sha256_file(pdf), "size_bytes": pdf.stat().st_size},
@@ -1033,6 +1249,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     plot_parser = sub.add_parser("plot")
     plot_parser.add_argument("--source-dir", required=True)
+    plot_parser.add_argument("--native-source-dir", required=True)
     plot_parser.add_argument("--output-dir", required=True)
     plot_parser.set_defaults(function=plot_figure)
     return parser
