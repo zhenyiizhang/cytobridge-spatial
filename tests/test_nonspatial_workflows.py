@@ -56,6 +56,7 @@ def test_nonspatial_presets_and_configs_encode_corrected_single_factor_contract(
 
     assert available_nonspatial_presets() == ("scnt_cortex", "weinreb")
     for dataset in available_nonspatial_presets():
+        preset = nonspatial_workflow.nonspatial_preset(dataset)
         full = yaml.safe_load(packaged_training_config(dataset, "full").read_text())
         no_interaction = yaml.safe_load(
             packaged_training_config(dataset, "no_interaction").read_text()
@@ -84,6 +85,12 @@ def test_nonspatial_presets_and_configs_encode_corrected_single_factor_contract(
             ]
         assert "interaction" in full["model"]["components"]
         assert "interaction" not in no_interaction["model"]["components"]
+        assert full["model"]["interaction_net"]["cutoff"] == pytest.approx(
+            preset.interaction_cutoff, rel=0, abs=0
+        )
+        assert full["model"]["interaction_net"]["edge_predictor_thre"] == pytest.approx(
+            preset.edge_predictor_threshold, rel=0, abs=0
+        )
         assert all(
             stage.get("interaction_use") is False
             for stage in no_interaction["training"]["plan"]

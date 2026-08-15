@@ -27,11 +27,11 @@ model:
     num_layers: 1
     activation: leakyrelu
     num_rbf: 8
-    cutoff: 23.652481535751416
+    cutoff: 23.65247975535851
     use_spatial: false
     rbf_trainable: false
     edge_predictor_path: edge_prior/scnt_cortex/link_predictor.pt
-    edge_predictor_thre: 0.2745365798473358
+    edge_predictor_thre: 0.27495816349983215
 
 ckpt_dir: results/scnt_cortex_nonspatial_gnn_full
 reverse: true

@@ -59,8 +59,8 @@ _PRESETS = {
         gene_symbol_key="gene_symbol",
         full_config="scnt_cortex_nonspatial_gnn_full.yaml",
         no_interaction_config="scnt_cortex_nonspatial_gnn_no_interaction.yaml",
-        interaction_cutoff=23.652481535751416,
-        edge_predictor_threshold=0.2745365798473358,
+        interaction_cutoff=23.65247975535851,
+        edge_predictor_threshold=0.27495816349983215,
     ),
 }
 
