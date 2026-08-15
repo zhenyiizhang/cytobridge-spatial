@@ -239,7 +239,7 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
                 marker="o",
                 linestyle="none",
                 markersize=5,
-                label="Individual time points",
+                label="Single time point",
             ),
             Line2D(
                 [0],
@@ -248,12 +248,15 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
                 marker="D",
                 linestyle="none",
                 markersize=6,
-                label="Pooled",
+                label="All times combined",
             ),
         ],
         frameon=False,
-        loc="upper left",
-        borderaxespad=0.4,
+        ncol=2,
+        loc="lower left",
+        bbox_to_anchor=(0.0, 1.02),
+        borderaxespad=0,
+        columnspacing=1.0,
         handletextpad=0.6,
     )
     _clean_axis(ax)
@@ -309,7 +312,7 @@ def _write_caption(path: Path) -> None:
             [
                 "# Ligand–receptor complex aggregation sensitivity",
                 "",
-                "(a) Number of strictly scored multi-subunit LR pairs in each dataset. (b) Spearman rank agreement between the minimum-subunit rule and the zero-preserving geometric mean. Circles show individual time points and diamonds show the pooled correlation. (c) Jaccard overlap of the top ten LR pairs over normalized developmental time. Each square represents one observed time point.",
+                "(a) Number of strictly scored multi-subunit LR pairs in each dataset. (b) Spearman rank agreement between the minimum-subunit rule and the zero-preserving geometric mean. Circles show correlations calculated separately at each time point. Diamonds show one correlation calculated after combining every scored LR pair–time observation. (c) Jaccard overlap of the top ten LR pairs over normalized developmental time. Each square represents one observed time point.",
                 "",
                 "The four datasets contain 293–973 strictly scored multi-subunit LR pairs. Pooled Spearman correlations are 0.961–0.999. The top ten signals remain unchanged across time in Zebrafish and MOSTA and show dataset-specific sensitivity in ARISTA and Chicken Heart. These results support the robustness of the broad LR dynamics while motivating cautious interpretation of individual heteromeric top-pair rankings.",
                 "",
