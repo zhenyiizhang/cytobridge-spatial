@@ -182,6 +182,11 @@ __all__ = [
     "LRPanelResult",
     "FocalLRTypeHotspotResult",
     "LRTemporalProjectionResult",
+    "analyze_exact_groupings",
+    "compute_type_lr_scores",
+    "load_edge_prior_manifest",
+    "scaled_lr_activities_from_manifest",
+    "summarize_drift_across_seeds",
     "DevelopmentalWaveResult",
     "PCAAnchorReconstructionQCResult",
     "PCAReconstructionSpec",
@@ -275,3 +280,19 @@ __all__ = [
     "save_distribution_evaluation",
     "save_distribution_metric_comparison",
 ]
+
+
+def __getattr__(name):
+    """Load LR-drift attribution lazily to avoid a pp/tl import cycle."""
+
+    if name in {
+        "analyze_exact_groupings",
+        "compute_type_lr_scores",
+        "load_edge_prior_manifest",
+        "scaled_lr_activities_from_manifest",
+        "summarize_drift_across_seeds",
+    }:
+        from . import lr_drift_attribution
+
+        return getattr(lr_drift_attribution, name)
+    raise AttributeError(name)

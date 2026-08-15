@@ -220,6 +220,116 @@ def _parser() -> argparse.ArgumentParser:
             "or JSON/YAML path"
         ),
     )
+    nonspatial = commands.add_parser(
+        "nonspatial",
+        help="run the package-owned Weinreb or scNT non-spatial workflow",
+    )
+    nonspatial_commands = nonspatial.add_subparsers(dest="nonspatial_command")
+    nonspatial_commands.add_parser("list-presets", help="list supported datasets")
+    nonspatial_plan = nonspatial_commands.add_parser(
+        "plan", help="show the audited end-to-end workflow"
+    )
+    nonspatial_plan.add_argument("--dataset", required=True)
+    nonspatial_plan.add_argument("--json", action="store_true", dest="as_json")
+
+    nonspatial_prepare = nonspatial_commands.add_parser(
+        "prepare", help="prepare expression and a 50-PC non-spatial model input"
+    )
+    nonspatial_prepare.add_argument("--dataset", required=True)
+    nonspatial_prepare.add_argument("--input-h5ad", required=True, type=Path)
+    nonspatial_prepare.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_prepare.add_argument("--overwrite", action="store_true")
+
+    nonspatial_prior = nonspatial_commands.add_parser(
+        "build-prior", help="train a directed ligand-receptor edge prior"
+    )
+    nonspatial_prior.add_argument("--dataset", required=True)
+    nonspatial_prior.add_argument("--preprocess-manifest", required=True, type=Path)
+    nonspatial_prior.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_prior.add_argument("--lr-database", type=Path)
+    nonspatial_prior.add_argument("--device", default="auto")
+    nonspatial_prior.add_argument("--epochs", type=int, default=50)
+    nonspatial_prior.add_argument("--overwrite", action="store_true")
+
+    nonspatial_train = nonspatial_commands.add_parser(
+        "train", help="train one corrected matched Full/No-interaction arm"
+    )
+    nonspatial_train.add_argument("--dataset", required=True)
+    nonspatial_train.add_argument(
+        "--arm", required=True, choices=("full", "no_interaction")
+    )
+    nonspatial_train.add_argument("--preprocess-manifest", required=True, type=Path)
+    nonspatial_train.add_argument("--edge-prior-manifest", type=Path)
+    nonspatial_train.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_train.add_argument("--device", default="cuda")
+
+    nonspatial_evaluate = nonspatial_commands.add_parser(
+        "evaluate", help="compare matched arms with weighted W1/W2/TMV"
+    )
+    nonspatial_evaluate.add_argument("--dataset", required=True)
+    nonspatial_evaluate.add_argument("--prepared-h5ad", required=True, type=Path)
+    nonspatial_evaluate.add_argument("--full-run-dir", required=True, type=Path)
+    nonspatial_evaluate.add_argument(
+        "--no-interaction-run-dir", required=True, type=Path
+    )
+    nonspatial_evaluate.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_evaluate.add_argument("--device", default="cuda")
+    nonspatial_evaluate.add_argument(
+        "--inference-seed", action="append", type=int, dest="inference_seeds"
+    )
+    nonspatial_evaluate.add_argument("--n-samples", type=int, default=2048)
+    nonspatial_evaluate.add_argument("--sigma", type=float, default=0.1)
+    nonspatial_evaluate.add_argument("--max-ot-points", type=int, default=1024)
+    nonspatial_direction = nonspatial_commands.add_parser(
+        "scnt-direction",
+        help="evaluate sealed scNT new-RNA direction after both models finish",
+    )
+    nonspatial_direction.add_argument("--source-h5ad", required=True, type=Path)
+    nonspatial_direction.add_argument("--prepared-h5ad", required=True, type=Path)
+    nonspatial_direction.add_argument("--pca-artifacts-npz", required=True, type=Path)
+    nonspatial_direction.add_argument("--full-run-dir", required=True, type=Path)
+    nonspatial_direction.add_argument(
+        "--no-interaction-run-dir", required=True, type=Path
+    )
+    nonspatial_direction.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_direction.add_argument("--device", default="cuda")
+    nonspatial_direction.add_argument("--overwrite", action="store_true")
+
+    nonspatial_attribution = nonspatial_commands.add_parser(
+        "attribution",
+        help="compute exact GNN messages and LR-supported cell-type pathways",
+    )
+    nonspatial_attribution.add_argument("--dataset", required=True)
+    nonspatial_attribution.add_argument("--expression-h5ad", required=True, type=Path)
+    nonspatial_attribution.add_argument("--latent-h5ad", required=True, type=Path)
+    nonspatial_attribution.add_argument(
+        "--edge-prior-manifest", required=True, type=Path
+    )
+    nonspatial_attribution.add_argument("--training-run-dir", required=True, type=Path)
+    nonspatial_attribution.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_attribution.add_argument("--device", default="cuda")
+    nonspatial_attribution.add_argument("--overwrite", action="store_true")
+    nonspatial_figure = nonspatial_commands.add_parser(
+        "figure",
+        help="replay an accepted Weinreb/scNT A4 panel-data bundle",
+    )
+    nonspatial_figure.add_argument("--dataset", required=True)
+    nonspatial_figure.add_argument("--bundle-dir", required=True, type=Path)
+    nonspatial_figure.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_figure.add_argument("--dpi", type=int, default=320)
+    nonspatial_fate = nonspatial_commands.add_parser(
+        "weinreb-clone-fate",
+        help="evaluate lineage-level fate agreement from t=0 to Day 6",
+    )
+    nonspatial_fate.add_argument("--prepared-h5ad", required=True, type=Path)
+    nonspatial_fate.add_argument("--full-run-dir", required=True, type=Path)
+    nonspatial_fate.add_argument("--no-interaction-run-dir", required=True, type=Path)
+    nonspatial_fate.add_argument("--output-dir", required=True, type=Path)
+    nonspatial_fate.add_argument("--device", default="cuda")
+    nonspatial_fate.add_argument(
+        "--simulation-seed", action="append", type=int, dest="simulation_seeds"
+    )
+    nonspatial_fate.add_argument("--bootstrap", type=int, default=5000)
     workflow.add_argument("--list-configs", action="store_true")
     workflow.add_argument("--dry-run", action="store_true")
     workflow.add_argument("--json", action="store_true", dest="as_json")
@@ -414,6 +524,164 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_nonspatial_command(args: argparse.Namespace) -> int:
+    """Dispatch the package-owned non-spatial workflow lazily."""
+
+    from .nonspatial import (
+        available_nonspatial_presets,
+        build_nonspatial_lr_prior,
+        evaluate_nonspatial_pair,
+        nonspatial_plan,
+        prepare_nonspatial_dataset,
+        train_nonspatial_condition,
+        replay_nonspatial_figure,
+    )
+
+    command = args.nonspatial_command
+    if command == "list-presets":
+        print("\n".join(available_nonspatial_presets()))
+        return 0
+    if command == "plan":
+        plan = nonspatial_plan(args.dataset)
+        if args.as_json:
+            print(json.dumps(plan, indent=2, sort_keys=True))
+        else:
+            print(f"CytoBridge non-spatial preset: {plan['preset']['display_name']}")
+            for index, step in enumerate(plan["steps"], start=1):
+                print(f"  {index}. {step}")
+            print(plan["historical_replay_note"])
+        return 0
+    try:
+        if command == "prepare":
+            result = prepare_nonspatial_dataset(
+                args.dataset,
+                args.input_h5ad,
+                args.output_dir,
+                overwrite=bool(args.overwrite),
+            )
+            payload = {
+                "model_h5ad": str(result.model_h5ad),
+                "expression_h5ad": str(result.expression_h5ad),
+                "pca_artifacts": str(result.pca_artifacts),
+                "manifest": str(result.manifest),
+            }
+        elif command == "build-prior":
+            payload = build_nonspatial_lr_prior(
+                args.dataset,
+                args.preprocess_manifest,
+                args.output_dir,
+                lr_database=args.lr_database,
+                device=args.device,
+                overwrite=bool(args.overwrite),
+                epochs=int(args.epochs),
+            )
+        elif command == "train":
+            payload = train_nonspatial_condition(
+                args.dataset,
+                args.arm,
+                args.preprocess_manifest,
+                args.output_dir,
+                edge_prior_manifest=args.edge_prior_manifest,
+                device=args.device,
+            )
+        elif command == "evaluate":
+            payload = evaluate_nonspatial_pair(
+                args.dataset,
+                args.prepared_h5ad,
+                args.full_run_dir,
+                args.no_interaction_run_dir,
+                args.output_dir,
+                device=args.device,
+                inference_seeds=tuple(args.inference_seeds or (10_000,)),
+                n_samples=int(args.n_samples),
+                sigma=float(args.sigma),
+                max_ot_points=int(args.max_ot_points),
+            )
+        elif command == "scnt-direction":
+            from .nonspatial.scnt_direction import main as run_scnt_direction
+
+            direction_argv = [
+                "--source-h5ad",
+                str(args.source_h5ad),
+                "--prepared-h5ad",
+                str(args.prepared_h5ad),
+                "--pca-artifacts-npz",
+                str(args.pca_artifacts_npz),
+                "--full-run-dir",
+                str(args.full_run_dir),
+                "--no-interaction-run-dir",
+                str(args.no_interaction_run_dir),
+                "--output-dir",
+                str(args.output_dir),
+                "--device",
+                str(args.device),
+            ]
+            if args.overwrite:
+                direction_argv.append("--overwrite")
+            run_scnt_direction(direction_argv)
+            return 0
+        elif command == "attribution":
+            from .nonspatial.interaction_attribution import (
+                main as run_interaction_attribution,
+            )
+
+            from .nonspatial.workflow import nonspatial_preset
+
+            preset = nonspatial_preset(args.dataset)
+            attribution_argv = [
+                "--expression-h5ad",
+                str(args.expression_h5ad),
+                "--latent-h5ad",
+                str(args.latent_h5ad),
+                "--edge-prior-manifest",
+                str(args.edge_prior_manifest),
+                "--training-run-dir",
+                str(args.training_run_dir),
+                "--output-dir",
+                str(args.output_dir),
+                "--cell-type-key",
+                preset.cell_type_key,
+                "--time-key",
+                "time_point_processed",
+                "--device",
+                str(args.device),
+            ]
+            if args.overwrite:
+                attribution_argv.append("--overwrite")
+            run_interaction_attribution(attribution_argv)
+            return 0
+        elif command == "figure":
+            payload = replay_nonspatial_figure(
+                args.dataset,
+                args.bundle_dir,
+                args.output_dir,
+                dpi=int(args.dpi),
+            )
+        elif command == "weinreb-clone-fate":
+            from .nonspatial.weinreb_fate import evaluate_weinreb_clone_fate
+
+            payload = evaluate_weinreb_clone_fate(
+                args.prepared_h5ad,
+                args.full_run_dir,
+                args.no_interaction_run_dir,
+                args.output_dir,
+                device=args.device,
+                simulation_seeds=tuple(args.simulation_seeds or range(10)),
+                n_bootstrap=int(args.bootstrap),
+            )
+        else:
+            print(
+                "cytobridge nonspatial requires a subcommand; use --help",
+                file=sys.stderr,
+            )
+            return 2
+    except (FileExistsError, FileNotFoundError, KeyError, ValueError) as error:
+        print(f"CytoBridge non-spatial contract error: {error}", file=sys.stderr)
+        return 2
+    print(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CytoBridge command-line interface."""
 
@@ -421,6 +689,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "workflow":
         return _run_workflow_command(args)
+    if args.command == "nonspatial":
+        return _run_nonspatial_command(args)
     if args.command != "doctor":
         parser.print_help()
         return 0

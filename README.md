@@ -25,6 +25,8 @@ This repository contains:
 - preprocessing and training scripts in `scripts/`
 - five dataset tutorials plus one small synthetic preprocessing tutorial in
   `notebooks/`
+- package-owned non-spatial Weinreb and scNT workflows, including audited
+  preprocessing, matched training, evaluation, attribution, and figure replay
 - ReadTheDocs source in `docs/`
 - training configuration files in `CytoBridge/configs/`
 - legacy repository-scoped edge-predictor checkpoints in `edge_classifier/`
@@ -411,6 +413,27 @@ The workspace path must not already exist. The script builds the current source
 tree, installs the wheel without dependencies into a clean virtual environment,
 and runs the installed-package contract tests. Pip index access is disabled, so
 missing local build tools fail clearly instead of being downloaded implicitly.
+
+### Non-spatial Weinreb and scNT workflows
+
+The installed CLI also owns the two expression-state workflows that support the
+accepted Weinreb lineage and scNT cortical figures:
+
+```bash
+cytobridge nonspatial list-presets
+cytobridge nonspatial plan --dataset weinreb
+cytobridge nonspatial plan --dataset scnt_cortex
+```
+
+Their explicit sequence is preprocessing, LR edge-prior construction, matched
+Full/No-interaction training, weighted W1/W2/TMV, clone-fate or new-RNA
+direction evaluation, exact interaction attribution, and A4 figure generation.
+They use expression PCs only—no physical spatial coordinates—and simulate
+continuously from the earliest observed time rather than restarting from
+intermediate slices. See
+[`docs/nonspatial_workflows.md`](docs/nonspatial_workflows.md) for complete
+commands and the distinction between exact historical figure replay and new
+corrected matched training.
 
 ## Input Requirements
 

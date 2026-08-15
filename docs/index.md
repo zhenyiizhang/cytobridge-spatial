@@ -52,6 +52,7 @@ quickstart
 scientific_contract
 historical_artifact_compatibility
 downstream
+nonspatial_workflows
 benchmarks
 training_compute
 ```

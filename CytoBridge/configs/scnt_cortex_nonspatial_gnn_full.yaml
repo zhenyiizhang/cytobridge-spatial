@@ -1,0 +1,146 @@
+# Matched Full profile for the non-spatial scNT cortical KCl time course.
+# Only total RNA enters training; new/old RNA and cell type are sealed for
+# post-training evaluation.
+model:
+  components: [velocity, growth, score, interaction]
+  interaction_type: gnn
+  interaction_group_size: 16
+  velocity_net:
+    hidden_dim: 256
+    n_layers: 5
+    residual: false
+    activation: leaky_relu
+    use_spatial: false
+  growth_net:
+    hidden_dim: 256
+    n_layers: 3
+    residual: false
+    activation: leaky_relu
+  score_net:
+    hidden_dim: 400
+    n_layers: 3
+    activation: leaky_relu
+  interaction_net:
+    edge_prior_mode: learned
+    hidden_dim: 256
+    num_heads: 8
+    num_layers: 1
+    activation: leakyrelu
+    num_rbf: 8
+    cutoff: 23.652481535751416
+    use_spatial: false
+    rbf_trainable: false
+    edge_predictor_path: edge_prior/scnt_cortex/link_predictor.pt
+    edge_predictor_thre: 0.2745365798473358
+
+ckpt_dir: results/scnt_cortex_nonspatial_gnn_full
+reverse: true
+seed: 42
+
+matched_ablation:
+  schema_version: 1
+  family: scnt-cortex-nonspatial-full-no-interaction-v1
+  dataset: scnt_cortex
+  arm: full
+  protocol: isolated-interaction-crn-v1
+  shared_seed: 42
+  interaction_grouping_seed_offset: 10000
+  input_contract: exact-shared-aligned-h5ad
+  implementation_contract: exact-shared-training-code-sha256
+
+training:
+  defaults:
+    lr: 0.0001
+    lambda_ot: 1.0
+    lambda_mass: 1.0
+    lambda_energy: 0.01
+    sigma: 0.1
+    batch_size: 128
+    global_mass: true
+    score_energy_objective: velocity_score_cross_term
+
+  plan:
+    - name: Pretrain
+      mode: neural_ode
+      epochs: 100
+      batch_size: 128
+      OT_loss: emd_detach
+      train_strategy: v+g
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: false
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Refine
+      mode: neural_ode
+      epochs: 100
+      batch_size: 128
+      OT_loss: emd_detach
+      train_strategy: v+g
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: true
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Init_interaction
+      mode: neural_ode
+      epochs: 50
+      batch_size: 128
+      OT_loss: emd_detach
+      train_strategy: v+g+i
+      lambda_ot: 10.0
+      lambda_mass: 10.0
+      lambda_energy: 0.01
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Train_Score
+      mode: score_matching
+      epochs: 2001
+      batch_size: 128
+      sigma: 0.1
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      save_strategy: last
+
+    - name: Finetune
+      mode: neural_ode
+      epochs: 1000
+      batch_size: 128
+      OT_loss: emd_detach
+      train_strategy: v+g+i
+      score_use: true
+      lr: 0.0001
+      lambda_ot: 1.0
+      lambda_mass: 1.0
+      lambda_energy: 0.01
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+      scheduler_type: plateau
+      scheduler_metric: forward_last_ot
+      scheduler_step_before_reverse: true
+      max_grad_norm: 10.0
+      checkpoint_metric: legacy_forward_last_ot
+      save_strategy: best
+
+    - name: Score_Refine
+      mode: score_matching
+      epochs: 2001
+      batch_size: 128
+      sigma: 0.1
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      save_strategy: last

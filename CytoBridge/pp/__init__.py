@@ -43,9 +43,27 @@ __all__ = [
     "generate_interaction_graph",
     "sanitize_interaction_graph_uns",
     "train_edge_predictor",
+    "LREdgePriorConfig",
+    "build_lr_edge_prior",
+    "estimate_state_space_radius",
+    "state_space_fit_params",
     "FORMAL_GRAPH_DATABASES",
     "bundled_graph_database_path",
     "resolve_graph_database",
     "legacy_model_input_csv_to_adata",
     "write_legacy_model_input_h5ad",
 ]
+
+
+def __getattr__(name):
+    """Load non-spatial graph utilities lazily to avoid a tl/pp import cycle."""
+
+    if name in {"LREdgePriorConfig", "build_lr_edge_prior"}:
+        from . import lr_edge_prior
+
+        return getattr(lr_edge_prior, name)
+    if name in {"estimate_state_space_radius", "state_space_fit_params"}:
+        from . import state_space
+
+        return getattr(state_space, name)
+    raise AttributeError(name)

@@ -68,3 +68,13 @@ Virtual perturbations
 
 .. automodule:: CytoBridge.tl.downstream.ablation
    :members: compute_virtual_ablation_metrics, run_virtual_cell_type_ablation, run_virtual_interaction_ablation
+
+Non-spatial temporal workflows
+------------------------------
+
+.. automodule:: CytoBridge.nonspatial.workflow
+   :members: NonSpatialPreset, available_nonspatial_presets, nonspatial_plan, prepare_nonspatial_dataset, build_nonspatial_lr_prior, train_nonspatial_condition, evaluate_nonspatial_pair
+   :show-inheritance:
+
+.. automodule:: CytoBridge.nonspatial.figures
+   :members: validate_historical_figure_bundle, replay_nonspatial_figure

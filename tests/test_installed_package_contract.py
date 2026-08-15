@@ -148,6 +148,10 @@ class InstalledPackageContractTests(unittest.TestCase):
                 "zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml",
                 "zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml",
                 "chicken_heart_spatial_full_alpha_express_0015.yaml",
+                "weinreb_nonspatial_gnn_full.yaml",
+                "weinreb_nonspatial_gnn_no_interaction.yaml",
+                "scnt_cortex_nonspatial_gnn_full.yaml",
+                "scnt_cortex_nonspatial_gnn_no_interaction.yaml",
             },
         )
         workflow_configs = resources.files("CytoBridge").joinpath("workflow_configs")
@@ -202,6 +206,34 @@ class InstalledPackageContractTests(unittest.TestCase):
             self.assertEqual(plan["scientific"]["classifier_k"], expected_k)
             train = next(step for step in plan["steps"] if step["name"] == "train")
             self.assertEqual(train["status"], "skipped; add --train to run")
+
+    def test_installed_nonspatial_plan_needs_no_scientific_dependencies(self) -> None:
+        executable = Path(sys.executable).with_name("cytobridge")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            plans = {}
+            for name in ("weinreb", "scnt_cortex"):
+                completed = subprocess.run(
+                    [
+                        str(executable),
+                        "nonspatial",
+                        "plan",
+                        "--dataset",
+                        name,
+                        "--json",
+                    ],
+                    cwd=temporary_directory,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                plans[name] = json.loads(completed.stdout)
+            self.assertEqual(list(Path(temporary_directory).iterdir()), [])
+
+        self.assertEqual(plans["weinreb"]["preset"]["expected_cells"], 49_302)
+        self.assertEqual(plans["scnt_cortex"]["preset"]["expected_cells"], 20_547)
+        for plan in plans.values():
+            self.assertEqual(plan["preset"]["expected_latent_dim"], 50)
+            self.assertEqual(plan["steps"][3], "evaluate weighted W1/W2/TMV from t=0")
 
 
 if __name__ == "__main__":
