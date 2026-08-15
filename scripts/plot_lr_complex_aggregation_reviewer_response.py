@@ -11,6 +11,7 @@ import shutil
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -22,7 +23,7 @@ COLORS = {
     "ARISTA": "#CC79A7",
     "Chicken Heart": "#D55E00",
 }
-TEXT = "#24313A"
+TEXT = "#000000"
 GRID = "#D7DDE2"
 
 
@@ -104,6 +105,7 @@ def _style() -> None:
             "ytick.labelsize": 9,
             "legend.fontsize": 9,
             "axes.linewidth": 0.65,
+            "axes.edgecolor": TEXT,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "text.color": TEXT,
@@ -121,8 +123,51 @@ def _style() -> None:
 def _clean_axis(ax: plt.Axes) -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color(TEXT)
+    ax.spines["bottom"].set_color(TEXT)
     ax.grid(color=GRID, linewidth=0.45, alpha=0.65)
     ax.set_axisbelow(True)
+
+
+def _panel_heading(
+    ax: plt.Axes,
+    label: str,
+    title: str,
+    *,
+    legend_handles: list[Line2D] | None = None,
+) -> None:
+    ax.set_axis_off()
+    ax.text(
+        0.0,
+        0.5,
+        label,
+        fontsize=14,
+        fontweight="bold",
+        ha="left",
+        va="center",
+        color=TEXT,
+    )
+    ax.text(
+        0.105 if legend_handles is None else 0.055,
+        0.5,
+        title,
+        fontsize=12,
+        fontweight="bold",
+        ha="left",
+        va="center",
+        color=TEXT,
+    )
+    if legend_handles:
+        ax.legend(
+            handles=legend_handles,
+            frameon=False,
+            ncol=len(legend_handles),
+            loc="center right",
+            bbox_to_anchor=(1.0, 0.5),
+            borderaxespad=0,
+            columnspacing=1.35,
+            handletextpad=0.5,
+        )
 
 
 def _coverage(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
@@ -134,7 +179,6 @@ def _coverage(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
     ax.set_yticks(y, names)
     ax.invert_yaxis()
     ax.set_xlabel("Scored multi-subunit LR pairs")
-    ax.set_title("Substantial multi-subunit coverage", fontweight="bold", pad=9)
     xmax = max(multi) * 1.25
     ax.set_xlim(0, xmax)
     for idx, (count, all_count) in enumerate(zip(multi, total)):
@@ -176,15 +220,30 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
     ax.invert_yaxis()
     ax.set_xlim(0.90, 1.005)
     ax.set_xlabel("Spearman rank correlation")
-    ax.set_title("High overall rank agreement", fontweight="bold", pad=9)
-    ax.text(
-        0.03,
-        0.96,
-        "Line: range across time\nPoint: pooled correlation",
-        transform=ax.transAxes,
-        fontsize=8.5,
-        ha="left",
-        va="top",
+    ax.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                color=TEXT,
+                linewidth=2.5,
+                solid_capstyle="round",
+                label="Across-time range",
+            ),
+            Line2D(
+                [0],
+                [0],
+                color=TEXT,
+                marker="o",
+                linestyle="none",
+                markersize=6,
+                label="Pooled",
+            ),
+        ],
+        frameon=False,
+        loc="upper left",
+        borderaxespad=0.4,
+        handletextpad=0.6,
     )
     _clean_axis(ax)
 
@@ -208,19 +267,6 @@ def _top_overlap(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
     ax.set_ylim(0.35, 1.04)
     ax.set_xlabel("Normalized developmental time")
     ax.set_ylabel("Top-10 Jaccard overlap")
-    ax.set_title(
-        "Top-ranked signals are stable overall, with dataset-specific sensitivity",
-        fontweight="bold",
-        pad=30,
-    )
-    ax.legend(
-        frameon=False,
-        ncol=4,
-        loc="lower center",
-        bbox_to_anchor=(0.5, 1.0),
-        columnspacing=1.4,
-        handletextpad=0.5,
-    )
     _clean_axis(ax)
 
 
@@ -230,9 +276,11 @@ def _write_caption(path: Path) -> None:
             [
                 "# Ligand–receptor complex aggregation sensitivity",
                 "",
-                "The sensitivity analysis compares the declared minimum-subunit complex rule with a zero-preserving geometric mean while requiring every subunit under both rules. The four displayed datasets contain 293–973 strictly scored multi-subunit LR pairs. Overall LR rankings remain strongly concordant across all time points, with pooled Spearman correlations of 0.961–0.999. The ten strongest signals are unchanged across time in Zebrafish and MOSTA and are less stable in ARISTA and Chicken Heart, indicating that broad LR dynamics are robust but individual heteromeric top-pair interpretations can depend on the aggregation rule.",
+                "(a) Number of strictly scored multi-subunit LR pairs in each dataset. (b) Spearman rank agreement between the minimum-subunit rule and the zero-preserving geometric mean. Lines show the range across time and points show the pooled correlation. (c) Jaccard overlap of the top ten LR pairs over normalized developmental time.",
                 "",
-                "Trajectories, expression states, communication attention, LR databases, time grids, and scored pair universes were held fixed. Each minimum-gate table was reproduced before changing the aggregation rule. The minimum gate remains the declared primary estimand. Pair-specific conclusions are interpreted together with the geometric-mean sensitivity. Chicken Heart uses the declared conserved-symbol human CellChatDB proxy and is not a species-complete chicken interaction screen.",
+                "The four datasets contain 293–973 strictly scored multi-subunit LR pairs. Pooled Spearman correlations are 0.961–0.999. The top ten signals remain unchanged across time in Zebrafish and MOSTA and show dataset-specific sensitivity in ARISTA and Chicken Heart. These results support the robustness of the broad LR dynamics while motivating cautious interpretation of individual heteromeric top-pair rankings.",
+                "",
+                "Only the final complex aggregation rule was changed. Trajectories, expression states, communication attention, LR databases, time grids, and scored pair universes were held fixed. Every required subunit was present under both rules, and each minimum-gate table was reproduced before the sensitivity calculation. The minimum gate remains the primary estimand. Chicken Heart uses the declared conserved-symbol human CellChatDB proxy and is not a species-complete chicken interaction screen.",
             ]
         )
         + "\n",
@@ -248,36 +296,47 @@ def render(analyses: dict[str, Path], output_dir: Path) -> Path:
     records = {name: _read_analysis(analyses[name]) for name in DATASET_ORDER}
 
     _style()
-    fig = plt.figure(figsize=(8.27, 8.8))
+    fig = plt.figure(figsize=(8.27, 11.69))
     grid = fig.add_gridspec(
+        4,
         2,
-        2,
-        height_ratios=[1.0, 1.18],
-        hspace=0.55,
+        height_ratios=[0.13, 1.0, 0.13, 1.28],
+        hspace=0.2,
         wspace=0.42,
         left=0.13,
         right=0.96,
         top=0.91,
-        bottom=0.09,
+        bottom=0.08,
     )
     fig.suptitle(
         "Ligand–receptor complex aggregation sensitivity",
-        fontsize=14,
+        fontsize=13,
         fontweight="bold",
-        y=0.972,
+        y=0.965,
     )
-    _coverage(fig.add_subplot(grid[0, 0]), records)
-    _pooled_rank(fig.add_subplot(grid[0, 1]), records)
-    _top_overlap(fig.add_subplot(grid[1, :]), records)
-    fig.text(
-        0.5,
-        0.025,
-        "All other trajectories, expression states, communication weights, LR databases, and scored pairs are identical between rules.",
-        ha="center",
-        va="bottom",
-        fontsize=8.5,
-        color=TEXT,
+    _panel_heading(fig.add_subplot(grid[0, 0]), "a", "Multi-subunit coverage")
+    _panel_heading(fig.add_subplot(grid[0, 1]), "b", "LR rank agreement")
+    _coverage(fig.add_subplot(grid[1, 0]), records)
+    _pooled_rank(fig.add_subplot(grid[1, 1]), records)
+    dataset_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=COLORS[name],
+            marker="o",
+            linewidth=1.8,
+            markersize=4.5,
+            label=name,
+        )
+        for name in DATASET_ORDER
+    ]
+    _panel_heading(
+        fig.add_subplot(grid[2, :]),
+        "c",
+        "Top-pair overlap",
+        legend_handles=dataset_handles,
     )
+    _top_overlap(fig.add_subplot(grid[3, :]), records)
 
     pdf = output_dir / "lr_complex_aggregation_reviewer_response.pdf"
     png = output_dir / "lr_complex_aggregation_reviewer_response.png"
