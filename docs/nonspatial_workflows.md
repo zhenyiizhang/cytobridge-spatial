@@ -177,3 +177,39 @@ cosine 0.00915 for Full versus 0.00597 for No-interaction and Day-120
 CellChat-compatible rank correlation of 0.752. These are descriptive historical
 results, not significance tests, RNA velocity, physical spatial interaction,
 or causal perturbations.
+
+## Compare learned communication with external methods
+
+`scripts/run_nonspatial_communication_consistency.py` reproduces the shared-
+input comparison of terminal-time CytoBridge interactions with CellChat,
+official non-spatial CellAgentChat, and NicheNet for both presets. The workflow
+uses the package-bundled mouse CellChatDB as one common LR universe and lets
+each method intersect exact complexes with its natively representable,
+expressed-gene set. It never expands an LR complex into biologically different
+Cartesian monomer pairs.
+
+The supported sequence is:
+
+```text
+prepare-shared-lr -> cellagentchat -> prepare-nichenet
+                  -> official NicheNet R runner -> aggregate -> plot
+```
+
+CellAgentChat's primary directed-pair statistic is its native CTPS: the sum of
+significant LR interaction scores. The threshold-free sum of raw LR scores and
+the significant-LR count are retained as sensitivity and diagnostic outputs;
+neither replaces CTPS in the primary figure. NicheNet uses fixed top-100
+positive terminal-minus-previous receiver response genes and combines official
+ligand activity with sender-ligand and receiver-receptor expression support.
+
+Because raw score units differ, the cross-method analysis compares complete
+directed sender/receiver grids using within-method ranks and top-20% Jaccard
+overlap. The A4 renderer writes PDF/PNG, caption, plotted biological support,
+and SHA-256 provenance to a new directory. This is descriptive shared-input
+computational consistency, not causal or independent experimental validation.
+Run either entry point with `--help` for the complete, fail-closed arguments:
+
+```bash
+python scripts/run_nonspatial_communication_consistency.py --help
+Rscript scripts/run_nonspatial_nichenet.R --help
+```

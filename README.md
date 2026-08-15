@@ -433,7 +433,10 @@ continuously from the earliest observed time rather than restarting from
 intermediate slices. See
 [`docs/nonspatial_workflows.md`](docs/nonspatial_workflows.md) for complete
 commands and the distinction between exact historical figure replay and new
-corrected matched training.
+corrected matched training. The same documentation also covers the packaged
+shared-CellChatDB consistency analysis against CellChat, official non-spatial
+CellAgentChat, and NicheNet, including CTPS-primary and continuous-score
+sensitivity outputs.
 
 ## Input Requirements
 

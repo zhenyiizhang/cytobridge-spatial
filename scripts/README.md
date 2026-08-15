@@ -95,6 +95,15 @@ weighted exact W1/W2, and TMV definitions as the matched retraining evaluator.
 Positive off-relative error means that disabling interaction worsened
 reconstruction; negative values mean it improved reconstruction.
 
+`run_nonspatial_communication_consistency.py` is the maintained Weinreb/scNT
+communication-consistency producer and A4 renderer. It runs CellAgentChat in
+its official non-spatial mode, prepares the fixed response/candidate tables for
+`run_nonspatial_nichenet.R`, and compares CytoBridge, CellChat, CellAgentChat,
+and NicheNet on complete directed cell-type-pair grids. The shared-database
+mode uses the wheel-bundled mouse CellChatDB for all four methods. Native
+CellAgentChat CTPS is primary; threshold-free continuous score is emitted only
+as sensitivity. Raw method scores are never pooled across methods.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
