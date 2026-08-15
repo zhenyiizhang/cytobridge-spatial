@@ -198,23 +198,33 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
     y = np.arange(len(names))
     for idx, name in enumerate(names):
         per_time = records[name]["per_time"]
-        values = per_time.loc[per_time["scope"] == "all_scored_pairs", "spearman"]
+        values = per_time.loc[
+            per_time["scope"] == "all_scored_pairs", "spearman"
+        ].dropna()
         pooled = float(records[name]["summary"]["global_spearman"])
-        ax.plot(
-            [values.min(), values.max()],
-            [idx, idx],
+        offsets = (
+            np.linspace(-0.13, 0.13, len(values))
+            if len(values) > 1
+            else np.zeros(len(values))
+        )
+        ax.scatter(
+            values,
+            idx + offsets,
             color=COLORS[name],
-            linewidth=2.5,
-            solid_capstyle="round",
+            s=26,
+            edgecolor="white",
+            linewidth=0.45,
+            zorder=2,
         )
         ax.scatter(
             [pooled],
             [idx],
             color=COLORS[name],
-            s=48,
+            marker="D",
+            s=64,
             zorder=3,
-            edgecolor="white",
-            linewidth=0.7,
+            edgecolor=TEXT,
+            linewidth=0.8,
         )
     ax.set_yticks(y, names)
     ax.invert_yaxis()
@@ -226,15 +236,16 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
                 [0],
                 [0],
                 color=TEXT,
-                linewidth=2.5,
-                solid_capstyle="round",
-                label="Across-time range",
+                marker="o",
+                linestyle="none",
+                markersize=5,
+                label="Individual time points",
             ),
             Line2D(
                 [0],
                 [0],
                 color=TEXT,
-                marker="o",
+                marker="D",
                 linestyle="none",
                 markersize=6,
                 label="Pooled",
@@ -249,25 +260,47 @@ def _pooled_rank(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
 
 
 def _top_overlap(ax: plt.Axes, records: dict[str, dict[str, object]]) -> None:
-    for name in DATASET_ORDER:
+    boundaries = np.array([0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0001])
+    color_map = mpl.colors.ListedColormap(
+        mpl.colormaps["viridis"](np.linspace(0.0, 1.0, len(boundaries) - 1))
+    )
+    color_norm = mpl.colors.BoundaryNorm(boundaries, color_map.N)
+    scatter = None
+    for row, name in enumerate(DATASET_ORDER):
         table = records[name]["per_time"]
         table = table.loc[table["scope"] == "all_scored_pairs"].sort_values("time")
         times = table["time"].to_numpy(dtype=float)
         normalized = (times - times.min()) / max(times.max() - times.min(), 1.0)
-        ax.plot(
+        scatter = ax.scatter(
             normalized,
-            table["top_jaccard"],
-            marker="o",
-            markersize=4.5,
-            linewidth=1.8,
-            color=COLORS[name],
-            label=name,
+            np.full(len(table), row),
+            c=table["top_jaccard"],
+            cmap=color_map,
+            norm=color_norm,
+            marker="s",
+            s=150,
+            edgecolor="white",
+            linewidth=0.7,
         )
     ax.set_xlim(-0.02, 1.02)
-    ax.set_ylim(0.35, 1.04)
+    ax.set_ylim(-0.55, len(DATASET_ORDER) - 0.45)
+    ax.set_yticks(np.arange(len(DATASET_ORDER)), DATASET_ORDER)
+    ax.invert_yaxis()
     ax.set_xlabel("Normalized developmental time")
-    ax.set_ylabel("Top-10 Jaccard overlap")
     _clean_axis(ax)
+    if scatter is None:
+        raise ValueError("Top-pair overlap panel has no data.")
+    colorbar = ax.figure.colorbar(
+        scatter,
+        ax=ax,
+        boundaries=boundaries,
+        ticks=np.arange(0.4, 1.01, 0.1),
+        pad=0.025,
+        fraction=0.035,
+    )
+    colorbar.set_label("Top-10 Jaccard")
+    colorbar.outline.set_edgecolor(TEXT)
+    colorbar.ax.tick_params(colors=TEXT)
 
 
 def _write_caption(path: Path) -> None:
@@ -276,7 +309,7 @@ def _write_caption(path: Path) -> None:
             [
                 "# Ligand–receptor complex aggregation sensitivity",
                 "",
-                "(a) Number of strictly scored multi-subunit LR pairs in each dataset. (b) Spearman rank agreement between the minimum-subunit rule and the zero-preserving geometric mean. Lines show the range across time and points show the pooled correlation. (c) Jaccard overlap of the top ten LR pairs over normalized developmental time.",
+                "(a) Number of strictly scored multi-subunit LR pairs in each dataset. (b) Spearman rank agreement between the minimum-subunit rule and the zero-preserving geometric mean. Circles show individual time points and diamonds show the pooled correlation. (c) Jaccard overlap of the top ten LR pairs over normalized developmental time. Each square represents one observed time point.",
                 "",
                 "The four datasets contain 293–973 strictly scored multi-subunit LR pairs. Pooled Spearman correlations are 0.961–0.999. The top ten signals remain unchanged across time in Zebrafish and MOSTA and show dataset-specific sensitivity in ARISTA and Chicken Heart. These results support the robustness of the broad LR dynamics while motivating cautious interpretation of individual heteromeric top-pair rankings.",
                 "",
@@ -304,7 +337,7 @@ def render(analyses: dict[str, Path], output_dir: Path) -> Path:
         hspace=0.2,
         wspace=0.42,
         left=0.13,
-        right=0.96,
+        right=0.91,
         top=0.91,
         bottom=0.08,
     )
@@ -318,23 +351,10 @@ def render(analyses: dict[str, Path], output_dir: Path) -> Path:
     _panel_heading(fig.add_subplot(grid[0, 1]), "b", "LR rank agreement")
     _coverage(fig.add_subplot(grid[1, 0]), records)
     _pooled_rank(fig.add_subplot(grid[1, 1]), records)
-    dataset_handles = [
-        Line2D(
-            [0],
-            [0],
-            color=COLORS[name],
-            marker="o",
-            linewidth=1.8,
-            markersize=4.5,
-            label=name,
-        )
-        for name in DATASET_ORDER
-    ]
     _panel_heading(
         fig.add_subplot(grid[2, :]),
         "c",
         "Top-pair overlap",
-        legend_handles=dataset_handles,
     )
     _top_overlap(fig.add_subplot(grid[3, :]), records)
 
