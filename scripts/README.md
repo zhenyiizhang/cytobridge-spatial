@@ -87,6 +87,14 @@ spatial/expression metrics and A4 figure banks. This is a fixed-model,
 single-seed sensitivity analysis rather than a causal knockout or matched
 retraining ablation.
 
+`run_five_dataset_weighted_interaction_ablation.py` is the formal comparable
+version of that fixed-checkpoint sensitivity. It uses the official continuous
+non-split weighted SDE, a shared 5,000-particle source roster and random streams,
+native unnormalised growth-mass weights, and the same weighted sliced-W2,
+weighted exact W1/W2, and TMV definitions as the matched retraining evaluator.
+Positive off-relative error means that disabling interaction worsened
+reconstruction; negative values mean it improved reconstruction.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
