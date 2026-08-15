@@ -229,6 +229,41 @@
         }
       }
     },
+    "exact_ot_displacement": {
+      "display_name": "Exact balanced OT displacement control",
+      "category": "explicit_control",
+      "official_api": "POT ot.emd",
+      "module": "ot",
+      "module_candidates": ["ot"],
+      "distribution_candidates": ["POT"],
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "fit_representation": "frozen training-reference joint normalization with squared Euclidean cost",
+          "native_output": "exact balanced adjacent optimal-transport coupling",
+          "benchmark_output": "LOTO barycentric displacement interpolation or composed adjacent displacement maps from the fixed t0 roster",
+          "output_scope": "native_joint",
+          "hybrid": false,
+          "default_parameters": {
+            "solver": "POT ot.emd",
+            "uniform_marginals": true,
+            "cost": "squared_euclidean",
+            "num_iter_max": 2000000,
+            "transform": "frozen_training_reference_joint"
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "control is defined in the shared matched representation only",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
     "random_independent_pairs": {
       "display_name": "Random independent-pair control",
       "category": "explicit_control",

@@ -1,0 +1,48 @@
+# Fifth-dataset extension from the anatomy-reviewed current-package run.
+dataset_id: chicken_heart
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-20260814-42a66d8-r1/preprocess/chicken_heart_aligned.h5ad
+expected_source_sha256: 5bc4dd47a669088ed19005b6601042f537d52b973e470ac5a868d04da8737f77
+time_key: time_point_processed
+time_map: [[0, 0], [1, 1], [2, 2], [3, 3]]
+state_key: X_latent
+state_dim: 50
+spatial_key: spatial_aligned
+spatial_dim: 2
+annotation_key: Annotation
+loto_targets: [1, 2]
+full_data_targets: [1, 2, 3]
+prediction_n: 5000
+source_roster_support_n: 800
+source_roster_seed: 20260718
+preprocess_contract:
+  uns_key: preprocess_info
+  required_layers: [counts]
+  counts_layer: counts
+  required_exact:
+    expression_layer: counts
+    dim_reduction: pca
+    n_pcs: 50
+  matrix_checks: {x_finite: true, counts_finite: true, counts_nonnegative: true}
+  external_audits:
+    - name: chicken_heart_training_run_summary
+      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-20260814-42a66d8-r1/training/training_run_summary.json
+      sha256: 024413dda6f45a13a428d78fa82158e2c217e638ae0ca7effac8ba8d8e974314
+      required_exact:
+        schema_version: 1
+        data:
+          input_h5ad:
+            sha256: 5bc4dd47a669088ed19005b6601042f537d52b973e470ac5a868d04da8737f77
+            source_kind: h5ad_path
+            not_applicable: false
+          model_input:
+            sha256: 848a46e20b7db758b29be581489b91f4672da656a12ec8ddb42ef9d3bbb747e5
+            shape: [3550, 52]
+          n_timepoints: 4
+          sample_counts_by_timepoint: [147, 528, 908, 1967]
+          spatial_dim: 2
+benchmark:
+  formal_run_root: /data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-20260814-42a66d8-r1
+  training_config: training/config.yaml
+  edge_prior_mode: learned
+  graph_database: CytoBridge/workflow_databases/CellChatDB.ligrec.human.csv
+  expression_layer: counts

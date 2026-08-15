@@ -29,6 +29,11 @@ include scripts/launch_mosta_alignment_sensitivity.sh
 include scripts/launch_mosta_formal_full_alignment.sh
 include scripts/launch_mosta_paired_alpha.sh
 include scripts/preprocess_pipeline.py
+include scripts/prepare_chicken_heart_input.py
+include scripts/refresh_velocity_outputs.py
+include scripts/run_chicken_heart_paper_downstream.py
+include scripts/run_five_dataset_virtual_interaction_ablation.py
+include scripts/run_five_dataset_weighted_interaction_ablation.py
 include scripts/run_arista_end_to_end.py
 include scripts/run_downstream_workflow_example.py
 include scripts/run_mosta_alignment_sensitivity.py
@@ -36,6 +41,8 @@ include scripts/run_mosta_end_to_end.py
 include scripts/run_matched_ablation_matrix.py
 include scripts/run_matched_ablation_benchmark_evaluation.py
 include scripts/run_lr_complex_aggregation_sensitivity.py
+include scripts/run_nonspatial_communication_consistency.py
+include scripts/run_nonspatial_nichenet.R
 include scripts/run_spatial_training.py
 include scripts/run_spatiotemporal_downstream.py
 include scripts/run_zebrafish_end_to_end.py

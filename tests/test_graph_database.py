@@ -12,12 +12,13 @@ from CytoBridge.graph_database import (
 )
 
 
-def test_all_formal_presets_resolve_species_matched_bundled_databases():
+def test_all_packaged_presets_resolve_declared_bundled_databases():
     expected = {
         "zebrafish": "CellChatDB.ligrec.zebrafish.csv",
         "mosta": "CellChatDB.ligrec.mouse.csv",
         "arista": "CellChatDB.ligrec.human.csv",
         "admouse": "CellChatDB.ligrec.mouse.csv",
+        "chicken_heart": "CellChatDB.ligrec.human.csv",
     }
 
     assert FORMAL_GRAPH_DATABASES == expected

@@ -12,6 +12,7 @@ from CytoBridge.cli import main
 from CytoBridge.workflow import (
     WorkflowOptions,
     _loaded_model_scientific_contract,
+    _read_training_config,
     _run_edge_predictor,
     build_workflow_plan,
     load_workflow_config,
@@ -22,7 +23,13 @@ from CytoBridge.workflow import (
 
 @pytest.mark.parametrize(
     ("name", "classifier_k"),
-    (("zebrafish", 10), ("mosta", 10), ("arista", 10), ("admouse", 1)),
+    (
+        ("zebrafish", 10),
+        ("mosta", 10),
+        ("arista", 10),
+        ("admouse", 1),
+        ("chicken_heart", 1),
+    ),
 )
 def test_packaged_presets_share_formal_scientific_defaults(name, classifier_k):
     config, source = load_workflow_config(name)
@@ -98,6 +105,12 @@ def test_cli_exposes_explicit_complete_reference_pca_center_opt_in(capsys):
             0.09606367405591873,
             0.6063615679740906,
         ),
+        (
+            "chicken_heart",
+            "CellChatDB.ligrec.human.csv",
+            0.21681429373719752,
+            None,
+        ),
     ),
 )
 def test_packaged_presets_plan_the_formal_graph_contract(
@@ -121,6 +134,30 @@ def test_packaged_presets_plan_the_formal_graph_contract(
     assert training["edge_predictor_threshold"] is None
     assert training["edge_predictor_threshold_source"] == (
         "validation-selected during preprocessing"
+    )
+
+
+def test_chicken_heart_training_batches_fit_the_earliest_observed_stage():
+    training = _read_training_config(
+        "chicken_heart_spatial_full_alpha_express_0015.yaml"
+    )
+    stage_batch_sizes = [
+        int(stage["batch_size"]) for stage in training["training"]["plan"]
+    ]
+
+    # D4 contains 147 spots and neural-ODE sampling is deliberately without
+    # replacement. Keep every formal stage below that observed population.
+    assert training["training"]["defaults"]["batch_size"] == 128
+    assert stage_batch_sizes == [128, 128, 128, 128, 128, 128]
+    assert max(stage_batch_sizes) <= 147
+
+
+def test_chicken_heart_lr_scope_is_structured_for_summary_serialization():
+    config, _ = load_workflow_config("chicken_heart")
+    scope = config["downstream"]["lr_scope"]
+    assert scope["species_database"] == "human CellChatDB conserved-symbol proxy"
+    assert (
+        "not a species-complete chicken communication screen" in scope["interpretation"]
     )
 
 
@@ -942,7 +979,9 @@ def test_dry_run_json_is_machine_readable(capsys):
     assert plan["scientific"]["alpha_spatial"] == 10.0
 
 
-@pytest.mark.parametrize("name", ("zebrafish", "mosta", "arista", "admouse"))
+@pytest.mark.parametrize(
+    "name", ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
+)
 def test_builtin_dry_run_never_parses_training_yaml(monkeypatch, name):
     config, source = load_workflow_config(name)
 

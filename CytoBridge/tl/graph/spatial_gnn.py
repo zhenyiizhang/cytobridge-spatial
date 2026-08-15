@@ -178,6 +178,12 @@ class GNNInteraction(nn.Module):
         r_ij = pairwise_distances[edge_index[0], edge_index[1]]
         edge_index = edge_index[:, r_ij > 1e-6]
         r_ij = r_ij[r_ij > 1e-6]
+        # Candidate-edge tensors can be much larger than the retained graph.
+        # Release them before the attention pass so inference memory is
+        # proportional to retained edges rather than both graphs at once.
+        if self.edge_prior_mode == "learned":
+            del features_i, features_j, pair_features, pred_probs, connected
+        del mask, rows, cols, pairwise_distances, indices
         # Cache for downstream attention/communication analysis (does not affect forward output).
         self.edge_index = edge_index.detach()
 
@@ -196,6 +202,7 @@ class GNNInteraction(nn.Module):
         edge_attr = (
             x_embed[edge_index[0]] + x_embed[edge_index[1]]
         ) * self.distance_projection(rbf_ij)
+        del rbf_ij
 
         for layer in self.gnn_layers:
             x_embed, vec = layer(

@@ -197,6 +197,7 @@ def test_registry_exact_methods_and_scopes() -> None:
         "spateo",
         "spatrack",
         "linear_centroid_shift",
+        "exact_ot_displacement",
         "random_independent_pairs",
     }
     assert "coupling adapter" in specs["wot"]["display_name"]
@@ -385,6 +386,42 @@ def test_no_holdout_random_uses_all_adjacent_composed_plans(tmp_path: Path) -> N
         "P_2_3": [5, 4],
         "P_3_4": [4, 3],
     }
+
+
+def test_loto_exact_ot_uses_verified_training_reference(tmp_path: Path) -> None:
+    path = write_fixture(tmp_path / "loto.h5ad", remove_time=2, prediction_n=9)
+    data = ad.read_h5ad(path)
+    reference = tmp_path / "training_reference.npz"
+    np.savez_compressed(
+        reference,
+        state=np.asarray(data.obsm["benchmark_state"]),
+        spatial=np.asarray(data.obsm["benchmark_spatial"]),
+    )
+    manifest = write_manifest(
+        tmp_path / "manifest.json", path, "loto_t2", training_reference=reference
+    )
+    output = tmp_path / "exact_ot"
+    code = run_module.main(
+        [
+            *common_args(path, output, "loto", 2),
+            "--method",
+            "exact_ot_displacement",
+            "--input-manifest",
+            str(manifest),
+            "--save-coupling",
+        ]
+    )
+    assert code == 0
+    run_manifest = json.loads((output / "run_manifest.json").read_text())
+    assert run_manifest["status"] == "complete"
+    assert run_manifest["control_run"]["control"] == "exact_ot_displacement"
+    assert run_manifest["control_run"]["transform"][
+        "training_reference_sha256"
+    ] == sha256(reference)
+    assert run_manifest["control_run"]["coupling_diagnostics"][0]["zero_rows"] == 0
+    with np.load(output / "prediction.npz", allow_pickle=False) as prediction:
+        assert prediction["points"].shape == (9, 5)
+        assert np.isfinite(prediction["points"]).all()
 
 
 def _mock_coupling(method_name, pair, representation, **kwargs):

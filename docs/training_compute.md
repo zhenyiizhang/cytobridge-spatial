@@ -28,6 +28,7 @@ largest per-stage peak allocation.
 | AD mouse | full learned prior | 7,252 / 7,252 | 696.454 | 2,446.7 | 708.6 | complete / PASS |
 | AD mouse | no LR prior (`all_spatial`) | 7,252 / 7,252 | 771.601 | 2,429.7 | 964.2 | complete / PASS |
 | AD mouse | no interaction | 7,252 / 7,252 | 503.421 | 2,318.6 | 340.9 | complete / PASS |
+| Chicken heart | full learned prior | 5,252 / 5,252 | 738.557 | 2,115.5 | 1,435.5 | complete / single-profile contract |
 
 Neural-ODE and score-matching losses optimize different objectives and must not
 be joined into one continuous numeric scale. Every matched run has a complete,
@@ -44,9 +45,12 @@ Separately instrumented Zebrafish OT:mass sensitivity fits took about 1,420–
 allocation. These legacy diagnostics are not substituted for the matched-grid
 measurements above.
 
-The original Heart Figure 3 run remains outside the four-dataset matched
-chain. Its 3,501-epoch per-epoch history and memory telemetry are unavailable;
-later Heart-v2 metrics cannot be used as its provenance.
+The original Heart Figure 3 run remains historical and is not used as current
+evidence. The table instead records the current package-native chicken-heart
+full fit, whose six-stage timing and memory telemetry are present in its
+`training_run_summary.json`. It is outside the four-dataset matched three-arm
+chain because no matched chicken-heart no-LR/no-interaction retraining was
+requested.
 
 The machine-readable matched table is available as
 {download}`formal_training_compute_cost.csv

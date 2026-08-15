@@ -863,20 +863,32 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
     assert len(result["figures"]) == 12
     assert len(result["spatial_figures"]) == 6
     assert len(result["latent_figures"]) == 6
+    assert len(result["gene_figures"]) == 6
+    assert result["latent_figures"] == result["gene_figures"]
     assert result["projection_contract"] == {
         "spatial": "direct_model_spatial_components",
         "latent": "scvelo_transition_graph_to_spatial_display",
+        "gene": "scvelo_expression_state_to_observed_spatial_coordinates",
         "spatial_dim": 2,
     }
     assert {call["title"].split(" (")[0] for call in calls} == {
         "Intrinsic velocity",
         "Interaction velocity",
         "Full velocity",
+        "Gene intrinsic velocity",
+        "Gene interaction velocity",
+        "Gene full velocity",
     }
-    spatial_calls = [call for call in calls if "spatial direct" in call["title"]]
-    latent_calls = [call for call in calls if "latent to spatial" in call["title"]]
+    assert result["spatial_projection_mode"] == "direct_model_spatial_vector"
+    assert (
+        result["gene_projection_mode"]
+        == "scvelo_expression_state_to_observed_spatial_coordinates"
+    )
+    assert result["expression_dimensions"] == 1
+    spatial_calls = [call for call in calls if call["feature_matrix"] is None]
+    gene_calls = [call for call in calls if call["feature_matrix"] is not None]
     assert len(spatial_calls) == 6
-    assert len(latent_calls) == 6
+    assert len(gene_calls) == 6
     expected_component_value = {
         "Intrinsic velocity": 1.0,
         "Interaction velocity": 2.0,
@@ -889,13 +901,18 @@ def test_velocity_is_recomputed_per_slice_and_exports_all_components(tmp_path: P
             call["velocity"],
             np.full((2, 2), expected_component_value[component]),
         )
-    for call in latent_calls:
-        component = call["title"].split(" (")[0]
+    for call in gene_calls:
+        component = call["title"].split(" (")[0].removeprefix("Gene ").capitalize()
         assert call["feature_matrix"].shape == (2, 1)
         np.testing.assert_array_equal(
             call["velocity"],
             np.full((2, 1), expected_component_value[component]),
         )
+    assert all(call["velocity"].shape == (2, 2) for call in spatial_calls)
+    assert all(call["velocity"].shape == (2, 1) for call in gene_calls)
+    assert all(call["feature_matrix"].shape == (2, 1) for call in gene_calls)
+    for call in calls:
+        np.testing.assert_array_equal(call["coords"], np.zeros((2, 2)))
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_allclose(archive["full"], components["full"])
 
@@ -948,10 +965,20 @@ def test_velocity_no_interaction_retains_zero_sentinel_without_false_panel(
     assert len(result["figures"]) == 4
     assert len(result["spatial_figures"]) == 2
     assert len(result["latent_figures"]) == 2
+    assert len(result["gene_figures"]) == 2
+    assert result["latent_figures"] == result["gene_figures"]
     assert {call["title"].split(" (")[0] for call in calls} == {
         "Intrinsic velocity",
         "Full velocity",
+        "Gene intrinsic velocity",
+        "Gene full velocity",
     }
+    spatial_calls = [call for call in calls if call["feature_matrix"] is None]
+    gene_calls = [call for call in calls if call["feature_matrix"] is not None]
+    assert len(spatial_calls) == 2
+    assert len(gene_calls) == 2
+    assert all(call["velocity"].shape == (2, 2) for call in spatial_calls)
+    assert all(call["velocity"].shape == (2, 1) for call in gene_calls)
     with np.load(tmp_path / "velocity_components.npz") as archive:
         np.testing.assert_array_equal(archive["interaction"], 0.0)
 

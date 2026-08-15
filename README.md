@@ -9,7 +9,7 @@ This is the release-candidate package and methods repository. New analyses and d
 extend these public APIs rather than copy training or downstream pipelines into
 separate code trees. Large raw datasets and trained checkpoints are not bundled
 here. The wheel does include the small species-matched CellChatDB tables used
-by its four supported workflow presets; users can override them with another
+by its five supported workflow presets; users can override them with another
 compatible database.
 
 Raw-data accessions, aligned-AnnData keys, checkpoint layout, LR-table format,
@@ -23,8 +23,10 @@ This repository contains:
 
 - the installable Python package `CytoBridge/`
 - preprocessing and training scripts in `scripts/`
-- four dataset tutorials plus one small synthetic preprocessing tutorial in
+- five dataset tutorials plus one small synthetic preprocessing tutorial in
   `notebooks/`
+- package-owned non-spatial Weinreb and scNT workflows, including audited
+  preprocessing, matched training, evaluation, attribution, and figure replay
 - ReadTheDocs source in `docs/`
 - training configuration files in `CytoBridge/configs/`
 - legacy repository-scoped edge-predictor checkpoints in `edge_classifier/`
@@ -34,7 +36,7 @@ This repository does not aim to store:
 
 - large raw or processed datasets
 - large generated manuscript artifacts and raw result bundles
-- large or custom ligand-receptor databases beyond the four bundled preset
+- large or custom ligand-receptor databases beyond the bundled preset
   tables
 
 ## Repository Layout
@@ -47,7 +49,7 @@ cytobridge-spatial/
 │   ├── pl/        # visualization helpers
 │   └── configs/   # YAML training configs
 ├── scripts/       # end-to-end preprocessing / training / evaluation scripts
-├── notebooks/     # four dataset workflows + one synthetic tutorial
+├── notebooks/     # five dataset workflows + one synthetic tutorial
 ├── docs/          # ReadTheDocs user guide, tutorials, and API reference
 ├── edge_classifier/
 ├── environment.yml
@@ -154,7 +156,7 @@ modify caches, data, or configuration.
 ### Package-native workflow command
 
 The installed wheel includes readable presets for Zebrafish, MOSTA, ARISTA,
-and AD mouse. Install `CytoBridge[all]` for the complete model, graph, and
+AD mouse, and developing chicken heart. Install `CytoBridge[all]` for the complete model, graph, and
 figure stack, then inspect a complete plan before supplying large inputs:
 
 ```bash
@@ -166,24 +168,26 @@ cytobridge workflow --config admouse --dry-run --json
 The plan prints the dataset policy, scientific parameters, steps, compute
 requirements, and any missing input. The primary settings are seed 42,
 `alpha_spatial=10`, and `alpha_express=0.015`; generated-cell annotations use
-`k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse. The packaged
-training profiles retain the fixed interaction cutoffs. All four main models
+`k=10` for Zebrafish, MOSTA, and ARISTA, and `k=1` for AD mouse and chicken
+heart. The packaged
+training profiles retain the fixed interaction cutoffs. All five main models
 use learned edge priors. AD's targeted panel represents only seven complete
 ligand-receptor pairs under strict all-subunit matching; the corrected main
 model deliberately uses those labels and its validation-selected predictor
 threshold rather than silently changing the model class.
 
-| preset | interaction cutoff | main edge prior | accepted matched-full predictor threshold |
+| preset | interaction cutoff | main edge prior | validation-selected full predictor threshold |
 |---|---:|---|---:|
 | MOSTA | 0.02400244047956264 | learned predictor | 0.1192110925912857 |
 | ARISTA | 0.03154105148551745 | learned predictor | 0.5884028673171997 |
 | Zebrafish | 0.09606367405591873 | learned predictor | 0.6063615679740906 |
 | AD mouse | 0.012106042891492197 | learned predictor | 0.9956824779510498 |
+| Chicken heart | 0.21681429373719752 | learned predictor | 0.14988678693771362 |
 
 The formal matched matrix now contains 12 completed training and package
 downstream runs: full learned prior, no-LR-prior (`all_spatial`), and
-no-interaction for every dataset. All 12 profiles and all four three-arm
-families pass acceptance SHA-256
+no-interaction for each of those four datasets. All 12 profiles and all four
+three-arm families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
 No-interaction retains velocity, growth, and score; communication and LR are
 `NA` by construction. The formal matched reconstruction comparison is complete:
@@ -192,11 +196,12 @@ mean paired relative sliced-W2 changes for no-LR versus full are +25.46% (AD),
 changes are -0.04%, -6.02%, -28.35%, and -10.16%, respectively. These are
 full-data in-sample reconstruction comparisons, not LOTO or significance
 tests; the interaction effect is dataset-dependent, and no uniform full-model
-superiority is claimed. The primary four-dataset cross-method benchmark is
-also complete: all 90 LOTO executions completed, CytoBridge has the lowest
-spatial sliced-W2 for 7/9 held-out targets, and a linear control wins most
-joint/state comparisons. Four ARISTA stVCR full-data targets remain explicit
-`NA` after a method-native numerical failure. The formal Zebrafish paper
+superiority is claimed. The five-application cross-method benchmark is also
+complete: all 110 LOTO executions completed, CytoBridge has the lowest spatial
+sliced-W2 for 8/11 held-out targets, and a linear control wins 17/22
+joint/state comparisons. Seven stVCR full-data targets remain explicit `NA`
+after method-native numerical failures (four ARISTA and three chicken heart).
+The formal Zebrafish paper
 downstream completed all seven signed stages. The paper-specific S22 panel is a
 single generated global-t0 fixed-population state transport from `t=0` through
 `t=4`: drift, score, interaction, and diffusion are retained, while learned
@@ -209,6 +214,18 @@ states in the original 3 x 3 layout while preserving the full all-generated
 S22 output and support audit. S25 and communication retain their explicitly
 separate interval-local, observed-anchored state contract with learned growth
 enabled.
+
+Developing chicken heart is the fifth package-native application. Its reviewed
+D4/D7/D10/D14 alignment, full learned-prior fit, standard downstream,
+continuous D4-to-D14 perturbation/LR analysis, and corrected velocity figures
+were rerun through the current package. It is a completed single full-model
+application, not a fifth family in the accepted four-dataset three-arm
+ablation matrix. Its separate 10-method LOTO/full-data benchmark is reported
+under signed evaluation manifests. All 20 chicken-heart LOTO executions
+completed; CytoBridge wins D7 joint/spatial, and the spatial winners across
+D7/D10 are CytoBridge and MOSCOT. Its full-data diagnostic is explicitly
+in-sample: CytoBridge wins aggregate spatial sliced-W2, while random
+interpolation wins aggregate joint/state sliced-W2.
 
 Preprocessing and downstream inference can be selected independently. These
 commands call the public package APIs and do not depend on repository scripts:
@@ -299,7 +316,7 @@ named a fitted-model reconstruction diagnostic: it is not a training holdout
 and not a cross-method benchmark. Use the matched benchmark pipeline for those
 claims.
 
-Training never runs implicitly. For all four datasets, adding
+Training never runs implicitly. For the four generic-alignment datasets, adding
 `--train` to the raw-data workflow builds per-timepoint LR graphs, trains an
 edge predictor, and passes its validation-selected threshold into model
 training. `--edge-predictor-threshold` remains an explicit override for
@@ -314,7 +331,9 @@ cytobridge workflow --config mosta --train \
 
 Each preset uses its species-matched formal CellChatDB resource bundled in the
 wheel for downstream strict LR projection: zebrafish for Zebrafish, mouse for
-MOSTA and AD mouse, and human for ARISTA. All four use that resource to fit
+MOSTA and AD mouse, and human for ARISTA. Chicken heart uses the human table as
+an explicitly labeled conserved-symbol proxy because no Gallus gallus CellChatDB
+release is bundled. All five use the declared resource to fit
 their learned edge prior. Pass `--graph-database /path/to/database.csv` to override graph construction
 in a predictor-gated workflow, or
 `--lr-database /path/to/database.csv` to override only the downstream LR
@@ -356,8 +375,8 @@ main learned-predictor training contract, or vice versa.
 
 ### Run the tutorials
 
-The four dataset notebooks are package-facing walkthroughs for Zebrafish,
-MOSTA, ARISTA, and AD mouse. They read the wheel-bundled presets, keep training
+The five dataset notebooks are package-facing walkthroughs for Zebrafish,
+MOSTA, ARISTA, AD mouse, and developing chicken heart. They read the wheel-bundled presets, keep training
 explicit, and cover interpolation/classification, time-slice velocity, growth,
 sparse spatial attention, strict ligand-receptor analysis, and pre-warp evaluation:
 
@@ -372,7 +391,7 @@ the `notebook` and `all` extras install its runtime but do not copy notebooks
 into the current directory.
 
 Zebrafish, MOSTA, and ARISTA use the formal spatial-domain label setting
-`k=10`; AD uses `k=1`. The notebooks are committed without outputs. Their
+`k=10`; AD and chicken heart use `k=1`. The notebooks are committed without outputs. Their
 release smoke uses synthetic data and verifies package wiring; the formal
 scientific results come from the corresponding full-data runs.
 
@@ -401,6 +420,30 @@ The workspace path must not already exist. The script builds the current source
 tree, installs the wheel without dependencies into a clean virtual environment,
 and runs the installed-package contract tests. Pip index access is disabled, so
 missing local build tools fail clearly instead of being downloaded implicitly.
+
+### Non-spatial Weinreb and scNT workflows
+
+The installed CLI also owns the two expression-state workflows that support the
+accepted Weinreb lineage and scNT cortical figures:
+
+```bash
+cytobridge nonspatial list-presets
+cytobridge nonspatial plan --dataset weinreb
+cytobridge nonspatial plan --dataset scnt_cortex
+```
+
+Their explicit sequence is preprocessing, LR edge-prior construction, matched
+Full/No-interaction training, weighted W1/W2/TMV, clone-fate or new-RNA
+direction evaluation, exact interaction attribution, and A4 figure generation.
+They use expression PCs only—no physical spatial coordinates—and simulate
+continuously from the earliest observed time rather than restarting from
+intermediate slices. See
+[`docs/nonspatial_workflows.md`](docs/nonspatial_workflows.md) for complete
+commands and the distinction between exact historical figure replay and new
+corrected matched training. The same documentation also covers the packaged
+shared-CellChatDB consistency analysis against CellChat, official non-spatial
+CellAgentChat, and NicheNet, including CTPS-primary and continuous-score
+sensitivity outputs.
 
 ## Input Requirements
 
@@ -1174,7 +1217,7 @@ Git repository and are supplied explicitly by users:
 
 ## Documentation and citation
 
-The complete user guide, four dataset tutorials, and API reference are built
+The complete user guide, five dataset tutorials, and API reference are built
 from `docs/` and published through Read the Docs. To preview only the
 documentation pages locally, install the base package plus the documentation
 tools; install `.[all]` when you also want to execute the scientific examples:

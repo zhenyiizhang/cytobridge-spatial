@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute the four dataset tutorials through a small public-API smoke.
+"""Execute the five dataset tutorials through a small public-API smoke.
 
 The published notebooks need external aligned data and fitted checkpoints. This
 runner copies each notebook to a temporary directory, supplies a tiny synthetic
@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 
@@ -29,12 +30,14 @@ import numpy as np
 import pandas as pd
 
 from CytoBridge.workflow import load_workflow_config
+
 NOTEBOOKS = {
     "zebrafish": ROOT / "notebooks" / "01_zebrafish.ipynb",
     "mosta": ROOT / "notebooks" / "02_mosta.ipynb",
     "arista": ROOT / "notebooks" / "03_arista.ipynb",
     "admouse": ROOT / "notebooks" / "04_admouse.ipynb",
 }
+CHICKEN_NOTEBOOK = ROOT / "notebooks" / "05_chicken_heart.ipynb"
 
 
 def _source(cell: dict) -> str:
@@ -94,7 +97,7 @@ def _parameter_cell(
     lr_path: Path,
     output_dir: Path,
 ) -> str:
-    return f'''RELEASE_SOURCE_ROOT = Path({str(ROOT)!r})
+    return f"""RELEASE_SOURCE_ROOT = Path({str(ROOT)!r})
 ALIGNED_H5AD = Path({str(h5ad_path)!r})
 MODEL_DIR = Path({str(model_dir)!r})
 LR_DATABASE = Path({str(lr_path)!r})
@@ -118,10 +121,10 @@ pd.Series(
         "classifier_k": K_NEIGHBORS,
     }}
 )
-'''
+"""
 
 
-SMOKE_CELL = '''# Small API-wiring smoke; no checkpoint is loaded and no model is fitted.
+SMOKE_CELL = """# Small API-wiring smoke; no checkpoint is loaded and no model is fitted.
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 assert Path(cb.__file__).resolve().is_relative_to(RELEASE_SOURCE_ROOT)
@@ -190,7 +193,7 @@ pd.Series(
         "figure": str(figure_path),
     }
 )
-'''
+"""
 
 
 SKIPPED_PREFIXES = (
@@ -272,7 +275,9 @@ def _check_placeholder_prompt(source_path: Path, work_dir: Path) -> bool:
         client.execute()
     except CellExecutionError as exc:
         message = str(exc)
-        return "Missing required input(s):" in message and "RUN_TRAINING=False" in message
+        return (
+            "Missing required input(s):" in message and "RUN_TRAINING=False" in message
+        )
     return False
 
 
@@ -287,7 +292,9 @@ def _run(work_dir: Path) -> dict:
         smoke_path = _make_smoke_copy(dataset, work_dir)
         error_outputs = _execute_notebook(smoke_path, work_dir)
         if error_outputs:
-            raise AssertionError(f"{source_path.name} produced {error_outputs} error outputs.")
+            raise AssertionError(
+                f"{source_path.name} produced {error_outputs} error outputs."
+            )
         rows.append(
             {
                 "dataset": dataset,
@@ -298,6 +305,24 @@ def _run(work_dir: Path) -> dict:
                 "executed_copy": str(smoke_path),
             }
         )
+    chicken_smoke = work_dir / "executed" / "05_chicken_heart.smoke.ipynb"
+    chicken_smoke.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(CHICKEN_NOTEBOOK, chicken_smoke)
+    error_outputs = _execute_notebook(chicken_smoke, work_dir)
+    if error_outputs:
+        raise AssertionError(
+            f"{CHICKEN_NOTEBOOK.name} produced {error_outputs} error outputs."
+        )
+    rows.append(
+        {
+            "dataset": "chicken_heart",
+            "notebook": CHICKEN_NOTEBOOK.name,
+            "status": "pass",
+            "training_or_checkpoint_load": False,
+            "source": str(ROOT),
+            "executed_copy": str(chicken_smoke),
+        }
+    )
 
     summary = {
         "scope": "synthetic public-API wiring; not checkpoint or formal execution",

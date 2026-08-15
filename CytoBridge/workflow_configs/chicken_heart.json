@@ -1,0 +1,92 @@
+{
+  "dataset": {
+    "name": "chicken_heart",
+    "display_name": "Developing chicken heart",
+    "annotation_key": "Annotation",
+    "time_key": "time_point_processed",
+    "obsm_key": "X_latent",
+    "spatial_key": "spatial_aligned",
+    "concat_spatial": true
+  },
+  "scientific": {
+    "seed": 42,
+    "alpha_spatial": 10.0,
+    "alpha_express": 0.015,
+    "classifier_k": 1
+  },
+  "steps": {
+    "default": ["downstream"]
+  },
+  "preprocess": {
+    "enabled": true,
+    "mode": "fixed_aligned_input",
+    "note": "Run scripts/prepare_chicken_heart_input.py first. This workflow validates and copies that anatomy-reviewed H5AD without refitting coordinates, then fits the graph and edge predictor.",
+    "time_key": "timepoint",
+    "annotation_source": "region",
+    "align": {
+      "n_top_genes": 2000,
+      "n_pcs": 50,
+      "normalization_target_sum": null,
+      "expression_layer": "counts",
+      "counts_layer": "counts",
+      "raw_count_validation": "strict",
+      "hvg_batch_key": "timepoint",
+      "spatial_dim": 2,
+      "time_mapping": {
+        "D4": 0.0,
+        "D7": 1.0,
+        "D10": 2.0,
+        "D14": 3.0
+      }
+    },
+    "edge_predictor": {
+      "split": 0,
+      "epochs": 100,
+      "batch_size": 1024,
+      "learning_rate": 0.001,
+      "split_strategy": "node_disjoint",
+      "train_sample_ratio_per_epoch": 1.0,
+      "max_train_edges_per_epoch": null,
+      "num_workers": 4
+    }
+  },
+  "train": {
+    "config": "chicken_heart_spatial_full_alpha_express_0015.yaml",
+    "graph_database": "CellChatDB.ligrec.human.csv",
+    "graph_database_scope": "conserved-symbol proxy; no Gallus gallus CellChatDB release",
+    "interaction_cutoff": 0.21681429373719752,
+    "requires_edge_predictor": true,
+    "edge_predictor_threshold": null,
+    "evaluate_after_training": false
+  },
+  "downstream": {
+    "enabled": true,
+    "gene_dynamics_enabled": true,
+    "lr_enabled": true,
+    "preferred_species_tag": "chicken",
+    "lr_scope": {
+      "species_database": "human CellChatDB conserved-symbol proxy",
+      "interpretation": "Gallus gallus has no CellChatDB release. Only complete ligand-receptor subunits recovered through exact conserved chicken/human gene symbols are scored; this is not a species-complete chicken communication screen."
+    },
+    "model_format": "current",
+    "observed": [0.0, 1.0, 2.0, 3.0],
+    "interpolated": [0.5, 1.5, 2.5],
+    "classifier_epochs": 500,
+    "classifier_hidden_size": 128,
+    "classifier_lr": 0.001,
+    "classifier_best_metric": "bacc",
+    "classifier_strict_stratification": true,
+    "sde_n_samples": 3550,
+    "sde_dt": 0.05,
+    "split_sde_dt": 0.05,
+    "split_resample_dt": 0.05,
+    "split_max_particles": 100000,
+    "split_sde_piecewise": true,
+    "split_sde_piecewise_include_end": false,
+    "piecewise_observed_sample_mode": "per_timepoint",
+    "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
+    "split_growth_alpha": 1.0,
+    "lineage_enabled": true
+  }
+}

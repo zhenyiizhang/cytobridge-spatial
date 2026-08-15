@@ -14,8 +14,9 @@ explicit downstream override. Raw study data are public:
 | MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
 | ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
 | AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
+| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `region` | four raw 10x matrices / reviewed `obsm['spatial_aligned']` |
 
-These are the raw-input keys consumed by the four packaged presets. The
+These are the raw-input keys consumed by the five packaged presets. The
 preprocessing output standardizes them to `time_point_processed`, the preset's
 public annotation key, `obsm['X_latent']`, and `obsm['spatial_aligned']` for the
 shared training and downstream APIs. Raw observation names must be unique unless
@@ -24,6 +25,10 @@ across batches, so its preset constructs a reversible `Batch` + `CellID`
 identity; it does not assign identities from row order.
 AD mouse similarly uses `sample` plus `cell_id`, so the original and the
 notebook-deduplicated handoff H5ADs resolve to the same stable identity scheme.
+Chicken heart is prepared by `scripts/prepare_chicken_heart_input.py`, not by
+the generic spatial registration fit. Its D4/D7/D10/D14 anatomical orientation
+and any explicit legacy D7 reflection are validated and recorded before the
+shared graph/training workflow begins.
 
 The ARISTA preset accepts the complete 16,379-gene `Regeneration.h5ad`. It maps
 the five named injury batches at 2/5/10/15/20 DPI to model times 0–4, uses all
@@ -41,11 +46,14 @@ expression data.
 
 The processed aligned H5ADs and completed 0.015 checkpoints are currently
 project artifacts and do not yet have a public archive DOI. The authoritative
-matrix now contains 12 completed training and package-downstream profiles: the
+matched matrix contains 12 completed training and package-downstream profiles: the
 full learned-prior, no-LR-prior (`all_spatial`), and no-interaction arms for
 each of the four datasets. All 12 profiles and all four matched three-arm
 families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
+Developing chicken heart adds one separately completed full learned-prior
+profile and package-downstream chain. It uses the anatomy-reviewed aligned
+H5AD and is not represented as a matched no-LR/no-interaction family.
 These artifacts must be deposited and linked here before the 1.5 stable
 release. Until then, the release candidate is fully installable and supports
 user-provided inputs, but a new reader cannot download the exact manuscript
@@ -141,7 +149,7 @@ downstream/
 ├── communication/communication_by_celltype.csv
 ├── communication/sparse_attention/
 ├── figures/
-├── gene_dynamics/             # default for the four packaged presets
+├── gene_dynamics/             # default for the five packaged presets
 ├── ligand_receptor/           # default, using the preset species database
 └── reconstruction_diagnostic/ # only when requested; not a holdout benchmark
 ```

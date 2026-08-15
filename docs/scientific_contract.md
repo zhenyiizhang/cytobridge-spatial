@@ -25,14 +25,21 @@ particle count, annotation key, species database, and whether persistent
 particle identities exist. These are stored in small workflow presets rather
 than copied implementations.
 
-| Dataset | Interaction cutoff | Main edge prior | Accepted matched-full predictor threshold | Formal k | Particle scope |
+| Dataset | Interaction cutoff | Main edge prior | Validation-selected full predictor threshold | Formal k | Particle scope |
 | --- | ---: | --- | ---: | ---: | --- |
 | Zebrafish | 0.0960636741 | learned predictor | 0.6063615680 | 10 | all available t0 cells |
 | MOSTA | 0.0240024405 | learned predictor | 0.1192110926 | 10 | 12,000 |
 | ARISTA | 0.0315410515 | learned predictor | 0.5884028673 | 10 | 7,668 |
 | AD | 0.0121060429 | learned predictor | 0.9956824780 | 1 | all 53,615 observed t0 cells |
+| Chicken heart | 0.2168142937 | learned predictor | 0.1498867869 | 1 | all 3,550 reviewed spots |
 
-All four corrected de novo workflows keep the preset cutoff, train a new edge
+The fifth package preset, developing chicken heart, uses the human CellChatDB
+only as a declared conserved-symbol proxy. Its current full fit selected edge
+threshold `0.14988678693771362` by validation F1. It is not part of the accepted
+four-dataset matched three-arm matrix, so the completed single-profile run is
+not presented as a chicken-heart no-LR/no-interaction ablation family.
+
+All five current full workflows keep the preset cutoff, train a new edge
 predictor, and use its validation-selected threshold. AD has only seven strict
 complete LR pairs in its targeted panel; the main model uses that learned prior
 and explicitly limits its biological interpretation. The separately packaged

@@ -27,12 +27,12 @@ before starting a long fit.
 :::{grid-item-card} Run a dataset workflow
 :link: quickstart
 :link-type: doc
-Use the wheel-bundled presets for Zebrafish, MOSTA, ARISTA, or AD.
+Use the wheel-bundled presets for Zebrafish, MOSTA, ARISTA, AD, or chicken heart.
 :::
 :::{grid-item-card} Follow a tutorial
 :link: tutorials/index
 :link-type: doc
-Open the four checked-in notebooks and dataset-specific guides.
+Open the five checked-in notebooks and dataset-specific guides.
 :::
 :::{grid-item-card} Understand the science
 :link: scientific_contract
@@ -52,6 +52,7 @@ quickstart
 scientific_contract
 historical_artifact_compatibility
 downstream
+nonspatial_workflows
 benchmarks
 training_compute
 ```
@@ -75,5 +76,5 @@ release_notes
 
 The repository also retains a historical Zebrafish clean-counts audit for
 developers. It is excluded from the strict documentation build: the package
-workflow, scientific contract, and four dataset guides are the supported public
+workflow, scientific contract, and five dataset guides are the supported public
 entry points.

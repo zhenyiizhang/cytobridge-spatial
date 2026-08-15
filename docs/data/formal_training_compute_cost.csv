@@ -11,3 +11,4 @@ ARISTA,matched no-interaction,not_applicable,46209,16379,5252,5252,829.865793,tr
 AD,matched full,learned,172092,347,7252,7252,696.454413,training_run_summary.run_wall_time_seconds,2446.660156,708.554199,complete,PASS
 AD,matched no-LR-prior,all_spatial,172092,347,7252,7252,771.601305,training_run_summary.run_wall_time_seconds,2429.703125,964.205078,complete,PASS
 AD,matched no-interaction,not_applicable,172092,347,7252,7252,503.420531,training_run_summary.run_wall_time_seconds,2318.640625,340.933105,complete,PASS
+Chicken heart,full learned single profile,learned,3550,52,5252,5252,738.557428,training_run_summary.run_wall_time_seconds,2115.500000,1435.501953,complete,single-profile contract

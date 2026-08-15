@@ -77,11 +77,12 @@ def _expected_matched_contract(dataset: str, arm: str) -> dict:
     }
 
 
-def test_complete_ablation_matrix_is_packaged_in_wheel_and_sdist() -> None:
+def test_complete_spatial_ablation_matrix_is_packaged_in_wheel_and_sdist() -> None:
     tracked_ablations = {
         path.name
         for path in CONFIG_DIR.glob("*.yaml")
         if path.stem.endswith(("_no_interaction", "_no_lr_prior"))
+        and "nonspatial" not in path.stem
     }
     assert tracked_ablations == EXPECTED_ABLATIONS
 

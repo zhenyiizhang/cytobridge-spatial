@@ -1,16 +1,17 @@
 # CytoBridge dataset tutorials
 
-These notebooks are the package-facing entry points for the four spatial
+These notebooks are the package-facing entry points for the five spatial
 applications:
 
 - `01_zebrafish.ipynb`
 - `02_mosta.ipynb`
 - `03_arista.ipynb`
 - `04_admouse.ipynb`
+- `05_chicken_heart.ipynb`
 
 They use the same installed `CytoBridge` APIs and wheel-bundled workflow presets.
 Zebrafish, MOSTA, and ARISTA use the manuscript spatial-domain setting `k=10`;
-AD uses `k=1`. Quantitative analyses use aligned, pre-warp states. Spatial warp
+AD and chicken heart use `k=1`. Quantitative analyses use aligned, pre-warp states. Spatial warp
 is reserved for display mosaics, videos, and 3D slice views.
 
 Each notebook defaults to a compact walkthrough: it uses midpoint interpolation
@@ -34,7 +35,9 @@ jupyter lab notebooks/01_zebrafish.ipynb
 
 Each notebook starts with `RUN_TRAINING = False`. Supply an existing aligned
 H5AD and model directory for analysis, or deliberately enable training and
-provide the required edge predictor for any of the four main models. The
+provide the required edge predictor for an existing main model. The chicken
+heart tutorial first runs its anatomy-reviewed raw-count adapter; the standard
+workflow then fits a new graph and edge predictor. The
 dataset-matched formal ligand-receptor database is included in the wheel and
 resolved by `cb.pp.bundled_graph_database_path(DATASET_PRESET)`; no external LR
 CSV is required. Set `LR_DATABASE_OVERRIDE` only when intentionally running a

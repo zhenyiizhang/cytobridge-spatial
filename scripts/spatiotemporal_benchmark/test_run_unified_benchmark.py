@@ -189,6 +189,7 @@ def _write_complete_prediction(
         "paste",
         "spateo",
         "linear_centroid_shift",
+        "exact_ot_displacement",
         "random_independent_pairs",
     }:
         arrays["spatial"] = np.ones(
@@ -797,20 +798,22 @@ def _write_formal_cytobridge_model(formal_dataset_root, root, cfg, split_id):
 
 def test_dataset_matrix_has_the_complete_target_plan():
     configs = runner.load_datasets(list(runner.DATASETS))
+    historical = {name: cfg for name, cfg in configs.items() if name != "chicken_heart"}
     assert all(
         "corrected-matched-ablation-20260813-3c87a3e-r1" in cfg["input_h5ad"]
-        for cfg in configs.values()
+        for cfg in historical.values()
     )
     expected_source_sha256 = {
         "zebrafish": "14753bbfdd05c9971b4ed5db4a7e70693479c7b7074ed1ef1d6f3187e1119811",
         "mosta": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
         "arista": "eb72988986af42aeb8853c253d07218a9cb6294615eff55178fc0b409823205d",
         "admouse": "26d9a68acde90afc09d11b9c17de38525e37b1ee6b2e0290ddbda3efbe9ab968",
+        "chicken_heart": "5bc4dd47a669088ed19005b6601042f537d52b973e470ac5a868d04da8737f77",
     }
     acceptance_sha256 = (
         "c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df"
     )
-    for dataset, cfg in configs.items():
+    for dataset, cfg in historical.items():
         assert cfg["expected_source_sha256"] == expected_source_sha256[dataset]
         audits = cfg["preprocess_contract"]["external_audits"]
         assert len(audits) == 1
@@ -820,6 +823,20 @@ def test_dataset_matrix_has_the_complete_target_plan():
             "datasets": {dataset: {"status": "PASS"}},
             "matched_families": {dataset: {"status": "PASS"}},
         }
+    chicken = configs["chicken_heart"]
+    assert chicken["expected_source_sha256"] == expected_source_sha256["chicken_heart"]
+    assert chicken["benchmark"]["formal_run_root"].endswith(
+        "chicken-heart-full-20260814-42a66d8-r1"
+    )
+    chicken_audit = chicken["preprocess_contract"]["external_audits"]
+    assert len(chicken_audit) == 1
+    assert chicken_audit[0]["name"] == "chicken_heart_training_run_summary"
+    assert chicken_audit[0]["required_exact"]["data"]["sample_counts_by_timepoint"] == [
+        147,
+        528,
+        908,
+        1967,
+    ]
     assert configs["zebrafish"]["loto_targets"] == [1, 2, 3]
     assert configs["zebrafish"]["full_data_targets"] == [1, 2, 3, 4]
     assert configs["mosta"]["loto_targets"] == [1, 2]
@@ -828,6 +845,16 @@ def test_dataset_matrix_has_the_complete_target_plan():
     assert configs["arista"]["full_data_targets"] == [1, 2, 3, 4]
     assert configs["admouse"]["loto_targets"] == [1]
     assert configs["admouse"]["full_data_targets"] == [1, 2]
+    assert configs["chicken_heart"]["loto_targets"] == [1, 2]
+    assert configs["chicken_heart"]["full_data_targets"] == [1, 2, 3]
+
+
+def test_chicken_heart_uses_its_explicit_formal_run_root(tmp_path):
+    cfg = runner.load_datasets(["chicken_heart"])["chicken_heart"]
+    args = SimpleNamespace(formal_root=tmp_path / "unrelated-four-dataset-root")
+    assert runner.formal_dataset_root("chicken_heart", cfg, args) == Path(
+        cfg["benchmark"]["formal_run_root"]
+    )
 
 
 def test_launcher_defaults_bind_the_accepted_final_root():
@@ -1580,6 +1607,7 @@ def test_resume_requires_spatial_for_every_joint_static_scope(tmp_path):
         "paste",
         "spateo",
         "linear_centroid_shift",
+        "exact_ot_displacement",
         "random_independent_pairs",
     ):
         output = _write_complete_prediction(root, method, "full_data", 1, cfg)

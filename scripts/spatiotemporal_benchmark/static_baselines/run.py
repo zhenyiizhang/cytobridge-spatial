@@ -643,6 +643,93 @@ def _random_plans(
     return plans, diagnostics, target_indices
 
 
+def _exact_ot_plans(
+    data: TrajectoryInput,
+    pairs: Sequence[Any],
+    provenance: Mapping[str, Any],
+) -> tuple[list[np.ndarray], list[dict[str, Any]], dict[str, Any]]:
+    """Fit exact balanced OT in the frozen training-reference joint space."""
+
+    raw_reference = provenance.get("training_reference")
+    if not isinstance(raw_reference, str):
+        raise ValueError("exact_ot_displacement requires a verified training reference")
+    reference = Path(raw_reference)
+    with np.load(reference, allow_pickle=False) as archive:
+        if not {"state", "spatial"}.issubset(archive.files):
+            raise ValueError("training reference lacks state/spatial matrices")
+        train_state = np.asarray(archive["state"], dtype=np.float64)
+        train_spatial = np.asarray(archive["spatial"], dtype=np.float64)
+    if (
+        train_state.ndim != 2
+        or train_spatial.ndim != 2
+        or len(train_state) != len(train_spatial)
+        or len(train_state) < 2
+        or not np.isfinite(train_state).all()
+        or not np.isfinite(train_spatial).all()
+    ):
+        raise ValueError("training reference state/spatial matrices are invalid")
+    state_center = train_state.mean(axis=0)
+    state_scale = train_state.std(axis=0, ddof=0)
+    spatial_center = train_spatial.mean(axis=0)
+    spatial_rms_scale = float(np.sqrt(np.mean((train_spatial - spatial_center) ** 2)))
+    if (
+        np.any(~np.isfinite(state_scale))
+        or np.any(state_scale <= 0)
+        or not np.isfinite(spatial_rms_scale)
+        or spatial_rms_scale <= 0
+    ):
+        raise ValueError("training reference has a degenerate frozen transform")
+
+    def transform_joint(state: np.ndarray, spatial: np.ndarray) -> np.ndarray:
+        state_block = (
+            (np.asarray(state, dtype=np.float64) - state_center)
+            / state_scale
+            / np.sqrt(train_state.shape[1])
+        )
+        spatial_block = (
+            (np.asarray(spatial, dtype=np.float64) - spatial_center)
+            / spatial_rms_scale
+            / np.sqrt(train_spatial.shape[1])
+        )
+        return np.concatenate((state_block, spatial_block), axis=1)
+
+    try:
+        import ot
+    except ImportError as exc:  # pragma: no cover - dependency error path
+        raise DependencyUnavailable("exact_ot_displacement requires POT") from exc
+
+    plans: list[np.ndarray] = []
+    diagnostics: list[dict[str, Any]] = []
+    for pair in pairs:
+        left = transform_joint(pair.previous.state_pca, pair.previous.spatial)
+        right = transform_joint(pair.following.state_pca, pair.following.spatial)
+        cost = ot.dist(left, right, metric="sqeuclidean")
+        source_mass = np.full(len(left), 1.0 / len(left), dtype=np.float64)
+        target_mass = np.full(len(right), 1.0 / len(right), dtype=np.float64)
+        raw = ot.emd(source_mass, target_mass, cost, numItermax=2_000_000)
+        plan, diag = validate_and_row_normalize(raw, (len(left), len(right)))
+        plans.append(plan)
+        diagnostics.append(
+            {
+                "from": pair.previous.time,
+                "to": pair.following.time,
+                **asdict(diag),
+                "nonzero": int(np.count_nonzero(np.asarray(raw) > 0)),
+                "transport_cost": float(np.sum(np.asarray(raw) * cost)),
+            }
+        )
+    return (
+        plans,
+        diagnostics,
+        {
+            "schema_version": 1,
+            "state_dim": int(train_state.shape[1]),
+            "spatial_dim": int(train_spatial.shape[1]),
+            "training_reference_sha256": provenance.get("training_reference_sha256"),
+        },
+    )
+
+
 def _coupling_predictions(
     data: TrajectoryInput,
     plans: Sequence[np.ndarray],
@@ -714,6 +801,7 @@ def _control_predictions(
     args: argparse.Namespace,
     data: TrajectoryInput,
     roster_indices: np.ndarray,
+    provenance: Mapping[str, Any],
 ) -> tuple[dict[float, np.ndarray], dict[str, Any], list[np.ndarray]]:
     if args.method == "linear_centroid_shift":
         if data.mode == "loto":
@@ -750,6 +838,25 @@ def _control_predictions(
             shifts,
         )
     pairs = [data.loto_pair()] if data.mode == "loto" else list(data.adjacent_pairs())
+    if args.method == "exact_ot_displacement":
+        plans, diagnostics, transform = _exact_ot_plans(data, pairs, provenance)
+        predictions, composition = _coupling_predictions(
+            data, plans, roster_indices, state_only=False
+        )
+        return (
+            predictions,
+            {
+                "control": "exact_ot_displacement",
+                "conditioning": (
+                    "exact balanced adjacent OT in the frozen training-reference "
+                    "joint space; barycentric displacement interpolation"
+                ),
+                "coupling_diagnostics": diagnostics,
+                "transform": transform,
+                **composition,
+            },
+            plans,
+        )
     plans, diagnostics, selections = _random_plans(args, data, pairs)
     predictions, composition = _coupling_predictions(
         data, plans, roster_indices, state_only=False
@@ -1054,7 +1161,7 @@ def execute_run(args: argparse.Namespace) -> dict[str, Any]:
     else:
         state_only = False
         predictions, control_meta, plans = _control_predictions(
-            args, data, roster_indices
+            args, data, roster_indices, provenance
         )
         manifest["control_run"] = control_meta
 

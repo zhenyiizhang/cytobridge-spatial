@@ -25,5 +25,5 @@ python scripts/smoke_installed_wheel.py
 sphinx-build -W --keep-going -b html docs docs/_build/html
 ```
 
-The four notebook smoke executions use explicit synthetic data and are kept
+The five notebook smoke executions use explicit synthetic data and are kept
 separate from formal scientific outputs.

@@ -14,6 +14,7 @@ import json
 import math
 from numbers import Real
 from pathlib import Path
+import shutil
 from typing import Any, Mapping
 
 from .graph_database import (
@@ -24,11 +25,13 @@ from .graph_database import (
 )
 
 
-WORKFLOW_PRESETS = ("zebrafish", "mosta", "arista", "admouse")
+WORKFLOW_PRESETS = ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
 _PRESET_ALIASES = {
     "ad": "admouse",
     "ad-mouse": "admouse",
     "zfish": "zebrafish",
+    "chicken-heart": "chicken_heart",
+    "chicken": "chicken_heart",
 }
 
 
@@ -327,6 +330,17 @@ def _validate_builtin_training_contract(config: Mapping[str, Any]) -> None:
         if label == "edge predictor threshold" and not yaml_learned:
             if json_value is None and yaml_value is None:
                 continue
+        if (
+            label == "edge predictor threshold"
+            and yaml_learned
+            and config.get("preprocess", {}).get("enabled", True)
+            and json_value is None
+            and yaml_value is None
+        ):
+            # A de novo learned prior selects its operating threshold on the
+            # freshly fitted predictor validation split.  Presets with a frozen
+            # historical model record that model's threshold instead.
+            continue
         if (
             json_value is None
             or yaml_value is None
@@ -1022,7 +1036,11 @@ def build_workflow_plan(
             {
                 "name": "preprocess",
                 "status": "ready" if not missing else "missing input",
-                "compute": "GPU recommended for spatial alignment",
+                "compute": (
+                    "CPU validation; fixed anatomy-reviewed alignment"
+                    if preprocess_config.get("mode") == "fixed_aligned_input"
+                    else "GPU recommended for spatial alignment"
+                ),
                 "missing": missing,
                 "output": None
                 if paths["aligned_h5ad"] is None
@@ -1528,9 +1546,39 @@ def _run_preprocess(
 ) -> Path:
     import anndata as ad
 
-    from CytoBridge.pp import AlignConfig, preprocess_align_to_files
+    from CytoBridge.pp import (
+        AlignConfig,
+        preprocess_align_to_files,
+        validate_prepared_chicken_heart_input,
+    )
 
     preprocess_config = config["preprocess"]
+    mode = str(preprocess_config.get("mode", "fit_spatial_alignment"))
+    if mode == "fixed_aligned_input":
+        if str(config["dataset"]["name"]) != "chicken_heart":
+            raise ValueError(
+                "preprocess.mode='fixed_aligned_input' is currently defined only "
+                "for the anatomy-reviewed chicken_heart preset."
+            )
+        assert options.input_h5ad is not None
+        input_h5ad = options.input_h5ad.expanduser().resolve()
+        prepared = ad.read_h5ad(input_h5ad)
+        fixed_contract = validate_prepared_chicken_heart_input(prepared)
+        if aligned_h5ad.exists() and aligned_h5ad.resolve() != input_h5ad:
+            raise FileExistsError(
+                f"Refusing to overwrite fixed aligned H5AD: {aligned_h5ad}."
+            )
+        if aligned_h5ad.resolve() != input_h5ad:
+            shutil.copy2(input_h5ad, aligned_h5ad)
+        print(
+            "Validated fixed chicken-heart alignment: "
+            f"coordinate_sha256={fixed_contract['coordinate_sha256']}, "
+            f"policy={fixed_contract['coordinate_policy']}."
+        )
+        return aligned_h5ad
+    if mode != "fit_spatial_alignment":
+        raise ValueError(f"Unknown preprocess.mode={mode!r}.")
+
     align_values = dict(preprocess_config.get("align", {}))
     if (
         "spatial_obs_keys" in align_values
@@ -1912,9 +1960,8 @@ def _write_velocity_outputs(
     archive_path = output_dir / "velocity_components.npz"
     np.savez_compressed(archive_path, **components)
 
-    figures: list[str] = []
     spatial_figures: list[str] = []
-    latent_figures: list[str] = []
+    gene_figures: list[str] = []
     use_spatial = (
         bool(concat_spatial)
         if concat_spatial is not None
@@ -1927,9 +1974,19 @@ def _write_velocity_outputs(
     )
     if spatial_dim >= 2:
         labels = adata.obs[annotation_key].astype(str).to_numpy()
+        spatial_coordinates = np.asarray(adata.obsm[spatial_key], dtype=float)[:, :2]
+        fitted_features = np.asarray(components["features"], dtype=float)
+        if fitted_features.ndim != 2 or fitted_features.shape[1] <= spatial_dim:
+            raise ValueError(
+                "Velocity components do not contain expression-state dimensions "
+                "after the spatial coordinates."
+            )
+        expression_features = fitted_features[:, spatial_dim:]
+        gene_dir = output_dir / "gene"
+        gene_dir.mkdir(parents=True, exist_ok=True)
         for time_value in sorted(np.unique(components["times"]).astype(float)):
             mask = np.isclose(components["times"], time_value)
-            coords = components["features"][mask, :2]
+            coords = spatial_coordinates[mask]
             labels_at_time = labels[mask]
             plotted_components = [
                 ("drift", "Intrinsic velocity"),
@@ -1951,28 +2008,23 @@ def _write_velocity_outputs(
                     out_path=str(figure_path),
                     show_legend=False,
                 )
-                figures.append(str(figure_path))
                 spatial_figures.append(str(figure_path))
 
-                latent_features = components["features"][mask, spatial_dim:]
-                latent_velocity = components[component_name][mask, spatial_dim:]
-                if latent_features.shape[1] > 0:
-                    latent_figure_path = output_dir / (
-                        "latent_to_spatial_"
-                        f"{component_name}_time_{_safe_time_name(time_value)}.pdf"
-                    )
-                    cb.pl.plot_velocity_component(
-                        coords=coords,
-                        velocity=latent_velocity,
-                        feature_matrix=latent_features,
-                        labels=labels_at_time,
-                        label_to_color=dict(label_to_color),
-                        title=f"{title} (latent to spatial, t={time_value:g})",
-                        out_path=str(latent_figure_path),
-                        show_legend=False,
-                    )
-                    figures.append(str(latent_figure_path))
-                    latent_figures.append(str(latent_figure_path))
+                gene_figure_path = gene_dir / (
+                    f"{component_name}_time_{_safe_time_name(time_value)}.pdf"
+                )
+                cb.pl.plot_velocity_component(
+                    coords=coords,
+                    velocity=components[component_name][mask, spatial_dim:],
+                    feature_matrix=expression_features[mask],
+                    labels=labels_at_time,
+                    label_to_color=dict(label_to_color),
+                    title=f"Gene {title.lower()} (t={time_value:g})",
+                    out_path=str(gene_figure_path),
+                    show_legend=False,
+                )
+                gene_figures.append(str(gene_figure_path))
+    figures = [*spatial_figures, *gene_figures]
     return {
         "status": "completed",
         "component_archive": str(archive_path),
@@ -1986,10 +2038,22 @@ def _write_velocity_outputs(
         "projection_contract": {
             "spatial": "direct_model_spatial_components",
             "latent": "scvelo_transition_graph_to_spatial_display",
+            "gene": "scvelo_expression_state_to_observed_spatial_coordinates",
             "spatial_dim": spatial_dim,
         },
+        "spatial_projection_mode": "direct_model_spatial_vector",
+        "gene_projection_mode": (
+            "scvelo_expression_state_to_observed_spatial_coordinates"
+        ),
+        "expression_dimensions": (
+            int(expression_features.shape[1]) if spatial_dim >= 2 else 0
+        ),
         "spatial_figures": spatial_figures,
-        "latent_figures": latent_figures,
+        "gene_figures": gene_figures,
+        # Backward-compatible name for consumers that predate the explicit
+        # gene-panel terminology.  These are the same scVelo-projected
+        # expression-state figures, not an additional rendering path.
+        "latent_figures": gene_figures,
         "figures": figures,
     }
 

@@ -5,12 +5,16 @@ external temporal/spatial baselines. Dataset choices live in YAML; the Python
 code contains no zebrafish or ARISTA time labels, paths, dimensions, or target
 sets.
 
-The four corrected package hand-offs are the thin files in
+Five corrected package hand-offs are the thin files in
 `configs/unified_benchmark/`. They share the same state/spatial representation,
 fixed prediction population, source roster, LOTO logic, and full-data logic;
 only dataset-specific layers, labels, times, targets, LR database, and resolved
-training configuration differ. In particular, the MOSTA full-data target set is
-`t1,t2,t3` (not the older truncated `t1,t2` set).
+training configuration differ. The original four-dataset release comparison
+remains immutable. The chicken-heart file is a separate fifth-dataset extension
+bound to its anatomy-reviewed D4/D7/D10/D14 package run. It evaluates D7/D10 in
+LOTO and D7/D10/D14 in full-data mode; D4 is the source boundary and is never
+reported as a forecast target. In the original matrix, the MOSTA full-data
+target set remains `t1,t2,t3` (not the older truncated `t1,t2` set).
 
 The older provenance-locked zebrafish configuration remains at
 `configs/zebrafish_clean_benchmark.yaml`. It freezes:
@@ -40,7 +44,7 @@ in-sample reconstruction and must be reported separately from LOTO.
 
 ## Validate, build, and verify
 
-For the corrected four-dataset run, use the public three-command launcher. Its
+For the corrected unified run, use the public three-command launcher. Its
 `run` command uses a 3,600-second limit per method/split and writes explicit
 `completed`, `timeout`, `oom`, `failed`, `not_available`, or `not_applicable`
 rows; it never substitutes another method. `--dry-run` prints the complete
@@ -59,12 +63,20 @@ stvcr=/software/stvcr`. The default package checkpoints are read from
 same-release, same-seed retraining accepted across the full, radius-only, and
 no-interaction arms; the benchmark uses only its learned-interaction main arm.
 The launcher does not start a method/split until its resolved checkpoints
-exist. Each dataset YAML also pins the aligned-H5AD SHA-256 and the SHA-256 plus
-both the per-profile and matched-family PASS entries of the 12-profile
-acceptance report.
+exist. The original four dataset YAMLs also pin the aligned-H5AD SHA-256 and
+the SHA-256 plus both the per-profile and matched-family PASS entries of the
+12-profile acceptance report. The chicken-heart extension instead pins its
+current-package training summary, aligned-H5AD/model-input hashes, exact
+four-stage counts, and explicit formal training root.
 
-Each four-dataset YAML binds the exact aligned-H5AD SHA-256 and hashed matched
-acceptance report. The resolved input manifest may record the aligned H5AD's
+The primary control set includes `exact_ot_displacement`: exact balanced POT
+OT between training-only adjacent anchors in the frozen joint benchmark space,
+followed by barycentric displacement interpolation (LOTO) or composed adjacent
+maps from the fixed t0 roster (full-data). It uses 800 fitted support cells and
+the same 5,000-particle source roster as every other method.
+
+Each original four-dataset YAML binds the exact aligned-H5AD SHA-256 and hashed
+matched acceptance report. The resolved input manifest may record the aligned H5AD's
 physical accepted-r2 target because the formal matched root uses immutable
 links; the YAML/config-source hash proves those exact bytes were selected
 through the accepted matched hand-off.
@@ -162,7 +174,7 @@ python scripts/spatiotemporal_benchmark/evaluate_predictions.py \
   --status-table "$OUT/status/method_target_status.csv" \
   --output-dir "$OUT/reports/evaluation/loto" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
-            linear_centroid_shift random_independent_pairs
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
 
 python scripts/spatiotemporal_benchmark/summarize_results.py \
   --metrics-long "$OUT/reports/evaluation/loto/loto_metrics_long.csv" \
@@ -206,7 +218,7 @@ python scripts/spatiotemporal_benchmark/evaluate_matched_tracks.py \
   --anchor-times 0 4 \
   --output-dir "$OUT/reports/evaluation/matched" \
   --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
-            linear_centroid_shift random_independent_pairs
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
 ```
 
 Before evaluating predictions, the script also proves directly from NPZ arrays
