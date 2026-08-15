@@ -3,4 +3,4 @@ zebrafish,1,10,"Spatially regularized tissue-domain labels; use the same k in ev
 mosta,1,10,"Spatially regularized tissue-domain labels; use the same k in every formal label-dependent analysis and figure"
 arista,1,10,"Spatially regularized tissue-domain labels; use the same k in every formal label-dependent analysis and figure"
 admouse,1,1,"Heterogeneous and rare populations are strongly suppressed by larger-k smoothing; retain raw MLP labels"
-chicken_heart,1,1,"Small developing-heart anatomical regions are strongly smoothed by larger k; retain the validation-selected unsmoothed MLP labels"
+chicken_heart,1,1,"Developing-heart cell types include spatially restricted populations; retain the validation-selected unsmoothed MLP labels"

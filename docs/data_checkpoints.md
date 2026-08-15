@@ -14,7 +14,7 @@ explicit downstream override. Raw study data are public:
 | MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
 | ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
 | AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
-| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `region` | four raw 10x matrices / reviewed `obsm['spatial_aligned']` |
+| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `celltype_prediction` (`region` retained for anatomy QC) | four raw 10x matrices / reviewed `obsm['spatial_aligned']` |
 
 These are the raw-input keys consumed by the five packaged presets. The
 preprocessing output standardizes them to `time_point_processed`, the preset's

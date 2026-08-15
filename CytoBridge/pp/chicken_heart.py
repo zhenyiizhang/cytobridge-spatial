@@ -194,9 +194,10 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
         raise ChickenHeartContractError(
             "Prepared chicken-heart input contract is not valid JSON."
         ) from exc
-    if contract.get("schema_version") != 2:
+    schema_version = contract.get("schema_version")
+    if schema_version not in {2, 3}:
         raise ChickenHeartContractError(
-            "Prepared chicken-heart input requires contract schema_version=2."
+            "Prepared chicken-heart input requires contract schema_version 2 or 3."
         )
     repair = contract.get("coordinate_repair")
     if not isinstance(repair, dict):
@@ -226,6 +227,52 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
         raise ChickenHeartContractError(
             "Prepared chicken-heart input lacks the raw counts layer."
         )
+    for key in ("region", "celltype_prediction"):
+        if key not in adata.obs:
+            raise ChickenHeartContractError(
+                f"Prepared chicken-heart input lacks obs[{key!r}]."
+            )
+        values = adata.obs[key]
+        if values.isna().any() or values.astype(str).str.strip().eq("").any():
+            raise ChickenHeartContractError(
+                f"Prepared chicken-heart obs[{key!r}] contains missing labels."
+            )
+    if (
+        schema_version == 3
+        and "Annotation" in adata.obs
+        and not np.array_equal(
+            adata.obs["Annotation"].astype(str).to_numpy(),
+            adata.obs["celltype_prediction"].astype(str).to_numpy(),
+        )
+    ):
+        raise ChickenHeartContractError(
+            "Prepared chicken-heart obs['Annotation'] must match "
+            "obs['celltype_prediction']; obs['region'] is reserved for "
+            "anatomical orientation QC."
+        )
+    labels = adata.obs["celltype_prediction"].astype(str).tolist()
+    if schema_version == 3:
+        annotation_contract = contract.get("downstream_annotation")
+        if (
+            not isinstance(annotation_contract, dict)
+            or annotation_contract.get("key") != "celltype_prediction"
+        ):
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input lacks the cell-type annotation contract."
+            )
+        label_digest = hashlib.sha256()
+        for value in labels:
+            encoded = value.encode("utf-8")
+            label_digest.update(len(encoded).to_bytes(8, "little"))
+            label_digest.update(encoded)
+        if annotation_contract.get("ordered_label_sha256") != label_digest.hexdigest():
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart cell-type labels do not match their contract."
+            )
+        if annotation_contract.get("n_classes") != len(set(labels)):
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart cell-type class count does not match its contract."
+            )
     observed_times = sorted(
         np.unique(adata.obs["time_point_processed"].to_numpy(dtype=np.float64)).tolist()
     )
@@ -234,9 +281,18 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
             f"Prepared chicken-heart times are {observed_times}, expected [0,1,2,3]."
         )
     return {
-        "schema_version": 2,
+        "schema_version": int(schema_version),
         "coordinate_sha256": observed_hash,
         "coordinate_policy": repair.get("policy"),
+        "downstream_annotation_key": "celltype_prediction",
+        "legacy_annotation_alias_ignored": bool(
+            schema_version == 2
+            and "Annotation" in adata.obs
+            and not np.array_equal(
+                adata.obs["Annotation"].astype(str).to_numpy(),
+                adata.obs["celltype_prediction"].astype(str).to_numpy(),
+            )
+        ),
         "anatomical_orientation_qc": anatomical,
     }
 

@@ -2,7 +2,7 @@
   "dataset": {
     "name": "chicken_heart",
     "display_name": "Developing chicken heart",
-    "annotation_key": "Annotation",
+    "annotation_key": "celltype_prediction",
     "time_key": "time_point_processed",
     "obsm_key": "X_latent",
     "spatial_key": "spatial_aligned",
@@ -22,7 +22,7 @@
     "mode": "fixed_aligned_input",
     "note": "Run scripts/prepare_chicken_heart_input.py first. This workflow validates and copies that anatomy-reviewed H5AD without refitting coordinates, then fits the graph and edge predictor.",
     "time_key": "timepoint",
-    "annotation_source": "region",
+    "annotation_source": "celltype_prediction",
     "align": {
       "n_top_genes": 2000,
       "n_pcs": 50,

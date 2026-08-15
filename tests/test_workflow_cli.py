@@ -154,6 +154,8 @@ def test_chicken_heart_training_batches_fit_the_earliest_observed_stage():
 
 def test_chicken_heart_lr_scope_is_structured_for_summary_serialization():
     config, _ = load_workflow_config("chicken_heart")
+    assert config["dataset"]["annotation_key"] == "celltype_prediction"
+    assert config["preprocess"]["annotation_source"] == "celltype_prediction"
     scope = config["downstream"]["lr_scope"]
     assert scope["species_database"] == "human CellChatDB conserved-symbol proxy"
     assert (
