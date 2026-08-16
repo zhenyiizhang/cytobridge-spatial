@@ -1025,10 +1025,10 @@ def report(
     rows = pair.set_index(["cytobridge_view", "external_method"]).loc[pair_order]
     y = np.arange(len(rows))[::-1]
     labels = [
-        "Attention – COMMOT",
-        "Exact message – COMMOT",
-        "Attention – CellAgentChat",
-        "Exact message – CellAgentChat",
+        "Attention / COMMOT",
+        "Exact message / COMMOT",
+        "Attention / CellAgentChat",
+        "Exact message / CellAgentChat",
     ]
     ax_a.hlines(y, 0, rows["spearman_rho"], color=pale_grey, linewidth=2)
     ax_a.scatter(
@@ -1144,6 +1144,16 @@ def report(
     ax_c.set_title("LR-rank concordance")
     ax_c.grid(axis="x", color="#E6E6E6", linewidth=0.6)
     ax_c.legend(frameon=False, fontsize=6.7, loc="lower right")
+    ax_c.text(
+        0.98,
+        0.96,
+        "Orange: 95% stratified null",
+        transform=ax_c.transAxes,
+        ha="right",
+        va="top",
+        fontsize=6.5,
+        color="black",
+    )
     _panel_label(ax_c, "c")
 
     ax_d = fig.add_subplot(grid[1, 1])
@@ -1170,17 +1180,11 @@ def report(
             linewidth=0.4,
         )
         lr_label = str(target_summary["lr_id"].iloc[0])
-        ax_d.text(
-            0.02,
-            0.98,
-            f"Joint LR: {lr_label}",
-            transform=ax_d.transAxes,
-            ha="left",
-            va="top",
-            fontsize=8,
-        )
         ax_d.set_xlabel("NicheNet ligand–target evidence")
-    ax_d.set_title("Joint LR → NicheNet receiver targets")
+    ax_d.set_title(
+        "Joint LR → NicheNet receiver targets"
+        + (f"\n{lr_label}" if not targets.empty else "")
+    )
     ax_d.grid(axis="x", color="#E6E6E6", linewidth=0.6)
     _panel_label(ax_d, "d")
 
@@ -1205,16 +1209,11 @@ def report(
         range(3), ["Expression", "Attention", "Exact message"], rotation=25, ha="right"
     )
     rank_row = paper_increment.set_index("cytobridge_view").loc["exact_message"]
-    ax_e.set_title("Independent 2022 zebrafish LR axes")
-    ax_e.text(
-        0.0,
-        0.995,
-        f"{len(represented)}/21 representable; exact-message rank-shift P={rank_row['mannwhitney_p_greater']:.2g}",
-        transform=ax_e.transAxes,
-        ha="left",
-        va="top",
-        fontsize=6.5,
-        color="black",
+    ax_e.set_title(
+        "Independent 2022 zebrafish LR axes\n"
+        f"{len(represented)}/21 representable; no extra exact-message rank enrichment "
+        f"(P={rank_row['mannwhitney_p_greater']:.2g})",
+        fontsize=8.3,
     )
     colorbar_e = fig.colorbar(image_e, ax=ax_e, fraction=0.036, pad=0.02)
     colorbar_e.set_label("Within-view rank percentile", fontsize=7)
