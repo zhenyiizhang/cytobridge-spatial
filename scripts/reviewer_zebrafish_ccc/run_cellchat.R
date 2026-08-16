@@ -375,11 +375,57 @@ if (is.null(rownames(official_database$complex)) || anyDuplicated(rownames(offic
 if (!("Symbol" %in% colnames(official_database$geneInfo))) {
   stop("Pinned CellChat geneInfo table has no Symbol column")
 }
-indices <- as.integer(flat_database$database_row) + 1L
-if (any(is.na(indices)) || any(indices < 1L) || any(indices > nrow(official_database$interaction))) {
-  stop(paste("Prepared database_row is outside the installed", database_object_name, "interaction table"))
+official_interaction <- official_database$interaction
+official_ligand_expanded <- tolower(
+  expand_complex(official_interaction$ligand, official_database$complex)
+)
+official_receptor_expanded <- tolower(
+  expand_complex(official_interaction$receptor, official_database$complex)
+)
+official_structure_key <- paste(
+  official_ligand_expanded,
+  official_receptor_expanded,
+  as.character(official_interaction$annotation),
+  sep = "\r"
+)
+requested_structure_key <- paste(
+  tolower(flat_database$ligand),
+  tolower(flat_database$receptor),
+  flat_database$category,
+  sep = "\r"
+)
+requested_indices <- as.integer(flat_database$database_row) + 1L
+resolve_official_index <- function(position) {
+  requested_index <- requested_indices[[position]]
+  requested_key <- requested_structure_key[[position]]
+  if (
+    !is.na(requested_index) &&
+      requested_index >= 1L &&
+      requested_index <= nrow(official_interaction) &&
+      official_structure_key[[requested_index]] == requested_key
+  ) {
+    return(requested_index)
+  }
+  candidates <- which(official_structure_key == requested_key)
+  if (length(candidates) > 1L) {
+    same_pathway <- candidates[
+      as.character(official_interaction$pathway_name[candidates]) ==
+        flat_database$pathway[[position]]
+    ]
+    if (length(same_pathway) > 0L) candidates <- same_pathway
+  }
+  if (length(candidates) != 1L) {
+    stop(paste(
+      "Pinned CellChat database cannot uniquely resolve prepared database_row",
+      flat_database$database_row[[position]],
+      "by expanded ligand, receptor, category, and pathway"
+    ))
+  }
+  candidates[[1L]]
 }
-pair_lr <- official_database$interaction[indices, , drop = FALSE]
+indices <- vapply(seq_len(nrow(flat_database)), resolve_official_index, integer(1L))
+rows_resolved_by_structural_key <- sum(indices != requested_indices)
+pair_lr <- official_interaction[indices, , drop = FALSE]
 ligand_expanded <- tolower(expand_complex(pair_lr$ligand, official_database$complex))
 receptor_expanded <- tolower(expand_complex(pair_lr$receptor, official_database$complex))
 database_structure_matches <- (
@@ -684,12 +730,14 @@ manifest <- list(
   database = file_record(database_path),
   database_validation = list(
     rule = paste0(
-      "database_row + expanded ligand + expanded receptor + category must match pinned ",
+      "database_row is used when structurally identical; otherwise expanded ligand + ",
+      "expanded receptor + category + pathway must uniquely resolve a pinned ",
       database_object_name,
-      " rowwise; pathway labels are taken exactly from the requested current project CSV"
+      " row; pathway labels are taken exactly from the requested current project CSV"
     ),
     rows_validated = nrow(flat_database),
     all_structural_rows_match = TRUE,
+    rows_resolved_by_structural_key = rows_resolved_by_structural_key,
     pathway_values_taken_from_current_csv = TRUE,
     official_pathway_mismatch_count = sum(pathway_mismatch),
     official_pathway_mismatch_database_rows = as.integer(flat_database$database_row[pathway_mismatch]),
