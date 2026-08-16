@@ -1080,7 +1080,17 @@ def report(
         )
         .tolist()
     )
-    image = ax_b.imshow(pivot.to_numpy(), vmin=0, vmax=1, cmap="Blues", aspect="auto")
+    image = ax_b.pcolormesh(
+        np.arange(pivot.shape[1] + 1) - 0.5,
+        np.arange(pivot.shape[0] + 1) - 0.5,
+        pivot.to_numpy(),
+        vmin=0,
+        vmax=1,
+        cmap="Blues",
+        shading="flat",
+    )
+    ax_b.set_xlim(-0.5, pivot.shape[1] - 0.5)
+    ax_b.set_ylim(pivot.shape[0] - 0.5, -0.5)
     for row_index in range(pivot.shape[0]):
         for column_index in range(pivot.shape[1]):
             value = float(pivot.iloc[row_index, column_index])
@@ -1200,7 +1210,17 @@ def report(
             "exact_message_rank_percentile",
         ]
     ].to_numpy(dtype=float)
-    image_e = ax_e.imshow(matrix, vmin=0.85, vmax=1.0, cmap="YlGnBu", aspect="auto")
+    image_e = ax_e.pcolormesh(
+        np.arange(matrix.shape[1] + 1) - 0.5,
+        np.arange(matrix.shape[0] + 1) - 0.5,
+        matrix,
+        vmin=0.85,
+        vmax=1.0,
+        cmap="YlGnBu",
+        shading="flat",
+    )
+    ax_e.set_xlim(-0.5, matrix.shape[1] - 0.5)
+    ax_e.set_ylim(matrix.shape[0] - 0.5, -0.5)
     axis_labels = [
         f"{row.ligand}–{row.receptor}" for row in represented.itertuples(index=False)
     ]
@@ -1215,8 +1235,16 @@ def report(
         f"(P={rank_row['mannwhitney_p_greater']:.2g})",
         fontsize=8.3,
     )
-    colorbar_e = fig.colorbar(image_e, ax=ax_e, fraction=0.036, pad=0.02)
-    colorbar_e.set_label("Within-view rank percentile", fontsize=7)
+    ax_e.text(
+        0.99,
+        0.01,
+        "Color: rank percentile 0.85–1.00",
+        transform=ax_e.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=6.2,
+        color="black",
+    )
     _panel_label(ax_e, "e")
 
     ax_f = fig.add_subplot(grid[2, :2])
