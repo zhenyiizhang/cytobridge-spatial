@@ -732,12 +732,12 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
         ).to_csv(commot_lr, index=False)
         pd.DataFrame(
             {
-                "sender": ["B"],
-                "receiver": ["A"],
-                "ligand": ["l1"],
-                "receptor": ["r1"],
-                "target": ["T1"],
-                "ligand_target_evidence": [0.5],
+                "sender": ["B", "B", "B"],
+                "receiver": ["A", "A", "A"],
+                "ligand": ["l1", "l2", "l3"],
+                "receptor": ["r1", "r2", "r3"],
+                "target": ["T1", "T1", "T2"],
+                "ligand_target_evidence": [0.5, 0.25, 0.25],
             }
         ).to_csv(nichenet_targets, index=False)
         spec["commot_pathway_csv"] = str(commot_pathways)
@@ -773,14 +773,22 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     selected_targets = pd.read_csv(output / "selected_pair_nichenet_targets.csv")
     assert len(selected_pathways) == 10
     assert len(selected_lr) == 10
-    assert len(selected_targets) == 5
+    assert len(selected_targets) == 10
     for table in (selected_pathways, selected_lr):
         for _, group in table.groupby("dataset"):
             np.testing.assert_allclose(
                 group.sort_values("rank_within_pair").fraction_of_pair_evidence,
                 [2.0 / 3.0, 1.0 / 3.0],
             )
-    np.testing.assert_allclose(selected_targets.fraction_of_pair_evidence, 1.0)
+    for _, group in selected_targets.groupby("dataset"):
+        np.testing.assert_allclose(
+            group.sort_values("rank_within_pair").fraction_of_pair_evidence,
+            [0.75, 0.25],
+        )
+        assert (
+            group.loc[group.target.eq("T1"), "supporting_ligand_receptor_count"].item()
+            == 2
+        )
 
     decision_table = pd.read_csv(output / "main_figure_method_decisions.csv")
     decision_table["include_in_main_figure"] = decision_table.external_method.eq(
@@ -805,6 +813,7 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
         "%", regex=False
     ).all()
     assert evidence.nichenet_target_score_shares.str.contains("%", regex=False).all()
+    assert set(evidence.nichenet_target_score_shares) == {"T1 75.0%, T2 25.0%"}
     assert set(evidence.commot_pathway_score_shares) == {"WNT 66.7%, FGF 33.3%"}
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}

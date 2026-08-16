@@ -420,11 +420,31 @@ def _selected_molecular_evidence(
                 )
                 .drop_duplicates(["ligand", "receptor", "target"])
             )
-            total_evidence = float(table.ligand_target_evidence.sum())
+            representative_lr = (
+                table.groupby("target", as_index=False, sort=False)
+                .first()[["target", "ligand", "receptor"]]
+                .rename(
+                    columns={
+                        "ligand": "representative_ligand",
+                        "receptor": "representative_receptor",
+                    }
+                )
+            )
+            table = (
+                table.groupby("target", as_index=False, sort=False)
+                .agg(
+                    nichenet_evidence=("ligand_target_evidence", "sum"),
+                    supporting_ligand_receptor_count=(
+                        "ligand_target_evidence",
+                        "size",
+                    ),
+                )
+                .merge(representative_lr, on="target", validate="one_to_one")
+                .sort_values("nichenet_evidence", ascending=False, kind="mergesort")
+            )
+            total_evidence = float(table.nichenet_evidence.sum())
             table["fraction_of_pair_evidence"] = (
-                table.ligand_target_evidence / total_evidence
-                if total_evidence > 0
-                else 0.0
+                table.nichenet_evidence / total_evidence if total_evidence > 0 else 0.0
             )
             table = table.head(3)
             for rank, record in enumerate(table.itertuples(index=False), start=1):
@@ -434,13 +454,16 @@ def _selected_molecular_evidence(
                         "sender_type": sender,
                         "receiver_type": receiver,
                         "rank_within_pair": rank,
-                        "ligand": str(record.ligand),
-                        "receptor": str(record.receptor),
                         "target": str(record.target),
-                        "nichenet_evidence": float(record.ligand_target_evidence),
+                        "nichenet_evidence": float(record.nichenet_evidence),
                         "fraction_of_pair_evidence": float(
                             record.fraction_of_pair_evidence
                         ),
+                        "supporting_ligand_receptor_count": int(
+                            record.supporting_ligand_receptor_count
+                        ),
+                        "representative_ligand": str(record.representative_ligand),
+                        "representative_receptor": str(record.representative_receptor),
                         "evidence_scope": evidence_scope,
                     }
                 )
@@ -471,11 +494,12 @@ def _selected_molecular_evidence(
         "sender_type",
         "receiver_type",
         "rank_within_pair",
-        "ligand",
-        "receptor",
         "target",
         "nichenet_evidence",
         "fraction_of_pair_evidence",
+        "supporting_ligand_receptor_count",
+        "representative_ligand",
+        "representative_receptor",
         "evidence_scope",
     ]
     return (
