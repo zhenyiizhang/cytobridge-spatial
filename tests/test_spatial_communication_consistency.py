@@ -798,14 +798,16 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert len(evidence) == 5
     assert set(evidence.dataset) == set(module.FORMAL_DATASET_CONTRACTS)
     assert (evidence.cytobridge_rank_percentile > 0.0).all()
-    assert evidence.cytobridge_attributed_pathways.notna().all()
-    assert evidence.cytobridge_attributed_ligand_receptors.notna().all()
-    assert evidence.cytobridge_attributed_pathways.str.contains("%", regex=False).all()
-    assert evidence.cytobridge_attributed_ligand_receptors.str.contains(
+    assert evidence.commot_pathway_score_shares.notna().all()
+    assert evidence.commot_ligand_receptor_score_shares.notna().all()
+    assert evidence.commot_pathway_score_shares.str.contains("%", regex=False).all()
+    assert evidence.commot_ligand_receptor_score_shares.str.contains(
         "%", regex=False
     ).all()
+    assert evidence.nichenet_target_score_shares.str.contains("%", regex=False).all()
+    assert set(evidence.commot_pathway_score_shares) == {"WNT 66.7%, FGF 33.3%"}
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
     caption = (figure_output / "caption.md").read_text(encoding="utf-8")
-    assert "Quantitative molecular decomposition" in caption
-    assert "not probabilities, effect sizes, or agreement scores" in caption
+    assert "Molecular score composition" in caption
+    assert "not probabilities or effect sizes" in caption
