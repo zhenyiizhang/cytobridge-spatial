@@ -809,5 +809,7 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
     caption = (figure_output / "caption.md").read_text(encoding="utf-8")
-    assert "Molecular score composition" in caption
+    assert "External molecular annotation" in caption
+    assert "COMMOT supplies" in caption
+    assert "NicheNet supplies" in caption
     assert "not probabilities or effect sizes" in caption

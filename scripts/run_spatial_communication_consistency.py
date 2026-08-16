@@ -1186,7 +1186,7 @@ def plot(args: argparse.Namespace) -> None:
         fontsize=6.9,
     )
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "Molecular score composition")
+    _heading(head_c, "c", "Molecular annotation of CytoBridge interactions")
     axes_c = grid[5].subgridspec(
         1, 4, width_ratios=[0.23, 0.85, 1.12, 0.85], wspace=0.40
     )
@@ -1387,24 +1387,24 @@ def plot(args: argparse.Namespace) -> None:
     _draw_molecular_axis(
         ax_pathway,
         pathway_plot_rows,
-        title="Pathways",
-        xlabel="Positive COMMOT score share (%)",
+        title="COMMOT pathways",
+        xlabel="Within-pair score share (%)",
         color=METHOD_COLORS["COMMOT"],
         marker="s",
     )
     _draw_molecular_axis(
         ax_lr,
         lr_plot_rows,
-        title="Ligand-receptor pairs",
-        xlabel="Positive COMMOT score share (%)",
+        title="COMMOT ligand-receptor pairs",
+        xlabel="Within-pair score share (%)",
         color="#4C78A8",
         marker="o",
     )
     _draw_molecular_axis(
         ax_target,
         target_plot_rows,
-        title="Receiver targets",
-        xlabel="Positive NicheNet score share (%)",
+        title="NicheNet receiver targets",
+        xlabel="Within-pair score share (%)",
         color=METHOD_COLORS["NicheNet"],
         marker="D",
     )
@@ -1432,7 +1432,7 @@ def plot(args: argparse.Namespace) -> None:
         zebrafish_note = " Zebrafish NicheNet target evidence was not evaluable under the declared orthology contract."
     else:
         zebrafish_note = ""
-    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) Molecular score composition of the same CytoBridge-selected interactions. Pathway and ligand-receptor values are percentages of the total positive COMMOT score within the selected cell-type pair. Receiver-target values are percentages of the total positive NicheNet target score within that pair. The two highest-scoring entries are shown for each molecular level. These percentages describe within-pair score composition, not probabilities or effect sizes. The linked programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. The molecular labels are a post hoc interpretation of a CytoBridge-selected cell-pair interaction, not native ligand-receptor parameters learned by the model.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) External molecular annotation of the same CytoBridge-selected interactions. COMMOT supplies the pathway and ligand-receptor scores. NicheNet supplies the receiver-target scores. Values are percentages of the corresponding method's total positive score within the selected cell-type pair, and the two highest-scoring entries are shown for each molecular level. These percentages describe within-pair score composition, not probabilities or effect sizes. The linked programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. The molecular labels are a post hoc interpretation of a CytoBridge-selected cell-pair interaction, not native ligand-receptor parameters learned by the model.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,
