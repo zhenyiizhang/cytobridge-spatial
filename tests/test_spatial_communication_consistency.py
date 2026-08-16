@@ -743,6 +743,7 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
         spec["commot_pathway_csv"] = str(commot_pathways)
         spec["commot_lr_csv"] = str(commot_lr)
         spec["nichenet_target_csv"] = str(nichenet_targets)
+        spec["nichenet_target_evidence_scope"] = "primary_species_prior"
         if dataset == "arista":
             spec["method_reason"]["CellAgentChat"] = "cross-species proxy"
         config["datasets"][dataset] = spec
@@ -783,3 +784,13 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert (figure_output / "spatial_communication_consistency_a4.pdf").is_file()
     assert (figure_output / "spatial_communication_consistency_a4.png").is_file()
     assert (figure_output / "figure_manifest.json").is_file()
+    evidence = pd.read_csv(figure_output / "panel_c_model_to_biology.csv")
+    assert len(evidence) == 5
+    assert set(evidence.dataset) == set(module.FORMAL_DATASET_CONTRACTS)
+    assert (evidence.cytobridge_rank_percentile > 0.0).all()
+    assert evidence.cytobridge_attributed_pathways.notna().all()
+    assert evidence.cytobridge_attributed_ligand_receptors.notna().all()
+    assert evidence.biological_process.notna().all()
+    assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
+    caption = (figure_output / "caption.md").read_text(encoding="utf-8")
+    assert "Quantitative molecular decomposition" in caption

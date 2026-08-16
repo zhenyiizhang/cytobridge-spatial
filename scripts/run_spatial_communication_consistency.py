@@ -52,6 +52,13 @@ DATASET_COLORS = {
     "admouse": "#E9C46A",
     "chicken_heart": "#E76F51",
 }
+BIOLOGICAL_PROGRAMS = {
+    "zebrafish": "Neuroepithelial patterning and ECM-guided forebrain development",
+    "mosta": "Mesenchymal signaling linked to chondrogenic maturation",
+    "arista": "Regenerative neuroglial niche and stress-responsive remodeling",
+    "admouse": "Neuron–astrocyte signaling and reactive structural programs",
+    "chicken_heart": "Valve ECM remodeling and endothelial–mesenchymal maturation",
+}
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODEL_BIOLOGY_IMPLEMENTATION_FILES = (
     "CytoBridge/spatial_communication_consistency.py",
@@ -387,6 +394,9 @@ def _selected_molecular_evidence(
                 destination.append(row)
         target_path = spec.get("nichenet_target_csv")
         if target_path:
+            evidence_scope = str(
+                spec.get("nichenet_target_evidence_scope", "primary_species_prior")
+            )
             table = _read_table(target_path, label=f"{dataset} NicheNet targets")
             table = table.loc[
                 table.sender.astype(str).eq(sender)
@@ -414,6 +424,7 @@ def _selected_molecular_evidence(
                         "receptor": str(record.receptor),
                         "target": str(record.target),
                         "nichenet_evidence": float(record.ligand_target_evidence),
+                        "evidence_scope": evidence_scope,
                     }
                 )
     pathway_columns = [
@@ -445,6 +456,7 @@ def _selected_molecular_evidence(
         "receptor",
         "target",
         "nichenet_evidence",
+        "evidence_scope",
     ]
     return (
         pd.DataFrame(pathway_rows, columns=pathway_columns),
@@ -1115,20 +1127,28 @@ def plot(args: argparse.Namespace) -> None:
         fontsize=6.9,
     )
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "Biological annotations")
+    _heading(head_c, "c", "Molecular interpretation of CytoBridge interactions")
     ax_c = fig.add_subplot(grid[5])
     ax_c.set_axis_off()
     ax_c.set_xlim(0, 1)
     ax_c.set_ylim(-0.55, len(dataset_order) + 0.70)
-    columns = {"program": 0.00, "pathway": 0.31, "lr": 0.55, "target": 0.76}
+    columns = {"program": 0.00, "pathway": 0.295, "lr": 0.54, "target": 0.77}
     for x, label in (
-        (columns["program"], "Dataset · directed program"),
-        (columns["pathway"], "COMMOT pathways"),
-        (columns["lr"], "Top COMMOT LR"),
-        (columns["target"], "NicheNet ligand → target"),
+        (0.135, "CytoBridge-selected\ninteraction"),
+        (0.395, "Attributed pathways\n(index)"),
+        (0.635, "Attributed LR\n(index)"),
+        (0.875, "NicheNet targets\n(relative evidence)"),
     ):
-        ax_c.text(x, len(dataset_order) + 0.32, label, fontsize=7.0, fontweight="bold")
-    for separator in (0.295, 0.535, 0.745):
+        ax_c.text(
+            x,
+            len(dataset_order) + 0.30,
+            label,
+            fontsize=6.4,
+            fontweight="bold",
+            ha="center",
+            linespacing=1.05,
+        )
+    for separator in (0.275, 0.52, 0.75):
         ax_c.vlines(
             separator,
             -0.45,
@@ -1136,6 +1156,7 @@ def plot(args: argparse.Namespace) -> None:
             color="#D7DCE0",
             lw=0.65,
         )
+    evidence_rows = []
     for row_index, dataset in enumerate(dataset_order):
         y = len(dataset_order) - 1 - row_index
         if row_index % 2 == 0:
@@ -1154,6 +1175,15 @@ def plot(args: argparse.Namespace) -> None:
             va="center",
         )
         ax_c.text(
+            0.265,
+            y + 0.14,
+            f"CB {float(pair['CytoBridge exact message']):.2f}",
+            fontsize=5.9,
+            color="#5B4B8A",
+            va="center",
+            ha="right",
+        )
+        ax_c.text(
             columns["program"],
             y - 0.14,
             pair_text,
@@ -1161,52 +1191,138 @@ def plot(args: argparse.Namespace) -> None:
             color="#26343F",
             va="center",
         )
-        pathway_values = pathways.loc[pathways.dataset.eq(dataset)].sort_values(
-            "rank_within_pair"
+        pathway_values = (
+            pathways.loc[pathways.dataset.eq(dataset)]
+            .sort_values("rank_within_pair")
+            .copy()
         )
-        pathway_text = " · ".join(pathway_values.pathway.astype(str).head(3))
-        ax_c.text(
-            columns["pathway"],
-            y,
-            textwrap.fill(pathway_text or "not available", width=21),
-            fontsize=6.4,
-            color="#26343F",
-            va="center",
+        pathway_values["cytobridge_attribution_index"] = float(
+            pair["CytoBridge exact message"]
+        ) * pathway_values.relative_to_pair_top.astype(float)
+        pathway_text = " · ".join(
+            f"{row.pathway} {row.cytobridge_attribution_index:.2f}"
+            for row in pathway_values.head(2).itertuples()
         )
-        lr_values = ligand_receptors.loc[
-            ligand_receptors.dataset.eq(dataset)
-        ].sort_values("rank_within_pair")
-        lr_text = "\n".join(
-            f"{row.ligand}–{row.receptor}" for row in lr_values.head(2).itertuples()
+        lr_values = (
+            ligand_receptors.loc[ligand_receptors.dataset.eq(dataset)]
+            .sort_values("rank_within_pair")
+            .copy()
         )
-        ax_c.text(
-            columns["lr"],
-            y,
-            lr_text or "not available",
-            fontsize=6.3,
-            color="#26343F",
-            va="center",
+        lr_values["cytobridge_attribution_index"] = float(
+            pair["CytoBridge exact message"]
+        ) * lr_values.relative_to_pair_top.astype(float)
+        lr_text = ", ".join(
+            f"{row.ligand}–{row.receptor} {row.cytobridge_attribution_index:.2f}"
+            for row in lr_values.head(2).itertuples()
         )
-        target_values = target_evidence.loc[
-            target_evidence.dataset.eq(dataset)
-        ].sort_values("rank_within_pair")
-        if target_values.empty:
-            target_text = "not evaluable\n(strict orthology)"
-            target_color = "#78828A"
-        else:
-            target = target_values.iloc[0]
-            target_text = textwrap.fill(
-                f"{target.ligand}–{target.receptor} → {target.target}", width=24
+        for offset, row in zip(
+            (0.15, -0.15), pathway_values.head(2).itertuples(), strict=False
+        ):
+            score = float(row.cytobridge_attribution_index)
+            ax_c.text(
+                columns["pathway"],
+                y + offset,
+                f"{row.pathway} {score:.2f}",
+                fontsize=5.8,
+                color="#26343F",
+                va="center",
             )
-            target_color = "#26343F"
-        ax_c.text(
-            columns["target"],
-            y,
-            target_text,
-            fontsize=6.3,
-            color=target_color,
-            va="center",
+            ax_c.barh(
+                y + offset,
+                0.080 * score,
+                left=0.430,
+                height=0.105,
+                color=METHOD_COLORS["COMMOT"],
+                alpha=0.90,
+            )
+        for offset, row in zip(
+            (0.15, -0.15), lr_values.head(2).itertuples(), strict=False
+        ):
+            score = float(row.cytobridge_attribution_index)
+            ax_c.text(
+                columns["lr"],
+                y + offset,
+                f"{row.ligand}–{row.receptor} {score:.2f}",
+                fontsize=5.6,
+                color="#26343F",
+                va="center",
+            )
+            ax_c.barh(
+                y + offset,
+                0.064 * score,
+                left=0.678,
+                height=0.105,
+                color="#4C78A8",
+                alpha=0.90,
+            )
+        target_values = (
+            target_evidence.loc[target_evidence.dataset.eq(dataset)]
+            .sort_values("rank_within_pair")
+            .drop_duplicates("target")
+            .head(2)
+            .copy()
         )
+        if target_values.empty:
+            target_text = "not evaluable (strict orthology)"
+            target_scope = "not_evaluable"
+            ax_c.text(
+                columns["target"],
+                y,
+                textwrap.fill(target_text, width=24),
+                fontsize=5.8,
+                color="#78828A",
+                va="center",
+            )
+        else:
+            target_scope = (
+                str(target_values.evidence_scope.iloc[0])
+                if "evidence_scope" in target_values
+                else "unspecified_legacy"
+            )
+            target_values["relative_evidence"] = target_values.nichenet_evidence.astype(
+                float
+            ) / float(target_values.nichenet_evidence.max())
+            target_text = "; ".join(
+                f"{row.target} {row.relative_evidence:.2f}"
+                for row in target_values.itertuples()
+            )
+            for offset, row in zip(
+                (0.15, -0.15), target_values.itertuples(), strict=False
+            ):
+                score = float(row.relative_evidence)
+                ax_c.text(
+                    columns["target"],
+                    y + offset,
+                    f"{row.target} {score:.2f}",
+                    fontsize=5.8,
+                    color="#26343F",
+                    va="center",
+                )
+                ax_c.barh(
+                    y + offset,
+                    0.068 * score,
+                    left=0.920,
+                    height=0.105,
+                    color=METHOD_COLORS["NicheNet"],
+                    alpha=0.90,
+                )
+        biological_process = BIOLOGICAL_PROGRAMS[dataset]
+        evidence_rows.append(
+            {
+                "dataset": dataset,
+                "sender_type": str(pair.sender_type),
+                "receiver_type": str(pair.receiver_type),
+                "cytobridge_rank_percentile": float(pair["CytoBridge exact message"]),
+                "attribution_definition": "CytoBridge pair rank percentile multiplied by COMMOT evidence relative to the strongest pathway or LR within that pair",
+                "cytobridge_attributed_pathways": pathway_text,
+                "cytobridge_attributed_ligand_receptors": lr_text,
+                "nichenet_ligand_targets": target_text.replace("\n", "; "),
+                "nichenet_evidence_scope": target_scope,
+                "biological_process": biological_process,
+            }
+        )
+    evidence_path = output / "panel_c_model_to_biology.csv"
+    pd.DataFrame(evidence_rows).to_csv(evidence_path, index=False)
     pdf = output / "spatial_communication_consistency_a4.pdf"
     png = output / "spatial_communication_consistency_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -1217,7 +1333,19 @@ def plot(args: argparse.Namespace) -> None:
         for method in included
     )
     included_text = " and ".join(included)
-    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal program per dataset. (c) COMMOT supplies pathway and LR annotations, and NicheNet supplies ligand-to-target support where its species prior yielded a valid result. Zebrafish NicheNet was not evaluable under strict orthology. ARISTA and chicken are conserved-human-symbol proxy analyses. These results show descriptive computational consistency rather than causal validation."
+    evidence_table = pd.DataFrame(evidence_rows)
+    zebrafish_scope = str(
+        evidence_table.loc[
+            evidence_table.dataset.eq("zebrafish"), "nichenet_evidence_scope"
+        ].item()
+    )
+    if zebrafish_scope == "one2one_bijective_all_confidence_sensitivity":
+        zebrafish_note = " Zebrafish target annotations use the prespecified one-to-one all-confidence orthology sensitivity because the confidence-1 mapping was not complete across all receiver populations."
+    elif zebrafish_scope == "not_evaluable":
+        zebrafish_note = " Zebrafish NicheNet target evidence was not evaluable under the declared orthology contract."
+    else:
+        zebrafish_note = ""
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) Quantitative molecular decomposition of the same CytoBridge-selected interactions. The pathway and ligand–receptor indices multiply the CytoBridge pair-rank percentile by COMMOT evidence relative to the strongest pathway or ligand–receptor pair within that interaction. NicheNet target bars show evidence relative to the strongest receiver target within the selected pair. The linked programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron–astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. The attribution is a post hoc decomposition of a CytoBridge cell-pair interaction, not a native ligand–receptor parameter of the model.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,
@@ -1238,6 +1366,7 @@ def plot(args: argparse.Namespace) -> None:
                 "selected_pair_nichenet_targets.csv",
             )
         },
+        "panel_c_model_to_biology": _artifact(evidence_path),
     }
     _write_json(output / "figure_manifest.json", manifest)
 
