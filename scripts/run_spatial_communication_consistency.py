@@ -149,6 +149,8 @@ def _load_external(
         "NicheNet": ("nichenet_type_pair_csv", "nichenet_support_score"),
     }
     for method, (path_key, score_column) in definitions.items():
+        if method == "CellAgentChat":
+            score_column = str(spec.get("cellagentchat_score_column", score_column))
         method_status = dict(spec.get("method_status", {})).get(method, "complete")
         path_value = spec.get(path_key)
         if method_status != "complete" or not path_value:

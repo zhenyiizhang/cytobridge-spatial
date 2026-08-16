@@ -529,7 +529,7 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
             "CellChat": ("cellchat_type_pair_csv", "abundance_controlled_score"),
             "CellAgentChat": (
                 "cellagentchat_type_pair_csv",
-                "cellagentchat_native_ctps",
+                "cellagentchat_native_primary_mean",
             ),
             "NicheNet": ("nichenet_type_pair_csv", "nichenet_support_score"),
         }
@@ -544,6 +544,7 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
                 path, index=False
             )
             spec[key] = str(path)
+        spec["cellagentchat_score_column"] = "cellagentchat_native_primary_mean"
         commot_pathways = root / "commot_pathways.csv"
         commot_lr = root / "commot_lr.csv"
         nichenet_targets = root / "nichenet_targets.csv"
