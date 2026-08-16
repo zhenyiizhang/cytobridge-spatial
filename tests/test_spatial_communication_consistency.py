@@ -806,15 +806,15 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert len(evidence) == 5
     assert set(evidence.dataset) == set(module.FORMAL_DATASET_CONTRACTS)
     assert (evidence.cytobridge_rank_percentile > 0.0).all()
-    assert evidence.commot_pathway_score_shares.notna().all()
-    assert evidence.commot_ligand_receptor_score_shares.notna().all()
-    assert evidence.commot_pathway_score_shares.str.contains("%", regex=False).all()
-    assert evidence.commot_ligand_receptor_score_shares.str.contains(
+    assert evidence.commot_pathway_ranks.notna().all()
+    assert evidence.commot_ligand_receptor_ranks.notna().all()
+    assert not evidence.commot_pathway_ranks.str.contains("%", regex=False).any()
+    assert not evidence.commot_ligand_receptor_ranks.str.contains(
         "%", regex=False
-    ).all()
-    assert evidence.nichenet_target_score_shares.str.contains("%", regex=False).all()
-    assert set(evidence.nichenet_target_score_shares) == {"T1 75.0%, T2 25.0%"}
-    assert set(evidence.commot_pathway_score_shares) == {"WNT 66.7%, FGF 33.3%"}
+    ).any()
+    assert not evidence.nichenet_target_ranks.str.contains("%", regex=False).any()
+    assert set(evidence.nichenet_target_ranks) == {"1. T1, 2. T2"}
+    assert set(evidence.commot_pathway_ranks) == {"1. WNT, 2. FGF"}
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
     caption = (figure_output / "caption.md").read_text(encoding="utf-8")
@@ -822,4 +822,4 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert "COMMOT ranks pathway and ligand-receptor programs" in caption
     assert "NicheNet links candidate ligands" in caption
     assert "CytoBridge specifies the sender-receiver interaction" in caption
-    assert "not probabilities or effect sizes" in caption
+    assert "method-specific score magnitudes are deliberately omitted" in caption

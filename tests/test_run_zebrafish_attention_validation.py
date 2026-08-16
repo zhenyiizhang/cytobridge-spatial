@@ -136,9 +136,15 @@ def _write_fixture(tmp_path: Path) -> Path:
                 "stage": 4,
                 "ligand": ligand,
                 "receptor": receptor,
-                "abundance_controlled_distinct_cell_score": float(index + 1),
+                "sender_type": sender,
+                "receiver_type": receiver,
+                "abundance_controlled_distinct_cell_score": float(
+                    (index + 1) * (sender_index + 1) * (receiver_index + 1)
+                ),
             }
             for index, (ligand, receptor, _) in enumerate(lr_rows)
+            for sender_index, sender in enumerate(sorted(set(labels)))
+            for receiver_index, receiver in enumerate(sorted(set(labels)))
         ]
     ).to_csv(commot_lr, index=False)
     nichenet_lr = inputs / "nichenet_lr.csv"
@@ -245,7 +251,7 @@ def _write_fixture(tmp_path: Path) -> Path:
     _write_json(
         spec,
         {
-            "schema_version": 1,
+            "schema_version": MODULE.SCHEMA_VERSION,
             "workflow": "zebrafish_attention_lr_independent_validation",
             "dataset": "zebrafish",
             "cell_type_key": "Annotation",
@@ -278,6 +284,9 @@ def test_analyze_and_validate_real_writer_schemas(tmp_path: Path) -> None:
     spatial = pd.read_csv(output / "selected_paper_axis_spatial_summary.csv")
     assert spatial.n_unique_edges.iloc[0] == 30
     assert spatial.n_top_exact_message_lr_edges.iloc[0] >= 1
+    contexts = pd.read_csv(output / "selected_paper_axis_context_external_ranks.csv")
+    assert len(contexts) == 9
+    assert contexts.selected_by_cytobridge.sum() == 6
 
 
 def test_validation_fails_after_table_tamper(tmp_path: Path) -> None:
@@ -311,6 +320,9 @@ def test_report_writer_and_validator(tmp_path: Path) -> None:
     assert "fixed-checkpoint" not in caption.casefold()
     assert (report / "panel_data" / "cytobridge_lr_scores.csv.gz").is_file()
     assert (report / "panel_data" / "commot_lr_scores_collapsed.csv.gz").is_file()
+    assert (
+        report / "panel_data" / "selected_paper_axis_context_external_ranks.csv"
+    ).is_file()
     assert not (
         report / "panel_data" / "fixed_checkpoint_interaction_on_off.csv"
     ).exists()

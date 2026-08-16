@@ -1264,14 +1264,6 @@ def plot(args: argparse.Namespace) -> None:
     target_plot_rows: list[dict[str, object]] = []
     evidence_rows = []
 
-    def _evidence_fraction(frame: pd.DataFrame, score_column: str) -> pd.Series:
-        if "fraction_of_pair_evidence" in frame:
-            return frame.fraction_of_pair_evidence.astype(float)
-        denominator = float(frame[score_column].astype(float).sum())
-        if denominator <= 0:
-            return pd.Series(np.zeros(len(frame)), index=frame.index, dtype=float)
-        return frame[score_column].astype(float) / denominator
-
     for dataset in dataset_order:
         base = group_bases[dataset]
         pair = selected.loc[selected.dataset.eq(dataset)].iloc[0]
@@ -1301,18 +1293,12 @@ def plot(args: argparse.Namespace) -> None:
             .head(2)
             .copy()
         )
-        pathway_values["evidence_fraction"] = _evidence_fraction(
-            pathway_values, "commot_score"
-        )
-        pathway_values["score_share_percent"] = 100.0 * pathway_values.evidence_fraction
         lr_values = (
             ligand_receptors.loc[ligand_receptors.dataset.eq(dataset)]
             .sort_values("rank_within_pair")
             .head(2)
             .copy()
         )
-        lr_values["evidence_fraction"] = _evidence_fraction(lr_values, "commot_score")
-        lr_values["score_share_percent"] = 100.0 * lr_values.evidence_fraction
         target_values = (
             target_evidence.loc[target_evidence.dataset.eq(dataset)]
             .sort_values("rank_within_pair")
@@ -1329,14 +1315,8 @@ def plot(args: argparse.Namespace) -> None:
                 if "evidence_scope" in target_values
                 else "unspecified_legacy"
             )
-            target_values["evidence_fraction"] = _evidence_fraction(
-                target_values, "nichenet_evidence"
-            )
-            target_values["score_share_percent"] = (
-                100.0 * target_values.evidence_fraction
-            )
             target_text = ", ".join(
-                f"{row.target} {row.score_share_percent:.1f}%"
+                f"{int(row.rank_within_pair)}. {row.target}"
                 for row in target_values.itertuples()
             )
         offsets = (0.26, -0.26)
@@ -1345,7 +1325,7 @@ def plot(args: argparse.Namespace) -> None:
                 {
                     "y": base + offset,
                     "label": str(row.pathway),
-                    "value": float(row.score_share_percent),
+                    "value": float(row.rank_within_pair),
                 }
             )
         for offset, row in zip(offsets, lr_values.itertuples(), strict=False):
@@ -1353,7 +1333,7 @@ def plot(args: argparse.Namespace) -> None:
                 {
                     "y": base + offset,
                     "label": f"{row.ligand}-{row.receptor}",
-                    "value": float(row.score_share_percent),
+                    "value": float(row.rank_within_pair),
                 }
             )
         for offset, row in zip(offsets, target_values.itertuples(), strict=False):
@@ -1361,15 +1341,15 @@ def plot(args: argparse.Namespace) -> None:
                 {
                     "y": base + offset,
                     "label": str(row.target),
-                    "value": float(row.score_share_percent),
+                    "value": float(row.rank_within_pair),
                 }
             )
         pathway_text = ", ".join(
-            f"{row.pathway} {row.score_share_percent:.1f}%"
+            f"{int(row.rank_within_pair)}. {row.pathway}"
             for row in pathway_values.itertuples()
         )
         lr_text = ", ".join(
-            f"{row.ligand}-{row.receptor} {row.score_share_percent:.1f}%"
+            f"{int(row.rank_within_pair)}. {row.ligand}-{row.receptor}"
             for row in lr_values.itertuples()
         )
         evidence_rows.append(
@@ -1378,11 +1358,10 @@ def plot(args: argparse.Namespace) -> None:
                 "sender_type": str(pair.sender_type),
                 "receiver_type": str(pair.receiver_type),
                 "cytobridge_rank_percentile": pair_rank,
-                "commot_score_share_definition": "100 × item positive COMMOT score / sum of all positive COMMOT scores within the selected pair",
-                "nichenet_score_share_definition": "100 × target positive NicheNet score / sum of all positive NicheNet target scores within the selected pair",
-                "commot_pathway_score_shares": pathway_text,
-                "commot_ligand_receptor_score_shares": lr_text,
-                "nichenet_target_score_shares": target_text,
+                "ordinal_rank_definition": "rank among positive external-method entries within the CytoBridge-selected cell-type pair; 1 is highest",
+                "commot_pathway_ranks": pathway_text,
+                "commot_ligand_receptor_ranks": lr_text,
+                "nichenet_target_ranks": target_text,
                 "nichenet_evidence_scope": target_scope,
                 "biological_process": BIOLOGICAL_PROGRAMS[dataset],
             }
@@ -1397,22 +1376,13 @@ def plot(args: argparse.Namespace) -> None:
         color: str,
         marker: str,
     ) -> None:
-        maximum = max(
-            80.0,
-            max(
-                float(row["value"])
-                for local_rows in (pathway_plot_rows, lr_plot_rows, target_plot_rows)
-                for row in local_rows
-            ),
-        )
-        axis.set_xlim(0.0, maximum * 1.04)
+        axis.set_xlim(0.72, 2.28)
         axis.set_ylim(y_min, y_max)
         axis.set_title(title, fontsize=9, color="black", pad=7)
         axis.set_xlabel(xlabel, fontsize=7.2, color="black")
         for row in rows:
             y_value = float(row["y"])
             value = float(row["value"])
-            axis.hlines(y_value, 0.0, value, color="#B8BEC3", lw=0.9, zorder=1)
             axis.scatter(
                 value,
                 y_value,
@@ -1435,13 +1405,16 @@ def plot(args: argparse.Namespace) -> None:
             axis.axhline((upper + lower) / 2.0, color="#D8DDE1", lw=0.55)
         axis.tick_params(axis="x", labelsize=7.2, colors="black")
         axis.tick_params(axis="y", length=0, pad=2, colors="black")
-        style.clean_axis(axis, grid=True)
+        axis.set_xticks([1, 2], ["1", "2"])
+        axis.axvline(1, color="#E4E7E9", lw=0.6, zorder=0)
+        axis.axvline(2, color="#E4E7E9", lw=0.6, zorder=0)
+        style.clean_axis(axis, grid=False)
 
     _draw_molecular_axis(
         ax_pathway,
         pathway_plot_rows,
         title="COMMOT pathways",
-        xlabel="Within-pair score share (%)",
+        xlabel="Rank within selected pair",
         color=METHOD_COLORS["COMMOT"],
         marker="s",
     )
@@ -1449,7 +1422,7 @@ def plot(args: argparse.Namespace) -> None:
         ax_lr,
         lr_plot_rows,
         title="COMMOT ligand–receptor pairs",
-        xlabel="Within-pair score share (%)",
+        xlabel="Rank within selected pair",
         color="#4C78A8",
         marker="o",
     )
@@ -1457,7 +1430,7 @@ def plot(args: argparse.Namespace) -> None:
         ax_target,
         target_plot_rows,
         title="NicheNet receiver targets",
-        xlabel="Within-pair score share (%)",
+        xlabel="Rank within selected pair",
         color=METHOD_COLORS["NicheNet"],
         marker="D",
     )
@@ -1498,7 +1471,7 @@ def plot(args: argparse.Namespace) -> None:
         zebrafish_note = " Zebrafish NicheNet target evidence was not evaluable under the declared orthology contract."
     else:
         zebrafish_note = ""
-    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one representative high-ranking off-diagonal interaction per dataset. (c) Molecular resolution of the selected interactions. CytoBridge specifies the sender-receiver interaction, COMMOT ranks pathway and ligand-receptor programs within that interaction, and NicheNet links candidate ligands from the same frozen LR universe to receiver target programs. Each position is the percentage of the external method's total positive score within the selected cell-type pair; the two highest-scoring entries are shown at each molecular level. These percentages describe within-pair score composition, not probabilities or effect sizes. The resulting programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. COMMOT and NicheNet provide molecular and regulatory resolution rather than native ligand-receptor parameters learned end-to-end by CytoBridge.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one representative high-ranking off-diagonal interaction per dataset. (c) Molecular resolution of the selected interactions. CytoBridge specifies the sender-receiver interaction, COMMOT ranks pathway and ligand-receptor programs within that interaction, and NicheNet links candidate ligands from the same frozen LR universe to receiver target programs. Only ordinal positions 1 and 2 are shown; method-specific score magnitudes are deliberately omitted because they are not comparable across methods or datasets. The resulting programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. COMMOT and NicheNet provide molecular and regulatory resolution rather than native ligand-receptor parameters learned end-to-end by CytoBridge.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     provenance = (
         "# Figure provenance\n\n"
