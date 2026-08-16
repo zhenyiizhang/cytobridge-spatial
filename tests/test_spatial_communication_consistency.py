@@ -49,6 +49,15 @@ def test_formal_contract_and_gate_are_frozen() -> None:
     assert SPATIAL_PROXY_CONTRACTS["chicken_heart"]["analysis_tier"] == ("sensitivity")
 
 
+def test_nichenet_runner_freezes_mixed_empty_target_column_types() -> None:
+    runner = (
+        Path(__file__).parents[1] / "scripts" / "run_nonspatial_nichenet.R"
+    ).read_text()
+    assert "ligand = as.character(ligand)" in runner
+    assert "target = as.character(target)" in runner
+    assert "weight = as.numeric(weight)" in runner
+
+
 def test_stratified_sample_is_deterministic_and_retains_rare_types() -> None:
     labels = np.asarray(["common"] * 90 + ["rare"] * 2 + ["other"] * 8)
     first = stratified_sample_indices(labels, total=20, seed=17)

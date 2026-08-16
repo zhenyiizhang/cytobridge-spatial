@@ -71,7 +71,12 @@ for (receiver_oi in sort(unique(gene_sets$receiver))) {
     n = 250
   ) %>% bind_rows() %>%
     filter(!is.na(target), !is.na(weight)) %>%
-    mutate(receiver = receiver_oi)
+    transmute(
+      ligand = as.character(ligand),
+      target = as.character(target),
+      weight = as.numeric(weight),
+      receiver = receiver_oi
+    )
   target_outputs[[receiver_oi]] <- links
 }
 
