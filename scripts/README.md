@@ -130,6 +130,18 @@ symbol-bijective one-to-one mapping is sensitivity-only. ARISTA and chicken
 conserved-human-symbol runs are likewise labelled as proxy sensitivity
 analyses.
 
+The same orchestrator owns the reviewer-facing model-linked biology addendum.
+`select-model-biology` crosses the frozen LR database with every terminal
+off-diagonal model cell-type pair and selects by CytoBridge exact-message ×
+sender-ligand × receiver-receptor activity only. `score-model-biology` retains
+the cell-level audit, while `plot-model-biology` evaluates COMMOT and the frozen
+current-database CellAgentChat pair-level CTPS only after selection and renders
+the A4 figure. Its compact `panel_data`
+directory can reproduce the visual locally without the original large H5ADs.
+An unavailable dataset remains explicit rather than being replaced by a
+different rule. LR labels are post-hoc molecular compatibility annotations of
+learned messages, not native biochemical identities or causal claims.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its

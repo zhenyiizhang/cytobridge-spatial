@@ -20,6 +20,9 @@ from CytoBridge.spatial_communication_consistency import (
     pairwise_cytobridge_metrics,
     prepare_shared_samples,
     prepare_spatial_proxy_inputs,
+    model_linked_spatial_colocalization,
+    select_global_model_linked_lr_example,
+    select_model_linked_lr_example,
     sha256_file,
     stratified_sample_indices,
 )
@@ -47,6 +50,18 @@ def test_formal_contract_and_gate_are_frozen() -> None:
         "ensembl116_strict_one_to_one"
     )
     assert SPATIAL_PROXY_CONTRACTS["chicken_heart"]["analysis_tier"] == ("sensitivity")
+    config = json.loads(
+        (
+            Path(__file__).parents[1]
+            / "configs"
+            / "spatial_communication_consistency"
+            / "five_datasets.json"
+        ).read_text(encoding="utf-8")
+    )
+    model_axis = config["molecular_attribution"]["model_linked_lr_axis"]
+    assert model_axis["minimum_active_model_edges"] == 10
+    assert model_axis["external_methods_used_after_selection_only"] is True
+    assert model_axis["external_method_candidate_universes_are_zero_filled"] is True
 
 
 def test_nichenet_runner_freezes_mixed_empty_target_column_types() -> None:
@@ -65,6 +80,132 @@ def test_stratified_sample_is_deterministic_and_retains_rare_types() -> None:
     assert np.array_equal(first, second)
     assert len(first) == 20
     assert set(labels[first]) == {"common", "rare", "other"}
+
+
+def _write_model_biology_edges(directory: Path) -> None:
+    stage = directory / "stage_2_terminal_2"
+    stage.mkdir(parents=True)
+    for seed, scale in ((101, 1.0), (202, 1.1)):
+        pd.DataFrame(
+            {
+                "stage": [2.0] * 4,
+                "grouping_seed": [seed] * 4,
+                "source_index": [0, 0, 1, 1],
+                "target_index": [2, 3, 2, 3],
+                "sender_type": ["A"] * 4,
+                "receiver_type": ["B"] * 4,
+                "edge_message_norm_joint": np.asarray([4, 3, 2, 1]) * scale,
+                "attention_abs_mean": np.asarray([1, 2, 3, 4]) * scale,
+            }
+        ).to_csv(stage / f"edges_seed_{seed}.csv.gz", index=False)
+
+
+def _model_biology_fixture() -> ad.AnnData:
+    data = ad.AnnData(
+        X=sparse.csr_matrix(
+            np.asarray(
+                [
+                    [3, 0, 1, 0],
+                    [2, 0, 0, 0],
+                    [0, 3, 0, 1],
+                    [0, 2, 0, 0],
+                ],
+                dtype=np.float32,
+            )
+        ),
+        obs=pd.DataFrame(
+            {"ccc_cell_type": ["A", "A", "B", "B"]},
+            index=["a0", "a1", "b0", "b1"],
+        ),
+        var=pd.DataFrame(index=["l1", "r1", "l2", "r2"]),
+    )
+    data.obsm["spatial_aligned"] = np.asarray(
+        [[0, 0], [0, 1], [1, 0], [1, 1]], dtype=np.float32
+    )
+    return data
+
+
+def test_model_linked_lr_selection_and_spatial_null_are_deterministic(
+    tmp_path: Path,
+) -> None:
+    attribution = tmp_path / "attribution"
+    _write_model_biology_edges(attribution)
+    data = _model_biology_fixture()
+    commot = pd.DataFrame(
+        {
+            "stage": [2.0, 2.0],
+            "sender_type": ["A", "A"],
+            "receiver_type": ["B", "B"],
+            "ligand": ["l1", "l2"],
+            "receptor": ["r1", "r2"],
+            "pathway": ["P1", "P2"],
+            "score": [9.0, 1.0],
+            "abundance_controlled_distinct_cell_score": [0.9, 0.1],
+        }
+    )
+    candidates, selected, excluded = select_model_linked_lr_example(
+        data,
+        attribution,
+        commot,
+        dataset="admouse",
+        terminal_time=2.0,
+        sender_type="A",
+        receiver_type="B",
+        minimum_active_edges=1,
+    )
+    assert excluded.empty
+    assert len(candidates) == 2
+    assert (selected.ligand, selected.receptor) == ("l1", "r1")
+    flows = pd.DataFrame(
+        {
+            "source_cell_id": ["a0", "a0", "a1", "a1"],
+            "target_cell_id": ["b0", "b1", "b0", "b1"],
+            "sender_type": ["A"] * 4,
+            "receiver_type": ["B"] * 4,
+            "commot_flow": [4.0, 3.0, 2.0, 1.0],
+        }
+    )
+    first = model_linked_spatial_colocalization(
+        data,
+        attribution,
+        flows,
+        selected.to_dict(),
+        match_radius=0.6,
+        top_fraction=0.5,
+        permutations=25,
+        seed=17,
+    )
+    second = model_linked_spatial_colocalization(
+        data,
+        attribution,
+        flows,
+        selected.to_dict(),
+        match_radius=0.6,
+        top_fraction=0.5,
+        permutations=25,
+        seed=17,
+    )
+    assert first[0] == second[0]
+    pd.testing.assert_frame_equal(first[3], second[3])
+    assert first[0]["symmetric_coverage"] == 1.0
+    (
+        global_candidates,
+        global_selected,
+        global_excluded,
+    ) = select_global_model_linked_lr_example(
+        data,
+        attribution,
+        commot.loc[commot["ligand"].eq("l2")],
+        lr_database=commot[["ligand", "receptor", "pathway"]],
+        dataset="admouse",
+        terminal_time=2.0,
+        minimum_active_edges=1,
+    )
+    assert global_excluded.empty
+    assert len(global_candidates) == 2
+    assert (global_selected.sender_type, global_selected.receiver_type) == ("A", "B")
+    assert (global_selected.ligand, global_selected.receptor) == ("l1", "r1")
+    assert float(global_selected.commot_abundance_score) == 0.0
 
 
 def _write_zebrafish_fixture(path: Path) -> None:
@@ -382,6 +523,27 @@ def _load_spatial_script():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def test_model_biology_plot_accepts_compact_panel_data() -> None:
+    module = _load_spatial_script()
+    args = module.build_parser().parse_args(
+        [
+            "plot-model-biology",
+            "--spatial-panel-data-dir",
+            "panel",
+            "--aggregate-dir",
+            "aggregate",
+            "--selection-dir",
+            "selection",
+            "--edge-dir",
+            "edges",
+            "--output-dir",
+            "figure",
+        ]
+    )
+    assert args.spatial_panel_data_dir == "panel"
+    assert args.config is None
 
 
 def test_summarize_nichenet_writes_pair_and_molecular_evidence(tmp_path: Path) -> None:

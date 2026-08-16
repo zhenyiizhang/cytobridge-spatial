@@ -18,6 +18,7 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 from scipy import sparse, stats
+from scipy.spatial import cKDTree
 
 from .graph_database import selected_feature_symbol
 
@@ -1052,3 +1053,597 @@ def evaluate_main_figure_gate(
             }
         )
     return pd.DataFrame(rows)
+
+
+def _complex_gene_activity(data: ad.AnnData, symbol: str) -> np.ndarray:
+    """Return a robust [0, 1] activity for a singleton or underscore complex."""
+
+    lookup: dict[str, list[int]] = {}
+    for index, gene in enumerate(data.var_names.astype(str)):
+        lookup.setdefault(gene.casefold(), []).append(index)
+    indices: list[int] = []
+    for gene in (part.strip() for part in str(symbol).split("_")):
+        matches = lookup.get(gene.casefold(), [])
+        if len(matches) != 1:
+            raise ValueError(
+                f"LR component {gene!r} has {len(matches)} case-insensitive H5AD matches"
+            )
+        indices.append(matches[0])
+    values = data.X[:, indices]
+    values = values.toarray() if sparse.issparse(values) else np.asarray(values)
+    raw = np.min(np.asarray(values, dtype=np.float64), axis=1)
+    positive = raw[raw > 0]
+    scale = float(np.quantile(positive, 0.95)) if positive.size else 1.0
+    if not np.isfinite(scale) or scale <= 0:
+        scale = 1.0
+    return np.clip(raw / scale, 0.0, 1.0)
+
+
+def _activity_on_model_rows(
+    model_data: ad.AnnData, activity_data: ad.AnnData, symbol: str
+) -> np.ndarray:
+    """Align a terminal-only LR-expression vector to the two-stage model rows."""
+
+    if not model_data.obs_names.is_unique or not activity_data.obs_names.is_unique:
+        raise ValueError("model and LR-expression H5AD obs_names must be unique")
+    positions = model_data.obs_names.astype(str).get_indexer(
+        activity_data.obs_names.astype(str)
+    )
+    if np.any(positions < 0):
+        raise ValueError("LR-expression H5AD contains rows absent from model H5AD")
+    result = np.zeros(model_data.n_obs, dtype=float)
+    result[positions] = _complex_gene_activity(activity_data, symbol)
+    return result
+
+
+def _terminal_edges(
+    attribution_dir: str | Path,
+    *,
+    terminal_time: float,
+) -> pd.DataFrame:
+    """Collapse grouping-seed replicas to one terminal-stage edge table."""
+
+    directory = Path(attribution_dir).expanduser().resolve()
+    frames: list[pd.DataFrame] = []
+    required = {
+        "stage",
+        "grouping_seed",
+        "source_index",
+        "target_index",
+        "sender_type",
+        "receiver_type",
+        "edge_message_norm_joint",
+        "attention_abs_mean",
+    }
+    for path in sorted(directory.glob("stage_*/edges_seed_*.csv.gz")):
+        frame = pd.read_csv(path)
+        missing = required.difference(frame.columns)
+        if missing:
+            raise ValueError(f"{path} lacks edge columns {sorted(missing)}")
+        if not np.isclose(float(frame["stage"].iloc[0]), float(terminal_time)):
+            continue
+        frames.append(frame.copy())
+    if not frames:
+        raise ValueError(
+            f"No terminal edge tables found under {directory} for stage {terminal_time}"
+        )
+    values = pd.concat(frames, ignore_index=True)
+    if values.empty:
+        return pd.DataFrame(
+            columns=[
+                "source_index",
+                "target_index",
+                "sender_type",
+                "receiver_type",
+                "n_grouping_seeds",
+                "mean_exact_message",
+                "mean_attention_abs",
+            ]
+        )
+    grouped = values.groupby(
+        ["source_index", "target_index", "sender_type", "receiver_type"],
+        as_index=False,
+    ).agg(
+        n_grouping_seeds=("grouping_seed", "nunique"),
+        mean_exact_message=("edge_message_norm_joint", "mean"),
+        mean_attention_abs=("attention_abs_mean", "mean"),
+    )
+    return grouped.sort_values(
+        ["mean_exact_message", "source_index", "target_index"],
+        ascending=[False, True, True],
+    ).reset_index(drop=True)
+
+
+def _terminal_pair_edges(
+    attribution_dir: str | Path,
+    *,
+    terminal_time: float,
+    sender_type: str,
+    receiver_type: str,
+) -> pd.DataFrame:
+    values = _terminal_edges(attribution_dir, terminal_time=terminal_time)
+    return values.loc[
+        values["sender_type"].astype(str).eq(str(sender_type))
+        & values["receiver_type"].astype(str).eq(str(receiver_type))
+    ].reset_index(drop=True)
+
+
+def select_global_model_linked_lr_example(
+    data: ad.AnnData,
+    attribution_dir: str | Path,
+    commot_lr: pd.DataFrame,
+    *,
+    activity_data: ad.AnnData | None = None,
+    lr_database: pd.DataFrame | None = None,
+    dataset: str,
+    terminal_time: float,
+    minimum_active_edges: int = 10,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    """Select a CytoBridge-only top axis, then attach independent COMMOT ranks."""
+
+    if minimum_active_edges < 1:
+        raise ValueError("minimum_active_edges must be positive")
+    required = {
+        "stage",
+        "sender_type",
+        "receiver_type",
+        "ligand",
+        "receptor",
+        "pathway",
+        "score",
+        "abundance_controlled_distinct_cell_score",
+    }
+    missing = required.difference(commot_lr.columns)
+    if missing:
+        raise ValueError(f"COMMOT LR table lacks {sorted(missing)}")
+    activity_source = data if activity_data is None else activity_data
+    commot_positive = commot_lr.loc[
+        np.isclose(pd.to_numeric(commot_lr["stage"], errors="coerce"), terminal_time)
+        & commot_lr["sender_type"]
+        .astype(str)
+        .ne(commot_lr["receiver_type"].astype(str))
+        & pd.to_numeric(commot_lr["score"], errors="coerce").gt(0)
+    ].copy()
+    commot_positive["commot_abundance_score"] = pd.to_numeric(
+        commot_positive["abundance_controlled_distinct_cell_score"], errors="raise"
+    )
+    commot_positive = commot_positive.groupby(
+        ["sender_type", "receiver_type", "ligand", "receptor"], as_index=False
+    ).agg(
+        commot_cell_flow=("score", "max"),
+        commot_abundance_score=("commot_abundance_score", "max"),
+        pathways=("pathway", lambda values: ";".join(sorted(set(map(str, values))))),
+    )
+    commot_lookup = {
+        (
+            str(row.sender_type),
+            str(row.receiver_type),
+            str(row.ligand).casefold(),
+            str(row.receptor).casefold(),
+        ): (
+            float(row.commot_cell_flow),
+            float(row.commot_abundance_score),
+            str(row.pathways),
+        )
+        for row in commot_positive.itertuples(index=False)
+    }
+    if lr_database is None:
+        lr_universe = commot_lr[["ligand", "receptor", "pathway"]].copy()
+    else:
+        database_missing = {"ligand", "receptor", "pathway"}.difference(
+            lr_database.columns
+        )
+        if database_missing:
+            raise ValueError(f"LR database lacks {sorted(database_missing)}")
+        lr_universe = lr_database[["ligand", "receptor", "pathway"]].copy()
+    lr_universe = lr_universe.groupby(["ligand", "receptor"], as_index=False).agg(
+        pathways=("pathway", lambda values: ";".join(sorted(set(map(str, values)))))
+    )
+    edges = _terminal_edges(attribution_dir, terminal_time=terminal_time)
+    type_counts = data.obs["ccc_cell_type"].astype(str).value_counts().to_dict()
+    edge_groups = {
+        (str(sender), str(receiver)): group.reset_index(drop=True)
+        for (sender, receiver), group in edges.groupby(
+            ["sender_type", "receiver_type"], sort=False
+        )
+        if str(sender) != str(receiver)
+    }
+    activity_cache: dict[str, np.ndarray] = {}
+    rows: list[dict[str, object]] = []
+    excluded: list[dict[str, object]] = []
+    for candidate in lr_universe.itertuples(index=False):
+        try:
+            for symbol in (str(candidate.ligand), str(candidate.receptor)):
+                if symbol not in activity_cache:
+                    activity_cache[symbol] = _activity_on_model_rows(
+                        data, activity_source, symbol
+                    )
+        except ValueError as error:
+            excluded.append(
+                {
+                    "ligand": str(candidate.ligand),
+                    "receptor": str(candidate.receptor),
+                    "reason": str(error),
+                }
+            )
+            continue
+        for pair, pair_edges in edge_groups.items():
+            source = pair_edges["source_index"].to_numpy(int)
+            target = pair_edges["target_index"].to_numpy(int)
+            activity = (
+                activity_cache[str(candidate.ligand)][source]
+                * activity_cache[str(candidate.receptor)][target]
+            )
+            weighted = pair_edges["mean_exact_message"].to_numpy(float) * activity
+            n_possible = int(type_counts.get(pair[0], 0)) * int(
+                type_counts.get(pair[1], 0)
+            )
+            if n_possible <= 0:
+                raise ValueError(f"Selected type pair is absent from H5AD: {pair}")
+            external = commot_lookup.get(
+                (
+                    pair[0],
+                    pair[1],
+                    str(candidate.ligand).casefold(),
+                    str(candidate.receptor).casefold(),
+                ),
+                (0.0, 0.0, str(candidate.pathways)),
+            )
+            rows.append(
+                {
+                    "dataset": dataset,
+                    "stage": float(terminal_time),
+                    "sender_type": pair[0],
+                    "receiver_type": pair[1],
+                    "ligand": str(candidate.ligand),
+                    "receptor": str(candidate.receptor),
+                    "pathways": external[2],
+                    "commot_cell_flow": external[0],
+                    "commot_abundance_score": external[1],
+                    "cytobridge_message_lr_score": float(
+                        np.sqrt(np.sum(np.square(weighted)) / n_possible)
+                    ),
+                    "n_possible_cell_pairs": n_possible,
+                    "n_model_pair_edges": int(len(pair_edges)),
+                    "n_model_lr_active_edges": int(np.sum(activity > 0)),
+                }
+            )
+    table = pd.DataFrame(rows)
+    if table.empty:
+        raise ValueError("No frozen-database LR candidate is H5AD-representable")
+    table["cytobridge_percentile"] = rank_percentile(
+        table["cytobridge_message_lr_score"]
+    )
+    table["commot_percentile"] = rank_percentile(table["commot_abundance_score"])
+    table["joint_percentile"] = table[
+        ["cytobridge_percentile", "commot_percentile"]
+    ].mean(axis=1)
+    table["passes_support"] = table["cytobridge_message_lr_score"].gt(0) & table[
+        "n_model_lr_active_edges"
+    ].ge(minimum_active_edges)
+    eligible = table.loc[table["passes_support"]].sort_values(
+        [
+            "cytobridge_percentile",
+            "n_model_lr_active_edges",
+            "cytobridge_message_lr_score",
+            "sender_type",
+            "receiver_type",
+            "ligand",
+            "receptor",
+        ],
+        ascending=[False, False, False, True, True, True, True],
+    )
+    if eligible.empty:
+        raise ValueError(
+            f"No global model-linked LR has at least {minimum_active_edges} active edges"
+        )
+    selected = eligible.iloc[0].copy()
+    selected["example_id"] = (
+        f"{dataset}_{selected.sender_type}_{selected.receiver_type}_"
+        f"{selected.ligand}_{selected.receptor}"
+    )
+    selected["stage_label"] = f"terminal_{terminal_time:g}"
+    selected["categories"] = "shared_database"
+    selected["selection_rule"] = (
+        "highest abundance-normalized CytoBridge exact-message x LR-activity "
+        "percentile across the frozen LR database x all terminal off-diagonal model "
+        "pairs; COMMOT is not used for the candidate universe or ordering; "
+        f"active model edges >= {minimum_active_edges}"
+    )
+    table = table.sort_values(
+        [
+            "cytobridge_percentile",
+            "sender_type",
+            "receiver_type",
+            "ligand",
+            "receptor",
+        ],
+        ascending=[False, True, True, True, True],
+    ).reset_index(drop=True)
+    return table, selected, pd.DataFrame(excluded)
+
+
+def select_model_linked_lr_example(
+    data: ad.AnnData,
+    attribution_dir: str | Path,
+    commot_lr: pd.DataFrame,
+    *,
+    dataset: str,
+    terminal_time: float,
+    sender_type: str,
+    receiver_type: str,
+    minimum_active_edges: int = 10,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+    """Select one LR axis by a frozen joint model/COMMOT rank rule.
+
+    Candidate LRs are all positive COMMOT axes for the preselected directed
+    type pair at the terminal stage whose genes are present in the exact H5AD.
+    CytoBridge support is the summed exact GNN edge-message magnitude weighted
+    by sender ligand and receiver receptor activity. Native units are never
+    pooled: the two scores are converted to within-candidate percentiles first.
+    """
+
+    if minimum_active_edges < 1:
+        raise ValueError("minimum_active_edges must be positive")
+    required = {
+        "stage",
+        "sender_type",
+        "receiver_type",
+        "ligand",
+        "receptor",
+        "pathway",
+        "score",
+    }
+    missing = required.difference(commot_lr.columns)
+    if missing:
+        raise ValueError(f"COMMOT LR table lacks {sorted(missing)}")
+    pair_edges = _terminal_pair_edges(
+        attribution_dir,
+        terminal_time=terminal_time,
+        sender_type=sender_type,
+        receiver_type=receiver_type,
+    )
+    if pair_edges.empty:
+        raise ValueError(
+            f"CytoBridge has no terminal edges for {sender_type!r} -> {receiver_type!r}"
+        )
+    candidates = commot_lr.loc[
+        np.isclose(pd.to_numeric(commot_lr["stage"], errors="coerce"), terminal_time)
+        & commot_lr["sender_type"].astype(str).eq(str(sender_type))
+        & commot_lr["receiver_type"].astype(str).eq(str(receiver_type))
+        & pd.to_numeric(commot_lr["score"], errors="coerce").gt(0)
+    ].copy()
+    if candidates.empty:
+        raise ValueError(
+            f"COMMOT has no positive terminal LR for {sender_type!r} -> {receiver_type!r}"
+        )
+    candidates["score"] = pd.to_numeric(candidates["score"], errors="raise")
+    candidates = candidates.groupby(["ligand", "receptor"], as_index=False).agg(
+        commot_cell_flow=("score", "sum"),
+        pathways=("pathway", lambda values: ";".join(sorted(set(map(str, values))))),
+    )
+    source = pair_edges["source_index"].to_numpy(int)
+    target = pair_edges["target_index"].to_numpy(int)
+    exact = pair_edges["mean_exact_message"].to_numpy(float)
+    rows: list[dict[str, object]] = []
+    excluded: list[dict[str, object]] = []
+    for candidate in candidates.itertuples(index=False):
+        try:
+            ligand = _complex_gene_activity(data, str(candidate.ligand))
+            receptor = _complex_gene_activity(data, str(candidate.receptor))
+        except ValueError as error:
+            excluded.append(
+                {
+                    "ligand": str(candidate.ligand),
+                    "receptor": str(candidate.receptor),
+                    "reason": str(error),
+                }
+            )
+            continue
+        activity = ligand[source] * receptor[target]
+        active = activity > 0
+        rows.append(
+            {
+                "dataset": dataset,
+                "stage": float(terminal_time),
+                "sender_type": str(sender_type),
+                "receiver_type": str(receiver_type),
+                "ligand": str(candidate.ligand),
+                "receptor": str(candidate.receptor),
+                "pathways": str(candidate.pathways),
+                "commot_cell_flow": float(candidate.commot_cell_flow),
+                "cytobridge_message_lr_flow": float(np.sum(exact * activity)),
+                "n_model_pair_edges": int(len(pair_edges)),
+                "n_model_lr_active_edges": int(active.sum()),
+            }
+        )
+    table = pd.DataFrame(rows)
+    if table.empty:
+        raise ValueError("No COMMOT-positive LR candidate is representable in the H5AD")
+    table["cytobridge_percentile"] = rank_percentile(
+        table["cytobridge_message_lr_flow"]
+    )
+    table["commot_percentile"] = rank_percentile(table["commot_cell_flow"])
+    table["joint_percentile"] = table[
+        ["cytobridge_percentile", "commot_percentile"]
+    ].mean(axis=1)
+    table["passes_support"] = (
+        table["cytobridge_message_lr_flow"].gt(0)
+        & table["commot_cell_flow"].gt(0)
+        & table["n_model_lr_active_edges"].ge(minimum_active_edges)
+    )
+    eligible = table.loc[table["passes_support"]].sort_values(
+        [
+            "joint_percentile",
+            "n_model_lr_active_edges",
+            "cytobridge_message_lr_flow",
+            "commot_cell_flow",
+            "ligand",
+            "receptor",
+        ],
+        ascending=[False, False, False, False, True, True],
+    )
+    if eligible.empty:
+        raise ValueError(
+            f"No jointly positive LR has at least {minimum_active_edges} model edges"
+        )
+    selected = eligible.iloc[0].copy()
+    selected[
+        "example_id"
+    ] = f"{dataset}_{str(selected.ligand)}_{str(selected.receptor)}"
+    selected["stage_label"] = f"terminal_{terminal_time:g}"
+    selected["categories"] = "shared_database"
+    selected["selection_rule"] = (
+        "highest mean within-candidate percentile of CytoBridge exact-message x "
+        "LR activity and COMMOT native cell flow for the preselected terminal "
+        f"directed type pair; both positive; active model edges >= {minimum_active_edges}"
+    )
+    table = table.sort_values(
+        ["joint_percentile", "ligand", "receptor"],
+        ascending=[False, True, True],
+    ).reset_index(drop=True)
+    return table, selected, pd.DataFrame(excluded)
+
+
+def _top_positive_edges(
+    frame: pd.DataFrame, score_column: str, fraction: float
+) -> pd.DataFrame:
+    positive = frame.loc[pd.to_numeric(frame[score_column], errors="raise").gt(0)]
+    if positive.empty:
+        return positive.copy()
+    count = max(1, int(math.ceil(len(positive) * float(fraction))))
+    return positive.sort_values(
+        [score_column, "source_index", "target_index"],
+        ascending=[False, True, True],
+    ).head(count)
+
+
+def model_linked_spatial_colocalization(
+    data: ad.AnnData,
+    attribution_dir: str | Path,
+    commot_flows: pd.DataFrame,
+    selected: Mapping[str, object],
+    *,
+    activity_data: ad.AnnData | None = None,
+    match_radius: float,
+    top_fraction: float = TOP_FRACTION,
+    permutations: int = 1000,
+    seed: int = ANALYSIS_SEED,
+) -> tuple[dict[str, object], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Compare model-linked and COMMOT LR midpoint hotspots with a rank null."""
+
+    if match_radius <= 0 or not np.isfinite(match_radius):
+        raise ValueError("match_radius must be positive")
+    if permutations < 1:
+        raise ValueError("permutations must be positive")
+    activity_source = data if activity_data is None else activity_data
+    pair_edges = _terminal_pair_edges(
+        attribution_dir,
+        terminal_time=float(selected["stage"]),
+        sender_type=str(selected["sender_type"]),
+        receiver_type=str(selected["receiver_type"]),
+    )
+    ligand = _activity_on_model_rows(data, activity_source, str(selected["ligand"]))
+    receptor = _activity_on_model_rows(data, activity_source, str(selected["receptor"]))
+    source = pair_edges["source_index"].to_numpy(int)
+    target = pair_edges["target_index"].to_numpy(int)
+    pair_edges["cytobridge_message_lr_flow"] = (
+        pair_edges["mean_exact_message"].to_numpy(float)
+        * ligand[source]
+        * receptor[target]
+    )
+    required_flow = {
+        "source_cell_id",
+        "target_cell_id",
+        "sender_type",
+        "receiver_type",
+        "commot_flow",
+    }
+    missing = required_flow.difference(commot_flows.columns)
+    if missing:
+        raise ValueError(f"selected COMMOT flow table lacks {sorted(missing)}")
+    cell_index = {name: index for index, name in enumerate(data.obs_names.astype(str))}
+    flows = commot_flows.loc[
+        commot_flows["sender_type"].astype(str).eq(str(selected["sender_type"]))
+        & commot_flows["receiver_type"].astype(str).eq(str(selected["receiver_type"]))
+        & pd.to_numeric(commot_flows["commot_flow"], errors="coerce").gt(0)
+    ].copy()
+    flows["source_index"] = flows["source_cell_id"].astype(str).map(cell_index)
+    flows["target_index"] = flows["target_cell_id"].astype(str).map(cell_index)
+    if flows[["source_index", "target_index"]].isna().any().any():
+        raise ValueError("COMMOT cell IDs do not map exactly to the model H5AD")
+    flows[["source_index", "target_index"]] = flows[
+        ["source_index", "target_index"]
+    ].astype(int)
+    cb_pool = pair_edges.loc[pair_edges["cytobridge_message_lr_flow"].gt(0)].copy()
+    commot_pool = flows.loc[flows["commot_flow"].gt(0)].copy()
+    if cb_pool.empty or commot_pool.empty:
+        raise ValueError("The selected pair/LR lacks positive cell-level support")
+    cb_top = _top_positive_edges(cb_pool, "cytobridge_message_lr_flow", top_fraction)
+    commot_top = _top_positive_edges(commot_pool, "commot_flow", top_fraction)
+    coordinates = np.asarray(data.obsm["spatial_aligned"], dtype=float)
+
+    def coverage(left: pd.DataFrame, right: pd.DataFrame) -> tuple[float, float]:
+        left_mid = (
+            coordinates[left["source_index"].to_numpy(int)]
+            + coordinates[left["target_index"].to_numpy(int)]
+        ) / 2
+        right_mid = (
+            coordinates[right["source_index"].to_numpy(int)]
+            + coordinates[right["target_index"].to_numpy(int)]
+        ) / 2
+        left_distance = cKDTree(right_mid).query(left_mid)[0]
+        right_distance = cKDTree(left_mid).query(right_mid)[0]
+        return float(np.mean(left_distance <= match_radius)), float(
+            np.mean(right_distance <= match_radius)
+        )
+
+    cb_to_commot, commot_to_cb = coverage(cb_top, commot_top)
+    observed = (cb_to_commot + commot_to_cb) / 2
+    rng = np.random.default_rng(seed)
+    null = np.empty(permutations, dtype=float)
+    for index in range(permutations):
+        random_cb = cb_pool.iloc[
+            rng.choice(len(cb_pool), size=len(cb_top), replace=False)
+        ]
+        random_commot = commot_pool.iloc[
+            rng.choice(len(commot_pool), size=len(commot_top), replace=False)
+        ]
+        left, right = coverage(random_cb, random_commot)
+        null[index] = (left + right) / 2
+    null_mean = float(np.mean(null))
+    null_std = float(np.std(null, ddof=1)) if len(null) > 1 else 0.0
+    result: dict[str, object] = {
+        "dataset": str(selected["dataset"]),
+        "stage": float(selected["stage"]),
+        "sender_type": str(selected["sender_type"]),
+        "receiver_type": str(selected["receiver_type"]),
+        "ligand": str(selected["ligand"]),
+        "receptor": str(selected["receptor"]),
+        "pathways": str(selected["pathways"]),
+        "top_fraction": float(top_fraction),
+        "match_radius": float(match_radius),
+        "n_cytobridge_positive_edges": int(len(cb_pool)),
+        "n_commot_positive_edges": int(len(commot_pool)),
+        "n_cytobridge_top_edges": int(len(cb_top)),
+        "n_commot_top_edges": int(len(commot_top)),
+        "cytobridge_to_commot_coverage": cb_to_commot,
+        "commot_to_cytobridge_coverage": commot_to_cb,
+        "symmetric_coverage": observed,
+        "permutations": int(permutations),
+        "null_mean": null_mean,
+        "null_q025": float(np.quantile(null, 0.025)),
+        "null_q975": float(np.quantile(null, 0.975)),
+        "enrichment_over_null": observed - null_mean,
+        "null_z": (observed - null_mean) / null_std if null_std > 0 else np.nan,
+        "empirical_p_upper": float((1 + np.sum(null >= observed)) / (len(null) + 1)),
+    }
+    null_table = pd.DataFrame(
+        {"permutation": np.arange(permutations), "symmetric_coverage": null}
+    )
+    return (
+        result,
+        cb_top.reset_index(drop=True),
+        commot_top.reset_index(drop=True),
+        null_table,
+    )

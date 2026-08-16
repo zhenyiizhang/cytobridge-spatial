@@ -37,6 +37,7 @@ REQUIRED_EXAMPLE_COLUMNS = (
     "pathways",
     "categories",
 )
+DATASET_CHOICES = ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -44,6 +45,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--input-dir", required=True, type=Path)
     parser.add_argument("--examples-csv", required=True, type=Path)
     parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument("--dataset", choices=DATASET_CHOICES, default="zebrafish")
     parser.add_argument("--cot-nitermax", type=int, default=2000)
     parser.add_argument("--distance-threshold", type=float, default=None)
     return parser
@@ -261,7 +263,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     manifest = {
         "schema_version": 1,
         "created_at_utc": utc_now(),
-        "workflow": "zebrafish_selected_lr_commot_cell_flow_reconstruction",
+        "workflow": "selected_lr_commot_cell_flow_reconstruction",
+        "dataset": args.dataset,
         "status": "complete",
         "scope": "visualization addendum; formal all-LR benchmark is unchanged",
         "design": {

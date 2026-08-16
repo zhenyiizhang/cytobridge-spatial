@@ -23,7 +23,15 @@
   "molecular_attribution": {
     "cell_type_pair_scores_do_not_identify_ligand_receptor_or_target_genes": true,
     "ligand_receptor_and_pathway_labels_must_name_the_supporting_external_method": true,
-    "target_gene_programs_must_be_labelled_nichenet_supported": true
+    "target_gene_programs_must_be_labelled_nichenet_supported": true,
+    "model_linked_lr_axis": {
+      "candidate_universe": "frozen shared LR database crossed with all terminal off-diagonal model cell-type pairs",
+      "selection": "abundance-normalized exact CytoBridge message magnitude times sender-ligand and receiver-receptor activity",
+      "minimum_active_model_edges": 10,
+      "external_methods_used_after_selection_only": true,
+      "external_method_candidate_universes_are_zero_filled": true,
+      "lr_label_is_post_hoc_molecular_compatibility_not_native_gnn_identity": true
+    }
   },
   "datasets": [
     "zebrafish",

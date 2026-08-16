@@ -445,6 +445,14 @@ shared-CellChatDB consistency analysis against CellChat, official non-spatial
 CellAgentChat, and NicheNet, including CTPS-primary and continuous-score
 sensitivity outputs.
 
+For the five spatial datasets, the package also provides a model-linked
+communication consistency figure. CytoBridge selects LR-compatible axes from
+its exact learned edge messages and measured ligand/receptor activity before
+COMMOT or CellAgentChat is consulted; external methods then provide an independent
+zero-filled rank evaluation. This avoids presenting a database-only pathway
+panel as model validation and keeps non-evaluable datasets explicit. See
+`scripts/run_spatial_communication_consistency.py plot-model-biology`.
+
 ## Input Requirements
 
 The main preprocessing pipeline expects an input `.h5ad` file with:

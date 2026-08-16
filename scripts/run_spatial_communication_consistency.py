@@ -10,14 +10,17 @@ silently hiding weak or unavailable methods from the audit tables.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import textwrap
 from pathlib import Path
 from typing import Iterable
 
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 import numpy as np
 import pandas as pd
+import anndata as ad
 
 from CytoBridge.spatial_communication_consistency import (
     FORMAL_DATASET_CONTRACTS,
@@ -29,6 +32,9 @@ from CytoBridge.spatial_communication_consistency import (
     prepare_shared_samples,
     prepare_spatial_proxy_inputs,
     rank_percentile,
+    model_linked_spatial_colocalization,
+    select_global_model_linked_lr_example,
+    select_model_linked_lr_example,
     sha256_file,
 )
 
@@ -46,6 +52,12 @@ DATASET_COLORS = {
     "admouse": "#E9C46A",
     "chicken_heart": "#E76F51",
 }
+REPO_ROOT = Path(__file__).resolve().parents[1]
+MODEL_BIOLOGY_IMPLEMENTATION_FILES = (
+    "CytoBridge/spatial_communication_consistency.py",
+    "scripts/run_spatial_communication_consistency.py",
+    "scripts/reviewer_zebrafish_ccc/run_selected_commot_flows.py",
+)
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -60,6 +72,17 @@ def _artifact(path: Path) -> dict[str, object]:
         "sha256": sha256_file(path),
         "size_bytes": int(path.stat().st_size),
     }
+
+
+def _model_biology_implementation() -> dict[str, object]:
+    files = {
+        relative: _artifact(REPO_ROOT / relative)
+        for relative in MODEL_BIOLOGY_IMPLEMENTATION_FILES
+    }
+    digest = hashlib.sha256()
+    for relative in sorted(files):
+        digest.update(f"{relative}:{files[relative]['sha256']}\n".encode())
+    return {"files": files, "aggregate_sha256": digest.hexdigest()}
 
 
 def _read_table(path: str | Path, *, label: str) -> pd.DataFrame:
@@ -496,6 +519,422 @@ def aggregate(args: argparse.Namespace) -> None:
     _write_json(output / "manifest.json", manifest)
 
 
+def _model_biology_config(path: str | Path) -> tuple[Path, dict[str, object]]:
+    resolved = Path(path).expanduser().resolve()
+    config = json.loads(resolved.read_text(encoding="utf-8"))
+    if config.get("schema_version") != 1:
+        raise ValueError("model-biology config requires schema_version=1")
+    datasets = config.get("datasets")
+    if not isinstance(datasets, dict) or set(datasets) != set(FORMAL_DATASET_CONTRACTS):
+        raise ValueError("model-biology config must bind exactly five datasets")
+    return resolved, config
+
+
+def _cellchat_selected_axis_support(
+    data: ad.AnnData,
+    selected: pd.Series,
+    lr_path: Path,
+    eligibility_path: Path,
+) -> dict[str, object]:
+    """Rank one selected axis in the complete eligible CellChat zero-filled grid."""
+
+    eligibility = pd.read_csv(eligibility_path)
+    eligible_flag = (
+        eligibility["eligible"].astype(str).str.casefold().isin({"true", "1"})
+    )
+    axes = eligibility.loc[
+        eligible_flag, ["current_ligand", "current_receptor"]
+    ].drop_duplicates()
+    axis_keys = set(
+        zip(
+            axes["current_ligand"].astype(str).str.casefold(),
+            axes["current_receptor"].astype(str).str.casefold(),
+        )
+    )
+    selected_axis = (
+        str(selected.ligand).casefold(),
+        str(selected.receptor).casefold(),
+    )
+    terminal = data.obs.loc[
+        np.isclose(
+            pd.to_numeric(data.obs["ccc_stage"], errors="coerce"),
+            float(selected.stage),
+        )
+    ]
+    counts = terminal["ccc_cell_type"].astype(str).value_counts()
+    eligible_types = sorted(counts.loc[counts.ge(10)].index.astype(str))
+    total = len(axis_keys) * len(eligible_types) * max(0, len(eligible_types) - 1)
+    if selected_axis not in axis_keys:
+        return {
+            "cellchat_available": False,
+            "cellchat_reason": "selected LR is not eligible in the frozen CellChat database mapping",
+            "cellchat_score": 0.0,
+            "cellchat_percentile": np.nan,
+        }
+    if (
+        str(selected.sender_type) not in eligible_types
+        or str(selected.receiver_type) not in eligible_types
+    ):
+        return {
+            "cellchat_available": False,
+            "cellchat_reason": "selected sender or receiver has fewer than 10 terminal cells",
+            "cellchat_score": 0.0,
+            "cellchat_percentile": np.nan,
+        }
+    values = pd.read_csv(lr_path)
+    values = values.loc[
+        np.isclose(
+            pd.to_numeric(values["stage"], errors="coerce"), float(selected.stage)
+        )
+        & values["sender_type"].astype(str).ne(values["receiver_type"].astype(str))
+    ].copy()
+    values["score_numeric"] = pd.to_numeric(
+        values["abundance_controlled_score"], errors="raise"
+    )
+    values = values.groupby(
+        ["sender_type", "receiver_type", "ligand", "receptor"], as_index=False
+    ).agg(score_numeric=("score_numeric", "max"), pathway=("pathway", "first"))
+    match = values.loc[
+        values["sender_type"].astype(str).eq(str(selected.sender_type))
+        & values["receiver_type"].astype(str).eq(str(selected.receiver_type))
+        & values["ligand"].astype(str).str.casefold().eq(selected_axis[0])
+        & values["receptor"].astype(str).str.casefold().eq(selected_axis[1])
+    ]
+    score = float(match["score_numeric"].max()) if not match.empty else 0.0
+    positive = values["score_numeric"].to_numpy(float)
+    zero_count = max(0, total - len(positive))
+    if total <= 0:
+        raise ValueError("CellChat complete ranking universe is empty")
+    if score > 0:
+        less = zero_count + int(np.sum(positive < score))
+        equal = int(np.sum(np.isclose(positive, score, rtol=0, atol=0)))
+        percentile = (less + (equal + 1) / 2) / total
+    else:
+        percentile = (zero_count + 1) / (2 * total)
+    return {
+        "cellchat_available": True,
+        "cellchat_reason": "",
+        "cellchat_score": score,
+        "cellchat_percentile": float(percentile),
+    }
+
+
+def select_model_biology(args: argparse.Namespace) -> None:
+    """Select one model-linked LR axis per frozen biological type pair."""
+
+    config_path, config = _model_biology_config(args.config)
+    aggregate_dir = Path(args.aggregate_dir).expanduser().resolve()
+    aggregate_manifest = aggregate_dir / "manifest.json"
+    selected_pairs_path = aggregate_dir / "selected_biological_pairs.csv"
+    pairs = pd.read_csv(selected_pairs_path).set_index("dataset")
+    if set(pairs.index.astype(str)) != set(FORMAL_DATASET_CONTRACTS):
+        raise ValueError("aggregate selected pairs do not cover the five datasets")
+    output = Path(args.output_dir).expanduser().resolve()
+    if output.exists():
+        raise FileExistsError(f"output directory exists: {output}")
+    output.mkdir(parents=True)
+    candidate_tables: list[pd.DataFrame] = []
+    selected_rows: list[dict[str, object]] = []
+    excluded_tables: list[pd.DataFrame] = []
+    status_rows: list[dict[str, object]] = []
+    external_support_rows: list[dict[str, object]] = []
+    sources: dict[str, object] = {}
+    for dataset, contract in FORMAL_DATASET_CONTRACTS.items():
+        spec = dict(config["datasets"][dataset])
+        h5ad_path = Path(spec["h5ad"]).expanduser().resolve()
+        expression_h5ad_path = Path(spec["expression_h5ad"]).expanduser().resolve()
+        attribution_dir = Path(spec["attribution_dir"]).expanduser().resolve()
+        commot_lr_path = Path(spec["commot_lr_csv"]).expanduser().resolve()
+        lr_database_path = (
+            Path(spec["commot_input_dir"]).expanduser().resolve()
+            / "filtered_lr_database.csv"
+        )
+        data = ad.read_h5ad(h5ad_path)
+        activity_data = ad.read_h5ad(expression_h5ad_path)
+        try:
+            candidates, selected, excluded = select_global_model_linked_lr_example(
+                data,
+                attribution_dir,
+                pd.read_csv(commot_lr_path),
+                activity_data=activity_data,
+                lr_database=pd.read_csv(lr_database_path),
+                dataset=dataset,
+                terminal_time=float(contract["terminal_time"]),
+                minimum_active_edges=int(args.minimum_active_edges),
+            )
+        except ValueError as error:
+            status_rows.append(
+                {
+                    "dataset": dataset,
+                    "status": "not_evaluable",
+                    "reason": str(error),
+                }
+            )
+        else:
+            candidate_tables.append(candidates)
+            selected_rows.append(selected.to_dict())
+            status_rows.append({"dataset": dataset, "status": "complete", "reason": ""})
+            if not excluded.empty:
+                excluded.insert(0, "dataset", dataset)
+                excluded_tables.append(excluded)
+            cellchat_lr_path = Path(spec["cellchat_lr_csv"]).expanduser().resolve()
+            cellchat_eligibility_path = (
+                Path(spec["cellchat_eligibility_csv"]).expanduser().resolve()
+            )
+            support = {
+                "dataset": dataset,
+                "stage": float(selected.stage),
+                "sender_type": str(selected.sender_type),
+                "receiver_type": str(selected.receiver_type),
+                "ligand": str(selected.ligand),
+                "receptor": str(selected.receptor),
+                "pathways": str(selected.pathways),
+                "cytobridge_percentile": float(selected.cytobridge_percentile),
+                "commot_percentile": float(selected.commot_percentile),
+                **_cellchat_selected_axis_support(
+                    data,
+                    selected,
+                    cellchat_lr_path,
+                    cellchat_eligibility_path,
+                ),
+                "nichenet_available": False,
+                "nichenet_target": "",
+                "nichenet_ligand_target_evidence": np.nan,
+            }
+            nichenet_value = spec.get("nichenet_target_csv")
+            if nichenet_value:
+                nichenet_path = Path(nichenet_value).expanduser().resolve()
+                nichenet = pd.read_csv(nichenet_path)
+                match = nichenet.loc[
+                    nichenet["sender"].astype(str).eq(str(selected.sender_type))
+                    & nichenet["receiver"].astype(str).eq(str(selected.receiver_type))
+                    & nichenet["ligand"]
+                    .astype(str)
+                    .str.casefold()
+                    .eq(str(selected.ligand).casefold())
+                    & nichenet["receptor"]
+                    .astype(str)
+                    .str.casefold()
+                    .eq(str(selected.receptor).casefold())
+                ].copy()
+                if not match.empty:
+                    match["evidence_numeric"] = pd.to_numeric(
+                        match["ligand_target_evidence"], errors="raise"
+                    )
+                    best = match.sort_values(
+                        ["evidence_numeric", "target"], ascending=[False, True]
+                    ).iloc[0]
+                    support["nichenet_available"] = True
+                    support["nichenet_target"] = str(best.target)
+                    support["nichenet_ligand_target_evidence"] = float(
+                        best.evidence_numeric
+                    )
+            external_support_rows.append(support)
+        attribution_manifest = attribution_dir / "run_manifest.json"
+        sources[dataset] = {
+            "h5ad": _artifact(h5ad_path),
+            "expression_h5ad": _artifact(expression_h5ad_path),
+            "attribution_manifest": _artifact(attribution_manifest),
+            "commot_lr": _artifact(commot_lr_path),
+            "filtered_lr_database": _artifact(lr_database_path),
+            "commot_input_dir": str(
+                Path(spec["commot_input_dir"]).expanduser().resolve()
+            ),
+            "cellchat_lr": _artifact(
+                Path(spec["cellchat_lr_csv"]).expanduser().resolve()
+            ),
+            "cellchat_eligibility": _artifact(
+                Path(spec["cellchat_eligibility_csv"]).expanduser().resolve()
+            ),
+        }
+        if spec.get("nichenet_target_csv"):
+            sources[dataset]["nichenet_targets"] = _artifact(
+                Path(spec["nichenet_target_csv"]).expanduser().resolve()
+            )
+    candidates_path = output / "model_linked_lr_candidates.csv"
+    selected_path = output / "selected_model_linked_lr.csv"
+    excluded_path = output / "unrepresentable_lr_candidates.csv"
+    if not candidate_tables:
+        raise ValueError("No dataset yielded a model-linked LR example")
+    pd.concat(candidate_tables, ignore_index=True).to_csv(candidates_path, index=False)
+    selected_frame = pd.DataFrame(selected_rows)
+    required_flow_columns = [
+        "example_id",
+        "stage",
+        "stage_label",
+        "ligand",
+        "receptor",
+        "pathways",
+        "categories",
+    ]
+    remaining = [
+        column
+        for column in selected_frame.columns
+        if column not in required_flow_columns
+    ]
+    selected_frame[required_flow_columns + remaining].to_csv(selected_path, index=False)
+    for dataset, table in selected_frame.groupby("dataset", sort=False):
+        table[required_flow_columns + remaining].to_csv(
+            output / f"selected_model_linked_lr_{dataset}.csv", index=False
+        )
+    (
+        pd.concat(excluded_tables, ignore_index=True)
+        if excluded_tables
+        else pd.DataFrame(columns=["dataset", "ligand", "receptor", "reason"])
+    ).to_csv(excluded_path, index=False)
+    status_path = output / "model_linked_lr_selection_status.csv"
+    pd.DataFrame(status_rows).to_csv(status_path, index=False)
+    external_support_path = output / "model_linked_external_support.csv"
+    pd.DataFrame(external_support_rows).to_csv(external_support_path, index=False)
+    manifest = {
+        "schema_version": 1,
+        "workflow": "five_dataset_model_linked_lr_selection",
+        "status": "complete",
+        "claim_scope": (
+            "post-hoc LR-compatible decomposition of exact learned GNN messages; "
+            "not native LR identity inference or causal validation"
+        ),
+        "selection_rule": str(selected_frame["selection_rule"].iloc[0]),
+        "minimum_active_edges": int(args.minimum_active_edges),
+        "attempted_datasets": len(FORMAL_DATASET_CONTRACTS),
+        "evaluable_datasets": int(len(selected_frame)),
+        "implementation": _model_biology_implementation(),
+        "inputs": {
+            "config": _artifact(config_path),
+            "aggregate_manifest": _artifact(aggregate_manifest),
+            "selected_biological_pairs": _artifact(selected_pairs_path),
+            "datasets": sources,
+        },
+        "outputs": {
+            "candidates": _artifact(candidates_path),
+            "selected": _artifact(selected_path),
+            "unrepresentable": _artifact(excluded_path),
+            "status": _artifact(status_path),
+            "external_support": _artifact(external_support_path),
+        },
+    }
+    _write_json(output / "manifest.json", manifest)
+
+
+def score_model_biology(args: argparse.Namespace) -> None:
+    """Score five selected LR axes against cell-level COMMOT spatial flows."""
+
+    config_path, config = _model_biology_config(args.config)
+    selection_dir = Path(args.selection_dir).expanduser().resolve()
+    selection_manifest_path = selection_dir / "manifest.json"
+    selection = pd.read_csv(selection_dir / "selected_model_linked_lr.csv")
+    selection_status = pd.read_csv(
+        selection_dir / "model_linked_lr_selection_status.csv"
+    ).set_index("dataset")
+    if set(selection_status.index.astype(str)) != set(FORMAL_DATASET_CONTRACTS):
+        raise ValueError("selected LR status does not cover the five datasets")
+    output = Path(args.output_dir).expanduser().resolve()
+    if output.exists():
+        raise FileExistsError(f"output directory exists: {output}")
+    output.mkdir(parents=True)
+    result_rows: list[dict[str, object]] = []
+    cb_edge_tables: list[pd.DataFrame] = []
+    commot_edge_tables: list[pd.DataFrame] = []
+    null_tables: list[pd.DataFrame] = []
+    sources: dict[str, object] = {}
+    for index, dataset in enumerate(FORMAL_DATASET_CONTRACTS):
+        spec = dict(config["datasets"][dataset])
+        status = selection_status.loc[dataset]
+        if str(status.status) != "complete":
+            result_rows.append(
+                {
+                    "dataset": dataset,
+                    "available": False,
+                    "reason": str(status.reason),
+                }
+            )
+            continue
+        h5ad_path = Path(spec["h5ad"]).expanduser().resolve()
+        expression_h5ad_path = Path(spec["expression_h5ad"]).expanduser().resolve()
+        attribution_dir = Path(spec["attribution_dir"]).expanduser().resolve()
+        flow_dir = Path(spec["selected_commot_flow_dir"]).expanduser().resolve()
+        flow_path = flow_dir / "selected_commot_cell_flows.csv.gz"
+        flow_manifest_path = flow_dir / "manifest.json"
+        selected = selection.loc[selection["dataset"].eq(dataset)].iloc[0].to_dict()
+        data = ad.read_h5ad(h5ad_path)
+        activity_data = ad.read_h5ad(expression_h5ad_path)
+        attribution_manifest_path = attribution_dir / "run_manifest.json"
+        attribution_manifest = json.loads(
+            attribution_manifest_path.read_text(encoding="utf-8")
+        )
+        cutoff = float(attribution_manifest["checkpoint"]["spatial_cutoff"])
+        result, cb_top, commot_top, null = model_linked_spatial_colocalization(
+            data,
+            attribution_dir,
+            pd.read_csv(flow_path),
+            selected,
+            activity_data=activity_data,
+            match_radius=cutoff / 2.0,
+            top_fraction=float(args.top_fraction),
+            permutations=int(args.permutations),
+            seed=int(args.seed) + index,
+        )
+        result_rows.append(result)
+        result_rows[-1]["available"] = True
+        result_rows[-1]["reason"] = ""
+        cb_top.insert(0, "dataset", dataset)
+        commot_top.insert(0, "dataset", dataset)
+        cb_edge_tables.append(cb_top)
+        commot_edge_tables.append(commot_top)
+        null.insert(0, "dataset", dataset)
+        null.insert(2, "seed", int(args.seed) + index)
+        null_tables.append(null)
+        sources[dataset] = {
+            "h5ad": _artifact(h5ad_path),
+            "expression_h5ad": _artifact(expression_h5ad_path),
+            "attribution_manifest": _artifact(attribution_manifest_path),
+            "selected_commot_flow_manifest": _artifact(flow_manifest_path),
+            "selected_commot_cell_flows": _artifact(flow_path),
+        }
+    summary_path = output / "model_linked_spatial_colocalization.csv"
+    cb_path = output / "cytobridge_top_model_linked_edges.csv.gz"
+    commot_path = output / "commot_top_lr_flows.csv.gz"
+    null_path = output / "permutation_seed_audit.csv.gz"
+    pd.DataFrame(result_rows).to_csv(summary_path, index=False)
+    pd.concat(cb_edge_tables, ignore_index=True).to_csv(
+        cb_path, index=False, compression="gzip"
+    )
+    pd.concat(commot_edge_tables, ignore_index=True).to_csv(
+        commot_path, index=False, compression="gzip"
+    )
+    pd.concat(null_tables, ignore_index=True).to_csv(
+        null_path, index=False, compression="gzip"
+    )
+    manifest = {
+        "schema_version": 1,
+        "workflow": "five_dataset_model_linked_lr_spatial_colocalization",
+        "status": "complete",
+        "claim_scope": (
+            "descriptive spatial consistency of top LR-compatible edge midpoints; "
+            "not exact edge accuracy, native LR inference, or causal validation"
+        ),
+        "design": {
+            "top_fraction": float(args.top_fraction),
+            "match_radius": "half each frozen CytoBridge graph cutoff",
+            "permutations": int(args.permutations),
+            "seed": int(args.seed),
+        },
+        "implementation": _model_biology_implementation(),
+        "inputs": {
+            "config": _artifact(config_path),
+            "selection_manifest": _artifact(selection_manifest_path),
+            "datasets": sources,
+        },
+        "outputs": {
+            "summary": _artifact(summary_path),
+            "cytobridge_top_edges": _artifact(cb_path),
+            "commot_top_flows": _artifact(commot_path),
+            "permutation_seed_audit": _artifact(null_path),
+        },
+    }
+    _write_json(output / "manifest.json", manifest)
+
+
 def _heading(axis, panel: str, title: str) -> None:
     axis.set_axis_off()
     axis.text(
@@ -803,6 +1242,509 @@ def plot(args: argparse.Namespace) -> None:
     _write_json(output / "figure_manifest.json", manifest)
 
 
+def plot_model_biology(args: argparse.Namespace) -> None:
+    """Draw the reviewer-facing model-linked five-dataset figure."""
+
+    from CytoBridge.nonspatial import scnt_figure_style as style
+
+    aggregate_dir = Path(args.aggregate_dir).expanduser().resolve()
+    selection_dir = Path(args.selection_dir).expanduser().resolve()
+    edge_dir = Path(args.edge_dir).expanduser().resolve()
+    panel_input = (
+        Path(args.spatial_panel_data_dir).expanduser().resolve()
+        if args.spatial_panel_data_dir
+        else None
+    )
+    if panel_input is None:
+        config_path, config = _model_biology_config(args.config)
+        input_cells = None
+        input_edges = None
+    else:
+        config_path = None
+        config = None
+        input_cells = _read_table(
+            panel_input / "spatial_map_cells.csv.gz", label="spatial map cells"
+        )
+        input_edges = _read_table(
+            panel_input / "spatial_map_edges.csv.gz", label="spatial map edges"
+        )
+    output = Path(args.output_dir).expanduser().resolve()
+    if output.exists():
+        raise FileExistsError(f"output directory exists: {output}")
+    output.mkdir(parents=True)
+    metrics = pd.read_csv(aggregate_dir / "cytobridge_external_metrics.csv")
+    primary_metrics = metrics.loc[
+        metrics["cytobridge_view"].eq("CytoBridge exact message")
+        & metrics["external_method"].isin(["COMMOT", "CellAgentChat"])
+    ].copy()
+    commot = primary_metrics.loc[
+        primary_metrics["external_method"].eq("COMMOT")
+    ].set_index("dataset")
+    cellagent = primary_metrics.loc[
+        primary_metrics["external_method"].eq("CellAgentChat")
+    ].set_index("dataset")
+    support = pd.read_csv(
+        selection_dir / "model_linked_external_support.csv"
+    ).set_index("dataset")
+    status = pd.read_csv(
+        selection_dir / "model_linked_lr_selection_status.csv"
+    ).set_index("dataset")
+    pair_scores_path = aggregate_dir / "directed_pair_method_scores.csv"
+    pair_scores = pd.read_csv(pair_scores_path)
+    cellagent_pairs = pair_scores.loc[
+        pair_scores["method"].eq("CellAgentChat")
+        & pair_scores["available"].astype(str).str.casefold().isin({"true", "1"})
+    ][["dataset", "sender_type", "receiver_type", "score", "rank_percentile"]]
+    support = (
+        support.reset_index()
+        .merge(
+            cellagent_pairs.rename(
+                columns={
+                    "score": "cellagentchat_pair_score",
+                    "rank_percentile": "cellagentchat_pair_percentile",
+                }
+            ),
+            on=["dataset", "sender_type", "receiver_type"],
+            how="left",
+        )
+        .set_index("dataset")
+    )
+    edge_path = edge_dir / "cytobridge_top_model_linked_edges.csv.gz"
+    edges = pd.read_csv(edge_path)
+    dataset_order = list(FORMAL_DATASET_CONTRACTS)
+    labels = {
+        key: str(value["display_name"])
+        for key, value in FORMAL_DATASET_CONTRACTS.items()
+    }
+    if set(commot.index.astype(str)) != set(dataset_order) or set(
+        cellagent.index.astype(str)
+    ) != set(dataset_order):
+        raise ValueError(
+            "COMMOT/CellAgentChat metric tables do not cover five datasets"
+        )
+    style.apply_style()
+    fig = plt.figure(figsize=style.A4_PORTRAIT)
+    grid = fig.add_gridspec(
+        7,
+        1,
+        height_ratios=[0.13, 1.20, 0.13, 1.38, 0.13, 0.08, 2.27],
+        left=0.21,
+        right=0.965,
+        top=0.975,
+        bottom=0.055,
+        hspace=0.34,
+    )
+
+    head_a = fig.add_subplot(grid[0])
+    _heading(head_a, "a", "Global directed-pair concordance")
+    axes_a = grid[1].subgridspec(1, 2, wspace=0.30)
+    ax_rho = fig.add_subplot(axes_a[0])
+    ax_jaccard = fig.add_subplot(axes_a[1])
+    y = np.arange(len(dataset_order), dtype=float)
+    metric_specs = (
+        ("COMMOT", commot.reindex(dataset_order), "s", -0.09),
+        ("CellAgentChat", cellagent.reindex(dataset_order), "D", 0.09),
+    )
+    for axis, column, xlabel in (
+        (ax_rho, "spearman_rho", "Spearman rank correlation (ρ)"),
+        (ax_jaccard, "top_jaccard", "Top-20% directed-pair Jaccard"),
+    ):
+        for method, method_table, marker, offset in metric_specs:
+            available = (
+                method_table["metric_available"]
+                .astype(str)
+                .str.casefold()
+                .isin({"true", "1"})
+                & method_table[column].notna()
+            )
+            axis.scatter(
+                method_table.loc[available, column],
+                y[available.to_numpy()] + offset,
+                s=43,
+                marker=marker,
+                color=METHOD_COLORS[method],
+                edgecolor="white",
+                linewidth=0.6,
+                label=method,
+                zorder=3,
+            )
+        axis.axvline(0, color="#AAB2B8", lw=0.7)
+        axis.set_yticks(y, [labels[name] for name in dataset_order])
+        axis.set_ylim(len(dataset_order) - 0.55, -0.55)
+        axis.set_xlim(-0.05, 1.04)
+        axis.set_xlabel(xlabel)
+        style.clean_axis(axis, grid=True)
+    ax_jaccard.set_yticklabels([])
+    ax_rho.legend(
+        frameon=False,
+        fontsize=6.8,
+        ncol=2,
+        loc="lower left",
+        bbox_to_anchor=(0.0, 1.01),
+    )
+
+    head_b = fig.add_subplot(grid[2])
+    _heading(head_b, "b", "External support for CytoBridge-selected programs")
+    ax_b = fig.add_subplot(grid[3])
+    method_specs = (
+        ("cytobridge_percentile", "CytoBridge selection", "#5B4B8A", "o"),
+        ("commot_percentile", "COMMOT evaluation", METHOD_COLORS["COMMOT"], "s"),
+        (
+            "cellagentchat_pair_percentile",
+            "CellAgentChat pair rank",
+            METHOD_COLORS["CellAgentChat"],
+            "D",
+        ),
+    )
+    for row_index, dataset in enumerate(dataset_order):
+        if dataset not in support.index:
+            ax_b.text(
+                0.51,
+                row_index,
+                "not evaluable under strict shared LR/edge support",
+                fontsize=6.5,
+                color="#7A848C",
+                va="center",
+            )
+            continue
+        row = support.loc[dataset]
+        for column, _, color, marker in method_specs:
+            value = float(row[column])
+            if np.isfinite(value):
+                ax_b.scatter(
+                    value,
+                    row_index,
+                    s=43,
+                    marker=marker,
+                    color=color,
+                    edgecolor="white",
+                    linewidth=0.55,
+                    zorder=3,
+                )
+    ylabels: list[str] = []
+    for dataset in dataset_order:
+        if dataset in support.index:
+            row = support.loc[dataset]
+            pair = textwrap.fill(f"{row.sender_type} → {row.receiver_type}", width=31)
+            ylabels.append(
+                f"{labels[dataset]} · {str(row.ligand).upper()}–{str(row.receptor).upper()}\n{pair}"
+            )
+        else:
+            ylabels.append(f"{labels[dataset]}\nstrict panel unavailable")
+    ax_b.set_yticks(np.arange(len(dataset_order)), ylabels, fontsize=6.4)
+    ax_b.set_ylim(len(dataset_order) - 0.55, -0.55)
+    ax_b.set_xlim(0.45, 1.015)
+    ax_b.axvline(0.95, color="#AAB2B8", lw=0.75, ls="--")
+    ax_b.set_xlabel(
+        "Percentile in each method's complete zero-filled candidate universe"
+    )
+    style.clean_axis(ax_b, grid=True)
+    ax_b.legend(
+        handles=[
+            plt.Line2D(
+                [0],
+                [0],
+                marker=marker,
+                color="none",
+                markerfacecolor=color,
+                markeredgecolor="white",
+                label=label,
+            )
+            for _, label, color, marker in method_specs
+        ],
+        frameon=False,
+        fontsize=6.8,
+        ncol=3,
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.01),
+    )
+
+    head_c = fig.add_subplot(grid[4])
+    _heading(head_c, "c", "Spatial organization of model-linked LR programs")
+    legend_c = fig.add_subplot(grid[5])
+    legend_c.set_axis_off()
+    maps = grid[6].subgridspec(2, 2, wspace=0.16, hspace=0.42)
+    map_datasets = ["zebrafish", "mosta", "arista", "chicken_heart"]
+    panel_cell_frames: list[pd.DataFrame] = []
+    panel_edge_frames: list[pd.DataFrame] = []
+    for map_index, dataset in enumerate(map_datasets):
+        axis = fig.add_subplot(maps[map_index // 2, map_index % 2])
+        row = support.loc[dataset]
+        if panel_input is None:
+            assert config is not None
+            spec = dict(config["datasets"][dataset])
+            data = ad.read_h5ad(Path(spec["h5ad"]).expanduser().resolve())
+            stage_mask = np.isclose(
+                pd.to_numeric(data.obs["ccc_stage"], errors="coerce"),
+                float(row.stage),
+            )
+            coordinates = np.asarray(data.obsm["spatial_aligned"], dtype=float)
+            types = data.obs["ccc_cell_type"].astype(str).to_numpy()
+            cell_indices = np.flatnonzero(stage_mask)
+            map_cells = pd.DataFrame(
+                {
+                    "dataset": dataset,
+                    "cell_index": cell_indices,
+                    "x": coordinates[cell_indices, 0],
+                    "y": coordinates[cell_indices, 1],
+                    "cell_type": types[cell_indices],
+                }
+            )
+            selected_edges = edges.loc[edges["dataset"].eq(dataset)].sort_values(
+                "cytobridge_message_lr_flow", ascending=False
+            )
+            source_index = selected_edges["source_index"].to_numpy(int)
+            target_index = selected_edges["target_index"].to_numpy(int)
+            map_edges = pd.DataFrame(
+                {
+                    "dataset": dataset,
+                    "source_index": source_index,
+                    "target_index": target_index,
+                    "source_x": coordinates[source_index, 0],
+                    "source_y": coordinates[source_index, 1],
+                    "target_x": coordinates[target_index, 0],
+                    "target_y": coordinates[target_index, 1],
+                    "cytobridge_message_lr_flow": selected_edges[
+                        "cytobridge_message_lr_flow"
+                    ].to_numpy(float),
+                }
+            )
+        else:
+            assert input_cells is not None and input_edges is not None
+            map_cells = input_cells.loc[input_cells["dataset"].eq(dataset)].copy()
+            map_edges = input_edges.loc[input_edges["dataset"].eq(dataset)].copy()
+            if map_cells.empty or map_edges.empty:
+                raise ValueError(f"spatial panel data is incomplete for {dataset}")
+            coordinates = map_cells[["x", "y"]].to_numpy(float)
+            types = map_cells["cell_type"].astype(str).to_numpy()
+            stage_mask = np.ones(len(map_cells), dtype=bool)
+        panel_cell_frames.append(map_cells)
+        panel_edge_frames.append(map_edges)
+        axis.scatter(
+            coordinates[stage_mask, 0],
+            coordinates[stage_mask, 1],
+            s=1.2,
+            color="#DDE1E4",
+            alpha=0.72,
+            linewidths=0,
+            rasterized=False,
+        )
+        sender = stage_mask & (types == str(row.sender_type))
+        receiver = stage_mask & (types == str(row.receiver_type))
+        axis.scatter(
+            coordinates[sender, 0],
+            coordinates[sender, 1],
+            s=3.2,
+            color="#3A86A8",
+            alpha=0.88,
+            linewidths=0,
+            zorder=2,
+        )
+        axis.scatter(
+            coordinates[receiver, 0],
+            coordinates[receiver, 1],
+            s=3.2,
+            color="#E08C46",
+            alpha=0.88,
+            linewidths=0,
+            zorder=2,
+        )
+        display_edges = map_edges.sort_values(
+            "cytobridge_message_lr_flow", ascending=False
+        ).head(int(args.maximum_display_edges))
+        segments = np.stack(
+            [
+                display_edges[["source_x", "source_y"]].to_numpy(float),
+                display_edges[["target_x", "target_y"]].to_numpy(float),
+            ],
+            axis=1,
+        )
+        if len(segments):
+            score = display_edges["cytobridge_message_lr_flow"].to_numpy(float)
+            scaled = score / max(float(np.max(score)), np.finfo(float).eps)
+            axis.add_collection(
+                LineCollection(
+                    segments,
+                    colors="#6A51A3",
+                    linewidths=0.35 + 1.15 * scaled,
+                    alpha=0.64,
+                    zorder=3,
+                )
+            )
+        axis.set_aspect("equal", adjustable="datalim")
+        axis.set_axis_off()
+        axis.set_title(
+            f"{labels[dataset]} · {str(row.ligand).upper()}–{str(row.receptor).upper()} ({row.pathways})",
+            fontsize=7.5,
+            fontweight="bold",
+            color=DATASET_COLORS[dataset],
+            pad=2,
+        )
+        map_note = textwrap.fill(
+            f"{row.sender_type} → {row.receiver_type} · "
+            f"{len(display_edges)}/{len(map_edges)} positive model-linked edges shown",
+            width=54,
+        )
+        axis.text(
+            0.5,
+            -0.035,
+            map_note,
+            transform=axis.transAxes,
+            fontsize=5.6,
+            color="#34424C",
+            va="top",
+            ha="center",
+            linespacing=1.10,
+        )
+    legend_c.legend(
+        handles=[
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                linestyle="none",
+                markerfacecolor="#3A86A8",
+                markeredgecolor="none",
+                label="sender type",
+            ),
+            plt.Line2D(
+                [0],
+                [0],
+                marker="o",
+                linestyle="none",
+                markerfacecolor="#E08C46",
+                markeredgecolor="none",
+                label="receiver type",
+            ),
+            plt.Line2D([0], [0], color="#6A51A3", lw=1.2, label="model-linked edge"),
+        ],
+        frameon=False,
+        fontsize=6.5,
+        ncol=3,
+        loc="center",
+        bbox_to_anchor=(0.5, 0.45),
+    )
+
+    pdf = output / "spatial_communication_model_biology_a4.pdf"
+    png = output / "spatial_communication_model_biology_a4.png"
+    style.save_figure(fig, pdf, png, dpi=320)
+    plt.close(fig)
+    panel_output = output / "panel_data"
+    panel_output.mkdir()
+    panel_cells_path = panel_output / "spatial_map_cells.csv.gz"
+    panel_edges_path = panel_output / "spatial_map_edges.csv.gz"
+    panel_metrics_path = panel_output / "global_pair_metrics.csv"
+    panel_support_path = panel_output / "model_linked_external_support.csv"
+    panel_status_path = panel_output / "model_linked_lr_selection_status.csv"
+    pd.concat(panel_cell_frames, ignore_index=True).to_csv(
+        panel_cells_path, index=False
+    )
+    pd.concat(panel_edge_frames, ignore_index=True).to_csv(
+        panel_edges_path, index=False
+    )
+    primary_metrics.to_csv(panel_metrics_path, index=False)
+    support.reset_index().to_csv(panel_support_path, index=False)
+    status.reset_index().to_csv(panel_status_path, index=False)
+    caption = (
+        "**Five-dataset model-linked communication consistency.** (a) Terminal-stage "
+        "directed cell-type-pair concordance is shown for COMMOT and for the frozen "
+        "current-database CellAgentChat proxy across all five datasets. (b) For each "
+        "dataset, CytoBridge alone selected the highest "
+        "abundance-normalized exact-message magnitude × sender-ligand × "
+        "receiver-receptor activity axis from the frozen LR database crossed with "
+        "every off-diagonal model pair; neither COMMOT nor CellAgentChat entered "
+        "selection. COMMOT was evaluated on the complete zero-filled LR×pair "
+        "universe; CellAgentChat shows its native CTPS rank for the same selected "
+        "cell-type pair. AdMouse had no "
+        "axis with at least 10 active model-linked edges under its 347-gene panel and "
+        "strict learned-edge threshold. (c) Observed terminal coordinates show the "
+        "sender and receiver populations and the strongest positive LR-compatible "
+        "exact-message edges. The LR label is a post-hoc molecular compatibility "
+        "annotation of learned model edges, not a claim that the GNN natively "
+        "identifies a unique biochemical LR pair. NicheNet remains in the complete "
+        "audit but is not shown because exact-axis support was insufficient."
+    )
+    caption_path = output / "caption.md"
+    caption_path.write_text(caption + "\n", encoding="utf-8")
+    implementation = _model_biology_implementation()
+    provenance_path = output / "provenance.md"
+    provenance_path.write_text(
+        "\n".join(
+            [
+                "# Five-dataset model-linked communication figure provenance",
+                "",
+                "## Scope",
+                "",
+                "CytoBridge alone selects each LR-compatible axis; COMMOT and the "
+                "frozen current-database CellAgentChat proxy are evaluated only after "
+                "selection. AdMouse remains "
+                "explicitly not evaluable under the shared minimum-active-edge rule.",
+                "",
+                "## Source paths",
+                "",
+                f"- aggregate manifest: `{aggregate_dir / 'manifest.json'}`",
+                f"- selection manifest: `{selection_dir / 'manifest.json'}`",
+                f"- edge manifest: `{edge_dir / 'manifest.json'}`",
+                "- compact visual inputs: `panel_data/` in this bundle",
+                "",
+                "## Figure implementation",
+                "",
+                *[
+                    f"- `{relative}`: `{record['sha256']}`"
+                    for relative, record in implementation["files"].items()
+                ],
+                f"- aggregate SHA-256: `{implementation['aggregate_sha256']}`",
+                "",
+                "## Rebuild",
+                "",
+                "Run `scripts/run_spatial_communication_consistency.py "
+                "plot-model-biology` with the aggregate, selection, edge, and either "
+                "the five-dataset config or this bundle's compact `panel_data` "
+                "directory. The compact route reproduces the visual without the "
+                "original large H5AD files.",
+                "",
+                "## Interpretation boundary",
+                "",
+                "LR labels are post-hoc molecular compatibility annotations of exact "
+                "learned GNN messages. They do not assert that the GNN natively "
+                "identifies a unique biochemical ligand-receptor pair, and the figure "
+                "does not establish causal signaling.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    manifest = {
+        "schema_version": 1,
+        "workflow": "five_dataset_model_linked_spatial_communication_figure",
+        "implementation": implementation,
+        "inputs": {
+            "aggregate_manifest": _artifact(aggregate_dir / "manifest.json"),
+            "selection_manifest": _artifact(selection_dir / "manifest.json"),
+            "edge_manifest": _artifact(edge_dir / "manifest.json"),
+        },
+        "figure": {pdf.name: _artifact(pdf), png.name: _artifact(png)},
+        "caption": _artifact(caption_path),
+        "provenance": _artifact(provenance_path),
+        "panel_data": {
+            "global_metrics": _artifact(panel_metrics_path),
+            "external_support": _artifact(panel_support_path),
+            "selection_status": _artifact(panel_status_path),
+            "spatial_map_cells": _artifact(panel_cells_path),
+            "spatial_map_edges": _artifact(panel_edges_path),
+        },
+    }
+    if config_path is not None:
+        manifest["inputs"]["config"] = _artifact(config_path)
+    else:
+        assert panel_input is not None
+        manifest["inputs"]["spatial_panel_data"] = {
+            "cells": _artifact(panel_input / "spatial_map_cells.csv.gz"),
+            "edges": _artifact(panel_input / "spatial_map_edges.csv.gz"),
+        }
+    _write_json(output / "figure_manifest.json", manifest)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -865,10 +1807,34 @@ def build_parser() -> argparse.ArgumentParser:
     aggregate_parser.add_argument("--config", required=True)
     aggregate_parser.add_argument("--output-dir", required=True)
     aggregate_parser.set_defaults(function=aggregate)
+    select_biology = sub.add_parser("select-model-biology")
+    select_biology.add_argument("--config", required=True)
+    select_biology.add_argument("--aggregate-dir", required=True)
+    select_biology.add_argument("--output-dir", required=True)
+    select_biology.add_argument("--minimum-active-edges", type=int, default=10)
+    select_biology.set_defaults(function=select_model_biology)
+    score_biology = sub.add_parser("score-model-biology")
+    score_biology.add_argument("--config", required=True)
+    score_biology.add_argument("--selection-dir", required=True)
+    score_biology.add_argument("--output-dir", required=True)
+    score_biology.add_argument("--top-fraction", type=float, default=TOP_FRACTION)
+    score_biology.add_argument("--permutations", type=int, default=1000)
+    score_biology.add_argument("--seed", type=int, default=20260816)
+    score_biology.set_defaults(function=score_model_biology)
     plot_parser = sub.add_parser("plot")
     plot_parser.add_argument("--aggregate-dir", required=True)
     plot_parser.add_argument("--output-dir", required=True)
     plot_parser.set_defaults(function=plot)
+    model_figure = sub.add_parser("plot-model-biology")
+    model_figure_input = model_figure.add_mutually_exclusive_group(required=True)
+    model_figure_input.add_argument("--config")
+    model_figure_input.add_argument("--spatial-panel-data-dir")
+    model_figure.add_argument("--aggregate-dir", required=True)
+    model_figure.add_argument("--selection-dir", required=True)
+    model_figure.add_argument("--edge-dir", required=True)
+    model_figure.add_argument("--output-dir", required=True)
+    model_figure.add_argument("--maximum-display-edges", type=int, default=60)
+    model_figure.set_defaults(function=plot_model_biology)
     return parser
 
 
