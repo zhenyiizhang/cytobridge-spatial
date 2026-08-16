@@ -197,6 +197,61 @@ def test_summarize_nichenet_writes_pair_and_molecular_evidence(tmp_path: Path) -
     assert (output / "manifest.json").is_file()
 
 
+def test_selected_molecular_evidence_is_pair_bound_and_ranked(tmp_path: Path) -> None:
+    module = _load_spatial_script()
+    commot_pathways = tmp_path / "pathways.csv"
+    commot_lr = tmp_path / "lr.csv"
+    nichenet = tmp_path / "targets.csv"
+    pd.DataFrame(
+        {
+            "sender_type": ["A", "A", "A", "X"],
+            "receiver_type": ["B", "B", "B", "B"],
+            "stage": [4.0, 4.0, 3.0, 4.0],
+            "pathway": ["WNT", "FGF", "OLD", "OFF_PAIR"],
+            "abundance_controlled_distinct_cell_score": [2.0, 1.0, 99.0, 99.0],
+        }
+    ).to_csv(commot_pathways, index=False)
+    pd.DataFrame(
+        {
+            "sender_type": ["A", "A", "X"],
+            "receiver_type": ["B", "B", "B"],
+            "stage": [4.0, 4.0, 4.0],
+            "ligand": ["l1", "l2", "off"],
+            "receptor": ["r1", "r2", "off"],
+            "pathway": ["WNT", "FGF", "OFF_PAIR"],
+            "abundance_controlled_distinct_cell_score": [4.0, 1.0, 99.0],
+        }
+    ).to_csv(commot_lr, index=False)
+    pd.DataFrame(
+        {
+            "sender": ["A", "A", "X"],
+            "receiver": ["B", "B", "B"],
+            "ligand": ["l1", "l1", "off"],
+            "receptor": ["r1", "r1", "off"],
+            "target": ["T1", "T2", "OFF_PAIR"],
+            "ligand_target_evidence": [0.5, 0.2, 99.0],
+        }
+    ).to_csv(nichenet, index=False)
+    selected = pd.DataFrame(
+        {"dataset": ["zebrafish"], "sender_type": ["A"], "receiver_type": ["B"]}
+    )
+    pathways, ligand_receptors, targets = module._selected_molecular_evidence(
+        selected,
+        {
+            "zebrafish": {
+                "commot_pathway_csv": str(commot_pathways),
+                "commot_lr_csv": str(commot_lr),
+                "nichenet_target_csv": str(nichenet),
+            }
+        },
+    )
+    assert pathways.pathway.tolist() == ["WNT", "FGF"]
+    assert pathways.relative_to_pair_top.tolist() == [1.0, 0.5]
+    assert ligand_receptors.ligand.tolist() == ["l1", "l2"]
+    assert ligand_receptors.relative_to_pair_top.tolist() == [1.0, 0.25]
+    assert targets.target.tolist() == ["T1", "T2"]
+
+
 def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) -> None:
     module = _load_spatial_script()
     config = {"datasets": {}}
@@ -255,6 +310,42 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
                 path, index=False
             )
             spec[key] = str(path)
+        commot_pathways = root / "commot_pathways.csv"
+        commot_lr = root / "commot_lr.csv"
+        nichenet_targets = root / "nichenet_targets.csv"
+        pd.DataFrame(
+            {
+                "sender_type": ["B", "B"],
+                "receiver_type": ["A", "A"],
+                "stage": [terminal, terminal],
+                "pathway": ["WNT", "FGF"],
+                "abundance_controlled_distinct_cell_score": [2.0, 1.0],
+            }
+        ).to_csv(commot_pathways, index=False)
+        pd.DataFrame(
+            {
+                "sender_type": ["B", "B"],
+                "receiver_type": ["A", "A"],
+                "stage": [terminal, terminal],
+                "ligand": ["l1", "l2"],
+                "receptor": ["r1", "r2"],
+                "pathway": ["WNT", "FGF"],
+                "abundance_controlled_distinct_cell_score": [2.0, 1.0],
+            }
+        ).to_csv(commot_lr, index=False)
+        pd.DataFrame(
+            {
+                "sender": ["B"],
+                "receiver": ["A"],
+                "ligand": ["l1"],
+                "receptor": ["r1"],
+                "target": ["T1"],
+                "ligand_target_evidence": [0.5],
+            }
+        ).to_csv(nichenet_targets, index=False)
+        spec["commot_pathway_csv"] = str(commot_pathways)
+        spec["commot_lr_csv"] = str(commot_lr)
+        spec["nichenet_target_csv"] = str(nichenet_targets)
         config["datasets"][dataset] = spec
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config))
@@ -271,3 +362,19 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert len(status) == 20
     assert set(status.status) == {"complete"}
     assert (output / "manifest.json").is_file()
+    assert len(pd.read_csv(output / "selected_pair_commot_pathways.csv")) == 10
+    assert len(pd.read_csv(output / "selected_pair_commot_lr.csv")) == 10
+    assert len(pd.read_csv(output / "selected_pair_nichenet_targets.csv")) == 5
+
+    decision_table = pd.read_csv(output / "main_figure_method_decisions.csv")
+    decision_table["include_in_main_figure"] = decision_table.external_method.eq(
+        "COMMOT"
+    )
+    decision_table.to_csv(output / "main_figure_method_decisions.csv", index=False)
+    figure_output = tmp_path / "figure"
+    module.plot(
+        SimpleNamespace(aggregate_dir=str(output), output_dir=str(figure_output))
+    )
+    assert (figure_output / "spatial_communication_consistency_a4.pdf").is_file()
+    assert (figure_output / "spatial_communication_consistency_a4.png").is_file()
+    assert (figure_output / "figure_manifest.json").is_file()
