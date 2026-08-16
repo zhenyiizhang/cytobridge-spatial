@@ -18,6 +18,8 @@ def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use(
     assert "rows_resolved_by_structural_key" in script
     assert "database_resolution_audit.csv" in script
     assert "rows_unavailable_in_pinned_database" in script
+    assert "canonicalize_expression_genes" in script
+    assert "expression_genes_canonicalized_to_geneInfo" in script
     assert "pair_lr$pathway_name <- flat_database$pathway" in script
     assert "official_pathway_mismatch_count" in script
     assert 'c("agonist", "antagonist", "co_A_receptor", "co_I_receptor")' in script

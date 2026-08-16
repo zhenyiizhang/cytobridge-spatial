@@ -514,7 +514,25 @@ if (!all(vapply(
 ))) {
   stop("Prepared stages do not share an identical ordered gene universe")
 }
-expression_genes <- prepared_gene_lists[[1L]]
+gene_info_symbols <- as.character(official_database$geneInfo$Symbol)
+gene_info_casefold <- tolower(gene_info_symbols)
+if (anyDuplicated(gene_info_casefold)) {
+  stop("Pinned CellChat geneInfo symbols must be unique after case folding")
+}
+canonical_gene_by_casefold <- setNames(gene_info_symbols, gene_info_casefold)
+canonicalize_expression_genes <- function(values) {
+  matched <- unname(canonical_gene_by_casefold[tolower(values)])
+  result <- as.character(values)
+  result[!is.na(matched)] <- matched[!is.na(matched)]
+  result
+}
+expression_genes <- canonicalize_expression_genes(prepared_gene_lists[[1L]])
+if (anyDuplicated(expression_genes)) {
+  stop("Prepared expression genes collide after CellChat geneInfo capitalization")
+}
+n_expression_genes_canonicalized <- sum(
+  expression_genes != prepared_gene_lists[[1L]]
+)
 database_eligibility <- build_cellchat_database_eligibility(
   flat_database,
   pair_lr,
@@ -557,7 +575,8 @@ for (stage_position in seq_along(input_manifest$stages)) {
   stage_time <- if (is.null(stage_record$stage_time)) NA_real_ else as.numeric(stage_record$stage_time)
   stage_dir <- file.path(input_dir, "stages", token)
   expression <- as(Matrix::readMM(file.path(stage_dir, "expression_genes_by_cells.mtx")), "dgCMatrix")
-  genes <- readLines(file.path(stage_dir, "genes.txt"), warn = FALSE)
+  genes_raw <- readLines(file.path(stage_dir, "genes.txt"), warn = FALSE)
+  genes <- canonicalize_expression_genes(genes_raw)
   metadata <- read.csv(file.path(stage_dir, "metadata.csv"), check.names = FALSE, stringsAsFactors = FALSE)
   spatial <- read.csv(file.path(stage_dir, "spatial_aligned.csv"), check.names = FALSE, stringsAsFactors = FALSE)
   if (nrow(expression) != length(genes) || ncol(expression) != nrow(metadata)) {
@@ -765,6 +784,7 @@ manifest <- list(
     rows_resolved_by_structural_key = rows_resolved_by_structural_key,
     rows_unavailable_in_pinned_database = rows_unavailable_in_pinned_database,
     resolution_audit = file_record(resolution_path),
+    expression_genes_canonicalized_to_geneInfo = n_expression_genes_canonicalized,
     pathway_values_taken_from_current_csv = TRUE,
     official_pathway_mismatch_count = sum(pathway_mismatch),
     official_pathway_mismatch_database_rows = as.integer(flat_database$database_row[pathway_mismatch]),
