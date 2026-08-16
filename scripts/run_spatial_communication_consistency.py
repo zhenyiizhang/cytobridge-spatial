@@ -607,12 +607,21 @@ def plot(args: argparse.Namespace) -> None:
             linewidth=0.6,
             zorder=3,
         )
-    pair_labels = [
-        f"{dataset_labels[row.dataset]}  {row.sender_type} → {row.receiver_type}"
-        for row in selected.itertuples()
-    ]
-    ax_b.set_yticks(range(len(pair_labels)), pair_labels, fontsize=7.2)
-    ax_b.set_ylim(len(pair_labels) - 0.55, -0.55)
+    ax_b.set_yticks(
+        range(len(selected)),
+        [dataset_labels[row.dataset] for row in selected.itertuples()],
+        fontsize=7.2,
+    )
+    for row_index, row in selected.iterrows():
+        ax_b.text(
+            0.02,
+            row_index,
+            f"{row.sender_type} → {row.receiver_type}",
+            fontsize=7.0,
+            color="#59616A",
+            va="center",
+        )
+    ax_b.set_ylim(len(selected) - 0.55, -0.55)
     ax_b.set_xlim(0, 1.02)
     ax_b.axvline(0.8, color="#8A949C", lw=0.8, ls="--")
     ax_b.set_xlabel("Within-method rank percentile")
