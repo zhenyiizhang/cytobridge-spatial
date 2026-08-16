@@ -395,7 +395,10 @@ requested_structure_key <- paste(
   sep = "\r"
 )
 requested_indices <- as.integer(flat_database$database_row) + 1L
-resolve_official_index <- function(position) {
+indices <- rep(NA_integer_, nrow(flat_database))
+resolution_mode <- rep("unavailable_no_unique_pinned_row", nrow(flat_database))
+resolution_candidate_count <- integer(nrow(flat_database))
+for (position in seq_len(nrow(flat_database))) {
   requested_index <- requested_indices[[position]]
   requested_key <- requested_structure_key[[position]]
   if (
@@ -404,26 +407,48 @@ resolve_official_index <- function(position) {
       requested_index <= nrow(official_interaction) &&
       official_structure_key[[requested_index]] == requested_key
   ) {
-    return(requested_index)
+    indices[[position]] <- requested_index
+    resolution_mode[[position]] <- "direct_database_row"
+    resolution_candidate_count[[position]] <- 1L
+  } else {
+    candidates <- which(official_structure_key == requested_key)
+    if (length(candidates) > 1L) {
+      same_pathway <- candidates[
+        as.character(official_interaction$pathway_name[candidates]) ==
+          flat_database$pathway[[position]]
+      ]
+      if (length(same_pathway) > 0L) candidates <- same_pathway
+    }
+    resolution_candidate_count[[position]] <- length(candidates)
+    if (length(candidates) == 1L) {
+      indices[[position]] <- candidates[[1L]]
+      resolution_mode[[position]] <- "unique_structural_identity"
+    }
   }
-  candidates <- which(official_structure_key == requested_key)
-  if (length(candidates) > 1L) {
-    same_pathway <- candidates[
-      as.character(official_interaction$pathway_name[candidates]) ==
-        flat_database$pathway[[position]]
-    ]
-    if (length(same_pathway) > 0L) candidates <- same_pathway
-  }
-  if (length(candidates) != 1L) {
-    stop(paste(
-      "Pinned CellChat database cannot uniquely resolve prepared database_row",
-      flat_database$database_row[[position]],
-      "by expanded ligand, receptor, category, and pathway"
-    ))
-  }
-  candidates[[1L]]
 }
-indices <- vapply(seq_len(nrow(flat_database)), resolve_official_index, integer(1L))
+database_resolution <- data.frame(
+  database_row = flat_database$database_row,
+  interaction_id = flat_database$interaction_id,
+  ligand = flat_database$ligand,
+  receptor = flat_database$receptor,
+  pathway = flat_database$pathway,
+  category = flat_database$category,
+  resolution_mode = resolution_mode,
+  official_row_1_based = indices,
+  candidate_count = resolution_candidate_count,
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+resolution_path <- file.path(output_dir, "database_resolution_audit.csv")
+write.csv(database_resolution, resolution_path, row.names = FALSE, quote = TRUE)
+resolved_rows <- !is.na(indices)
+rows_unavailable_in_pinned_database <- sum(!resolved_rows)
+if (!any(resolved_rows)) {
+  stop("No requested LR rows are structurally available in the pinned CellChat database")
+}
+flat_database <- flat_database[resolved_rows, , drop = FALSE]
+indices <- indices[resolved_rows]
+requested_indices <- requested_indices[resolved_rows]
 rows_resolved_by_structural_key <- sum(indices != requested_indices)
 pair_lr <- official_interaction[indices, , drop = FALSE]
 ligand_expanded <- tolower(expand_complex(pair_lr$ligand, official_database$complex))
@@ -523,7 +548,7 @@ pathway_frames <- list()
 total_frames <- list()
 diagnostic_frames <- list()
 artifact_paths <- character(0)
-artifact_paths <- c(artifact_paths, eligibility_path, exclusion_path)
+artifact_paths <- c(artifact_paths, resolution_path, eligibility_path, exclusion_path)
 
 for (stage_position in seq_along(input_manifest$stages)) {
   stage_record <- input_manifest$stages[[stage_position]]
@@ -738,6 +763,8 @@ manifest <- list(
     rows_validated = nrow(flat_database),
     all_structural_rows_match = TRUE,
     rows_resolved_by_structural_key = rows_resolved_by_structural_key,
+    rows_unavailable_in_pinned_database = rows_unavailable_in_pinned_database,
+    resolution_audit = file_record(resolution_path),
     pathway_values_taken_from_current_csv = TRUE,
     official_pathway_mismatch_count = sum(pathway_mismatch),
     official_pathway_mismatch_database_rows = as.integer(flat_database$database_row[pathway_mismatch]),
