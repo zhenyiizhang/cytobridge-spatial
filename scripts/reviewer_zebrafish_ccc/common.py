@@ -28,6 +28,8 @@ import scipy
 from scipy import sparse
 from scipy.io import mmwrite
 
+from CytoBridge.graph_database import selected_feature_symbol
+
 
 LR_COLUMNS = ["database_row", "ligand", "receptor", "pathway", "category"]
 COMMON_SCORE_COLUMNS = [
@@ -344,6 +346,7 @@ def prepare_inputs(
     target_sum: float | str = "audit",
     integer_tolerance: float = 1e-5,
     source_x_tolerance: float = 1e-10,
+    preferred_species_tag: str | None = None,
 ) -> PreparedInputs:
     """Build the exact shared method input from the corrected H5AD."""
 
@@ -410,8 +413,35 @@ def prepare_inputs(
         raise ValueError("Resolved target_sum must be positive and finite")
 
     database = read_lr_database(lr_database_path)
+    source_feature_names = [str(value) for value in source.var_names]
+    if preferred_species_tag is None:
+        projected_feature_names = source_feature_names
+        feature_projection_policy = "source_var_names_exact_case_insensitive"
+    else:
+        selected_symbols = [
+            selected_feature_symbol(
+                value,
+                preferred_species_tag=preferred_species_tag,
+            )
+            for value in source_feature_names
+        ]
+        multiplicity: dict[str, int] = {}
+        for symbol in selected_symbols:
+            if symbol is not None:
+                key = symbol.casefold()
+                multiplicity[key] = multiplicity.get(key, 0) + 1
+        projected_feature_names = [
+            symbol
+            if symbol is not None and multiplicity[symbol.casefold()] == 1
+            else f"__unavailable_feature_{position}"
+            for position, symbol in enumerate(selected_symbols)
+        ]
+        feature_projection_policy = (
+            "CytoBridge.graph_database.selected_feature_symbol exact preferred-tag "
+            "projection; ambiguous symbols excluded"
+        )
     filtered_database, feature_audit = filter_lr_database_by_features(
-        database, source.var_names
+        database, projected_feature_names
     )
     selected_genes = sorted(
         {
@@ -421,7 +451,7 @@ def prepare_inputs(
             for gene in complex_subunits(token)
         }
     )
-    projection = _casefold_projection(source.var_names, selected_genes)
+    projection = _casefold_projection(projected_feature_names, selected_genes)
     selected_counts = (counts_csr @ projection).tocsr()
     selected_counts = selected_counts.multiply(
         (target_sum_value / library_size)[:, None]
@@ -450,7 +480,9 @@ def prepare_inputs(
     if obs["ccc_label"].isna().any() or (obs["ccc_label"] == "nan").any():
         raise ValueError(f"obs[{label_col!r}] contains missing labels")
     stage_order, stage_times = _ordered_stages(source.obs, stage_col, time_col)
-    obs["ccc_stage_time"] = obs["ccc_stage"].map(stage_times)
+    obs["ccc_stage_time"] = pd.to_numeric(
+        obs["ccc_stage"].map(stage_times), errors="coerce"
+    ).astype(float)
 
     coordinates = np.asarray(source.obsm[spatial_key], dtype=float)
     if (
@@ -492,6 +524,8 @@ def prepare_inputs(
         "spatial_source": f"obsm[{spatial_key!r}]",
         "label_source": f"obs[{label_col!r}]",
         "stage_source": f"obs[{stage_col!r}]",
+        "feature_projection": feature_projection_policy,
+        "preferred_species_tag": preferred_species_tag,
         "interaction_graph": interaction_graph,
     }
     diagnostics: dict[str, object] = {
@@ -520,6 +554,8 @@ def prepare_inputs(
         "feature_filter_excluded_rows": int(
             (~feature_audit["all_subunits_present"]).sum()
         ),
+        "feature_projection_policy": feature_projection_policy,
+        "preferred_species_tag": preferred_species_tag,
     }
     return PreparedInputs(
         prepared, filtered_database, stage_order, stage_times, diagnostics

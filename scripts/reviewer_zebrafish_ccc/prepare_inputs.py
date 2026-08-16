@@ -29,6 +29,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--time-col", default="time")
     parser.add_argument("--spatial-key", default="spatial_aligned")
     parser.add_argument(
+        "--preferred-species-tag",
+        default=None,
+        help=(
+            "Optional exact species tag used by CytoBridge compound feature-name "
+            "projection (for example 'hs' for ARISTA)."
+        ),
+    )
+    parser.add_argument(
         "--target-sum",
         default="audit",
         help=(
@@ -67,6 +75,7 @@ def main() -> None:
         target_sum=target_sum,
         integer_tolerance=args.integer_tolerance,
         source_x_tolerance=args.source_x_tolerance,
+        preferred_species_tag=args.preferred_species_tag,
     )
     manifest = write_input_bundle(
         prepared,
