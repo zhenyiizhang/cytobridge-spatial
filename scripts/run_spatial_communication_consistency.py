@@ -561,7 +561,7 @@ def plot(args: argparse.Namespace) -> None:
         hspace=0.34,
     )
     head_a = fig.add_subplot(grid[0])
-    _heading(head_a, "a", "Cross-method concordance across five spatial datasets")
+    _heading(head_a, "a", "Cross-method concordance")
     axes_a = grid[1].subgridspec(1, 2, wspace=0.32)
     ax_rho = fig.add_subplot(axes_a[0])
     ax_j = fig.add_subplot(axes_a[1])
@@ -614,7 +614,7 @@ def plot(args: argparse.Namespace) -> None:
         bbox_to_anchor=(0.0, 1.01),
     )
     head_b = fig.add_subplot(grid[2])
-    _heading(head_b, "b", "Shared high-ranking cell-type interaction programs")
+    _heading(head_b, "b", "Shared interaction programs")
     ax_b = fig.add_subplot(grid[3])
     selected = selected.set_index("dataset").loc[dataset_order].reset_index()
     comparison_methods = ["CytoBridge exact message", *included]
@@ -676,7 +676,7 @@ def plot(args: argparse.Namespace) -> None:
         fontsize=6.9,
     )
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "Biological annotation of the selected programs")
+    _heading(head_c, "c", "Biological annotations")
     ax_c = fig.add_subplot(grid[5])
     ax_c.set_axis_off()
     ax_c.set_xlim(0, 1)
@@ -772,8 +772,13 @@ def plot(args: argparse.Namespace) -> None:
     png = output / "spatial_communication_consistency_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
     plt.close(fig)
+    decision_index = decisions.set_index("external_method")
+    summary_text = ", ".join(
+        f"{method} (median ρ={float(decision_index.loc[method, 'median_spearman_rho']):.2f}, median top-20% Jaccard={float(decision_index.loc[method, 'median_top_jaccard']):.2f})"
+        for method in included
+    )
     included_text = " and ".join(included)
-    caption = f"**Five-dataset spatial communication consistency using a shared LR candidate database.** (a) Terminal-stage concordance between the exact CytoBridge interaction-message contribution and {included_text} over each complete directed cell-type-pair grid. These methods passed the gate frozen before analysis: at least four valid datasets, positive Spearman correlation in at least four, median ρ ≥ 0.20, and median top-20% Jaccard ≥ 0.15. CellAgentChat used its spatial mode (`dist=True`), three fixed sampling seeds, and the gene-level representable singleton subset of each dataset's accepted CytoBridge filtered LR database. (b) One off-diagonal program per dataset selected by a deterministic shared-percentile rule; connected points compare within-method ranks, not native score magnitudes. (c) COMMOT supplies pathway and LR labels for those selected programs. NicheNet supplies receiver-program ligand-to-target support only where its species prior and the shared LR gate yielded a valid result; it is not presented as a native spatial pair score. CellChat and NicheNet pair-level concordance did not pass the frozen main-figure gate and remain in the audit tables. The zebrafish strict confidence-1 orthology NicheNet run was not evaluable because one receiver had no candidate ligand; its all-confidence one-to-one run remains sensitivity-only. ARISTA and chicken use explicitly labelled human conserved-symbol proxies, and chicken is not a species-complete Gallus gallus screen. All comparisons are descriptive computational consistency, not causal or independent experimental validation."
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal program per dataset. (c) COMMOT supplies pathway and LR annotations, and NicheNet supplies ligand-to-target support where its species prior yielded a valid result. Zebrafish NicheNet was not evaluable under strict orthology. ARISTA and chicken are conserved-human-symbol proxy analyses. These results show descriptive computational consistency rather than causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,
