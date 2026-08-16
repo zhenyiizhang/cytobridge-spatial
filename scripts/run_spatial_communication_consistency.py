@@ -152,6 +152,7 @@ def _load_external(
         if method == "CellAgentChat":
             score_column = str(spec.get("cellagentchat_score_column", score_column))
         method_status = dict(spec.get("method_status", {})).get(method, "complete")
+        method_reason = str(dict(spec.get("method_reason", {})).get(method, ""))
         path_value = spec.get(path_key)
         if method_status != "complete" or not path_value:
             status_rows.append(
@@ -160,7 +161,7 @@ def _load_external(
                     "method": method,
                     "status": str(method_status),
                     "included_in_score_table": False,
-                    "reason": str(dict(spec.get("method_reason", {})).get(method, "")),
+                    "reason": method_reason,
                 }
             )
             continue
@@ -183,7 +184,7 @@ def _load_external(
                 "method": method,
                 "status": "complete",
                 "included_in_score_table": True,
-                "reason": "",
+                "reason": method_reason,
             }
         )
     return tables, status_rows

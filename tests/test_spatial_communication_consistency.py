@@ -581,6 +581,8 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
         spec["commot_pathway_csv"] = str(commot_pathways)
         spec["commot_lr_csv"] = str(commot_lr)
         spec["nichenet_target_csv"] = str(nichenet_targets)
+        if dataset == "arista":
+            spec["method_reason"]["CellAgentChat"] = "cross-species proxy"
         config["datasets"][dataset] = spec
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config))
@@ -596,6 +598,12 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     status = pd.read_csv(output / "method_execution_status.csv")
     assert len(status) == 20
     assert set(status.status) == {"complete"}
+    assert (
+        status.loc[
+            status.dataset.eq("arista") & status.method.eq("CellAgentChat"), "reason"
+        ].item()
+        == "cross-species proxy"
+    )
     assert (output / "manifest.json").is_file()
     assert len(pd.read_csv(output / "selected_pair_commot_pathways.csv")) == 10
     assert len(pd.read_csv(output / "selected_pair_commot_lr.csv")) == 10
