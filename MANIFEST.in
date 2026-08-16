@@ -54,6 +54,7 @@ include scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py
 include scripts/plot_lr_complex_aggregation_reviewer_response.py
 include scripts/plot_zebrafish_s22_article_style.py
 include scripts/run_zebrafish_paper_downstream.py
+include scripts/run_zebrafish_attention_validation.py
 include scripts/smoke_dataset_notebooks.py
 include scripts/smoke_installed_wheel.py
 include scripts/summarize_release_evidence.py
