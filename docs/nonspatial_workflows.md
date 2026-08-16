@@ -213,3 +213,18 @@ Run either entry point with `--help` for the complete, fail-closed arguments:
 python scripts/run_nonspatial_communication_consistency.py --help
 Rscript scripts/run_nonspatial_nichenet.R --help
 ```
+
+## Five accepted spatial datasets
+
+The corresponding package-owned spatial workflow is
+`scripts/run_spatial_communication_consistency.py`. It compares the accepted
+Zebrafish, MOSTA, ARISTA, AdMouse, and Chicken-heart Full checkpoints with
+COMMOT, CellChat, CellAgentChat where its pinned species contract is
+representable, and NicheNet. Every external method receives the same frozen
+terminal-stage cells, normalized expression, coordinates, and dataset-specific
+CellChatDB collection. Native units are never pooled. Main-figure inclusion is
+decided by the predeclared cross-dataset gate in
+`configs/spatial_communication_consistency/five_datasets.json`; weak or
+unavailable methods remain visible in audit tables. Molecular labels must name
+their source: cell-type-pair agreement does not by itself identify a ligand,
+receptor, pathway, or target gene.

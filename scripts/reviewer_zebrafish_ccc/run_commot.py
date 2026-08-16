@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run COMMOT once across all prepared observed zebrafish stages.
+"""Run COMMOT once across all prepared observed spatial stages.
 
 The runner consumes the method-neutral bundle created by ``prepare_inputs.py``.
 It does not re-normalize expression, re-filter LR rows by stage, or silently
@@ -42,6 +42,7 @@ except ImportError:  # direct script execution
     )
 
 
+# Accepted zebrafish reviewer default. Multi-dataset runs override this token.
 DATABASE_NAME = "zebrafish_current_cellchatdb"
 
 
@@ -49,6 +50,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
+    parser.add_argument(
+        "--database-name",
+        default="project_cellchatdb",
+        help="COMMOT internal database token recorded in output provenance.",
+    )
+    parser.add_argument(
+        "--database-variant",
+        default="project_lr_database",
+        help="Human-readable database condition recorded in all result rows.",
+    )
     parser.add_argument(
         "--distance-mode",
         choices=["cytobridge_graph", "knn"],
@@ -210,6 +221,7 @@ def _common_context(
     category: str,
     interaction_id: str,
     matrix_key: str,
+    database_variant: str,
 ) -> pd.DataFrame:
     if frame.empty:
         return pd.DataFrame(
@@ -227,7 +239,7 @@ def _common_context(
         )
     result = frame.copy()
     result.insert(0, "method", "COMMOT")
-    result.insert(1, "database_variant", "current_zebrafish_lr_database")
+    result.insert(1, "database_variant", database_variant)
     result.insert(2, "stage", stage)
     result.insert(3, "stage_time", stage_time)
     result["ligand"] = ligand
@@ -255,6 +267,7 @@ def extract_commot_tables(
     stage: str,
     stage_time: float | None,
     database_name: str = DATABASE_NAME,
+    database_variant: str = "current_zebrafish_lr_database",
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
     labels = adata.obs["commot_label"].astype(str).to_numpy()
     prefix = f"commot-{database_name}-"
@@ -303,6 +316,7 @@ def extract_commot_tables(
             category=row.category,
             interaction_id=f"{row.ligand}->{row.receptor}|{row.pathway}|{row.category}",
             matrix_key=key,
+            database_variant=database_variant,
         )
         context["database_rows"] = ";".join(str(int(value)) for value in source_rows)
         lr_frames.append(context)
@@ -327,6 +341,7 @@ def extract_commot_tables(
                 category=categories,
                 interaction_id=f"pathway:{pathway}",
                 matrix_key=key,
+                database_variant=database_variant,
             )
         )
 
@@ -343,6 +358,7 @@ def extract_commot_tables(
         category="__all__",
         interaction_id="total",
         matrix_key=total_key,
+        database_variant=database_variant,
     )
     lr = (
         pd.concat(lr_frames, ignore_index=True)
@@ -438,7 +454,7 @@ def main() -> None:
         )
         ct.tl.spatial_communication(
             snapshot,
-            database_name=DATABASE_NAME,
+            database_name=args.database_name,
             df_ligrec=commot_database,
             pathway_sum=True,
             heteromeric=True,
@@ -448,7 +464,12 @@ def main() -> None:
             cot_nitermax=args.cot_nitermax,
         )
         lr, pathway, total, availability, diagnostics = extract_commot_tables(
-            snapshot, database, stage=stage, stage_time=stage_time
+            snapshot,
+            database,
+            stage=stage,
+            stage_time=stage_time,
+            database_name=args.database_name,
+            database_variant=args.database_variant,
         )
         lr_frames.append(lr)
         pathway_frames.append(pathway)
@@ -501,7 +522,8 @@ def main() -> None:
         "schema_version": 1,
         "created_at_utc": utc_now(),
         "method": "COMMOT",
-        "database_variant": "current_zebrafish_lr_database",
+        "database_variant": args.database_variant,
+        "database_name": args.database_name,
         "input_manifest": file_record(input_manifest_path),
         "database": file_record(database_path),
         "design": {

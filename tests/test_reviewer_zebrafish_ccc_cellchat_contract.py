@@ -32,7 +32,9 @@ def test_cellchat_runner_enforces_current_database_and_discloses_nonspatial_use(
     assert "expression_retransformed_in_runner = FALSE" in script
     assert "abundance_controlled_score" in script
     assert 'args[["cellchat-source"]]' in script
-    assert '"CellChatDB.zebrafish.rda"' in script
+    assert 'database_filename <- paste0(database_object_name, ".rda")' in script
+    assert 'c("zebrafish", "mouse", "human")' in script
+    assert 'official_database <- get(database_object_name)' in script
     assert "CellChat_source_commit = cellchat_commit" in script
     assert (
         'pinned_cellchat_commit <- "75253cd0c9e68410e6e721a6d3a0419a1d7e358f"' in script

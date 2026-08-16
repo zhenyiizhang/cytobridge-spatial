@@ -1,10 +1,11 @@
-"""Shared input and output contracts for the zebrafish CCC comparison.
+"""Shared input and output contracts for spatial CCC comparisons.
 
 The important preprocessing decision lives here instead of in each method
 runner: expression always comes from the declared raw-count layer, library
 sizes are calculated over *all* measured genes, and the selected LR genes are
 then transformed exactly once with the target frozen in the preprocessing
-audit (1105 for the formal zebrafish artifact) plus ``log1p``.  The
+audit (1105 for the formal zebrafish artifact) plus ``log1p``.  Other formal
+datasets may supply their accepted numeric target explicitly.  The
 reconstructed values are checked against the frozen H5AD ``X``.
 """
 
@@ -111,7 +112,9 @@ def _find_column(frame: pd.DataFrame, candidates: Sequence[str]) -> str:
     for candidate in candidates:
         if candidate.lower() in by_string:
             return by_string[candidate.lower()]
-    raise ValueError(f"None of columns {list(candidates)!r} is present in {list(frame.columns)!r}")
+    raise ValueError(
+        f"None of columns {list(candidates)!r} is present in {list(frame.columns)!r}"
+    )
 
 
 def read_lr_database(path: Path) -> pd.DataFrame:
@@ -127,11 +130,15 @@ def read_lr_database(path: Path) -> pd.DataFrame:
     receptor_col = _find_column(raw, ["receptor", "1"])
     pathway_col = _find_column(raw, ["pathway", "pathway_name", "2"])
     category_col = _find_column(raw, ["category", "annotation", "3"])
-    index_candidates = [column for column in raw.columns if str(column).lower().startswith("unnamed")]
+    index_candidates = [
+        column for column in raw.columns if str(column).lower().startswith("unnamed")
+    ]
     if "database_row" in raw.columns:
         database_rows = pd.to_numeric(raw["database_row"], errors="raise").astype(int)
     elif index_candidates:
-        database_rows = pd.to_numeric(raw[index_candidates[0]], errors="raise").astype(int)
+        database_rows = pd.to_numeric(raw[index_candidates[0]], errors="raise").astype(
+            int
+        )
     else:
         database_rows = pd.Series(np.arange(len(raw), dtype=int), index=raw.index)
 
@@ -145,11 +152,14 @@ def read_lr_database(path: Path) -> pd.DataFrame:
         }
     )
     if result[LR_COLUMNS[1:]].replace("", np.nan).isna().any().any():
-        raise ValueError("LR database contains empty ligand/receptor/pathway/category values")
+        raise ValueError(
+            "LR database contains empty ligand/receptor/pathway/category values"
+        )
     if result["database_row"].duplicated().any():
         raise ValueError("database_row must be unique")
     result["interaction_id"] = result.apply(
-        lambda row: f"dbrow_{int(row.database_row)}:{row.ligand}->{row.receptor}", axis=1
+        lambda row: f"dbrow_{int(row.database_row)}:{row.ligand}->{row.receptor}",
+        axis=1,
     )
     result["lr_key"] = result["ligand"] + "|" + result["receptor"]
     result["flat_key"] = (
@@ -161,7 +171,9 @@ def read_lr_database(path: Path) -> pd.DataFrame:
 def complex_subunits(token: str) -> tuple[str, ...]:
     """Return CellChatDB/COMMOT underscore-delimited complex subunits."""
 
-    parts = tuple(part.strip().lower() for part in str(token).split("_") if part.strip())
+    parts = tuple(
+        part.strip().lower() for part in str(token).split("_") if part.strip()
+    )
     if not parts:
         raise ValueError(f"Invalid empty LR token: {token!r}")
     return parts
@@ -212,7 +224,9 @@ def _validate_counts(matrix: object, *, integer_tolerance: float) -> dict[str, o
     minimum = float(data.min()) if data.size else 0.0
     if minimum < 0:
         raise ValueError(f"Counts layer contains negative values (minimum={minimum})")
-    max_integer_residual = float(np.max(np.abs(data - np.rint(data)))) if data.size else 0.0
+    max_integer_residual = (
+        float(np.max(np.abs(data - np.rint(data)))) if data.size else 0.0
+    )
     if max_integer_residual > integer_tolerance:
         raise ValueError(
             "Counts layer is not integer-like; refusing to log-transform a possibly "
@@ -350,17 +364,23 @@ def prepare_inputs(
     library_size = np.asarray(counts_csr.sum(axis=1)).ravel()
     if np.any(~np.isfinite(library_size)) or np.any(library_size <= 0):
         bad = int(np.count_nonzero(~np.isfinite(library_size) | (library_size <= 0)))
-        raise ValueError(f"Counts layer contains {bad} cells with invalid/zero library size")
+        raise ValueError(
+            f"Counts layer contains {bad} cells with invalid/zero library size"
+        )
 
     audit_record: dict[str, object] | None = None
     if isinstance(target_sum, str):
         if target_sum.lower() != "audit":
             raise ValueError("target_sum must be a positive number or 'audit'")
         if preprocess_audit_path is None:
-            raise ValueError("preprocess_audit_path is required when target_sum='audit'")
+            raise ValueError(
+                "preprocess_audit_path is required when target_sum='audit'"
+            )
         audit_record = json.loads(preprocess_audit_path.read_text(encoding="utf-8"))
         if audit_record.get("all_checks_passed") is not True:
-            raise ValueError("Preprocessing audit does not declare all_checks_passed=true")
+            raise ValueError(
+                "Preprocessing audit does not declare all_checks_passed=true"
+            )
         try:
             target_sum_value = float(
                 audit_record["normalization_and_log1p"]["resolved_target_sum"]
@@ -375,9 +395,13 @@ def prepare_inputs(
         observed_h5ad_sha = sha256_file(h5ad_path)
         if observed_h5ad_sha != expected_h5ad_sha:
             raise ValueError("Input H5AD SHA256 does not match the preprocessing audit")
-        expected_lr_sha = audit_record.get("inputs", {}).get("lr_database", {}).get("sha256")
+        expected_lr_sha = (
+            audit_record.get("inputs", {}).get("lr_database", {}).get("sha256")
+        )
         if expected_lr_sha and sha256_file(lr_database_path) != expected_lr_sha:
-            raise ValueError("LR database SHA256 does not match the preprocessing audit")
+            raise ValueError(
+                "LR database SHA256 does not match the preprocessing audit"
+            )
         target_sum_rule = "frozen preprocessing-audit resolved target"
     else:
         target_sum_value = float(target_sum)
@@ -386,7 +410,9 @@ def prepare_inputs(
         raise ValueError("Resolved target_sum must be positive and finite")
 
     database = read_lr_database(lr_database_path)
-    filtered_database, feature_audit = filter_lr_database_by_features(database, source.var_names)
+    filtered_database, feature_audit = filter_lr_database_by_features(
+        database, source.var_names
+    )
     selected_genes = sorted(
         {
             gene
@@ -397,7 +423,9 @@ def prepare_inputs(
     )
     projection = _casefold_projection(source.var_names, selected_genes)
     selected_counts = (counts_csr @ projection).tocsr()
-    selected_counts = selected_counts.multiply((target_sum_value / library_size)[:, None]).tocsr()
+    selected_counts = selected_counts.multiply(
+        (target_sum_value / library_size)[:, None]
+    ).tocsr()
     selected_counts.data = np.log1p(selected_counts.data)
 
     # The corrected zebrafish artifact already stores this exact single-log
@@ -425,7 +453,11 @@ def prepare_inputs(
     obs["ccc_stage_time"] = obs["ccc_stage"].map(stage_times)
 
     coordinates = np.asarray(source.obsm[spatial_key], dtype=float)
-    if coordinates.ndim != 2 or coordinates.shape[0] != source.n_obs or coordinates.shape[1] < 2:
+    if (
+        coordinates.ndim != 2
+        or coordinates.shape[0] != source.n_obs
+        or coordinates.shape[1] < 2
+    ):
         raise ValueError(f"obsm[{spatial_key!r}] must be an n_cells x >=2 matrix")
     if not np.isfinite(coordinates).all():
         raise ValueError(f"obsm[{spatial_key!r}] contains non-finite values")
@@ -444,7 +476,9 @@ def prepare_inputs(
         "source_h5ad": str(h5ad_path.resolve()),
         "source_lr_database": str(lr_database_path.resolve()),
         "preprocess_audit": (
-            str(preprocess_audit_path.resolve()) if preprocess_audit_path is not None else None
+            str(preprocess_audit_path.resolve())
+            if preprocess_audit_path is not None
+            else None
         ),
         "source_expression": f"layers[{counts_layer!r}]",
         "normalization": "per-cell library-size normalization over all measured genes",
@@ -466,7 +500,9 @@ def prepare_inputs(
         "selected_n_genes": len(selected_genes),
         "database_rows_input": int(len(database)),
         "database_rows_structurally_available": int(len(filtered_database)),
-        "database_unique_flat_rows_available": int(filtered_database["flat_key"].nunique()),
+        "database_unique_flat_rows_available": int(
+            filtered_database["flat_key"].nunique()
+        ),
         "database_exact_flat_duplicates_available": int(
             len(filtered_database) - filtered_database["flat_key"].nunique()
         ),
@@ -481,9 +517,13 @@ def prepare_inputs(
         "preprocess_audit_all_checks_passed": (
             audit_record.get("all_checks_passed") if audit_record is not None else None
         ),
-        "feature_filter_excluded_rows": int((~feature_audit["all_subunits_present"]).sum()),
+        "feature_filter_excluded_rows": int(
+            (~feature_audit["all_subunits_present"]).sum()
+        ),
     }
-    return PreparedInputs(prepared, filtered_database, stage_order, stage_times, diagnostics)
+    return PreparedInputs(
+        prepared, filtered_database, stage_order, stage_times, diagnostics
+    )
 
 
 def stratified_subsample_indices(
@@ -517,7 +557,9 @@ def stratified_subsample_indices(
     selected: list[int] = []
     for group, amount in zip(groups, quota, strict=True):
         candidates = np.flatnonzero(labels_array == group)
-        selected.extend(rng.choice(candidates, size=int(amount), replace=False).tolist())
+        selected.extend(
+            rng.choice(candidates, size=int(amount), replace=False).tolist()
+        )
     return np.sort(np.asarray(selected, dtype=int))
 
 
@@ -532,7 +574,7 @@ def write_input_bundle(
     *,
     source_h5ad: Path,
     source_lr_database: Path,
-    source_preprocess_audit: Path,
+    source_preprocess_audit: Path | None,
     max_cells_per_stage: int = 0,
     subsample_seed: int = 20260722,
 ) -> dict[str, object]:
@@ -572,7 +614,9 @@ def write_input_bundle(
         metadata_path = stage_dir / "metadata.csv"
         spatial_path = stage_dir / "spatial_aligned.csv"
         mmwrite(matrix_path, snapshot.X.T.tocoo())
-        genes_path.write_text("\n".join(snapshot.var_names.astype(str)) + "\n", encoding="utf-8")
+        genes_path.write_text(
+            "\n".join(snapshot.var_names.astype(str)) + "\n", encoding="utf-8"
+        )
         metadata = pd.DataFrame(
             {
                 "cell_id": cell_ids,
@@ -584,7 +628,9 @@ def write_input_bundle(
         )
         metadata.to_csv(metadata_path, index=False)
         coords = np.asarray(snapshot.obsm["spatial_aligned"], dtype=float)
-        spatial = pd.DataFrame(coords, columns=[f"coord_{idx}" for idx in range(coords.shape[1])])
+        spatial = pd.DataFrame(
+            coords, columns=[f"coord_{idx}" for idx in range(coords.shape[1])]
+        )
         spatial.insert(0, "cell_id", cell_ids)
         spatial.to_csv(spatial_path, index=False)
         stage_files = [matrix_path, genes_path, metadata_path, spatial_path]
@@ -599,7 +645,10 @@ def write_input_bundle(
                 "n_cell_types": int(snapshot.obs["ccc_label"].nunique()),
                 "cell_type_counts": {
                     str(key): int(value)
-                    for key, value in snapshot.obs["ccc_label"].value_counts().sort_index().items()
+                    for key, value in snapshot.obs["ccc_label"]
+                    .value_counts()
+                    .sort_index()
+                    .items()
                 },
                 "files": {path.name: file_record(path) for path in stage_files},
             }
@@ -608,17 +657,23 @@ def write_input_bundle(
     manifest: dict[str, object] = {
         "schema_version": 1,
         "created_at_utc": utc_now(),
-        "purpose": "shared corrected-zebrafish input for external CCC methods",
+        "purpose": "shared accepted spatial input for external CCC methods",
         "sources": {
             "h5ad": file_record(source_h5ad),
             "lr_database": file_record(source_lr_database),
-            "preprocess_audit": file_record(source_preprocess_audit),
+            "preprocess_audit": (
+                file_record(source_preprocess_audit)
+                if source_preprocess_audit is not None
+                else None
+            ),
         },
         "preprocessing": prepared.adata.uns["ccc_preprocessing"],
         "diagnostics": prepared.diagnostics,
         "selection": {
             "max_cells_per_stage": int(max_cells_per_stage),
-            "subsampling": "all cells" if max_cells_per_stage <= 0 else "deterministic label-stratified",
+            "subsampling": "all cells"
+            if max_cells_per_stage <= 0
+            else "deterministic label-stratified",
             "seed": int(subsample_seed),
         },
         "database": {
@@ -630,7 +685,9 @@ def write_input_bundle(
         },
         "stages": stages,
         "software": software_versions(),
-        "artifacts": {str(path.relative_to(out_dir)): file_record(path) for path in artifact_paths},
+        "artifacts": {
+            str(path.relative_to(out_dir)): file_record(path) for path in artifact_paths
+        },
     }
     json_dump(manifest, out_dir / "input_manifest.json")
     return manifest

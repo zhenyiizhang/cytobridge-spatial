@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare one shared, counts-derived input bundle for zebrafish CCC methods."""
+"""Prepare one shared, counts-derived input bundle for spatial CCC methods."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--preprocess-audit",
         type=Path,
-        required=True,
+        required=False,
         help="Passed formal audit that freezes the primary normalization target and input hashes.",
     )
     parser.add_argument("--out-dir", type=Path, required=True)
@@ -31,7 +31,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--target-sum",
         default="audit",
-        help="Primary is 'audit' (1105 for the formal artifact); a positive number is an explicit sensitivity.",
+        help=(
+            "Use 'audit' with --preprocess-audit, or supply the exact numeric "
+            "normalization target recorded by the accepted H5AD."
+        ),
     )
     parser.add_argument("--integer-tolerance", type=float, default=1e-5)
     parser.add_argument("--source-x-tolerance", type=float, default=1e-10)
@@ -43,6 +46,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     if args.target_sum.lower() == "audit":
+        if args.preprocess_audit is None:
+            raise ValueError("--preprocess-audit is required with --target-sum audit")
         target_sum: float | str = "audit"
     else:
         target_sum = float(args.target_sum)

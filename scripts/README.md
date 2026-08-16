@@ -104,6 +104,20 @@ mode uses the wheel-bundled mouse CellChatDB for all four methods. Native
 CellAgentChat CTPS is primary; threshold-free continuous score is emitted only
 as sensitivity. Raw method scores are never pooled across methods.
 
+`run_spatial_communication_consistency.py` is the five-dataset spatial
+counterpart for Zebrafish, MOSTA, ARISTA, AdMouse, and Chicken heart. It
+freezes one deterministic terminal-stage cell-type-stratified sample per
+dataset, preserves the same terminal cells for every external method, and
+compares complete directed cell-type-pair ranks. The primary CytoBridge view
+is the exact one-layer interaction message contribution; attention-gate
+magnitude is retained as a secondary audit. A method enters the main figure
+only if it passes the gate recorded in
+`configs/spatial_communication_consistency/five_datasets.json`, which was
+frozen before the five-dataset outputs were generated. All attempted methods
+remain in the complete status and metric tables. Chicken heart is explicitly
+labelled as a conserved-symbol human-CellChatDB proxy rather than a native
+Gallus gallus screen.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its

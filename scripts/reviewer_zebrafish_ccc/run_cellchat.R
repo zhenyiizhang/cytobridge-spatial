@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 
-# Run official CellChat once across every prepared observed zebrafish stage.
+# Run official CellChat once across every prepared observed spatial stage.
 #
 # The flat CSV is not merely cited in the manifest.  Its database_row values
-# are resolved against CellChatDB.zebrafish and expanded ligand/receptor,
+# are resolved against the requested official CellChatDB species object and expanded ligand/receptor,
 # pathway, and category values are checked row by row before computation.
 
 parse_args <- function(values) {
@@ -236,7 +236,7 @@ matrix_context <- function(
   probability <- if (is.null(pvalues)) rep(NA_real_, nrow(indices)) else pvalues[indices]
   result <- data.frame(
     method = "CellChat",
-    database_variant = "current_zebrafish_lr_database",
+    database_variant = database_variant,
     stage = stage,
     stage_time = as.numeric(stage_time),
     sender_type = sender,
@@ -273,6 +273,17 @@ mean_method <- if (is.null(args[["mean-method"]])) "triMean" else args[["mean-me
 population_size <- as_bool(args[["population-size"]], FALSE)
 positive_only <- as_bool(args[["positive-only"]], TRUE)
 save_rds <- as_bool(args[["save-rds"]], TRUE)
+cellchat_species <- if (is.null(args[["cellchat-species"]])) "zebrafish" else tolower(args[["cellchat-species"]])
+if (!(cellchat_species %in% c("zebrafish", "mouse", "human"))) {
+  stop("--cellchat-species must be zebrafish, mouse, or human")
+}
+database_variant <- if (is.null(args[["database-variant"]])) {
+  paste0("project_", cellchat_species, "_lr_database")
+} else {
+  args[["database-variant"]]
+}
+database_object_name <- paste0("CellChatDB.", cellchat_species)
+database_filename <- paste0(database_object_name, ".rda")
 if (is.na(nboot) || nboot < 1L) stop("--nboot must be positive")
 if (is.na(seed_use)) stop("--seed must be an integer")
 
@@ -285,7 +296,7 @@ cellchat_source <- args[["cellchat-source"]]
 if (!is.null(cellchat_source)) {
   cellchat_source <- normalizePath(cellchat_source, mustWork = TRUE)
   description_path <- file.path(cellchat_source, "DESCRIPTION")
-  database_rda_path <- file.path(cellchat_source, "data", "CellChatDB.zebrafish.rda")
+  database_rda_path <- file.path(cellchat_source, "data", database_filename)
   core_files <- file.path(
     cellchat_source,
     "R",
@@ -293,7 +304,7 @@ if (!is.null(cellchat_source)) {
   )
   required_source_files <- c(description_path, database_rda_path, core_files)
   if (!all(file.exists(required_source_files))) {
-    stop("--cellchat-source is missing DESCRIPTION, zebrafish database, or core R files")
+    stop("--cellchat-source is missing DESCRIPTION, requested species database, or core R files")
   }
   suppressPackageStartupMessages({
     library(dplyr)
@@ -335,7 +346,7 @@ if (!is.null(cellchat_source)) {
   }
 } else {
   suppressPackageStartupMessages(library(CellChat))
-  data("CellChatDB.zebrafish", package = "CellChat", envir = environment())
+  data(list = database_object_name, package = "CellChat", envir = environment())
   database_rda_path <- NA_character_
   cellchat_version <- as.character(packageVersion("CellChat"))
   cellchat_commit <- NA_character_
@@ -354,10 +365,10 @@ if (!all(required_database_columns %in% colnames(flat_database))) {
 }
 if (anyDuplicated(flat_database$database_row)) stop("database_row values must be unique")
 
-if (!exists("CellChatDB.zebrafish")) {
-  stop("The installed official CellChat package does not provide CellChatDB.zebrafish")
+if (!exists(database_object_name)) {
+  stop(paste("The installed official CellChat package does not provide", database_object_name))
 }
-official_database <- CellChatDB.zebrafish
+official_database <- get(database_object_name)
 if (is.null(rownames(official_database$complex)) || anyDuplicated(rownames(official_database$complex))) {
   stop("Pinned CellChat complex table must have unique non-null row names")
 }
@@ -366,7 +377,7 @@ if (!("Symbol" %in% colnames(official_database$geneInfo))) {
 }
 indices <- as.integer(flat_database$database_row) + 1L
 if (any(is.na(indices)) || any(indices < 1L) || any(indices > nrow(official_database$interaction))) {
-  stop("Prepared database_row is outside the installed CellChatDB.zebrafish interaction table")
+  stop(paste("Prepared database_row is outside the installed", database_object_name, "interaction table"))
 }
 pair_lr <- official_database$interaction[indices, , drop = FALSE]
 ligand_expanded <- tolower(expand_complex(pair_lr$ligand, official_database$complex))
@@ -379,7 +390,7 @@ database_structure_matches <- (
 if (!all(database_structure_matches)) {
   first_bad <- which(!database_structure_matches)[[1L]]
   stop(paste(
-    "Installed CellChatDB.zebrafish does not reproduce the ligand, receptor, and category at database_row",
+    "Installed CellChat database does not reproduce the ligand, receptor, and category at database_row",
     flat_database$database_row[[first_bad]]
   ))
 }
@@ -666,11 +677,17 @@ manifest <- list(
   schema_version = 1,
   created_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
   method = "CellChat",
-  database_variant = "current_zebrafish_lr_database",
+  database_variant = database_variant,
+  cellchat_species = cellchat_species,
+  official_database_object = database_object_name,
   input_manifest = file_record(input_manifest_path),
   database = file_record(database_path),
   database_validation = list(
-    rule = "database_row + expanded ligand + expanded receptor + category must match pinned CellChatDB.zebrafish rowwise; pathway labels are taken exactly from the requested current project CSV",
+    rule = paste0(
+      "database_row + expanded ligand + expanded receptor + category must match pinned ",
+      database_object_name,
+      " rowwise; pathway labels are taken exactly from the requested current project CSV"
+    ),
     rows_validated = nrow(flat_database),
     all_structural_rows_match = TRUE,
     pathway_values_taken_from_current_csv = TRUE,
@@ -733,7 +750,7 @@ manifest <- list(
     CellChat_load_mode = cellchat_load_mode,
     CellChat_source = if (is.null(cellchat_source)) NULL else cellchat_source,
     CellChat_source_commit = cellchat_commit,
-    CellChat_zebrafish_database = if (is.na(database_rda_path)) NULL else file_record(database_rda_path),
+    CellChat_species_database = if (is.na(database_rda_path)) NULL else file_record(database_rda_path),
     Matrix = as.character(packageVersion("Matrix")),
     jsonlite = as.character(packageVersion("jsonlite"))
   ),
