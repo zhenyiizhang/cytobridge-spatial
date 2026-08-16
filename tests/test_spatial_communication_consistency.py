@@ -818,8 +818,8 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
     caption = (figure_output / "caption.md").read_text(encoding="utf-8")
-    assert "CytoBridge-guided molecular resolution" in caption
-    assert "integrating that interaction with COMMOT" in caption
-    assert "integrating it with NicheNet" in caption
-    assert "CytoBridge actively localizes the dynamic interaction" in caption
+    assert "Molecular resolution of the selected interactions" in caption
+    assert "COMMOT ranks pathway and ligand-receptor programs" in caption
+    assert "NicheNet links candidate ligands" in caption
+    assert "CytoBridge specifies the sender-receiver interaction" in caption
     assert "not probabilities or effect sizes" in caption

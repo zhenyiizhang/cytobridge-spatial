@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 import textwrap
 from pathlib import Path
 from typing import Iterable
@@ -1005,16 +1006,31 @@ def plot(args: argparse.Namespace) -> None:
     from CytoBridge.nonspatial import scnt_figure_style as style
 
     source = Path(args.aggregate_dir).expanduser().resolve()
+    table_source = source / "panel_data" if (source / "panel_data").is_dir() else source
+    source_manifest_path = next(
+        (
+            candidate
+            for candidate in (
+                source / "manifest.json",
+                source / "aggregate_manifest.json",
+                source / "figure_manifest.json",
+            )
+            if candidate.is_file()
+        ),
+        None,
+    )
+    if source_manifest_path is None:
+        raise FileNotFoundError(f"no source manifest found under {source}")
     output = Path(args.output_dir).expanduser().resolve()
     if output.exists():
         raise FileExistsError(f"output directory exists: {output}")
     output.mkdir(parents=True)
-    metrics = pd.read_csv(source / "cytobridge_external_metrics.csv")
-    decisions = pd.read_csv(source / "main_figure_method_decisions.csv")
-    selected = pd.read_csv(source / "selected_biological_pairs.csv")
-    pathways = pd.read_csv(source / "selected_pair_commot_pathways.csv")
-    ligand_receptors = pd.read_csv(source / "selected_pair_commot_lr.csv")
-    target_evidence = pd.read_csv(source / "selected_pair_nichenet_targets.csv")
+    metrics = pd.read_csv(table_source / "cytobridge_external_metrics.csv")
+    decisions = pd.read_csv(table_source / "main_figure_method_decisions.csv")
+    selected = pd.read_csv(table_source / "selected_biological_pairs.csv")
+    pathways = pd.read_csv(table_source / "selected_pair_commot_pathways.csv")
+    ligand_receptors = pd.read_csv(table_source / "selected_pair_commot_lr.csv")
+    target_evidence = pd.read_csv(table_source / "selected_pair_nichenet_targets.csv")
     included = (
         decisions.loc[decisions.include_in_main_figure, "external_method"]
         .astype(str)
@@ -1053,20 +1069,25 @@ def plot(args: argparse.Namespace) -> None:
         "CellChat": (METHOD_COLORS["CellChat"], "^", "CellChat"),
         "NicheNet": (METHOD_COLORS["NicheNet"], "v", "NicheNet"),
     }
-    fig = plt.figure(figsize=style.A4_PORTRAIT)
-    grid = fig.add_gridspec(
-        6,
+    fig = plt.figure(figsize=(11.69, 8.27))
+    outer = fig.add_gridspec(
+        2,
         1,
-        height_ratios=[0.15, 1.45, 0.15, 1.35, 0.15, 3.15],
-        left=0.085,
-        right=0.97,
-        top=0.98,
-        bottom=0.055,
-        hspace=0.30,
+        height_ratios=[1.0, 1.48],
+        left=0.055,
+        right=0.975,
+        top=0.985,
+        bottom=0.075,
+        hspace=0.27,
     )
-    head_a = fig.add_subplot(grid[0])
+    top = outer[0].subgridspec(1, 2, width_ratios=[0.48, 0.52], wspace=0.22)
+    panel_a = top[0].subgridspec(2, 1, height_ratios=[0.14, 1.0], hspace=0.04)
+    panel_b = top[1].subgridspec(2, 1, height_ratios=[0.14, 1.0], hspace=0.04)
+    panel_c = outer[1].subgridspec(2, 1, height_ratios=[0.12, 1.0], hspace=0.04)
+
+    head_a = fig.add_subplot(panel_a[0])
     _heading(head_a, "a", "Cross-method concordance")
-    axes_a = grid[1].subgridspec(1, 3, width_ratios=[0.14, 0.43, 0.43], wspace=0.24)
+    axes_a = panel_a[1].subgridspec(1, 3, width_ratios=[0.22, 0.39, 0.39], wspace=0.24)
     ax_a_labels = fig.add_subplot(axes_a[0])
     ax_rho = fig.add_subplot(axes_a[1])
     ax_j = fig.add_subplot(axes_a[2])
@@ -1123,16 +1144,28 @@ def plot(args: argparse.Namespace) -> None:
             fontsize=7.4,
             color="black",
         )
-    ax_rho.legend(
+    head_a.legend(
+        handles=[
+            plt.Line2D(
+                [0],
+                [0],
+                marker=method_styles[method][1],
+                color="none",
+                markerfacecolor=method_styles[method][0],
+                markeredgecolor="white",
+                label=method_styles[method][2],
+            )
+            for method in included
+        ],
         frameon=False,
-        fontsize=7.0,
+        fontsize=7.5,
         ncol=min(2, len(included)),
-        loc="lower left",
-        bbox_to_anchor=(0.0, 1.01),
+        loc="center right",
+        bbox_to_anchor=(1.0, 0.52),
     )
-    head_b = fig.add_subplot(grid[2])
-    _heading(head_b, "b", "Shared interaction programs")
-    axes_b = grid[3].subgridspec(1, 2, width_ratios=[0.25, 0.75], wspace=0.025)
+    head_b = fig.add_subplot(panel_b[0])
+    _heading(head_b, "b", "Representative interactions")
+    axes_b = panel_b[1].subgridspec(1, 2, width_ratios=[0.34, 0.66], wspace=0.025)
     ax_b_labels = fig.add_subplot(axes_b[0])
     ax_b = fig.add_subplot(axes_b[1])
     selected = selected.set_index("dataset").loc[dataset_order].reset_index()
@@ -1205,14 +1238,13 @@ def plot(args: argparse.Namespace) -> None:
         ],
         frameon=False,
         ncol=len(comparison_methods),
-        loc="lower right",
-        bbox_to_anchor=(1.0, 1.01),
-        fontsize=6.9,
+        loc="upper left",
+        fontsize=7.2,
     )
-    head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "CytoBridge-guided signaling programs")
-    axes_c = grid[5].subgridspec(
-        1, 4, width_ratios=[0.23, 0.85, 1.12, 0.85], wspace=0.40
+    head_c = fig.add_subplot(panel_c[0])
+    _heading(head_c, "c", "Molecular resolution of selected programs")
+    axes_c = panel_c[1].subgridspec(
+        1, 4, width_ratios=[0.25, 0.82, 1.02, 0.82], wspace=0.34
     )
     ax_c_labels = fig.add_subplot(axes_c[0])
     ax_pathway = fig.add_subplot(axes_c[1])
@@ -1365,9 +1397,15 @@ def plot(args: argparse.Namespace) -> None:
         color: str,
         marker: str,
     ) -> None:
-        values = np.asarray([float(row["value"]) for row in rows], dtype=float)
-        maximum = max(float(values.max()) if values.size else 0.0, 1.0)
-        axis.set_xlim(0.0, maximum * 1.24)
+        maximum = max(
+            80.0,
+            max(
+                float(row["value"])
+                for local_rows in (pathway_plot_rows, lr_plot_rows, target_plot_rows)
+                for row in local_rows
+            ),
+        )
+        axis.set_xlim(0.0, maximum * 1.04)
         axis.set_ylim(y_min, y_max)
         axis.set_title(title, fontsize=9, color="black", pad=7)
         axis.set_xlabel(xlabel, fontsize=7.2, color="black")
@@ -1385,55 +1423,59 @@ def plot(args: argparse.Namespace) -> None:
                 linewidth=0.35,
                 zorder=3,
             )
-            axis.text(
-                value + maximum * 0.035,
-                y_value,
-                f"{value:.1f}",
-                va="center",
-                ha="left",
-                fontsize=5.8,
-                color="black",
-            )
         axis.set_yticks(
             [float(row["y"]) for row in rows],
             [str(row["label"]) for row in rows],
-            fontsize=5.8,
+            fontsize=7.0,
             color="black",
         )
         for index in range(len(dataset_order) - 1):
             upper = group_bases[dataset_order[index]]
             lower = group_bases[dataset_order[index + 1]]
             axis.axhline((upper + lower) / 2.0, color="#D8DDE1", lw=0.55)
-        axis.tick_params(axis="x", labelsize=6.2, colors="black")
+        axis.tick_params(axis="x", labelsize=7.2, colors="black")
         axis.tick_params(axis="y", length=0, pad=2, colors="black")
         style.clean_axis(axis, grid=True)
 
     _draw_molecular_axis(
         ax_pathway,
         pathway_plot_rows,
-        title="Pathways with COMMOT",
-        xlabel="Share within selected pair (%)",
+        title="COMMOT pathways",
+        xlabel="Within-pair score share (%)",
         color=METHOD_COLORS["COMMOT"],
         marker="s",
     )
     _draw_molecular_axis(
         ax_lr,
         lr_plot_rows,
-        title="LR pairs with COMMOT",
-        xlabel="Share within selected pair (%)",
+        title="COMMOT ligand–receptor pairs",
+        xlabel="Within-pair score share (%)",
         color="#4C78A8",
         marker="o",
     )
     _draw_molecular_axis(
         ax_target,
         target_plot_rows,
-        title="Targets with NicheNet",
-        xlabel="Share within selected pair (%)",
+        title="NicheNet receiver targets",
+        xlabel="Within-pair score share (%)",
         color=METHOD_COLORS["NicheNet"],
         marker="D",
     )
     evidence_path = output / "panel_c_model_to_biology.csv"
     pd.DataFrame(evidence_rows).to_csv(evidence_path, index=False)
+    panel_filenames = (
+        "cytobridge_external_metrics.csv",
+        "main_figure_method_decisions.csv",
+        "method_execution_status.csv",
+        "selected_biological_pairs.csv",
+        "selected_pair_commot_pathways.csv",
+        "selected_pair_commot_lr.csv",
+        "selected_pair_nichenet_targets.csv",
+    )
+    panel_dir = output / "panel_data"
+    panel_dir.mkdir()
+    for name in panel_filenames:
+        shutil.copy2(table_source / name, panel_dir / name)
     pdf = output / "spatial_communication_consistency_a4.pdf"
     png = output / "spatial_communication_consistency_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -1456,27 +1498,36 @@ def plot(args: argparse.Namespace) -> None:
         zebrafish_note = " Zebrafish NicheNet target evidence was not evaluable under the declared orthology contract."
     else:
         zebrafish_note = ""
-    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) CytoBridge-guided molecular resolution of the selected dynamic interactions. CytoBridge identifies the sender-receiver interaction to investigate; integrating that interaction with COMMOT ranks pathway and ligand-receptor programs, while integrating it with NicheNet links candidate ligands from the same frozen LR universe to receiver target programs. Values are percentages of the corresponding external method's total positive score within the CytoBridge-selected cell-type pair, and the two highest-scoring entries are shown for each molecular level. These percentages describe within-pair score composition, not probabilities or effect sizes. Together, the cell-pair, signaling-program, and receiver-target levels generate testable biological hypotheses consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. CytoBridge actively localizes the dynamic interaction; COMMOT and NicheNet provide the molecular and regulatory resolution rather than native ligand-receptor parameters learned end-to-end by CytoBridge.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one representative high-ranking off-diagonal interaction per dataset. (c) Molecular resolution of the selected interactions. CytoBridge specifies the sender-receiver interaction, COMMOT ranks pathway and ligand-receptor programs within that interaction, and NicheNet links candidate ligands from the same frozen LR universe to receiver target programs. Each position is the percentage of the external method's total positive score within the selected cell-type pair; the two highest-scoring entries are shown at each molecular level. These percentages describe within-pair score composition, not probabilities or effect sizes. The resulting programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. COMMOT and NicheNet provide molecular and regulatory resolution rather than native ligand-receptor parameters learned end-to-end by CytoBridge.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
+    provenance = (
+        "# Figure provenance\n\n"
+        "## Source paths\n\n"
+        f"- Frozen source directory: `{source}`\n"
+        f"- Source manifest: `{source_manifest_path}`\n"
+        f"- Source manifest SHA-256: `{sha256_file(source_manifest_path)}`\n"
+        f"- Plotting script: `{Path(__file__).resolve()}`\n"
+        f"- Plotting script SHA-256: `{sha256_file(Path(__file__).resolve())}`\n"
+        "- Comparison unit: complete directed terminal-stage cell-type-pair grid.\n"
+        "- CytoBridge view: exact learned interaction-message contribution.\n"
+        "- Molecular interpretation: COMMOT pathway and LR scores plus NicheNet receiver-target evidence within the selected pair.\n"
+        "\n## Rebuild\n\n"
+        "```text\n"
+        "python scripts/run_spatial_communication_consistency.py plot \\\n"
+        f"  --aggregate-dir {source} \\\n"
+        f"  --output-dir {output}\n"
+        "```\n"
+    )
+    (output / "provenance.md").write_text(provenance, encoding="utf-8")
     manifest = {
         "schema_version": 1,
-        "source_manifest": _artifact(source / "manifest.json"),
+        "source_manifest": _artifact(source_manifest_path),
         "included_methods": included,
         "gate": MAIN_FIGURE_GATE,
         "figure": {pdf.name: _artifact(pdf), png.name: _artifact(png)},
         "caption": _artifact(output / "caption.md"),
-        "panel_data": {
-            name: _artifact(source / name)
-            for name in (
-                "cytobridge_external_metrics.csv",
-                "main_figure_method_decisions.csv",
-                "method_execution_status.csv",
-                "selected_biological_pairs.csv",
-                "selected_pair_commot_pathways.csv",
-                "selected_pair_commot_lr.csv",
-                "selected_pair_nichenet_targets.csv",
-            )
-        },
+        "provenance": _artifact(output / "provenance.md"),
+        "panel_data": {name: _artifact(panel_dir / name) for name in panel_filenames},
         "panel_c_model_to_biology": _artifact(evidence_path),
     }
     _write_json(output / "figure_manifest.json", manifest)

@@ -304,9 +304,16 @@ def test_report_writer_and_validator(tmp_path: Path) -> None:
     MODULE.validate_report(report)
     assert (report / "zebrafish_attention_validation_a4.pdf").stat().st_size > 1000
     assert (report / "zebrafish_attention_validation_a4.png").stat().st_size > 1000
-    assert "attention weights alone" in (report / "reviewer_response.md").read_text(
-        encoding="utf-8"
-    )
+    response = (report / "reviewer_response.md").read_text(encoding="utf-8")
+    caption = (report / "caption.txt").read_text(encoding="utf-8")
+    assert "attention weights alone" in response
+    assert "not used as validation evidence" in response
+    assert "fixed-checkpoint" not in caption.casefold()
+    assert (report / "panel_data" / "cytobridge_lr_scores.csv.gz").is_file()
+    assert (report / "panel_data" / "commot_lr_scores_collapsed.csv.gz").is_file()
+    assert not (
+        report / "panel_data" / "fixed_checkpoint_interaction_on_off.csv"
+    ).exists()
 
 
 def test_spec_rejects_wrong_input_sha(tmp_path: Path) -> None:

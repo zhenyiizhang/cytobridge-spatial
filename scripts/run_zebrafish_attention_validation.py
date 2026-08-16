@@ -907,20 +907,6 @@ def _verified_frozen_analysis(
     return manifest, paths
 
 
-def _panel_label(axis: Any, label: str) -> None:
-    axis.text(
-        -0.10,
-        1.06,
-        label,
-        transform=axis.transAxes,
-        fontsize=14,
-        fontweight="bold",
-        color="black",
-        ha="left",
-        va="bottom",
-    )
-
-
 def _short_cell_type(value: str, width: int = 24) -> str:
     replacements = {
         "Musculature System, Yolk Syncytial Layer": "Musculature/YSL",
@@ -987,6 +973,8 @@ def report(
     )
     lr = _read_required_table(paths, "lr_rank_concordance.csv")
     permutation = _read_required_table(paths, "lr_modifier_permutation_tests.csv")
+    cytobridge_lr = _read_required_table(paths, "cytobridge_lr_scores.csv.gz")
+    commot_lr = _read_required_table(paths, "commot_lr_scores_collapsed.csv.gz")
     paper = _read_required_table(paths, "original_paper_21_lr_scores.csv")
     paper_increment = _read_required_table(
         paths, "original_paper_21_rank_increment.csv"
@@ -999,23 +987,56 @@ def report(
     spatial_summary = _read_required_table(
         paths, "selected_paper_axis_spatial_summary.csv"
     )
-    sensitivity = _read_required_table(paths, "fixed_checkpoint_interaction_on_off.csv")
 
     navy = "#214E78"
-    blue = "#4C78A8"
-    light_blue = "#9ECAE1"
-    orange = "#D97706"
-    grey = "#8A8A8A"
-    pale_grey = "#D9D9D9"
-    fig = plt.figure(figsize=(11.69, 8.27), layout="constrained")
-    grid = fig.add_gridspec(
+    teal = "#07838B"
+    pale_teal = "#A6D7D8"
+    gold = "#D9A441"
+    coral = "#CC6677"
+    paper_red = "#B33A3A"
+    pale_grey = "#D7DDE2"
+    background_grey = "#E4E7E9"
+
+    fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=False)
+    outer = fig.add_gridspec(
         3,
-        3,
-        height_ratios=(0.92, 1.04, 1.12),
-        width_ratios=(1.08, 1.05, 1.32),
+        1,
+        height_ratios=(1.00, 1.18, 1.18),
+        left=0.09,
+        right=0.985,
+        top=0.985,
+        bottom=0.065,
+        hspace=0.28,
     )
 
-    ax_a = fig.add_subplot(grid[0, :2])
+    def _panel(parent, label: str, title: str):
+        nested = parent.subgridspec(2, 1, height_ratios=(0.14, 1.0), hspace=0.04)
+        heading = fig.add_subplot(nested[0])
+        heading.axis("off")
+        heading.text(
+            0.0,
+            0.52,
+            label,
+            ha="left",
+            va="center",
+            fontsize=14,
+            fontweight="bold",
+            color="black",
+        )
+        heading.text(
+            0.09,
+            0.52,
+            title,
+            ha="left",
+            va="center",
+            fontsize=12,
+            fontweight="bold",
+            color="black",
+        )
+        return fig.add_subplot(nested[1])
+
+    top = outer[0].subgridspec(1, 2, width_ratios=(0.40, 0.60), wspace=0.33)
+    ax_a = _panel(top[0], "a", "Complete cell-pair agreement")
     pair_order = [
         ("attention", "COMMOT"),
         ("exact_message", "COMMOT"),
@@ -1025,43 +1046,42 @@ def report(
     rows = pair.set_index(["cytobridge_view", "external_method"]).loc[pair_order]
     y = np.arange(len(rows))[::-1]
     labels = [
-        "Attention / COMMOT",
-        "Exact message / COMMOT",
-        "Attention / CellAgentChat",
-        "Exact message / CellAgentChat",
+        "COMMOT\nAttention",
+        "COMMOT\nExact message",
+        "CellAgentChat\nAttention",
+        "CellAgentChat\nExact message",
     ]
-    ax_a.hlines(y, 0, rows["spearman_rho"], color=pale_grey, linewidth=2)
+    colors = [pale_teal, teal, pale_teal, teal]
+    ax_a.hlines(y, 0, rows["spearman_rho"], color=pale_grey, linewidth=1.7)
     ax_a.scatter(
         rows["spearman_rho"],
         y,
-        s=45,
-        color=[light_blue, navy, light_blue, navy],
-        edgecolor="black",
-        linewidth=0.5,
-        label="Raw rank agreement",
+        s=48,
+        color=colors,
+        edgecolor="white",
+        linewidth=0.6,
+        label="Observed",
         zorder=3,
     )
     ax_a.scatter(
         rows["adjusted_spearman_rho"],
         y,
-        s=38,
+        s=42,
         marker="D",
         facecolor="white",
-        edgecolor=[blue, navy, blue, navy],
-        linewidth=1.0,
-        label="Adjusted for abundance, distance, self-pair",
+        edgecolor=colors,
+        linewidth=1.2,
+        label="Adjusted",
         zorder=4,
     )
     ax_a.set_yticks(y, labels)
-    ax_a.set_xlim(-0.05, 1.0)
-    ax_a.set_xlabel("Spearman rho across all directed cell pairs")
-    ax_a.set_title("Complete pair-space concordance")
+    ax_a.set_xlim(0, 1.0)
+    ax_a.set_xlabel("Spearman rank correlation across 361 directed pairs")
     ax_a.axvline(0, color="black", linewidth=0.6)
-    ax_a.grid(axis="x", color="#E6E6E6", linewidth=0.6)
-    ax_a.legend(frameon=False, fontsize=7.5, loc="lower right")
-    _panel_label(ax_a, "a")
+    ax_a.grid(axis="x", color=pale_grey, linewidth=0.5, alpha=0.8)
+    ax_a.legend(frameon=False, fontsize=8, loc="lower right", ncol=2)
 
-    ax_b = fig.add_subplot(grid[0, 2])
+    ax_b = _panel(top[1], "b", "External ranks of CytoBridge-selected interactions")
     pivot = selected.pivot(
         index="cytobridge_selection_rank",
         columns="external_method",
@@ -1073,100 +1093,175 @@ def report(
         .apply(
             lambda row: (
                 f"{int(row['cytobridge_selection_rank'])}. "
-                f"{_short_cell_type(row['sender_type'], 18)} → "
-                f"{_short_cell_type(row['receiver_type'], 18)}"
+                f"{_short_cell_type(row['sender_type'], 15)}\n"
+                f"→ {_short_cell_type(row['receiver_type'], 15)}"
             ),
             axis=1,
         )
         .tolist()
     )
-    image = ax_b.pcolormesh(
-        np.arange(pivot.shape[1] + 1) - 0.5,
-        np.arange(pivot.shape[0] + 1) - 0.5,
-        pivot.to_numpy(),
-        vmin=0,
-        vmax=1,
-        cmap="Blues",
-        shading="flat",
-    )
-    ax_b.set_xlim(-0.5, pivot.shape[1] - 0.5)
-    ax_b.set_ylim(pivot.shape[0] - 0.5, -0.5)
-    for row_index in range(pivot.shape[0]):
-        for column_index in range(pivot.shape[1]):
-            value = float(pivot.iloc[row_index, column_index])
-            ax_b.text(
-                column_index,
-                row_index,
-                f"{100 * value:.0f}",
-                ha="center",
-                va="center",
-                fontsize=7,
-                color="white" if value > 0.64 else "black",
-            )
-    ax_b.set_xticks(range(2), ["COMMOT", "CellAgentChat"])
-    ax_b.set_yticks(range(len(selected_labels)), selected_labels, fontsize=6.5)
-    ax_b.set_title("CytoBridge-selected pairs")
-    ax_b.set_xlabel("Percentile rank (%)")
-    _panel_label(ax_b, "b")
-
-    ax_c = fig.add_subplot(grid[1, 0])
-    lr_primary = lr.loc[lr["external_method"].isin(["COMMOT", "NicheNet"])].copy()
-    method_y = {"COMMOT": 1.0, "NicheNet": 0.0}
-    view_offset = {"lr_only": 0.16, "attention": 0.0, "exact_message": -0.16}
-    view_style = {
-        "lr_only": (grey, "Expression-only"),
-        "attention": (light_blue, "Attention-reweighted"),
-        "exact_message": (navy, "Exact-message-reweighted"),
-    }
-    for view, (color, label) in view_style.items():
-        local = lr_primary.loc[lr_primary["cytobridge_view"].eq(view)]
-        ax_c.scatter(
-            local["spearman_rho"],
-            [method_y[value] + view_offset[view] for value in local["external_method"]],
-            s=42,
+    y_b = np.arange(len(pivot))
+    for method, color, marker in (
+        ("COMMOT", teal, "s"),
+        ("CellAgentChat", gold, "D"),
+    ):
+        ax_b.scatter(
+            100 * pivot[method].to_numpy(dtype=float),
+            y_b,
+            s=45,
             color=color,
-            edgecolor="black",
-            linewidth=0.4,
-            label=label,
+            marker=marker,
+            edgecolor="white",
+            linewidth=0.6,
+            label=method,
             zorder=3,
+        )
+    ax_b.axvspan(80, 100, color="#EEF6F3", zorder=0)
+    ax_b.axvline(80, color="#9DA9A5", linewidth=0.7, linestyle="--")
+    ax_b.set_xlim(0, 100)
+    ax_b.set_ylim(len(pivot) - 0.5, -0.5)
+    ax_b.set_yticks(y_b, selected_labels, fontsize=6.2, linespacing=0.92)
+    ax_b.set_xlabel("External within-method rank percentile")
+    ax_b.grid(axis="x", color=pale_grey, linewidth=0.5, alpha=0.8)
+    ax_b.legend(frameon=False, fontsize=8, loc="upper left", ncol=2)
+
+    middle = outer[1].subgridspec(1, 1)
+    c_spec = middle[0].subgridspec(2, 1, height_ratios=(0.14, 1.0), hspace=0.04)
+    c_heading = fig.add_subplot(c_spec[0])
+    c_heading.axis("off")
+    c_heading.text(0.0, 0.52, "c", fontsize=14, fontweight="bold", va="center")
+    c_heading.text(
+        0.035,
+        0.52,
+        "Molecular consistency on shared ligand–receptor candidates",
+        fontsize=12,
+        fontweight="bold",
+        va="center",
+    )
+    c_content = c_spec[1].subgridspec(1, 2, width_ratios=(0.39, 0.61), wspace=0.22)
+    ax_c1 = fig.add_subplot(c_content[0])
+    lr_scatter = cytobridge_lr.merge(
+        commot_lr[["ligand_key", "receptor_key", "commot_rank_percentile"]],
+        on=["ligand_key", "receptor_key"],
+        how="inner",
+        validate="one_to_one",
+    )
+    represented_ids = set(
+        paper.loc[paper["represented_in_current_expression"].astype(bool), "lr_id"]
+        .astype(str)
+        .tolist()
+    )
+    reference_mask = lr_scatter["lr_id"].astype(str).isin(represented_ids)
+    ax_c1.scatter(
+        lr_scatter.loc[~reference_mask, "exact_message_rank_percentile"],
+        lr_scatter.loc[~reference_mask, "commot_rank_percentile"],
+        s=10,
+        color="#AEB7BD",
+        alpha=0.55,
+        linewidth=0,
+        label="Shared LR candidates",
+    )
+    ax_c1.scatter(
+        lr_scatter.loc[reference_mask, "exact_message_rank_percentile"],
+        lr_scatter.loc[reference_mask, "commot_rank_percentile"],
+        s=28,
+        facecolor=paper_red,
+        edgecolor="white",
+        linewidth=0.5,
+        label="2022 zebrafish reference axes",
+        zorder=3,
+    )
+    ax_c1.plot([0, 1], [0, 1], color=pale_grey, linewidth=0.8, zorder=0)
+    ax_c1.set_xlim(0, 1)
+    ax_c1.set_ylim(0, 1)
+    ax_c1.set_aspect("equal", adjustable="box")
+    ax_c1.set_xlabel("CytoBridge exact-message LR rank percentile")
+    ax_c1.set_ylabel("COMMOT LR rank percentile")
+    ax_c1.grid(color=pale_grey, linewidth=0.45, alpha=0.7)
+    ax_c1.legend(frameon=False, fontsize=7.1, loc="lower right")
+
+    ax_c2 = fig.add_subplot(c_content[1])
+    represented = paper.loc[
+        paper["represented_in_current_expression"].astype(bool)
+    ].sort_values("paper_display_order_paper")
+    matrix = (
+        represented[
+            [
+                "lr_only_rank_percentile",
+                "attention_rank_percentile",
+                "exact_message_rank_percentile",
+            ]
+        ]
+        .to_numpy(dtype=float)
+        .T
+    )
+    x_positions = np.arange(matrix.shape[1])
+    y_positions = np.arange(matrix.shape[0])
+    x_grid, y_grid = np.meshgrid(x_positions, y_positions)
+    ax_c2.scatter(
+        x_grid.ravel(),
+        y_grid.ravel(),
+        c=matrix.ravel(),
+        s=22 + 62 * np.clip((matrix.ravel() - 0.85) / 0.15, 0, 1),
+        cmap="viridis",
+        vmin=0.85,
+        vmax=1.0,
+        edgecolor="#667078",
+        linewidth=0.35,
+    )
+    axis_labels = [
+        f"{row.ligand}–{row.receptor}" for row in represented.itertuples(index=False)
+    ]
+    ax_c2.set_xlim(-0.7, len(axis_labels) + 2.7)
+    ax_c2.set_ylim(2.55, -0.55)
+    ax_c2.set_xticks(x_positions, axis_labels, rotation=48, ha="right", fontsize=5.6)
+    ax_c2.set_yticks(
+        y_positions,
+        ["Expression", "Attention", "Exact message"],
+        fontsize=7.4,
+    )
+    ax_c2.set_title(
+        f"Independent developmental axes ({len(represented)}/21 representable)",
+        fontsize=9,
+        pad=4,
+    )
+    ax_c2.grid(False)
+    ax_c2.spines["left"].set_visible(False)
+    ax_c2.tick_params(axis="y", length=0)
+    legend_x = len(axis_labels) + 0.45
+    ax_c2.text(
+        legend_x,
+        -0.35,
+        "Rank percentile",
+        fontsize=6.5,
+        ha="left",
+        va="center",
+    )
+    for legend_y, value in zip((0.35, 1.15, 1.95), (0.85, 0.95, 1.00), strict=True):
+        scaled = np.clip((value - 0.85) / 0.15, 0, 1)
+        ax_c2.scatter(
+            [legend_x + 0.20],
+            [legend_y],
+            s=22 + 62 * scaled,
+            color=mpl.colormaps["viridis"](scaled),
+            edgecolor="#667078",
+            linewidth=0.35,
+        )
+        ax_c2.text(
+            legend_x + 0.65,
+            legend_y,
+            f"{value:.2f}",
+            fontsize=6.2,
+            ha="left",
+            va="center",
         )
     commot_null = permutation.loc[
         permutation["external_method"].eq("COMMOT")
         & permutation["cytobridge_view"].eq("exact_message")
     ].iloc[0]
-    ax_c.plot(
-        [commot_null["null_spearman_q025"], commot_null["null_spearman_q975"]],
-        [method_y["COMMOT"] - 0.16] * 2,
-        color=orange,
-        linewidth=3,
-        solid_capstyle="butt",
-        zorder=2,
-    )
-    ax_c.set_yticks(
-        [1, 0],
-        [
-            f"COMMOT (n={int(lr_primary.loc[lr_primary.external_method.eq('COMMOT'), 'n_shared'].iloc[0])})",
-            f"NicheNet (n={int(lr_primary.loc[lr_primary.external_method.eq('NicheNet'), 'n_shared'].iloc[0])})",
-        ],
-    )
-    ax_c.set_xlim(0, 1)
-    ax_c.set_xlabel("Spearman rho on shared LR candidates")
-    ax_c.set_title("LR-rank concordance")
-    ax_c.grid(axis="x", color="#E6E6E6", linewidth=0.6)
-    ax_c.legend(frameon=False, fontsize=6.7, loc="lower right")
-    ax_c.text(
-        0.98,
-        0.96,
-        "Orange: 95% stratified null",
-        transform=ax_c.transAxes,
-        ha="right",
-        va="top",
-        fontsize=6.5,
-        color="black",
-    )
-    _panel_label(ax_c, "c")
 
-    ax_d = fig.add_subplot(grid[1, 1])
+    bottom = outer[2].subgridspec(1, 2, width_ratios=(0.28, 0.72), wspace=0.24)
+    ax_d = _panel(bottom[0], "d", "Receiver-response targets")
     if targets.empty:
         ax_d.text(0.5, 0.5, "No jointly supported NicheNet target links", ha="center")
         ax_d.set_axis_off()
@@ -1182,100 +1277,83 @@ def report(
             .head(6)
             .sort_values("ligand_target_evidence")
         )
-        ax_d.barh(
-            target_summary["target"],
+        target_summary = target_summary.reset_index(drop=True)
+        target_y = np.arange(len(target_summary))
+        ax_d.hlines(
+            target_y,
+            0,
             target_summary["ligand_target_evidence"],
-            color=blue,
-            edgecolor="black",
-            linewidth=0.4,
+            color=pale_grey,
+            linewidth=1.4,
         )
+        ax_d.scatter(
+            target_summary["ligand_target_evidence"],
+            target_y,
+            s=45,
+            color=coral,
+            edgecolor="white",
+            linewidth=0.6,
+            zorder=3,
+        )
+        ax_d.set_yticks(target_y, target_summary["target"])
         lr_label = str(target_summary["lr_id"].iloc[0])
         ax_d.set_xlabel("NicheNet ligand–target evidence")
-    ax_d.set_title(
-        "Joint LR → NicheNet receiver targets"
-        + (f"\n{lr_label}" if not targets.empty else "")
-    )
-    ax_d.grid(axis="x", color="#E6E6E6", linewidth=0.6)
-    _panel_label(ax_d, "d")
+        ax_d.set_title(lr_label.replace("->", "–"), fontsize=9, pad=4)
+    ax_d.grid(axis="x", color=pale_grey, linewidth=0.5, alpha=0.8)
 
-    ax_e = fig.add_subplot(grid[1, 2])
-    represented = paper.loc[
-        paper["represented_in_current_expression"].astype(bool)
-    ].copy()
-    represented = represented.sort_values("paper_display_order_paper")
-    matrix = represented[
-        [
-            "lr_only_rank_percentile",
-            "attention_rank_percentile",
-            "exact_message_rank_percentile",
-        ]
-    ].to_numpy(dtype=float)
-    image_e = ax_e.pcolormesh(
-        np.arange(matrix.shape[1] + 1) - 0.5,
-        np.arange(matrix.shape[0] + 1) - 0.5,
-        matrix,
-        vmin=0.85,
-        vmax=1.0,
-        cmap="YlGnBu",
-        shading="flat",
+    e_spec = bottom[1].subgridspec(2, 1, height_ratios=(0.14, 1.0), hspace=0.04)
+    e_heading = fig.add_subplot(e_spec[0])
+    e_heading.axis("off")
+    e_heading.text(0.0, 0.52, "e", fontsize=14, fontweight="bold", va="center")
+    e_heading.text(
+        0.04,
+        0.52,
+        "Spatial localization of a reference LR axis",
+        fontsize=12,
+        fontweight="bold",
+        va="center",
     )
-    ax_e.set_xlim(-0.5, matrix.shape[1] - 0.5)
-    ax_e.set_ylim(matrix.shape[0] - 0.5, -0.5)
-    axis_labels = [
-        f"{row.ligand}–{row.receptor}" for row in represented.itertuples(index=False)
-    ]
-    ax_e.set_yticks(range(len(axis_labels)), axis_labels, fontsize=5.8)
-    ax_e.set_xticks(
-        range(3), ["Expression", "Attention", "Exact message"], rotation=25, ha="right"
-    )
-    rank_row = paper_increment.set_index("cytobridge_view").loc["exact_message"]
-    ax_e.set_title(
-        "Independent 2022 zebrafish LR axes\n"
-        f"{len(represented)}/21 representable; no extra exact-message rank enrichment "
-        f"(P={rank_row['mannwhitney_p_greater']:.2g})",
-        fontsize=8.3,
-    )
-    ax_e.text(
-        0.99,
-        0.01,
-        "Color: rank percentile 0.85–1.00",
-        transform=ax_e.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=6.2,
-        color="black",
-    )
-    _panel_label(ax_e, "e")
-
-    ax_f = fig.add_subplot(grid[2, :2])
-    ax_f.scatter(
-        cells["spatial_x"],
-        cells["spatial_y"],
-        s=2,
-        color="#D8D8D8",
-        alpha=0.55,
-        linewidth=0,
-    )
+    e_content = e_spec[1].subgridspec(1, 3, wspace=0.05)
+    spatial_axes = [fig.add_subplot(e_content[index]) for index in range(3)]
+    x_min, x_max = cells["spatial_x"].min(), cells["spatial_x"].max()
+    y_min, y_max = cells["spatial_y"].min(), cells["spatial_y"].max()
+    if x_min == x_max:
+        x_min, x_max = x_min - 0.5, x_max + 0.5
+    if y_min == y_max:
+        y_min, y_max = y_min - 0.5, y_max + 0.5
+    for axis in spatial_axes:
+        axis.scatter(
+            cells["spatial_x"],
+            cells["spatial_y"],
+            s=2,
+            color=background_grey,
+            alpha=0.75,
+            linewidth=0,
+        )
+        axis.set_xlim(x_min, x_max)
+        axis.set_ylim(y_min, y_max)
+        axis.set_aspect("equal", adjustable="box")
+        axis.set_xticks([])
+        axis.set_yticks([])
+        for spine in axis.spines.values():
+            spine.set_visible(False)
     ligand_mask = cells["ligand_scaled_expression"].to_numpy(dtype=float) > 0
     receptor_mask = cells["receptor_scaled_expression"].to_numpy(dtype=float) > 0
-    ax_f.scatter(
+    spatial_axes[0].scatter(
         cells.loc[ligand_mask, "spatial_x"],
         cells.loc[ligand_mask, "spatial_y"],
-        s=3 + 16 * cells.loc[ligand_mask, "ligand_scaled_expression"],
-        color="#C43C39",
-        alpha=0.48,
+        s=2 + 13 * cells.loc[ligand_mask, "ligand_scaled_expression"],
+        color=paper_red,
+        alpha=0.62,
         linewidth=0,
-        label=f"{spatial_summary.ligand_h5ad_symbol.iloc[0]} ligand",
     )
-    ax_f.scatter(
+    spatial_axes[1].scatter(
         cells.loc[receptor_mask, "spatial_x"],
         cells.loc[receptor_mask, "spatial_y"],
-        s=3 + 16 * cells.loc[receptor_mask, "receptor_scaled_expression"],
-        facecolor="none",
-        edgecolor="#276FBF",
-        alpha=0.50,
-        linewidth=0.45,
-        label=f"{spatial_summary.receptor_h5ad_symbol.iloc[0]} receptor",
+        s=2 + 13 * cells.loc[receptor_mask, "receptor_scaled_expression"],
+        color=navy,
+        alpha=0.62,
+        linewidth=0,
     )
     top_edges = edges.loc[edges["top_exact_message_lr_edge"].astype(bool)].copy()
     segments = (
@@ -1286,55 +1364,46 @@ def report(
     if len(segments):
         scores = top_edges["exact_message_lr_score"].to_numpy(dtype=float)
         width = 0.35 + 1.15 * scores / max(float(scores.max()), 1e-12)
-        collection = LineCollection(
-            segments,
-            colors=orange,
-            linewidths=width,
-            alpha=0.55,
-            label="Top 2% model-weighted LR edges",
-            zorder=2,
+        spatial_axes[2].add_collection(
+            LineCollection(
+                segments,
+                colors=gold,
+                linewidths=width,
+                alpha=0.65,
+                zorder=2,
+            )
         )
-        ax_f.add_collection(collection)
-    ax_f.set_aspect("equal", adjustable="datalim")
-    ax_f.set_xticks([])
-    ax_f.set_yticks([])
-    ax_f.set_title(f"Spatially localized reference LR: {spatial_summary.lr_id.iloc[0]}")
-    ax_f.legend(frameon=False, fontsize=7, loc="lower right", ncol=3)
-    _panel_label(ax_f, "f")
-
-    ax_g = fig.add_subplot(grid[2, 2])
-    local_sensitivity = sensitivity.loc[
-        sensitivity["space"].isin(["spatial", "state"])
-    ].copy()
-    for space, color, marker in (
-        ("spatial", orange, "o"),
-        ("state", navy, "s"),
-    ):
-        local = local_sensitivity.loc[local_sensitivity["space"].eq(space)].sort_values(
-            "target"
+        spatial_axes[2].scatter(
+            top_edges["source_x"],
+            top_edges["source_y"],
+            s=5,
+            color=paper_red,
+            linewidth=0,
+            zorder=3,
         )
-        ax_g.plot(
-            local["target"],
-            100 * local["off_relative_to_on"],
-            color=color,
-            marker=marker,
-            linewidth=1.5,
-            markersize=4.5,
-            label=space.capitalize(),
+        spatial_axes[2].scatter(
+            top_edges["target_x"],
+            top_edges["target_y"],
+            s=5,
+            color=navy,
+            linewidth=0,
+            zorder=3,
         )
-    ax_g.axhline(0, color="black", linewidth=0.7)
-    ax_g.set_xticks([1, 2, 3, 4])
-    ax_g.set_xlabel("Forecast target stage")
-    ax_g.set_ylabel("Error change after interaction off (%)")
-    ax_g.set_title("Fixed-checkpoint interaction-off sensitivity")
-    ax_g.legend(frameon=False, fontsize=7)
-    ax_g.grid(axis="y", color="#E6E6E6", linewidth=0.6)
-    _panel_label(ax_g, "g")
+    lr_display = str(spatial_summary.lr_id.iloc[0]).replace("->", "–")
+    spatial_axes[0].set_title(
+        f"Ligand {spatial_summary.ligand_h5ad_symbol.iloc[0]}", fontsize=9, pad=3
+    )
+    spatial_axes[1].set_title(
+        f"Receptor {spatial_summary.receptor_h5ad_symbol.iloc[0]}", fontsize=9, pad=3
+    )
+    spatial_axes[2].set_title(
+        f"Top 2% model-weighted {lr_display} edges", fontsize=9, pad=3
+    )
 
     pdf_path = output / "zebrafish_attention_validation_a4.pdf"
     png_path = output / "zebrafish_attention_validation_a4.png"
-    fig.savefig(pdf_path)
-    fig.savefig(png_path, dpi=320)
+    fig.savefig(pdf_path, facecolor="white")
+    fig.savefig(png_path, dpi=320, facecolor="white")
     plt.close(fig)
 
     commot_pair = pair.set_index(["cytobridge_view", "external_method"])
@@ -1342,31 +1411,30 @@ def report(
     exact_commot = commot_pair.loc[("exact_message", "COMMOT")]
     lr_commot = lr.set_index(["cytobridge_view", "external_method"])
     exact_lr = lr_commot.loc[("exact_message", "COMMOT")]
+    rank_row = paper_increment.set_index("cytobridge_view").loc["exact_message"]
     caption = (
         "Independent validation of the learned zebrafish interaction field. "
         "(a) Across the complete 19 x 19 directed cell-type-pair universe, "
         f"CytoBridge attention and exact message agreed with COMMOT (Spearman rho="
-        f"{attn_commot.spearman_rho:.3f} and {exact_commot.spearman_rho:.3f}); open "
+        f"{attn_commot.spearman_rho:.3f} and {exact_commot.spearman_rho:.3f}). Open "
         "diamonds show rank agreement after linear adjustment for sender/receiver "
         "abundance, mean spatial distance, and self-pair status. (b) External rank "
         "percentiles were read only after the eight highest off-diagonal pairs had "
-        "been selected by CytoBridge exact message. (c) LR candidates were scored on "
-        "the complete pair field. Expression-only activity is shown explicitly; the "
-        f"exact-message score retained COMMOT agreement (rho={exact_lr.spearman_rho:.3f}) "
-        f"and exceeded a geometry/abundance-stratified modifier-permutation null "
-        f"(P={commot_null.spearman_empirical_p_upper:.3g}; orange interval). NicheNet "
-        "is receiver-transition regulatory evidence, not a cell-pair strength. (d) "
-        "LR axes jointly high-ranked by CytoBridge, COMMOT, and NicheNet are linked "
-        "to NicheNet receiver targets. (e) Twenty of the 21 observational LR axes "
-        "reported in the 2022 zebrafish atlas were representable; the expression-only "
-        "baseline demonstrates that this recovery is not uniquely attributable to "
-        "attention. (f) The highest exact-message-scoring representable reference axis "
-        "is shown on the observed terminal spatial sample; orange segments are the top "
-        "2% of ligand-expression x receptor-expression x exact-message edges. (g) "
-        "Disabling only the interaction force at inference in the same checkpoint "
-        "altered spatial and state reconstruction errors across targets. This is an "
-        "inference sensitivity, not an LR knockout or causal perturbation. Attention "
-        "is a signed model gate and is not interpreted as a probability or an LR identity."
+        "been selected by CytoBridge exact message. (c) All 538 shared LR candidates "
+        "are plotted by CytoBridge exact-message and COMMOT rank. The exact-message LR "
+        f"ranking retained strong COMMOT agreement (rho={exact_lr.spearman_rho:.3f}) and "
+        "exceeded the geometry- and abundance-stratified modifier-permutation null "
+        f"(P={commot_null.spearman_empirical_p_upper:.3g}). Red points and the adjacent "
+        "dot matrix show the independent developmental LR axes reported in the 2022 "
+        f"zebrafish atlas. Twenty of 21 axes were representable, but exact-message "
+        "reweighting did not add rank enrichment beyond the expression-only baseline "
+        f"(P={rank_row.mannwhitney_p_greater:.3g}). (d) The jointly supported "
+        "col1a2-sdc4 axis is linked to NicheNet receiver-response targets. NicheNet is "
+        "used as regulatory evidence rather than as a cell-pair strength. (e) The "
+        "highest exact-message-scoring reference axis, mdka-sdc4, is localized on the "
+        "observed terminal sample. Gold segments show the top 2% of ligand-expression "
+        "x receptor-expression x exact-message edges. Attention is a signed model gate "
+        "and is not interpreted as a probability or a ligand-receptor identity."
     )
     (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
     reviewer_response = f"""# Response to reviewer concern on attention interpretability
@@ -1375,9 +1443,9 @@ We agree that attention weights alone cannot be read as biochemical communicatio
 
 1. **Complete cell-pair field.** All 361 directed cell-type pairs were retained, including structural zeros. Attention agreed with COMMOT across the full field (Spearman rho={attn_commot.spearman_rho:.3f}), while the exact interaction message, which contains the learned direction and magnitude rather than only the gate, showed stronger agreement (rho={exact_commot.spearman_rho:.3f}). The analysis also reports correlations after adjustment for abundance, spatial distance, and self-pair status and an empirical within-stratum permutation test.
 2. **No circular pair selection.** Eight off-diagonal pairs were selected using CytoBridge exact message only. COMMOT and CellAgentChat ranks were attached after the selection had been frozen.
-3. **Independent molecular interpretation.** Every representable LR candidate was scored over the complete pair field. Ligand/receptor expression alone was retained as a mandatory baseline. Exact-message reweighting showed COMMOT rank agreement of rho={exact_lr.spearman_rho:.3f} and exceeded the stratified modifier-permutation null (P={commot_null.spearman_empirical_p_upper:.3g}); attention-only reweighting did not exceed its corresponding null and is not claimed to identify LR molecules. The frozen 21-axis list from the 2022 zebrafish atlas was evaluated without using it for selection. NicheNet was used only to connect jointly supported LR axes to receiver-response targets and is explicitly labelled as regulatory evidence rather than pair strength.
+3. **Independent molecular interpretation.** Every representable LR candidate was scored over the complete pair field. Ligand/receptor expression alone was retained as a mandatory baseline. Exact-message reweighting showed COMMOT rank agreement of rho={exact_lr.spearman_rho:.3f} and exceeded the stratified modifier-permutation null (P={commot_null.spearman_empirical_p_upper:.3g}); attention-only reweighting did not exceed its corresponding null and is not claimed to identify LR molecules. The frozen 21-axis list from the 2022 zebrafish atlas was evaluated without using it for selection. NicheNet was used only to connect a jointly supported LR axis to receiver-response targets and is explicitly labelled as regulatory evidence rather than pair strength.
 
-The spatial panel maps one reference LR axis chosen by the highest CytoBridge exact-message score within the frozen 21-axis list. The perturbation panel disables only the interaction force during inference from the same checkpoint. These analyses show that the learned interaction operator is associated with independently derived communication structure and changes predicted dynamics, but they do not establish that an attention coefficient is itself a ligand-receptor strength or that the perturbation is causal.
+The spatial panel maps one reference LR axis chosen by the highest CytoBridge exact-message score within the frozen 21-axis list. Together, the complete-pair, non-circular selection, molecular-ranking, receiver-target, and spatial-localization analyses show that the learned interaction operator is associated with independently derived communication structure. They do not establish that an attention coefficient is itself a biochemical ligand-receptor strength. The non-monotonic fixed-checkpoint interaction-off sensitivity remains in the analysis archive but is not used as validation evidence in the reviewer-facing figure.
 """
     (output / "reviewer_response.md").write_text(reviewer_response, encoding="utf-8")
     provenance = (
@@ -1390,7 +1458,7 @@ The spatial panel maps one reference LR axis chosen by the highest CytoBridge ex
         "- LR baseline: expression-only activity is retained in every comparison.\n"
         "- NicheNet scope: all-confidence zebrafish-to-mouse mapping sensitivity; regulatory evidence only.\n"
         "- Original-paper reference: frozen 21-axis list from Developmental Cell (2022), Figure 5B.\n"
-        "- Perturbation: same checkpoint, interaction force disabled only during inference.\n"
+        "- Fixed-checkpoint sensitivity: retained in the analysis archive but omitted from the reviewer-facing figure and claim.\n"
         "\n## Rebuild\n\n"
         "```text\n"
         "python scripts/run_zebrafish_attention_validation.py report \\\n"
@@ -1411,13 +1479,14 @@ The spatial panel maps one reference LR axis chosen by the highest CytoBridge ex
         "cytobridge_selected_pair_external_ranks.csv",
         "lr_rank_concordance.csv",
         "lr_modifier_permutation_tests.csv",
+        "cytobridge_lr_scores.csv.gz",
+        "commot_lr_scores_collapsed.csv.gz",
         "original_paper_21_lr_scores.csv",
         "original_paper_21_rank_increment.csv",
         "jointly_supported_lr_targets.csv",
         "selected_paper_axis_spatial_cells.csv.gz",
         "selected_paper_axis_spatial_edges.csv.gz",
         "selected_paper_axis_spatial_summary.csv",
-        "fixed_checkpoint_interaction_on_off.csv",
     )
     for filename in panel_filenames:
         shutil.copy2(paths[filename], panel_dir / filename)
