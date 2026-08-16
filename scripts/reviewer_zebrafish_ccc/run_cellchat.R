@@ -515,11 +515,25 @@ if (!all(vapply(
   stop("Prepared stages do not share an identical ordered gene universe")
 }
 gene_info_symbols <- as.character(official_database$geneInfo$Symbol)
-gene_info_casefold <- tolower(gene_info_symbols)
-if (anyDuplicated(gene_info_casefold)) {
-  stop("Pinned CellChat geneInfo symbols must be unique after case folding")
-}
-canonical_gene_by_casefold <- setNames(gene_info_symbols, gene_info_casefold)
+required_cellchat_genes <- unlist(lapply(
+  c(as.character(pair_lr$ligand), as.character(pair_lr$receptor)),
+  function(token) {
+    if (token %in% gene_info_symbols) return(token)
+    if (!(token %in% rownames(official_database$complex))) return(character(0))
+    columns <- grep("^subunit", colnames(official_database$complex), value = TRUE)
+    values <- as.character(unlist(
+      official_database$complex[token, columns, drop = FALSE],
+      use.names = FALSE
+    ))
+    unique(values[!is.na(values) & nzchar(values)])
+  }
+), use.names = FALSE)
+canonical_groups <- split(required_cellchat_genes, tolower(required_cellchat_genes))
+canonical_gene_by_casefold <- vapply(canonical_groups, function(values) {
+  counts <- table(values)
+  winners <- names(counts)[counts == max(counts)]
+  sort(winners)[[1L]]
+}, character(1L))
 canonicalize_expression_genes <- function(values) {
   matched <- unname(canonical_gene_by_casefold[tolower(values)])
   result <- as.character(values)
@@ -785,6 +799,7 @@ manifest <- list(
     rows_unavailable_in_pinned_database = rows_unavailable_in_pinned_database,
     resolution_audit = file_record(resolution_path),
     expression_genes_canonicalized_to_geneInfo = n_expression_genes_canonicalized,
+    expression_gene_canonicalization_rule = "case-insensitive exact symbol mapped to the most frequent spelling required by eligible pinned interaction tokens; lexical tie break",
     pathway_values_taken_from_current_csv = TRUE,
     official_pathway_mismatch_count = sum(pathway_mismatch),
     official_pathway_mismatch_database_rows = as.integer(flat_database$database_row[pathway_mismatch]),
