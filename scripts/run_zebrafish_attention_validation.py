@@ -1227,7 +1227,6 @@ def report(
         color="#D8D8D8",
         alpha=0.55,
         linewidth=0,
-        rasterized=True,
     )
     ligand_mask = cells["ligand_scaled_expression"].to_numpy(dtype=float) > 0
     receptor_mask = cells["receptor_scaled_expression"].to_numpy(dtype=float) > 0
@@ -1239,7 +1238,6 @@ def report(
         alpha=0.48,
         linewidth=0,
         label=f"{spatial_summary.ligand_h5ad_symbol.iloc[0]} ligand",
-        rasterized=True,
     )
     ax_f.scatter(
         cells.loc[receptor_mask, "spatial_x"],
@@ -1250,7 +1248,6 @@ def report(
         alpha=0.50,
         linewidth=0.45,
         label=f"{spatial_summary.receptor_h5ad_symbol.iloc[0]} receptor",
-        rasterized=True,
     )
     top_edges = edges.loc[edges["top_exact_message_lr_edge"].astype(bool)].copy()
     segments = (
@@ -1357,6 +1354,8 @@ The spatial panel maps one reference LR axis chosen by the highest CytoBridge ex
     (output / "reviewer_response.md").write_text(reviewer_response, encoding="utf-8")
     provenance = (
         "# Provenance\n\n"
+        "## Source paths\n\n"
+        f"- Frozen analysis directory: `{analysis_dir.expanduser().resolve()}`\n"
         f"- Upstream analysis manifest SHA-256: `{expected_analysis_manifest_sha256}`\n"
         f"- Workflow: `{WORKFLOW}` schema {SCHEMA_VERSION}\n"
         "- Pair selection: CytoBridge exact-message only; external methods inspected afterward.\n"
@@ -1364,6 +1363,13 @@ The spatial panel maps one reference LR axis chosen by the highest CytoBridge ex
         "- NicheNet scope: all-confidence zebrafish-to-mouse mapping sensitivity; regulatory evidence only.\n"
         "- Original-paper reference: frozen 21-axis list from Developmental Cell (2022), Figure 5B.\n"
         "- Perturbation: same checkpoint, interaction force disabled only during inference.\n"
+        "\n## Rebuild\n\n"
+        "```text\n"
+        "python scripts/run_zebrafish_attention_validation.py report \\\n"
+        f"  --analysis-dir {analysis_dir.expanduser().resolve()} \\\n"
+        f"  --expected-analysis-manifest-sha256 {expected_analysis_manifest_sha256} \\\n"
+        f"  --output-dir {output_dir.expanduser().resolve()}\n"
+        "```\n"
     )
     (output / "provenance.md").write_text(provenance, encoding="utf-8")
     shutil.copy2(
