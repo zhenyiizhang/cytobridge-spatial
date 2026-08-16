@@ -376,7 +376,12 @@ def _selected_molecular_evidence(
             table = table.loc[table[score_column] > 0].sort_values(
                 score_column, ascending=False, kind="mergesort"
             )
-            table = table.drop_duplicates(label_columns).head(3)
+            table = table.drop_duplicates(label_columns)
+            total_score = float(table[score_column].sum())
+            table["fraction_of_pair_evidence"] = (
+                table[score_column] / total_score if total_score > 0 else 0.0
+            )
+            table = table.head(3)
             top_score = float(table[score_column].max()) if not table.empty else 0.0
             for rank, record in enumerate(table.itertuples(index=False), start=1):
                 row = {
@@ -387,6 +392,9 @@ def _selected_molecular_evidence(
                     "commot_score": float(getattr(record, score_column)),
                     "relative_to_pair_top": float(getattr(record, score_column))
                     / top_score,
+                    "fraction_of_pair_evidence": float(
+                        getattr(record, "fraction_of_pair_evidence")
+                    ),
                 }
                 row.update(
                     {column: str(getattr(record, column)) for column in label_columns}
@@ -411,8 +419,14 @@ def _selected_molecular_evidence(
                     "ligand_target_evidence", ascending=False, kind="mergesort"
                 )
                 .drop_duplicates(["ligand", "receptor", "target"])
-                .head(3)
             )
+            total_evidence = float(table.ligand_target_evidence.sum())
+            table["fraction_of_pair_evidence"] = (
+                table.ligand_target_evidence / total_evidence
+                if total_evidence > 0
+                else 0.0
+            )
+            table = table.head(3)
             for rank, record in enumerate(table.itertuples(index=False), start=1):
                 target_rows.append(
                     {
@@ -424,6 +438,9 @@ def _selected_molecular_evidence(
                         "receptor": str(record.receptor),
                         "target": str(record.target),
                         "nichenet_evidence": float(record.ligand_target_evidence),
+                        "fraction_of_pair_evidence": float(
+                            record.fraction_of_pair_evidence
+                        ),
                         "evidence_scope": evidence_scope,
                     }
                 )
@@ -434,6 +451,7 @@ def _selected_molecular_evidence(
         "rank_within_pair",
         "commot_score",
         "relative_to_pair_top",
+        "fraction_of_pair_evidence",
         "pathway",
     ]
     lr_columns = [
@@ -443,6 +461,7 @@ def _selected_molecular_evidence(
         "rank_within_pair",
         "commot_score",
         "relative_to_pair_top",
+        "fraction_of_pair_evidence",
         "ligand",
         "receptor",
         "pathway",
@@ -456,6 +475,7 @@ def _selected_molecular_evidence(
         "receptor",
         "target",
         "nichenet_evidence",
+        "fraction_of_pair_evidence",
         "evidence_scope",
     ]
     return (
@@ -988,6 +1008,15 @@ def plot(args: argparse.Namespace) -> None:
         & metrics.external_method.isin(included)
     ].copy()
     style.apply_style()
+    plt.rcParams.update(
+        {
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "axes.titlecolor": "black",
+            "xtick.color": "black",
+            "ytick.color": "black",
+        }
+    )
     dataset_order = list(FORMAL_DATASET_CONTRACTS)
     dataset_labels = {
         key: str(value["display_name"])
@@ -1004,18 +1033,19 @@ def plot(args: argparse.Namespace) -> None:
     grid = fig.add_gridspec(
         6,
         1,
-        height_ratios=[0.18, 1.58, 0.18, 1.62, 0.18, 2.48],
-        left=0.255,
+        height_ratios=[0.15, 1.45, 0.15, 1.35, 0.15, 3.15],
+        left=0.085,
         right=0.97,
         top=0.98,
-        bottom=0.045,
-        hspace=0.34,
+        bottom=0.055,
+        hspace=0.30,
     )
     head_a = fig.add_subplot(grid[0])
     _heading(head_a, "a", "Cross-method concordance")
-    axes_a = grid[1].subgridspec(1, 2, wspace=0.32)
-    ax_rho = fig.add_subplot(axes_a[0])
-    ax_j = fig.add_subplot(axes_a[1])
+    axes_a = grid[1].subgridspec(1, 3, width_ratios=[0.14, 0.43, 0.43], wspace=0.24)
+    ax_a_labels = fig.add_subplot(axes_a[0])
+    ax_rho = fig.add_subplot(axes_a[1])
+    ax_j = fig.add_subplot(axes_a[2])
     method_offsets = (
         np.asarray([0.0])
         if len(included) == 1
@@ -1052,11 +1082,23 @@ def plot(args: argparse.Namespace) -> None:
         (ax_j, "Top-20% directed-pair Jaccard"),
     ):
         axis.axvline(0, color="#AAB2B8", lw=0.7)
-        axis.set_yticks(y_positions, [dataset_labels[d] for d in dataset_order])
+        axis.set_yticks(y_positions, [""] * len(dataset_order))
         axis.set_ylim(len(dataset_order) - 0.55, -0.55)
         axis.set_xlabel(xlabel)
         style.clean_axis(axis, grid=True)
-    ax_j.set_yticklabels([])
+    ax_a_labels.set_axis_off()
+    ax_a_labels.set_xlim(0, 1)
+    ax_a_labels.set_ylim(len(dataset_order) - 0.55, -0.55)
+    for row_index, dataset in enumerate(dataset_order):
+        ax_a_labels.text(
+            0.98,
+            row_index,
+            dataset_labels[dataset],
+            ha="right",
+            va="center",
+            fontsize=7.4,
+            color="black",
+        )
     ax_rho.legend(
         frameon=False,
         fontsize=7.0,
@@ -1066,7 +1108,9 @@ def plot(args: argparse.Namespace) -> None:
     )
     head_b = fig.add_subplot(grid[2])
     _heading(head_b, "b", "Shared interaction programs")
-    ax_b = fig.add_subplot(grid[3])
+    axes_b = grid[3].subgridspec(1, 2, width_ratios=[0.25, 0.75], wspace=0.025)
+    ax_b_labels = fig.add_subplot(axes_b[0])
+    ax_b = fig.add_subplot(axes_b[1])
     selected = selected.set_index("dataset").loc[dataset_order].reset_index()
     comparison_methods = ["CytoBridge exact message", *included]
     for row_index, row in selected.iterrows():
@@ -1090,15 +1134,30 @@ def plot(args: argparse.Namespace) -> None:
                 linewidth=0.6,
                 zorder=3,
             )
-    ax_b.set_yticks(
-        range(len(selected)),
-        [
-            f"{dataset_labels[row.dataset]}\n"
-            + textwrap.fill(f"{row.sender_type} → {row.receiver_type}", width=30)
-            for row in selected.itertuples()
-        ],
-        fontsize=6.7,
-    )
+    ax_b_labels.set_axis_off()
+    ax_b_labels.set_xlim(0, 1)
+    ax_b_labels.set_ylim(len(selected) - 0.55, -0.55)
+    for row_index, row in enumerate(selected.itertuples()):
+        ax_b_labels.text(
+            0.98,
+            row_index - 0.10,
+            dataset_labels[row.dataset],
+            ha="right",
+            va="bottom",
+            fontsize=6.8,
+            fontweight="bold",
+            color="black",
+        )
+        ax_b_labels.text(
+            0.98,
+            row_index + 0.10,
+            textwrap.fill(f"{row.sender_type} → {row.receiver_type}", width=27),
+            ha="right",
+            va="top",
+            fontsize=6.2,
+            color="black",
+        )
+    ax_b.set_yticks(range(len(selected)), [""] * len(selected))
     ax_b.set_ylim(len(selected) - 0.55, -0.55)
     minimum_rank = min(float(selected[method].min()) for method in comparison_methods)
     ax_b.set_xlim(max(0.0, minimum_rank - 0.06), 1.015)
@@ -1127,134 +1186,81 @@ def plot(args: argparse.Namespace) -> None:
         fontsize=6.9,
     )
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "Molecular interpretation of CytoBridge interactions")
-    ax_c = fig.add_subplot(grid[5])
-    ax_c.set_axis_off()
-    ax_c.set_xlim(0, 1)
-    ax_c.set_ylim(-0.55, len(dataset_order) + 0.70)
-    columns = {"program": 0.00, "pathway": 0.295, "lr": 0.54, "target": 0.77}
-    for x, label in (
-        (0.135, "CytoBridge-selected\ninteraction"),
-        (0.395, "Attributed pathways\n(index)"),
-        (0.635, "Attributed LR\n(index)"),
-        (0.875, "NicheNet targets\n(relative evidence)"),
-    ):
-        ax_c.text(
-            x,
-            len(dataset_order) + 0.30,
-            label,
-            fontsize=6.4,
-            fontweight="bold",
-            ha="center",
-            linespacing=1.05,
-        )
-    for separator in (0.275, 0.52, 0.75):
-        ax_c.vlines(
-            separator,
-            -0.45,
-            len(dataset_order) + 0.47,
-            color="#D7DCE0",
-            lw=0.65,
-        )
+    _heading(head_c, "c", "Molecular attribution within selected interactions")
+    axes_c = grid[5].subgridspec(
+        1, 4, width_ratios=[0.23, 0.85, 1.12, 0.85], wspace=0.40
+    )
+    ax_c_labels = fig.add_subplot(axes_c[0])
+    ax_pathway = fig.add_subplot(axes_c[1])
+    ax_lr = fig.add_subplot(axes_c[2])
+    ax_target = fig.add_subplot(axes_c[3])
+    molecular_axes = (ax_pathway, ax_lr, ax_target)
+    group_bases = {
+        dataset: 2.2 * (len(dataset_order) - 1 - index)
+        for index, dataset in enumerate(dataset_order)
+    }
+    y_min, y_max = -0.72, max(group_bases.values()) + 0.72
+    ax_c_labels.set_axis_off()
+    ax_c_labels.set_xlim(0, 1)
+    ax_c_labels.set_ylim(y_min, y_max)
+    pathway_plot_rows: list[dict[str, object]] = []
+    lr_plot_rows: list[dict[str, object]] = []
+    target_plot_rows: list[dict[str, object]] = []
     evidence_rows = []
-    for row_index, dataset in enumerate(dataset_order):
-        y = len(dataset_order) - 1 - row_index
-        if row_index % 2 == 0:
-            ax_c.axhspan(y - 0.44, y + 0.44, color="#F6F7F8", zorder=0)
+
+    def _evidence_fraction(frame: pd.DataFrame, score_column: str) -> pd.Series:
+        if "fraction_of_pair_evidence" in frame:
+            return frame.fraction_of_pair_evidence.astype(float)
+        denominator = float(frame[score_column].astype(float).sum())
+        if denominator <= 0:
+            return pd.Series(np.zeros(len(frame)), index=frame.index, dtype=float)
+        return frame[score_column].astype(float) / denominator
+
+    for dataset in dataset_order:
+        base = group_bases[dataset]
         pair = selected.loc[selected.dataset.eq(dataset)].iloc[0]
-        pair_text = textwrap.fill(
-            f"{pair.sender_type} → {pair.receiver_type}", width=27
-        )
-        ax_c.text(
-            columns["program"],
-            y + 0.14,
+        ax_c_labels.text(
+            0.98,
+            base + 0.10,
             dataset_labels[dataset],
+            ha="right",
+            va="bottom",
             fontsize=6.8,
             fontweight="bold",
-            color=DATASET_COLORS[dataset],
-            va="center",
+            color="black",
         )
-        ax_c.text(
-            0.265,
-            y + 0.14,
-            f"CB {float(pair['CytoBridge exact message']):.2f}",
-            fontsize=5.9,
-            color="#5B4B8A",
-            va="center",
+        ax_c_labels.text(
+            0.98,
+            base - 0.10,
+            textwrap.fill(f"{pair.sender_type} → {pair.receiver_type}", width=22),
             ha="right",
+            va="top",
+            fontsize=5.8,
+            color="black",
         )
-        ax_c.text(
-            columns["program"],
-            y - 0.14,
-            pair_text,
-            fontsize=6.2,
-            color="#26343F",
-            va="center",
-        )
+        pair_rank = float(pair["CytoBridge exact message"])
         pathway_values = (
             pathways.loc[pathways.dataset.eq(dataset)]
             .sort_values("rank_within_pair")
+            .head(2)
             .copy()
         )
-        pathway_values["cytobridge_attribution_index"] = float(
-            pair["CytoBridge exact message"]
-        ) * pathway_values.relative_to_pair_top.astype(float)
-        pathway_text = " · ".join(
-            f"{row.pathway} {row.cytobridge_attribution_index:.2f}"
-            for row in pathway_values.head(2).itertuples()
+        pathway_values["evidence_fraction"] = _evidence_fraction(
+            pathway_values, "commot_score"
+        )
+        pathway_values["attributed_percent"] = (
+            100.0 * pair_rank * pathway_values.evidence_fraction
         )
         lr_values = (
             ligand_receptors.loc[ligand_receptors.dataset.eq(dataset)]
             .sort_values("rank_within_pair")
+            .head(2)
             .copy()
         )
-        lr_values["cytobridge_attribution_index"] = float(
-            pair["CytoBridge exact message"]
-        ) * lr_values.relative_to_pair_top.astype(float)
-        lr_text = ", ".join(
-            f"{row.ligand}–{row.receptor} {row.cytobridge_attribution_index:.2f}"
-            for row in lr_values.head(2).itertuples()
+        lr_values["evidence_fraction"] = _evidence_fraction(lr_values, "commot_score")
+        lr_values["attributed_percent"] = (
+            100.0 * pair_rank * lr_values.evidence_fraction
         )
-        for offset, row in zip(
-            (0.15, -0.15), pathway_values.head(2).itertuples(), strict=False
-        ):
-            score = float(row.cytobridge_attribution_index)
-            ax_c.text(
-                columns["pathway"],
-                y + offset,
-                f"{row.pathway} {score:.2f}",
-                fontsize=5.8,
-                color="#26343F",
-                va="center",
-            )
-            ax_c.barh(
-                y + offset,
-                0.080 * score,
-                left=0.430,
-                height=0.105,
-                color=METHOD_COLORS["COMMOT"],
-                alpha=0.90,
-            )
-        for offset, row in zip(
-            (0.15, -0.15), lr_values.head(2).itertuples(), strict=False
-        ):
-            score = float(row.cytobridge_attribution_index)
-            ax_c.text(
-                columns["lr"],
-                y + offset,
-                f"{row.ligand}–{row.receptor} {score:.2f}",
-                fontsize=5.6,
-                color="#26343F",
-                va="center",
-            )
-            ax_c.barh(
-                y + offset,
-                0.064 * score,
-                left=0.678,
-                height=0.105,
-                color="#4C78A8",
-                alpha=0.90,
-            )
         target_values = (
             target_evidence.loc[target_evidence.dataset.eq(dataset)]
             .sort_values("rank_within_pair")
@@ -1263,64 +1269,146 @@ def plot(args: argparse.Namespace) -> None:
             .copy()
         )
         if target_values.empty:
-            target_text = "not evaluable (strict orthology)"
             target_scope = "not_evaluable"
-            ax_c.text(
-                columns["target"],
-                y,
-                textwrap.fill(target_text, width=24),
-                fontsize=5.8,
-                color="#78828A",
-                va="center",
-            )
+            target_text = "not evaluable"
         else:
             target_scope = (
                 str(target_values.evidence_scope.iloc[0])
                 if "evidence_scope" in target_values
                 else "unspecified_legacy"
             )
-            target_values["relative_evidence"] = target_values.nichenet_evidence.astype(
-                float
-            ) / float(target_values.nichenet_evidence.max())
-            target_text = "; ".join(
-                f"{row.target} {row.relative_evidence:.2f}"
+            target_values["evidence_fraction"] = _evidence_fraction(
+                target_values, "nichenet_evidence"
+            )
+            target_values["evidence_percent"] = 100.0 * target_values.evidence_fraction
+            target_text = ", ".join(
+                f"{row.target} {row.evidence_percent:.1f}%"
                 for row in target_values.itertuples()
             )
-            for offset, row in zip(
-                (0.15, -0.15), target_values.itertuples(), strict=False
-            ):
-                score = float(row.relative_evidence)
-                ax_c.text(
-                    columns["target"],
-                    y + offset,
-                    f"{row.target} {score:.2f}",
-                    fontsize=5.8,
-                    color="#26343F",
-                    va="center",
-                )
-                ax_c.barh(
-                    y + offset,
-                    0.068 * score,
-                    left=0.920,
-                    height=0.105,
-                    color=METHOD_COLORS["NicheNet"],
-                    alpha=0.90,
-                )
-        biological_process = BIOLOGICAL_PROGRAMS[dataset]
+        offsets = (0.26, -0.26)
+        for offset, row in zip(offsets, pathway_values.itertuples(), strict=False):
+            pathway_plot_rows.append(
+                {
+                    "y": base + offset,
+                    "label": str(row.pathway),
+                    "value": float(row.attributed_percent),
+                }
+            )
+        for offset, row in zip(offsets, lr_values.itertuples(), strict=False):
+            lr_plot_rows.append(
+                {
+                    "y": base + offset,
+                    "label": f"{row.ligand}-{row.receptor}",
+                    "value": float(row.attributed_percent),
+                }
+            )
+        for offset, row in zip(offsets, target_values.itertuples(), strict=False):
+            target_plot_rows.append(
+                {
+                    "y": base + offset,
+                    "label": str(row.target),
+                    "value": float(row.evidence_percent),
+                }
+            )
+        pathway_text = ", ".join(
+            f"{row.pathway} {row.attributed_percent:.1f}%"
+            for row in pathway_values.itertuples()
+        )
+        lr_text = ", ".join(
+            f"{row.ligand}-{row.receptor} {row.attributed_percent:.1f}%"
+            for row in lr_values.itertuples()
+        )
         evidence_rows.append(
             {
                 "dataset": dataset,
                 "sender_type": str(pair.sender_type),
                 "receiver_type": str(pair.receiver_type),
-                "cytobridge_rank_percentile": float(pair["CytoBridge exact message"]),
-                "attribution_definition": "CytoBridge pair rank percentile multiplied by COMMOT evidence relative to the strongest pathway or LR within that pair",
+                "cytobridge_rank_percentile": pair_rank,
+                "attribution_definition": "100 × CytoBridge pair rank percentile × fraction of all positive COMMOT evidence within the selected pair",
                 "cytobridge_attributed_pathways": pathway_text,
                 "cytobridge_attributed_ligand_receptors": lr_text,
-                "nichenet_ligand_targets": target_text.replace("\n", "; "),
+                "nichenet_ligand_targets": target_text,
                 "nichenet_evidence_scope": target_scope,
-                "biological_process": biological_process,
+                "biological_process": BIOLOGICAL_PROGRAMS[dataset],
             }
         )
+
+    def _draw_molecular_axis(
+        axis,
+        rows: list[dict[str, object]],
+        *,
+        title: str,
+        xlabel: str,
+        color: str,
+        marker: str,
+    ) -> None:
+        values = np.asarray([float(row["value"]) for row in rows], dtype=float)
+        maximum = max(float(values.max()) if values.size else 0.0, 1.0)
+        axis.set_xlim(0.0, maximum * 1.24)
+        axis.set_ylim(y_min, y_max)
+        axis.set_title(title, fontsize=9, color="black", pad=7)
+        axis.set_xlabel(xlabel, fontsize=7.2, color="black")
+        for row in rows:
+            y_value = float(row["y"])
+            value = float(row["value"])
+            axis.hlines(y_value, 0.0, value, color="#B8BEC3", lw=0.9, zorder=1)
+            axis.scatter(
+                value,
+                y_value,
+                s=25,
+                marker=marker,
+                color=color,
+                edgecolor="black",
+                linewidth=0.35,
+                zorder=3,
+            )
+            axis.text(
+                value + maximum * 0.035,
+                y_value,
+                f"{value:.1f}",
+                va="center",
+                ha="left",
+                fontsize=5.8,
+                color="black",
+            )
+        axis.set_yticks(
+            [float(row["y"]) for row in rows],
+            [str(row["label"]) for row in rows],
+            fontsize=5.8,
+            color="black",
+        )
+        for index in range(len(dataset_order) - 1):
+            upper = group_bases[dataset_order[index]]
+            lower = group_bases[dataset_order[index + 1]]
+            axis.axhline((upper + lower) / 2.0, color="#D8DDE1", lw=0.55)
+        axis.tick_params(axis="x", labelsize=6.2, colors="black")
+        axis.tick_params(axis="y", length=0, pad=2, colors="black")
+        style.clean_axis(axis, grid=True)
+
+    _draw_molecular_axis(
+        ax_pathway,
+        pathway_plot_rows,
+        title="Pathways",
+        xlabel="Attributed evidence (%)",
+        color=METHOD_COLORS["COMMOT"],
+        marker="s",
+    )
+    _draw_molecular_axis(
+        ax_lr,
+        lr_plot_rows,
+        title="Ligand-receptor pairs",
+        xlabel="Attributed evidence (%)",
+        color="#4C78A8",
+        marker="o",
+    )
+    _draw_molecular_axis(
+        ax_target,
+        target_plot_rows,
+        title="Receiver targets",
+        xlabel="NicheNet evidence (%)",
+        color=METHOD_COLORS["NicheNet"],
+        marker="D",
+    )
     evidence_path = output / "panel_c_model_to_biology.csv"
     pd.DataFrame(evidence_rows).to_csv(evidence_path, index=False)
     pdf = output / "spatial_communication_consistency_a4.pdf"
@@ -1345,7 +1433,7 @@ def plot(args: argparse.Namespace) -> None:
         zebrafish_note = " Zebrafish NicheNet target evidence was not evaluable under the declared orthology contract."
     else:
         zebrafish_note = ""
-    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) Quantitative molecular decomposition of the same CytoBridge-selected interactions. The pathway and ligand–receptor indices multiply the CytoBridge pair-rank percentile by COMMOT evidence relative to the strongest pathway or ligand–receptor pair within that interaction. NicheNet target bars show evidence relative to the strongest receiver target within the selected pair. The linked programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron–astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. The attribution is a post hoc decomposition of a CytoBridge cell-pair interaction, not a native ligand–receptor parameter of the model.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
+    caption = f"**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance compares the exact CytoBridge interaction contribution with {included_text} over complete directed cell-type-pair grids. The included methods passed the prespecified cross-dataset gate: {summary_text}. CellAgentChat used spatial mode, three fixed sampling seeds, and the gene-level representable subset of each dataset's accepted CytoBridge LR database. (b) Connected points show within-method ranks for one jointly high-ranking off-diagonal interaction per dataset. (c) Quantitative molecular decomposition of the same CytoBridge-selected interactions. Pathway and ligand-receptor attribution equals 100 times the CytoBridge pair-rank percentile times the fraction of all positive COMMOT evidence assigned to that molecular program within the selected interaction. NicheNet points show each target's percentage of the total positive receiver-target evidence within the same interaction. These percentages are within-interaction evidence allocations, not probabilities, effect sizes, or agreement scores. The linked programs are consistent with neuroepithelial patterning and extracellular-matrix-guided forebrain development in zebrafish, mesenchymal chondrogenic maturation in MOSTA, regenerative neuroglial remodeling in ARISTA, neuron-astrocyte structural and reactive programs in AdMouse, and valve extracellular-matrix remodeling in chicken heart. The attribution is a post hoc decomposition of a CytoBridge cell-pair interaction, not a native ligand-receptor parameter of the model.{zebrafish_note} ARISTA and chicken are conserved-human-symbol proxy analyses. The agreement supports biological interpretability but is not a causal validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,

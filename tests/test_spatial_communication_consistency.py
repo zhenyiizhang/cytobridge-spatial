@@ -768,9 +768,19 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
         == "cross-species proxy"
     )
     assert (output / "manifest.json").is_file()
-    assert len(pd.read_csv(output / "selected_pair_commot_pathways.csv")) == 10
-    assert len(pd.read_csv(output / "selected_pair_commot_lr.csv")) == 10
-    assert len(pd.read_csv(output / "selected_pair_nichenet_targets.csv")) == 5
+    selected_pathways = pd.read_csv(output / "selected_pair_commot_pathways.csv")
+    selected_lr = pd.read_csv(output / "selected_pair_commot_lr.csv")
+    selected_targets = pd.read_csv(output / "selected_pair_nichenet_targets.csv")
+    assert len(selected_pathways) == 10
+    assert len(selected_lr) == 10
+    assert len(selected_targets) == 5
+    for table in (selected_pathways, selected_lr):
+        for _, group in table.groupby("dataset"):
+            np.testing.assert_allclose(
+                group.sort_values("rank_within_pair").fraction_of_pair_evidence,
+                [2.0 / 3.0, 1.0 / 3.0],
+            )
+    np.testing.assert_allclose(selected_targets.fraction_of_pair_evidence, 1.0)
 
     decision_table = pd.read_csv(output / "main_figure_method_decisions.csv")
     decision_table["include_in_main_figure"] = decision_table.external_method.eq(
@@ -790,7 +800,12 @@ def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) ->
     assert (evidence.cytobridge_rank_percentile > 0.0).all()
     assert evidence.cytobridge_attributed_pathways.notna().all()
     assert evidence.cytobridge_attributed_ligand_receptors.notna().all()
+    assert evidence.cytobridge_attributed_pathways.str.contains("%", regex=False).all()
+    assert evidence.cytobridge_attributed_ligand_receptors.str.contains(
+        "%", regex=False
+    ).all()
     assert evidence.biological_process.notna().all()
     assert set(evidence.nichenet_evidence_scope) == {"primary_species_prior"}
     caption = (figure_output / "caption.md").read_text(encoding="utf-8")
     assert "Quantitative molecular decomposition" in caption
+    assert "not probabilities, effect sizes, or agreement scores" in caption
