@@ -333,14 +333,43 @@ def prepare_nichenet_tables(
 
     receiver_rows: list[dict[str, object]] = []
     expression_rows: list[dict[str, object]] = []
+    response_unavailable: list[dict[str, object]] = []
     cell_type_values = sorted(set(cell_types[terminal]))
     for cell_type in cell_type_values:
         terminal_mask = terminal & (cell_types == cell_type)
         previous_mask = previous & (cell_types == cell_type)
-        if terminal_mask.sum() < 3 or previous_mask.sum() < 3:
-            raise ValueError(
-                f"{dataset}/{cell_type} has fewer than three cells at a comparison time"
+        terminal_matrix = adata.X[terminal_mask]
+        _, _, fraction = _mean_var_fraction(terminal_matrix)
+        for gene, index in ligand_indices.items():
+            expression_rows.append(
+                {
+                    "dataset": dataset,
+                    "cell_type": cell_type,
+                    "role": "ligand",
+                    "gene": gene,
+                    "fraction": float(fraction[index]),
+                }
             )
+        for gene, index in receptor_indices.items():
+            expression_rows.append(
+                {
+                    "dataset": dataset,
+                    "cell_type": cell_type,
+                    "role": "receptor",
+                    "gene": gene,
+                    "fraction": float(fraction[index]),
+                }
+            )
+        if terminal_mask.sum() < 3 or previous_mask.sum() < 3:
+            response_unavailable.append(
+                {
+                    "cell_type": cell_type,
+                    "terminal_cells": int(terminal_mask.sum()),
+                    "previous_cells": int(previous_mask.sum()),
+                    "reason": "fewer_than_three_cells_at_terminal_or_previous_time",
+                }
+            )
+            continue
         terminal_mean, terminal_var, terminal_fraction = _mean_var_fraction(
             adata.X[terminal_mask]
         )
@@ -364,9 +393,15 @@ def prepare_nichenet_tables(
         response = np.zeros(len(genes), dtype=bool)
         response[selected_response] = True
         if int(response.sum()) < 10:
-            raise ValueError(
-                f"{dataset}/{cell_type} produced fewer than ten positive response genes"
+            response_unavailable.append(
+                {
+                    "cell_type": cell_type,
+                    "terminal_cells": int(terminal_mask.sum()),
+                    "previous_cells": int(previous_mask.sum()),
+                    "reason": "fewer_than_ten_positive_response_genes",
+                }
             )
+            continue
         for index in np.flatnonzero(background):
             receiver_rows.append(
                 {
@@ -380,28 +415,8 @@ def prepare_nichenet_tables(
                 }
             )
 
-        terminal_matrix = adata.X[terminal_mask]
-        _, _, fraction = _mean_var_fraction(terminal_matrix)
-        for gene, index in ligand_indices.items():
-            expression_rows.append(
-                {
-                    "dataset": dataset,
-                    "cell_type": cell_type,
-                    "role": "ligand",
-                    "gene": gene,
-                    "fraction": float(fraction[index]),
-                }
-            )
-        for gene, index in receptor_indices.items():
-            expression_rows.append(
-                {
-                    "dataset": dataset,
-                    "cell_type": cell_type,
-                    "role": "receptor",
-                    "gene": gene,
-                    "fraction": float(fraction[index]),
-                }
-            )
+    if not receiver_rows:
+        raise ValueError(f"{dataset} has no receiver cell type eligible for NicheNet")
 
     expression = pd.DataFrame(expression_rows)
     ligands = expression[
@@ -449,6 +464,10 @@ def prepare_nichenet_tables(
         "response_top_n": int(response_top_n),
         "response_selection": "top positive terminal-minus-previous log2 expression changes",
         "n_cell_types": len(cell_type_values),
+        "n_response_eligible_cell_types": int(
+            len(cell_type_values) - len(response_unavailable)
+        ),
+        "response_unavailable_cell_types": response_unavailable,
         "n_lr_candidates": int(len(candidates)),
         "outputs": {},
     }

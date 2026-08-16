@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import anndata as ad
 
 from CytoBridge.nonspatial.communication_consistency import (
     METHODS,
     complete_directed_pairs,
     encode_cellagentchat_labels,
     pairwise_rank_metrics,
+    prepare_nichenet_tables,
     prepare_shared_lr_database,
     rank_percentile,
     stratified_sample_indices,
@@ -124,3 +126,35 @@ def test_pairwise_metrics_use_all_complete_pairs() -> None:
 def test_rank_percentile_ties_are_stable() -> None:
     ranked = rank_percentile(pd.Series([0.0, 0.0, 2.0]))
     assert np.allclose(ranked, [0.5, 0.5, 1.0])
+
+
+def test_nichenet_keeps_senders_when_a_rare_receiver_lacks_previous_cells(
+    tmp_path,
+) -> None:
+    genes = [f"g{index}" for index in range(30)]
+    labels = ["A"] * 6 + ["B"] * 4
+    times = [0.0] * 3 + [1.0] * 3 + [0.0] + [1.0] * 3
+    matrix = np.ones((10, 30), dtype=float)
+    matrix[3:6] = 2.0
+    data = ad.AnnData(
+        X=matrix,
+        obs=pd.DataFrame({"cell_type": labels, "time": times}),
+        var=pd.DataFrame(index=genes),
+    )
+    network = pd.DataFrame({"from": ["g0"], "to": ["g1"]})
+    output = tmp_path / "nichenet"
+    manifest = prepare_nichenet_tables(
+        data,
+        dataset="fixture",
+        cell_type_key="cell_type",
+        time_key="time",
+        terminal_time=1.0,
+        previous_time=0.0,
+        lr_network=network,
+        output_dir=output,
+    )
+    assert manifest["n_response_eligible_cell_types"] == 1
+    assert manifest["response_unavailable_cell_types"][0]["cell_type"] == "B"
+    candidates = pd.read_csv(output / "sender_receiver_lr_candidates.csv")
+    assert set(candidates["sender"]) == {"A", "B"}
+    assert ((candidates["sender"] == "B") & (candidates["receiver"] == "A")).any()
