@@ -236,6 +236,73 @@ def _select_pairs(scores: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows).reset_index(drop=True)
 
 
+def summarize_nichenet(args: argparse.Namespace) -> None:
+    source = Path(args.nichenet_dir).expanduser().resolve()
+    output = Path(args.output_dir).expanduser().resolve()
+    if output.exists():
+        raise FileExistsError(f"output directory exists: {output}")
+    required = {
+        "prepare_manifest": source / "manifest.json",
+        "candidates": source / "sender_receiver_lr_candidates.csv",
+        "activities": source / "official" / "ligand_activities.csv",
+        "targets": source / "official" / "ligand_target_links.csv",
+        "r_session": source / "official" / "R_sessionInfo.txt",
+    }
+    for label, path in required.items():
+        if not path.is_file():
+            raise FileNotFoundError(f"missing NicheNet {label}: {path}")
+    candidates = pd.read_csv(required["candidates"])
+    activities = pd.read_csv(required["activities"])
+    targets = pd.read_csv(required["targets"])
+    activities["activity_rank"] = activities.groupby("receiver", sort=False)[
+        "aupr_corrected"
+    ].transform(rank_percentile)
+    evidence = candidates.merge(
+        activities[["receiver", "ligand", "aupr_corrected", "activity_rank"]],
+        on=["receiver", "ligand"],
+        how="inner",
+        validate="many_to_one",
+    )
+    evidence["lr_evidence"] = evidence["activity_rank"] * np.sqrt(
+        evidence["sender_fraction"] * evidence["receiver_fraction"]
+    )
+    top = (
+        evidence.sort_values("lr_evidence", ascending=False, kind="mergesort")
+        .groupby(["dataset", "sender", "receiver"], sort=False)
+        .head(5)
+    )
+    pair_scores = (
+        top.groupby(["dataset", "sender", "receiver"], as_index=False)
+        .agg(nichenet_support_score=("lr_evidence", "mean"))
+        .rename(columns={"sender": "sender_type", "receiver": "receiver_type"})
+    )
+    detailed = evidence.merge(
+        targets,
+        on=["dataset", "receiver", "ligand"],
+        how="inner",
+        validate="many_to_many",
+    )
+    detailed["ligand_target_evidence"] = detailed["lr_evidence"] * detailed["weight"]
+    output.mkdir(parents=True)
+    pair_path = output / "nichenet_type_pair_scores.csv"
+    evidence_path = output / "nichenet_lr_evidence.csv.gz"
+    target_path = output / "nichenet_ligand_target_evidence.csv.gz"
+    pair_scores.to_csv(pair_path, index=False)
+    evidence.to_csv(evidence_path, index=False, compression="gzip")
+    detailed.to_csv(target_path, index=False, compression="gzip")
+    manifest = {
+        "schema_version": 1,
+        "workflow": "spatial_communication_consistency_nichenet_summary",
+        "pair_score": "mean of the top five activity-rank × sqrt(sender-expression-fraction × receiver-expression-fraction) LR evidences",
+        "sources": {label: _artifact(path) for label, path in required.items()},
+        "outputs": {
+            path.name: _artifact(path)
+            for path in (pair_path, evidence_path, target_path)
+        },
+    }
+    _write_json(output / "manifest.json", manifest)
+
+
 def aggregate(args: argparse.Namespace) -> None:
     config_path = Path(args.config).expanduser().resolve()
     config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -508,6 +575,10 @@ def build_parser() -> argparse.ArgumentParser:
             sample_n=args.sample_n,
         )
     )
+    nichenet = sub.add_parser("summarize-nichenet")
+    nichenet.add_argument("--nichenet-dir", required=True)
+    nichenet.add_argument("--output-dir", required=True)
+    nichenet.set_defaults(function=summarize_nichenet)
     aggregate_parser = sub.add_parser("aggregate")
     aggregate_parser.add_argument("--config", required=True)
     aggregate_parser.add_argument("--output-dir", required=True)

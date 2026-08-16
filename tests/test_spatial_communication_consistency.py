@@ -150,6 +150,53 @@ def _load_spatial_script():
     return module
 
 
+def test_summarize_nichenet_writes_pair_and_molecular_evidence(tmp_path: Path) -> None:
+    module = _load_spatial_script()
+    source = tmp_path / "nichenet"
+    official = source / "official"
+    official.mkdir(parents=True)
+    (source / "manifest.json").write_text("{}\n", encoding="utf-8")
+    (official / "R_sessionInfo.txt").write_text("R fixture\n", encoding="utf-8")
+    pd.DataFrame(
+        {
+            "dataset": ["fixture", "fixture"],
+            "sender": ["A", "B"],
+            "receiver": ["B", "B"],
+            "ligand": ["L1", "L1"],
+            "receptor": ["R1", "R1"],
+            "sender_fraction": [1.0, 0.25],
+            "receiver_fraction": [1.0, 1.0],
+        }
+    ).to_csv(source / "sender_receiver_lr_candidates.csv", index=False)
+    pd.DataFrame(
+        {
+            "dataset": ["fixture"],
+            "receiver": ["B"],
+            "ligand": ["L1"],
+            "aupr_corrected": [0.8],
+        }
+    ).to_csv(official / "ligand_activities.csv", index=False)
+    pd.DataFrame(
+        {
+            "dataset": ["fixture"],
+            "receiver": ["B"],
+            "ligand": ["L1"],
+            "target": ["T1"],
+            "weight": [0.5],
+        }
+    ).to_csv(official / "ligand_target_links.csv", index=False)
+    output = tmp_path / "summary"
+    module.summarize_nichenet(
+        SimpleNamespace(nichenet_dir=str(source), output_dir=str(output))
+    )
+    pairs = pd.read_csv(output / "nichenet_type_pair_scores.csv")
+    assert pairs.set_index("sender_type").loc["A", "nichenet_support_score"] == 1.0
+    assert pairs.set_index("sender_type").loc["B", "nichenet_support_score"] == 0.5
+    targets = pd.read_csv(output / "nichenet_ligand_target_evidence.csv.gz")
+    assert set(targets["target"]) == {"T1"}
+    assert (output / "manifest.json").is_file()
+
+
 def test_aggregate_retains_all_method_status_and_applies_gate(tmp_path: Path) -> None:
     module = _load_spatial_script()
     config = {"datasets": {}}
