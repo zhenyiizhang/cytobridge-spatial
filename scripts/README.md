@@ -118,6 +118,18 @@ remain in the complete status and metric tables. Chicken heart is explicitly
 labelled as a conserved-symbol human-CellChatDB proxy rather than a native
 Gallus gallus screen.
 
+The `prepare-shared-database-proxy` subcommand adapts each accepted
+`filtered_lr_database.csv` for spatial CellAgentChat and the NicheNet
+candidate gate. Both methods receive the same expression-representable
+single-gene LR universe. Multi-subunit ligand or receptor rows are excluded,
+not decomposed into artificial singleton pairs. NicheNet retains its official
+mouse or human ligand-target matrix because that regulatory prior is part of
+the NicheNet method rather than its LR candidate gate. Zebrafish defaults to
+the strict Ensembl-116 confidence-1 one-to-one mapping; the broader
+symbol-bijective one-to-one mapping is sensitivity-only. ARISTA and chicken
+conserved-human-symbol runs are likewise labelled as proxy sensitivity
+analyses.
+
 `run_matched_ablation_matrix.py` is the fail-closed server launcher for the
 formal four-dataset × three-arm comparison. It accepts exactly one shared
 aligned H5AD per dataset, the validation-selected learned predictor plus its
