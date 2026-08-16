@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import textwrap
 from pathlib import Path
 from typing import Iterable
 
@@ -526,217 +527,253 @@ def plot(args: argparse.Namespace) -> None:
     )
     if not included:
         raise ValueError("no external method passed the frozen main-figure gate")
+    included = [
+        method
+        for method in ("COMMOT", "CellAgentChat", "CellChat", "NicheNet")
+        if method in included
+    ]
     primary = metrics.loc[
         metrics.cytobridge_view.eq("CytoBridge exact message")
         & metrics.external_method.isin(included)
     ].copy()
     style.apply_style()
-    if included != ["COMMOT"]:
-        raise ValueError(
-            "the frozen five-dataset result must include COMMOT alone in the main figure"
-        )
     dataset_order = list(FORMAL_DATASET_CONTRACTS)
     dataset_labels = {
         key: str(value["display_name"])
         for key, value in FORMAL_DATASET_CONTRACTS.items()
     }
+    method_styles = {
+        "CytoBridge exact message": ("#5B4B8A", "o", "CytoBridge"),
+        "COMMOT": (METHOD_COLORS["COMMOT"], "s", "COMMOT"),
+        "CellAgentChat": (METHOD_COLORS["CellAgentChat"], "D", "CellAgentChat"),
+        "CellChat": (METHOD_COLORS["CellChat"], "^", "CellChat"),
+        "NicheNet": (METHOD_COLORS["NicheNet"], "v", "NicheNet"),
+    }
     fig = plt.figure(figsize=style.A4_PORTRAIT)
     grid = fig.add_gridspec(
-        8,
+        6,
         1,
-        height_ratios=[0.20, 1.25, 0.20, 1.55, 0.20, 2.25, 0.20, 2.35],
-        left=0.23,
-        right=0.965,
-        top=0.975,
-        bottom=0.055,
-        hspace=0.38,
+        height_ratios=[0.18, 1.58, 0.18, 1.62, 0.18, 2.48],
+        left=0.255,
+        right=0.97,
+        top=0.98,
+        bottom=0.045,
+        hspace=0.34,
     )
     head_a = fig.add_subplot(grid[0])
-    _heading(head_a, "a", "COMMOT concordance across five spatial datasets")
-    axes_a = grid[1].subgridspec(1, 2, wspace=0.40)
+    _heading(head_a, "a", "Cross-method concordance across five spatial datasets")
+    axes_a = grid[1].subgridspec(1, 2, wspace=0.32)
     ax_rho = fig.add_subplot(axes_a[0])
     ax_j = fig.add_subplot(axes_a[1])
-    primary = primary.set_index("dataset").loc[dataset_order].reset_index()
-    y_positions = np.arange(len(dataset_order))
-    for y, row in zip(y_positions, primary.itertuples(), strict=True):
-        color = DATASET_COLORS[row.dataset]
-        ax_rho.hlines(y, 0, row.spearman_rho, color=color, lw=2.2, alpha=0.35)
-        ax_rho.scatter(
-            row.spearman_rho,
-            y,
-            s=45,
-            color=color,
-            edgecolor="white",
-            linewidth=0.6,
-            zorder=3,
+    method_offsets = (
+        np.asarray([0.0])
+        if len(included) == 1
+        else np.linspace(-0.15, 0.15, len(included))
+    )
+    y_positions = np.arange(len(dataset_order), dtype=float)
+    for method_index, method in enumerate(included):
+        table = (
+            primary.loc[primary.external_method.eq(method)]
+            .set_index("dataset")
+            .reindex(dataset_order)
         )
-        ax_j.hlines(y, 0, row.top_jaccard, color=color, lw=2.2, alpha=0.35)
-        ax_j.scatter(
-            row.top_jaccard,
-            y,
-            s=45,
-            color=color,
-            edgecolor="white",
-            linewidth=0.6,
-            zorder=3,
-        )
-    for axis, xlabel in ((ax_rho, "Spearman ρ"), (ax_j, "Top-20% Jaccard")):
+        if table.metric_available.isna().any() or not table.metric_available.all():
+            raise ValueError(f"included method lacks a complete metric grid: {method}")
+        color, marker, label = method_styles[method]
+        ys = y_positions + method_offsets[method_index]
+        for axis, values in (
+            (ax_rho, table.spearman_rho),
+            (ax_j, table.top_jaccard),
+        ):
+            axis.scatter(
+                values,
+                ys,
+                s=42,
+                marker=marker,
+                color=color,
+                edgecolor="white",
+                linewidth=0.6,
+                label=label,
+                zorder=3,
+            )
+    for axis, xlabel in (
+        (ax_rho, "Spearman rank correlation (ρ)"),
+        (ax_j, "Top-20% directed-pair Jaccard"),
+    ):
         axis.axvline(0, color="#AAB2B8", lw=0.7)
         axis.set_yticks(y_positions, [dataset_labels[d] for d in dataset_order])
         axis.set_ylim(len(dataset_order) - 0.55, -0.55)
         axis.set_xlabel(xlabel)
         style.clean_axis(axis, grid=True)
     ax_j.set_yticklabels([])
-    ax_rho.text(
-        0.01,
-        1.04,
-        "Frozen gate passed: positive ρ in 5/5 datasets",
-        transform=ax_rho.transAxes,
-        fontsize=7.2,
-        color="#2A9D8F",
-        fontweight="bold",
+    ax_rho.legend(
+        frameon=False,
+        fontsize=7.0,
+        ncol=min(2, len(included)),
+        loc="lower left",
+        bbox_to_anchor=(0.0, 1.01),
     )
     head_b = fig.add_subplot(grid[2])
-    _heading(head_b, "b", "Shared high-ranking directed cell-type programs")
+    _heading(head_b, "b", "Shared high-ranking cell-type interaction programs")
     ax_b = fig.add_subplot(grid[3])
     selected = selected.set_index("dataset").loc[dataset_order].reset_index()
+    comparison_methods = ["CytoBridge exact message", *included]
     for row_index, row in selected.iterrows():
-        values = [float(row["CytoBridge exact message"]), float(row["COMMOT"])]
-        ax_b.plot(values, [row_index, row_index], color="#C2C7CC", lw=1.5)
-        ax_b.scatter(
-            values,
+        values = [float(row[method]) for method in comparison_methods]
+        ax_b.plot(
+            [min(values), max(values)],
             [row_index, row_index],
-            s=45,
-            color=["#5B4B8A", METHOD_COLORS["COMMOT"]],
-            edgecolor="white",
-            linewidth=0.6,
-            zorder=3,
+            color="#C2C7CC",
+            lw=1.4,
+            zorder=1,
         )
+        for method, value in zip(comparison_methods, values, strict=True):
+            color, marker, _ = method_styles[method]
+            ax_b.scatter(
+                value,
+                row_index,
+                s=44,
+                marker=marker,
+                color=color,
+                edgecolor="white",
+                linewidth=0.6,
+                zorder=3,
+            )
     ax_b.set_yticks(
         range(len(selected)),
-        [dataset_labels[row.dataset] for row in selected.itertuples()],
-        fontsize=7.2,
+        [
+            f"{dataset_labels[row.dataset]}\n"
+            + textwrap.fill(f"{row.sender_type} → {row.receiver_type}", width=30)
+            for row in selected.itertuples()
+        ],
+        fontsize=6.7,
     )
-    for row_index, row in selected.iterrows():
-        ax_b.text(
-            0.02,
-            row_index,
-            f"{row.sender_type} → {row.receiver_type}",
-            fontsize=7.0,
-            color="#59616A",
-            va="center",
-        )
     ax_b.set_ylim(len(selected) - 0.55, -0.55)
-    ax_b.set_xlim(0, 1.02)
+    minimum_rank = min(float(selected[method].min()) for method in comparison_methods)
+    ax_b.set_xlim(max(0.0, minimum_rank - 0.06), 1.015)
     ax_b.axvline(0.8, color="#8A949C", lw=0.8, ls="--")
-    ax_b.set_xlabel("Within-method rank percentile")
+    ax_b.set_xlabel("Within-method directed-pair rank percentile")
     style.clean_axis(ax_b, grid=True)
     ax_b.legend(
         handles=[
             plt.Line2D(
                 [0],
                 [0],
-                marker="o",
+                marker=marker,
                 color="none",
                 markerfacecolor=color,
+                markeredgecolor="white",
                 label=label,
             )
-            for color, label in (
-                ("#5B4B8A", "CytoBridge exact interaction"),
-                (METHOD_COLORS["COMMOT"], "COMMOT"),
-            )
+            for color, marker, label in [
+                method_styles[method] for method in comparison_methods
+            ]
         ],
         frameon=False,
-        ncol=2,
+        ncol=len(comparison_methods),
         loc="lower right",
         bbox_to_anchor=(1.0, 1.01),
-        fontsize=7.2,
+        fontsize=6.9,
     )
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "COMMOT pathway annotations for selected programs")
+    _heading(head_c, "c", "Biological annotation of the selected programs")
     ax_c = fig.add_subplot(grid[5])
-    pathways = pathways.loc[pathways.dataset.isin(dataset_order)].copy()
-    pathways["dataset_order"] = pathways.dataset.map(
-        {dataset: index for index, dataset in enumerate(dataset_order)}
-    )
-    pathways = pathways.sort_values(
-        ["dataset_order", "rank_within_pair"], kind="mergesort"
-    ).reset_index(drop=True)
-    pathway_labels = [
-        f"{dataset_labels[row.dataset]}  {row.pathway}" for row in pathways.itertuples()
-    ]
-    y = np.arange(len(pathways))
-    ax_c.barh(
-        y,
-        pathways.relative_to_pair_top.astype(float),
-        color=[DATASET_COLORS[d] for d in pathways.dataset],
-        alpha=0.85,
-        height=0.68,
-    )
-    ax_c.set_yticks(y, pathway_labels, fontsize=7.0)
-    ax_c.set_ylim(len(pathways) - 0.55, -0.55)
-    ax_c.set_xlim(0, 1.05)
-    ax_c.set_xlabel("Relative COMMOT score within the selected pair")
-    style.clean_axis(ax_c, grid=True)
-    head_d = fig.add_subplot(grid[6])
-    _heading(head_d, "d", "Ligand–receptor and downstream target evidence")
-    ax_d = fig.add_subplot(grid[7])
-    ligand_receptors = ligand_receptors.loc[
-        ligand_receptors.dataset.isin(dataset_order)
-        & ligand_receptors.rank_within_pair.le(2)
-    ].copy()
-    ligand_receptors["dataset_order"] = ligand_receptors.dataset.map(
-        {dataset: index for index, dataset in enumerate(dataset_order)}
-    )
-    ligand_receptors = ligand_receptors.sort_values(
-        ["dataset_order", "rank_within_pair"], kind="mergesort"
-    ).reset_index(drop=True)
-    lr_labels = [
-        f"{dataset_labels[row.dataset]}  {row.ligand}–{row.receptor} ({row.pathway})"
-        for row in ligand_receptors.itertuples()
-    ]
-    y = np.arange(len(ligand_receptors))
-    ax_d.scatter(
-        ligand_receptors.relative_to_pair_top.astype(float),
-        y,
-        s=52,
-        color=[DATASET_COLORS[d] for d in ligand_receptors.dataset],
-        edgecolor="white",
-        linewidth=0.6,
-    )
-    ax_d.hlines(
-        y,
-        0,
-        ligand_receptors.relative_to_pair_top.astype(float),
-        color=[DATASET_COLORS[d] for d in ligand_receptors.dataset],
-        lw=1.6,
-        alpha=0.32,
-    )
-    ax_d.set_yticks(y, lr_labels, fontsize=7.0)
-    ax_d.set_ylim(len(ligand_receptors) - 0.55, -0.55)
-    ax_d.set_xlim(0, 1.05)
-    ax_d.set_xlabel("Relative COMMOT LR score within the selected pair")
-    style.clean_axis(ax_d, grid=True)
-    if not target_evidence.empty:
-        target_text = "; ".join(
-            f"{row.ligand}–{row.receptor} → {row.target}"
-            for row in target_evidence.itertuples()
+    ax_c.set_axis_off()
+    ax_c.set_xlim(0, 1)
+    ax_c.set_ylim(-0.55, len(dataset_order) + 0.70)
+    columns = {"program": 0.00, "pathway": 0.31, "lr": 0.55, "target": 0.76}
+    for x, label in (
+        (columns["program"], "Dataset · directed program"),
+        (columns["pathway"], "COMMOT pathways"),
+        (columns["lr"], "Top COMMOT LR"),
+        (columns["target"], "NicheNet ligand → target"),
+    ):
+        ax_c.text(x, len(dataset_order) + 0.32, label, fontsize=7.0, fontweight="bold")
+    for separator in (0.295, 0.535, 0.745):
+        ax_c.vlines(
+            separator,
+            -0.45,
+            len(dataset_order) + 0.47,
+            color="#D7DCE0",
+            lw=0.65,
         )
-        ax_d.text(
-            0.01,
-            -0.24,
-            f"NicheNet target support (where available): {target_text}",
-            transform=ax_d.transAxes,
+    for row_index, dataset in enumerate(dataset_order):
+        y = len(dataset_order) - 1 - row_index
+        if row_index % 2 == 0:
+            ax_c.axhspan(y - 0.44, y + 0.44, color="#F6F7F8", zorder=0)
+        pair = selected.loc[selected.dataset.eq(dataset)].iloc[0]
+        pair_text = textwrap.fill(
+            f"{pair.sender_type} → {pair.receiver_type}", width=27
+        )
+        ax_c.text(
+            columns["program"],
+            y + 0.14,
+            dataset_labels[dataset],
             fontsize=6.8,
-            color="#59616A",
-            va="top",
-            wrap=True,
+            fontweight="bold",
+            color=DATASET_COLORS[dataset],
+            va="center",
+        )
+        ax_c.text(
+            columns["program"],
+            y - 0.14,
+            pair_text,
+            fontsize=6.2,
+            color="#26343F",
+            va="center",
+        )
+        pathway_values = pathways.loc[pathways.dataset.eq(dataset)].sort_values(
+            "rank_within_pair"
+        )
+        pathway_text = " · ".join(pathway_values.pathway.astype(str).head(3))
+        ax_c.text(
+            columns["pathway"],
+            y,
+            textwrap.fill(pathway_text or "not available", width=21),
+            fontsize=6.4,
+            color="#26343F",
+            va="center",
+        )
+        lr_values = ligand_receptors.loc[
+            ligand_receptors.dataset.eq(dataset)
+        ].sort_values("rank_within_pair")
+        lr_text = "\n".join(
+            f"{row.ligand}–{row.receptor}" for row in lr_values.head(2).itertuples()
+        )
+        ax_c.text(
+            columns["lr"],
+            y,
+            lr_text or "not available",
+            fontsize=6.3,
+            color="#26343F",
+            va="center",
+        )
+        target_values = target_evidence.loc[
+            target_evidence.dataset.eq(dataset)
+        ].sort_values("rank_within_pair")
+        if target_values.empty:
+            target_text = "not evaluable\n(strict orthology)"
+            target_color = "#78828A"
+        else:
+            target = target_values.iloc[0]
+            target_text = textwrap.fill(
+                f"{target.ligand}–{target.receptor} → {target.target}", width=24
+            )
+            target_color = "#26343F"
+        ax_c.text(
+            columns["target"],
+            y,
+            target_text,
+            fontsize=6.3,
+            color=target_color,
+            va="center",
         )
     pdf = output / "spatial_communication_consistency_a4.pdf"
     png = output / "spatial_communication_consistency_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
     plt.close(fig)
-    caption = "**Five-dataset spatial communication consistency.** (a) Terminal-stage concordance between the exact CytoBridge interaction-message contribution and COMMOT over the complete directed cell-type-pair grid. COMMOT was the only external method to pass the gate frozen before analysis (positive Spearman correlation in at least four datasets, median ρ ≥ 0.20, and median top-20% Jaccard ≥ 0.15). (b) One off-diagonal pair per dataset selected by a deterministic shared-percentile rule; connected points compare within-method ranks, not native score magnitudes. (c) The three strongest COMMOT pathway annotations for each selected pair, normalized only within that pair. (d) The two strongest COMMOT ligand–receptor annotations per pair. NicheNet target-gene evidence is shown only where its matched-species prior and selected directed pair supplied formal evidence. CellChat, CellAgentChat, and NicheNet pair-level concordance did not pass the frozen five-dataset main-figure gate and remain fully reported in the audit tables rather than being presented as positive validation. CytoBridge identifies the cell-type interaction; molecular labels in c–d are supplied by COMMOT, and target labels by NicheNet. Chicken heart uses a human conserved-symbol proxy, not a species-complete Gallus gallus screen. All comparisons are descriptive computational consistency, not causal or independent experimental validation."
+    included_text = " and ".join(included)
+    caption = f"**Five-dataset spatial communication consistency using a shared LR candidate database.** (a) Terminal-stage concordance between the exact CytoBridge interaction-message contribution and {included_text} over each complete directed cell-type-pair grid. These methods passed the gate frozen before analysis: at least four valid datasets, positive Spearman correlation in at least four, median ρ ≥ 0.20, and median top-20% Jaccard ≥ 0.15. CellAgentChat used its spatial mode (`dist=True`), three fixed sampling seeds, and the gene-level representable singleton subset of each dataset's accepted CytoBridge filtered LR database. (b) One off-diagonal program per dataset selected by a deterministic shared-percentile rule; connected points compare within-method ranks, not native score magnitudes. (c) COMMOT supplies pathway and LR labels for those selected programs. NicheNet supplies receiver-program ligand-to-target support only where its species prior and the shared LR gate yielded a valid result; it is not presented as a native spatial pair score. CellChat and NicheNet pair-level concordance did not pass the frozen main-figure gate and remain in the audit tables. The zebrafish strict confidence-1 orthology NicheNet run was not evaluable because one receiver had no candidate ligand; its all-confidence one-to-one run remains sensitivity-only. ARISTA and chicken use explicitly labelled human conserved-symbol proxies, and chicken is not a species-complete Gallus gallus screen. All comparisons are descriptive computational consistency, not causal or independent experimental validation."
     (output / "caption.md").write_text(caption + "\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,
@@ -750,6 +787,7 @@ def plot(args: argparse.Namespace) -> None:
             for name in (
                 "cytobridge_external_metrics.csv",
                 "main_figure_method_decisions.csv",
+                "method_execution_status.csv",
                 "selected_biological_pairs.csv",
                 "selected_pair_commot_pathways.csv",
                 "selected_pair_commot_lr.csv",
