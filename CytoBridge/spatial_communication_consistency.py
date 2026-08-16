@@ -228,6 +228,86 @@ def _strict_zebrafish_mouse_orthology(
     }
 
 
+def _all_confidence_zebrafish_mouse_orthology(
+    mapping_path: Path, manifest_path: Path
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Load the archived all-confidence one-to-one sensitivity mapping."""
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    required = {
+        "schema_version": 2,
+        "workflow": "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
+        "status": "complete",
+        "ensembl_release": 116,
+        "mapping_policy": "one2one_bijective_all_confidence",
+        "analysis_tier": "sensitivity",
+        "primary_claim_allowed": False,
+        "mapping_file": mapping_path.name,
+    }
+    for key, expected in required.items():
+        if manifest.get(key) != expected:
+            raise ValueError(
+                f"orthology sensitivity manifest requires {key}={expected!r}; "
+                f"observed {manifest.get(key)!r}"
+            )
+    filters = manifest.get("filter")
+    if not isinstance(filters, dict) or filters != {
+        "orthology_type": "ortholog_one2one",
+        "orthology_confidence_policy": "not_filtered",
+        "nonempty_symbols": True,
+        "symbol_level_bijection_after_casefold": True,
+    }:
+        raise ValueError(
+            "orthology sensitivity manifest does not declare the frozen filter"
+        )
+    frame = pd.read_csv(mapping_path)
+    required_columns = {
+        "zebrafish_symbol",
+        "mouse_symbol",
+        "orthology_type",
+        "orthology_confidence",
+    }
+    if not required_columns.issubset(frame.columns):
+        raise ValueError(
+            "orthology sensitivity map lacks "
+            f"{sorted(required_columns.difference(frame.columns))}"
+        )
+    frame = frame.copy()
+    for column in ("zebrafish_symbol", "mouse_symbol", "orthology_type"):
+        frame[column] = frame[column].fillna("").astype(str).str.strip()
+    confidence = pd.to_numeric(frame["orthology_confidence"], errors="raise")
+    if (
+        frame[["zebrafish_symbol", "mouse_symbol"]].eq("").any(axis=None)
+        or not frame["orthology_type"].eq("ortholog_one2one").all()
+        or not confidence.isin([0, 1]).all()
+    ):
+        raise ValueError("orthology sensitivity CSV violates its frozen contract")
+    source_key = frame["zebrafish_symbol"].str.casefold()
+    target_key = frame["mouse_symbol"].str.casefold()
+    if source_key.duplicated().any() or target_key.duplicated().any():
+        raise ValueError(
+            "orthology sensitivity CSV is not symbol-bijective after case folding"
+        )
+    expected_count = int(manifest["counts"]["selected_bijective_symbol_pairs"])
+    if len(frame) != expected_count:
+        raise ValueError(
+            "orthology sensitivity CSV row count differs from its manifest"
+        )
+    observed_md5 = hashlib.md5(mapping_path.read_bytes()).hexdigest()
+    if observed_md5 != str(manifest["output_md5"]["mapping"]).casefold():
+        raise ValueError("orthology sensitivity CSV MD5 differs from its manifest")
+    return frame, {
+        "policy": (
+            "Ensembl 116 ortholog_one2one, confidence unfiltered, "
+            "symbol-bijective sensitivity"
+        ),
+        "mapping": _artifact_record(mapping_path),
+        "manifest": _artifact_record(manifest_path),
+        "n_pairs": int(len(frame)),
+        "primary_claim_allowed": False,
+    }
+
+
 def prepare_spatial_proxy_inputs(
     input_h5ad: str | Path,
     filtered_lr_database: str | Path,
@@ -238,6 +318,7 @@ def prepare_spatial_proxy_inputs(
     expected_database_sha256: str,
     orthology_map: str | Path | None = None,
     orthology_manifest: str | Path | None = None,
+    orthology_policy: str = "strict_confidence1",
     sampling_seeds: Sequence[int] = SPATIAL_PROXY_SAMPLING_SEEDS,
 ) -> dict[str, object]:
     """Adapt the accepted CytoBridge LR universe for CAG and NicheNet.
@@ -302,9 +383,20 @@ def prepare_spatial_proxy_inputs(
             raise ValueError("zebrafish proxy requires orthology map and manifest")
         mapping_path = Path(orthology_map).expanduser().resolve()
         mapping_manifest_path = Path(orthology_manifest).expanduser().resolve()
-        frame, verified = _strict_zebrafish_mouse_orthology(
-            mapping_path, mapping_manifest_path
-        )
+        if orthology_policy == "strict_confidence1":
+            frame, verified = _strict_zebrafish_mouse_orthology(
+                mapping_path, mapping_manifest_path
+            )
+            resolved_projection = "ensembl116_strict_confidence1_one_to_one"
+        elif orthology_policy == "one2one_bijective_all_confidence":
+            frame, verified = _all_confidence_zebrafish_mouse_orthology(
+                mapping_path, mapping_manifest_path
+            )
+            resolved_projection = "ensembl116_all_confidence_one_to_one_sensitivity"
+        else:
+            raise ValueError(
+                f"unsupported zebrafish orthology policy: {orthology_policy}"
+            )
         orthology_lookup = dict(
             zip(
                 frame["zebrafish_symbol"].str.casefold(),
@@ -315,6 +407,10 @@ def prepare_spatial_proxy_inputs(
         orthology_record = {"provided": True, **verified}
     elif orthology_map is not None or orthology_manifest is not None:
         raise ValueError("orthology inputs are only valid for the zebrafish proxy")
+    else:
+        if orthology_policy != "strict_confidence1":
+            raise ValueError("non-zebrafish datasets do not accept an orthology policy")
+        resolved_projection = projection
 
     preferred_tag = str(contract["preferred_species_tag"])
     feature_rows: list[dict[str, object]] = []
@@ -384,7 +480,7 @@ def prepare_spatial_proxy_inputs(
         "schema_version": 1,
         "dataset": dataset,
         "target_species": str(contract["target_species"]),
-        "projection": projection,
+        "projection": resolved_projection,
         "analysis_tier": str(contract["analysis_tier"]),
         "values_changed": False,
         "current_cytobridge_lr_database_required": True,
@@ -542,6 +638,7 @@ def prepare_spatial_proxy_inputs(
         },
         "projection": {
             **contract,
+            "projection": resolved_projection,
             "n_source_features": int(data.n_vars),
             "n_projected_features": int(mapped.n_vars),
             "expression_values_changed": False,

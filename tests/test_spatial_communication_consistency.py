@@ -260,6 +260,73 @@ def test_prepare_spatial_proxy_applies_verified_zebrafish_orthology(
     assert pairs.to_dict("records") == [{"from": "Wnt5a", "to": "Fzd1"}]
 
 
+def test_prepare_spatial_proxy_labels_all_confidence_orthology_as_sensitivity(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "zebrafish.h5ad"
+    _write_proxy_fixture(
+        source,
+        count_layer="counts",
+        genes=["WNT5A", "FZD1", "UNMAPPED"],
+    )
+    database = tmp_path / "filtered_lr_database.csv"
+    pd.DataFrame(
+        {"database_row": [0], "ligand": ["wnt5a"], "receptor": ["fzd1"]}
+    ).to_csv(database, index=False)
+    orthology = tmp_path / "all_confidence.csv"
+    pd.DataFrame(
+        {
+            "zebrafish_symbol": ["wnt5a", "fzd1"],
+            "mouse_symbol": ["Wnt5a", "Fzd1"],
+            "orthology_type": ["ortholog_one2one", "ortholog_one2one"],
+            "orthology_confidence": [0, 1],
+        }
+    ).to_csv(orthology, index=False)
+    manifest_path = tmp_path / "orthology_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "workflow": "ensembl_compara_zebrafish_mouse_one2one_bijective_export",
+                "status": "complete",
+                "ensembl_release": 116,
+                "mapping_policy": "one2one_bijective_all_confidence",
+                "analysis_tier": "sensitivity",
+                "primary_claim_allowed": False,
+                "mapping_file": orthology.name,
+                "filter": {
+                    "orthology_type": "ortholog_one2one",
+                    "orthology_confidence_policy": "not_filtered",
+                    "nonempty_symbols": True,
+                    "symbol_level_bijection_after_casefold": True,
+                },
+                "counts": {"selected_bijective_symbol_pairs": 2},
+                "output_md5": {
+                    "mapping": hashlib.md5(orthology.read_bytes()).hexdigest()
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "proxy"
+    result = prepare_spatial_proxy_inputs(
+        source,
+        database,
+        output,
+        dataset="zebrafish",
+        expected_h5ad_sha256=sha256_file(source),
+        expected_database_sha256=sha256_file(database),
+        orthology_map=orthology,
+        orthology_manifest=manifest_path,
+        orthology_policy="one2one_bijective_all_confidence",
+    )
+    assert not result["primary_claim_allowed"]
+    assert result["projection"]["projection"] == (
+        "ensembl116_all_confidence_one_to_one_sensitivity"
+    )
+    assert "confidence unfiltered" in result["orthology_policy"]
+
+
 def _score_rows(
     method: str, dataset: str, values: list[float]
 ) -> list[dict[str, object]]:

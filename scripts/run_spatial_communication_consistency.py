@@ -784,6 +784,11 @@ def build_parser() -> argparse.ArgumentParser:
     proxy.add_argument("--orthology-map")
     proxy.add_argument("--orthology-manifest")
     proxy.add_argument(
+        "--orthology-policy",
+        choices=("strict_confidence1", "one2one_bijective_all_confidence"),
+        default="strict_confidence1",
+    )
+    proxy.add_argument(
         "--sampling-seeds",
         default=",".join(str(value) for value in SPATIAL_PROXY_SAMPLING_SEEDS),
     )
@@ -798,6 +803,7 @@ def build_parser() -> argparse.ArgumentParser:
             expected_database_sha256=args.expected_database_sha256,
             orthology_map=args.orthology_map,
             orthology_manifest=args.orthology_manifest,
+            orthology_policy=args.orthology_policy,
             sampling_seeds=tuple(
                 int(value.strip())
                 for value in args.sampling_seeds.split(",")
