@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import importlib.util
+import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,9 +14,12 @@ from scipy import sparse
 from CytoBridge.spatial_communication_consistency import (
     FORMAL_DATASET_CONTRACTS,
     MAIN_FIGURE_GATE,
+    CURRENT_LR_DATABASE_LABEL,
+    SPATIAL_PROXY_CONTRACTS,
     evaluate_main_figure_gate,
     pairwise_cytobridge_metrics,
     prepare_shared_samples,
+    prepare_spatial_proxy_inputs,
     sha256_file,
     stratified_sample_indices,
 )
@@ -39,6 +43,10 @@ def test_formal_contract_and_gate_are_frozen() -> None:
         "minimum_median_top_fraction_jaccard": 0.15,
         "primary_cytobridge_view": "CytoBridge exact message",
     }
+    assert SPATIAL_PROXY_CONTRACTS["zebrafish"]["projection"] == (
+        "ensembl116_strict_one_to_one"
+    )
+    assert SPATIAL_PROXY_CONTRACTS["chicken_heart"]["analysis_tier"] == ("sensitivity")
 
 
 def test_stratified_sample_is_deterministic_and_retains_rare_types() -> None:
@@ -100,6 +108,156 @@ def test_prepare_shared_samples_preserves_terminal_roster_and_transform(
     assert manifest["expression"]["accepted_x_reconstruction_max_abs_residual"] < 1e-4
     stored = json.loads((output / "manifest.json").read_text())
     assert stored["source_h5ad"]["sha256"] == sha256_file(source)
+
+
+def _write_proxy_fixture(path: Path, *, count_layer: str, genes: list[str]) -> None:
+    counts = np.asarray(
+        [
+            [1 + ((row + column) % 3) for column in range(len(genes))]
+            for row in range(8)
+        ],
+        dtype=np.float32,
+    )
+    expression = np.log1p(counts).astype(np.float32)
+    obs = pd.DataFrame(
+        {
+            "ccc_cell_type": ["A", "B"] * 4,
+            "ccc_stage": [2.0] * 4 + [3.0] * 4,
+            "ccc_stage_label": ["previous_2"] * 4 + ["terminal_3"] * 4,
+        },
+        index=[f"spot_{index}" for index in range(8)],
+    )
+    data = ad.AnnData(
+        X=sparse.csr_matrix(expression),
+        obs=obs,
+        var=pd.DataFrame(index=genes),
+    )
+    data.layers[count_layer] = sparse.csr_matrix(counts)
+    data.obsm["spatial_aligned"] = np.arange(16, dtype=float).reshape(8, 2)
+    data.write_h5ad(path)
+
+
+def test_prepare_spatial_proxy_uses_exact_current_database_subset(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "mosta.h5ad"
+    _write_proxy_fixture(
+        source,
+        count_layer="count",
+        genes=["Tgfb1", "Tgfbr1", "Tgfbr2", "Spp1", "Cd44", "Noise"],
+    )
+    database = tmp_path / "filtered_lr_database.csv"
+    pd.DataFrame(
+        {
+            "database_row": [0, 1],
+            "ligand": ["tgfb1", "spp1"],
+            "receptor": ["tgfbr1_tgfbr2", "cd44"],
+            "pathway": ["TGFb", "SPP1"],
+        }
+    ).to_csv(database, index=False)
+    output = tmp_path / "proxy"
+    manifest = prepare_spatial_proxy_inputs(
+        source,
+        database,
+        output,
+        dataset="mosta",
+        expected_h5ad_sha256=sha256_file(source),
+        expected_database_sha256=sha256_file(database),
+    )
+    assert manifest["lr_database_contract"]["n_current_database_rows"] == 2
+    assert manifest["lr_database_contract"]["n_unique_representable_pairs"] == 1
+    assert manifest["lr_database_contract"][
+        "same_pair_universe_for_cellagentchat_and_nichenet"
+    ]
+    cag = pd.read_csv(output / "cellagentchat_current_lr_pairs.tsv", sep="\t")
+    nichenet = pd.read_csv(output / "nichenet_current_lr_network.csv")
+    assert cag[["ligand_gene_symbol", "receptor_gene_symbol"]].values.tolist() == [
+        ["Spp1", "Cd44"]
+    ]
+    assert nichenet[["from", "to"]].values.tolist() == [["Spp1", "Cd44"]]
+    crosswalk = pd.read_csv(output / "current_lr_projection_crosswalk.csv")
+    assert "receptor_complex_not_gene_level_representable" in str(
+        crosswalk.loc[crosswalk.database_row.eq(0), "exclusion_reason"].iloc[0]
+    )
+    mapped = ad.read_h5ad(output / "projected_terminal_previous.h5ad")
+    original = ad.read_h5ad(source)
+    assert mapped.var_names.tolist() == sorted(original.var_names.tolist())
+    original_positions = [original.var_names.get_loc(name) for name in mapped.var_names]
+    assert np.array_equal(
+        mapped.X.toarray(), original.X[:, original_positions].toarray()
+    )
+    plan = pd.read_csv(output / "shared_sampled_cells.csv.gz")
+    assert len(plan) == 8 * 3
+    assert set(plan.sampling_seed) == {101, 202, 303}
+    stored = json.loads((output / "manifest.json").read_text())
+    assert CURRENT_LR_DATABASE_LABEL in stored["lr_databases"]
+    assert stored["input"]["filtered_current_cytobridge_lr_database"][
+        "sha256"
+    ] == sha256_file(database)
+
+
+def test_prepare_spatial_proxy_applies_verified_zebrafish_orthology(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "zebrafish.h5ad"
+    _write_proxy_fixture(
+        source,
+        count_layer="counts",
+        genes=["WNT5A", "FZD1", "UNMAPPED"],
+    )
+    database = tmp_path / "filtered_lr_database.csv"
+    pd.DataFrame(
+        {
+            "database_row": [0],
+            "ligand": ["wnt5a"],
+            "receptor": ["fzd1"],
+        }
+    ).to_csv(database, index=False)
+    orthology = tmp_path / "orthology.csv"
+    pd.DataFrame(
+        {
+            "zebrafish_symbol": ["wnt5a", "fzd1"],
+            "mouse_symbol": ["Wnt5a", "Fzd1"],
+            "orthology_type": ["ortholog_one2one", "ortholog_one2one"],
+            "orthology_confidence": [1, 1],
+        }
+    ).to_csv(orthology, index=False)
+    orthology_md5 = hashlib.md5(orthology.read_bytes()).hexdigest()
+    orthology_manifest = tmp_path / "orthology_manifest.json"
+    orthology_manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+                "status": "complete",
+                "ensembl_release": 116,
+                "filter": {
+                    "orthology_type": "ortholog_one2one",
+                    "orthology_confidence": 1,
+                    "nonempty_symbols": True,
+                    "symbol_level_bijection_after_casefold": True,
+                },
+                "counts": {"strict_bijective_symbol_pairs": 2},
+                "output_md5": {"strict": orthology_md5},
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "proxy"
+    manifest = prepare_spatial_proxy_inputs(
+        source,
+        database,
+        output,
+        dataset="zebrafish",
+        expected_h5ad_sha256=sha256_file(source),
+        expected_database_sha256=sha256_file(database),
+        orthology_map=orthology,
+        orthology_manifest=orthology_manifest,
+    )
+    assert not manifest["formal_primary"]
+    assert manifest["orthology"]["provided"]
+    pairs = pd.read_csv(output / "nichenet_current_lr_network.csv")
+    assert pairs.to_dict("records") == [{"from": "Wnt5a", "to": "Fzd1"}]
 
 
 def _score_rows(

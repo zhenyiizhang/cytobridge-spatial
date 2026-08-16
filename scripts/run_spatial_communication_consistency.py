@@ -21,10 +21,12 @@ import pandas as pd
 from CytoBridge.spatial_communication_consistency import (
     FORMAL_DATASET_CONTRACTS,
     MAIN_FIGURE_GATE,
+    SPATIAL_PROXY_SAMPLING_SEEDS,
     TOP_FRACTION,
     evaluate_main_figure_gate,
     pairwise_cytobridge_metrics,
     prepare_shared_samples,
+    prepare_spatial_proxy_inputs,
     rank_percentile,
     sha256_file,
 )
@@ -771,6 +773,36 @@ def build_parser() -> argparse.ArgumentParser:
             dataset=args.dataset,
             expected_h5ad_sha256=args.expected_h5ad_sha256,
             sample_n=args.sample_n,
+        )
+    )
+    proxy = sub.add_parser("prepare-shared-database-proxy")
+    proxy.add_argument("--dataset", choices=FORMAL_DATASET_CONTRACTS, required=True)
+    proxy.add_argument("--input-h5ad", required=True)
+    proxy.add_argument("--expected-h5ad-sha256", required=True)
+    proxy.add_argument("--filtered-lr-database", required=True)
+    proxy.add_argument("--expected-database-sha256", required=True)
+    proxy.add_argument("--orthology-map")
+    proxy.add_argument("--orthology-manifest")
+    proxy.add_argument(
+        "--sampling-seeds",
+        default=",".join(str(value) for value in SPATIAL_PROXY_SAMPLING_SEEDS),
+    )
+    proxy.add_argument("--output-dir", required=True)
+    proxy.set_defaults(
+        function=lambda args: prepare_spatial_proxy_inputs(
+            args.input_h5ad,
+            args.filtered_lr_database,
+            args.output_dir,
+            dataset=args.dataset,
+            expected_h5ad_sha256=args.expected_h5ad_sha256,
+            expected_database_sha256=args.expected_database_sha256,
+            orthology_map=args.orthology_map,
+            orthology_manifest=args.orthology_manifest,
+            sampling_seeds=tuple(
+                int(value.strip())
+                for value in args.sampling_seeds.split(",")
+                if value.strip()
+            ),
         )
     )
     nichenet = sub.add_parser("summarize-nichenet")

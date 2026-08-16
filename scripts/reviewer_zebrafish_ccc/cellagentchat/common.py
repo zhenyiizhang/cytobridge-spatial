@@ -130,13 +130,28 @@ def inspect_official_source_api(source: Path) -> dict[str, Any]:
         "model_setup.py": {
             "load_db": {"adata", "file", "sep"},
             "load_tf_db": {"species", "adata", "rec_uni"},
-            "train": {"adata", "lig_uni", "rec_uni", "tf_uni", "rec_tf_uni", "lr_pairs"},
+            "train": {
+                "adata",
+                "lig_uni",
+                "rec_uni",
+                "tf_uni",
+                "rec_tf_uni",
+                "lr_pairs",
+            },
             "load_model": {"path", "device"},
             "feature_selection": {"model", "mat", "C", "rec_uni"},
             "add_rates": {"conversion_rates", "rec_uni"},
         },
         "permutations.py": {
-            "permutation_test": {"threshold", "N", "adata", "lig_uni", "rec_uni", "rates", "dist"},
+            "permutation_test": {
+                "threshold",
+                "N",
+                "adata",
+                "lig_uni",
+                "rec_uni",
+                "rates",
+                "dist",
+            },
         },
         "bckground_distribution.py": {
             "get_distribution": {"fin", "dist", "scaled"},
@@ -156,7 +171,9 @@ def inspect_official_source_api(source: Path) -> dict[str, Any]:
         for function_name, required_parameters in expected.items():
             observed = functions.get(function_name)
             if observed is None:
-                raise RuntimeError(f"{filename} lacks required function {function_name}.")
+                raise RuntimeError(
+                    f"{filename} lacks required function {function_name}."
+                )
             missing = sorted(required_parameters.difference(observed))
             if missing:
                 raise RuntimeError(
@@ -189,9 +206,19 @@ def inspect_official_source_api(source: Path) -> dict[str, Any]:
 
     database_paths = {
         "mouse_lr_pair.tsv": src / "cellagentchat_data" / "mouse_lr_pair.tsv",
+        "human_lr_pair.tsv": src / "cellagentchat_data" / "human_lr_pair.tsv",
         "TF_TG_mouse.csv": src / "cellagentchat_data" / "databases" / "TF_TG_mouse.csv",
+        "TF_TG_human.csv": src / "cellagentchat_data" / "databases" / "TF_TG_human.csv",
         "KEGG_mouse.csv": src / "cellagentchat_data" / "databases" / "KEGG_mouse.csv",
-        "REACTOME_mouse.csv": src / "cellagentchat_data" / "databases" / "REACTOME_mouse.csv",
+        "KEGG_human.csv": src / "cellagentchat_data" / "databases" / "KEGG_human.csv",
+        "REACTOME_mouse.csv": src
+        / "cellagentchat_data"
+        / "databases"
+        / "REACTOME_mouse.csv",
+        "REACTOME_human.csv": src
+        / "cellagentchat_data"
+        / "databases"
+        / "REACTOME_human.csv",
     }
     for label, path in database_paths.items():
         if not path.is_file():
@@ -207,7 +234,9 @@ def validate_official_source(
 ) -> dict[str, Any]:
     source = source.expanduser().resolve()
     if not (source / ".git").exists():
-        raise FileNotFoundError(f"CellAgentChat checkout is not a git repository: {source}")
+        raise FileNotFoundError(
+            f"CellAgentChat checkout is not a git repository: {source}"
+        )
     observed = git_head(source)
     if observed != PINNED_CELLAGENTCHAT_COMMIT and not allow_unpinned:
         raise RuntimeError(
@@ -267,10 +296,15 @@ def select_orthology_mapping(
         if confidence_column not in work:
             raise KeyError(f"Missing required column {confidence_column!r}.")
         confidence = pd.to_numeric(work[confidence_column], errors="coerce")
-        mark(confidence.isna() | confidence.lt(float(minimum_confidence)), "low_or_missing_confidence")
+        mark(
+            confidence.isna() | confidence.lt(float(minimum_confidence)),
+            "low_or_missing_confidence",
+        )
 
     candidate = reasons.eq("")
-    duplicate = work.loc[candidate].duplicated(["source_gene", "target_gene"], keep="first")
+    duplicate = work.loc[candidate].duplicated(
+        ["source_gene", "target_gene"], keep="first"
+    )
     mark(duplicate.reindex(work.index, fill_value=False), "duplicate_mapping_row")
 
     candidate = reasons.eq("")
@@ -278,15 +312,23 @@ def select_orthology_mapping(
         work.loc[candidate].groupby("source_gene", sort=False)["target_gene"].nunique()
     )
     ambiguous_sources = set(source_target_counts[source_target_counts.ne(1)].index)
-    mark(candidate & work["source_gene"].isin(ambiguous_sources), "source_maps_to_multiple_targets")
+    mark(
+        candidate & work["source_gene"].isin(ambiguous_sources),
+        "source_maps_to_multiple_targets",
+    )
 
     if mapping_policy == "strict_one_to_one":
         candidate = reasons.eq("")
         target_source_counts = (
-            work.loc[candidate].groupby("target_gene", sort=False)["source_gene"].nunique()
+            work.loc[candidate]
+            .groupby("target_gene", sort=False)["source_gene"]
+            .nunique()
         )
         nonunique_targets = set(target_source_counts[target_source_counts.ne(1)].index)
-        mark(candidate & work["target_gene"].isin(nonunique_targets), "target_has_multiple_sources")
+        mark(
+            candidate & work["target_gene"].isin(nonunique_targets),
+            "target_has_multiple_sources",
+        )
 
     work["exclusion_reason"] = reasons
     used = work.loc[reasons.eq("")].copy()
@@ -295,8 +337,12 @@ def select_orthology_mapping(
         raise RuntimeError("Selected orthology map does not have unique source genes.")
     if mapping_policy == "strict_one_to_one" and used["target_gene"].duplicated().any():
         raise RuntimeError("Strict orthology map does not have unique target genes.")
-    used = used.sort_values(["target_gene", "source_gene"], kind="mergesort").reset_index(drop=True)
-    excluded = excluded.sort_values("source_row", kind="mergesort").reset_index(drop=True)
+    used = used.sort_values(
+        ["target_gene", "source_gene"], kind="mergesort"
+    ).reset_index(drop=True)
+    excluded = excluded.sort_values("source_row", kind="mergesort").reset_index(
+        drop=True
+    )
     counts = {
         "input_rows": int(len(work)),
         "selected_rows": int(len(used)),
@@ -320,7 +366,9 @@ def _validate_counts(matrix: Any) -> sparse.csr_matrix:
         or float(values.min()) < 0
         or not np.allclose(values, np.rint(values), rtol=0.0, atol=1e-6)
     ):
-        raise ValueError("Counts layer must contain finite, nonnegative integer values.")
+        raise ValueError(
+            "Counts layer must contain finite, nonnegative integer values."
+        )
     return result
 
 
@@ -332,7 +380,9 @@ def project_expression_matrices(
     *,
     mode: str = "strict_log1p_rename",
     normalization_target_sum: float = 1105.0,
-) -> tuple[sparse.csr_matrix, sparse.csr_matrix, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+) -> tuple[
+    sparse.csr_matrix, sparse.csr_matrix, pd.DataFrame, pd.DataFrame, dict[str, Any]
+]:
     """Project zebrafish expression into the mouse-symbol feature space.
 
     ``strict_log1p_rename`` is the formal primary contract: reciprocal 1:1
@@ -355,11 +405,15 @@ def project_expression_matrices(
     present = mapping.loc[mapping["source_gene"].isin(position)].copy()
     absent = mapping.loc[~mapping["source_gene"].isin(position)].copy()
     if present.empty:
-        raise ValueError("No selected orthology genes are present in the expression matrix.")
+        raise ValueError(
+            "No selected orthology genes are present in the expression matrix."
+        )
     present = present.sort_values(["target_gene", "source_gene"], kind="mergesort")
     target_names = sorted(present["target_gene"].unique())
     target_index = {gene: index for index, gene in enumerate(target_names)}
-    source_indices = np.array([position[gene] for gene in present["source_gene"]], dtype=int)
+    source_indices = np.array(
+        [position[gene] for gene in present["source_gene"]], dtype=int
+    )
     counts_csr = _validate_counts(counts)
 
     if mode == "strict_log1p_rename":
@@ -374,7 +428,9 @@ def project_expression_matrices(
             ]
             for target in target_names
         ]
-        projected_expression = sparse.csr_matrix(expression[:, source_order], dtype=np.float32)
+        projected_expression = sparse.csr_matrix(
+            expression[:, source_order], dtype=np.float32
+        )
         expression_values = projected_expression.data
         if expression_values.size and (
             not np.isfinite(expression_values).all()
@@ -383,7 +439,9 @@ def project_expression_matrices(
             raise ValueError(
                 "strict_log1p_rename requires finite, nonnegative single-log expression."
             )
-        projected_counts = _validate_counts(counts_csr[:, source_order]).astype(np.int32)
+        projected_counts = _validate_counts(counts_csr[:, source_order]).astype(
+            np.int32
+        )
         identity_max_abs_error = 0.0
         resolved_target_sum = None
         transformation = "subset original single-log X and rename reciprocal 1:1 genes"
@@ -395,14 +453,19 @@ def project_expression_matrices(
                 np.ones(len(present), dtype=np.int32),
                 (
                     np.arange(len(present), dtype=int),
-                    np.array([target_index[value] for value in present["target_gene"]], dtype=int),
+                    np.array(
+                        [target_index[value] for value in present["target_gene"]],
+                        dtype=int,
+                    ),
                 ),
             ),
             shape=(len(present), len(target_names)),
         ).tocsr()
         projected_counts = (counts_csr[:, source_indices] @ projection).tocsr()
         projected_counts = _validate_counts(projected_counts).astype(np.int32)
-        library_sums = np.asarray(projected_counts.sum(axis=1)).reshape(-1).astype(float)
+        library_sums = (
+            np.asarray(projected_counts.sum(axis=1)).reshape(-1).astype(float)
+        )
         if np.any(~np.isfinite(library_sums)) or np.any(library_sums <= 0):
             raise ValueError("Every cell must retain a positive mapped-count library.")
         normalized = sparse.diags(float(normalization_target_sum) / library_sums).dot(
@@ -413,7 +476,9 @@ def project_expression_matrices(
         projected_expression = normalized.astype(np.float32)
         identity_max_abs_error = None
         resolved_target_sum = float(normalization_target_sum)
-        transformation = "sum mapped raw counts, fixed-library normalization, then log1p"
+        transformation = (
+            "sum mapped raw counts, fixed-library normalization, then log1p"
+        )
 
     source_groups = present.groupby("target_gene", sort=True)["source_gene"].agg(list)
     var = pd.DataFrame(index=pd.Index(target_names, name="mouse_gene"))
@@ -468,7 +533,9 @@ def build_sampling_plan(
     for seed in seeds:
         rng = np.random.default_rng(int(seed))
         for stage in np.sort(np.unique(stages)):
-            stage_indices = np.flatnonzero(np.isclose(stages, stage, rtol=0.0, atol=1e-12))
+            stage_indices = np.flatnonzero(
+                np.isclose(stages, stage, rtol=0.0, atol=1e-12)
+            )
             observed_stage_labels = sorted(set(time_labels[stage_indices]))
             if len(observed_stage_labels) != 1:
                 raise ValueError(
@@ -500,7 +567,9 @@ def build_sampling_plan(
         raise ValueError("Sampling plan is empty.")
     duplicate_keys = ["sampling_seed", "stage", "obs_name"]
     if plan.duplicated(duplicate_keys).any():
-        raise RuntimeError("Sampling plan contains duplicated cells within a stage/seed.")
+        raise RuntimeError(
+            "Sampling plan contains duplicated cells within a stage/seed."
+        )
     return plan.sort_values(
         ["sampling_seed", "stage", "cell_type", "original_index"], kind="mergesort"
     ).reset_index(drop=True)
@@ -528,8 +597,10 @@ def build_lr_databases(
     official_out = output_dir / "official_mouse_default.tsv"
     shutil.copy2(official_database, official_out)
 
-    custom = custom_database.copy().reset_index(drop=False).rename(
-        columns={"index": "source_lr_row"}
+    custom = (
+        custom_database.copy()
+        .reset_index(drop=False)
+        .rename(columns={"index": "source_lr_row"})
     )
     custom["source_ligand"] = _string_series(custom, ligand_column)
     custom["source_receptor"] = _string_series(custom, receptor_column)
@@ -652,7 +723,12 @@ def build_lr_databases(
         pd.DataFrame(pathway_rows).to_csv(pathway_out, index=False)
     else:
         pd.DataFrame(
-            columns=["pathway", "total_source_rows", "singleton_representable_rows", "mapped_rows"]
+            columns=[
+                "pathway",
+                "total_source_rows",
+                "singleton_representable_rows",
+                "mapped_rows",
+            ]
         ).to_csv(pathway_out, index=False)
 
     counts = {

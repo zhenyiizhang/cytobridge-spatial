@@ -398,7 +398,18 @@ def _write_fake_official_source(root: Path) -> None:
         "lr_pair\tligand_gene_symbol\treceptor_gene_symbol\nL_R\tL\tR\n",
         encoding="utf-8",
     )
-    for filename in ("TF_TG_mouse.csv", "KEGG_mouse.csv", "REACTOME_mouse.csv"):
+    (data / "human_lr_pair.tsv").write_text(
+        "lr_pair\tligand_gene_symbol\treceptor_gene_symbol\nL_R\tL\tR\n",
+        encoding="utf-8",
+    )
+    for filename in (
+        "TF_TG_mouse.csv",
+        "KEGG_mouse.csv",
+        "REACTOME_mouse.csv",
+        "TF_TG_human.csv",
+        "KEGG_human.csv",
+        "REACTOME_human.csv",
+    ):
         (databases / filename).write_text("x\n1\n", encoding="utf-8")
 
 

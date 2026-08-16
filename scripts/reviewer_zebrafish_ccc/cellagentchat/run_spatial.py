@@ -26,7 +26,6 @@ import pandas as pd
 
 try:
     from .common import (
-        CONDITION_LABELS,
         artifact,
         csv_ints,
         json_value,
@@ -38,7 +37,6 @@ try:
     )
 except ImportError:  # pragma: no cover - direct CLI execution
     from common import (  # type: ignore
-        CONDITION_LABELS,
         artifact,
         csv_ints,
         json_value,
@@ -61,7 +59,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preparation-dir", required=True, type=Path)
     parser.add_argument("--cellagentchat-source", required=True, type=Path)
-    parser.add_argument("--database-label", required=True, choices=CONDITION_LABELS)
+    parser.add_argument("--database-label", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--sampling-seeds", type=csv_ints)
     parser.add_argument("--stages", type=_csv_floats)
@@ -93,7 +91,10 @@ def _read_preparation(
     if not manifest_path.is_file():
         raise FileNotFoundError(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("workflow") != "zebrafish_cellagentchat_dual_database_shared_input":
+    if manifest.get("workflow") not in {
+        "zebrafish_cellagentchat_dual_database_shared_input",
+        "five_dataset_spatial_communication_shared_database_proxy_input",
+    }:
         raise RuntimeError(
             "Preparation manifest has an unexpected workflow identifier."
         )
@@ -522,6 +523,7 @@ def _run_one(
     keys: Mapping[str, str],
     args: argparse.Namespace,
     modules: Mapping[str, Any],
+    species_prior: str,
 ) -> dict[str, Any]:
     import scipy.sparse as sp
 
@@ -582,7 +584,7 @@ def _run_one(
     lig_uni, rec_uni, lr_pairs = model_setup.load_db(
         subset, file=str(database), sep="\t"
     )
-    tf_uni, rec_tf_uni = model_setup.load_tf_db("mouse", subset, rec_uni)
+    tf_uni, rec_tf_uni = model_setup.load_tf_db(species_prior, subset, rec_uni)
     if not lig_uni or not rec_uni or not lr_pairs:
         raise RuntimeError("CellAgentChat LR universe is empty after input filtering.")
     lr_keys = _lr_key_map(lig_uni)
@@ -791,6 +793,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
         preparation,
         allow_nonprimary=bool(args.allow_nonprimary_preparation),
     )
+    species_prior = str(preparation.get("target_species_prior", "mouse"))
+    if species_prior not in {"mouse", "human"}:
+        raise ValueError(
+            "CellAgentChat target_species_prior must be exactly mouse or human."
+        )
     source = args.cellagentchat_source.expanduser().resolve()
     source_record = validate_official_source(
         source, allow_unpinned=bool(args.allow_unpinned_source)
@@ -874,6 +881,7 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
                         keys=keys,
                         args=args,
                         modules=modules,
+                        species_prior=species_prior,
                     )
                 )
 
@@ -943,8 +951,11 @@ def run(args: argparse.Namespace) -> Mapping[str, Any]:
             "projection": preparation.get("projection", {}),
         },
         "design": {
-            "species_prior": "mouse",
-            "cross_species_interpretation": "zebrafish expression projected into mouse ortholog space",
+            "species_prior": species_prior,
+            "cross_species_interpretation": preparation.get(
+                "cross_species_interpretation",
+                "zebrafish expression projected into mouse ortholog space",
+            ),
             "sampling_seeds": list(seeds),
             "stages": list(stages),
             "epochs": int(args.epochs),

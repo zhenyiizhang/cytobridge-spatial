@@ -19,10 +19,14 @@ import numpy as np
 import pandas as pd
 from scipy import sparse, stats
 
+from .graph_database import selected_feature_symbol
+
 
 ANALYSIS_SEED = 20260816
 TERMINAL_SAMPLE_N = 3000
 TOP_FRACTION = 0.20
+SPATIAL_PROXY_SAMPLING_SEEDS = (101, 202, 303)
+CURRENT_LR_DATABASE_LABEL = "cytobridge_current_lr_representable_singletons"
 
 # Frozen before the five-dataset result matrix was produced.  These thresholds
 # decide main-figure inclusion only; every attempted method remains in the
@@ -99,12 +103,483 @@ FORMAL_DATASET_CONTRACTS: dict[str, dict[str, object]] = {
 }
 
 
+# Cross-method species adapters are deliberately frozen separately from the
+# native CytoBridge preprocessing contract.  The LR candidate universe always
+# starts from each dataset's accepted ``filtered_lr_database.csv``; only the
+# representation needed by CellAgentChat/NicheNet changes here.
+SPATIAL_PROXY_CONTRACTS: dict[str, dict[str, object]] = {
+    "zebrafish": {
+        "target_species": "mouse",
+        "preferred_species_tag": "zebrafish",
+        "projection": "ensembl116_strict_one_to_one",
+        "analysis_tier": "sensitivity",
+        "interpretation": "strict zebrafish-to-mouse ortholog proxy",
+    },
+    "mosta": {
+        "target_species": "mouse",
+        "preferred_species_tag": "mouse",
+        "projection": "direct_species_symbol",
+        "analysis_tier": "primary",
+        "interpretation": "species-matched mouse prior",
+    },
+    "arista": {
+        "target_species": "human",
+        "preferred_species_tag": "hs",
+        "projection": "direct_species_symbol",
+        "analysis_tier": "primary",
+        "interpretation": "species-matched human prior",
+    },
+    "admouse": {
+        "target_species": "mouse",
+        "preferred_species_tag": "mouse",
+        "projection": "direct_species_symbol",
+        "analysis_tier": "primary",
+        "interpretation": "species-matched mouse prior",
+    },
+    "chicken_heart": {
+        "target_species": "human",
+        "preferred_species_tag": "chicken",
+        "projection": "direct_conserved_symbol_proxy",
+        "analysis_tier": "sensitivity",
+        "interpretation": "human conserved-symbol proxy for Gallus gallus",
+    },
+}
+
+
 def sha256_file(path: str | Path) -> str:
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _artifact_record(path: Path) -> dict[str, object]:
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256_file(path),
+        "size_bytes": int(path.stat().st_size),
+    }
+
+
+def _strict_zebrafish_mouse_orthology(
+    mapping_path: Path, manifest_path: Path
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Load the accepted Ensembl-116 high-confidence one-to-one map."""
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    required = {
+        "schema_version": 1,
+        "workflow": "ensembl_compara_zebrafish_mouse_strict_one2one_export",
+        "status": "complete",
+        "ensembl_release": 116,
+    }
+    for key, expected in required.items():
+        if manifest.get(key) != expected:
+            raise ValueError(
+                f"orthology manifest requires {key}={expected!r}; "
+                f"observed {manifest.get(key)!r}"
+            )
+    filters = manifest.get("filter")
+    if not isinstance(filters, dict) or filters != {
+        "orthology_type": "ortholog_one2one",
+        "orthology_confidence": 1,
+        "nonempty_symbols": True,
+        "symbol_level_bijection_after_casefold": True,
+    }:
+        raise ValueError("orthology manifest does not declare the strict frozen filter")
+    frame = pd.read_csv(mapping_path)
+    required_columns = {
+        "zebrafish_symbol",
+        "mouse_symbol",
+        "orthology_type",
+        "orthology_confidence",
+    }
+    if not required_columns.issubset(frame.columns):
+        raise ValueError(
+            "orthology map lacks "
+            f"{sorted(required_columns.difference(frame.columns))}"
+        )
+    frame = frame.copy()
+    for column in ("zebrafish_symbol", "mouse_symbol", "orthology_type"):
+        frame[column] = frame[column].fillna("").astype(str).str.strip()
+    confidence = pd.to_numeric(frame["orthology_confidence"], errors="raise")
+    if (
+        frame[["zebrafish_symbol", "mouse_symbol"]].eq("").any(axis=None)
+        or not frame["orthology_type"].eq("ortholog_one2one").all()
+        or not confidence.eq(1).all()
+    ):
+        raise ValueError("orthology CSV violates the strict one-to-one contract")
+    source_key = frame["zebrafish_symbol"].str.casefold()
+    target_key = frame["mouse_symbol"].str.casefold()
+    if source_key.duplicated().any() or target_key.duplicated().any():
+        raise ValueError("orthology CSV is not symbol-bijective after case folding")
+    expected_count = int(manifest["counts"]["strict_bijective_symbol_pairs"])
+    if len(frame) != expected_count:
+        raise ValueError("orthology CSV row count differs from its manifest")
+    observed_md5 = hashlib.md5(mapping_path.read_bytes()).hexdigest()
+    if observed_md5 != str(manifest["output_md5"]["strict"]).casefold():
+        raise ValueError("orthology CSV MD5 differs from its manifest")
+    return frame, {
+        "policy": "Ensembl 116 ortholog_one2one, confidence=1, symbol-bijective",
+        "mapping": _artifact_record(mapping_path),
+        "manifest": _artifact_record(manifest_path),
+        "n_pairs": int(len(frame)),
+    }
+
+
+def prepare_spatial_proxy_inputs(
+    input_h5ad: str | Path,
+    filtered_lr_database: str | Path,
+    output_dir: str | Path,
+    *,
+    dataset: str,
+    expected_h5ad_sha256: str,
+    expected_database_sha256: str,
+    orthology_map: str | Path | None = None,
+    orthology_manifest: str | Path | None = None,
+    sampling_seeds: Sequence[int] = SPATIAL_PROXY_SAMPLING_SEEDS,
+) -> dict[str, object]:
+    """Adapt the accepted CytoBridge LR universe for CAG and NicheNet.
+
+    The output expression matrix retains the accepted log-normalized values;
+    columns are only subset and renamed.  Both external methods receive the
+    same unique, monomeric, expression-representable subset of the dataset's
+    already frozen ``filtered_lr_database.csv``.  NicheNet still uses its own
+    official ligand-to-target matrix downstream because that matrix defines
+    NicheNet's regulatory model rather than its LR candidate gate.
+    """
+
+    if dataset not in SPATIAL_PROXY_CONTRACTS:
+        raise KeyError(f"unknown formal spatial dataset: {dataset}")
+    source = Path(input_h5ad).expanduser().resolve()
+    database_path = Path(filtered_lr_database).expanduser().resolve()
+    output = Path(output_dir).expanduser().resolve()
+    if output.exists():
+        raise FileExistsError(f"output directory exists: {output}")
+    for label, path, expected in (
+        ("input H5AD", source, expected_h5ad_sha256),
+        ("filtered LR database", database_path, expected_database_sha256),
+    ):
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        observed = sha256_file(path)
+        if observed != str(expected).casefold():
+            raise ValueError(
+                f"{label} SHA256 mismatch: expected {expected}, observed {observed}"
+            )
+
+    contract = SPATIAL_PROXY_CONTRACTS[dataset]
+    dataset_contract = FORMAL_DATASET_CONTRACTS[dataset]
+    data = ad.read_h5ad(source)
+    required_obs = {"ccc_cell_type", "ccc_stage", "ccc_stage_label"}
+    if not required_obs.issubset(data.obs.columns):
+        raise ValueError(
+            f"input H5AD lacks {sorted(required_obs.difference(data.obs.columns))}"
+        )
+    if "spatial_aligned" not in data.obsm:
+        raise ValueError("input H5AD lacks obsm['spatial_aligned']")
+    spatial = np.asarray(data.obsm["spatial_aligned"], dtype=float)
+    if spatial.shape != (data.n_obs, 2) or not np.isfinite(spatial).all():
+        raise ValueError("spatial_aligned must be a finite N x 2 matrix")
+    count_layer = str(dataset_contract["counts_layer"])
+    if count_layer not in data.layers:
+        raise ValueError(f"input H5AD lacks layers[{count_layer!r}]")
+    expression_values = _matrix_values(data.X)
+    if expression_values.size and (
+        not np.isfinite(expression_values).all() or float(expression_values.min()) < 0
+    ):
+        raise ValueError("accepted expression must be finite and nonnegative")
+
+    projection = str(contract["projection"])
+    orthology_record: dict[str, object] = {
+        "provided": False,
+        "policy": "not applicable",
+    }
+    orthology_lookup: dict[str, str] = {}
+    if projection == "ensembl116_strict_one_to_one":
+        if orthology_map is None or orthology_manifest is None:
+            raise ValueError("zebrafish proxy requires orthology map and manifest")
+        mapping_path = Path(orthology_map).expanduser().resolve()
+        mapping_manifest_path = Path(orthology_manifest).expanduser().resolve()
+        frame, verified = _strict_zebrafish_mouse_orthology(
+            mapping_path, mapping_manifest_path
+        )
+        orthology_lookup = dict(
+            zip(
+                frame["zebrafish_symbol"].str.casefold(),
+                frame["mouse_symbol"].astype(str),
+                strict=True,
+            )
+        )
+        orthology_record = {"provided": True, **verified}
+    elif orthology_map is not None or orthology_manifest is not None:
+        raise ValueError("orthology inputs are only valid for the zebrafish proxy")
+
+    preferred_tag = str(contract["preferred_species_tag"])
+    feature_rows: list[dict[str, object]] = []
+    for index, raw_name in enumerate(data.var_names.astype(str)):
+        source_symbol = selected_feature_symbol(
+            raw_name, preferred_species_tag=preferred_tag
+        )
+        target_symbol: str | None
+        if source_symbol is None:
+            target_symbol = None
+        elif projection == "ensembl116_strict_one_to_one":
+            target_symbol = orthology_lookup.get(source_symbol.casefold())
+        elif str(contract["target_species"]) == "human":
+            target_symbol = source_symbol.upper()
+        else:
+            target_symbol = source_symbol
+        feature_rows.append(
+            {
+                "source_index": int(index),
+                "source_feature": raw_name,
+                "source_symbol": source_symbol or "",
+                "target_symbol": target_symbol or "",
+            }
+        )
+    feature_map = pd.DataFrame(feature_rows)
+    feature_map["exclusion_reason"] = ""
+    feature_map.loc[
+        feature_map.source_symbol.eq(""), "exclusion_reason"
+    ] = "no_selected_source_symbol"
+    feature_map.loc[
+        feature_map.target_symbol.eq("") & feature_map.exclusion_reason.eq(""),
+        "exclusion_reason",
+    ] = "no_target_species_mapping"
+    eligible = feature_map.exclusion_reason.eq("")
+    source_key = feature_map.source_symbol.str.casefold()
+    duplicated_source = eligible & source_key.duplicated(keep=False)
+    feature_map.loc[
+        duplicated_source, "exclusion_reason"
+    ] = "ambiguous_source_symbol_after_casefold"
+    eligible = feature_map.exclusion_reason.eq("")
+    target_key = feature_map.target_symbol.str.casefold()
+    duplicated_target = eligible & target_key.duplicated(keep=False)
+    feature_map.loc[
+        duplicated_target, "exclusion_reason"
+    ] = "ambiguous_target_symbol_after_casefold"
+    selected = feature_map.loc[feature_map.exclusion_reason.eq("")].copy()
+    if selected.empty:
+        raise ValueError("no expression features survive the species projection")
+    selected = selected.sort_values(
+        ["target_symbol", "source_index"], kind="mergesort"
+    ).reset_index(drop=True)
+    if selected.target_symbol.str.casefold().duplicated().any():
+        raise RuntimeError("projected target gene symbols are not unique")
+
+    indices = selected.source_index.to_numpy(dtype=int)
+    mapped = data[:, indices].copy()
+    mapped.var = pd.DataFrame(
+        {
+            "source_feature": selected.source_feature.to_numpy(),
+            "source_symbol": selected.source_symbol.to_numpy(),
+        },
+        index=pd.Index(selected.target_symbol.astype(str), name="target_gene"),
+    )
+    mapped.var_names = selected.target_symbol.astype(str).to_numpy()
+    mapped.layers["counts"] = mapped.layers[count_layer].copy()
+    mapped.uns["spatial_proxy_projection"] = {
+        "schema_version": 1,
+        "dataset": dataset,
+        "target_species": str(contract["target_species"]),
+        "projection": projection,
+        "analysis_tier": str(contract["analysis_tier"]),
+        "values_changed": False,
+        "current_cytobridge_lr_database_required": True,
+    }
+
+    database = pd.read_csv(database_path)
+    if not {"database_row", "ligand", "receptor"}.issubset(database.columns):
+        raise ValueError("filtered LR database lacks database_row/ligand/receptor")
+    database = database.copy()
+    database["ligand"] = database.ligand.fillna("").astype(str).str.strip()
+    database["receptor"] = database.receptor.fillna("").astype(str).str.strip()
+    source_to_target = dict(
+        zip(
+            selected.source_symbol.str.casefold(),
+            selected.target_symbol.astype(str),
+            strict=True,
+        )
+    )
+    mapped_ligands: list[str] = []
+    mapped_receptors: list[str] = []
+    reasons: list[str] = []
+    for ligand, receptor in zip(database.ligand, database.receptor, strict=True):
+        row_reasons: list[str] = []
+        if not ligand:
+            row_reasons.append("missing_ligand")
+        if not receptor:
+            row_reasons.append("missing_receptor")
+        if "_" in ligand:
+            row_reasons.append("ligand_complex_not_gene_level_representable")
+        if "_" in receptor:
+            row_reasons.append("receptor_complex_not_gene_level_representable")
+        mapped_ligand = source_to_target.get(ligand.casefold(), "")
+        mapped_receptor = source_to_target.get(receptor.casefold(), "")
+        if ligand and "_" not in ligand and not mapped_ligand:
+            row_reasons.append("ligand_not_in_projected_expression")
+        if receptor and "_" not in receptor and not mapped_receptor:
+            row_reasons.append("receptor_not_in_projected_expression")
+        if "_" in mapped_ligand:
+            row_reasons.append("mapped_ligand_contains_underscore")
+        if "_" in mapped_receptor:
+            row_reasons.append("mapped_receptor_contains_underscore")
+        mapped_ligands.append(mapped_ligand)
+        mapped_receptors.append(mapped_receptor)
+        reasons.append(";".join(row_reasons))
+    crosswalk = database.copy()
+    crosswalk["mapped_ligand"] = mapped_ligands
+    crosswalk["mapped_receptor"] = mapped_receptors
+    crosswalk["exclusion_reason"] = reasons
+    represented = crosswalk.loc[crosswalk.exclusion_reason.eq("")].copy()
+    pairs = (
+        represented[["mapped_ligand", "mapped_receptor"]]
+        .drop_duplicates()
+        .sort_values(["mapped_ligand", "mapped_receptor"], kind="mergesort")
+        .reset_index(drop=True)
+    )
+    if pairs.empty:
+        raise ValueError("no current-database LR pair is representable by both methods")
+
+    output.mkdir(parents=True)
+    mapped_path = output / "projected_terminal_previous.h5ad"
+    mapped.write_h5ad(mapped_path, compression="gzip")
+    feature_path = output / "feature_projection_crosswalk.csv.gz"
+    feature_map.to_csv(feature_path, index=False, compression="gzip")
+    lr_crosswalk_path = output / "current_lr_projection_crosswalk.csv"
+    crosswalk.to_csv(lr_crosswalk_path, index=False)
+    cag_path = output / "cellagentchat_current_lr_pairs.tsv"
+    cag = pairs.rename(
+        columns={
+            "mapped_ligand": "ligand_gene_symbol",
+            "mapped_receptor": "receptor_gene_symbol",
+        }
+    )
+    cag.insert(
+        0,
+        "lr_pair",
+        cag.ligand_gene_symbol + "_" + cag.receptor_gene_symbol,
+    )
+    cag.to_csv(cag_path, sep="\t", index=False)
+    nichenet_path = output / "nichenet_current_lr_network.csv"
+    pairs.rename(columns={"mapped_ligand": "from", "mapped_receptor": "to"}).to_csv(
+        nichenet_path, index=False
+    )
+
+    plan_rows: list[pd.DataFrame] = []
+    base = pd.DataFrame(
+        {
+            "stage": pd.to_numeric(mapped.obs["ccc_stage"], errors="raise").to_numpy(
+                float
+            ),
+            "stage_label": mapped.obs["ccc_stage_label"].astype(str).to_numpy(),
+            "cell_type": mapped.obs["ccc_cell_type"].astype(str).to_numpy(),
+            "obs_name": mapped.obs_names.astype(str),
+            "original_index": np.arange(mapped.n_obs, dtype=int),
+        }
+    )
+    stage_labels = base.groupby("stage", sort=True).stage_label.nunique()
+    if not stage_labels.eq(1).all():
+        raise ValueError("each numeric stage must have exactly one stage label")
+    base["within_type_sample_order"] = base.groupby(
+        ["stage", "cell_type"], sort=False
+    ).cumcount()
+    base["n_type_cells_available"] = base.groupby(
+        ["stage", "cell_type"], sort=False
+    ).obs_name.transform("size")
+    base["n_type_cells_sampled"] = base["n_type_cells_available"]
+    for seed in sampling_seeds:
+        if int(seed) < 0:
+            raise ValueError("sampling seeds must be nonnegative")
+        plan_rows.append(base.assign(sampling_seed=int(seed)))
+    plan = pd.concat(plan_rows, ignore_index=True)
+    plan = plan[
+        [
+            "sampling_seed",
+            "stage",
+            "stage_label",
+            "cell_type",
+            "obs_name",
+            "original_index",
+            "within_type_sample_order",
+            "n_type_cells_available",
+            "n_type_cells_sampled",
+        ]
+    ].sort_values(
+        ["sampling_seed", "stage", "cell_type", "original_index"],
+        kind="mergesort",
+    )
+    plan_path = output / "shared_sampled_cells.csv.gz"
+    plan.to_csv(plan_path, index=False, compression="gzip")
+
+    artifacts = {
+        "mapped_expression": _artifact_record(mapped_path),
+        "shared_sampled_cells": _artifact_record(plan_path),
+        "feature_projection_crosswalk": _artifact_record(feature_path),
+        "current_lr_projection_crosswalk": _artifact_record(lr_crosswalk_path),
+        "cellagentchat_current_lr_pairs": _artifact_record(cag_path),
+        "nichenet_current_lr_network": _artifact_record(nichenet_path),
+    }
+    analysis_tier = str(contract["analysis_tier"])
+    manifest: dict[str, object] = {
+        "schema_version": 1,
+        "workflow": "five_dataset_spatial_communication_shared_database_proxy_input",
+        "dataset": dataset,
+        "formal_primary": analysis_tier == "primary",
+        "primary_claim_allowed": analysis_tier == "primary",
+        "orthology_policy": (
+            str(orthology_record["policy"])
+            if orthology_record["provided"]
+            else "direct accepted feature-symbol projection"
+        ),
+        "orthology_analysis_tier": analysis_tier,
+        "analysis_tier": analysis_tier,
+        "input": {
+            "expression_h5ad": _artifact_record(source),
+            "filtered_current_cytobridge_lr_database": _artifact_record(database_path),
+        },
+        "projection": {
+            **contract,
+            "n_source_features": int(data.n_vars),
+            "n_projected_features": int(mapped.n_vars),
+            "expression_values_changed": False,
+            "selection_only_then_rename": True,
+        },
+        "orthology": orthology_record,
+        "keys": {
+            "cell_type": "ccc_cell_type",
+            "time": "ccc_stage",
+            "time_label": "ccc_stage_label",
+            "spatial": "spatial_aligned",
+        },
+        "sampling": {
+            "seeds": [int(value) for value in sampling_seeds],
+            "all_accepted_shared_sample_cells_used": True,
+            "n_plan_rows": int(len(plan)),
+        },
+        "target_species_prior": str(contract["target_species"]),
+        "cross_species_interpretation": str(contract["interpretation"]),
+        "lr_database_contract": {
+            "authoritative_candidate_source": "current accepted CytoBridge filtered LR database",
+            "complex_policy": "exclude without decomposition for both gene-level methods",
+            "n_current_database_rows": int(len(database)),
+            "n_representable_source_rows": int(len(represented)),
+            "n_unique_representable_pairs": int(len(pairs)),
+            "same_pair_universe_for_cellagentchat_and_nichenet": True,
+            "nichenet_target_prior": (
+                f"official NicheNet v2 {contract['target_species']} ligand-target matrix; "
+                "not replaced by the LR candidate database"
+            ),
+        },
+        "lr_databases": {
+            CURRENT_LR_DATABASE_LABEL: artifacts["cellagentchat_current_lr_pairs"]
+        },
+        "artifacts": artifacts,
+    }
+    _write_json(output / "manifest.json", manifest)
+    return manifest
 
 
 def _write_json(path: Path, payload: object) -> None:
