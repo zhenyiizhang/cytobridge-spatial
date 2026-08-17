@@ -833,14 +833,21 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
         record for record in artwork_axes if record["title"] == "Rank agreement"
     )
     assert "CellAgentChat proxy" in panel_a_rank["legend"]
-    assert "Model-selected communication axes" in joined_artwork_text
-    assert "LR axis / pathway" in joined_artwork_text
-    assert "LR rank" in joined_artwork_text
-    assert "NicheNet-linked receiver targets" in joined_artwork_text
+    assert "CytoBridge-selected LR axes" in joined_artwork_text
+    assert "CytoBridge selection" in joined_artwork_text
+    assert "COMMOT comparison" in joined_artwork_text
+    assert "Selected\nLR axis" in joined_artwork_text
+    assert "Same-pair\nLR rank" in joined_artwork_text
+    assert "NicheNet receiver targets for CytoBridge-ranked axes" in joined_artwork_text
+    assert "CytoBridge ranking" in joined_artwork_text
+    assert "COMMOT and NicheNet results" in joined_artwork_text
+    assert "NicheNet-predicted\nreceiver\ntargets" in joined_artwork_text
+    assert "TARGET-A, TARGET-B" in joined_artwork_text
+    assert "→" not in joined_artwork_text
     assert (
-        "Highest CytoBridge-ranked axis with NicheNet coverage" in joined_artwork_text
+        "Highest CytoBridge-ranked axis with NicheNet coverage"
+        not in joined_artwork_text
     )
-    assert "TARGET-A / TARGET-B" in joined_artwork_text
     expected_tables = {
         "global_pair_metrics.csv",
         "model_linked_external_support.csv",
@@ -852,7 +859,7 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert {path.name for path in (output / "panel_data").iterdir()} == expected_tables
 
     manifest = json.loads((output / "figure_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 4
+    assert manifest["schema_version"] == 5
     assert manifest["workflow"] == "four_dataset_interaction_biology_figure"
     assert manifest["displayed_datasets"] == [
         dataset for dataset in FORMAL_DATASET_CONTRACTS if dataset != "admouse"
@@ -871,6 +878,11 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
         "molecular_rank_consistency",
         "model_first_nichenet_chains",
     }
+    assert manifest["panel_semantics"]["b"]["selection"].startswith("CytoBridge")
+    assert manifest["panel_semantics"]["c"]["commot"] == (
+        "post-selection same-axis percentile"
+    )
+    assert "not CytoBridge outputs" in manifest["panel_semantics"]["c"]["nichenet"]
     serialized_manifest = json.dumps(manifest, sort_keys=True).casefold()
     assert "spatial_map" not in serialized_manifest
     assert "edge_manifest" not in serialized_manifest
@@ -883,7 +895,8 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "diamonds" not in caption
     assert "CellAgentChat-proxy pair" not in caption
     assert "interaction-contribution scores" in caption
-    assert "receiver target genes" in caption
+    assert "NicheNet-predicted receiver target genes" in caption
+    assert "not CytoBridge outputs" in caption
 
     global_metrics = pd.read_csv(output / "panel_data/global_pair_metrics.csv")
     molecular_panel = pd.read_csv(

@@ -42,6 +42,24 @@ def _write_json(path: Path, payload: object) -> None:
     path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
 
 
+def _use_portable_report_font(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Decouple report-logic tests from proprietary runner fonts.
+
+    The publication command remains strict about Arial.  These tests exercise
+    the frozen-data contract and rendered report structure, so use Matplotlib's
+    bundled DejaVu Sans when the CI runner does not provide Microsoft fonts.
+    """
+
+    import matplotlib.font_manager as font_manager
+
+    portable_font = font_manager.findfont("DejaVu Sans", fallback_to_default=False)
+    monkeypatch.setattr(
+        font_manager,
+        "findfont",
+        lambda *args, **kwargs: portable_font,
+    )
+
+
 def _write_fixture(tmp_path: Path) -> Path:
     inputs = tmp_path / "inputs"
     inputs.mkdir()
@@ -708,7 +726,10 @@ def test_validation_fails_after_table_tamper(tmp_path: Path) -> None:
         MODULE.validate(output)
 
 
-def test_report_rejects_nonformal_pair_field(tmp_path: Path) -> None:
+def test_report_rejects_nonformal_pair_field(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_portable_report_font(monkeypatch)
     spec = _write_fixture(tmp_path)
     analysis = tmp_path / "analysis"
     MODULE.analyze(spec, analysis, n_selected_pairs=3)
@@ -734,8 +755,9 @@ def test_report_rejects_legacy_init_condition_label() -> None:
 
 
 def test_submission_report_is_three_panel_and_uses_strong_evidence(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _use_portable_report_font(monkeypatch)
     analysis = _write_submission_report_fixture(tmp_path)
     jam_manifests, jam_manifest_shas = _write_jam_report_manifests(tmp_path)
     output = tmp_path / "submission-report"
