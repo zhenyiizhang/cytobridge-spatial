@@ -3207,10 +3207,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             if np.isfinite(zebrafish_corrected_aupr)
             else ""
         )
-        zebrafish_artwork_note = (
-            "† Zebrafish NicheNet uses confidence-1 one-to-one orthology with the "
-            "mouse prior (cross-species sensitivity)."
-        )
         zebrafish_caption_clause = (
             "Zebrafish is a cross-species sensitivity analysis using a prespecified "
             "Ensembl 116 one-to-one, confidence-1, symbol-bijective mapping and the "
@@ -3229,10 +3225,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             if np.isfinite(zebrafish_corrected_aupr)
             else ""
         )
-        zebrafish_artwork_note = (
-            "† Cross-species NicheNet-v2 orthology sensitivity"
-            f"{aupr_parenthetical}; excluded from pooled NicheNet claims."
-        )
         zebrafish_caption_clause = (
             "Zebrafish is a cross-species sensitivity analysis using a prespecified "
             "Ensembl 116 one-to-one, confidence-unfiltered, symbol-bijective mapping "
@@ -3241,7 +3233,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             "not a native zebrafish regulatory prior or a primary NicheNet claim. "
         )
     else:
-        zebrafish_artwork_note = ""
         zebrafish_caption_clause = (
             "Zebrafish uses the prespecified cross-species NicheNet evidence scope "
             f"'{zebrafish_scope}' and the official mouse prior; it is not a native "
@@ -3628,8 +3619,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             receiver_targets = ", ".join(
                 group["receiver_target"].astype(str).str.casefold().tolist()
             )
-        if dataset == "zebrafish" and zebrafish_is_sensitivity:
-            receiver_targets += "†"
         y = float(2.95 - row_index)
         if row_index:
             ax_c_chain.plot(
@@ -3715,15 +3704,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         color="black",
         va="top",
     )
-    if zebrafish_artwork_note:
-        ax_c_chain.text(
-            0.0,
-            -0.87,
-            zebrafish_artwork_note,
-            fontsize=7.0,
-            color="black",
-            va="top",
-        )
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)

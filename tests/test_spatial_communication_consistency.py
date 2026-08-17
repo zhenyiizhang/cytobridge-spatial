@@ -856,11 +856,9 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "NicheNet-predicted\nreceiver\ntargets" in joined_artwork_text
     assert "CytoBridge\nLR × directed-\npair rank*" in joined_artwork_text
     assert "Zebrafish" in joined_artwork_text
-    assert "Ccnd1, Cbx5, Cdk1†" in joined_artwork_text
-    assert (
-        "† Zebrafish NicheNet uses confidence-1 one-to-one orthology with the "
-        "mouse prior (cross-species sensitivity)." in joined_artwork_text
-    )
+    assert "Ccnd1, Cbx5, Cdk1" in joined_artwork_text
+    assert "†" not in joined_artwork_text
+    assert "cross-species sensitivity" not in joined_artwork_text
     assert "unavailable" not in joined_artwork_text.casefold()
     assert "TARGET-A, TARGET-B" in joined_artwork_text
     assert "→" not in joined_artwork_text
