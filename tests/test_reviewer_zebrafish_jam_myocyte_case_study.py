@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -84,6 +85,9 @@ def test_spatial_panel_cells_freeze_full_stage_with_somite_flag() -> None:
     )
     data.obsm["spatial_aligned"] = np.asarray(
         [[0.0, 1.0], [2.0, 3.0], [4.0, 5.0], [6.0, 7.0]]
+    )
+    data.obsm["spatial"] = np.asarray(
+        [[100.0, 101.0], [102.0, 103.0], [104.0, 105.0], [106.0, 107.0]]
     )
     genes = {
         "jam2a": np.asarray([1.0, 0.0, 0.0, 1.0]),
@@ -652,6 +656,8 @@ def test_no_external_methods_write_fixed_empty_availability_audit(
             str(provenance_path),
             "--output-dir",
             str(output),
+            "--spatial-key",
+            "spatial_aligned",
         ],
     )
 
@@ -671,3 +677,5 @@ def test_no_external_methods_write_fixed_empty_availability_audit(
         "score_column",
         "score_mode",
     ]
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["design"]["spatial_key"] == "spatial_aligned"

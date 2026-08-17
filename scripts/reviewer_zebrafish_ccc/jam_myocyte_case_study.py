@@ -1919,6 +1919,7 @@ def main() -> None:
             "external_sparse_zero_rule": "missing context row is zero only for an explicitly available stage x LR axis; unavailable axis is NA",
             "spatial_cutoff": float(args.spatial_cutoff),
             "spatial_cutoff_source": args.spatial_cutoff_source,
+            "spatial_key": args.spatial_key,
             "spatial_permutation_seed": int(args.permutation_seed),
             "spatial_n_permutations": int(args.n_permutations),
             "spatial_null": "independently permute jam2a and jam3b detection labels within 18 hpf Somite cells while preserving marginals and graph",
