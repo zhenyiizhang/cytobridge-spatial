@@ -35,9 +35,16 @@ required_candidates <- c("dataset", "sender", "receiver", "ligand", "receptor")
 if (!all(required_gene_sets %in% colnames(gene_sets))) stop("receiver gene-set schema mismatch")
 if (!all(required_candidates %in% colnames(candidates))) stop("candidate schema mismatch")
 gene_sets$is_response <- tolower(as.character(gene_sets$is_response)) == "true"
+dataset_name <- unique(gene_sets$dataset)
+candidate_dataset <- unique(candidates$dataset)
+if (length(dataset_name) != 1) stop("receiver gene sets must contain one dataset")
+if (length(candidate_dataset) != 1 || candidate_dataset != dataset_name) {
+  stop("candidate and receiver gene-set datasets must match exactly")
+}
 
 activity_outputs <- list()
 target_outputs <- list()
+receiver_status_outputs <- list()
 for (receiver_oi in sort(unique(gene_sets$receiver))) {
   receiver_sets <- gene_sets %>% filter(receiver == receiver_oi)
   geneset_oi <- receiver_sets %>% filter(is_response) %>% pull(gene) %>% unique()
@@ -50,7 +57,18 @@ for (receiver_oi in sort(unique(gene_sets$receiver))) {
   potential_ligands <- intersect(potential_ligands, colnames(ligand_target_matrix))
   if (length(geneset_oi) < 10) stop(paste(receiver_oi, "has fewer than ten response genes"))
   if (length(background) < 20) stop(paste(receiver_oi, "has fewer than twenty background genes"))
-  if (length(potential_ligands) == 0) stop(paste(receiver_oi, "has no potential ligands"))
+  if (length(potential_ligands) == 0) {
+    receiver_status_outputs[[receiver_oi]] <- tibble(
+      dataset = dataset_name,
+      receiver = receiver_oi,
+      status = "skipped_no_potential_ligands",
+      reason = "no candidate ligand is represented in the frozen NicheNet ligand-target matrix",
+      n_response_genes = length(geneset_oi),
+      n_background_genes = length(background),
+      n_potential_ligands = 0L
+    )
+    next
+  }
 
   activity <- predict_ligand_activities(
     geneset = geneset_oi,
@@ -78,10 +96,20 @@ for (receiver_oi in sort(unique(gene_sets$receiver))) {
       receiver = receiver_oi
     )
   target_outputs[[receiver_oi]] <- links
+  receiver_status_outputs[[receiver_oi]] <- tibble(
+    dataset = dataset_name,
+    receiver = receiver_oi,
+    status = "complete",
+    reason = "",
+    n_response_genes = length(geneset_oi),
+    n_background_genes = length(background),
+    n_potential_ligands = length(potential_ligands)
+  )
 }
 
-dataset_name <- unique(gene_sets$dataset)
-if (length(dataset_name) != 1) stop("receiver gene sets must contain one dataset")
+if (length(activity_outputs) == 0) {
+  stop("no receiver has a candidate ligand represented in the frozen NicheNet ligand-target matrix")
+}
 activities <- bind_rows(activity_outputs) %>%
   mutate(dataset = dataset_name) %>%
   select(dataset, receiver, ligand, auroc, aupr, aupr_corrected, pearson) %>%
@@ -90,8 +118,11 @@ targets <- bind_rows(target_outputs) %>%
   mutate(dataset = dataset_name) %>%
   select(dataset, receiver, ligand, target, weight) %>%
   arrange(receiver, ligand, desc(weight), target)
+receiver_status <- bind_rows(receiver_status_outputs) %>%
+  arrange(receiver)
 
 write.csv(activities, file.path(output_dir, "ligand_activities.csv"), row.names = FALSE, quote = TRUE)
 write.csv(targets, file.path(output_dir, "ligand_target_links.csv"), row.names = FALSE, quote = TRUE)
+write.csv(receiver_status, file.path(output_dir, "receiver_status.csv"), row.names = FALSE, quote = TRUE)
 session <- capture.output(sessionInfo())
 writeLines(session, file.path(output_dir, "R_sessionInfo.txt"))

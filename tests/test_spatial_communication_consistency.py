@@ -717,26 +717,30 @@ def _write_model_biology_plot_inputs(root: Path) -> tuple[Path, Path, Path]:
                 "top_jaccard": 0.20 + 0.02 * dataset_index,
             }
         )
-        if dataset != "zebrafish":
-            rank_rows.append(
-                {
-                    "dataset": dataset,
-                    "external_method": "NicheNet",
-                    "available": True,
-                    "n_jointly_positive_axes": 15,
-                    "spearman_rho": 0.24 + 0.02 * dataset_index,
-                    "top_fraction": 0.2,
-                    "top_jaccard": 0.18 + 0.01 * dataset_index,
-                }
-            )
+        rank_rows.append(
+            {
+                "dataset": dataset,
+                "external_method": "NicheNet",
+                "available": True,
+                "n_jointly_positive_axes": 15,
+                "spearman_rho": 0.24 + 0.02 * dataset_index,
+                "top_fraction": 0.2,
+                "top_jaccard": 0.18 + 0.01 * dataset_index,
+            }
+        )
     rank_path = molecular / "molecular_rank_consistency.csv"
     pd.DataFrame(rank_rows).to_csv(rank_path, index=False)
 
     chain_path = molecular / "model_first_nichenet_chains.csv"
     chain_rows: list[dict[str, object]] = []
-    for rank, dataset in enumerate(("mosta", "arista", "chicken_heart"), start=1):
+    for rank, dataset in zip((94, 1, 2, 25), complete, strict=True):
         axis = axes[dataset]
-        for target_rank, target in enumerate(("TARGET-A", "TARGET-B"), start=1):
+        targets = (
+            ("Ccnd1", "Cbx5", "Cdk1")
+            if dataset == "zebrafish"
+            else ("TARGET-A", "TARGET-B")
+        )
+        for target_rank, target in enumerate(targets, start=1):
             chain_rows.append(
                 {
                     "dataset": dataset,
@@ -751,6 +755,14 @@ def _write_model_biology_plot_inputs(root: Path) -> tuple[Path, Path, Path]:
                     "receiver_target_rank": target_rank,
                     "receiver_target": target,
                     "nichenet_ligand_target_evidence": 0.5 / target_rank,
+                    "nichenet_corrected_aupr": (
+                        0.092560880851808 if dataset == "zebrafish" else 0.2
+                    ),
+                    "nichenet_evidence_scope": (
+                        "strict_confidence1_cross_species_proxy"
+                        if dataset == "zebrafish"
+                        else "primary_species_prior"
+                    ),
                 }
             )
     pd.DataFrame(chain_rows).to_csv(chain_path, index=False)
@@ -842,6 +854,14 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "CytoBridge ranking" in joined_artwork_text
     assert "COMMOT and NicheNet results" in joined_artwork_text
     assert "NicheNet-predicted\nreceiver\ntargets" in joined_artwork_text
+    assert "CytoBridge\nLR × directed-\npair rank*" in joined_artwork_text
+    assert "Zebrafish" in joined_artwork_text
+    assert "Ccnd1, Cbx5, Cdk1†" in joined_artwork_text
+    assert (
+        "† Zebrafish NicheNet uses confidence-1 one-to-one orthology with the "
+        "mouse prior (cross-species sensitivity)." in joined_artwork_text
+    )
+    assert "unavailable" not in joined_artwork_text.casefold()
     assert "TARGET-A, TARGET-B" in joined_artwork_text
     assert "→" not in joined_artwork_text
     assert (
@@ -859,7 +879,7 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert {path.name for path in (output / "panel_data").iterdir()} == expected_tables
 
     manifest = json.loads((output / "figure_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 5
+    assert manifest["schema_version"] == 6
     assert manifest["workflow"] == "four_dataset_interaction_biology_figure"
     assert manifest["displayed_datasets"] == [
         dataset for dataset in FORMAL_DATASET_CONTRACTS if dataset != "admouse"
@@ -883,6 +903,15 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
         "post-selection same-axis percentile"
     )
     assert "not CytoBridge outputs" in manifest["panel_semantics"]["c"]["nichenet"]
+    assert manifest["panel_semantics"]["c"]["zebrafish_nichenet_scope"] == (
+        "strict_confidence1_cross_species_proxy"
+    )
+    assert manifest["panel_semantics"]["c"][
+        "zebrafish_nichenet_corrected_aupr"
+    ] == pytest.approx(0.092560880851808)
+    assert not manifest["panel_semantics"]["c"][
+        "zebrafish_included_in_pooled_nichenet_claims"
+    ]
     serialized_manifest = json.dumps(manifest, sort_keys=True).casefold()
     assert "spatial_map" not in serialized_manifest
     assert "edge_manifest" not in serialized_manifest
@@ -897,6 +926,11 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "interaction-contribution scores" in caption
     assert "NicheNet-predicted receiver target genes" in caption
     assert "not CytoBridge outputs" in caption
+    assert "For each dataset, the highest globally ranked CytoBridge" in caption
+    assert "prespecified Ensembl 116 one-to-one" in caption
+    assert "not a native zebrafish regulatory prior" in caption
+    assert "corrected AUPR = 0.093" in caption
+    assert "excluded from pooled and primary NicheNet claims" in caption
 
     global_metrics = pd.read_csv(output / "panel_data/global_pair_metrics.csv")
     molecular_panel = pd.read_csv(
@@ -1000,14 +1034,51 @@ def _write_model_biology_molecular_fixture(
     ).to_csv(commot_lr_path, index=False)
     pd.DataFrame(
         {
+            "sender": ["A", "A", "A", "A", "X"],
+            "receiver": ["B", "B", "B", "B", "B"],
+            "ligand": ["l1", "l1", "l2", "l3", "off"],
+            "receptor": ["r1", "r1", "r2", "r3", "off"],
+            "target": ["T1", "NEGATIVE", "T1", "T2", "OFF_PAIR"],
+            "ligand_target_evidence": [0.5, 999.0, 0.25, 0.25, 99.0],
+            "aupr_corrected": [0.2, -0.1, 0.1, 0.05, 1.0],
+        }
+    ).to_csv(nichenet_path, index=False)
+    pd.DataFrame(
+        {
             "sender": ["A", "A", "A", "X"],
             "receiver": ["B", "B", "B", "B"],
             "ligand": ["l1", "l2", "l3", "off"],
             "receptor": ["r1", "r2", "r3", "off"],
-            "target": ["T1", "T1", "T2", "OFF_PAIR"],
-            "ligand_target_evidence": [0.5, 0.25, 0.25, 99.0],
+            "lr_evidence": [1.0, 0.5, 0.25, 99.0],
+            "aupr_corrected": [0.2, 0.1, 0.05, 1.0],
         }
-    ).to_csv(nichenet_path, index=False)
+    ).to_csv(nichenet_path.with_name("nichenet_lr_evidence.csv.gz"), index=False)
+    summary_manifest_path = molecular_sources / "nichenet_summary_manifest.json"
+    summary_manifest_path.write_text(
+        json.dumps(
+            {
+                "workflow": "spatial_communication_consistency_nichenet_summary",
+                "receiver_status": {
+                    "present": True,
+                    "n_complete_receivers": 1,
+                },
+                "outputs": {
+                    nichenet_path.name: _artifact_record(nichenet_path),
+                    "nichenet_lr_evidence.csv.gz": _artifact_record(
+                        nichenet_path.with_name("nichenet_lr_evidence.csv.gz")
+                    ),
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    run_manifest_path = molecular_sources / "nichenet_run_manifest.json"
+    run_manifest_path.write_text(
+        json.dumps({"formal_primary": False, "analysis_tier": "sensitivity"}) + "\n",
+        encoding="utf-8",
+    )
 
     config = {
         "schema_version": 1,
@@ -1016,11 +1087,21 @@ def _write_model_biology_molecular_fixture(
                 "commot_pathway_csv": str(commot_pathway_path),
                 "commot_lr_csv": str(commot_lr_path),
                 "nichenet_target_csv": str(nichenet_path),
-                "nichenet_target_evidence_scope": "primary_species_prior",
+                "nichenet_target_evidence_scope": (
+                    "strict_confidence1_cross_species_proxy"
+                    if dataset == "zebrafish"
+                    else "primary_species_prior"
+                ),
             }
             for dataset in FORMAL_DATASET_CONTRACTS
         },
     }
+    config["datasets"]["zebrafish"].update(
+        {
+            "nichenet_summary_manifest": str(summary_manifest_path),
+            "nichenet_run_manifest": str(run_manifest_path),
+        }
+    )
     config_path = root / "model_biology_config.json"
     config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     selection_manifest = {
@@ -1101,7 +1182,14 @@ def test_summarize_model_biology_molecular_builds_computed_panel_table(
     assert str(complete.commot_top_lr).lower().replace("-", "–") == "l1–r1"
     assert complete.nichenet_top_receiver_target == "T1"
     assert complete.nichenet_top_receiver_target_fraction == pytest.approx(0.75)
-    assert complete.nichenet_scope == "primary_species_prior"
+    assert complete.nichenet_scope == "strict_confidence1_cross_species_proxy"
+
+    chains = pd.read_csv(output / "model_first_nichenet_chains.csv")
+    assert set(chains.nichenet_evidence_scope) == {
+        "strict_confidence1_cross_species_proxy"
+    }
+    assert chains.iloc[0].nichenet_corrected_aupr == pytest.approx(0.2)
+    assert "NEGATIVE" not in set(chains.receiver_target)
 
     not_evaluable = panel.set_index("dataset").loc["admouse"]
     assert not_evaluable.status == "not_evaluable"
@@ -1125,7 +1213,13 @@ def test_summarize_model_biology_molecular_builds_computed_panel_table(
     ):
         assert (output / name).is_file()
     manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == 2
     assert manifest["workflow"] == "five_dataset_model_biology_molecular_summary"
+    assert "corrected receiver AUPR > 0" in manifest["nichenet_chain_rule"]
+    assert (
+        manifest["inputs"]["frozen_selection_config"]["sha256"]
+        == manifest["inputs"]["config"]["sha256"]
+    )
     assert manifest["outputs"]["panel"]["sha256"] == sha256_file(
         output / "model_biology_molecular_panel.csv"
     )
@@ -1145,6 +1239,94 @@ def test_summarize_model_biology_molecular_rejects_tampered_selection_source(
         _run_model_biology_molecular_summary(
             module, selection, config, tmp_path / "tampered-output"
         )
+
+
+def test_summarize_model_biology_molecular_allows_nichenet_only_overlay(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, frozen_config, sources = _write_model_biology_molecular_fixture(
+        tmp_path / "nichenet-overlay"
+    )
+    replacement = sources["nichenet"].with_name("replacement_nichenet_targets.csv.gz")
+    pd.read_csv(sources["nichenet"]).to_csv(replacement, index=False)
+    payload = json.loads(frozen_config.read_text(encoding="utf-8"))
+    payload["datasets"]["zebrafish"]["nichenet_target_csv"] = str(replacement)
+    payload["datasets"]["zebrafish"][
+        "nichenet_target_evidence_scope"
+    ] = "strict_confidence1_cross_species_proxy"
+    summary_manifest = replacement.with_name("manifest.json")
+    summary_manifest.write_text(
+        json.dumps(
+            {
+                "workflow": "spatial_communication_consistency_nichenet_summary",
+                "receiver_status": {
+                    "present": True,
+                    "n_complete_receivers": 1,
+                },
+                "outputs": {
+                    replacement.name: _artifact_record(replacement),
+                    "nichenet_lr_evidence.csv.gz": _artifact_record(
+                        replacement.with_name("nichenet_lr_evidence.csv.gz")
+                    ),
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    run_manifest = replacement.with_name("run_manifest.json")
+    run_manifest.write_text(
+        '{"formal_primary":false,"analysis_tier":"sensitivity"}\n',
+        encoding="utf-8",
+    )
+    payload["datasets"]["zebrafish"]["nichenet_summary_manifest"] = str(
+        summary_manifest
+    )
+    payload["datasets"]["zebrafish"]["nichenet_run_manifest"] = str(run_manifest)
+    overlay = tmp_path / "molecular_overlay.json"
+    overlay.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    output = tmp_path / "nichenet-overlay-output"
+    _run_model_biology_molecular_summary(module, selection, overlay, output)
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["inputs"]["config"]["sha256"] == sha256_file(overlay)
+    assert manifest["inputs"]["frozen_selection_config"]["sha256"] == sha256_file(
+        frozen_config
+    )
+    zebra_sources = manifest["inputs"]["molecular_sources"]["zebrafish"]
+    assert zebra_sources["nichenet_summary_manifest"]["sha256"] == sha256_file(
+        summary_manifest
+    )
+    assert zebra_sources["nichenet_run_manifest"]["sha256"] == sha256_file(run_manifest)
+    chains = pd.read_csv(output / "model_first_nichenet_chains.csv")
+    zebra = chains.loc[chains.dataset.eq("zebrafish")]
+    assert set(zebra.nichenet_evidence_scope) == {
+        "strict_confidence1_cross_species_proxy"
+    }
+
+
+def test_summarize_model_biology_molecular_accepts_legacy_scope_default(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, _ = _write_model_biology_molecular_fixture(
+        tmp_path / "legacy-scope"
+    )
+    payload = json.loads(config.read_text(encoding="utf-8"))
+    for spec in payload["datasets"].values():
+        spec.pop("nichenet_target_evidence_scope", None)
+    config.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    manifest_path = selection / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["inputs"]["config"] = _artifact_record(config)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    output = tmp_path / "legacy-scope-output"
+    _run_model_biology_molecular_summary(module, selection, config, output)
+    chains = pd.read_csv(output / "model_first_nichenet_chains.csv")
+    assert set(chains.nichenet_evidence_scope) == {"pair_level_receiver_response"}
 
 
 def test_summarize_model_biology_molecular_rejects_config_mismatch(
@@ -1174,6 +1356,20 @@ def test_summarize_model_biology_molecular_rejects_missing_config_source(
     with pytest.raises(FileNotFoundError, match="(?i)(commot|pathway|missing)"):
         _run_model_biology_molecular_summary(
             module, selection, config, tmp_path / "missing-source-output"
+        )
+
+
+def test_summarize_model_biology_molecular_requires_nichenet_lr_evidence(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, sources = _write_model_biology_molecular_fixture(
+        tmp_path / "missing-nichenet-lr"
+    )
+    sources["nichenet"].with_name("nichenet_lr_evidence.csv.gz").unlink()
+    with pytest.raises(FileNotFoundError, match="NicheNet LR evidence"):
+        _run_model_biology_molecular_summary(
+            module, selection, config, tmp_path / "missing-nichenet-lr-output"
         )
 
 

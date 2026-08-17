@@ -285,12 +285,159 @@ def summarize_nichenet(args: argparse.Namespace) -> None:
         "targets": source / "official" / "ligand_target_links.csv",
         "r_session": source / "official" / "R_sessionInfo.txt",
     }
+    receiver_status_path = source / "official" / "receiver_status.csv"
+    if receiver_status_path.is_file():
+        required["receiver_status"] = receiver_status_path
+        required["receiver_gene_sets"] = source / "receiver_gene_sets.csv"
     for label, path in required.items():
         if not path.is_file():
             raise FileNotFoundError(f"missing NicheNet {label}: {path}")
     candidates = pd.read_csv(required["candidates"])
     activities = pd.read_csv(required["activities"])
     targets = pd.read_csv(required["targets"])
+    dataset_sets: dict[str, set[str]] = {}
+    for label, table in (
+        ("candidates", candidates),
+        ("activities", activities),
+        ("targets", targets),
+    ):
+        if "dataset" not in table:
+            raise ValueError(f"NicheNet {label} table lacks dataset")
+        dataset_sets[label] = set(table["dataset"].astype(str))
+        if len(dataset_sets[label]) != 1:
+            raise ValueError(f"NicheNet {label} table must contain one dataset")
+    if len({next(iter(values)) for values in dataset_sets.values()}) != 1:
+        raise ValueError("NicheNet candidates, activities, and targets datasets differ")
+    receiver_status: pd.DataFrame | None = None
+    receiver_status_summary: dict[str, object] = {
+        "present": False,
+        "allowed_statuses": ["complete", "skipped_no_potential_ligands"],
+    }
+    if "receiver_status" in required:
+        receiver_status = pd.read_csv(required["receiver_status"])
+        receiver_gene_sets = pd.read_csv(required["receiver_gene_sets"])
+        required_status_columns = {
+            "dataset",
+            "receiver",
+            "status",
+            "reason",
+            "n_response_genes",
+            "n_background_genes",
+            "n_potential_ligands",
+        }
+        missing_status_columns = sorted(
+            required_status_columns.difference(receiver_status.columns)
+        )
+        if missing_status_columns:
+            raise ValueError(
+                "NicheNet receiver status is missing columns: "
+                + ", ".join(missing_status_columns)
+            )
+        if receiver_status.empty:
+            raise ValueError("NicheNet receiver status must not be empty")
+        required_gene_set_columns = {"dataset", "receiver", "gene", "is_response"}
+        missing_gene_set_columns = sorted(
+            required_gene_set_columns.difference(receiver_gene_sets.columns)
+        )
+        if missing_gene_set_columns:
+            raise ValueError(
+                "NicheNet receiver gene sets are missing columns: "
+                + ", ".join(missing_gene_set_columns)
+            )
+        if receiver_gene_sets.empty:
+            raise ValueError("NicheNet receiver gene sets must not be empty")
+        if receiver_status["receiver"].astype(str).duplicated().any():
+            raise ValueError("NicheNet receiver status must contain unique receivers")
+        allowed_statuses = {"complete", "skipped_no_potential_ligands"}
+        observed_statuses = set(receiver_status["status"].astype(str))
+        unexpected_statuses = sorted(observed_statuses.difference(allowed_statuses))
+        if unexpected_statuses:
+            raise ValueError(
+                "NicheNet receiver status contains unsupported statuses: "
+                + ", ".join(unexpected_statuses)
+            )
+        complete_status = receiver_status.loc[
+            receiver_status["status"].astype(str).eq("complete")
+        ]
+        if complete_status.empty:
+            raise ValueError("NicheNet receiver status has no complete receiver")
+        skipped_status = receiver_status.loc[
+            receiver_status["status"].astype(str).eq("skipped_no_potential_ligands")
+        ]
+        skipped_potential_ligands = pd.to_numeric(
+            skipped_status["n_potential_ligands"], errors="coerce"
+        )
+        if (
+            skipped_potential_ligands.isna().any()
+            or not skipped_potential_ligands.eq(0).all()
+        ):
+            raise ValueError(
+                "skipped NicheNet receivers must have zero potential ligands"
+            )
+        if skipped_status["reason"].fillna("").astype(str).str.strip().eq("").any():
+            raise ValueError("skipped NicheNet receivers must record a reason")
+        complete_receivers = set(complete_status["receiver"].astype(str))
+        activity_receivers = set(activities["receiver"].astype(str))
+        if complete_receivers != activity_receivers:
+            raise ValueError(
+                "NicheNet complete receiver status must match activity receivers"
+            )
+        status_datasets = set(receiver_status["dataset"].astype(str))
+        activity_datasets = set(activities["dataset"].astype(str))
+        gene_set_datasets = set(receiver_gene_sets["dataset"].astype(str))
+        candidate_datasets = dataset_sets["candidates"]
+        target_datasets = dataset_sets["targets"]
+        if (
+            len(status_datasets) != 1
+            or status_datasets != activity_datasets
+            or status_datasets != gene_set_datasets
+            or status_datasets != candidate_datasets
+            or status_datasets != target_datasets
+        ):
+            raise ValueError(
+                "NicheNet candidate, activity, target, receiver-status, and "
+                "receiver-gene-set datasets must match"
+            )
+        status_receivers = set(receiver_status["receiver"].astype(str))
+        gene_set_receivers = set(receiver_gene_sets["receiver"].astype(str))
+        if status_receivers != gene_set_receivers:
+            raise ValueError(
+                "NicheNet receiver-status receivers must match receiver gene sets"
+            )
+        target_receivers = set(targets["receiver"].astype(str))
+        if not target_receivers.issubset(complete_receivers):
+            raise ValueError(
+                "NicheNet target receivers must be complete receiver-status entries"
+            )
+        activity_pairs = set(
+            zip(
+                activities["receiver"].astype(str),
+                activities["ligand"].astype(str),
+                strict=False,
+            )
+        )
+        target_pairs = set(
+            zip(
+                targets["receiver"].astype(str),
+                targets["ligand"].astype(str),
+                strict=False,
+            )
+        )
+        if not target_pairs.issubset(activity_pairs):
+            raise ValueError(
+                "NicheNet target receiver-ligand pairs must be present in activities"
+            )
+        receiver_status_summary = {
+            "present": True,
+            "allowed_statuses": sorted(allowed_statuses),
+            "counts": {
+                str(status): int(count)
+                for status, count in receiver_status["status"].value_counts().items()
+            },
+            "n_receivers": int(len(receiver_status)),
+            "n_complete_receivers": int(len(complete_status)),
+            "n_skipped_no_potential_ligands": int(len(skipped_status)),
+        }
     activities["activity_rank"] = activities.groupby("receiver", sort=False)[
         "aupr_corrected"
     ].transform(rank_percentile)
@@ -324,20 +471,33 @@ def summarize_nichenet(args: argparse.Namespace) -> None:
     pair_path = output / "nichenet_type_pair_scores.csv"
     evidence_path = output / "nichenet_lr_evidence.csv.gz"
     target_path = output / "nichenet_ligand_target_evidence.csv.gz"
+    receiver_status_output = output / "nichenet_receiver_status.csv"
     pair_scores.to_csv(pair_path, index=False)
     evidence.to_csv(evidence_path, index=False, compression="gzip")
     detailed.to_csv(target_path, index=False, compression="gzip")
+    if receiver_status is not None:
+        receiver_status.to_csv(receiver_status_output, index=False)
+    output_paths = [pair_path, evidence_path, target_path]
+    if receiver_status is not None:
+        output_paths.append(receiver_status_output)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 3,
         "workflow": "spatial_communication_consistency_nichenet_summary",
         "pair_score": "mean of the top five activity-rank × sqrt(sender-expression-fraction × receiver-expression-fraction) LR evidences",
         "sources": {label: _artifact(path) for label, path in required.items()},
-        "outputs": {
-            path.name: _artifact(path)
-            for path in (pair_path, evidence_path, target_path)
-        },
+        "receiver_status": receiver_status_summary,
+        "outputs": {path.name: _artifact(path) for path in output_paths},
     }
     _write_json(output / "manifest.json", manifest)
+
+
+def _requires_positive_receiver_aupr(spec: dict[str, object]) -> bool:
+    """Apply the strict cross-species receiver-response gate only where declared."""
+
+    scope = str(
+        spec.get("nichenet_target_evidence_scope", "pair_level_receiver_response")
+    )
+    return "strict_confidence1" in scope.casefold()
 
 
 def _selected_molecular_evidence(
@@ -414,6 +574,11 @@ def _selected_molecular_evidence(
             table["ligand_target_evidence"] = pd.to_numeric(
                 table["ligand_target_evidence"], errors="raise"
             )
+            if "aupr_corrected" in table and _requires_positive_receiver_aupr(spec):
+                table["aupr_corrected"] = pd.to_numeric(
+                    table["aupr_corrected"], errors="raise"
+                )
+                table = table.loc[table["aupr_corrected"] > 0].copy()
             table = (
                 table.loc[table.ligand_target_evidence > 0]
                 .sort_values(
@@ -523,6 +688,65 @@ def _verify_artifact_bytes(
         raise ValueError(f"{label} does not match the frozen manifest: {path}")
 
 
+MOLECULAR_CONFIG_OVERLAY_KEYS = frozenset(
+    {
+        "nichenet_target_csv",
+        "nichenet_target_evidence_scope",
+        "nichenet_summary_manifest",
+        "nichenet_run_manifest",
+    }
+)
+
+
+def _verify_molecular_config_overlay(
+    config_path: Path,
+    config: dict[str, object],
+    selection_config_record: dict[str, object],
+) -> Path:
+    """Bind molecular-only NicheNet updates to a frozen selection config.
+
+    LR-axis selection does not consume the NicheNet target table. A later
+    molecular summary may therefore bind a newly frozen target table without
+    reselecting the CytoBridge axes, but every selection-driving config field
+    must remain equivalent at the JSON-value level.
+    """
+
+    try:
+        _verify_artifact_bytes(
+            config_path,
+            selection_config_record,
+            label="model-biology config",
+        )
+        return config_path
+    except ValueError as exact_error:
+        frozen_path = Path(str(selection_config_record["path"])).expanduser().resolve()
+        _verify_artifact_bytes(
+            frozen_path,
+            selection_config_record,
+            label="frozen selection config",
+        )
+        frozen = json.loads(frozen_path.read_text(encoding="utf-8"))
+
+        def selection_projection(payload: dict[str, object]) -> dict[str, object]:
+            projected = json.loads(json.dumps(payload))
+            datasets = projected.get("datasets")
+            if not isinstance(datasets, dict):
+                raise ValueError("model-biology config lacks a datasets mapping")
+            for spec in datasets.values():
+                if not isinstance(spec, dict):
+                    raise ValueError("model-biology dataset spec must be a mapping")
+                for key in MOLECULAR_CONFIG_OVERLAY_KEYS:
+                    spec.pop(key, None)
+            return projected
+
+        if selection_projection(config) != selection_projection(frozen):
+            raise ValueError(
+                "model-biology config differs from the frozen selection config "
+                "outside the allowed molecular-only NicheNet overlay fields"
+            ) from exact_error
+        return frozen_path
+
+
 def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
     """Resolve model-first LR selections into computed pathway/target evidence."""
 
@@ -534,10 +758,10 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
         raise ValueError("selection manifest has the wrong workflow")
     if selection_manifest.get("status") != "complete":
         raise ValueError("selection manifest is not complete")
-    _verify_artifact_bytes(
+    frozen_selection_config_path = _verify_molecular_config_overlay(
         config_path,
+        config,
         dict(selection_manifest["inputs"]["config"]),
-        label="model-biology config",
     )
     file_records = {
         "candidates": ("model_linked_lr_candidates.csv", "candidates"),
@@ -567,6 +791,15 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
     molecular_sources: dict[str, dict[str, object]] = {}
     for dataset in dataset_order:
         spec = dict(config["datasets"][dataset])
+        strict_nichenet_scope = _requires_positive_receiver_aupr(spec)
+        if strict_nichenet_scope and (
+            not spec.get("nichenet_summary_manifest")
+            or not spec.get("nichenet_run_manifest")
+        ):
+            raise ValueError(
+                f"{dataset} strict_confidence1 NicheNet scope requires both "
+                "nichenet_summary_manifest and nichenet_run_manifest"
+            )
         commot_lr_path = Path(spec["commot_lr_csv"]).expanduser().resolve()
         commot_pathway_path = commot_lr_path.with_name("commot_pathway_scores.csv.gz")
         source_record = dict(selection_sources[dataset])
@@ -577,16 +810,91 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
         )
         nichenet_path: Path | None = None
         nichenet_lr_path: Path | None = None
+        nichenet_summary_manifest_path: Path | None = None
+        nichenet_run_manifest_path: Path | None = None
         nichenet_record = source_record.get("nichenet_targets")
         if spec.get("nichenet_target_csv"):
             nichenet_path = Path(spec["nichenet_target_csv"]).expanduser().resolve()
-            if nichenet_record:
+            frozen_nichenet_path = (
+                Path(str(nichenet_record["path"])).expanduser().resolve()
+                if nichenet_record
+                else None
+            )
+            if nichenet_record and nichenet_path == frozen_nichenet_path:
                 _verify_artifact_bytes(
                     nichenet_path,
                     dict(nichenet_record),
                     label=f"{dataset} NicheNet target table",
                 )
             nichenet_lr_path = nichenet_path.with_name("nichenet_lr_evidence.csv.gz")
+            if not nichenet_lr_path.is_file():
+                raise FileNotFoundError(
+                    f"missing {dataset} NicheNet LR evidence: {nichenet_lr_path}"
+                )
+            if spec.get("nichenet_summary_manifest"):
+                nichenet_summary_manifest_path = (
+                    Path(str(spec["nichenet_summary_manifest"])).expanduser().resolve()
+                )
+                summary_manifest = json.loads(
+                    nichenet_summary_manifest_path.read_text(encoding="utf-8")
+                )
+                if summary_manifest.get("workflow") != (
+                    "spatial_communication_consistency_nichenet_summary"
+                ):
+                    raise ValueError(f"{dataset} NicheNet summary manifest is invalid")
+                if strict_nichenet_scope:
+                    receiver_summary = dict(summary_manifest.get("receiver_status", {}))
+                    if (
+                        not bool(receiver_summary.get("present"))
+                        or int(receiver_summary.get("n_complete_receivers", 0)) < 1
+                    ):
+                        raise ValueError(
+                            f"{dataset} strict NicheNet summary must bind at least "
+                            "one complete receiver status"
+                        )
+                summary_outputs = dict(summary_manifest.get("outputs", {}))
+                target_record = summary_outputs.get(nichenet_path.name)
+                if not target_record:
+                    raise ValueError(
+                        f"{dataset} NicheNet summary does not bind {nichenet_path.name}"
+                    )
+                _verify_artifact_bytes(
+                    nichenet_path,
+                    dict(target_record),
+                    label=f"{dataset} NicheNet summary target output",
+                )
+                if nichenet_lr_path.is_file():
+                    lr_record = summary_outputs.get(nichenet_lr_path.name)
+                    if not lr_record:
+                        raise ValueError(
+                            f"{dataset} NicheNet summary does not bind "
+                            f"{nichenet_lr_path.name}"
+                        )
+                    _verify_artifact_bytes(
+                        nichenet_lr_path,
+                        dict(lr_record),
+                        label=f"{dataset} NicheNet summary LR output",
+                    )
+            if spec.get("nichenet_run_manifest"):
+                nichenet_run_manifest_path = (
+                    Path(str(spec["nichenet_run_manifest"])).expanduser().resolve()
+                )
+                if not nichenet_run_manifest_path.is_file():
+                    raise FileNotFoundError(
+                        f"missing {dataset} NicheNet run manifest: "
+                        f"{nichenet_run_manifest_path}"
+                    )
+                run_manifest = json.loads(
+                    nichenet_run_manifest_path.read_text(encoding="utf-8")
+                )
+                if strict_nichenet_scope and (
+                    run_manifest.get("formal_primary") is not False
+                    or str(run_manifest.get("analysis_tier")) != "sensitivity"
+                ):
+                    raise ValueError(
+                        f"{dataset} strict NicheNet run manifest must declare "
+                        "formal_primary=false and analysis_tier=sensitivity"
+                    )
         molecular_specs[dataset] = {
             "commot_lr_csv": str(commot_lr_path),
             "commot_pathway_csv": str(commot_pathway_path),
@@ -604,10 +912,23 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
         }
         if nichenet_path is not None:
             molecular_sources[dataset]["nichenet_targets"] = _artifact(nichenet_path)
+            molecular_sources[dataset]["nichenet_target_evidence_scope"] = str(
+                molecular_specs[dataset].get(
+                    "nichenet_target_evidence_scope", "pair_level_receiver_response"
+                )
+            )
             assert nichenet_lr_path is not None
             if nichenet_lr_path.is_file():
                 molecular_sources[dataset]["nichenet_lr_evidence"] = _artifact(
                     nichenet_lr_path
+                )
+            if nichenet_summary_manifest_path is not None:
+                molecular_sources[dataset]["nichenet_summary_manifest"] = _artifact(
+                    nichenet_summary_manifest_path
+                )
+            if nichenet_run_manifest_path is not None:
+                molecular_sources[dataset]["nichenet_run_manifest"] = _artifact(
+                    nichenet_run_manifest_path
                 )
 
     commot_pathways, commot_lrs, nichenet_targets = _selected_molecular_evidence(
@@ -785,6 +1106,11 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
 
     chain_rows: list[dict[str, object]] = []
     for dataset, targets_full in nichenet_target_tables.items():
+        evidence_scope = str(
+            molecular_specs[dataset].get(
+                "nichenet_target_evidence_scope", "pair_level_receiver_response"
+            )
+        )
         passes_support = (
             candidates["passes_support"].astype(str).str.casefold().isin({"true", "1"})
             if "passes_support" in candidates
@@ -835,6 +1161,13 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
         merged["ligand_target_evidence"] = pd.to_numeric(
             merged["ligand_target_evidence"], errors="raise"
         )
+        if "aupr_corrected" in merged and _requires_positive_receiver_aupr(
+            molecular_specs[dataset]
+        ):
+            merged["aupr_corrected"] = pd.to_numeric(
+                merged["aupr_corrected"], errors="raise"
+            )
+            merged = merged.loc[merged["aupr_corrected"] > 0].copy()
         merged = merged.loc[merged["ligand_target_evidence"] > 0]
         if merged.empty:
             continue
@@ -848,6 +1181,7 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
         )
         chosen = chosen.drop_duplicates("target").head(3)
         for target_rank, record in enumerate(chosen.itertuples(index=False), start=1):
+            aupr_value = getattr(record, "aupr_corrected", np.nan)
             chain_rows.append(
                 {
                     "dataset": dataset,
@@ -864,6 +1198,10 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
                     "nichenet_ligand_target_evidence": float(
                         record.ligand_target_evidence
                     ),
+                    "nichenet_corrected_aupr": (
+                        float(aupr_value) if pd.notna(aupr_value) else np.nan
+                    ),
+                    "nichenet_evidence_scope": evidence_scope,
                 }
             )
     model_first_chains = pd.DataFrame(
@@ -881,6 +1219,8 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
             "receiver_target_rank",
             "receiver_target",
             "nichenet_ligand_target_evidence",
+            "nichenet_corrected_aupr",
+            "nichenet_evidence_scope",
         ],
     )
 
@@ -1056,7 +1396,7 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
     commot_lrs.to_csv(output_paths["commot_lrs"], index=False)
     nichenet_targets.to_csv(output_paths["nichenet_targets"], index=False)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "workflow": "five_dataset_model_biology_molecular_summary",
         "status": "complete",
         "selection_rule": (
@@ -1064,9 +1404,16 @@ def summarize_model_biology_molecular(args: argparse.Namespace) -> None:
             "scores sum abundance-normalized exact-message x LR-activity scores "
             "over all eligible directed model-pair/LR axes assigned to a pathway"
         ),
+        "nichenet_chain_rule": (
+            "Within each dataset, require positive ligand-target evidence; for the "
+            "strict_confidence1 cross-species zebrafish scope additionally require "
+            "corrected receiver AUPR > 0. Then select the first CytoBridge-ranked "
+            "supported LR x directed-pair axis with a matched NicheNet receiver target."
+        ),
         "implementation": _model_biology_implementation(),
         "inputs": {
             "config": _artifact(config_path),
+            "frozen_selection_config": _artifact(frozen_selection_config_path),
             "selection_manifest": _artifact(selection_manifest_path),
             "selection_outputs": {
                 label: _artifact(path) for label, path in paths.items()
@@ -2834,6 +3181,72 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     ).set_index("dataset")
     rank_metrics = pd.read_csv(molecular_dir / "molecular_rank_consistency.csv")
     chains = pd.read_csv(molecular_dir / "model_first_nichenet_chains.csv")
+    zebrafish_chains = chains.loc[
+        chains["dataset"].astype(str).eq("zebrafish")
+    ].sort_values("receiver_target_rank")
+    if zebrafish_chains.empty:
+        raise ValueError("NicheNet chain is missing for zebrafish")
+    zebrafish_scope = str(zebrafish_chains.iloc[0].get("nichenet_evidence_scope", ""))
+    zebrafish_is_strict_proxy = "strict_confidence1" in zebrafish_scope.casefold()
+    zebrafish_is_sensitivity = (
+        zebrafish_is_strict_proxy or "sensitivity" in zebrafish_scope.casefold()
+    )
+    zebrafish_aupr = pd.to_numeric(
+        zebrafish_chains.get(
+            "nichenet_corrected_aupr",
+            pd.Series(np.nan, index=zebrafish_chains.index),
+        ),
+        errors="coerce",
+    ).dropna()
+    zebrafish_corrected_aupr = (
+        float(zebrafish_aupr.iloc[0]) if not zebrafish_aupr.empty else np.nan
+    )
+    if zebrafish_is_strict_proxy:
+        aupr_parenthetical = (
+            f" (corrected AUPR = {zebrafish_corrected_aupr:.3f})"
+            if np.isfinite(zebrafish_corrected_aupr)
+            else ""
+        )
+        zebrafish_artwork_note = (
+            "† Zebrafish NicheNet uses confidence-1 one-to-one orthology with the "
+            "mouse prior (cross-species sensitivity)."
+        )
+        zebrafish_caption_clause = (
+            "Zebrafish is a cross-species sensitivity analysis using a prespecified "
+            "Ensembl 116 one-to-one, confidence-1, symbol-bijective mapping and the "
+            "official mouse NicheNet prior"
+            "; it is excluded from pooled and primary NicheNet claims and is not a "
+            "native zebrafish regulatory prior. The corrected AUPR"
+            f"{aupr_parenthetical.replace(' (corrected AUPR = ', ' = ').rstrip(')')} "
+            "measures how well mapped ligand activity recovers receiver-response "
+            "genes; it is not an LR-axis confidence score or a cross-dataset effect "
+            "size. NicheNet supports the ligand-to-receiver-target annotation, not "
+            "independent validation of the receptor or the complete LR axis. "
+        )
+    elif zebrafish_is_sensitivity:
+        aupr_parenthetical = (
+            f" (corrected AUPR = {zebrafish_corrected_aupr:.3f})"
+            if np.isfinite(zebrafish_corrected_aupr)
+            else ""
+        )
+        zebrafish_artwork_note = (
+            "† Cross-species NicheNet-v2 orthology sensitivity"
+            f"{aupr_parenthetical}; excluded from pooled NicheNet claims."
+        )
+        zebrafish_caption_clause = (
+            "Zebrafish is a cross-species sensitivity analysis using a prespecified "
+            "Ensembl 116 one-to-one, confidence-unfiltered, symbol-bijective mapping "
+            "and the official mouse NicheNet prior"
+            f"{aupr_parenthetical}; it is excluded from pooled NicheNet claims and is "
+            "not a native zebrafish regulatory prior or a primary NicheNet claim. "
+        )
+    else:
+        zebrafish_artwork_note = ""
+        zebrafish_caption_clause = (
+            "Zebrafish uses the prespecified cross-species NicheNet evidence scope "
+            f"'{zebrafish_scope}' and the official mouse prior; it is not a native "
+            "zebrafish regulatory prior. "
+        )
 
     audit_dataset_order = list(FORMAL_DATASET_CONTRACTS)
     dataset_order = [dataset for dataset in audit_dataset_order if dataset != "admouse"]
@@ -3133,10 +3546,10 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     ax_c_chain = fig.add_subplot(outer[5])
     ax_c_chain.set_axis_off()
     ax_c_chain.set_xlim(0.0, 1.0)
-    ax_c_chain.set_ylim(-0.82, 3.38)
+    ax_c_chain.set_ylim(-1.04, 4.38)
     ax_c_chain.text(
         0.42,
-        3.18,
+        4.18,
         "CytoBridge ranking",
         fontsize=7.8,
         fontweight="bold",
@@ -3144,18 +3557,18 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.text(
         0.865,
-        3.18,
+        4.18,
         "COMMOT and NicheNet results",
         fontsize=7.8,
         fontweight="bold",
         ha="center",
     )
-    ax_c_chain.plot([0.14, 0.70], [2.99, 2.99], color="black", linewidth=0.55)
-    ax_c_chain.plot([0.72, 1.0], [2.99, 2.99], color="black", linewidth=0.55)
-    ax_c_chain.text(0.00, 2.72, "Dataset", fontsize=7.0, fontweight="bold")
+    ax_c_chain.plot([0.14, 0.70], [3.99, 3.99], color="black", linewidth=0.55)
+    ax_c_chain.plot([0.72, 1.0], [3.99, 3.99], color="black", linewidth=0.55)
+    ax_c_chain.text(0.00, 3.72, "Dataset", fontsize=7.0, fontweight="bold")
     ax_c_chain.text(
         0.14,
-        2.79,
+        3.79,
         "Directed pair\n(sender; receiver)",
         fontsize=6.8,
         fontweight="bold",
@@ -3164,7 +3577,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.text(
         0.40,
-        2.79,
+        3.79,
         "LR axis\nDatabase pathway",
         fontsize=6.8,
         fontweight="bold",
@@ -3173,8 +3586,8 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.text(
         0.665,
-        2.86,
-        "CytoBridge\nglobal\nrank*",
+        3.86,
+        "CytoBridge\nLR × directed-\npair rank*",
         fontsize=6.5,
         fontweight="bold",
         ha="center",
@@ -3183,7 +3596,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.text(
         0.78,
-        2.86,
+        3.86,
         "COMMOT\nsame-axis\npercentile",
         fontsize=6.5,
         fontweight="bold",
@@ -3193,7 +3606,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.text(
         0.925,
-        2.86,
+        3.86,
         "NicheNet-predicted\nreceiver\ntargets",
         fontsize=6.5,
         fontweight="bold",
@@ -3201,8 +3614,8 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         va="top",
         linespacing=1.0,
     )
-    ax_c_chain.plot([0.0, 1.0], [2.34, 2.34], color="black", linewidth=0.75)
-    chain_order = ["mosta", "arista", "chicken_heart"]
+    ax_c_chain.plot([0.0, 1.0], [3.34, 3.34], color="black", linewidth=0.75)
+    chain_order = ["zebrafish", "mosta", "arista", "chicken_heart"]
     for row_index, dataset in enumerate(chain_order):
         group = chains.loc[chains["dataset"].astype(str).eq(dataset)].sort_values(
             "receiver_target_rank"
@@ -3210,7 +3623,14 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         if group.empty:
             raise ValueError(f"NicheNet chain is missing for {dataset}")
         first = group.iloc[0]
-        y = float(1.95 - row_index)
+        receiver_targets = ", ".join(group["receiver_target"].astype(str).tolist())
+        if dataset == "zebrafish" and not zebrafish_is_strict_proxy:
+            receiver_targets = ", ".join(
+                group["receiver_target"].astype(str).str.casefold().tolist()
+            )
+        if dataset == "zebrafish" and zebrafish_is_sensitivity:
+            receiver_targets += "†"
+        y = float(2.95 - row_index)
         if row_index:
             ax_c_chain.plot(
                 [0.0, 1.0],
@@ -3281,7 +3701,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         ax_c_chain.text(
             0.855,
             y,
-            ", ".join(group["receiver_target"].astype(str).tolist()),
+            receiver_targets,
             fontsize=7.4,
             color="black",
             va="center",
@@ -3290,11 +3710,20 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     ax_c_chain.text(
         0.0,
         -0.67,
-        "*Highest-ranked CytoBridge axis with NicheNet coverage.",
+        "*First CytoBridge-ranked LR × directed-pair axis with a matched NicheNet-predicted receiver target.",
         fontsize=7.0,
         color="black",
         va="top",
     )
+    if zebrafish_artwork_note:
+        ax_c_chain.text(
+            0.0,
+            -0.87,
+            zebrafish_artwork_note,
+            fontsize=7.0,
+            color="black",
+            va="top",
+        )
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -3315,6 +3744,28 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     rank_metrics.to_csv(panel_rank_path, index=False)
     chains.to_csv(panel_chain_path, index=False)
 
+    def molecular_metric_range(method: str) -> str:
+        local = rank_metrics.loc[
+            rank_metrics["dataset"].astype(str).isin(dataset_order)
+            & rank_metrics["external_method"].astype(str).eq(method)
+            & rank_metrics["available"].astype(str).str.casefold().isin({"true", "1"})
+        ].copy()
+        if method == "NicheNet" and zebrafish_is_sensitivity:
+            local = local.loc[~local["dataset"].astype(str).eq("zebrafish")]
+        rho = pd.to_numeric(local["spearman_rho"], errors="coerce").dropna()
+        jaccard = pd.to_numeric(local["top_jaccard"], errors="coerce").dropna()
+        if rho.empty or jaccard.empty:
+            return f"{method} not evaluable"
+        return (
+            f"{method} Spearman ρ={rho.min():.2f}–{rho.max():.2f}, "
+            f"top-20% Jaccard={jaccard.min():.2f}–{jaccard.max():.2f} "
+            f"(n={len(local)})"
+        )
+
+    molecular_metric_summary = (
+        f"{molecular_metric_range('COMMOT')}; " f"{molecular_metric_range('NicheNet')}"
+    )
+
     caption = (
         "**Four-dataset interaction consistency.** (a) CytoBridge interaction-"
         "contribution scores are compared with COMMOT and the frozen current-database "
@@ -3324,19 +3775,21 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "abundance-normalized exact-message × ligand × receptor axis before any "
         "external lookup. Rows connect the sender, LR pathway annotation, and receiver "
         "and report the subsequent COMMOT LR rank within that same directed cell pair "
-        "and the pair-level percentile. (c) For each evaluable dataset, the highest "
-        "globally ranked CytoBridge LR × directed-pair axis with matched positive "
-        "NicheNet ligand-target evidence is listed. Global ranks are calculated over "
-        "all supported CytoBridge axes before NicheNet matching. The COMMOT column is "
+        "and the pair-level percentile. (c) For each dataset, the highest globally "
+        "ranked CytoBridge LR × directed-pair axis with matched positive NicheNet "
+        "ligand-target evidence is listed. Ranks are calculated over all "
+        "supported CytoBridge LR × directed-pair axes before NicheNet matching. The "
+        "COMMOT column is "
         "the same-axis percentile, and the final column contains NicheNet-predicted "
         "receiver target genes. These targets are not CytoBridge outputs or "
-        "experimentally measured responses. Zebrafish NicheNet evidence was "
-        "unavailable under the frozen mapping. Cell-type names follow the source-atlas "
+        "experimentally measured responses. "
+        f"{zebrafish_caption_clause}"
+        "Cell-type names "
+        "follow the source-atlas "
         "annotations. "
-        "Across jointly positive LR × directed-pair candidates, molecular rank "
-        "agreement was positive in every evaluable dataset (COMMOT Spearman "
-        "ρ=0.17–0.56, top-20% Jaccard=0.20–0.36; NicheNet ρ=0.21–0.47, "
-        "Jaccard=0.19–0.30). These are shared-input computational "
+        "Across jointly positive LR × directed-pair candidates, the frozen "
+        f"molecular-rank summaries are {molecular_metric_summary}. These are "
+        "shared-input computational "
         "consistency analyses, not independent-cohort or causal validation."
     )
     caption_path = output / "caption.md"
@@ -3377,7 +3830,9 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 "biochemical probabilities. COMMOT is queried after CytoBridge "
                 "selection. In panel c, NicheNet supplies the displayed predicted "
                 "receiver targets; those genes are neither CytoBridge outputs nor "
-                "experimentally observed responses. CellAgentChat is a frozen "
+                "experimentally observed responses. "
+                f"{zebrafish_caption_clause}"
+                "CellAgentChat is a frozen "
                 "shared-database proxy analysis. Cross-method agreement is descriptive "
                 "and does not establish causality or independent-cohort validation.",
                 "",
@@ -3397,7 +3852,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         encoding="utf-8",
     )
     manifest = {
-        "schema_version": 5,
+        "schema_version": 6,
         "workflow": "four_dataset_interaction_biology_figure",
         "displayed_datasets": dataset_order,
         "audit_datasets": audit_dataset_order,
@@ -3422,13 +3877,22 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             },
             "c": {
                 "selection": (
-                    "highest globally ranked supported CytoBridge LR x directed-pair "
-                    "axis with matched positive NicheNet target evidence"
+                    "for each dataset, the highest ranked supported CytoBridge LR x "
+                    "directed-pair axis with matched positive NicheNet target evidence"
                 ),
                 "commot": "post-selection same-axis percentile",
                 "nichenet": (
                     "predicted receiver targets; not CytoBridge outputs or "
                     "experimentally measured responses"
+                ),
+                "zebrafish_nichenet_scope": zebrafish_scope,
+                "zebrafish_nichenet_corrected_aupr": (
+                    zebrafish_corrected_aupr
+                    if np.isfinite(zebrafish_corrected_aupr)
+                    else None
+                ),
+                "zebrafish_included_in_pooled_nichenet_claims": (
+                    not zebrafish_is_sensitivity
                 ),
             },
         },
