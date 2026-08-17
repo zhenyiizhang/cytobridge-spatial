@@ -1033,7 +1033,351 @@ def _read_required_table(paths: Mapping[str, Path], filename: str) -> pd.DataFra
     return _read_csv(paths[filename], label=filename)
 
 
-def report(
+JAM_REPORT_TABLES: dict[str, tuple[str, ...]] = {
+    "compatibility_summary": (
+        "jam_compatibility_percentile_summary",
+        "compatibility_percentile_summary",
+        "jam_compatibility_percentile_summary.csv",
+    ),
+    "quartile_compatibility": (
+        "quartile_compatibility",
+        "jam_quartile_compatibility",
+        "jam_quartile_compatibility.csv",
+    ),
+    "type_pair_ranks": (
+        "type_pair_raw_attention_ranks",
+        "type_pair_raw_attention_ranks.csv",
+    ),
+    "spatial_null_summary": (
+        "somite_18hpf_spatial_null_summary",
+        "spatial_null_summary",
+        "somite_18hpf_spatial_null_summary.csv",
+    ),
+    "spatial_null_iterations": (
+        "somite_18hpf_spatial_null_iterations",
+        "spatial_null_iterations",
+        "somite_18hpf_spatial_null_iterations.csv.gz",
+    ),
+    "myog_association": (
+        "myog_association",
+        "somite_association",
+        "myog_association.csv",
+        "somite_18hpf_gene_association.csv",
+    ),
+    "expression_detection": (
+        "expression_detection_by_stage_type",
+        "somite_detection",
+        "expression_detection_by_stage_type.csv",
+        "somite_18hpf_gene_detection.csv",
+    ),
+    "spatial_cells": (
+        "somite_18hpf_spatial_cells",
+        "spatial_cells",
+        "somite_18hpf_spatial_cells.csv.gz",
+    ),
+    "display_edges": (
+        "trained_display_edges",
+        "trained_jam_display_edges",
+        "jam_display_edges",
+        "trained_jam_display_edges.csv",
+        "trained_jam_display_edges.csv.gz",
+    ),
+}
+
+
+def _normalized_artifact_name(value: str) -> str:
+    return str(value).strip().casefold().replace("-", "_")
+
+
+def _iter_manifest_artifacts(value: object, *, key_path: tuple[str, ...] = ()):
+    if isinstance(value, dict):
+        path_value = value.get("path")
+        sha_value = value.get("sha256")
+        if isinstance(path_value, str) and isinstance(sha_value, str):
+            yield key_path, value
+            return
+        for key, child in value.items():
+            yield from _iter_manifest_artifacts(child, key_path=(*key_path, str(key)))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _iter_manifest_artifacts(child, key_path=(*key_path, str(index)))
+
+
+def _verified_jam_report_tables(
+    manifest_paths: list[Path], expected_sha256s: list[str]
+) -> tuple[list[dict[str, object]], dict[str, Path]]:
+    if not manifest_paths or len(manifest_paths) != len(expected_sha256s):
+        raise ValueError(
+            "report requires matching --jam-manifest and "
+            "--expected-jam-manifest-sha256 arguments"
+        )
+    registry: list[tuple[tuple[str, ...], Mapping[str, Any]]] = []
+    manifest_records: list[dict[str, object]] = []
+    legacy_tokens = ("20260722", "20260728")
+    for manifest_path, expected_sha in zip(
+        manifest_paths, expected_sha256s, strict=True
+    ):
+        resolved = manifest_path.expanduser().resolve()
+        expected = expected_sha.casefold()
+        if len(expected) != 64 or _sha256(resolved) != expected:
+            raise ValueError(f"JAM manifest SHA-256 mismatch: {resolved}")
+        if any(token in str(resolved) for token in legacy_tokens):
+            raise ValueError(
+                "legacy 20260722/20260728 JAM artifacts are forbidden in this report"
+            )
+        payload = _load_json(resolved, label="current-checkpoint JAM manifest")
+        status = payload.get("status")
+        if status is not None and str(status).casefold() not in {
+            "complete",
+            "pass",
+            "passed",
+        }:
+            raise ValueError(f"JAM manifest is not complete: {resolved}")
+        artifact_count = 0
+        for section in ("artifacts", "outputs"):
+            if section not in payload:
+                continue
+            for key_path, record in _iter_manifest_artifacts(
+                payload[section], key_path=(section,)
+            ):
+                local_record = dict(record)
+                local_record["_manifest_dir"] = str(resolved.parent)
+                registry.append((key_path, local_record))
+                artifact_count += 1
+        if not artifact_count:
+            raise ValueError(f"JAM manifest has no formal output artifacts: {resolved}")
+        manifest_records.append(
+            {
+                "path": str(resolved),
+                "sha256": expected,
+                "size_bytes": int(resolved.stat().st_size),
+            }
+        )
+
+    resolved_tables: dict[str, Path] = {}
+    for role, candidates in JAM_REPORT_TABLES.items():
+        normalized_candidates = {_normalized_artifact_name(item) for item in candidates}
+        matches: list[tuple[tuple[str, ...], Mapping[str, Any]]] = []
+        for key_path, record in registry:
+            path = Path(str(record["path"]))
+            names = {
+                _normalized_artifact_name(key_path[-1]),
+                _normalized_artifact_name(path.name),
+            }
+            if names.intersection(normalized_candidates):
+                matches.append((key_path, record))
+        for candidate in candidates:
+            normalized_candidate = _normalized_artifact_name(candidate)
+            preferred = [
+                (key_path, record)
+                for key_path, record in matches
+                if normalized_candidate
+                in {
+                    _normalized_artifact_name(key_path[-1]),
+                    _normalized_artifact_name(Path(str(record["path"])).name),
+                }
+            ]
+            if preferred:
+                matches = preferred
+                break
+        unique: dict[str, Mapping[str, Any]] = {}
+        for _, record in matches:
+            declared = Path(str(record["path"])).expanduser()
+            candidates_local = [
+                declared,
+                Path(str(record["_manifest_dir"])) / "tables" / declared.name,
+                Path(str(record["_manifest_dir"])) / declared.name,
+            ]
+            existing = sorted(
+                {
+                    candidate.resolve()
+                    for candidate in candidates_local
+                    if candidate.is_file()
+                }
+            )
+            if len(existing) != 1:
+                raise ValueError(
+                    f"JAM artifact for {role} is unavailable or ambiguously mirrored: "
+                    f"declared={declared}, mirrors={existing}"
+                )
+            unique[str(existing[0])] = record
+        if len(unique) != 1:
+            raise ValueError(
+                f"current JAM manifests must bind exactly one {role!r} table; "
+                f"found {sorted(unique)}"
+            )
+        path_string, record = next(iter(unique.items()))
+        if any(token in path_string for token in legacy_tokens):
+            raise ValueError(
+                f"legacy JAM panel data are forbidden for role {role}: {path_string}"
+            )
+        observed = _artifact(Path(path_string))
+        expected_size = record.get(
+            "size_bytes", record.get("bytes", record.get("size"))
+        )
+        if observed["sha256"] != str(record["sha256"]).casefold():
+            raise ValueError(f"JAM artifact SHA-256 mismatch for {role}")
+        if expected_size is not None and observed["size_bytes"] != int(expected_size):
+            raise ValueError(f"JAM artifact size mismatch for {role}")
+        resolved_tables[role] = Path(path_string)
+    return manifest_records, resolved_tables
+
+
+def _column(frame: pd.DataFrame, *candidates: str, label: str) -> str:
+    for candidate in candidates:
+        if candidate in frame.columns:
+            return candidate
+    raise ValueError(f"{label} lacks any of the required columns: {candidates}")
+
+
+def _boolean_values(series: pd.Series, *, label: str) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series):
+        return series.astype(bool)
+    values = series.astype(str).str.strip().str.casefold()
+    mapping = {
+        "true": True,
+        "1": True,
+        "yes": True,
+        "jam-compatible": True,
+        "compatible": True,
+        "false": False,
+        "0": False,
+        "no": False,
+        "non-compatible": False,
+        "other": False,
+    }
+    unknown = sorted(set(values).difference(mapping))
+    if unknown:
+        raise ValueError(f"{label} contains unknown boolean labels: {unknown}")
+    return values.map(mapping).astype(bool)
+
+
+def _canonical_conditions(series: pd.Series, *, label: str) -> pd.Series:
+    values = series.astype(str).str.strip().str.casefold()
+    required = {"trained", "pre_interaction", "random"}
+    observed = set(values)
+    if observed != required:
+        raise ValueError(
+            f"{label} requires canonical current-checkpoint conditions "
+            f"{sorted(required)}; observed {sorted(observed)}. The old 'init' label "
+            "must not be silently relabelled."
+        )
+    return values
+
+
+def _canonical_compatibility_summary(frame: pd.DataFrame) -> pd.DataFrame:
+    local = frame.copy()
+    local["condition"] = _canonical_conditions(local["condition"], label="JAM summary")
+    compatibility_column = _column(
+        local, "jam_compatible", "compatibility_class", label="JAM summary"
+    )
+    local["jam_compatible"] = _boolean_values(
+        local[compatibility_column], label="JAM compatibility"
+    )
+    n_column = _column(local, "n_edges", "n_directed_edges", label="JAM summary")
+    mean_column = _column(
+        local,
+        "attention_percentile_mean",
+        "mean_attention_percentile",
+        label="JAM summary",
+    )
+    median_column = _column(
+        local,
+        "attention_percentile_median",
+        "median_attention_percentile",
+        label="JAM summary",
+    )
+    local = local.assign(
+        n_edges=pd.to_numeric(local[n_column], errors="raise").astype(int),
+        attention_percentile_mean=pd.to_numeric(local[mean_column], errors="raise"),
+        attention_percentile_median=pd.to_numeric(local[median_column], errors="raise"),
+    )
+    if local.duplicated(["condition", "jam_compatible"]).any() or len(local) != 6:
+        raise ValueError("JAM summary requires one compatible/other row per condition")
+    return local
+
+
+def _canonical_spatial_cells(frame: pd.DataFrame) -> pd.DataFrame:
+    local = frame.copy()
+    x_column = _column(local, "x", "spatial_x", label="JAM spatial cells")
+    y_column = _column(local, "y", "spatial_y", label="JAM spatial cells")
+    local["x"] = pd.to_numeric(local[x_column], errors="raise")
+    local["y"] = pd.to_numeric(local[y_column], errors="raise")
+    if "is_somite" not in local:
+        cell_type_column = _column(
+            local, "cell_type", "annotation", label="JAM spatial cells"
+        )
+        local["is_somite"] = local[cell_type_column].astype(str).eq("Somite")
+    else:
+        local["is_somite"] = _boolean_values(
+            local["is_somite"], label="JAM spatial-cell Somite mask"
+        )
+    for gene in ("jam2a", "jam3b", "myog"):
+        positive = f"{gene}_positive"
+        if positive in local:
+            local[positive] = _boolean_values(
+                local[positive], label=f"{gene} detection"
+            )
+        elif gene in local:
+            local[positive] = pd.to_numeric(local[gene], errors="raise") > 0
+        else:
+            raise ValueError(f"JAM spatial cells lack {gene} values/detection")
+    if not np.isfinite(local[["x", "y"]].to_numpy(dtype=float)).all():
+        raise ValueError("JAM spatial-cell coordinates contain non-finite values")
+    return local
+
+
+def _canonical_display_edges(frame: pd.DataFrame) -> pd.DataFrame:
+    local = frame.copy()
+    for canonical, candidates in {
+        "source_x": ("source_x",),
+        "source_y": ("source_y",),
+        "target_x": ("target_x",),
+        "target_y": ("target_y",),
+    }.items():
+        column = _column(local, *candidates, label="JAM display edges")
+        local[canonical] = pd.to_numeric(local[column], errors="raise")
+    if "condition" in local:
+        conditions = set(local["condition"].astype(str).str.casefold())
+        if conditions != {"trained"}:
+            raise ValueError(
+                "JAM display-edge table must contain only current trained edges"
+            )
+    compatibility_columns = [
+        column for column in ("jam_compatible", "compatible") if column in local
+    ]
+    if compatibility_columns:
+        local["jam_compatible"] = _boolean_values(
+            local[compatibility_columns[0]], label="JAM display-edge compatibility"
+        )
+    elif "jam_compatible_orientation" in local:
+        orientation = (
+            local["jam_compatible_orientation"].astype(str).str.strip().str.casefold()
+        )
+        local["jam_compatible"] = ~orientation.isin({"", "none", "nan"})
+        if (
+            "selection_rule" not in local
+            or not local["selection_rule"]
+            .astype(str)
+            .str.contains("JAM-compatible", case=False, regex=False)
+            .all()
+        ):
+            raise ValueError(
+                "orientation-derived display compatibility requires the frozen "
+                "JAM-compatible selection rule"
+            )
+    else:
+        raise ValueError(
+            "JAM display edges lack compatibility or orientation annotations"
+        )
+    if "display_rank" in local:
+        local = local.sort_values("display_rank", kind="mergesort")
+    if local.empty:
+        raise ValueError("JAM display-edge table is empty")
+    return local
+
+
+def _report_source_paper_legacy(
     analysis_dir: Path,
     output_dir: Path,
     *,
@@ -1690,6 +2034,811 @@ Together, the complete-pair, pre-specified source-paper, and localized circuit a
     print(report_manifest_path)
 
 
+def report(
+    analysis_dir: Path,
+    output_dir: Path,
+    *,
+    expected_analysis_manifest_sha256: str,
+    jam_manifest_paths: list[Path],
+    expected_jam_manifest_sha256s: list[str],
+) -> None:
+    """Render the current-checkpoint three-panel zebrafish reviewer figure."""
+
+    import matplotlib as mpl
+    import matplotlib.font_manager as font_manager
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+    from matplotlib.patches import FancyArrowPatch
+    from matplotlib.lines import Line2D
+
+    analysis_manifest, paths = _verified_frozen_analysis(
+        analysis_dir, expected_analysis_manifest_sha256
+    )
+    jam_manifest_records, jam_paths = _verified_jam_report_tables(
+        jam_manifest_paths, expected_jam_manifest_sha256s
+    )
+    output = _prepare_output(output_dir)
+    try:
+        font_manager.findfont("Arial", fallback_to_default=False)
+    except ValueError as error:
+        raise RuntimeError("Arial is required for the publication report") from error
+    mpl.rcParams.update(
+        {
+            "font.family": "Arial",
+            "font.size": 8.5,
+            "axes.titlesize": 9.0,
+            "axes.labelsize": 8.5,
+            "xtick.labelsize": 7.5,
+            "ytick.labelsize": 7.5,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "axes.titlecolor": "black",
+            "xtick.color": "black",
+            "ytick.color": "black",
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+        }
+    )
+
+    pair = _read_required_table(paths, "directed_pair_concordance.csv")
+    compatibility = _canonical_compatibility_summary(
+        _read_csv(jam_paths["compatibility_summary"], label="JAM compatibility")
+    )
+    quartile = _read_csv(
+        jam_paths["quartile_compatibility"], label="JAM quartile compatibility"
+    ).copy()
+    quartile["condition"] = _canonical_conditions(
+        quartile["condition"], label="JAM quartile table"
+    )
+    if quartile.duplicated("condition").any() or len(quartile) != 3:
+        raise ValueError("JAM quartile table requires one row per condition")
+    type_pair = _read_csv(jam_paths["type_pair_ranks"], label="JAM type-pair ranks")
+    type_pair["condition"] = _canonical_conditions(
+        type_pair["condition"], label="JAM type-pair ranks"
+    )
+    if "stage_label" in type_pair:
+        type_pair = type_pair.loc[type_pair["stage_label"].astype(str).eq("18hpf")]
+    somite_pair = type_pair.loc[
+        type_pair["sender_type"].astype(str).eq("Somite")
+        & type_pair["receiver_type"].astype(str).eq("Somite")
+    ].copy()
+    if somite_pair.duplicated("condition").any() or len(somite_pair) != 3:
+        raise ValueError(
+            "type-pair table requires one 18 hpf Somite-to-Somite row per condition"
+        )
+    rank_n_column = _column(
+        somite_pair,
+        "n_complete_directed_type_pairs",
+        "n_ranked_contexts",
+        label="Somite type-pair ranks",
+    )
+    somite_pair["rank_from_top"] = pd.to_numeric(
+        somite_pair["rank_from_top"], errors="raise"
+    )
+    somite_pair["rank_n"] = pd.to_numeric(somite_pair[rank_n_column], errors="raise")
+    somite_pair["top_rank_percentile"] = np.where(
+        somite_pair["rank_n"] > 1,
+        1 - (somite_pair["rank_from_top"] - 1) / (somite_pair["rank_n"] - 1),
+        1.0,
+    )
+
+    null_summary = _read_csv(
+        jam_paths["spatial_null_summary"], label="JAM spatial null summary"
+    )
+    if "stage_label" in null_summary:
+        null_summary = null_summary.loc[
+            null_summary["stage_label"].astype(str).eq("18hpf")
+        ]
+    if "cell_type" in null_summary:
+        null_summary = null_summary.loc[
+            null_summary["cell_type"].astype(str).eq("Somite")
+        ]
+    if len(null_summary) != 1:
+        raise ValueError("spatial-null summary requires one 18 hpf Somite row")
+    null_row = null_summary.iloc[0]
+    null_iterations = _read_csv(
+        jam_paths["spatial_null_iterations"], label="JAM spatial null iterations"
+    )
+    if null_iterations.empty:
+        raise ValueError("JAM spatial-null iterations are empty")
+
+    association = _read_csv(jam_paths["myog_association"], label="JAM-myog association")
+    if "stage_label" in association:
+        association = association.loc[
+            association["stage_label"].astype(str).eq("18hpf")
+        ]
+    if "cell_type" in association:
+        association = association.loc[association["cell_type"].astype(str).eq("Somite")]
+    association = association.loc[
+        association["gene_b"].astype(str).str.casefold().eq("myog")
+        & association["gene_a"].astype(str).str.casefold().isin(["jam2a", "jam3b"])
+    ].copy()
+    if set(association["gene_a"].astype(str).str.casefold()) != {"jam2a", "jam3b"}:
+        raise ValueError("association table requires Jam2a-myog and Jam3b-myog rows")
+
+    detection = _read_csv(
+        jam_paths["expression_detection"], label="JAM expression detection"
+    )
+    if "stage_label" in detection:
+        detection = detection.loc[detection["stage_label"].astype(str).eq("18hpf")]
+    if "cell_type" in detection:
+        detection = detection.loc[detection["cell_type"].astype(str).eq("Somite")]
+    detection = detection.loc[
+        detection["gene"].astype(str).str.casefold().isin(["jam2a", "jam3b", "myog"])
+    ].copy()
+    detection["gene_key"] = detection["gene"].astype(str).str.casefold()
+    if set(detection["gene_key"]) != {"jam2a", "jam3b", "myog"}:
+        raise ValueError("detection table requires jam2a, jam3b, and myog")
+    detection_fraction_column = _column(
+        detection,
+        "detected_fraction",
+        "detection_fraction",
+        label="JAM expression detection",
+    )
+    detection["detection_fraction"] = pd.to_numeric(
+        detection[detection_fraction_column], errors="raise"
+    )
+    cells = _canonical_spatial_cells(
+        _read_csv(jam_paths["spatial_cells"], label="JAM spatial cells")
+    )
+    if "stage_label" in cells:
+        cells = cells.loc[cells["stage_label"].astype(str).eq("18hpf")]
+    display_edges = _canonical_display_edges(
+        _read_csv(jam_paths["display_edges"], label="trained JAM display edges")
+    )
+    n_somite = int(cells["is_somite"].sum())
+    if "n_cells" in null_summary and n_somite != int(null_row["n_cells"]):
+        raise ValueError("spatial-cell and spatial-null Somite counts disagree")
+
+    navy = "#214E78"
+    teal = "#168A83"
+    gold = "#D9A441"
+    coral = "#C65F4A"
+    purple = "#66508F"
+    dark_grey = "#6F777D"
+    middle_grey = "#AEB6BC"
+    pale_grey = "#D8DDE1"
+    background_grey = "#ECEFF1"
+    condition_order = ["trained", "pre_interaction", "random"]
+    condition_labels = {
+        "trained": "Trained",
+        "pre_interaction": "Pre-interaction\n(Refine)",
+        "random": "Randomized",
+    }
+    condition_colors = {
+        "trained": navy,
+        "pre_interaction": teal,
+        "random": dark_grey,
+    }
+
+    fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=False)
+    outer = fig.add_gridspec(
+        2,
+        2,
+        width_ratios=(0.37, 0.63),
+        height_ratios=(0.46, 0.54),
+        left=0.085,
+        right=0.985,
+        top=0.982,
+        bottom=0.075,
+        wspace=0.22,
+        hspace=0.24,
+    )
+
+    def _headed_panel(parent, label: str, title: str):
+        nested = parent.subgridspec(2, 1, height_ratios=(0.13, 1.0), hspace=0.03)
+        heading = fig.add_subplot(nested[0])
+        heading.axis("off")
+        heading.text(0, 0.52, label, fontsize=14, fontweight="bold", va="center")
+        heading.text(0.10, 0.52, title, fontsize=11.5, fontweight="bold", va="center")
+        return nested[1]
+
+    a_body = _headed_panel(outer[0, 0], "a", "Complete interaction field")
+    ax_a = fig.add_subplot(a_body)
+    pair_order = [
+        ("exact_message", "COMMOT"),
+        ("attention", "COMMOT"),
+        ("exact_message", "CellAgentChat"),
+        ("attention", "CellAgentChat"),
+    ]
+    rows = pair.set_index(["cytobridge_view", "external_method"]).loc[pair_order]
+    dimensions = {
+        "n_pairs": set(rows["n_pairs"].astype(int)),
+        "n_strata": set(rows["n_strata"].astype(int)),
+        "n_permutations": set(rows["n_permutations"].astype(int)),
+    }
+    if any(len(values) != 1 for values in dimensions.values()):
+        raise ValueError("pair-concordance rows disagree on null-test dimensions")
+    n_pairs = dimensions["n_pairs"].pop()
+    n_strata = dimensions["n_strata"].pop()
+    n_pair_permutations = dimensions["n_permutations"].pop()
+    if n_pairs != 361:
+        raise ValueError("reviewer figure requires the complete 19 x 19 pair field")
+    y_a = np.arange(4)[::-1]
+    labels_a = [
+        "COMMOT\nExact message",
+        "COMMOT\nAttention",
+        "CellAgentChat\nExact message",
+        "CellAgentChat\nAttention",
+    ]
+    colors_a = [teal, teal, dark_grey, dark_grey]
+    null_min = float(rows["null_adjusted_spearman_q025"].min())
+    observed_max = float(rows["adjusted_spearman_rho"].max())
+    for y_value, (_, row), color in zip(y_a, rows.iterrows(), colors_a, strict=True):
+        ax_a.plot(
+            [row.null_adjusted_spearman_q025, row.null_adjusted_spearman_q975],
+            [y_value, y_value],
+            color=middle_grey,
+            linewidth=5.0,
+            solid_capstyle="round",
+            zorder=1,
+        )
+        ax_a.scatter(
+            row.null_adjusted_spearman_mean,
+            y_value,
+            s=20,
+            facecolor="white",
+            edgecolor=dark_grey,
+            linewidth=0.7,
+            zorder=2,
+        )
+        ax_a.scatter(
+            row.adjusted_spearman_rho,
+            y_value,
+            s=48,
+            color=color,
+            edgecolor="white",
+            linewidth=0.6,
+            zorder=3,
+        )
+        ax_a.text(
+            float(row.adjusted_spearman_rho) + 0.018,
+            y_value,
+            f"ρ={row.adjusted_spearman_rho:.2f}\n"
+            f"P={row.adjusted_spearman_empirical_p_upper:.3g}",
+            va="center",
+            fontsize=6.6,
+            linespacing=0.90,
+        )
+    ax_a.axvline(0, color=middle_grey, linewidth=0.7)
+    ax_a.set_yticks(y_a, labels_a, fontsize=7.3)
+    ax_a.set_xlim(min(-0.05, null_min - 0.04), min(1.08, observed_max + 0.16))
+    ax_a.set_ylim(-0.55, 3.55)
+    ax_a.set_xlabel(f"Adjusted Spearman ρ ({n_pairs} directed pairs)")
+    ax_a.set_title("Observed concordance and structured-null 95% interval", pad=3)
+    ax_a.grid(axis="x", color=pale_grey, linewidth=0.5)
+
+    b_body = _headed_panel(
+        outer[0, 1], "b", "JAM-compatible structure after interaction training"
+    )
+    b_grid = b_body.subgridspec(1, 3, width_ratios=(0.40, 0.27, 0.33), wspace=0.58)
+    ax_b1 = fig.add_subplot(b_grid[0])
+    ax_b2 = fig.add_subplot(b_grid[1])
+    ax_b3 = fig.add_subplot(b_grid[2])
+    y_b = np.arange(3)[::-1]
+    for y_value, condition in zip(y_b, condition_order, strict=True):
+        local = compatibility.loc[compatibility["condition"].eq(condition)]
+        compatible_row = local.loc[local["jam_compatible"]].iloc[0]
+        other_row = local.loc[~local["jam_compatible"]].iloc[0]
+        x_compatible = float(compatible_row["attention_percentile_median"])
+        x_other = float(other_row["attention_percentile_median"])
+        ax_b1.plot(
+            [x_other, x_compatible],
+            [y_value, y_value],
+            color=middle_grey,
+            linewidth=1.2,
+            zorder=1,
+        )
+        ax_b1.scatter(
+            x_other,
+            y_value,
+            s=36,
+            marker="s",
+            facecolor="white",
+            edgecolor=condition_colors[condition],
+            linewidth=1.1,
+            zorder=2,
+        )
+        ax_b1.scatter(
+            x_compatible,
+            y_value,
+            s=46,
+            color=condition_colors[condition],
+            edgecolor="white",
+            linewidth=0.55,
+            zorder=3,
+        )
+    ax_b1.set_yticks(y_b, [condition_labels[item] for item in condition_order])
+    ax_b1.set_xlim(0, 1.02)
+    ax_b1.set_xlabel("Median attention percentile")
+    ax_b1.set_title("Compatible versus other", pad=3)
+    ax_b1.grid(axis="x", color=pale_grey, linewidth=0.5)
+    ax_b1.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=navy,
+                markeredgecolor="white",
+                label="JAM-compatible",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="s",
+                color="none",
+                markerfacecolor="white",
+                markeredgecolor=navy,
+                label="Other",
+            ),
+        ],
+        frameon=False,
+        fontsize=6.5,
+        loc="lower left",
+    )
+
+    somite_pair = somite_pair.set_index("condition").loc[condition_order]
+    for y_value, (condition, row) in zip(y_b, somite_pair.iterrows(), strict=True):
+        ax_b2.scatter(
+            row.top_rank_percentile,
+            y_value,
+            s=45,
+            color=condition_colors[condition],
+            edgecolor="white",
+            linewidth=0.55,
+        )
+        ax_b2.text(
+            min(1.0, float(row.top_rank_percentile) + 0.035),
+            y_value,
+            f"{int(row.rank_from_top)}/{int(row.rank_n)}",
+            va="center",
+            fontsize=6.8,
+        )
+    ax_b2.set_yticks([])
+    ax_b2.set_xlim(0, 1.08)
+    ax_b2.set_xlabel("Top-rank percentile")
+    ax_b2.set_title("Somite → Somite rank", pad=3)
+    ax_b2.grid(axis="x", color=pale_grey, linewidth=0.5)
+
+    quartile = quartile.set_index("condition").loc[condition_order]
+    odds_column = _column(
+        quartile, "top_vs_bottom_odds_ratio", label="JAM quartile table"
+    )
+    p_column = _column(
+        quartile,
+        "fisher_exact_two_sided_p",
+        "fisher_exact_two_sided_p_descriptive_technical",
+        label="JAM quartile table",
+    )
+    odds = pd.to_numeric(quartile[odds_column], errors="raise")
+    if (~np.isfinite(odds) | (odds <= 0)).any():
+        raise ValueError("JAM compatibility odds ratios must be finite and positive")
+    for y_value, condition in zip(y_b, condition_order, strict=True):
+        ax_b3.scatter(
+            odds.loc[condition],
+            y_value,
+            s=46,
+            color=condition_colors[condition],
+            edgecolor="white",
+            linewidth=0.55,
+        )
+        ax_b3.text(
+            odds.loc[condition] * 1.10,
+            y_value,
+            f"P={float(quartile.loc[condition, p_column]):.2g}",
+            va="center",
+            fontsize=6.6,
+        )
+    ax_b3.axvline(1, color=middle_grey, linewidth=0.8, linestyle="--")
+    ax_b3.set_xscale("log")
+    ax_b3.set_xlim(max(0.6, float(odds.min()) / 1.6), float(odds.max()) * 2.5)
+    ax_b3.set_yticks([])
+    ax_b3.set_xlabel("Top/bottom-quartile odds ratio")
+    ax_b3.set_title("Top/bottom enrichment", pad=3)
+    ax_b3.grid(axis="x", color=pale_grey, linewidth=0.5, which="major")
+
+    c_body = _headed_panel(
+        outer[1, :], "c", "Somite-localized JAM program and myogenic association"
+    )
+    c_grid = c_body.subgridspec(1, 2, width_ratios=(0.43, 0.57), wspace=0.23)
+    ax_c1 = fig.add_subplot(c_grid[0])
+    c_metrics = c_grid[1].subgridspec(
+        1, 3, width_ratios=(0.28, 0.36, 0.36), wspace=0.55
+    )
+    ax_c2 = fig.add_subplot(c_metrics[0])
+    ax_c3 = fig.add_subplot(c_metrics[1])
+    ax_c4 = fig.add_subplot(c_metrics[2])
+
+    background = cells.loc[~cells["is_somite"]]
+    somite = cells.loc[cells["is_somite"]]
+    ax_c1.scatter(
+        background["x"],
+        background["y"],
+        s=1.4,
+        color=background_grey,
+        linewidth=0,
+        alpha=0.70,
+    )
+    ax_c1.scatter(
+        somite["x"],
+        somite["y"],
+        s=3.0,
+        color="#C9DAD8",
+        linewidth=0,
+        alpha=0.78,
+    )
+    incompatible = display_edges.loc[~display_edges["jam_compatible"]]
+    compatible_edges = display_edges.loc[display_edges["jam_compatible"]]
+    if not incompatible.empty:
+        segments = (
+            incompatible[["source_x", "source_y", "target_x", "target_y"]]
+            .to_numpy(float)
+            .reshape(-1, 2, 2)
+        )
+        ax_c1.add_collection(
+            LineCollection(segments, colors=middle_grey, linewidths=0.55, alpha=0.45)
+        )
+    for row in compatible_edges.itertuples(index=False):
+        ax_c1.add_patch(
+            FancyArrowPatch(
+                (float(row.source_x), float(row.source_y)),
+                (float(row.target_x), float(row.target_y)),
+                arrowstyle="-|>",
+                mutation_scale=4.8,
+                linewidth=0.9,
+                color=gold,
+                alpha=0.90,
+                shrinkA=0.8,
+                shrinkB=0.8,
+                zorder=2,
+            )
+        )
+    jam2_only = somite["jam2a_positive"] & ~somite["jam3b_positive"]
+    jam3_only = somite["jam3b_positive"] & ~somite["jam2a_positive"]
+    both = somite["jam2a_positive"] & somite["jam3b_positive"]
+    for mask, color in ((jam2_only, coral), (jam3_only, navy), (both, purple)):
+        ax_c1.scatter(
+            somite.loc[mask, "x"],
+            somite.loc[mask, "y"],
+            s=8.0,
+            color=color,
+            edgecolor="white",
+            linewidth=0.25,
+            alpha=0.92,
+        )
+    myog = somite["myog_positive"]
+    ax_c1.scatter(
+        somite.loc[myog, "x"],
+        somite.loc[myog, "y"],
+        s=13,
+        facecolor="none",
+        edgecolor=gold,
+        linewidth=0.45,
+        alpha=0.70,
+    )
+    ax_c1.set_aspect("equal", adjustable="box")
+    ax_c1.set_xticks([])
+    ax_c1.set_yticks([])
+    for spine in ax_c1.spines.values():
+        spine.set_visible(False)
+    ax_c1.set_title(
+        f"18 hpf tissue · {len(compatible_edges)} predeclared trained JAM-compatible edges",
+        pad=3,
+    )
+    ax_c1.legend(
+        handles=[
+            Line2D([0], [0], color=gold, linewidth=1.5, label="Trained model edge"),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=coral,
+                markeredgecolor="white",
+                label="Jam2a+ Somite",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=navy,
+                markeredgecolor="white",
+                label="Jam3b+ Somite",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor="none",
+                markeredgecolor=gold,
+                label="Myog+ Somite",
+            ),
+        ],
+        frameon=False,
+        fontsize=6.5,
+        loc="lower left",
+        ncol=2,
+    )
+
+    detection_order = ["jam2a", "jam3b", "myog"]
+    detection = detection.set_index("gene_key").loc[detection_order]
+    y_c2 = np.array([1.5, 1.0, 0.5])
+    detection_colors = [coral, navy, gold]
+    ax_c2.scatter(
+        detection["detection_fraction"] * 100,
+        y_c2,
+        s=46,
+        color=detection_colors,
+        edgecolor="white",
+        linewidth=0.55,
+    )
+    for y_value, (_, row) in zip(y_c2, detection.iterrows(), strict=True):
+        ax_c2.text(
+            float(row.detection_fraction) * 100 + 1.7,
+            y_value,
+            f"{int(row.n_detected)}/{int(row.n_cells)}",
+            va="center",
+            fontsize=6.7,
+        )
+    ax_c2.set_yticks(y_c2, ["jam2a", "jam3b", "myog"])
+    ax_c2.set_ylim(0.2, 1.8)
+    ax_c2.set_xlim(0, max(50, float(detection["detection_fraction"].max() * 100 + 13)))
+    ax_c2.set_xlabel("Detected Somite cells (%)")
+    ax_c2.set_title("Somite detection", pad=3)
+    ax_c2.grid(axis="x", color=pale_grey, linewidth=0.5)
+
+    association["gene_key"] = association["gene_a"].astype(str).str.casefold()
+    association = association.set_index("gene_key").loc[["jam3b", "jam2a"]]
+    y_c3 = np.array([1.2, 0.8])
+    association_odds = pd.to_numeric(association["fisher_odds_ratio"], errors="raise")
+    for y_value, (gene, row) in zip(y_c3, association.iterrows(), strict=True):
+        color = navy if gene == "jam3b" else coral
+        ax_c3.scatter(
+            row.fisher_odds_ratio,
+            y_value,
+            s=48,
+            color=color,
+            edgecolor="white",
+            linewidth=0.55,
+        )
+        ax_c3.text(
+            float(row.fisher_odds_ratio) + 0.10,
+            y_value,
+            f"OR={float(row.fisher_odds_ratio):.2f}\n"
+            f"Fisher P={float(row.fisher_two_sided_p):.2g}",
+            va="center",
+            fontsize=6.5,
+            linespacing=0.95,
+        )
+    ax_c3.axvline(1, color=middle_grey, linewidth=0.8, linestyle="--")
+    ax_c3.set_xlim(
+        max(0.65, float(association_odds.min()) - 0.45),
+        float(association_odds.max()) + 1.10,
+    )
+    ax_c3.set_ylim(0.55, 1.45)
+    ax_c3.set_yticks(y_c3, ["jam3b–myog", "jam2a–myog"])
+    ax_c3.set_xlabel("Co-detection odds ratio")
+    ax_c3.set_title("Myog association", pad=3)
+    ax_c3.grid(axis="x", color=pale_grey, linewidth=0.5)
+
+    null_mean = float(null_row["null_mean"])
+    observed_column = _column(
+        null_summary,
+        "observed_jam2a_jam3b_orientation_compatible_pairs",
+        label="JAM spatial null summary",
+    )
+    fold_column = _column(
+        null_summary,
+        "observed_over_null_mean",
+        label="JAM spatial null summary",
+    )
+    p_spatial_column = _column(
+        null_summary,
+        "monte_carlo_upper_tail_p_plus1",
+        "monte_carlo_p_upper",
+        label="JAM spatial null summary",
+    )
+    null_low = float(null_row["null_q025"]) / null_mean
+    null_high = float(null_row["null_q975"]) / null_mean
+    fold = float(null_row[fold_column])
+    ax_c4.plot(
+        [null_low, null_high],
+        [0, 0],
+        color=middle_grey,
+        linewidth=6,
+        solid_capstyle="round",
+        zorder=1,
+    )
+    ax_c4.scatter(1, 0, s=24, facecolor="white", edgecolor=dark_grey, zorder=2)
+    ax_c4.scatter(fold, 0, s=58, color=teal, edgecolor="white", linewidth=0.6, zorder=3)
+    ax_c4.axvline(1, color=middle_grey, linewidth=0.7, linestyle="--")
+    ax_c4.set_xlim(max(0.65, null_low - 0.08), max(1.55, fold + 0.18))
+    ax_c4.set_ylim(-0.55, 0.55)
+    ax_c4.set_yticks([])
+    ax_c4.set_xlabel("Observed / permutation-null mean")
+    ax_c4.set_title("Spatial enrichment", pad=3)
+    ax_c4.grid(axis="x", color=pale_grey, linewidth=0.5)
+    ax_c4.text(
+        0.02,
+        0.94,
+        f"{int(null_row[observed_column])} compatible neighbors\n"
+        f"fold={fold:.2f}; Monte Carlo P={float(null_row[p_spatial_column]):.2g}",
+        transform=ax_c4.transAxes,
+        va="top",
+        fontsize=7.0,
+    )
+
+    pdf_path = output / "zebrafish_attention_validation_a4.pdf"
+    png_path = output / "zebrafish_attention_validation_a4.png"
+    fig.savefig(pdf_path, facecolor="white")
+    fig.savefig(png_path, dpi=320, facecolor="white")
+    plt.close(fig)
+
+    pair_index = pair.set_index(["cytobridge_view", "external_method"])
+    exact_commot = pair_index.loc[("exact_message", "COMMOT")]
+    attention_commot = pair_index.loc[("attention", "COMMOT")]
+    exact_cag = pair_index.loc[("exact_message", "CellAgentChat")]
+    attention_cag = pair_index.loc[("attention", "CellAgentChat")]
+    jam3b_row = association.loc["jam3b"]
+    trained_compatible = compatibility.loc[
+        compatibility["condition"].eq("trained") & compatibility["jam_compatible"]
+    ].iloc[0]
+    trained_other = compatibility.loc[
+        compatibility["condition"].eq("trained") & ~compatibility["jam_compatible"]
+    ].iloc[0]
+    caption = (
+        "Current-checkpoint validation of the zebrafish interaction field and a "
+        "pre-specified JAM myogenesis program. (a) Across all 361 directed cell-type "
+        "pairs, abundance-, distance-, and self-pair-adjusted concordance with COMMOT "
+        f"was ρ={float(exact_commot.adjusted_spearman_rho):.3f} for exact message "
+        f"and {float(attention_commot.adjusted_spearman_rho):.3f} for attention; "
+        "The shared-database CellAgentChat proxy values were "
+        f"{float(exact_cag.adjusted_spearman_rho):.3f} and "
+        f"{float(attention_cag.adjusted_spearman_rho):.3f}. Gray bars are 95% ranges "
+        f"from {n_pair_permutations:,} structured permutations within {n_strata} strata; "
+        "the COMMOT exact-message empirical upper-tail P was "
+        f"{float(exact_commot.adjusted_spearman_empirical_p_upper):.4g}. "
+        "(b) Jam-compatible Somite edges were defined by Jam2a detection at one "
+        "endpoint and Jam3b detection at the other. Their median within-condition "
+        f"attention percentile was {float(trained_compatible.attention_percentile_median):.3f} "
+        "at the current trained checkpoint versus "
+        f"{float(trained_other.attention_percentile_median):.3f} for other edges. "
+        "Trained, pre-interaction (Refine), and seeded randomized controls use the "
+        "same 18 hpf Somite scaffold; points show compatible-versus-other medians, "
+        "Somite-to-Somite complete-grid ranks, and descriptive top-versus-bottom "
+        "quartile odds ratios. (c) The spatial panel shows the formal, predeclared "
+        f"current-trained display set ({len(compatible_edges)} JAM-compatible edges). "
+        f"Jam3b and myog co-detection had odds ratio={float(jam3b_row.fisher_odds_ratio):.2f} "
+        f"(Fisher P={float(jam3b_row.fisher_two_sided_p):.2g}; expression ρ="
+        f"{float(jam3b_row.spearman_rho_expression):.2f}). Spatially neighboring "
+        f"Jam2a/Jam3b-compatible cell pairs were enriched {fold:.2f}-fold over the "
+        f"within-Somite label-permutation null (Monte Carlo P="
+        f"{float(null_row[p_spatial_column]):.2g}). These are technical and "
+        "cross-sectional consistency analyses, not evidence that an attention value "
+        "is a biochemical interaction probability or that myog causally regulates JAM "
+        "signaling in this atlas."
+    )
+    (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
+    reviewer_response = f"""# Response to reviewer concern on attention interpretability
+
+We agree that an attention coefficient cannot be interpreted directly as a biochemical communication probability. We therefore evaluated the current accepted checkpoint at three complementary resolutions.
+
+1. **Complete interaction field.** All 361 directed cell-type pairs, including structural zeros, were retained. After adjustment for sender and receiver abundance, spatial distance, and self-pair status, exact-message and attention fields agreed with COMMOT at rho={float(exact_commot.adjusted_spearman_rho):.3f} and {float(attention_commot.adjusted_spearman_rho):.3f}; the exact-message empirical upper-tail P was {float(exact_commot.adjusted_spearman_empirical_p_upper):.4g} under the structured within-stratum null. The shared-database CellAgentChat proxy supplies a secondary complete-grid comparison.
+2. **Pre-specified JAM edge compatibility.** Jam2a-Jam3b is a literature-supported heterophilic myocyte-fusion axis. On the same 18 hpf Somite scaffold, we compared the current trained checkpoint with its pre-interaction Refine checkpoint and a seeded randomized interaction control. The figure reports compatible-versus-other edge percentiles, the complete-grid Somite-to-Somite rank, and top-versus-bottom-quartile odds ratios. These are descriptive technical controls; edges and cells are not treated as biological replicates.
+3. **Localized molecular response.** Current-trained JAM-compatible display edges localize to the 18 hpf Somite region. Jam3b-myog co-detection and expression association are reported directly, and Jam2a/Jam3b-compatible spatial neighbors are compared with a within-Somite label-permutation null (fold={fold:.2f}, Monte Carlo P={float(null_row[p_spatial_column]):.2g}). This cross-sectional association does not establish myog regulation or direct physical contact.
+
+Together, these results show that the learned interaction field is reproducible across external CCI algorithms under shared inputs, preferentially organizes a pre-specified compatible JAM program relative to checkpoint controls, and localizes to a coherent myogenic molecular context. We retain the explicit boundary that attention is a model contribution, not a native ligand-receptor strength.
+"""
+    (output / "reviewer_response.md").write_text(reviewer_response, encoding="utf-8")
+
+    jam_source_lines = "\n".join(
+        f"- `{record['path']}` (SHA-256 `{record['sha256']}`)"
+        for record in jam_manifest_records
+    )
+    provenance = (
+        "# Provenance\n\n"
+        "## Source paths\n\n"
+        f"- Pair-field analysis: `{analysis_dir.expanduser().resolve()}`\n"
+        f"- Pair-field manifest SHA-256: `{expected_analysis_manifest_sha256}`\n"
+        f"{jam_source_lines}\n\n"
+        "Legacy JAM roots containing `20260722` or `20260728` are rejected by the "
+        "report CLI. Panel b uses canonical `trained`, `pre_interaction`, and `random` "
+        "conditions; the old `init` label is not relabelled. Panel c display edges are "
+        "selected upstream under the frozen current-checkpoint rule and are not selected "
+        "inside the plotting function.\n\n"
+        "## Rebuild\n\n"
+        "Run `python scripts/run_zebrafish_attention_validation.py report` with the "
+        "pair-field analysis directory/SHA and each current JAM manifest/SHA pair.\n"
+    )
+    (output / "provenance.md").write_text(provenance, encoding="utf-8")
+    shutil.copy2(
+        analysis_dir.expanduser().resolve() / "analysis_manifest.json",
+        output / "analysis_manifest.json",
+    )
+    jam_manifest_dir = output / "jam_manifests"
+    jam_manifest_dir.mkdir()
+    for index, record in enumerate(jam_manifest_records, start=1):
+        shutil.copy2(
+            record["path"], jam_manifest_dir / f"jam_manifest_{index:02d}.json"
+        )
+
+    panel_dir = output / "panel_data"
+    panel_dir.mkdir()
+    panel_sources = {
+        "directed_pair_concordance.csv": paths["directed_pair_concordance.csv"],
+        "jam_compatibility_percentile_summary.csv": jam_paths["compatibility_summary"],
+        "jam_quartile_compatibility.csv": jam_paths["quartile_compatibility"],
+        "type_pair_raw_attention_ranks.csv": jam_paths["type_pair_ranks"],
+        "somite_18hpf_spatial_null_summary.csv": jam_paths["spatial_null_summary"],
+        "somite_18hpf_spatial_null_iterations.csv.gz": jam_paths[
+            "spatial_null_iterations"
+        ],
+        "myog_association.csv": jam_paths["myog_association"],
+        "expression_detection_by_stage_type.csv": jam_paths["expression_detection"],
+        "somite_18hpf_spatial_cells.csv.gz": jam_paths["spatial_cells"],
+        "trained_jam_display_edges.csv": jam_paths["display_edges"],
+    }
+    for filename, source in panel_sources.items():
+        shutil.copy2(source, panel_dir / filename)
+
+    report_manifest_path = output / "report_manifest.json"
+    report_artifacts = {}
+    for path in sorted(output.rglob("*")):
+        if path.is_file() and path != report_manifest_path:
+            report_artifacts[str(path.relative_to(output))] = _artifact(path)
+    report_claim_contract = dict(analysis_manifest.get("claim_contract") or {})
+    report_claim_contract.pop("original_paper_21_scope", None)
+    report_claim_contract.pop("nichenet_scope", None)
+    report_claim_contract.update(
+        {
+            "reviewer_figure_scope": (
+                "complete-pair adjusted agreement, current-checkpoint JAM controls, "
+                "and localized cross-sectional myogenic consistency"
+            ),
+            "jam_controls_are_biological_replicates": False,
+            "jam_statistics_scope": "descriptive technical controls",
+            "myog_scope": "cross-sectional association; not causal regulation",
+            "legacy_jam_outputs_allowed": False,
+            "attention_is_biochemical_probability": False,
+        }
+    )
+    report_manifest = {
+        "schema_version": SCHEMA_VERSION,
+        "workflow": WORKFLOW,
+        "status": "complete",
+        "created_at_utc": _utc_now(),
+        "analysis_manifest_sha256": expected_analysis_manifest_sha256.casefold(),
+        "jam_manifests": jam_manifest_records,
+        "implementation": _implementation_identity(),
+        "claim_contract": report_claim_contract,
+        "figure_panels": {
+            "a": (
+                "complete 361-pair adjusted concordance, structured-null 95% "
+                "intervals, and empirical upper-tail P values"
+            ),
+            "b": (
+                "trained versus pre-interaction versus randomized JAM-compatible "
+                "edge percentiles, Somite-to-Somite rank, and compatibility odds"
+            ),
+            "c": (
+                "current-trained JAM spatial localization, molecular detection, "
+                "Jam-myog association, and spatial permutation enrichment"
+            ),
+        },
+        "panel_data_files": [f"panel_data/{filename}" for filename in panel_sources],
+        "artifacts": report_artifacts,
+    }
+    _write_json(report_manifest_path, report_manifest)
+    _write_sha_sidecar(report_manifest_path)
+    print(report_manifest_path)
+
+
 def validate_report(output_dir: Path) -> None:
     output = output_dir.expanduser().resolve()
     manifest_path = output / "report_manifest.json"
@@ -1767,6 +2916,19 @@ def _parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--analysis-dir", required=True, type=Path)
     report_parser.add_argument("--output-dir", required=True, type=Path)
     report_parser.add_argument("--expected-analysis-manifest-sha256", required=True)
+    report_parser.add_argument(
+        "--jam-manifest",
+        required=True,
+        action="append",
+        type=Path,
+        help="Current-checkpoint JAM formal manifest; repeat for control/case bundles",
+    )
+    report_parser.add_argument(
+        "--expected-jam-manifest-sha256",
+        required=True,
+        action="append",
+        help="SHA-256 paired positionally with each --jam-manifest",
+    )
     validate_parser = sub.add_parser("validate", help="Re-hash one completed analysis")
     validate_parser.add_argument("--output-dir", required=True, type=Path)
     validate_report_parser = sub.add_parser(
@@ -1787,6 +2949,8 @@ def main() -> None:
             expected_analysis_manifest_sha256=str(
                 args.expected_analysis_manifest_sha256
             ),
+            jam_manifest_paths=list(args.jam_manifest),
+            expected_jam_manifest_sha256s=list(args.expected_jam_manifest_sha256),
         )
     elif args.command == "validate":
         validate(args.output_dir)

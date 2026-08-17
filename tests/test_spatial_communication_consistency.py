@@ -568,6 +568,10 @@ def test_model_biology_plot_requires_computed_molecular_panel_data() -> None:
     assert "cytobridge_top_model_linked_edges" not in plot_source
     assert "edge_dir" not in plot_source
     assert "cytobridge_pathway_rank" not in plot_source
+    assert "dot_axis(" in plot_source
+    assert ".scatter(" in plot_source
+    assert "imshow(" not in plot_source
+    assert "pcolormesh(" not in plot_source
     assert "spatial_communication_model_biology_a4.pdf" in plot_source
 
 

@@ -498,6 +498,170 @@ def _write_submission_report_fixture(tmp_path: Path) -> Path:
     return analysis
 
 
+def _write_jam_report_manifests(
+    tmp_path: Path,
+) -> tuple[list[Path], list[str]]:
+    jam_root = tmp_path / "current-jam"
+    jam_root.mkdir()
+    tables = jam_root / "tables"
+    tables.mkdir()
+
+    conditions = ["trained", "pre_interaction", "random"]
+    compatibility_rows: list[dict[str, object]] = []
+    for condition, compatible_median, other_median in zip(
+        conditions,
+        [0.76, 0.55, 0.49],
+        [0.43, 0.51, 0.50],
+        strict=True,
+    ):
+        compatibility_rows.extend(
+            [
+                {
+                    "condition": condition,
+                    "jam_compatible": True,
+                    "n_edges": 24,
+                    "attention_percentile_mean": compatible_median + 0.01,
+                    "attention_percentile_median": compatible_median,
+                },
+                {
+                    "condition": condition,
+                    "jam_compatible": False,
+                    "n_edges": 76,
+                    "attention_percentile_mean": other_median + 0.01,
+                    "attention_percentile_median": other_median,
+                },
+            ]
+        )
+    jam_tables: dict[str, pd.DataFrame] = {
+        "jam_compatibility_percentile_summary.csv": pd.DataFrame(compatibility_rows),
+        "jam_quartile_compatibility.csv": pd.DataFrame(
+            {
+                "condition": conditions,
+                "top_vs_bottom_odds_ratio": [3.2, 1.15, 0.92],
+                "fisher_exact_two_sided_p_descriptive_technical": [
+                    0.004,
+                    0.63,
+                    0.81,
+                ],
+            }
+        ),
+        "type_pair_raw_attention_ranks.csv": pd.DataFrame(
+            {
+                "condition": conditions,
+                "stage_label": ["18hpf"] * 3,
+                "sender_type": ["Somite"] * 3,
+                "receiver_type": ["Somite"] * 3,
+                "rank_from_top": [2, 71, 155],
+                "n_complete_directed_type_pairs": [361] * 3,
+            }
+        ),
+        "somite_18hpf_spatial_null_summary.csv": pd.DataFrame(
+            {
+                "stage_label": ["18hpf"],
+                "cell_type": ["Somite"],
+                "n_cells": [6],
+                "observed_jam2a_jam3b_orientation_compatible_pairs": [18],
+                "null_mean": [9.0],
+                "null_q025": [5.0],
+                "null_q975": [13.0],
+                "observed_over_null_mean": [2.0],
+                "monte_carlo_upper_tail_p_plus1": [0.0099],
+                "n_permutations": [1000],
+            }
+        ),
+        "somite_18hpf_spatial_null_iterations.csv.gz": pd.DataFrame(
+            {
+                "iteration": np.arange(1, 11),
+                "orientation_compatible_pair_count": [
+                    8,
+                    9,
+                    11,
+                    7,
+                    10,
+                    6,
+                    13,
+                    9,
+                    8,
+                    10,
+                ],
+            }
+        ),
+        "myog_association.csv": pd.DataFrame(
+            {
+                "stage_label": ["18hpf", "18hpf"],
+                "cell_type": ["Somite", "Somite"],
+                "gene_a": ["jam2a", "jam3b"],
+                "gene_b": ["myog", "myog"],
+                "fisher_odds_ratio": [1.35, 3.10],
+                "fisher_two_sided_p": [0.21, 0.003],
+                "spearman_rho_expression": [0.12, 0.46],
+            }
+        ),
+        "expression_detection_by_stage_type.csv": pd.DataFrame(
+            {
+                "stage_label": ["18hpf"] * 3,
+                "cell_type": ["Somite"] * 3,
+                "gene": ["jam2a", "jam3b", "myog"],
+                "n_cells": [6] * 3,
+                "n_detected": [3, 3, 4],
+                "detected_fraction": [0.5, 0.5, 4 / 6],
+            }
+        ),
+        "somite_18hpf_spatial_cells.csv.gz": pd.DataFrame(
+            {
+                "stage_label": ["18hpf"] * 8,
+                "x": [0.0, 0.8, 1.6, 2.4, 3.2, 4.0, 1.1, 3.5],
+                "y": [0.0, 0.3, 0.0, 0.4, 0.1, 0.4, 1.0, 1.2],
+                "is_somite": [True] * 6 + [False] * 2,
+                "jam2a_positive": [True, False, True, False, True, False, False, False],
+                "jam3b_positive": [False, True, False, True, False, True, False, False],
+                "myog_positive": [True, True, False, True, False, True, False, False],
+            }
+        ),
+        "trained_jam_display_edges.csv": pd.DataFrame(
+            {
+                "condition": ["trained", "trained"],
+                "display_rank": [1, 2],
+                "source_x": [0.0, 1.6],
+                "source_y": [0.0, 0.0],
+                "target_x": [0.8, 2.4],
+                "target_y": [0.3, 0.4],
+                "jam_compatible": [True, True],
+            }
+        ),
+    }
+    records: dict[str, dict[str, str | int]] = {}
+    for filename, table in jam_tables.items():
+        path = tables / filename
+        table.to_csv(
+            path,
+            index=False,
+            compression="gzip" if filename.endswith(".gz") else None,
+        )
+        records[filename] = _analysis_record(path)
+
+    control_keys = {
+        "jam_compatibility_percentile_summary.csv",
+        "jam_quartile_compatibility.csv",
+        "type_pair_raw_attention_ranks.csv",
+    }
+    manifests = []
+    for index, selected_keys in enumerate(
+        [control_keys, set(records).difference(control_keys)], start=1
+    ):
+        path = jam_root / f"manifest_{index}.json"
+        _write_json(
+            path,
+            {
+                "schema_version": 1,
+                "status": "complete",
+                "artifacts": {key: records[key] for key in sorted(selected_keys)},
+            },
+        )
+        manifests.append(path)
+    return manifests, [_sha(path) for path in manifests]
+
+
 def test_analyze_and_validate_real_writer_schemas(tmp_path: Path) -> None:
     spec = _write_fixture(tmp_path)
     output = tmp_path / "output"
@@ -538,12 +702,23 @@ def test_report_rejects_nonformal_pair_field(tmp_path: Path) -> None:
     analysis = tmp_path / "analysis"
     MODULE.analyze(spec, analysis, n_selected_pairs=3)
     manifest_sha = _sha(analysis / "analysis_manifest.json")
+    jam_manifests, jam_manifest_shas = _write_jam_report_manifests(tmp_path)
     report = tmp_path / "report"
     with pytest.raises(ValueError, match="complete 19 x 19 pair field"):
         MODULE.report(
             analysis,
             report,
             expected_analysis_manifest_sha256=manifest_sha,
+            jam_manifest_paths=jam_manifests,
+            expected_jam_manifest_sha256s=jam_manifest_shas,
+        )
+
+
+def test_report_rejects_legacy_init_condition_label() -> None:
+    with pytest.raises(ValueError, match="old 'init' label"):
+        MODULE._canonical_conditions(
+            pd.Series(["trained", "init", "random"]),
+            label="JAM test fixture",
         )
 
 
@@ -551,11 +726,14 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     tmp_path: Path,
 ) -> None:
     analysis = _write_submission_report_fixture(tmp_path)
+    jam_manifests, jam_manifest_shas = _write_jam_report_manifests(tmp_path)
     output = tmp_path / "submission-report"
     MODULE.report(
         analysis,
         output,
         expected_analysis_manifest_sha256=_sha(analysis / "analysis_manifest.json"),
+        jam_manifest_paths=jam_manifests,
+        expected_jam_manifest_sha256s=jam_manifest_shas,
     )
     MODULE.validate_report(output)
     assert (output / "zebrafish_attention_validation_a4.pdf").stat().st_size > 1000
@@ -563,7 +741,6 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
 
     caption = (output / "caption.txt").read_text(encoding="utf-8")
     caption_folded = caption.casefold()
-    caption_words = caption_folded.replace("-", " ").replace("–", " ")
     response = (output / "reviewer_response.md").read_text(encoding="utf-8")
     response_folded = response.casefold()
     provenance = (output / "provenance.md").read_text(encoding="utf-8")
@@ -574,56 +751,57 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
         "null_adjusted_spearman_q025",
         "null_adjusted_spearman_q975",
         "adjusted_spearman_empirical_p_upper",
-        'rows["n_pairs"]',
-        'rows["n_strata"]',
-        'rows["n_permutations"]',
+        'dimensions["n_pairs"]',
+        'dimensions["n_strata"]',
+        'dimensions["n_permutations"]',
     ):
         assert required_column in report_source
-    assert "19 x 19" in caption_folded
+    assert "361 directed cell-type pairs" in caption_folded
     assert "361" in response
-    assert "22-stratum" in provenance
-    assert "1,000-permutation" in provenance
+    assert "22 strata" in caption_folded
+    assert "1,000 structured permutations" in caption_folded
     assert "adjusted" in caption_folded
     assert "95%" in caption_folded
     assert "empirical" in caption_folded
 
-    assert "21" in caption
-    assert "20" in caption
-    assert "18/20" in caption
-    assert "19/20" in caption
-    assert "4" in caption
-    assert "exact message" in caption_words
-    assert "expression only" in caption_words
+    assert "jam-compatible" in caption_folded
+    assert "trained" in caption_folded
+    assert "pre-interaction" in caption_folded
+    assert "randomized" in caption_folded
+    assert "same 18 hpf somite scaffold" in caption_folded
+    assert "descriptive technical controls" in response_folded
+    assert "edges and cells are not treated as biological replicates" in response_folded
 
-    assert "mdka" in caption_folded and "sdc4" in caption_folded
-    assert "exact" in caption_folded and "message" in caption_folded
-    assert "lr activity" in caption_words
-    assert "same atlas" in response_folded
-    assert "not an independent cohort" in caption_folded
-    assert "attention weights alone" in response_folded
-    assert "not used as validation evidence" in response_folded
+    assert "jam3b and myog co-detection" in caption_folded
+    assert "spatially neighboring" in caption_folded
+    assert "label-permutation null" in caption_folded
+    assert "cross-sectional" in caption_folded
+    assert "not evidence" in caption_folded
+    assert "attention coefficient cannot be interpreted directly" in response_folded
+    assert "old `init` label is not relabelled" in provenance.casefold()
 
     assert "(d)" not in caption_folded
     assert "(e)" not in caption_folded
     assert "nichenet" not in caption_folded
-    assert "fixed-checkpoint" not in caption_folded
     assert "perturb" not in caption_folded
-    for removed_panel_source in (
-        "External ranks of CytoBridge-selected interactions",
-        "Receiver-response support",
-    ):
-        assert removed_panel_source not in report_source
+    assert "source-paper lr compatibility" not in caption_folded
+    assert "18/20" not in caption_folded
+    assert "19/20" not in caption_folded
+    assert "mdka" not in caption_folded
+    assert "sdc4" not in caption_folded
 
     panel_names = {path.name for path in (output / "panel_data").iterdir()}
     assert panel_names == {
         "directed_pair_concordance.csv",
-        "commot_lr_scores_collapsed.csv.gz",
-        "original_paper_21_lr_scores.csv",
-        "original_paper_21_lr_enrichment.csv",
-        "selected_paper_axis_spatial_cells.csv.gz",
-        "selected_paper_axis_spatial_edges.csv.gz",
-        "selected_paper_axis_spatial_summary.csv",
-        "selected_paper_axis_context_external_ranks.csv",
+        "jam_compatibility_percentile_summary.csv",
+        "jam_quartile_compatibility.csv",
+        "type_pair_raw_attention_ranks.csv",
+        "somite_18hpf_spatial_null_summary.csv",
+        "somite_18hpf_spatial_null_iterations.csv.gz",
+        "myog_association.csv",
+        "expression_detection_by_stage_type.csv",
+        "somite_18hpf_spatial_cells.csv.gz",
+        "trained_jam_display_edges.csv",
     }
     report_manifest = json.loads(
         (output / "report_manifest.json").read_text(encoding="utf-8")
@@ -632,56 +810,58 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     assert {
         Path(path).name for path in report_manifest["panel_data_files"]
     } == panel_names
-    assert "same atlas" in report_manifest["claim_contract"]["original_paper_21_scope"]
-    for removed_panel_table in (
-        "cytobridge_selected_pair_external_ranks.csv",
-        "jointly_supported_lr_targets.csv",
-        "fixed_checkpoint_interaction_on_off.csv",
-    ):
-        assert removed_panel_table not in panel_names
+    claim_contract = report_manifest["claim_contract"]
+    assert claim_contract["jam_controls_are_biological_replicates"] is False
+    assert claim_contract["jam_statistics_scope"] == "descriptive technical controls"
+    assert "not causal" in claim_contract["myog_scope"]
+    assert claim_contract["legacy_jam_outputs_allowed"] is False
+    assert claim_contract["attention_is_biochemical_probability"] is False
+    assert len(report_manifest["jam_manifests"]) == 2
+    assert {record["sha256"] for record in report_manifest["jam_manifests"]} == set(
+        jam_manifest_shas
+    )
 
     pair_evidence = pd.read_csv(output / "panel_data" / "directed_pair_concordance.csv")
     assert set(pair_evidence["n_pairs"]) == {361}
     assert set(pair_evidence["n_strata"]) == {22}
     assert set(pair_evidence["n_permutations"]) == {1000}
 
-    paper_scores = pd.read_csv(
-        output / "panel_data" / "original_paper_21_lr_scores.csv"
+    compatibility = pd.read_csv(
+        output / "panel_data" / "jam_compatibility_percentile_summary.csv"
     )
-    assert len(paper_scores) == 21
-    represented_scores = paper_scores.loc[
-        paper_scores["represented_in_current_expression"].astype(bool)
-    ]
-    assert len(represented_scores) == 20
-    enrichment = pd.read_csv(
-        output / "panel_data" / "original_paper_21_lr_enrichment.csv"
-    ).set_index("score_column")
-    assert enrichment.loc["exact_message_score", "paper_reference_in_top_n"] == 18
-    assert enrichment.loc["lr_only_score", "paper_reference_in_top_n"] == 19
-    commot_lr = pd.read_csv(output / "panel_data" / "commot_lr_scores_collapsed.csv.gz")
-    assert len(represented_scores.merge(commot_lr[["lr_id"]], on="lr_id")) == 4
+    assert set(compatibility["condition"]) == {
+        "trained",
+        "pre_interaction",
+        "random",
+    }
+    trained = compatibility.loc[compatibility["condition"].eq("trained")]
+    trained_compatible = trained.loc[trained["jam_compatible"].astype(bool)]
+    trained_other = trained.loc[~trained["jam_compatible"].astype(bool)]
+    assert (
+        trained_compatible["attention_percentile_median"].item()
+        > trained_other["attention_percentile_median"].item()
+    )
+
+    type_pair = pd.read_csv(output / "panel_data" / "type_pair_raw_attention_ranks.csv")
+    assert set(type_pair["condition"]) == {
+        "trained",
+        "pre_interaction",
+        "random",
+    }
+    assert set(type_pair["n_complete_directed_type_pairs"]) == {361}
 
     spatial_summary = pd.read_csv(
-        output / "panel_data" / "selected_paper_axis_spatial_summary.csv"
+        output / "panel_data" / "somite_18hpf_spatial_null_summary.csv"
     )
-    assert spatial_summary.loc[0, "lr_id"] == "mdka->sdc4"
-    assert spatial_summary.loc[0, "n_top_exact_message_lr_edges"] == 125
-    assert spatial_summary.loc[0, "cell_type_context_spearman_rho"] == pytest.approx(
-        0.866
+    assert spatial_summary.loc[0, "observed_over_null_mean"] == pytest.approx(2.0)
+    assert spatial_summary.loc[0, "monte_carlo_upper_tail_p_plus1"] == pytest.approx(
+        0.0099
     )
-    spatial_edges = pd.read_csv(
-        output / "panel_data" / "selected_paper_axis_spatial_edges.csv.gz"
-    )
-    assert {
-        "lr_activity",
-        "edge_message_norm_joint",
-        "exact_message_lr_score",
-    }.issubset(spatial_edges.columns)
-    spatial_source = inspect.getsource(MODULE._spatial_axis_tables)
-    assert (
-        'local["exact_message_lr_score"] = local["lr_activity"] '
-        "* positive_rank_weights(" in spatial_source
-    )
+    associations = pd.read_csv(output / "panel_data" / "myog_association.csv")
+    assert set(associations["gene_a"].str.casefold()) == {"jam2a", "jam3b"}
+    display_edges = pd.read_csv(output / "panel_data" / "trained_jam_display_edges.csv")
+    assert set(display_edges["condition"]) == {"trained"}
+    assert display_edges["jam_compatible"].astype(bool).all()
 
 
 def test_spec_rejects_wrong_input_sha(tmp_path: Path) -> None:
