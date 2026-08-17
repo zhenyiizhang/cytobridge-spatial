@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import anndata as ad
 import numpy as np
 import pandas as pd
+import pytest
 from scipy import sparse
 
 from CytoBridge.spatial_communication_consistency import (
@@ -525,13 +526,15 @@ def _load_spatial_script():
     return module
 
 
-def test_model_biology_plot_accepts_compact_panel_data() -> None:
+def test_model_biology_plot_requires_computed_molecular_panel_data() -> None:
     module = _load_spatial_script()
     args = module.build_parser().parse_args(
         [
             "plot-model-biology",
             "--spatial-panel-data-dir",
             "panel",
+            "--molecular-panel-data-dir",
+            "molecular",
             "--aggregate-dir",
             "aggregate",
             "--selection-dir",
@@ -543,7 +546,305 @@ def test_model_biology_plot_accepts_compact_panel_data() -> None:
         ]
     )
     assert args.spatial_panel_data_dir == "panel"
+    assert args.molecular_panel_data_dir == "molecular"
     assert args.config is None
+
+    with pytest.raises(SystemExit):
+        module.build_parser().parse_args(
+            [
+                "plot-model-biology",
+                "--spatial-panel-data-dir",
+                "panel",
+                "--aggregate-dir",
+                "aggregate",
+                "--selection-dir",
+                "selection",
+                "--edge-dir",
+                "edges",
+                "--output-dir",
+                "figure",
+            ]
+        )
+
+    source = (
+        Path(__file__).parents[1]
+        / "scripts"
+        / "run_spatial_communication_consistency.py"
+    ).read_text(encoding="utf-8")
+    assert '"biological_program"' not in source
+    assert "model_linked_biological_programs.csv" not in source
+    assert "spatial_communication_model_biology_a4.pdf" in source
+
+
+def _artifact_record(path: Path) -> dict[str, object]:
+    return {
+        "path": str(path.resolve()),
+        "sha256": sha256_file(path),
+        "size_bytes": path.stat().st_size,
+    }
+
+
+def _write_model_biology_molecular_fixture(
+    root: Path,
+) -> tuple[Path, Path, dict[str, Path]]:
+    root.mkdir(parents=True)
+    selection = root / "selection"
+    selection.mkdir()
+    molecular_sources = root / "molecular_sources"
+    molecular_sources.mkdir()
+
+    candidates_path = selection / "model_linked_lr_candidates.csv"
+    selected_path = selection / "selected_model_linked_lr.csv"
+    support_path = selection / "model_linked_external_support.csv"
+    status_path = selection / "model_linked_lr_selection_status.csv"
+    candidates = pd.DataFrame(
+        {
+            "dataset": ["zebrafish"] * 3,
+            "stage": [4.0] * 3,
+            "sender_type": ["A"] * 3,
+            "receiver_type": ["B"] * 3,
+            "ligand": ["l1", "l2", "l3"],
+            "receptor": ["r1", "r2", "r3"],
+            "pathways": ["WNT", "FGF", "FGF"],
+            "cytobridge_message_lr_score": [10.0, 9.0, 8.0],
+            "n_model_lr_active_edges": [12, 11, 10],
+            "cytobridge_percentile": [1.0, 2.0 / 3.0, 1.0 / 3.0],
+            "commot_percentile": [0.4, 0.7, 0.2],
+        }
+    )
+    candidates.to_csv(candidates_path, index=False)
+    selected = candidates.iloc[[0]].copy()
+    selected.insert(0, "example_id", "zebrafish_A_B_l1_r1")
+    selected["stage_label"] = "terminal_4"
+    selected["categories"] = "shared_database"
+    selected["selection_rule"] = "CytoBridge-only fixture selection"
+    selected.to_csv(selected_path, index=False)
+    pd.DataFrame(
+        {
+            "dataset": ["zebrafish"],
+            "stage": [4.0],
+            "sender_type": ["A"],
+            "receiver_type": ["B"],
+            "ligand": ["l1"],
+            "receptor": ["r1"],
+            "pathways": ["WNT"],
+            "cytobridge_percentile": [1.0],
+            # Deliberately differs from the candidate-table value: the summary
+            # must load the frozen exact-axis external-support table.
+            "commot_percentile": [0.875],
+        }
+    ).to_csv(support_path, index=False)
+    pd.DataFrame(
+        {
+            "dataset": list(FORMAL_DATASET_CONTRACTS),
+            "status": ["complete"]
+            + ["not_evaluable"] * (len(FORMAL_DATASET_CONTRACTS) - 1),
+            "reason": [""]
+            + ["no positive model-linked LR axis"]
+            * (len(FORMAL_DATASET_CONTRACTS) - 1),
+        }
+    ).to_csv(status_path, index=False)
+
+    commot_pathway_path = molecular_sources / "commot_pathway_scores.csv.gz"
+    commot_lr_path = molecular_sources / "commot_lr_scores.csv.gz"
+    nichenet_path = molecular_sources / "nichenet_targets.csv.gz"
+    pd.DataFrame(
+        {
+            "sender_type": ["A", "A", "X"],
+            "receiver_type": ["B", "B", "B"],
+            "stage": [4.0, 4.0, 4.0],
+            "pathway": ["WNT", "FGF", "OFF_PAIR"],
+            "abundance_controlled_distinct_cell_score": [6.0, 2.0, 99.0],
+        }
+    ).to_csv(commot_pathway_path, index=False)
+    pd.DataFrame(
+        {
+            "sender_type": ["A", "A", "A", "X"],
+            "receiver_type": ["B", "B", "B", "B"],
+            "stage": [4.0, 4.0, 4.0, 4.0],
+            "ligand": ["l1", "l2", "l3", "off"],
+            "receptor": ["r1", "r2", "r3", "off"],
+            "pathway": ["WNT", "FGF", "FGF", "OFF_PAIR"],
+            "abundance_controlled_distinct_cell_score": [4.0, 2.0, 1.0, 99.0],
+        }
+    ).to_csv(commot_lr_path, index=False)
+    pd.DataFrame(
+        {
+            "sender": ["A", "A", "A", "X"],
+            "receiver": ["B", "B", "B", "B"],
+            "ligand": ["l1", "l2", "l3", "off"],
+            "receptor": ["r1", "r2", "r3", "off"],
+            "target": ["T1", "T1", "T2", "OFF_PAIR"],
+            "ligand_target_evidence": [0.5, 0.25, 0.25, 99.0],
+        }
+    ).to_csv(nichenet_path, index=False)
+
+    config = {
+        "schema_version": 1,
+        "datasets": {
+            dataset: {
+                "commot_pathway_csv": str(commot_pathway_path),
+                "commot_lr_csv": str(commot_lr_path),
+                "nichenet_target_csv": str(nichenet_path),
+                "nichenet_target_evidence_scope": "primary_species_prior",
+            }
+            for dataset in FORMAL_DATASET_CONTRACTS
+        },
+    }
+    config_path = root / "model_biology_config.json"
+    config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    selection_manifest = {
+        "schema_version": 1,
+        "workflow": "five_dataset_model_linked_lr_selection",
+        "status": "complete",
+        "inputs": {
+            "config": _artifact_record(config_path),
+            "datasets": {
+                dataset: {
+                    "commot_lr": _artifact_record(commot_lr_path),
+                    "nichenet_targets": _artifact_record(nichenet_path),
+                }
+                for dataset in FORMAL_DATASET_CONTRACTS
+            },
+        },
+        "outputs": {
+            "candidates": _artifact_record(candidates_path),
+            "selected": _artifact_record(selected_path),
+            "status": _artifact_record(status_path),
+            "external_support": _artifact_record(support_path),
+        },
+    }
+    (selection / "manifest.json").write_text(
+        json.dumps(selection_manifest, indent=2) + "\n", encoding="utf-8"
+    )
+    return (
+        selection,
+        config_path,
+        {
+            "candidates": candidates_path,
+            "commot_pathways": commot_pathway_path,
+            "commot_lr": commot_lr_path,
+            "nichenet": nichenet_path,
+        },
+    )
+
+
+def _run_model_biology_molecular_summary(
+    module: object, selection: Path, config: Path, output: Path
+) -> None:
+    args = module.build_parser().parse_args(
+        [
+            "summarize-model-biology-molecular",
+            "--selection-dir",
+            str(selection),
+            "--config",
+            str(config),
+            "--output-dir",
+            str(output),
+        ]
+    )
+    args.function(args)
+
+
+def test_summarize_model_biology_molecular_builds_computed_panel_table(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, _ = _write_model_biology_molecular_fixture(tmp_path / "ok")
+    output = tmp_path / "summary"
+    _run_model_biology_molecular_summary(module, selection, config, output)
+
+    panel = pd.read_csv(output / "model_biology_molecular_panel.csv")
+    assert panel.dataset.tolist() == list(FORMAL_DATASET_CONTRACTS)
+    complete = panel.set_index("dataset").loc["zebrafish"]
+    assert complete.status == "complete"
+    assert (complete.ligand, complete.receptor) == ("l1", "r1")
+    assert complete.n_model_lr_active_edges == 12
+    assert complete.cytobridge_lr_percentile == pytest.approx(1.0)
+    # WNT (10) ranks below the aggregate FGF score (9 + 8), proving that this
+    # is a computed pathway rank rather than a restated selected-LR label/rank.
+    assert complete.cytobridge_pathway_percentile == pytest.approx(0.5)
+    assert complete.cytobridge_pathway_rank == 2
+    assert complete.cytobridge_pathway_count == 2
+    assert complete.commot_exact_axis_percentile == pytest.approx(0.875)
+    assert complete.commot_top_pathway == "WNT"
+    assert str(complete.commot_top_lr).lower().replace("-", "–") == "l1–r1"
+    assert complete.nichenet_top_receiver_target == "T1"
+    assert complete.nichenet_top_receiver_target_fraction == pytest.approx(0.75)
+    assert complete.nichenet_scope == "primary_species_prior"
+
+    not_evaluable = panel.set_index("dataset").loc["admouse"]
+    assert not_evaluable.status == "not_evaluable"
+    for column in (
+        "n_model_lr_active_edges",
+        "cytobridge_lr_percentile",
+        "cytobridge_pathway_percentile",
+        "cytobridge_pathway_rank",
+        "cytobridge_pathway_count",
+        "commot_exact_axis_percentile",
+        "nichenet_top_receiver_target_fraction",
+    ):
+        assert pd.isna(not_evaluable[column])
+    assert "biological_program" not in panel.columns
+
+    for name in (
+        "selected_pair_commot_pathways.csv",
+        "selected_pair_commot_lr.csv",
+        "selected_pair_nichenet_targets.csv",
+        "manifest.json",
+    ):
+        assert (output / name).is_file()
+    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["workflow"] == "five_dataset_model_biology_molecular_summary"
+    assert manifest["outputs"]["panel"]["sha256"] == sha256_file(
+        output / "model_biology_molecular_panel.csv"
+    )
+
+
+def test_summarize_model_biology_molecular_rejects_tampered_selection_source(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, sources = _write_model_biology_molecular_fixture(
+        tmp_path / "tampered"
+    )
+    candidates = pd.read_csv(sources["candidates"])
+    candidates.loc[0, "cytobridge_message_lr_score"] = 999.0
+    candidates.to_csv(sources["candidates"], index=False)
+    with pytest.raises(ValueError, match="(?i)(sha-?256|hash|manifest|tamper)"):
+        _run_model_biology_molecular_summary(
+            module, selection, config, tmp_path / "tampered-output"
+        )
+
+
+def test_summarize_model_biology_molecular_rejects_config_mismatch(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, _ = _write_model_biology_molecular_fixture(
+        tmp_path / "config-mismatch"
+    )
+    payload = json.loads(config.read_text(encoding="utf-8"))
+    payload["unexpected_change"] = True
+    config.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="(?i)(config|sha-?256|hash|manifest)"):
+        _run_model_biology_molecular_summary(
+            module, selection, config, tmp_path / "config-mismatch-output"
+        )
+
+
+def test_summarize_model_biology_molecular_rejects_missing_config_source(
+    tmp_path: Path,
+) -> None:
+    module = _load_spatial_script()
+    selection, config, sources = _write_model_biology_molecular_fixture(
+        tmp_path / "missing-source"
+    )
+    sources["commot_pathways"].unlink()
+    with pytest.raises(FileNotFoundError, match="(?i)(commot|pathway|missing)"):
+        _run_model_biology_molecular_summary(
+            module, selection, config, tmp_path / "missing-source-output"
+        )
 
 
 def test_summarize_nichenet_writes_pair_and_molecular_evidence(tmp_path: Path) -> None:
