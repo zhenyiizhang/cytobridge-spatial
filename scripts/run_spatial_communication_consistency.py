@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Iterable
 
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -59,6 +58,23 @@ BIOLOGICAL_PROGRAMS = {
     "arista": "Regenerative neuroglial niche and stress-responsive remodeling",
     "admouse": "Neuron–astrocyte signaling and reactive structural programs",
     "chicken_heart": "Valve ECM remodeling and endothelial–mesenchymal maturation",
+}
+MODEL_LINKED_BIOLOGICAL_PROGRAMS = {
+    "zebrafish": (
+        "Collagen-linked extracellular-matrix organization at the "
+        "pronephric–yolk/muscle interface"
+    ),
+    "mosta": (
+        "COL6A3–CD44 matrix adhesion in connective-tissue maturation; "
+        "Cd44 is independently linked to the receiver response by NicheNet"
+    ),
+    "arista": (
+        "PSAP–GPR37L1 trophic and lipid-stress signaling in a regenerative "
+        "neuroglial niche"
+    ),
+    "chicken_heart": (
+        "CD99 homophilic cell contact during fibroblast-to-valve tissue remodeling"
+    ),
 }
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODEL_BIOLOGY_IMPLEMENTATION_FILES = (
@@ -1591,12 +1607,12 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     grid = fig.add_gridspec(
         7,
         1,
-        height_ratios=[0.13, 1.20, 0.13, 1.38, 0.13, 0.08, 2.27],
+        height_ratios=[0.12, 1.15, 0.12, 1.25, 0.12, 0.05, 2.65],
         left=0.21,
         right=0.965,
         top=0.975,
         bottom=0.055,
-        hspace=0.34,
+        hspace=0.29,
     )
 
     head_a = fig.add_subplot(grid[0])
@@ -1665,7 +1681,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             ax_b.text(
                 0.51,
                 row_index,
-                "not evaluable under strict shared LR/edge support",
+                "no positive LR-compatible model axis",
                 fontsize=6.5,
                 color="#7A848C",
                 va="center",
@@ -1694,7 +1710,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 f"{labels[dataset]} · {str(row.ligand).upper()}–{str(row.receptor).upper()}\n{pair}"
             )
         else:
-            ylabels.append(f"{labels[dataset]}\nstrict panel unavailable")
+            ylabels.append(f"{labels[dataset]}\nno positive model-linked LR axis")
     ax_b.set_yticks(np.arange(len(dataset_order)), ylabels, fontsize=6.4)
     ax_b.set_ylim(len(dataset_order) - 0.55, -0.55)
     ax_b.set_xlim(0.45, 1.015)
@@ -1727,16 +1743,19 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     _heading(
         head_c,
         "c",
-        "CytoBridge exact-message edges resolve spatial LR circuits",
+        "Model-selected spatial LR circuits and biological programs",
     )
     legend_c = fig.add_subplot(grid[5])
     legend_c.set_axis_off()
-    maps = grid[6].subgridspec(2, 2, wspace=0.16, hspace=0.42)
+    c_body = grid[6].subgridspec(1, 2, width_ratios=(0.43, 0.57), wspace=0.10)
+    ax_c_map = fig.add_subplot(c_body[0])
+    ax_c_biology = fig.add_subplot(c_body[1])
+    ax_c_biology.set_axis_off()
     map_datasets = ["zebrafish", "mosta", "arista", "chicken_heart"]
     panel_cell_frames: list[pd.DataFrame] = []
     panel_edge_frames: list[pd.DataFrame] = []
-    for map_index, dataset in enumerate(map_datasets):
-        axis = fig.add_subplot(maps[map_index // 2, map_index % 2])
+    map_payload: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
+    for dataset in map_datasets:
         row = support.loc[dataset]
         if panel_input is None:
             assert config is not None
@@ -1783,87 +1802,281 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             map_edges = input_edges.loc[input_edges["dataset"].eq(dataset)].copy()
             if map_cells.empty or map_edges.empty:
                 raise ValueError(f"spatial panel data is incomplete for {dataset}")
-            coordinates = map_cells[["x", "y"]].to_numpy(float)
-            types = map_cells["cell_type"].astype(str).to_numpy()
-            stage_mask = np.ones(len(map_cells), dtype=bool)
         panel_cell_frames.append(map_cells)
         panel_edge_frames.append(map_edges)
-        axis.scatter(
-            coordinates[stage_mask, 0],
-            coordinates[stage_mask, 1],
-            s=1.2,
-            color="#DDE1E4",
-            alpha=0.72,
-            linewidths=0,
-            rasterized=False,
+        map_payload[dataset] = (map_cells, map_edges)
+
+    # A single enlarged spatial exemplar makes individual learned edges legible at
+    # final A4 size.  The adjacent molecular table retains all four evaluable
+    # datasets, so this is a spatial example rather than a cherry-picked summary.
+    map_dataset = "zebrafish"
+    row = support.loc[map_dataset]
+    map_cells, map_edges = map_payload[map_dataset]
+    coordinates = map_cells[["x", "y"]].to_numpy(float)
+    types = map_cells["cell_type"].astype(str).to_numpy()
+    ax_c_map.scatter(
+        coordinates[:, 0],
+        coordinates[:, 1],
+        s=1.0,
+        color="#D8DEE2",
+        alpha=0.48,
+        linewidths=0,
+        rasterized=False,
+    )
+    sender = types == str(row.sender_type)
+    receiver = types == str(row.receiver_type)
+    ax_c_map.scatter(
+        coordinates[sender, 0],
+        coordinates[sender, 1],
+        s=5.5,
+        color="#3A86A8",
+        alpha=0.82,
+        linewidths=0,
+        zorder=2,
+    )
+    ax_c_map.scatter(
+        coordinates[receiver, 0],
+        coordinates[receiver, 1],
+        s=5.5,
+        color="#E08C46",
+        alpha=0.82,
+        linewidths=0,
+        zorder=2,
+    )
+    display_edges = map_edges.sort_values(
+        "cytobridge_message_lr_flow", ascending=False
+    ).head(min(int(args.maximum_display_edges), 12))
+    score = display_edges["cytobridge_message_lr_flow"].to_numpy(float)
+    scaled = score / max(float(np.max(score)), np.finfo(float).eps)
+    for edge, relative_score in zip(
+        display_edges.itertuples(index=False), scaled, strict=True
+    ):
+        ax_c_map.annotate(
+            "",
+            xy=(float(edge.target_x), float(edge.target_y)),
+            xytext=(float(edge.source_x), float(edge.source_y)),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": "#5C3E91",
+                "linewidth": 0.9 + 1.7 * float(relative_score),
+                "alpha": 0.72 + 0.22 * float(relative_score),
+                "mutation_scale": 7.0 + 4.0 * float(relative_score),
+                "shrinkA": 0.0,
+                "shrinkB": 0.0,
+            },
+            zorder=4,
         )
-        sender = stage_mask & (types == str(row.sender_type))
-        receiver = stage_mask & (types == str(row.receiver_type))
-        axis.scatter(
-            coordinates[sender, 0],
-            coordinates[sender, 1],
-            s=3.2,
-            color="#3A86A8",
-            alpha=0.88,
-            linewidths=0,
-            zorder=2,
-        )
-        axis.scatter(
-            coordinates[receiver, 0],
-            coordinates[receiver, 1],
-            s=3.2,
-            color="#E08C46",
-            alpha=0.88,
-            linewidths=0,
-            zorder=2,
-        )
-        display_edges = map_edges.sort_values(
-            "cytobridge_message_lr_flow", ascending=False
-        ).head(int(args.maximum_display_edges))
-        segments = np.stack(
-            [
-                display_edges[["source_x", "source_y"]].to_numpy(float),
-                display_edges[["target_x", "target_y"]].to_numpy(float),
-            ],
-            axis=1,
-        )
-        if len(segments):
-            score = display_edges["cytobridge_message_lr_flow"].to_numpy(float)
-            scaled = score / max(float(np.max(score)), np.finfo(float).eps)
-            axis.add_collection(
-                LineCollection(
-                    segments,
-                    colors="#6A51A3",
-                    linewidths=0.35 + 1.15 * scaled,
-                    alpha=0.64,
-                    zorder=3,
-                )
+    endpoint_x = np.concatenate(
+        [
+            display_edges["source_x"].to_numpy(float),
+            display_edges["target_x"].to_numpy(float),
+        ]
+    )
+    endpoint_y = np.concatenate(
+        [
+            display_edges["source_y"].to_numpy(float),
+            display_edges["target_y"].to_numpy(float),
+        ]
+    )
+    x_span = max(float(np.ptp(endpoint_x)), 0.08)
+    y_span = max(float(np.ptp(endpoint_y)), 0.08)
+    x_limits = (
+        float(endpoint_x.min() - 0.30 * x_span),
+        float(endpoint_x.max() + 0.30 * x_span),
+    )
+    y_limits = (
+        float(endpoint_y.min() - 0.30 * y_span),
+        float(endpoint_y.max() + 0.30 * y_span),
+    )
+    ax_c_map.set_xlim(*x_limits)
+    ax_c_map.set_ylim(*y_limits)
+    context = ax_c_map.inset_axes([0.015, 0.015, 0.30, 0.28])
+    context.scatter(
+        coordinates[:, 0],
+        coordinates[:, 1],
+        s=0.35,
+        color="#CDD4D9",
+        alpha=0.60,
+        linewidths=0,
+        rasterized=False,
+    )
+    context.plot(
+        [x_limits[0], x_limits[1], x_limits[1], x_limits[0], x_limits[0]],
+        [y_limits[0], y_limits[0], y_limits[1], y_limits[1], y_limits[0]],
+        color="#5C3E91",
+        linewidth=0.8,
+    )
+    context.set_aspect("equal", adjustable="datalim")
+    context.set_axis_off()
+    ax_c_map.set_aspect("equal", adjustable="datalim")
+    ax_c_map.set_axis_off()
+    ax_c_map.set_title(
+        "Zebrafish spatial exemplar\n"
+        f"{str(row.sender_type)} → {str(row.receiver_type)}",
+        fontsize=7.8,
+        fontweight="bold",
+        color="black",
+        pad=2,
+    )
+    ax_c_map.text(
+        0.5,
+        -0.018,
+        (
+            f"{str(row.ligand).upper()}–{str(row.receptor).upper()} "
+            f"({row.pathways}); top {len(display_edges)} of {len(map_edges)} "
+            "positive model-linked edges"
+        ),
+        transform=ax_c_map.transAxes,
+        fontsize=5.8,
+        color="black",
+        va="top",
+        ha="center",
+    )
+
+    # Molecular interpretation is presented as a compact scientific table.  LR
+    # and pathway labels come from the frozen shared database; the last column
+    # states the tissue program supported by the selected circuit.
+    ax_c_biology.text(
+        0.00,
+        1.01,
+        "Cell circuit",
+        fontsize=6.4,
+        fontweight="bold",
+        color="black",
+        va="bottom",
+    )
+    ax_c_biology.text(
+        0.37,
+        1.01,
+        "LR / pathway",
+        fontsize=6.4,
+        fontweight="bold",
+        color="black",
+        va="bottom",
+    )
+    ax_c_biology.text(
+        0.66,
+        1.01,
+        "Biological interpretation",
+        fontsize=6.4,
+        fontweight="bold",
+        color="black",
+        va="bottom",
+    )
+    biology_rows: list[dict[str, object]] = []
+    y_positions = np.linspace(0.88, 0.10, len(dataset_order))
+    for y_value, dataset in zip(y_positions, dataset_order, strict=True):
+        if dataset not in support.index:
+            ax_c_biology.axhline(y_value + 0.085, color="#D7DDE2", lw=0.55)
+            ax_c_biology.text(
+                0.00,
+                y_value,
+                labels[dataset],
+                fontsize=7.0,
+                fontweight="bold",
+                color="black",
+                va="center",
             )
-        axis.set_aspect("equal", adjustable="datalim")
-        axis.set_axis_off()
-        axis.set_title(
-            f"{labels[dataset]} · {str(row.ligand).upper()}–{str(row.receptor).upper()} ({row.pathways})",
-            fontsize=7.5,
+            ax_c_biology.text(
+                0.37,
+                y_value,
+                "No positive\nmodel-linked LR axis",
+                fontsize=5.9,
+                color="#3E4A52",
+                va="center",
+                linespacing=1.05,
+            )
+            ax_c_biology.text(
+                0.66,
+                y_value,
+                "No molecular interpretation\nat the learned-edge threshold",
+                fontsize=5.8,
+                color="#3E4A52",
+                va="center",
+                linespacing=1.05,
+            )
+            biology_rows.append(
+                {
+                    "dataset": dataset,
+                    "sender_type": "not_evaluable",
+                    "receiver_type": "not_evaluable",
+                    "ligand": "not_evaluable",
+                    "receptor": "not_evaluable",
+                    "pathway": "not_evaluable",
+                    "commot_rank_percentile": np.nan,
+                    "biological_program": "not_evaluable",
+                    "nichenet_target": "not_evaluable",
+                }
+            )
+            continue
+        row = support.loc[dataset]
+        ax_c_biology.axhline(y_value + 0.085, color="#D7DDE2", lw=0.55)
+        ax_c_biology.text(
+            0.00,
+            y_value + 0.035,
+            labels[dataset],
+            fontsize=7.0,
             fontweight="bold",
             color="black",
-            pad=2,
+            va="center",
         )
-        map_note = textwrap.fill(
-            f"{row.sender_type} → {row.receiver_type} · "
-            f"{len(display_edges)}/{len(map_edges)} positive model-linked edges shown",
-            width=54,
+        ax_c_biology.text(
+            0.00,
+            y_value - 0.035,
+            textwrap.fill(f"{row.sender_type} → {row.receiver_type}", width=25),
+            fontsize=5.8,
+            color="#3E4A52",
+            va="center",
+            linespacing=1.05,
         )
-        axis.text(
-            0.5,
-            -0.035,
-            map_note,
-            transform=axis.transAxes,
-            fontsize=5.6,
-            color="#34424C",
-            va="top",
-            ha="center",
+        ax_c_biology.text(
+            0.37,
+            y_value + 0.025,
+            f"{str(row.ligand).upper()}–{str(row.receptor).upper()}",
+            fontsize=6.2,
+            fontweight="bold",
+            color="black",
+            va="center",
+        )
+        ax_c_biology.text(
+            0.37,
+            y_value - 0.040,
+            f"{row.pathways}\nCOMMOT percentile {100 * float(row.commot_percentile):.1f}",
+            fontsize=5.5,
+            color="#3E4A52",
+            va="center",
+            linespacing=1.05,
+        )
+        program = MODEL_LINKED_BIOLOGICAL_PROGRAMS[dataset]
+        ax_c_biology.text(
+            0.66,
+            y_value,
+            textwrap.fill(program, width=32),
+            fontsize=5.9,
+            color="black",
+            va="center",
             linespacing=1.10,
         )
+        biology_rows.append(
+            {
+                "dataset": dataset,
+                "sender_type": str(row.sender_type),
+                "receiver_type": str(row.receiver_type),
+                "ligand": str(row.ligand),
+                "receptor": str(row.receptor),
+                "pathway": str(row.pathways),
+                "commot_rank_percentile": float(row.commot_percentile),
+                "biological_program": program,
+                "nichenet_target": (
+                    str(row.nichenet_target)
+                    if bool(row.nichenet_available)
+                    else "not_evaluable_for_exact_axis"
+                ),
+            }
+        )
+    ax_c_biology.set_xlim(0, 1)
+    ax_c_biology.set_ylim(0, 1)
+    ax_c_biology.axhline(0.035, color="#D7DDE2", lw=0.55)
     legend_c.legend(
         handles=[
             plt.Line2D(
@@ -1888,8 +2101,10 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 [0],
                 [0],
                 color="#6A51A3",
-                lw=1.2,
-                label="CytoBridge exact-message × LR-activity edge",
+                lw=1.6,
+                marker=">",
+                markevery=[1],
+                label="model-linked exact-message × LR-activity edge",
             ),
         ],
         frameon=False,
@@ -1910,6 +2125,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     panel_metrics_path = panel_output / "global_pair_metrics.csv"
     panel_support_path = panel_output / "model_linked_external_support.csv"
     panel_status_path = panel_output / "model_linked_lr_selection_status.csv"
+    panel_biology_path = panel_output / "model_linked_biological_programs.csv"
     pd.concat(panel_cell_frames, ignore_index=True).to_csv(
         panel_cells_path, index=False
     )
@@ -1919,6 +2135,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     primary_metrics.to_csv(panel_metrics_path, index=False)
     support.reset_index().to_csv(panel_support_path, index=False)
     status.reset_index().to_csv(panel_status_path, index=False)
+    pd.DataFrame(biology_rows).to_csv(panel_biology_path, index=False)
     caption = (
         "**Five-dataset model-linked communication consistency.** (a) Terminal-stage "
         "directed cell-type-pair concordance is shown for COMMOT and for the frozen "
@@ -1931,9 +2148,12 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "universe; CellAgentChat shows its native CTPS rank for the same selected "
         "cell-type pair. AdMouse had no "
         "axis with at least 10 active model-linked edges under its 347-gene panel and "
-        "strict learned-edge threshold. (c) Observed terminal coordinates show the "
-        "sender and receiver populations and the strongest positive CytoBridge "
-        "exact-message × LR-activity edges. These model-first selections resolve a "
+        "learned-edge threshold. (c) The enlarged zebrafish spatial exemplar "
+        "shows observed terminal coordinates, sender/receiver populations, and the "
+        "strongest positive CytoBridge exact-message × LR-activity edges with "
+        "directional arrowheads; the inset locates the magnified field within the "
+        "whole tissue. The adjacent table resolves the four evaluable model-first "
+        "selections into "
         "COL1A2–SDC4 extracellular-matrix circuit in zebrafish, a COL6A3–CD44 "
         "matrix-adhesion circuit in MOSTA, a PSAP–GPR37L1 neuroglial circuit in "
         "ARISTA, and a CD99 homophilic cell-contact circuit in chicken valve tissue. "
@@ -2009,6 +2229,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             "global_metrics": _artifact(panel_metrics_path),
             "external_support": _artifact(panel_support_path),
             "selection_status": _artifact(panel_status_path),
+            "biological_programs": _artifact(panel_biology_path),
             "spatial_map_cells": _artifact(panel_cells_path),
             "spatial_map_edges": _artifact(panel_edges_path),
         },

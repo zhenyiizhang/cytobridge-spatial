@@ -1108,12 +1108,12 @@ def report(
     outer = fig.add_gridspec(
         3,
         1,
-        height_ratios=(1.00, 1.18, 1.18),
+        height_ratios=(0.95, 0.95, 1.35),
         left=0.09,
         right=0.985,
         top=0.985,
         bottom=0.065,
-        hspace=0.28,
+        hspace=0.25,
     )
 
     def _panel(parent, label: str, title: str):
@@ -1233,19 +1233,19 @@ def report(
     ax_b.legend(frameon=False, fontsize=8, loc="upper left", ncol=2)
 
     middle = outer[1].subgridspec(1, 1)
-    c_spec = middle[0].subgridspec(2, 1, height_ratios=(0.14, 1.0), hspace=0.04)
+    c_spec = middle[0].subgridspec(2, 1, height_ratios=(0.20, 1.0), hspace=0.12)
     c_heading = fig.add_subplot(c_spec[0])
     c_heading.axis("off")
     c_heading.text(0.0, 0.52, "c", fontsize=14, fontweight="bold", va="center")
     c_heading.text(
         0.035,
         0.52,
-        "Independent zebrafish LR-axis coverage and cross-method support",
+        "Independent LR evidence and formal COMMOT overlap",
         fontsize=12,
         fontweight="bold",
         va="center",
     )
-    c_content = c_spec[1].subgridspec(1, 2, width_ratios=(0.46, 0.54), wspace=0.24)
+    c_content = c_spec[1].subgridspec(1, 2, width_ratios=(0.58, 0.42), wspace=0.24)
     ax_c1 = fig.add_subplot(c_content[0])
     paper_shared = (
         paper.loc[paper["represented_in_current_expression"].astype(bool)]
@@ -1369,7 +1369,7 @@ def report(
     )
     ax_c2.set_xlabel("Within-method LR rank percentile")
     ax_c2.set_title(
-        f"{len(paper_shared)}/{represented_axis_count} also shared with COMMOT",
+        f"{len(paper_shared)}/{represented_axis_count} in formal COMMOT CellChatDB",
         fontsize=9,
         pad=4,
     )
