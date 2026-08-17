@@ -126,12 +126,15 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--jam-case-output", required=True, type=Path)
     result.add_argument(
+        "--trained-pre-interaction-random-control-output",
         "--trained-init-random-control-output",
+        dest="trained_init_random_control_output",
         type=Path,
         help=(
-            "Optional independent jam_trained_init_random_control.py bundle or "
+            "Optional independent trained/pre-interaction/random control bundle or "
             "type_pair_raw_attention_ranks.csv. Required when the formal JAM "
-            "case contains only the unavailable-control placeholder."
+            "case contains only the unavailable-control placeholder. The "
+            "trained-init spelling is a deprecated alias."
         ),
     )
     result.add_argument("--provenance-csv", required=True, type=Path)
@@ -309,7 +312,7 @@ def _control_rank_rows(
         if not available.any():
             raise ValueError(
                 "trained_init_random_control.csv is an unavailable placeholder; "
-                "supply --trained-init-random-control-output"
+                "supply --trained-pre-interaction-random-control-output"
             )
         frame = frame.loc[available].copy()
     condition_column = (
@@ -322,6 +325,8 @@ def _control_rank_rows(
         "init": "init",
         "init_interaction": "init",
         "initial_interaction": "init",
+        "pre_interaction": "init",
+        "preinteraction": "init",
         "random": "random",
         "randomized_interaction_seed17": "random",
         "random_interaction_seed17": "random",
@@ -414,7 +419,7 @@ def _resolve_control_rank_source(
         manifest_path = _verify_manifest_artifacts(
             root,
             {"type_pair_raw_attention_ranks": table},
-            label="independent trained/init/random control",
+            label="independent trained/pre-interaction/random control",
         )
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         guardrails = manifest.get("guardrails")
@@ -690,7 +695,7 @@ def load_case_statistics(
     )
     if controls["trained"][0] != controls["init"][0]:
         raise ValueError(
-            "Current audited JAM claim requires the trained and initialization control ranks "
+            "Current audited JAM claim requires the trained and pre-interaction control ranks "
             "to match; a changed result needs a new interpretation rather than silent reuse"
         )
     row = pd.Series(
@@ -1848,7 +1853,7 @@ def build_claim_ladder(
             "status": False,
             "claim": "The JAM pattern is training-specific or LR-causal",
             "evidence": (
-                f"trained/init ranks {trained}/{initialized}; random {random_rank}; "
+                f"trained/pre-interaction ranks {trained}/{initialized}; random {random_rank}; "
                 "no JAM-specific intervention or trajectory rerun"
             ),
         },
@@ -2115,7 +2120,7 @@ def plot_main_figure(
         note_lines.extend(
             [
                 "CytoBridge JAM ordering matches LR-only; no attention-specific gain.\n",
-                f"Single-seed control: trained {trained}/{trained_n}; initialization "
+                f"Single-seed control: trained {trained}/{trained_n}; pre-interaction "
                 f"{initialized}/{initialized_n}; random {random_rank}/{random_n}; "
                 "training specificity not demonstrated.",
             ]

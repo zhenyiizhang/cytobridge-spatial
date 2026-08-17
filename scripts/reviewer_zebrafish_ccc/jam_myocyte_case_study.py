@@ -568,6 +568,169 @@ def q95_activities(
     }
 
 
+def build_spatial_panel_cells(
+    data: ad.AnnData,
+    gene_values: Mapping[str, np.ndarray],
+    *,
+    stage: float,
+    cell_type: str,
+    time_key: str,
+    annotation_key: str,
+    spatial_key: str,
+) -> pd.DataFrame:
+    """Freeze all selected-stage cells needed to redraw the JAM spatial panel."""
+    if spatial_key not in data.obsm:
+        raise KeyError(f"Missing H5AD obsm[{spatial_key!r}]")
+    spatial = np.asarray(data.obsm[spatial_key], dtype=float)
+    if spatial.shape != (data.n_obs, 2) or not np.isfinite(spatial).all():
+        raise ValueError(f"{spatial_key} must be a finite N x 2 matrix")
+    stage_values = pd.to_numeric(data.obs[time_key], errors="raise").to_numpy(float)
+    selected = np.flatnonzero(
+        np.isclose(stage_values, float(stage), rtol=0.0, atol=1e-12)
+    )
+    if selected.size == 0:
+        raise ValueError(f"H5AD has no cells for stage={stage:g}")
+    labels = data.obs.iloc[selected][annotation_key].astype(str).to_numpy()
+    result = pd.DataFrame(
+        {
+            "h5ad_index": selected,
+            "obs_name": data.obs_names[selected].astype(str),
+            "cell_type": labels,
+            "is_somite": labels == str(cell_type),
+            "x": spatial[selected, 0],
+            "y": spatial[selected, 1],
+        }
+    )
+    for gene in ("jam2a", "jam3b", "myog"):
+        values = np.asarray(gene_values[gene], dtype=float)[selected]
+        result[gene] = values
+        result[f"{gene}_positive"] = values > 0
+    return result
+
+
+def build_trained_jam_display_edges(
+    edges: pd.DataFrame,
+    spatial_cells: pd.DataFrame,
+    *,
+    cell_type: str,
+    minimum_seed_support: int = 3,
+    maximum_display_edges: int = 15,
+) -> pd.DataFrame:
+    """Select a deterministic, model-first set of JAM-compatible display edges."""
+    if minimum_seed_support < 1 or maximum_display_edges < 1:
+        raise ValueError("Display-edge support/count thresholds must be positive")
+    required = [
+        "grouping_seed",
+        "sender_type",
+        "receiver_type",
+        "attention_abs_mean",
+        "_source_h5ad_index",
+        "_target_h5ad_index",
+    ]
+    require(edges, required, "trained attribution edges")
+    require(
+        spatial_cells,
+        [
+            "h5ad_index",
+            "obs_name",
+            "x",
+            "y",
+            "jam2a",
+            "jam3b",
+            "myog",
+            "jam2a_positive",
+            "jam3b_positive",
+        ],
+        "spatial panel cells",
+    )
+    cells = spatial_cells.set_index("h5ad_index", verify_integrity=True)
+    local = edges.loc[
+        edges["sender_type"].astype(str).eq(str(cell_type))
+        & edges["receiver_type"].astype(str).eq(str(cell_type))
+        & edges["_source_h5ad_index"].ne(edges["_target_h5ad_index"])
+    ].copy()
+    source = local["_source_h5ad_index"].to_numpy(int)
+    target = local["_target_h5ad_index"].to_numpy(int)
+    if not set(source).issubset(cells.index) or not set(target).issubset(cells.index):
+        raise ValueError("Somite attribution endpoints are absent from spatial panel cells")
+    source_jam2 = cells.loc[source, "jam2a_positive"].to_numpy(bool)
+    source_jam3 = cells.loc[source, "jam3b_positive"].to_numpy(bool)
+    target_jam2 = cells.loc[target, "jam2a_positive"].to_numpy(bool)
+    target_jam3 = cells.loc[target, "jam3b_positive"].to_numpy(bool)
+    forward = source_jam2 & target_jam3
+    reverse = source_jam3 & target_jam2
+    local["jam_compatible"] = forward | reverse
+    local["jam_compatible_orientation"] = np.select(
+        [forward & reverse, forward, reverse],
+        ["both", "source_jam2a_target_jam3b", "source_jam3b_target_jam2a"],
+        default="none",
+    )
+    local = local.loc[local["jam_compatible"]].copy()
+    if local.empty:
+        raise ValueError("No JAM-compatible trained Somite edges")
+    n_total_seeds = int(edges["grouping_seed"].nunique())
+    collapsed = (
+        local.groupby(
+            ["_source_h5ad_index", "_target_h5ad_index"],
+            observed=True,
+            as_index=False,
+        )
+        .agg(
+            seed_support=("grouping_seed", "nunique"),
+            seed_list=(
+                "grouping_seed",
+                lambda values: ";".join(
+                    str(value) for value in sorted(set(map(int, values)))
+                ),
+            ),
+            mean_attention=("attention_abs_mean", "mean"),
+            median_attention=("attention_abs_mean", "median"),
+            jam_compatible_orientation=(
+                "jam_compatible_orientation",
+                lambda values: ";".join(sorted(set(map(str, values)))),
+            ),
+        )
+    )
+    collapsed["n_total_grouping_seeds"] = n_total_seeds
+    collapsed["seed_support_fraction"] = collapsed["seed_support"] / n_total_seeds
+    collapsed["mean_attention_percentile_within_collapsed_jam_compatible_somite_edges"] = (
+        collapsed["mean_attention"].rank(method="average", pct=True)
+    )
+    collapsed["trained_attention_percentile"] = collapsed[
+        "mean_attention_percentile_within_collapsed_jam_compatible_somite_edges"
+    ]
+    collapsed["display_score"] = (
+        collapsed["mean_attention"] * collapsed["seed_support_fraction"]
+    )
+    stable = collapsed.loc[
+        collapsed["seed_support"].ge(int(minimum_seed_support))
+    ].sort_values(
+        [
+            "display_score",
+            "seed_support",
+            "_source_h5ad_index",
+            "_target_h5ad_index",
+        ],
+        ascending=[False, False, True, True],
+        kind="stable",
+    )
+    if stable.empty:
+        raise ValueError("No JAM-compatible edge passes the seed-support threshold")
+    display = stable.head(int(maximum_display_edges)).copy().reset_index(drop=True)
+    display.insert(0, "display_rank", np.arange(1, len(display) + 1, dtype=int))
+    display["selection_rule"] = (
+        "JAM-compatible Somite->Somite; seed support >= "
+        f"{int(minimum_seed_support)}/{n_total_seeds}; descending mean attention "
+        "x seed-support fraction; deterministic endpoint tie-break"
+    )
+    for role in ("source", "target"):
+        index = display[f"_{role}_h5ad_index"].to_numpy(int)
+        display[f"{role}_obs_name"] = cells.loc[index, "obs_name"].to_numpy(str)
+        for column in ("x", "y", "jam2a", "jam3b", "myog"):
+            display[f"{role}_{column}"] = cells.loc[index, column].to_numpy()
+    return display
+
+
 def distinct_pair_count(n_sender: int, n_receiver: int, n_intersection: int) -> int:
     n_sender = int(n_sender)
     n_receiver = int(n_receiver)
@@ -1640,6 +1803,22 @@ def main() -> None:
     )
     expression_detection = pd.concat([detection_18, detection_24], ignore_index=True)
     controls = load_control_artifact(args.trained_pre_interaction_random_control)
+    spatial_panel_cells = build_spatial_panel_cells(
+        data,
+        gene_values,
+        stage=args.stage,
+        cell_type=args.sender_type,
+        time_key=args.time_key,
+        annotation_key=args.annotation_key,
+        spatial_key=args.spatial_key,
+    )
+    trained_display_edges = build_trained_jam_display_edges(
+        raw_edges,
+        spatial_panel_cells,
+        cell_type=args.sender_type,
+        minimum_seed_support=3,
+        maximum_display_edges=15,
+    )
 
     paths = {
         "context_scores_and_ranks": tables_dir / "jam_context_scores_and_ranks.csv.gz",
@@ -1657,9 +1836,11 @@ def main() -> None:
         "myog_association": tables_dir / "myog_association.csv",
         "spatial_neighbor_enrichment": tables_dir / "spatial_neighbor_enrichment.csv",
         "raw_type_pair_ranks": tables_dir / "raw_type_pair_ranks.csv.gz",
-        "trained_pre_interaction_random_control": (
-            tables_dir / "trained_pre_interaction_random_control.csv"
-        ),
+        "spatial_cells": tables_dir / "somite_18hpf_spatial_cells.csv.gz",
+        "trained_display_edges": tables_dir / "trained_jam_display_edges.csv",
+        # Preserve the historical transport filename/key for archived loaders;
+        # the table itself uses the canonical pre_interaction condition label.
+        "trained_init_random_control": tables_dir / "trained_init_random_control.csv",
     }
     contexts.to_csv(paths["context_scores_and_ranks"], index=False, compression="gzip")
     selected.to_csv(paths["somite_case_summary"], index=False)
@@ -1694,7 +1875,9 @@ def main() -> None:
     associations_18.to_csv(paths["myog_association"], index=False)
     spatial_summary.to_csv(paths["spatial_neighbor_enrichment"], index=False)
     raw_type_pair_ranks.to_csv(paths["raw_type_pair_ranks"], index=False, compression="gzip")
-    controls.to_csv(paths["trained_pre_interaction_random_control"], index=False)
+    spatial_panel_cells.to_csv(paths["spatial_cells"], index=False, compression="gzip")
+    trained_display_edges.to_csv(paths["trained_display_edges"], index=False)
+    controls.to_csv(paths["trained_init_random_control"], index=False)
     readme_path = args.output_dir / "README.md"
     write_readme(readme_path, external_specs)
 
@@ -1739,6 +1922,10 @@ def main() -> None:
             "spatial_permutation_seed": int(args.permutation_seed),
             "spatial_n_permutations": int(args.n_permutations),
             "spatial_null": "independently permute jam2a and jam3b detection labels within 18 hpf Somite cells while preserving marginals and graph",
+            "spatial_panel_cells_scope": "all selected-stage cells, with an explicit is_somite flag; no spatial crop or zoom",
+            "trained_display_edge_selection": "JAM-compatible Somite->Somite endpoints ranked by trained mean attention times grouping-seed support; no external method or response outcome enters selection",
+            "trained_display_edge_minimum_grouping_seed_support": 3,
+            "trained_display_edge_maximum_count": 15,
             "trained_pre_interaction_random_control_reconstructed_by_this_script": False,
             "trained_pre_interaction_random_control_handling": (
                 "optional precomputed table copied with source hash; absent input "
@@ -1765,6 +1952,11 @@ def main() -> None:
             "fast_muscle_24hpf_comparison_is_lineage_tracing": False,
             "same_dataset_external_method_is_independent_validation": False,
             "literature_scope": "supports the heterophilic Jam2a/Jam3b pair and somite-stage fusion context, not model direction or magnitude",
+        },
+        "panel_data_counts": {
+            "n_selected_stage_cells": int(len(spatial_panel_cells)),
+            "n_selected_stage_somite_cells": int(spatial_panel_cells["is_somite"].sum()),
+            "n_trained_jam_display_edges": int(len(trained_display_edges)),
         },
         "artifacts": {name: artifact(path) for name, path in paths.items()},
         "readme": artifact(readme_path),

@@ -72,6 +72,28 @@ def _write_edges(path: Path) -> Path:
     return path
 
 
+def test_deprecated_init_edges_alias_uses_pre_interaction_destination() -> None:
+    args = CONTROL.parser().parse_args(
+        [
+            "--h5ad",
+            "input.h5ad",
+            "--observed-cells",
+            "observed.csv.gz",
+            "--trained-edges",
+            "trained.csv.gz",
+            "--init-edges",
+            "legacy-init.csv.gz",
+            "--random-edges",
+            "random.csv.gz",
+            "--output-dir",
+            "output",
+        ]
+    )
+
+    assert args.pre_interaction_edges == Path("legacy-init.csv.gz")
+    assert not hasattr(args, "init_edges")
+
+
 def test_obs_name_mapping_defeats_h5ad_index_order_trap(tmp_path: Path) -> None:
     data = _reordered_h5ad()
     observed_path = _write_observed(tmp_path / "observed_cells.csv")
@@ -245,7 +267,7 @@ def test_end_to_end_writes_percentile_only_cross_model_control(
             str(observed),
             "--trained-edges",
             str(paths["trained"]),
-            "--pre-interaction-edges",
+            "--init-edges",
             str(paths["pre_interaction"]),
             "--random-edges",
             str(paths["random"]),
@@ -260,6 +282,11 @@ def test_end_to_end_writes_percentile_only_cross_model_control(
     assert manifest["counts"]["n_stage_scaffold_edges"] == 4
     assert manifest["counts"]["n_somite_somite_scaffold_edges"] == 4
     assert manifest["guardrails"]["raw_attention_scale_compared_across_models"] is False
+    assert set(manifest["inputs"]["edge_controls"]) == {
+        "trained",
+        "pre_interaction",
+        "random",
+    }
     delta = pd.read_csv(
         output
         / "tables"

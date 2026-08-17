@@ -75,6 +75,105 @@ def test_external_methods_are_optional_for_cytobridge_only_audit() -> None:
     assert JAM.parse_external_specs(args.external_spec) == []
 
 
+def test_spatial_panel_cells_freeze_full_stage_with_somite_flag() -> None:
+    data = _adata(
+        ["s0", "s1", "other", "late"],
+        ["Somite", "Somite", "Neural", "Somite"],
+        stages=[3.0, 3.0, 3.0, 4.0],
+        stage_labels=["18hpf", "18hpf", "18hpf", "24hpf"],
+    )
+    data.obsm["spatial_aligned"] = np.asarray(
+        [[0.0, 1.0], [2.0, 3.0], [4.0, 5.0], [6.0, 7.0]]
+    )
+    genes = {
+        "jam2a": np.asarray([1.0, 0.0, 0.0, 1.0]),
+        "jam3b": np.asarray([0.0, 2.0, 0.0, 0.0]),
+        "myog": np.asarray([0.5, 1.5, 0.0, 2.0]),
+    }
+    result = JAM.build_spatial_panel_cells(
+        data,
+        genes,
+        stage=3.0,
+        cell_type="Somite",
+        time_key="time_point_processed",
+        annotation_key="Annotation",
+        spatial_key="spatial_aligned",
+    )
+    assert result["obs_name"].tolist() == ["s0", "s1", "other"]
+    assert result["is_somite"].tolist() == [True, True, False]
+    assert result[["x", "y"]].to_numpy().tolist() == [
+        [0.0, 1.0],
+        [2.0, 3.0],
+        [4.0, 5.0],
+    ]
+    assert result["jam2a_positive"].tolist() == [True, False, False]
+
+
+def test_trained_display_edges_are_stable_model_first_top_edges() -> None:
+    spatial = pd.DataFrame(
+        {
+            "h5ad_index": [0, 1, 2],
+            "obs_name": ["a", "b", "c"],
+            "x": [0.0, 1.0, 2.0],
+            "y": [0.0, 1.0, 2.0],
+            "jam2a": [1.0, 0.0, 1.0],
+            "jam3b": [0.0, 1.0, 1.0],
+            "myog": [0.1, 0.2, 0.3],
+            "jam2a_positive": [True, False, True],
+            "jam3b_positive": [False, True, True],
+        }
+    )
+    rows: list[dict[str, object]] = []
+    for seed in (101, 202, 303, 404, 505):
+        rows.extend(
+            [
+                {
+                    "grouping_seed": seed,
+                    "sender_type": "Somite",
+                    "receiver_type": "Somite",
+                    "attention_abs_mean": 0.9,
+                    "_source_h5ad_index": 0,
+                    "_target_h5ad_index": 1,
+                },
+                {
+                    "grouping_seed": seed,
+                    "sender_type": "Somite",
+                    "receiver_type": "Somite",
+                    "attention_abs_mean": 0.4,
+                    "_source_h5ad_index": 2,
+                    "_target_h5ad_index": 1,
+                },
+            ]
+        )
+    # High-score but unstable endpoint is excluded by the predeclared support rule.
+    rows.extend(
+        {
+            "grouping_seed": seed,
+            "sender_type": "Somite",
+            "receiver_type": "Somite",
+            "attention_abs_mean": 2.0,
+            "_source_h5ad_index": 1,
+            "_target_h5ad_index": 2,
+        }
+        for seed in (101, 202)
+    )
+    result = JAM.build_trained_jam_display_edges(
+        pd.DataFrame(rows),
+        spatial,
+        cell_type="Somite",
+        minimum_seed_support=3,
+        maximum_display_edges=15,
+    )
+    assert result["display_rank"].tolist() == [1, 2]
+    assert result[["_source_h5ad_index", "_target_h5ad_index"]].values.tolist() == [
+        [0, 1],
+        [2, 1],
+    ]
+    assert result["seed_support"].tolist() == [5, 5]
+    assert result["source_x"].tolist() == [0.0, 2.0]
+    assert result["trained_attention_percentile"].between(0, 1).all()
+
+
 def test_unrelated_case_insensitive_gene_duplicate_is_tolerated() -> None:
     data = ad.AnnData(
         X=np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 2.0]], dtype=np.float32),
@@ -414,7 +513,7 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
     source = tmp_path / "controls.csv"
     pd.DataFrame(
         {
-            "condition": ["trained", "pre_interaction", "random"],
+            "condition": ["trained", "init", "random"],
             "jam_compatible_edge_percentile_mean": [0.67, 0.66, 0.57],
         }
     ).to_csv(source, index=False)
@@ -428,3 +527,147 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
     ]
     assert controls["control_metrics_available"].all()
     assert controls["unavailable_reason"].eq("").all()
+
+
+def test_no_external_methods_write_fixed_empty_availability_audit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h5ad = tmp_path / "input.h5ad"
+    observed = tmp_path / "observed.csv.gz"
+    provenance_path = tmp_path / "provenance.csv"
+    for path in (h5ad, observed, provenance_path):
+        path.write_text("fixture\n", encoding="utf-8")
+
+    provenance = pd.DataFrame(
+        {
+            "axis_id": ["jam2a->jam3b", "jam3b->jam2a"],
+            "ligand": ["jam2a", "jam3b"],
+            "receptor": ["jam3b", "jam2a"],
+        }
+    )
+    contexts = provenance.assign(
+        stage=3.0,
+        sender_type="Somite",
+        receiver_type="Somite",
+        n_possible_distinct_cell_pairs=12,
+        n_active_unique_edges=5,
+        n_sender_cells=4,
+        n_receiver_cells=4,
+        **{score: 0.5 for score in JAM.SCORE_COLUMNS},
+    )
+    raw_type_pair_ranks = pd.DataFrame(
+        {
+            "stage": [3.0],
+            "sender_type": ["Somite"],
+            "receiver_type": ["Somite"],
+            "raw_attention_full_type_pair_density": [0.5],
+            "raw_attention_full_type_pair_rank_from_top": [1],
+            "raw_attention_full_type_pair_n_ranked_contexts": [1],
+            "raw_attention_full_type_pair_tie_count": [1],
+            "raw_attention_full_type_pair_top_tail_fraction": [1.0],
+            "raw_attention_full_type_pair_top_tail_percent": [100.0],
+            "raw_attention_full_type_pair_rank_over_n": ["1/1"],
+        }
+    )
+
+    monkeypatch.setattr(JAM.ad, "read_h5ad", lambda _path: object())
+    monkeypatch.setattr(JAM, "load_provenance", lambda _path: provenance.copy())
+    monkeypatch.setattr(
+        JAM,
+        "load_edge_tables",
+        lambda *_args, **_kwargs: (
+            pd.DataFrame({"edge": [1]}),
+            pd.DataFrame({"source": ["fixture"]}),
+            {"mapping": "fixture"},
+        ),
+    )
+    monkeypatch.setattr(
+        JAM,
+        "load_gene_values",
+        lambda *_args, **_kwargs: (
+            {},
+            pd.DataFrame({"gene": ["fixture"], "available": [True]}),
+        ),
+    )
+    monkeypatch.setattr(JAM, "q95_activities", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        JAM,
+        "build_spatial_panel_cells",
+        lambda *_args, **_kwargs: pd.DataFrame(
+            {"is_somite": [True], "h5ad_index": [0]}
+        ),
+    )
+    monkeypatch.setattr(
+        JAM,
+        "build_trained_jam_display_edges",
+        lambda *_args, **_kwargs: pd.DataFrame({"display_rank": [1]}),
+    )
+    monkeypatch.setattr(JAM, "context_universe", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        JAM,
+        "score_cytobridge_contexts",
+        lambda *_args, **_kwargs: contexts.copy(),
+    )
+    monkeypatch.setattr(JAM, "attach_ranks", lambda frame, _rank_map: frame)
+    monkeypatch.setattr(
+        JAM,
+        "score_raw_type_pair_universe",
+        lambda *_args, **_kwargs: raw_type_pair_ranks.copy(),
+    )
+    monkeypatch.setattr(
+        JAM,
+        "expression_detection_table",
+        lambda *_args, **_kwargs: pd.DataFrame(
+            {"stage_label": ["fixture"], "gene": ["jam2a"]}
+        ),
+    )
+    monkeypatch.setattr(
+        JAM,
+        "somite_gene_associations",
+        lambda *_args, **_kwargs: pd.DataFrame(
+            {"gene_a": ["jam2a"], "gene_b": ["jam3b"]}
+        ),
+    )
+    monkeypatch.setattr(
+        JAM,
+        "somite_spatial_permutation",
+        lambda *_args, **_kwargs: (
+            pd.DataFrame({"observed": [1]}),
+            pd.DataFrame({"iteration": [0]}),
+        ),
+    )
+    output = tmp_path / "output"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "jam_myocyte_case_study.py",
+            "--h5ad",
+            str(h5ad),
+            "--edge-dir",
+            str(tmp_path / "edges"),
+            "--observed-cells",
+            str(observed),
+            "--provenance",
+            str(provenance_path),
+            "--output-dir",
+            str(output),
+        ],
+    )
+
+    JAM.main()
+
+    audit = pd.read_csv(output / "tables" / "external_axis_availability_audit.csv")
+    assert audit.empty
+    assert list(audit.columns) == [
+        "method",
+        "axis_id",
+        "ligand",
+        "receptor",
+        "external_axis_available",
+        "external_availability_provenance_rows",
+        "external_stage_coordinate_basis",
+        "external_matrix_keys",
+        "score_column",
+        "score_mode",
+    ]
