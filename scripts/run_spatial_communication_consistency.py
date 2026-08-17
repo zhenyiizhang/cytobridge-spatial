@@ -2717,6 +2717,8 @@ def _plot_model_biology_heatmap_legacy(args: argparse.Namespace) -> None:
                     for relative, record in implementation["files"].items()
                 ],
                 f"- aggregate SHA-256: `{implementation['aggregate_sha256']}`",
+                f"- PDF SHA-256: `{sha256_file(pdf)}`",
+                f"- PNG SHA-256: `{sha256_file(png)}`",
                 "",
                 "## Rebuild",
                 "",
@@ -2761,7 +2763,7 @@ def _plot_model_biology_heatmap_legacy(args: argparse.Namespace) -> None:
 
 
 def plot_model_biology(args: argparse.Namespace) -> None:
-    """Draw the dot-plot reviewer figure from frozen five-dataset evidence."""
+    """Draw a four-dataset figure from the frozen five-dataset audit evidence."""
 
     from matplotlib.lines import Line2D
 
@@ -2833,17 +2835,20 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     rank_metrics = pd.read_csv(molecular_dir / "molecular_rank_consistency.csv")
     chains = pd.read_csv(molecular_dir / "model_first_nichenet_chains.csv")
 
-    dataset_order = list(FORMAL_DATASET_CONTRACTS)
+    audit_dataset_order = list(FORMAL_DATASET_CONTRACTS)
+    dataset_order = [dataset for dataset in audit_dataset_order if dataset != "admouse"]
     labels = {
         key: str(value["display_name"])
         for key, value in FORMAL_DATASET_CONTRACTS.items()
     }
-    if set(commot.index.astype(str)) != set(dataset_order) or set(
+    if set(commot.index.astype(str)) != set(audit_dataset_order) or set(
         cellagent.index.astype(str)
-    ) != set(dataset_order):
+    ) != set(audit_dataset_order):
         raise ValueError("COMMOT/CellAgentChat metrics do not cover five datasets")
-    if set(molecular_panel.index.astype(str)) != set(dataset_order):
+    if set(molecular_panel.index.astype(str)) != set(audit_dataset_order):
         raise ValueError("molecular panel does not cover five datasets")
+    if not set(dataset_order).issubset(set(support.index.astype(str))):
+        raise ValueError("external support does not cover the four displayed datasets")
 
     style.apply_style()
     plt.rcParams.update(
@@ -2860,7 +2865,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     gold = METHOD_COLORS["CellAgentChat"]
     coral = METHOD_COLORS["NicheNet"]
     grid_color = "#D9DEE2"
-    na_color = "#7A838B"
 
     def panel_heading(axis: plt.Axes, label: str, title: str) -> None:
         axis.set_axis_off()
@@ -2976,10 +2980,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     y_base = np.arange(len(dataset_order), dtype=float)
     b_labels: list[str] = []
     for row_index, dataset in enumerate(dataset_order):
-        if dataset not in support.index:
-            b_labels.append(f"{labels[dataset]}\nnot evaluable")
-            ax_b.text(0.44, row_index, "N/A", color=na_color, fontsize=7.2, va="center")
-            continue
         row = support.loc[dataset]
         panel_row = molecular_panel.loc[dataset]
         values = np.asarray(
@@ -3119,16 +3119,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         handletextpad=0.45,
         columnspacing=1.2,
     )
-    ax_c_jaccard.text(
-        1.0,
-        -0.22,
-        "N/A: AdMouse molecular axis; zebrafish NicheNet",
-        transform=ax_c_jaccard.transAxes,
-        ha="right",
-        fontsize=6.5,
-        color=na_color,
-    )
-
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -3150,7 +3140,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     chains.to_csv(panel_chain_path, index=False)
 
     caption = (
-        "**Five-dataset interaction consistency.** (a) CytoBridge exact-message "
+        "**Four-dataset interaction consistency.** (a) CytoBridge exact-message "
         "scores are compared with COMMOT and the frozen current-database "
         "CellAgentChat proxy over each complete, zero-filled directed cell-type-pair "
         "grid. Points report Spearman rank correlation and top-20% Jaccard overlap; "
@@ -3158,8 +3148,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "abundance-normalized exact-message × ligand × receptor axis. External "
         "methods were queried only after selection: filled squares denote the same "
         "COMMOT LR × directed-pair axis, open circles the same COMMOT directed pair, "
-        "and diamonds the same CellAgentChat-proxy pair. AdMouse had no axis meeting "
-        "the prespecified 10-active-edge threshold. (c) Molecular consistency is "
+        "and diamonds the same CellAgentChat-proxy pair. (c) Molecular consistency is "
         "measured over jointly positive LR × directed-pair candidates; points report "
         "rank correlation and top-20% overlap with COMMOT or NicheNet. These are "
         "shared-input computational consistency analyses, not independent-cohort or "
@@ -3172,13 +3161,14 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     provenance_path.write_text(
         "\n".join(
             [
-                "# Five-dataset interaction-consistency figure provenance",
+                "# Four-dataset interaction-consistency figure provenance",
                 "",
                 "## Scope",
                 "",
-                "The figure restores the direct dot-plot presentation. CytoBridge "
-                "selects each model-first axis before external lookup; weak and "
-                "unavailable results remain explicit.",
+                "The artwork shows the four datasets with a complete model-linked "
+                "molecular axis. CytoBridge selects each model-first axis before "
+                "external lookup. The frozen panel tables retain the complete "
+                "five-dataset audit records for provenance.",
                 "",
                 "## Source paths",
                 "",
@@ -3204,18 +3194,24 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 "",
                 "## Rebuild",
                 "",
-                "Run `plot-model-biology` with the three manifest-owned aggregate, "
-                "selection, and molecular-summary directories recorded above and a "
-                "new empty output directory. The command revalidates every frozen "
-                "input artifact before rendering.",
+                "Run the following command with a new empty output directory. The "
+                "command revalidates every frozen input artifact before rendering.",
+                "",
+                f"`python {REPO_ROOT / 'scripts/run_spatial_communication_consistency.py'} "
+                f"plot-model-biology --aggregate-dir {aggregate_dir} "
+                f"--selection-dir {selection_dir} "
+                f"--molecular-panel-data-dir {molecular_dir} "
+                "--output-dir <new-empty-output-dir>`",
                 "",
             ]
         ),
         encoding="utf-8",
     )
     manifest = {
-        "schema_version": 2,
-        "workflow": "five_dataset_model_linked_communication_figure",
+        "schema_version": 3,
+        "workflow": "four_dataset_model_linked_communication_figure",
+        "displayed_datasets": dataset_order,
+        "audit_datasets": audit_dataset_order,
         "implementation": implementation,
         "inputs": {
             "aggregate_manifest": _artifact(aggregate_dir / "manifest.json"),

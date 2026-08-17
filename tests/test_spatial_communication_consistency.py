@@ -573,6 +573,7 @@ def test_model_biology_plot_requires_computed_molecular_panel_data() -> None:
     assert "imshow(" not in plot_source
     assert "pcolormesh(" not in plot_source
     assert "spatial_communication_model_biology_a4.pdf" in plot_source
+    assert 'dataset != "admouse"' in plot_source
 
 
 def _artifact_record(path: Path) -> dict[str, object]:
@@ -780,9 +781,17 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     from CytoBridge.nonspatial import scnt_figure_style as style
 
     monkeypatch.setattr(style, "apply_style", lambda: None)
+    artwork_text: list[str] = []
 
     def fake_save_figure(_figure: object, pdf: Path, png: Path, *, dpi: int) -> None:
         assert dpi == 320
+        for axis in _figure.axes:
+            artwork_text.extend(text.get_text() for text in axis.texts)
+            artwork_text.extend(text.get_text() for text in axis.get_xticklabels())
+            artwork_text.extend(text.get_text() for text in axis.get_yticklabels())
+            legend = axis.get_legend()
+            if legend is not None:
+                artwork_text.extend(text.get_text() for text in legend.get_texts())
         Path(pdf).write_bytes(b"%PDF-1.4\n% test fixture\n")
         Path(png).write_bytes(b"PNG test fixture\n")
 
@@ -802,6 +811,9 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
 
     assert (output / "spatial_communication_model_biology_a4.pdf").is_file()
     assert (output / "spatial_communication_model_biology_a4.png").is_file()
+    joined_artwork_text = "\n".join(artwork_text)
+    assert "AdMouse" not in joined_artwork_text
+    assert "N/A" not in joined_artwork_text
     expected_tables = {
         "global_pair_metrics.csv",
         "model_linked_external_support.csv",
@@ -813,6 +825,12 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert {path.name for path in (output / "panel_data").iterdir()} == expected_tables
 
     manifest = json.loads((output / "figure_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == 3
+    assert manifest["workflow"] == "four_dataset_model_linked_communication_figure"
+    assert manifest["displayed_datasets"] == [
+        dataset for dataset in FORMAL_DATASET_CONTRACTS if dataset != "admouse"
+    ]
+    assert manifest["audit_datasets"] == list(FORMAL_DATASET_CONTRACTS)
     assert set(manifest["inputs"]) == {
         "aggregate_manifest",
         "selection_manifest",
@@ -830,6 +848,22 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "spatial_map" not in serialized_manifest
     assert "edge_manifest" not in serialized_manifest
     assert "biological_program" not in serialized_manifest
+
+    caption = (output / "caption.md").read_text(encoding="utf-8")
+    assert "Four-dataset interaction consistency" in caption
+    assert "AdMouse" not in caption
+    assert "N/A" not in caption
+
+    global_metrics = pd.read_csv(output / "panel_data/global_pair_metrics.csv")
+    molecular_panel = pd.read_csv(
+        output / "panel_data/model_biology_molecular_panel.csv"
+    )
+    selection_status = pd.read_csv(
+        output / "panel_data/model_linked_lr_selection_status.csv"
+    )
+    assert "admouse" in set(global_metrics.dataset)
+    assert "admouse" in set(molecular_panel.dataset)
+    assert "admouse" in set(selection_status.dataset)
 
 
 def _write_model_biology_molecular_fixture(
