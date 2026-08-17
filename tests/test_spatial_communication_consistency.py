@@ -782,6 +782,7 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
 
     monkeypatch.setattr(style, "apply_style", lambda: None)
     artwork_text: list[str] = []
+    artwork_axes: list[dict[str, object]] = []
 
     def fake_save_figure(_figure: object, pdf: Path, png: Path, *, dpi: int) -> None:
         assert dpi == 320
@@ -790,8 +791,18 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
             artwork_text.extend(text.get_text() for text in axis.get_xticklabels())
             artwork_text.extend(text.get_text() for text in axis.get_yticklabels())
             legend = axis.get_legend()
+            legend_text = []
             if legend is not None:
-                artwork_text.extend(text.get_text() for text in legend.get_texts())
+                legend_text = [text.get_text() for text in legend.get_texts()]
+                artwork_text.extend(legend_text)
+            artwork_axes.append(
+                {
+                    "title": axis.get_title(),
+                    "xlabel": axis.get_xlabel(),
+                    "legend": legend_text,
+                    "collections": len(axis.collections),
+                }
+            )
         Path(pdf).write_bytes(b"%PDF-1.4\n% test fixture\n")
         Path(png).write_bytes(b"PNG test fixture\n")
 
@@ -814,6 +825,20 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     joined_artwork_text = "\n".join(artwork_text)
     assert "AdMouse" not in joined_artwork_text
     assert "N/A" not in joined_artwork_text
+    panel_a_rank = next(
+        record for record in artwork_axes if record["title"] == "Rank agreement"
+    )
+    assert "CellAgentChat proxy" in panel_a_rank["legend"]
+    panel_b = next(
+        record
+        for record in artwork_axes
+        if record["xlabel"] == "Within-method rank percentile"
+    )
+    assert panel_b["legend"] == [
+        "COMMOT same LR × pair",
+        "COMMOT same directed pair",
+    ]
+    assert panel_b["collections"] == 8
     expected_tables = {
         "global_pair_metrics.csv",
         "model_linked_external_support.csv",
@@ -853,6 +878,8 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "Four-dataset interaction consistency" in caption
     assert "AdMouse" not in caption
     assert "N/A" not in caption
+    assert "diamonds" not in caption
+    assert "CellAgentChat-proxy pair" not in caption
 
     global_metrics = pd.read_csv(output / "panel_data/global_pair_metrics.csv")
     molecular_panel = pd.read_csv(
@@ -861,9 +888,13 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     selection_status = pd.read_csv(
         output / "panel_data/model_linked_lr_selection_status.csv"
     )
+    external_support = pd.read_csv(
+        output / "panel_data/model_linked_external_support.csv"
+    )
     assert "admouse" in set(global_metrics.dataset)
     assert "admouse" in set(molecular_panel.dataset)
     assert "admouse" in set(selection_status.dataset)
+    assert "cellagentchat_pair_percentile" in external_support.columns
 
 
 def _write_model_biology_molecular_fixture(

@@ -2986,7 +2986,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             [
                 float(panel_row.commot_exact_axis_percentile),
                 float(row.commot_pair_percentile),
-                float(row.cellagentchat_pair_percentile),
             ],
             dtype=float,
         )
@@ -3015,16 +3014,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             facecolor="white",
             edgecolor=teal,
             linewidth=1.4,
-            zorder=3,
-        )
-        ax_b.scatter(
-            values[2],
-            row_index,
-            s=45,
-            marker="D",
-            color=gold,
-            edgecolor="white",
-            linewidth=0.6,
             zorder=3,
         )
         b_labels.append(
@@ -3061,21 +3050,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 markersize=6,
                 label="COMMOT same directed pair",
             ),
-            Line2D(
-                [0],
-                [0],
-                marker="D",
-                linestyle="",
-                color=gold,
-                markeredgecolor="white",
-                markersize=6,
-                label="CellAgentChat proxy same pair",
-            ),
         ],
         frameon=False,
         loc="lower left",
         bbox_to_anchor=(0.0, 1.06),
-        ncol=3,
+        ncol=2,
         fontsize=7.0,
         handletextpad=0.4,
         columnspacing=1.0,
@@ -3148,11 +3127,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "abundance-normalized exact-message × ligand × receptor axis. External "
         "methods were queried only after selection: filled squares denote the same "
         "COMMOT LR × directed-pair axis, open circles the same COMMOT directed pair, "
-        "and diamonds the same CellAgentChat-proxy pair. (c) Molecular consistency is "
-        "measured over jointly positive LR × directed-pair candidates; points report "
-        "rank correlation and top-20% overlap with COMMOT or NicheNet. These are "
-        "shared-input computational consistency analyses, not independent-cohort or "
-        "causal validation."
+        "and external scores are read only after CytoBridge selection. (c) Molecular "
+        "consistency is measured over jointly positive LR × directed-pair candidates; "
+        "points report rank correlation and top-20% overlap with COMMOT or NicheNet. "
+        "These are shared-input computational consistency analyses, not "
+        "independent-cohort or causal validation."
     )
     caption_path = output / "caption.md"
     caption_path.write_text(caption + "\n", encoding="utf-8")
