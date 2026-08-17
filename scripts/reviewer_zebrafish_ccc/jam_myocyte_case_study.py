@@ -88,12 +88,13 @@ def parser() -> argparse.ArgumentParser:
         "--external-spec",
         action="append",
         nargs=5,
-        required=True,
+        default=[],
         metavar=("METHOD", "TABLE", "AVAILABILITY", "SCORE_COLUMN", "SCORE_MODE"),
         help=(
             "Repeatable external method specification. SCORE_MODE is one of "
             "distinct_density, distinct_mass, or native_rank_only. An explicit "
-            "stage x LR availability table is always required."
+            "stage x LR availability table is required for every supplied "
+            "external method. Omit this option for a CytoBridge-only biology audit."
         ),
     )
     result.add_argument("--output-dir", required=True, type=Path)
@@ -121,11 +122,14 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--preprocess-manifest", type=Path)
     result.add_argument(
+        "--trained-pre-interaction-random-control",
         "--trained-init-random-control",
+        dest="trained_pre_interaction_random_control",
         type=Path,
         help=(
-            "Optional previously audited CytoBridge control metrics table. It is "
-            "copied with a source hash; this script does not reconstruct controls."
+            "Optional audited trained/pre-interaction/random CytoBridge control "
+            "metrics table. It is copied with a source hash; this script does not "
+            "reconstruct controls. The trained-init spelling is deprecated."
         ),
     )
     result.add_argument("--permutation-seed", type=int, default=20260722)
@@ -1355,7 +1359,18 @@ def somite_spatial_permutation(
 
 def write_readme(path: Path, external_specs: Sequence[ExternalSpec]) -> None:
     methods = ", ".join(spec.method for spec in external_specs)
-    path.write_text(
+    external_text = (
+        f"External methods: {methods}. A missing sparse context row becomes zero only "
+        "when its explicit stage x LR availability record says the axis was computed. "
+        "An unavailable axis remains NA. Native scores from different methods are not "
+        "asserted to share units.\n\n"
+        if methods
+        else (
+            "External methods were intentionally omitted for this CytoBridge-only "
+            "biology audit; no external score or availability value was fabricated.\n\n"
+        )
+    )
+    text = (
         "# 18 hpf Somite Jam2a--Jam3b audit\n\n"
         "This bundle evaluates both JAM orientations in the exact directed cell-type context "
         "universe. Support filtering is applied before competition/min ranking; every rank is "
@@ -1365,29 +1380,30 @@ def write_readme(path: Path, external_specs: Sequence[ExternalSpec]) -> None:
         "are technical regroupings; a missing context edge in a valid seed contributes zero. "
         "Cell self-edges are excluded and the denominator is n_sender*n_receiver minus the "
         "sender/receiver cell-set intersection.\n\n"
-        f"External methods: {methods}. A missing sparse context row becomes zero only when its "
-        "explicit stage x LR availability record says the axis was computed. An unavailable "
-        "axis remains NA. Native scores from different methods are not asserted to share units.\n\n"
-        "The expression and spatial artifacts are cross-sectional consistency checks. The "
+        + external_text
+        + "The expression and spatial artifacts are cross-sectional consistency checks. The "
         "literature validates the Jam2a/Jam3b heterophilic pair and somite-stage myocyte-fusion "
         "context, but not a polarized sender-to-receiver direction, CytoBridge score magnitude, "
         "direct molecular contact in these cells, or causality. The 24 hpf Fast Muscle table is "
-        "a cross-sectional maturation-state comparison, not lineage tracing. If a trained/init/"
-        "random control table is supplied, it is copied as a hash-verified precomputed artifact; "
-        "the present script does not reconstruct those model controls.\n",
-        encoding="utf-8",
+        "a cross-sectional maturation-state comparison, not lineage tracing. If a trained/"
+        "pre-interaction/random control table is supplied, it is copied as a hash-verified "
+        "precomputed artifact; "
+        "the present script does not reconstruct those model controls.\n"
     )
+    path.write_text(text, encoding="utf-8")
 
 
 def load_control_artifact(path: Path | None) -> pd.DataFrame:
-    """Expose trained/init/random controls without silently inventing results."""
-    expected = ("trained", "init_interaction", "randomized_interaction_seed17")
+    """Expose trained/pre-interaction/random controls without inventing results."""
+    expected = ("trained", "pre_interaction", "randomized_interaction_seed17")
     if path is None:
         return pd.DataFrame(
             {
                 "control": expected,
                 "control_metrics_available": False,
-                "unavailable_reason": "--trained-init-random-control was not supplied",
+                "unavailable_reason": (
+                    "--trained-pre-interaction-random-control was not supplied"
+                ),
             }
         )
     frame = pd.read_csv(path)
@@ -1399,9 +1415,11 @@ def load_control_artifact(path: Path | None) -> pd.DataFrame:
     ).str.strip("_")
     aliases = {
         "trained": "trained",
-        "init": "init_interaction",
-        "init_interaction": "init_interaction",
-        "initial_interaction": "init_interaction",
+        "init": "pre_interaction",
+        "init_interaction": "pre_interaction",
+        "initial_interaction": "pre_interaction",
+        "pre_interaction": "pre_interaction",
+        "preinteraction": "pre_interaction",
         "random": "randomized_interaction_seed17",
         "randomized_interaction": "randomized_interaction_seed17",
         "randomized_interaction_seed17": "randomized_interaction_seed17",
@@ -1440,10 +1458,10 @@ def main() -> None:
     if args.preprocess_manifest is not None and not args.preprocess_manifest.is_file():
         raise FileNotFoundError(args.preprocess_manifest)
     if (
-        args.trained_init_random_control is not None
-        and not args.trained_init_random_control.is_file()
+        args.trained_pre_interaction_random_control is not None
+        and not args.trained_pre_interaction_random_control.is_file()
     ):
-        raise FileNotFoundError(args.trained_init_random_control)
+        raise FileNotFoundError(args.trained_pre_interaction_random_control)
     prepare_output(args.output_dir, bool(args.overwrite))
     tables_dir = args.output_dir / "tables"
     tables_dir.mkdir()
@@ -1621,7 +1639,7 @@ def main() -> None:
         "Cross-sectional maturation-state comparison only; not lineage tracing."
     )
     expression_detection = pd.concat([detection_18, detection_24], ignore_index=True)
-    controls = load_control_artifact(args.trained_init_random_control)
+    controls = load_control_artifact(args.trained_pre_interaction_random_control)
 
     paths = {
         "context_scores_and_ranks": tables_dir / "jam_context_scores_and_ranks.csv.gz",
@@ -1639,14 +1657,32 @@ def main() -> None:
         "myog_association": tables_dir / "myog_association.csv",
         "spatial_neighbor_enrichment": tables_dir / "spatial_neighbor_enrichment.csv",
         "raw_type_pair_ranks": tables_dir / "raw_type_pair_ranks.csv.gz",
-        "trained_init_random_control": tables_dir / "trained_init_random_control.csv",
+        "trained_pre_interaction_random_control": (
+            tables_dir / "trained_pre_interaction_random_control.csv"
+        ),
     }
     contexts.to_csv(paths["context_scores_and_ranks"], index=False, compression="gzip")
     selected.to_csv(paths["somite_case_summary"], index=False)
     edge_inventory.to_csv(paths["edge_inventory"], index=False)
-    pd.concat(external_audits, ignore_index=True).to_csv(
-        paths["external_availability"], index=False
+    external_availability = (
+        pd.concat(external_audits, ignore_index=True)
+        if external_audits
+        else pd.DataFrame(
+            columns=[
+                "method",
+                "axis_id",
+                "ligand",
+                "receptor",
+                "external_axis_available",
+                "external_availability_provenance_rows",
+                "external_stage_coordinate_basis",
+                "external_matrix_keys",
+                "score_column",
+                "score_mode",
+            ]
+        )
     )
+    external_availability.to_csv(paths["external_availability"], index=False)
     gene_audit.to_csv(paths["gene_activity"], index=False)
     provenance.to_csv(paths["literature_provenance"], index=False)
     detection_18.to_csv(paths["somite_detection"], index=False)
@@ -1658,7 +1694,7 @@ def main() -> None:
     associations_18.to_csv(paths["myog_association"], index=False)
     spatial_summary.to_csv(paths["spatial_neighbor_enrichment"], index=False)
     raw_type_pair_ranks.to_csv(paths["raw_type_pair_ranks"], index=False, compression="gzip")
-    controls.to_csv(paths["trained_init_random_control"], index=False)
+    controls.to_csv(paths["trained_pre_interaction_random_control"], index=False)
     readme_path = args.output_dir / "README.md"
     write_readme(readme_path, external_specs)
 
@@ -1674,9 +1710,9 @@ def main() -> None:
                 if args.preprocess_manifest is not None
                 else None
             ),
-            "trained_init_random_control": (
-                artifact(args.trained_init_random_control)
-                if args.trained_init_random_control is not None
+            "trained_pre_interaction_random_control": (
+                artifact(args.trained_pre_interaction_random_control)
+                if args.trained_pre_interaction_random_control is not None
                 else None
             ),
             "external_methods": external_inventory,
@@ -1703,8 +1739,11 @@ def main() -> None:
             "spatial_permutation_seed": int(args.permutation_seed),
             "spatial_n_permutations": int(args.n_permutations),
             "spatial_null": "independently permute jam2a and jam3b detection labels within 18 hpf Somite cells while preserving marginals and graph",
-            "trained_init_random_control_reconstructed_by_this_script": False,
-            "trained_init_random_control_handling": "optional precomputed table copied with source hash; absent input is explicit unavailable/NA",
+            "trained_pre_interaction_random_control_reconstructed_by_this_script": False,
+            "trained_pre_interaction_random_control_handling": (
+                "optional precomputed table copied with source hash; absent input "
+                "is explicit unavailable/NA"
+            ),
         },
         "score_semantics": {
             "cytobridge_raw_attention_magnitude_density": "sum attention_abs_mean on distinct-cell model edges divided by five and by distinct possible pairs; not LR-specific",

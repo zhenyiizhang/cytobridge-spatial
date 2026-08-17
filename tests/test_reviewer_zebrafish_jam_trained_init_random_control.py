@@ -151,7 +151,7 @@ def test_directed_scaffold_mismatch_fails_closed() -> None:
         CONTROL.validate_same_scaffold(
             {
                 "trained": _scaffold(1),
-                "init": _scaffold(2),
+                "pre_interaction": _scaffold(2),
                 "random": _scaffold(1),
             }
         )
@@ -227,7 +227,7 @@ def test_end_to_end_writes_percentile_only_cross_model_control(
     paths: dict[str, Path] = {}
     for condition, attention in {
         "trained": [4.0, 3.0, 2.0, 1.0],
-        "init": [1.0, 2.0, 3.0, 4.0],
+        "pre_interaction": [1.0, 2.0, 3.0, 4.0],
         "random": [2.0, 4.0, 1.0, 3.0],
     }.items():
         path = tmp_path / f"{condition}.csv.gz"
@@ -245,8 +245,8 @@ def test_end_to_end_writes_percentile_only_cross_model_control(
             str(observed),
             "--trained-edges",
             str(paths["trained"]),
-            "--init-edges",
-            str(paths["init"]),
+            "--pre-interaction-edges",
+            str(paths["pre_interaction"]),
             "--random-edges",
             str(paths["random"]),
             "--output-dir",
@@ -260,10 +260,18 @@ def test_end_to_end_writes_percentile_only_cross_model_control(
     assert manifest["counts"]["n_stage_scaffold_edges"] == 4
     assert manifest["counts"]["n_somite_somite_scaffold_edges"] == 4
     assert manifest["guardrails"]["raw_attention_scale_compared_across_models"] is False
-    delta = pd.read_csv(output / "tables" / "trained_init_edge_percentile_delta.csv.gz")
-    assert "trained_minus_init_attention_percentile" in delta
+    delta = pd.read_csv(
+        output
+        / "tables"
+        / "trained_pre_interaction_edge_percentile_delta.csv.gz"
+    )
+    assert "trained_minus_pre_interaction_attention_percentile" in delta
     assert not any("raw" in column.casefold() for column in delta.columns)
     summary = pd.read_csv(
         output / "tables" / "jam_compatibility_percentile_summary.csv"
     )
-    assert set(summary["condition"]) == {"trained", "init", "random"}
+    assert set(summary["condition"]) == {
+        "trained",
+        "pre_interaction",
+        "random",
+    }

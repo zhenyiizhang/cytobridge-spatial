@@ -58,6 +58,23 @@ def test_expected_grouping_seeds_are_exactly_five_unique() -> None:
         JAM.parse_seeds("101,101,202,303,404")
 
 
+def test_external_methods_are_optional_for_cytobridge_only_audit() -> None:
+    args = JAM.parser().parse_args(
+        [
+            "--h5ad",
+            "input.h5ad",
+            "--edge-dir",
+            "edges",
+            "--observed-cells",
+            "observed.csv.gz",
+            "--output-dir",
+            "output",
+        ]
+    )
+    assert args.external_spec == []
+    assert JAM.parse_external_specs(args.external_spec) == []
+
+
 def test_unrelated_case_insensitive_gene_duplicate_is_tolerated() -> None:
     data = ad.AnnData(
         X=np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 2.0]], dtype=np.float32),
@@ -386,7 +403,7 @@ def test_missing_control_metrics_are_explicit_na_not_fabricated() -> None:
     controls = JAM.load_control_artifact(None)
     assert set(controls["control"]) == {
         "trained",
-        "init_interaction",
+        "pre_interaction",
         "randomized_interaction_seed17",
     }
     assert not controls["control_metrics_available"].any()
@@ -397,7 +414,7 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
     source = tmp_path / "controls.csv"
     pd.DataFrame(
         {
-            "condition": ["trained", "init", "random"],
+            "condition": ["trained", "pre_interaction", "random"],
             "jam_compatible_edge_percentile_mean": [0.67, 0.66, 0.57],
         }
     ).to_csv(source, index=False)
@@ -406,7 +423,7 @@ def test_control_condition_aliases_are_canonicalized(tmp_path: Path) -> None:
 
     assert controls["control"].tolist() == [
         "trained",
-        "init_interaction",
+        "pre_interaction",
         "randomized_interaction_seed17",
     ]
     assert controls["control_metrics_available"].all()

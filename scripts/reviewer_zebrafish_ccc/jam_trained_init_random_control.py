@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit trained/init/random attention on one frozen 18 hpf edge scaffold.
+"""Audit trained/pre-interaction/random attention on one frozen 18 hpf edge scaffold.
 
 This is a deliberately narrow technical control for the zebrafish Jam2a--Jam3b
 case study.  Raw attention is ranked only within each model condition because
@@ -30,7 +30,7 @@ from scipy import sparse
 from scipy.stats import fisher_exact, mannwhitneyu
 
 
-CONDITIONS = ("trained", "init", "random")
+CONDITIONS = ("trained", "pre_interaction", "random")
 EDGE_REQUIRED_COLUMNS = (
     "stage",
     "stage_label",
@@ -49,7 +49,17 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--h5ad", required=True, type=Path)
     result.add_argument("--observed-cells", required=True, type=Path)
     result.add_argument("--trained-edges", required=True, type=Path)
-    result.add_argument("--init-edges", required=True, type=Path)
+    result.add_argument(
+        "--pre-interaction-edges",
+        "--init-edges",
+        dest="pre_interaction_edges",
+        required=True,
+        type=Path,
+        help=(
+            "Edges exported from the true pre-interaction Refine checkpoint. "
+            "The --init-edges spelling is retained only as a deprecated alias."
+        ),
+    )
     result.add_argument("--random-edges", required=True, type=Path)
     result.add_argument("--output-dir", required=True, type=Path)
     result.add_argument("--stage", type=float, default=3.0)
@@ -302,7 +312,7 @@ def validate_same_scaffold(frames: Mapping[str, pd.DataFrame]) -> None:
         raise ValueError(f"Expected conditions {CONDITIONS}; found {sorted(frames)}")
     reference = frames["trained"].set_index(list(SCAFFOLD_COLUMNS)).sort_index()
     reference_index = reference.index
-    for condition in ("init", "random"):
+    for condition in ("pre_interaction", "random"):
         candidate = frames[condition].set_index(list(SCAFFOLD_COLUMNS)).sort_index()
         if not candidate.index.equals(reference_index):
             missing = reference_index.difference(candidate.index)
@@ -516,10 +526,10 @@ def quartile_compatibility(edges: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def trained_init_percentile_delta(
+def trained_pre_interaction_percentile_delta(
     frames: Mapping[str, pd.DataFrame],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Compare trained and init by same-edge percentile change, never raw scale."""
+    """Compare trained and pre-interaction percentiles on identical edges."""
     percentile = "attention_percentile_within_condition_somite_scaffold"
     identifier = [
         "source_global_index",
@@ -534,27 +544,30 @@ def trained_init_percentile_delta(
     trained = frames["trained"][identifier + [percentile]].rename(
         columns={percentile: "trained_attention_percentile"}
     )
-    init = frames["init"][identifier + [percentile]].rename(
-        columns={percentile: "init_attention_percentile"}
+    pre_interaction = frames["pre_interaction"][identifier + [percentile]].rename(
+        columns={percentile: "pre_interaction_attention_percentile"}
     )
     delta = trained.merge(
-        init,
+        pre_interaction,
         on=identifier,
         how="inner",
         validate="one_to_one",
     )
-    if len(delta) != len(trained) or len(delta) != len(init):
+    if len(delta) != len(trained) or len(delta) != len(pre_interaction):
         raise ValueError(
-            "Trained/init percentile tables do not share the exact scaffold"
+            "Trained/pre-interaction percentile tables do not share the exact scaffold"
         )
-    delta["trained_minus_init_attention_percentile"] = (
-        delta["trained_attention_percentile"] - delta["init_attention_percentile"]
+    delta["trained_minus_pre_interaction_attention_percentile"] = (
+        delta["trained_attention_percentile"]
+        - delta["pre_interaction_attention_percentile"]
     )
     compatible = delta.loc[
-        delta["jam_compatible"], "trained_minus_init_attention_percentile"
+        delta["jam_compatible"],
+        "trained_minus_pre_interaction_attention_percentile",
     ].to_numpy(float)
     non_compatible = delta.loc[
-        ~delta["jam_compatible"], "trained_minus_init_attention_percentile"
+        ~delta["jam_compatible"],
+        "trained_minus_pre_interaction_attention_percentile",
     ].to_numpy(float)
     available = bool(len(compatible) and len(non_compatible))
     if available:
@@ -574,7 +587,9 @@ def trained_init_percentile_delta(
     test = pd.DataFrame(
         [
             {
-                "comparison": "trained_minus_init_within_condition_percentile_delta",
+                "comparison": (
+                    "trained_minus_pre_interaction_within_condition_percentile_delta"
+                ),
                 "available": available,
                 "unavailable_reason": reason,
                 "n_jam_compatible_edges": int(len(compatible)),
@@ -602,10 +617,11 @@ def trained_init_percentile_delta(
 
 def write_readme(path: Path) -> None:
     path.write_text(
-        """# 18 hpf Somite Jam2a--Jam3b trained/init/random control
+        """# 18 hpf Somite Jam2a--Jam3b trained/pre-interaction/random control
 
-This control uses one frozen grouping seed and requires trained, initialized,
-and random models to contain exactly the same directed 18 hpf edge scaffold.
+This control uses one frozen grouping seed and requires trained, true
+pre-interaction Refine, and randomized-interaction models to contain exactly
+the same directed 18 hpf edge scaffold.
 Every attribution index is resolved through `observed_cells.obs_name`; H5AD row
 order is never assumed.
 
@@ -618,8 +634,8 @@ For the Somite-to-Somite edges, Jam-compatible means source `jam2a > 0` and
 target `jam3b > 0`, or source `jam3b > 0` and target `jam2a > 0`, in the supplied
 H5AD expression matrix. The compatibility tables compare within-condition
 attention percentiles. Top and bottom quartiles use percentile thresholds of
-0.75 and 0.25 and retain boundary ties. The trained-minus-init table subtracts
-only within-condition percentiles on the same edge, never raw attention.
+0.75 and 0.25 and retain boundary ties. The trained-minus-pre-interaction table
+subtracts only within-condition percentiles on the same edge, never raw attention.
 
 The odds ratios, Fisher test, and Mann--Whitney test are descriptive technical
 controls. One grouping seed, model initializations, directed edges, and cells
@@ -670,7 +686,7 @@ def main() -> None:
 
     paths = {
         "trained": args.trained_edges,
-        "init": args.init_edges,
+        "pre_interaction": args.pre_interaction_edges,
         "random": args.random_edges,
     }
     frames: dict[str, pd.DataFrame] = {}
@@ -728,7 +744,7 @@ def main() -> None:
     reference_compatibility = frames["trained"][
         [*SCAFFOLD_COLUMNS, "jam_compatible", "jam_compatible_orientation"]
     ]
-    for condition in ("init", "random"):
+    for condition in ("pre_interaction", "random"):
         candidate = frames[condition][
             [*SCAFFOLD_COLUMNS, "jam_compatible", "jam_compatible_orientation"]
         ]
@@ -737,7 +753,7 @@ def main() -> None:
                 f"Jam compatibility changed across the shared scaffold: {condition}"
             )
 
-    delta, mann_whitney = trained_init_percentile_delta(frames)
+    delta, mann_whitney = trained_pre_interaction_percentile_delta(frames)
     type_pair_ranks = pd.concat(type_pair_tables, ignore_index=True)
     somite_percentiles = pd.concat(somite_tables, ignore_index=True)
     percentile_summary = pd.concat(percentile_summaries, ignore_index=True)
@@ -752,10 +768,12 @@ def main() -> None:
             tables / "jam_compatibility_percentile_summary.csv"
         ),
         "quartile_compatibility": tables / "jam_quartile_compatibility.csv",
-        "trained_init_edge_percentile_delta": (
-            tables / "trained_init_edge_percentile_delta.csv.gz"
+        "trained_pre_interaction_edge_percentile_delta": (
+            tables / "trained_pre_interaction_edge_percentile_delta.csv.gz"
         ),
-        "trained_init_mann_whitney": tables / "trained_init_mann_whitney.csv",
+        "trained_pre_interaction_mann_whitney": (
+            tables / "trained_pre_interaction_mann_whitney.csv"
+        ),
     }
     inventory_table.to_csv(output_paths["edge_input_inventory"], index=False)
     type_pair_ranks.to_csv(output_paths["type_pair_raw_attention_ranks"], index=False)
@@ -767,11 +785,13 @@ def main() -> None:
     )
     quartile_summary.to_csv(output_paths["quartile_compatibility"], index=False)
     delta.to_csv(
-        output_paths["trained_init_edge_percentile_delta"],
+        output_paths["trained_pre_interaction_edge_percentile_delta"],
         index=False,
         compression="gzip",
     )
-    mann_whitney.to_csv(output_paths["trained_init_mann_whitney"], index=False)
+    mann_whitney.to_csv(
+        output_paths["trained_pre_interaction_mann_whitney"], index=False
+    )
     write_readme(output / "README.md")
 
     somite_rank_rows = type_pair_ranks.loc[
@@ -780,7 +800,9 @@ def main() -> None:
     ]
     manifest = {
         "schema_version": 1,
-        "analysis": "zebrafish_18hpf_somite_jam_trained_init_random_control",
+        "analysis": (
+            "zebrafish_18hpf_somite_jam_trained_pre_interaction_random_control"
+        ),
         "status": "complete",
         "inputs": {
             "h5ad": artifact(args.h5ad),
@@ -817,9 +839,10 @@ def main() -> None:
                 "top percentile >= 0.75 and bottom percentile <= 0.25; "
                 "boundary ties retained"
             ),
-            "trained_init_delta": (
-                "trained within-condition percentile minus init within-condition "
-                "percentile for the same directed edge; no raw-score subtraction"
+            "trained_pre_interaction_delta": (
+                "trained within-condition percentile minus pre-interaction "
+                "within-condition percentile for the same directed edge; "
+                "no raw-score subtraction"
             ),
         },
         "guardrails": {
