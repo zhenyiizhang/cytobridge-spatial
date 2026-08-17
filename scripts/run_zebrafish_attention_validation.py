@@ -1080,6 +1080,9 @@ def report(
     cytobridge_lr = _read_required_table(paths, "cytobridge_lr_scores.csv.gz")
     commot_lr = _read_required_table(paths, "commot_lr_scores_collapsed.csv.gz")
     paper = _read_required_table(paths, "original_paper_21_lr_scores.csv")
+    paper_enrichment = _read_required_table(
+        paths, "original_paper_21_lr_enrichment.csv"
+    )
     if "jointly_supported_lr_targets.csv" not in paths:
         raise ValueError("analysis lacks report table jointly_supported_lr_targets.csv")
     targets = pd.read_csv(paths["jointly_supported_lr_targets.csv"])
@@ -1237,19 +1240,13 @@ def report(
     c_heading.text(
         0.035,
         0.52,
-        "Molecular consistency on shared ligand–receptor candidates",
+        "Independent zebrafish LR-axis coverage and cross-method support",
         fontsize=12,
         fontweight="bold",
         va="center",
     )
     c_content = c_spec[1].subgridspec(1, 2, width_ratios=(0.46, 0.54), wspace=0.24)
     ax_c1 = fig.add_subplot(c_content[0])
-    lr_scatter = cytobridge_lr.merge(
-        commot_lr[["ligand_key", "receptor_key", "commot_rank_percentile"]],
-        on=["ligand_key", "receptor_key"],
-        how="inner",
-        validate="one_to_one",
-    )
     paper_shared = (
         paper.loc[paper["represented_in_current_expression"].astype(bool)]
         .merge(
@@ -1260,36 +1257,61 @@ def report(
         )
         .sort_values("paper_display_order_paper", kind="mergesort")
     )
-    represented_ids = set(paper_shared["lr_id"].astype(str))
-    reference_mask = lr_scatter["lr_id"].astype(str).isin(represented_ids)
+    represented_paper = paper.loc[
+        paper["represented_in_current_expression"].astype(bool)
+    ].copy()
+    source_axis_count = int(len(paper))
+    represented_axis_count = int(len(represented_paper))
+    if source_axis_count < 2 or represented_axis_count < 2:
+        raise ValueError("source-atlas LR coverage requires at least two axes")
+    reference_ids = set(represented_paper["lr_id"].astype(str))
+    background = cytobridge_lr.loc[
+        ~cytobridge_lr["lr_id"].astype(str).isin(reference_ids),
+        "exact_message_rank_percentile",
+    ].to_numpy(dtype=float)
+    reference_values = represented_paper["exact_message_rank_percentile"].to_numpy(
+        dtype=float
+    )
+    rng = np.random.default_rng(20260817)
     ax_c1.scatter(
-        lr_scatter.loc[~reference_mask, "exact_message_rank_percentile"],
-        lr_scatter.loc[~reference_mask, "commot_rank_percentile"],
-        s=10,
-        color="#AEB7BD",
-        alpha=0.55,
+        background,
+        rng.normal(0.0, 0.055, len(background)),
+        s=7,
+        color="#B8C0C6",
+        alpha=0.28,
         linewidth=0,
-        label="Shared LR candidates",
+        rasterized=False,
+        label=f"Other representable LR axes (n={len(background)})",
     )
     ax_c1.scatter(
-        lr_scatter.loc[reference_mask, "exact_message_rank_percentile"],
-        lr_scatter.loc[reference_mask, "commot_rank_percentile"],
+        reference_values,
+        1.0 + rng.normal(0.0, 0.055, len(reference_values)),
         s=28,
-        facecolor=paper_red,
+        color=paper_red,
         edgecolor="white",
         linewidth=0.5,
-        label=f"Independent Figure 5B axes (n={len(paper_shared)})",
+        label=(
+            "Source-atlas Figure 5B axes "
+            f"({represented_axis_count}/{source_axis_count} represented)"
+        ),
         zorder=3,
     )
-    ax_c1.plot([0, 1], [0, 1], color=pale_grey, linewidth=0.8, zorder=0)
-    ax_c1.set_xlim(0, 1)
-    ax_c1.set_ylim(0, 1)
-    ax_c1.set_aspect("equal", adjustable="box")
+    enrichment = paper_enrichment.loc[
+        paper_enrichment["score_column"].eq("exact_message_score")
+    ].iloc[0]
+    ax_c1.axvline(0.9, color="#8A949C", linewidth=0.7, linestyle="--")
+    ax_c1.set_xlim(0, 1.01)
+    ax_c1.set_ylim(-0.32, 1.32)
+    ax_c1.set_yticks([0, 1], ["Other LR axes", "Figure 5B axes"])
     ax_c1.set_xlabel("CytoBridge exact-message LR rank percentile")
-    ax_c1.set_ylabel("COMMOT LR rank percentile")
-    ax_c1.grid(color=pale_grey, linewidth=0.45, alpha=0.7)
-    ax_c1.legend(frameon=False, fontsize=7.1, loc="lower right")
-    ax_c1.set_title("All shared LR candidates", fontsize=9, pad=4)
+    ax_c1.grid(axis="x", color=pale_grey, linewidth=0.45, alpha=0.7)
+    ax_c1.legend(frameon=False, fontsize=6.8, loc="lower left")
+    ax_c1.set_title(
+        f"{represented_axis_count}/{source_axis_count} represented; "
+        f"{int(enrichment.paper_reference_in_top_n)}/{represented_axis_count} in top decile",
+        fontsize=9,
+        pad=4,
+    )
 
     ax_c2 = fig.add_subplot(c_content[1])
     if paper_shared.empty:
@@ -1347,7 +1369,9 @@ def report(
     )
     ax_c2.set_xlabel("Within-method LR rank percentile")
     ax_c2.set_title(
-        "Independent Figure 5B axes shared by both methods", fontsize=9, pad=4
+        f"{len(paper_shared)}/{represented_axis_count} also shared with COMMOT",
+        fontsize=9,
+        pad=4,
     )
     ax_c2.grid(axis="x", color=pale_grey, linewidth=0.5, alpha=0.8)
     ax_c2.legend(frameon=False, fontsize=7.0, loc="lower right")
@@ -1603,14 +1627,22 @@ def report(
         "diamonds show rank agreement after linear adjustment for sender/receiver "
         "abundance, mean spatial distance, and self-pair status. (b) External rank "
         "percentiles were read only after the eight highest off-diagonal pairs had "
-        "been selected by CytoBridge exact message. (c) All 538 shared LR candidates "
-        "are plotted by CytoBridge exact-message and COMMOT rank. The exact-message LR "
-        f"ranking retained strong COMMOT agreement (rho={exact_lr.spearman_rho:.3f}) and "
-        "exceeded the geometry- and abundance-stratified modifier-permutation null "
-        f"(P={commot_null.spearman_empirical_p_upper:.3g}). Red points and the paired "
-        f"rank plot show the {len(paper_shared)} axes from Figure 5B of the independent "
-        "zebrafish expression-atlas paper that were present in the shared CytoBridge-"
-        "COMMOT LR universe; neither method used that source list for selection. (d) The "
+        "been selected by CytoBridge exact message. (c) The independent zebrafish "
+        f"expression-atlas paper reported {source_axis_count} developmental LR axes. "
+        f"{represented_axis_count} were representable in the current H5AD and were "
+        f"compared with all {len(background)} other representable LR axes; "
+        f"{int(enrichment.paper_reference_in_top_n)}/{represented_axis_count} fell in "
+        "the CytoBridge exact-message top decile "
+        f"(rank AUC={float(enrichment.paper_reference_auc):.3f}, one-sided "
+        f"Mann-Whitney P={float(enrichment.mannwhitney_p_greater):.2g}). "
+        f"{len(paper_shared)} of the {represented_axis_count} were also present in the "
+        "stricter CytoBridge-COMMOT shared LR universe and "
+        "are shown in the paired rank plot. The equivalent expression-only enrichment "
+        "means this source-atlas result establishes molecular compatibility rather "
+        "than an incremental attention effect. Across all 538 shared LR candidates, "
+        f"the exact-message ranking agreed with COMMOT (rho={exact_lr.spearman_rho:.3f}) "
+        "and exceeded the geometry- and abundance-stratified modifier-permutation null "
+        f"(P={commot_null.spearman_empirical_p_upper:.3g}). (d) The "
         "jointly supported "
         "col1a2-sdc4 axis is linked to NicheNet receiver-response targets. NicheNet is "
         "used as regulatory evidence rather than as a cell-pair strength. (e) The "
@@ -1630,7 +1662,7 @@ We agree that attention weights alone cannot be read as biochemical communicatio
 
 1. **Complete cell-pair field.** All 361 directed cell-type pairs were retained, including structural zeros. Attention agreed with COMMOT across the full field (Spearman rho={attn_commot.spearman_rho:.3f}), while the exact interaction message, which contains the learned direction and magnitude rather than only the gate, showed stronger agreement (rho={exact_commot.spearman_rho:.3f}). The analysis also reports correlations after adjustment for abundance, spatial distance, and self-pair status and an empirical within-stratum permutation test.
 2. **No circular pair selection.** Eight off-diagonal pairs were selected using CytoBridge exact message only. COMMOT and CellAgentChat ranks were attached after the selection had been frozen.
-3. **Independent molecular interpretation.** Every representable LR candidate was scored over the complete pair field. Exact-message reweighting showed COMMOT rank agreement of rho={exact_lr.spearman_rho:.3f} and exceeded the stratified modifier-permutation null (P={commot_null.spearman_empirical_p_upper:.3g}). The independent source list is the 21 developmental axes in Figure 5B of *Spatiotemporal mapping of gene expression landscapes and developmental trajectories during zebrafish embryogenesis*. Four axes were present in the shared CytoBridge-COMMOT LR universe, and both methods placed all four near the top of their own LR rankings. The source list was not used to choose these axes. NicheNet was used separately to connect a jointly supported LR axis to receiver-response targets and is explicitly labelled as regulatory evidence rather than pair strength.
+3. **Independent molecular interpretation.** Every representable LR candidate was scored over the complete pair field. The independent source list contains {source_axis_count} developmental axes from Figure 5B of *Spatiotemporal mapping of gene expression landscapes and developmental trajectories during zebrafish embryogenesis*. {represented_axis_count} of those {source_axis_count} axes were representable in the current H5AD; {int(enrichment.paper_reference_in_top_n)}/{represented_axis_count} fell in the CytoBridge exact-message top decile (rank AUC={float(enrichment.paper_reference_auc):.3f}, one-sided Mann-Whitney P={float(enrichment.mannwhitney_p_greater):.2g}). {len(paper_shared)} of the {represented_axis_count} were also present in the stricter CytoBridge-COMMOT shared LR universe, and both methods ranked those axes highly. The equivalent expression-only enrichment is reported explicitly, so the source-atlas result is interpreted as molecular compatibility rather than an incremental attention contribution. Separately, exact-message reweighting over all 538 shared LR candidates showed COMMOT rank agreement of rho={exact_lr.spearman_rho:.3f} and exceeded the stratified modifier-permutation null (P={commot_null.spearman_empirical_p_upper:.3g}). NicheNet connects a jointly supported LR axis to receiver-response targets and is labelled as regulatory evidence rather than pair strength.
 4. **Spatial and circuit-level localization.** The mdka-sdc4 axis was chosen by the highest CytoBridge exact-message score within the frozen source-atlas list. The map now shows directed model edges rather than an expression-only proxy: gold arrows are exact-message-by-LR-activity edges, red nodes are ligand-high senders, and blue nodes are receptor-high receivers. The highest off-diagonal cell-type circuits were selected by CytoBridge alone and received COMMOT ranks only afterward; agreement over the full 19 x 19 context grid was rho={context_rho:.3f}.
 
 Together, the complete-pair, non-circular selection, molecular-ranking, independent developmental-axis, receiver-target, and spatial-circuit analyses show that the learned interaction operator is associated with independently derived communication structure and known zebrafish signaling axes. They do not establish that an attention coefficient is itself a biochemical ligand-receptor strength. The non-monotonic fixed-checkpoint interaction-off sensitivity remains in the analysis archive but is not used as validation evidence in the reviewer-facing figure.
@@ -1670,6 +1702,7 @@ Together, the complete-pair, non-circular selection, molecular-ranking, independ
         "cytobridge_lr_scores.csv.gz",
         "commot_lr_scores_collapsed.csv.gz",
         "original_paper_21_lr_scores.csv",
+        "original_paper_21_lr_enrichment.csv",
         "jointly_supported_lr_targets.csv",
         "selected_paper_axis_spatial_cells.csv.gz",
         "selected_paper_axis_spatial_edges.csv.gz",

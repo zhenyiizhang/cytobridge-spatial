@@ -1724,7 +1724,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
 
     head_c = fig.add_subplot(grid[4])
-    _heading(head_c, "c", "Spatial organization of model-linked LR programs")
+    _heading(
+        head_c,
+        "c",
+        "CytoBridge exact-message edges resolve spatial LR circuits",
+    )
     legend_c = fig.add_subplot(grid[5])
     legend_c.set_axis_off()
     maps = grid[6].subgridspec(2, 2, wspace=0.16, hspace=0.42)
@@ -1841,7 +1845,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             f"{labels[dataset]} · {str(row.ligand).upper()}–{str(row.receptor).upper()} ({row.pathways})",
             fontsize=7.5,
             fontweight="bold",
-            color=DATASET_COLORS[dataset],
+            color="black",
             pad=2,
         )
         map_note = textwrap.fill(
@@ -1880,7 +1884,13 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 markeredgecolor="none",
                 label="receiver type",
             ),
-            plt.Line2D([0], [0], color="#6A51A3", lw=1.2, label="model-linked edge"),
+            plt.Line2D(
+                [0],
+                [0],
+                color="#6A51A3",
+                lw=1.2,
+                label="CytoBridge exact-message × LR-activity edge",
+            ),
         ],
         frameon=False,
         fontsize=6.5,
@@ -1922,11 +1932,16 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "cell-type pair. AdMouse had no "
         "axis with at least 10 active model-linked edges under its 347-gene panel and "
         "strict learned-edge threshold. (c) Observed terminal coordinates show the "
-        "sender and receiver populations and the strongest positive LR-compatible "
-        "exact-message edges. The LR label is a post-hoc molecular compatibility "
-        "annotation of learned model edges, not a claim that the GNN natively "
-        "identifies a unique biochemical LR pair. NicheNet remains in the complete "
-        "audit but is not shown because exact-axis support was insufficient."
+        "sender and receiver populations and the strongest positive CytoBridge "
+        "exact-message × LR-activity edges. These model-first selections resolve a "
+        "COL1A2–SDC4 extracellular-matrix circuit in zebrafish, a COL6A3–CD44 "
+        "matrix-adhesion circuit in MOSTA, a PSAP–GPR37L1 neuroglial circuit in "
+        "ARISTA, and a CD99 homophilic cell-contact circuit in chicken valve tissue. "
+        "The LR label is a post-hoc molecular compatibility annotation of learned "
+        "model edges, not a claim that the GNN natively identifies a unique "
+        "biochemical LR pair. Receiver-response support is evaluated separately in "
+        "the zebrafish deep-validation figure; NicheNet is not shown here because "
+        "exact-axis support was incomplete across the five datasets."
     )
     caption_path = output / "caption.md"
     caption_path.write_text(caption + "\n", encoding="utf-8")
