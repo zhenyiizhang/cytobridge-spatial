@@ -537,6 +537,12 @@ def _write_jam_report_manifests(
         "jam_quartile_compatibility.csv": pd.DataFrame(
             {
                 "condition": conditions,
+                "top_n_edges_after_boundary_ties": [25, 25, 25],
+                "top_n_jam_compatible": [8, 3, 2],
+                "top_compatibility_rate": [0.32, 0.12, 0.08],
+                "bottom_n_edges_after_boundary_ties": [25, 25, 25],
+                "bottom_n_jam_compatible": [2, 2, 2],
+                "bottom_compatibility_rate": [0.08, 0.08, 0.08],
                 "top_vs_bottom_odds_ratio": [3.2, 1.15, 0.92],
                 "fisher_exact_two_sided_p_descriptive_technical": [
                     0.004,
@@ -592,6 +598,11 @@ def _write_jam_report_manifests(
                 "cell_type": ["Somite", "Somite"],
                 "gene_a": ["jam2a", "jam3b"],
                 "gene_b": ["myog", "myog"],
+                "n_cells": [6, 6],
+                "both_detected": [2, 3],
+                "gene_a_only": [1, 0],
+                "gene_b_only": [2, 1],
+                "neither_detected": [1, 2],
                 "fisher_odds_ratio": [1.35, 3.10],
                 "fisher_two_sided_p": [0.21, 0.003],
                 "spearman_rho_expression": [0.12, 0.46],
@@ -765,20 +776,41 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     assert "empirical" in caption_folded
 
     assert "jam-compatible" in caption_folded
+    assert "32.0% of top-attention-quartile edges" in caption_folded
+    assert "8.0% in the bottom quartile" in caption_folded
+    assert "top_compatibility_rate" in report_source
+    assert "bottom_compatibility_rate" in report_source
     assert "trained" in caption_folded
     assert "pre-interaction" in caption_folded
     assert "randomized" in caption_folded
-    assert "same 18 hpf somite scaffold" in caption_folded
+    assert "6 somite cells at 18 hpf" in caption_folded
+    assert "same 100 model edges" in caption_folded
+    assert "before-learning control" in caption_folded
+    assert "before the interaction learning stage" in caption_folded
+    assert "all 8 cells for anatomical context" in caption_folded
+    assert "statistics remain restricted to the 6 somite cells" in caption_folded
     assert "descriptive technical controls" in response_folded
     assert "edges and cells are not treated as biological replicates" in response_folded
 
     assert "jam3b and myog co-detection" in caption_folded
+    assert "myog was detected in 100.0% of jam3b+ cells" in caption_folded
+    assert "myog_given_positive" in report_source
     assert "spatially neighboring" in caption_folded
     assert "label-permutation null" in caption_folded
     assert "cross-sectional" in caption_folded
     assert "not evidence" in caption_folded
     assert "attention coefficient cannot be interpreted directly" in response_folded
     assert "old `init` label is not relabelled" in provenance.casefold()
+    assert "figure pdf" in provenance.casefold()
+    assert "plotting-script snapshot" in provenance.casefold()
+
+    assert "aggregated into one model interaction rank" in caption_folded
+    assert "exact message" not in caption_folded
+    assert "exact-message" not in caption_folded
+    assert '"attention", "commot"' in report_source.casefold()
+    assert '"exact_message", "commot"' not in report_source.casefold()
+    assert "figsize=(8.27, 11.69)" in report_source
+    assert "purple" not in report_source.casefold()
 
     assert "(d)" not in caption_folded
     assert "(e)" not in caption_folded
@@ -816,6 +848,10 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     assert "not causal" in claim_contract["myog_scope"]
     assert claim_contract["legacy_jam_outputs_allowed"] is False
     assert claim_contract["attention_is_biochemical_probability"] is False
+    assert claim_contract["figure_a_cytobridge_view"] == "attention"
+    assert claim_contract["figure_canvas"] == "A4 portrait"
+    assert "6 cells and 100 fixed edges" in claim_contract["panel_b_scope"]
+    assert "8 tissue cells displayed" in claim_contract["panel_c_context_scope"]
     assert len(report_manifest["jam_manifests"]) == 2
     assert {record["sha256"] for record in report_manifest["jam_manifests"]} == set(
         jam_manifest_shas

@@ -2065,11 +2065,11 @@ def report(
     mpl.rcParams.update(
         {
             "font.family": "Arial",
-            "font.size": 8.5,
+            "font.size": 9.0,
             "axes.titlesize": 9.0,
-            "axes.labelsize": 8.5,
-            "xtick.labelsize": 7.5,
-            "ytick.labelsize": 7.5,
+            "axes.labelsize": 9.0,
+            "xtick.labelsize": 8.5,
+            "ytick.labelsize": 8.5,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
             "text.color": "black",
@@ -2196,51 +2196,46 @@ def report(
     teal = "#168A83"
     gold = "#D9A441"
     coral = "#C65F4A"
-    purple = "#66508F"
     dark_grey = "#6F777D"
     middle_grey = "#AEB6BC"
     pale_grey = "#D8DDE1"
     background_grey = "#ECEFF1"
     condition_order = ["trained", "pre_interaction", "random"]
     condition_labels = {
-        "trained": "Trained",
-        "pre_interaction": "Pre-interaction\n(Refine)",
-        "random": "Randomized",
-    }
-    condition_colors = {
-        "trained": navy,
-        "pre_interaction": teal,
-        "random": dark_grey,
+        "trained": "After interaction\ntraining",
+        "pre_interaction": "Before interaction\nlearning",
+        "random": "Randomized\nweights",
     }
 
-    fig = plt.figure(figsize=(11.69, 8.27), constrained_layout=False)
+    # Full-page supplementary figures use an A4 portrait canvas.  The three
+    # evidence levels read from top to bottom: external reproducibility,
+    # checkpoint controls, and spatial/molecular interpretation.
+    fig = plt.figure(figsize=(8.27, 11.69), constrained_layout=False)
     outer = fig.add_gridspec(
-        2,
-        2,
-        width_ratios=(0.37, 0.63),
-        height_ratios=(0.46, 0.54),
-        left=0.085,
-        right=0.985,
+        3,
+        1,
+        height_ratios=(0.20, 0.31, 0.49),
+        left=0.145,
+        right=0.970,
         top=0.982,
-        bottom=0.075,
-        wspace=0.22,
-        hspace=0.24,
+        bottom=0.055,
+        hspace=0.17,
     )
 
-    def _headed_panel(parent, label: str, title: str):
-        nested = parent.subgridspec(2, 1, height_ratios=(0.13, 1.0), hspace=0.03)
+    def _headed_panel(parent, label: str, title: str, *, heading_ratio: float):
+        nested = parent.subgridspec(
+            2, 1, height_ratios=(heading_ratio, 1.0), hspace=0.08
+        )
         heading = fig.add_subplot(nested[0])
         heading.axis("off")
         heading.text(0, 0.52, label, fontsize=14, fontweight="bold", va="center")
-        heading.text(0.10, 0.52, title, fontsize=11.5, fontweight="bold", va="center")
+        heading.text(0.065, 0.52, title, fontsize=12, fontweight="bold", va="center")
         return nested[1]
 
-    a_body = _headed_panel(outer[0, 0], "a", "Complete interaction field")
+    a_body = _headed_panel(outer[0], "a", "External CCI agreement", heading_ratio=0.24)
     ax_a = fig.add_subplot(a_body)
     pair_order = [
-        ("exact_message", "COMMOT"),
         ("attention", "COMMOT"),
-        ("exact_message", "CellAgentChat"),
         ("attention", "CellAgentChat"),
     ]
     rows = pair.set_index(["cytobridge_view", "external_method"]).loc[pair_order]
@@ -2256,14 +2251,12 @@ def report(
     n_pair_permutations = dimensions["n_permutations"].pop()
     if n_pairs != 361:
         raise ValueError("reviewer figure requires the complete 19 x 19 pair field")
-    y_a = np.arange(4)[::-1]
+    y_a = np.arange(2)[::-1]
     labels_a = [
-        "COMMOT\nExact message",
-        "COMMOT\nAttention",
-        "CellAgentChat\nExact message",
-        "CellAgentChat\nAttention",
+        "COMMOT",
+        "CellAgentChat proxy",
     ]
-    colors_a = [teal, teal, dark_grey, dark_grey]
+    colors_a = [teal, dark_grey]
     null_min = float(rows["null_adjusted_spearman_q025"].min())
     observed_max = float(rows["adjusted_spearman_rho"].max())
     for y_value, (_, row), color in zip(y_a, rows.iterrows(), colors_a, strict=True):
@@ -2293,117 +2286,62 @@ def report(
             linewidth=0.6,
             zorder=3,
         )
+        p_text = (
+            "P<0.001"
+            if float(row.adjusted_spearman_empirical_p_upper) < 0.001
+            else f"P={row.adjusted_spearman_empirical_p_upper:.3g}"
+        )
         ax_a.text(
             float(row.adjusted_spearman_rho) + 0.018,
             y_value,
-            f"ρ={row.adjusted_spearman_rho:.2f}\n"
-            f"P={row.adjusted_spearman_empirical_p_upper:.3g}",
+            f"ρ={row.adjusted_spearman_rho:.2f}\n{p_text}",
             va="center",
-            fontsize=6.6,
+            fontsize=8.3,
             linespacing=0.90,
         )
-    ax_a.axvline(0, color=middle_grey, linewidth=0.7)
-    ax_a.set_yticks(y_a, labels_a, fontsize=7.3)
-    ax_a.set_xlim(min(-0.05, null_min - 0.04), min(1.08, observed_max + 0.16))
-    ax_a.set_ylim(-0.55, 3.55)
-    ax_a.set_xlabel(f"Adjusted Spearman ρ ({n_pairs} directed pairs)")
-    ax_a.set_title("Observed concordance and structured-null 95% interval", pad=3)
-    ax_a.grid(axis="x", color=pale_grey, linewidth=0.5)
-
-    b_body = _headed_panel(
-        outer[0, 1], "b", "JAM-compatible structure after interaction training"
+    ax_a.set_yticks(y_a, labels_a)
+    ax_a.set_xlim(max(0, null_min - 0.07), min(1.04, observed_max + 0.13))
+    ax_a.set_ylim(-0.55, 1.55)
+    ax_a.set_xlabel("Rank agreement with CytoBridge attention (adjusted Spearman ρ)")
+    ax_a.set_title(
+        f"Interaction patterns across all {n_pairs} sender → receiver cell-type pairs",
+        pad=5,
     )
-    b_grid = b_body.subgridspec(1, 3, width_ratios=(0.40, 0.27, 0.33), wspace=0.58)
-    ax_b1 = fig.add_subplot(b_grid[0])
-    ax_b2 = fig.add_subplot(b_grid[1])
-    ax_b3 = fig.add_subplot(b_grid[2])
-    y_b = np.arange(3)[::-1]
-    for y_value, condition in zip(y_b, condition_order, strict=True):
-        local = compatibility.loc[compatibility["condition"].eq(condition)]
-        compatible_row = local.loc[local["jam_compatible"]].iloc[0]
-        other_row = local.loc[~local["jam_compatible"]].iloc[0]
-        x_compatible = float(compatible_row["attention_percentile_median"])
-        x_other = float(other_row["attention_percentile_median"])
-        ax_b1.plot(
-            [x_other, x_compatible],
-            [y_value, y_value],
-            color=middle_grey,
-            linewidth=1.2,
-            zorder=1,
-        )
-        ax_b1.scatter(
-            x_other,
-            y_value,
-            s=36,
-            marker="s",
-            facecolor="white",
-            edgecolor=condition_colors[condition],
-            linewidth=1.1,
-            zorder=2,
-        )
-        ax_b1.scatter(
-            x_compatible,
-            y_value,
-            s=46,
-            color=condition_colors[condition],
-            edgecolor="white",
-            linewidth=0.55,
-            zorder=3,
-        )
-    ax_b1.set_yticks(y_b, [condition_labels[item] for item in condition_order])
-    ax_b1.set_xlim(0, 1.02)
-    ax_b1.set_xlabel("Median attention percentile")
-    ax_b1.set_title("Compatible versus other", pad=3)
-    ax_b1.grid(axis="x", color=pale_grey, linewidth=0.5)
-    ax_b1.legend(
+    ax_a.grid(axis="x", color=pale_grey, linewidth=0.5)
+    ax_a.legend(
         handles=[
             Line2D(
                 [0],
                 [0],
                 marker="o",
                 color="none",
-                markerfacecolor=navy,
+                markerfacecolor=teal,
                 markeredgecolor="white",
-                label="JAM-compatible",
+                label="Observed agreement",
             ),
             Line2D(
                 [0],
                 [0],
-                marker="s",
-                color="none",
-                markerfacecolor="white",
-                markeredgecolor=navy,
-                label="Other",
+                color=middle_grey,
+                linewidth=5,
+                label="Structured-null 95% range",
             ),
         ],
         frameon=False,
-        fontsize=6.5,
-        loc="lower left",
+        loc="lower right",
+        ncol=2,
+        handlelength=1.8,
+        columnspacing=1.4,
     )
 
+    b_body = _headed_panel(
+        outer[1],
+        "b",
+        "JAM-compatible edges receive high attention",
+        heading_ratio=0.18,
+    )
+    b_container = b_body.subgridspec(2, 1, height_ratios=(0.10, 1.0), hspace=0.11)
     somite_pair = somite_pair.set_index("condition").loc[condition_order]
-    for y_value, (condition, row) in zip(y_b, somite_pair.iterrows(), strict=True):
-        ax_b2.scatter(
-            row.top_rank_percentile,
-            y_value,
-            s=45,
-            color=condition_colors[condition],
-            edgecolor="white",
-            linewidth=0.55,
-        )
-        ax_b2.text(
-            min(1.0, float(row.top_rank_percentile) + 0.035),
-            y_value,
-            f"{int(row.rank_from_top)}/{int(row.rank_n)}",
-            va="center",
-            fontsize=6.8,
-        )
-    ax_b2.set_yticks([])
-    ax_b2.set_xlim(0, 1.08)
-    ax_b2.set_xlabel("Top-rank percentile")
-    ax_b2.set_title("Somite → Somite rank", pad=3)
-    ax_b2.grid(axis="x", color=pale_grey, linewidth=0.5)
-
     quartile = quartile.set_index("condition").loc[condition_order]
     odds_column = _column(
         quartile, "top_vs_bottom_odds_ratio", label="JAM quartile table"
@@ -2417,41 +2355,99 @@ def report(
     odds = pd.to_numeric(quartile[odds_column], errors="raise")
     if (~np.isfinite(odds) | (odds <= 0)).any():
         raise ValueError("JAM compatibility odds ratios must be finite and positive")
+    top_rate_column = _column(
+        quartile, "top_compatibility_rate", label="JAM quartile table"
+    )
+    bottom_rate_column = _column(
+        quartile, "bottom_compatibility_rate", label="JAM quartile table"
+    )
+    top_rates = pd.to_numeric(quartile[top_rate_column], errors="raise") * 100
+    bottom_rates = pd.to_numeric(quartile[bottom_rate_column], errors="raise") * 100
+    if (
+        (~np.isfinite(top_rates))
+        | (~np.isfinite(bottom_rates))
+        | (top_rates < 0)
+        | (bottom_rates < 0)
+    ).any():
+        raise ValueError("JAM compatibility rates must be finite and non-negative")
+    ax_b = fig.add_subplot(b_container[1])
+    y_b = np.arange(3)[::-1]
+    bar_offset = 0.16
+    ax_b.barh(
+        y_b + bar_offset,
+        top_rates.to_numpy(float),
+        height=0.25,
+        color=navy,
+        edgecolor="none",
+        label="Top attention quartile",
+        zorder=3,
+    )
+    ax_b.barh(
+        y_b - bar_offset,
+        bottom_rates.to_numpy(float),
+        height=0.25,
+        facecolor="white",
+        edgecolor=dark_grey,
+        linewidth=1.0,
+        label="Bottom attention quartile",
+        zorder=3,
+    )
     for y_value, condition in zip(y_b, condition_order, strict=True):
-        ax_b3.scatter(
-            odds.loc[condition],
-            y_value,
-            s=46,
-            color=condition_colors[condition],
-            edgecolor="white",
-            linewidth=0.55,
-        )
-        ax_b3.text(
-            odds.loc[condition] * 1.10,
-            y_value,
-            f"P={float(quartile.loc[condition, p_column]):.2g}",
+        ax_b.text(
+            float(top_rates.loc[condition]) + 0.45,
+            y_value + bar_offset,
+            f"{float(top_rates.loc[condition]):.1f}%",
             va="center",
-            fontsize=6.6,
+            fontsize=8.4,
         )
-    ax_b3.axvline(1, color=middle_grey, linewidth=0.8, linestyle="--")
-    ax_b3.set_xscale("log")
-    ax_b3.set_xlim(max(0.6, float(odds.min()) / 1.6), float(odds.max()) * 2.5)
-    ax_b3.set_yticks([])
-    ax_b3.set_xlabel("Top/bottom-quartile odds ratio")
-    ax_b3.set_title("Top/bottom enrichment", pad=3)
-    ax_b3.grid(axis="x", color=pale_grey, linewidth=0.5, which="major")
+        ax_b.text(
+            float(bottom_rates.loc[condition]) + 0.45,
+            y_value - bar_offset,
+            f"{float(bottom_rates.loc[condition]):.1f}%",
+            va="center",
+            fontsize=8.4,
+            color=dark_grey,
+        )
+    ax_b.set_yticks(y_b, [condition_labels[item] for item in condition_order])
+    ax_b.set_xlim(0, max(30.0, float(max(top_rates.max(), bottom_rates.max())) + 4.0))
+    ax_b.set_xlabel("JAM-compatible edges (%)")
+    ax_b.set_title(
+        "High-attention edges are selectively JAM-compatible only after interaction training",
+        pad=5,
+    )
+    ax_b.grid(axis="x", color=pale_grey, linewidth=0.5, zorder=0)
+    ax_b.legend(frameon=False, loc="lower right", ncol=2)
+
+    edge_totals = (
+        compatibility.groupby("condition", sort=False)["n_edges"].sum().astype(int)
+    )
+    if len(set(edge_totals)) != 1:
+        raise ValueError("JAM conditions must use the same Somite edge scaffold")
+    n_somite_edges = int(edge_totals.iloc[0])
+    ax_b_note = fig.add_subplot(b_container[0])
+    ax_b_note.axis("off")
+    ax_b_note.text(
+        0.5,
+        0.60,
+        f"Same {n_somite:,} 18 hpf Somite cells and {n_somite_edges:,} model edges in every condition.  "
+        "JAM-compatible = jam2a at one endpoint and jam3b at the other.",
+        ha="center",
+        va="center",
+        fontsize=8.6,
+        color="black",
+    )
 
     c_body = _headed_panel(
-        outer[1, :], "c", "Somite-localized JAM program and myogenic association"
+        outer[2],
+        "c",
+        "Spatial and myogenic context of the JAM program",
+        heading_ratio=0.11,
     )
-    c_grid = c_body.subgridspec(1, 2, width_ratios=(0.43, 0.57), wspace=0.23)
+    c_grid = c_body.subgridspec(1, 2, width_ratios=(0.57, 0.43), wspace=0.20)
     ax_c1 = fig.add_subplot(c_grid[0])
-    c_metrics = c_grid[1].subgridspec(
-        1, 3, width_ratios=(0.28, 0.36, 0.36), wspace=0.55
-    )
+    c_metrics = c_grid[1].subgridspec(2, 1, height_ratios=(0.54, 0.46), hspace=0.44)
     ax_c2 = fig.add_subplot(c_metrics[0])
     ax_c3 = fig.add_subplot(c_metrics[1])
-    ax_c4 = fig.add_subplot(c_metrics[2])
 
     background = cells.loc[~cells["is_somite"]]
     somite = cells.loc[cells["is_somite"]]
@@ -2500,38 +2496,50 @@ def report(
     jam2_only = somite["jam2a_positive"] & ~somite["jam3b_positive"]
     jam3_only = somite["jam3b_positive"] & ~somite["jam2a_positive"]
     both = somite["jam2a_positive"] & somite["jam3b_positive"]
-    for mask, color in ((jam2_only, coral), (jam3_only, navy), (both, purple)):
+    for mask, color, marker, size in (
+        (jam2_only, coral, "o", 11.0),
+        (jam3_only, navy, "s", 10.5),
+        (both, "#202020", "D", 12.0),
+    ):
         ax_c1.scatter(
             somite.loc[mask, "x"],
             somite.loc[mask, "y"],
-            s=8.0,
+            s=size,
             color=color,
+            marker=marker,
             edgecolor="white",
-            linewidth=0.25,
+            linewidth=0.30,
             alpha=0.92,
         )
-    myog = somite["myog_positive"]
-    ax_c1.scatter(
-        somite.loc[myog, "x"],
-        somite.loc[myog, "y"],
-        s=13,
-        facecolor="none",
-        edgecolor=gold,
-        linewidth=0.45,
-        alpha=0.70,
-    )
     ax_c1.set_aspect("equal", adjustable="box")
     ax_c1.set_xticks([])
     ax_c1.set_yticks([])
     for spine in ax_c1.spines.values():
         spine.set_visible(False)
     ax_c1.set_title(
-        f"18 hpf tissue · {len(compatible_edges)} predeclared trained JAM-compatible edges",
-        pad=3,
+        f"18 hpf tissue map ({len(cells):,} cells shown; {n_somite:,} Somite cells analyzed)",
+        pad=5,
     )
     ax_c1.legend(
         handles=[
-            Line2D([0], [0], color=gold, linewidth=1.5, label="Trained model edge"),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=background_grey,
+                markeredgecolor="none",
+                label="Other tissue cell",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor="#C9DAD8",
+                markeredgecolor="none",
+                label="Somite cell analyzed",
+            ),
             Line2D(
                 [0],
                 [0],
@@ -2539,93 +2547,133 @@ def report(
                 color="none",
                 markerfacecolor=coral,
                 markeredgecolor="white",
-                label="Jam2a+ Somite",
+                label="jam2a+ only",
             ),
             Line2D(
                 [0],
                 [0],
-                marker="o",
+                marker="s",
                 color="none",
                 markerfacecolor=navy,
                 markeredgecolor="white",
-                label="Jam3b+ Somite",
+                label="jam3b+ only",
             ),
             Line2D(
                 [0],
                 [0],
-                marker="o",
+                marker="D",
                 color="none",
-                markerfacecolor="none",
-                markeredgecolor=gold,
-                label="Myog+ Somite",
+                markerfacecolor="#202020",
+                markeredgecolor="white",
+                label="Both JAM genes",
+            ),
+            Line2D(
+                [0],
+                [0],
+                color=gold,
+                linewidth=1.5,
+                label=f"High-attention JAM edge (n={len(compatible_edges)})",
             ),
         ],
         frameon=False,
-        fontsize=6.5,
+        fontsize=8.0,
         loc="lower left",
         ncol=2,
+        handlelength=1.6,
+        columnspacing=1.1,
     )
-
-    detection_order = ["jam2a", "jam3b", "myog"]
-    detection = detection.set_index("gene_key").loc[detection_order]
-    y_c2 = np.array([1.5, 1.0, 0.5])
-    detection_colors = [coral, navy, gold]
-    ax_c2.scatter(
-        detection["detection_fraction"] * 100,
-        y_c2,
-        s=46,
-        color=detection_colors,
-        edgecolor="white",
-        linewidth=0.55,
-    )
-    for y_value, (_, row) in zip(y_c2, detection.iterrows(), strict=True):
-        ax_c2.text(
-            float(row.detection_fraction) * 100 + 1.7,
-            y_value,
-            f"{int(row.n_detected)}/{int(row.n_cells)}",
-            va="center",
-            fontsize=6.7,
-        )
-    ax_c2.set_yticks(y_c2, ["jam2a", "jam3b", "myog"])
-    ax_c2.set_ylim(0.2, 1.8)
-    ax_c2.set_xlim(0, max(50, float(detection["detection_fraction"].max() * 100 + 13)))
-    ax_c2.set_xlabel("Detected Somite cells (%)")
-    ax_c2.set_title("Somite detection", pad=3)
-    ax_c2.grid(axis="x", color=pale_grey, linewidth=0.5)
 
     association["gene_key"] = association["gene_a"].astype(str).str.casefold()
     association = association.set_index("gene_key").loc[["jam3b", "jam2a"]]
-    y_c3 = np.array([1.2, 0.8])
     association_odds = pd.to_numeric(association["fisher_odds_ratio"], errors="raise")
-    for y_value, (gene, row) in zip(y_c3, association.iterrows(), strict=True):
-        color = navy if gene == "jam3b" else coral
-        ax_c3.scatter(
-            row.fisher_odds_ratio,
-            y_value,
-            s=48,
-            color=color,
-            edgecolor="white",
-            linewidth=0.55,
+    count_columns = (
+        "both_detected",
+        "gene_a_only",
+        "gene_b_only",
+        "neither_detected",
+    )
+    missing_count_columns = set(count_columns).difference(association.columns)
+    if missing_count_columns:
+        raise ValueError(
+            "JAM-myog association lacks count columns: "
+            f"{sorted(missing_count_columns)}"
+        )
+    association_counts = association.loc[:, count_columns].apply(
+        pd.to_numeric, errors="raise"
+    )
+    positive_denominator = (
+        association_counts["both_detected"] + association_counts["gene_a_only"]
+    )
+    negative_denominator = (
+        association_counts["gene_b_only"] + association_counts["neither_detected"]
+    )
+    if (positive_denominator <= 0).any() or (negative_denominator <= 0).any():
+        raise ValueError("JAM-myog fractions require positive denominators")
+    myog_given_positive = (
+        association_counts["both_detected"] / positive_denominator * 100
+    )
+    myog_given_negative = association_counts["gene_b_only"] / negative_denominator * 100
+    y_c3 = np.array([1.0, 0.0])
+    c3_offset = 0.16
+    ax_c3.barh(
+        y_c3 + c3_offset,
+        myog_given_positive.to_numpy(float),
+        height=0.25,
+        color=teal,
+        edgecolor="none",
+        label="JAM gene+",
+        zorder=3,
+    )
+    ax_c3.barh(
+        y_c3 - c3_offset,
+        myog_given_negative.to_numpy(float),
+        height=0.25,
+        facecolor="white",
+        edgecolor=dark_grey,
+        linewidth=1.0,
+        label="JAM gene−",
+        zorder=3,
+    )
+    for y_value, gene in zip(y_c3, ["jam3b", "jam2a"], strict=True):
+        ax_c3.text(
+            float(myog_given_positive.loc[gene]) + 0.8,
+            y_value + c3_offset,
+            f"{float(myog_given_positive.loc[gene]):.1f}%",
+            va="center",
+            fontsize=8.0,
         )
         ax_c3.text(
-            float(row.fisher_odds_ratio) + 0.10,
-            y_value,
-            f"OR={float(row.fisher_odds_ratio):.2f}\n"
-            f"Fisher P={float(row.fisher_two_sided_p):.2g}",
+            float(myog_given_negative.loc[gene]) + 0.8,
+            y_value - c3_offset,
+            f"{float(myog_given_negative.loc[gene]):.1f}%",
             va="center",
-            fontsize=6.5,
-            linespacing=0.95,
+            fontsize=8.0,
+            color=dark_grey,
         )
-    ax_c3.axvline(1, color=middle_grey, linewidth=0.8, linestyle="--")
+        ax_c3.text(
+            max(
+                float(myog_given_positive.loc[gene]),
+                float(myog_given_negative.loc[gene]),
+            )
+            + 7.0,
+            y_value,
+            f"P={float(association.loc[gene, 'fisher_two_sided_p']):.2g}",
+            va="center",
+            fontsize=8.0,
+        )
     ax_c3.set_xlim(
-        max(0.65, float(association_odds.min()) - 0.45),
-        float(association_odds.max()) + 1.10,
+        0,
+        max(
+            70.0,
+            float(max(myog_given_positive.max(), myog_given_negative.max())) + 14.0,
+        ),
     )
-    ax_c3.set_ylim(0.55, 1.45)
-    ax_c3.set_yticks(y_c3, ["jam3b–myog", "jam2a–myog"])
-    ax_c3.set_xlabel("Co-detection odds ratio")
-    ax_c3.set_title("Myog association", pad=3)
+    ax_c3.set_ylim(-0.55, 1.55)
+    ax_c3.set_yticks(y_c3, ["jam3b", "jam2a"])
+    ax_c3.set_xlabel("myog+ Somite cells (%)")
+    ax_c3.set_title("myog detection by JAM-gene status", pad=5)
     ax_c3.grid(axis="x", color=pale_grey, linewidth=0.5)
+    ax_c3.legend(frameon=False, loc="lower right", ncol=2, fontsize=8.0)
 
     null_mean = float(null_row["null_mean"])
     observed_column = _column(
@@ -2644,34 +2692,57 @@ def report(
         "monte_carlo_p_upper",
         label="JAM spatial null summary",
     )
-    null_low = float(null_row["null_q025"]) / null_mean
-    null_high = float(null_row["null_q975"]) / null_mean
     fold = float(null_row[fold_column])
-    ax_c4.plot(
-        [null_low, null_high],
-        [0, 0],
-        color=middle_grey,
-        linewidth=6,
-        solid_capstyle="round",
-        zorder=1,
+    null_count_column = _column(
+        null_iterations,
+        "orientation_compatible_pair_count",
+        label="JAM spatial null iterations",
     )
-    ax_c4.scatter(1, 0, s=24, facecolor="white", edgecolor=dark_grey, zorder=2)
-    ax_c4.scatter(fold, 0, s=58, color=teal, edgecolor="white", linewidth=0.6, zorder=3)
-    ax_c4.axvline(1, color=middle_grey, linewidth=0.7, linestyle="--")
-    ax_c4.set_xlim(max(0.65, null_low - 0.08), max(1.55, fold + 0.18))
-    ax_c4.set_ylim(-0.55, 0.55)
-    ax_c4.set_yticks([])
-    ax_c4.set_xlabel("Observed / permutation-null mean")
-    ax_c4.set_title("Spatial enrichment", pad=3)
-    ax_c4.grid(axis="x", color=pale_grey, linewidth=0.5)
-    ax_c4.text(
-        0.02,
+    null_counts = pd.to_numeric(null_iterations[null_count_column], errors="raise")
+    observed_neighbors = int(null_row[observed_column])
+    ax_c2.hist(
+        null_counts,
+        bins=28,
+        color=background_grey,
+        edgecolor="white",
+        linewidth=0.45,
+    )
+    ax_c2.axvline(
+        observed_neighbors,
+        color=teal,
+        linewidth=2.2,
+        label=f"Observed: {observed_neighbors}",
+    )
+    ax_c2.axvspan(
+        float(null_row["null_q025"]),
+        float(null_row["null_q975"]),
+        color=middle_grey,
+        alpha=0.16,
+        linewidth=0,
+        label=(
+            f"Random labels: mean {null_mean:.0f}\n"
+            f"95% range {float(null_row['null_q025']):.0f}–{float(null_row['null_q975']):.0f}"
+        ),
+    )
+    ax_c2.set_xlim(
+        min(float(null_counts.min()), float(null_row["null_q025"])) - 12,
+        max(observed_neighbors, float(null_counts.max())) + 12,
+    )
+    ax_c2.set_xlabel("Complementary jam2a+/jam3b+ spatial-neighbor pairs")
+    ax_c2.set_ylabel("Label permutations")
+    ax_c2.set_title(
+        "Complementary jam2a+/jam3b+ cells\nare spatial neighbors",
+        pad=5,
+    )
+    ax_c2.legend(frameon=False, loc="upper left", fontsize=8.0)
+    ax_c2.text(
+        0.98,
         0.94,
-        f"{int(null_row[observed_column])} compatible neighbors\n"
-        f"fold={fold:.2f}; Monte Carlo P={float(null_row[p_spatial_column]):.2g}",
-        transform=ax_c4.transAxes,
+        f"{fold:.2f}× enrichment\nP={float(null_row[p_spatial_column]):.2g}",
+        transform=ax_c2.transAxes,
+        ha="right",
         va="top",
-        fontsize=7.0,
+        fontsize=8.3,
     )
 
     pdf_path = output / "zebrafish_attention_validation_a4.pdf"
@@ -2681,62 +2752,88 @@ def report(
     plt.close(fig)
 
     pair_index = pair.set_index(["cytobridge_view", "external_method"])
-    exact_commot = pair_index.loc[("exact_message", "COMMOT")]
     attention_commot = pair_index.loc[("attention", "COMMOT")]
-    exact_cag = pair_index.loc[("exact_message", "CellAgentChat")]
     attention_cag = pair_index.loc[("attention", "CellAgentChat")]
     jam3b_row = association.loc["jam3b"]
-    trained_compatible = compatibility.loc[
-        compatibility["condition"].eq("trained") & compatibility["jam_compatible"]
-    ].iloc[0]
-    trained_other = compatibility.loc[
-        compatibility["condition"].eq("trained") & ~compatibility["jam_compatible"]
-    ].iloc[0]
     caption = (
-        "Current-checkpoint validation of the zebrafish interaction field and a "
-        "pre-specified JAM myogenesis program. (a) Across all 361 directed cell-type "
-        "pairs, abundance-, distance-, and self-pair-adjusted concordance with COMMOT "
-        f"was ρ={float(exact_commot.adjusted_spearman_rho):.3f} for exact message "
-        f"and {float(attention_commot.adjusted_spearman_rho):.3f} for attention; "
-        "The shared-database CellAgentChat proxy values were "
-        f"{float(exact_cag.adjusted_spearman_rho):.3f} and "
-        f"{float(attention_cag.adjusted_spearman_rho):.3f}. Gray bars are 95% ranges "
-        f"from {n_pair_permutations:,} structured permutations within {n_strata} strata; "
-        "the COMMOT exact-message empirical upper-tail P was "
-        f"{float(exact_commot.adjusted_spearman_empirical_p_upper):.4g}. "
-        "(b) Jam-compatible Somite edges were defined by Jam2a detection at one "
-        "endpoint and Jam3b detection at the other. Their median within-condition "
-        f"attention percentile was {float(trained_compatible.attention_percentile_median):.3f} "
-        "at the current trained checkpoint versus "
-        f"{float(trained_other.attention_percentile_median):.3f} for other edges. "
-        "Trained, pre-interaction (Refine), and seeded randomized controls use the "
-        "same 18 hpf Somite scaffold; points show compatible-versus-other medians, "
-        "Somite-to-Somite complete-grid ranks, and descriptive top-versus-bottom "
-        "quartile odds ratios. (c) The spatial panel shows the formal, predeclared "
-        f"current-trained display set ({len(compatible_edges)} JAM-compatible edges). "
-        f"Jam3b and myog co-detection had odds ratio={float(jam3b_row.fisher_odds_ratio):.2f} "
-        f"(Fisher P={float(jam3b_row.fisher_two_sided_p):.2g}; expression ρ="
-        f"{float(jam3b_row.spearman_rho_expression):.2f}). Spatially neighboring "
-        f"Jam2a/Jam3b-compatible cell pairs were enriched {fold:.2f}-fold over the "
-        f"within-Somite label-permutation null (Monte Carlo P="
-        f"{float(null_row[p_spatial_column]):.2g}). These are technical and "
-        "cross-sectional consistency analyses, not evidence that an attention value "
-        "is a biochemical interaction probability or that myog causally regulates JAM "
-        "signaling in this atlas."
+        "Zebrafish validation of learned cell-cell interaction attention. "
+        "(a) Cell-level attention was aggregated into one model interaction rank for "
+        "each of all 361 directed cell-type pairs. After adjusting for sender and "
+        "receiver abundance, mean spatial distance, and self-pairs, the adjusted attention ranks "
+        f"agreed with COMMOT at ρ={float(attention_commot.adjusted_spearman_rho):.3f} "
+        "and with the shared-database CellAgentChat proxy at "
+        f"ρ={float(attention_cag.adjusted_spearman_rho):.3f}. Gray bars show 95% "
+        f"ranges from {n_pair_permutations:,} structured permutations within "
+        f"{n_strata} strata. The empirical upper-tail P values were "
+        f"{float(attention_commot.adjusted_spearman_empirical_p_upper):.4g} and "
+        f"{float(attention_cag.adjusted_spearman_empirical_p_upper):.4g}. "
+        f"(b) This analysis is restricted to {n_somite:,} Somite cells at 18 hpf and "
+        f"the same {n_somite_edges:,} model edges in every condition. A JAM-compatible "
+        "edge has jam2a detected at one endpoint and jam3b at the other. In the trained "
+        f"model, {float(top_rates.loc['trained']):.1f}% of top-attention-quartile edges "
+        f"were JAM-compatible versus {float(bottom_rates.loc['trained']):.1f}% in the "
+        f"bottom quartile. The corresponding rates were "
+        f"{float(top_rates.loc['pre_interaction']):.1f}% versus "
+        f"{float(bottom_rates.loc['pre_interaction']):.1f}% before interaction learning, "
+        f"and {float(top_rates.loc['random']):.1f}% versus "
+        f"{float(bottom_rates.loc['random']):.1f}% after randomizing the learned weights. "
+        "The before-learning control (pre-interaction checkpoint) is the same model before "
+        "the interaction learning stage. The trained condition is the model after that "
+        "stage. The randomized control shuffles the learned interaction weights "
+        "on the same cells and edge scaffold. As secondary summaries, Somite-to-Somite "
+        f"ranked {int(somite_pair.loc['trained', 'rank_from_top'])}/"
+        f"{int(somite_pair.loc['trained', 'rank_n'])}, "
+        f"{int(somite_pair.loc['pre_interaction', 'rank_from_top'])}/"
+        f"{int(somite_pair.loc['pre_interaction', 'rank_n'])}, and "
+        f"{int(somite_pair.loc['random', 'rank_from_top'])}/"
+        f"{int(somite_pair.loc['random', 'rank_n'])} in the three conditions. The "
+        f"top-versus-bottom odds ratios were {float(odds.loc['trained']):.1f}, "
+        f"{float(odds.loc['pre_interaction']):.1f}, and {float(odds.loc['random']):.1f}. "
+        "(c) The tissue map shows all "
+        f"{len(cells):,} cells for anatomical context, whereas all statistics remain "
+        f"restricted to the {n_somite:,} Somite cells. Gold arrows mark the predeclared "
+        f"set of {len(compatible_edges)} high-attention JAM-compatible model edges. "
+        f"The observed {observed_neighbors} spatially neighboring complementary "
+        f"jam2a+/jam3b+ Somite pairs were enriched {fold:.2f}-fold over the "
+        f"within-Somite label-permutation null "
+        f"(Monte Carlo P={float(null_row[p_spatial_column]):.2g}). Jam3b and myog "
+        f"co-detection had odds ratio={float(jam3b_row.fisher_odds_ratio):.2f} "
+        f"(Fisher P={float(jam3b_row.fisher_two_sided_p):.2g}); myog was detected in "
+        f"{float(myog_given_positive.loc['jam3b']):.1f}% of jam3b+ cells versus "
+        f"{float(myog_given_negative.loc['jam3b']):.1f}% of jam3b− cells. For jam2a, "
+        f"the corresponding values were {float(myog_given_positive.loc['jam2a']):.1f}% "
+        f"and {float(myog_given_negative.loc['jam2a']):.1f}%. These cross-sectional "
+        "analyses support spatial and molecular consistency but are not evidence of "
+        "direct physical contact or causal regulation."
     )
     (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
     reviewer_response = f"""# Response to reviewer concern on attention interpretability
 
 We agree that an attention coefficient cannot be interpreted directly as a biochemical communication probability. We therefore evaluated the current accepted checkpoint at three complementary resolutions.
 
-1. **Complete interaction field.** All 361 directed cell-type pairs, including structural zeros, were retained. After adjustment for sender and receiver abundance, spatial distance, and self-pair status, exact-message and attention fields agreed with COMMOT at rho={float(exact_commot.adjusted_spearman_rho):.3f} and {float(attention_commot.adjusted_spearman_rho):.3f}; the exact-message empirical upper-tail P was {float(exact_commot.adjusted_spearman_empirical_p_upper):.4g} under the structured within-stratum null. The shared-database CellAgentChat proxy supplies a secondary complete-grid comparison.
-2. **Pre-specified JAM edge compatibility.** Jam2a-Jam3b is a literature-supported heterophilic myocyte-fusion axis. On the same 18 hpf Somite scaffold, we compared the current trained checkpoint with its pre-interaction Refine checkpoint and a seeded randomized interaction control. The figure reports compatible-versus-other edge percentiles, the complete-grid Somite-to-Somite rank, and top-versus-bottom-quartile odds ratios. These are descriptive technical controls; edges and cells are not treated as biological replicates.
-3. **Localized molecular response.** Current-trained JAM-compatible display edges localize to the 18 hpf Somite region. Jam3b-myog co-detection and expression association are reported directly, and Jam2a/Jam3b-compatible spatial neighbors are compared with a within-Somite label-permutation null (fold={fold:.2f}, Monte Carlo P={float(null_row[p_spatial_column]):.2g}). This cross-sectional association does not establish myog regulation or direct physical contact.
+1. **Complete interaction field.** Cell-level attention was aggregated into one model interaction rank for each of all 361 directed cell-type pairs, including structural zeros. After adjustment for sender and receiver abundance, spatial distance, and self-pair status, these attention ranks agreed with COMMOT at rho={float(attention_commot.adjusted_spearman_rho):.3f} (empirical upper-tail P={float(attention_commot.adjusted_spearman_empirical_p_upper):.4g}) under the structured within-stratum null. The shared-database CellAgentChat proxy supplies a secondary complete-grid comparison.
+2. **Pre-specified JAM edge compatibility.** Jam2a-Jam3b is a literature-supported heterophilic myocyte-fusion axis. We restricted this analysis to the same {n_somite:,} 18 hpf Somite cells and {n_somite_edges:,} model edges in every condition. JAM-compatible edges comprised {float(top_rates.loc['trained']):.1f}% of the top attention quartile but only {float(bottom_rates.loc['trained']):.1f}% of the bottom quartile after interaction training. The corresponding contrasts were {float(top_rates.loc['pre_interaction']):.1f}% versus {float(bottom_rates.loc['pre_interaction']):.1f}% before interaction learning and {float(top_rates.loc['random']):.1f}% versus {float(bottom_rates.loc['random']):.1f}% after randomization. The before-learning checkpoint is the same model before the interaction learning stage, whereas the randomized control shuffles the learned interaction weights. These are descriptive technical controls; edges and cells are not treated as biological replicates.
+3. **Localized molecular response.** The map shows all {len(cells):,} tissue cells only for anatomical orientation; spatial and molecular statistics use the {n_somite:,} Somite cells. The current-trained high-attention JAM-compatible display edges localize to this region. Jam2a/Jam3b-compatible spatial neighbors were enriched over a within-Somite label-permutation null (fold={fold:.2f}, Monte Carlo P={float(null_row[p_spatial_column]):.2g}). The myog+ fraction was {float(myog_given_positive.loc['jam3b']):.1f}% among jam3b+ cells versus {float(myog_given_negative.loc['jam3b']):.1f}% among jam3b− cells, whereas the jam2a contrast was weaker ({float(myog_given_positive.loc['jam2a']):.1f}% versus {float(myog_given_negative.loc['jam2a']):.1f}%). This cross-sectional association does not establish myog regulation or direct physical contact.
 
 Together, these results show that the learned interaction field is reproducible across external CCI algorithms under shared inputs, preferentially organizes a pre-specified compatible JAM program relative to checkpoint controls, and localizes to a coherent myogenic molecular context. We retain the explicit boundary that attention is a model contribution, not a native ligand-receptor strength.
 """
     (output / "reviewer_response.md").write_text(reviewer_response, encoding="utf-8")
 
+    code_dir = output / "code"
+    code_dir.mkdir()
+    script_snapshot = code_dir / Path(__file__).name
+    shutil.copy2(Path(__file__).resolve(), script_snapshot)
+    rebuild_command = (
+        "python scripts/run_zebrafish_attention_validation.py report "
+        f"--analysis-dir {analysis_dir.expanduser().resolve()} "
+        f"--output-dir <NEW_OUTPUT_DIR> "
+        f"--expected-analysis-manifest-sha256 {expected_analysis_manifest_sha256.casefold()} "
+        + " ".join(
+            f"--jam-manifest {record['path']} "
+            f"--expected-jam-manifest-sha256 {record['sha256']}"
+            for record in jam_manifest_records
+        )
+    )
     jam_source_lines = "\n".join(
         f"- `{record['path']}` (SHA-256 `{record['sha256']}`)"
         for record in jam_manifest_records
@@ -2748,13 +2845,15 @@ Together, these results show that the learned interaction field is reproducible 
         f"- Pair-field manifest SHA-256: `{expected_analysis_manifest_sha256}`\n"
         f"{jam_source_lines}\n\n"
         "Legacy JAM roots containing `20260722` or `20260728` are rejected by the "
-        "report CLI. Panel b uses canonical `trained`, `pre_interaction`, and `random` "
-        "conditions; the old `init` label is not relabelled. Panel c display edges are "
-        "selected upstream under the frozen current-checkpoint rule and are not selected "
-        "inside the plotting function.\n\n"
+        "report CLI. Panel a displays the attention view only. Panel b uses canonical "
+        "`trained`, `pre_interaction`, and `random` conditions; the old `init` label is "
+        "not relabelled. Panel c display edges are selected upstream under the frozen "
+        "current-checkpoint rule and are not selected inside the plotting function.\n\n"
         "## Rebuild\n\n"
-        "Run `python scripts/run_zebrafish_attention_validation.py report` with the "
-        "pair-field analysis directory/SHA and each current JAM manifest/SHA pair.\n"
+        f"```bash\n{rebuild_command}\n```\n\n"
+        "## SHA-256\n\n"
+        f"- Figure PDF: `{_sha256(pdf_path)}`\n"
+        f"- Plotting-script snapshot: `{_sha256(script_snapshot)}`\n"
     )
     (output / "provenance.md").write_text(provenance, encoding="utf-8")
     shutil.copy2(
@@ -2801,6 +2900,14 @@ Together, these results show that the learned interaction field is reproducible 
                 "complete-pair adjusted agreement, current-checkpoint JAM controls, "
                 "and localized cross-sectional myogenic consistency"
             ),
+            "figure_a_cytobridge_view": "attention",
+            "figure_canvas": "A4 portrait",
+            "panel_b_scope": (
+                f"18 hpf Somite only; {n_somite} cells and {n_somite_edges} fixed edges"
+            ),
+            "panel_c_context_scope": (
+                f"{len(cells)} tissue cells displayed; statistics use {n_somite} Somite cells"
+            ),
             "jam_controls_are_biological_replicates": False,
             "jam_statistics_scope": "descriptive technical controls",
             "myog_scope": "cross-sectional association; not causal regulation",
@@ -2819,16 +2926,18 @@ Together, these results show that the learned interaction field is reproducible 
         "claim_contract": report_claim_contract,
         "figure_panels": {
             "a": (
-                "complete 361-pair adjusted concordance, structured-null 95% "
-                "intervals, and empirical upper-tail P values"
+                "attention-only complete 361-pair adjusted concordance with COMMOT "
+                "and CellAgentChat proxy against structured-null 95% intervals"
             ),
             "b": (
-                "trained versus pre-interaction versus randomized JAM-compatible "
-                "edge percentiles, Somite-to-Somite rank, and compatibility odds"
+                "JAM-compatible edge fractions in the top and bottom attention "
+                "quartiles after training, before interaction learning, and after "
+                "randomizing learned interaction weights"
             ),
             "c": (
-                "current-trained JAM spatial localization, molecular detection, "
-                "Jam-myog association, and spatial permutation enrichment"
+                "current-trained high-attention JAM spatial localization, intuitive "
+                "myog-positive fractions by JAM-gene detection, and within-Somite "
+                "spatial permutation enrichment"
             ),
         },
         "panel_data_files": [f"panel_data/{filename}" for filename in panel_sources],

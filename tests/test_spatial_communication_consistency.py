@@ -733,23 +733,27 @@ def _write_model_biology_plot_inputs(root: Path) -> tuple[Path, Path, Path]:
     pd.DataFrame(rank_rows).to_csv(rank_path, index=False)
 
     chain_path = molecular / "model_first_nichenet_chains.csv"
-    mosta_axis = axes["mosta"]
-    pd.DataFrame(
-        {
-            "dataset": ["mosta", "mosta"],
-            "cytobridge_global_rank": [1, 1],
-            "sender_type": [mosta_axis["sender_type"]] * 2,
-            "receiver_type": [mosta_axis["receiver_type"]] * 2,
-            "ligand": [mosta_axis["ligand"]] * 2,
-            "receptor": [mosta_axis["receptor"]] * 2,
-            "pathways": [mosta_axis["pathway"]] * 2,
-            "cytobridge_percentile": [0.99, 0.99],
-            "commot_percentile": [0.97, 0.97],
-            "receiver_target_rank": [1, 2],
-            "receiver_target": ["TARGET-A", "TARGET-B"],
-            "nichenet_ligand_target_evidence": [0.5, 0.2],
-        }
-    ).to_csv(chain_path, index=False)
+    chain_rows: list[dict[str, object]] = []
+    for rank, dataset in enumerate(("mosta", "arista", "chicken_heart"), start=1):
+        axis = axes[dataset]
+        for target_rank, target in enumerate(("TARGET-A", "TARGET-B"), start=1):
+            chain_rows.append(
+                {
+                    "dataset": dataset,
+                    "cytobridge_global_rank": rank,
+                    "sender_type": axis["sender_type"],
+                    "receiver_type": axis["receiver_type"],
+                    "ligand": axis["ligand"],
+                    "receptor": axis["receptor"],
+                    "pathways": axis["pathway"],
+                    "cytobridge_percentile": 0.99,
+                    "commot_percentile": 0.97,
+                    "receiver_target_rank": target_rank,
+                    "receiver_target": target,
+                    "nichenet_ligand_target_evidence": 0.5 / target_rank,
+                }
+            )
+    pd.DataFrame(chain_rows).to_csv(chain_path, index=False)
     (molecular / "manifest.json").write_text(
         json.dumps(
             {
@@ -829,16 +833,14 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
         record for record in artwork_axes if record["title"] == "Rank agreement"
     )
     assert "CellAgentChat proxy" in panel_a_rank["legend"]
-    panel_b = next(
-        record
-        for record in artwork_axes
-        if record["xlabel"] == "Within-method rank percentile"
+    assert "Model-selected communication axes" in joined_artwork_text
+    assert "LR axis / pathway" in joined_artwork_text
+    assert "LR rank" in joined_artwork_text
+    assert "NicheNet-linked receiver targets" in joined_artwork_text
+    assert (
+        "Highest CytoBridge-ranked axis with NicheNet coverage" in joined_artwork_text
     )
-    assert panel_b["legend"] == [
-        "COMMOT same LR × pair",
-        "COMMOT same directed pair",
-    ]
-    assert panel_b["collections"] == 8
+    assert "TARGET-A / TARGET-B" in joined_artwork_text
     expected_tables = {
         "global_pair_metrics.csv",
         "model_linked_external_support.csv",
@@ -850,8 +852,8 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert {path.name for path in (output / "panel_data").iterdir()} == expected_tables
 
     manifest = json.loads((output / "figure_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == 3
-    assert manifest["workflow"] == "four_dataset_model_linked_communication_figure"
+    assert manifest["schema_version"] == 4
+    assert manifest["workflow"] == "four_dataset_interaction_biology_figure"
     assert manifest["displayed_datasets"] == [
         dataset for dataset in FORMAL_DATASET_CONTRACTS if dataset != "admouse"
     ]
@@ -880,6 +882,8 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "N/A" not in caption
     assert "diamonds" not in caption
     assert "CellAgentChat-proxy pair" not in caption
+    assert "interaction-contribution scores" in caption
+    assert "receiver target genes" in caption
 
     global_metrics = pd.read_csv(output / "panel_data/global_pair_metrics.csv")
     molecular_panel = pd.read_csv(

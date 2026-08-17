@@ -2861,9 +2861,9 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             "ytick.color": "black",
         }
     )
-    teal = METHOD_COLORS["COMMOT"]
-    gold = METHOD_COLORS["CellAgentChat"]
-    coral = METHOD_COLORS["NicheNet"]
+    accent = "#277F7A"
+    secondary_grey = "#9AA1A6"
+    dark_grey = "#555B60"
     grid_color = "#D9DEE2"
 
     def panel_heading(axis: plt.Axes, label: str, title: str) -> None:
@@ -2885,7 +2885,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         y_base = np.arange(len(dataset_order), dtype=float)
         offsets = np.linspace(-0.10, 0.10, len(external_methods))
         marker_map = {"COMMOT": "s", "CellAgentChat": "D", "NicheNet": "^"}
-        color_map = {"COMMOT": teal, "CellAgentChat": gold, "NicheNet": coral}
+        color_map = {
+            "COMMOT": accent,
+            "CellAgentChat": secondary_grey,
+            "NicheNet": dark_grey,
+        }
         for offset, method in zip(offsets, external_methods, strict=True):
             table = tables[method]
             xs: list[float] = []
@@ -2930,12 +2934,12 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     outer = fig.add_gridspec(
         6,
         1,
-        height_ratios=(0.075, 0.245, 0.075, 0.245, 0.075, 0.285),
-        left=0.19,
+        height_ratios=(0.065, 0.225, 0.065, 0.255, 0.065, 0.305),
+        left=0.12,
         right=0.965,
         top=0.97,
         bottom=0.07,
-        hspace=0.32,
+        hspace=0.28,
     )
 
     panel_heading(fig.add_subplot(outer[0]), "a", "Directed-pair consistency")
@@ -2973,131 +2977,186 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         columnspacing=1.2,
     )
 
-    panel_heading(
-        fig.add_subplot(outer[2]), "b", "External ranks of model-selected axes"
-    )
+    panel_heading(fig.add_subplot(outer[2]), "b", "Model-selected communication axes")
     ax_b = fig.add_subplot(outer[3])
-    y_base = np.arange(len(dataset_order), dtype=float)
-    b_labels: list[str] = []
+    ax_b.set_axis_off()
+    ax_b.set_xlim(0.0, 1.0)
+    ax_b.set_ylim(-0.55, len(dataset_order) - 0.05)
+    ax_b.text(0.00, 3.78, "Dataset", fontsize=8.0, fontweight="bold")
+    ax_b.text(0.15, 3.78, "Sender", fontsize=8.0, fontweight="bold")
+    ax_b.text(0.39, 3.78, "LR axis / pathway", fontsize=8.2, fontweight="bold")
+    ax_b.text(0.64, 3.78, "Receiver", fontsize=8.2, fontweight="bold")
+    ax_b.text(0.82, 3.78, "COMMOT support", fontsize=8.2, fontweight="bold")
+    receiver_display = {
+        "zebrafish": "Musculature / YSL",
+        "mosta": "Connective tissue",
+        "arista": "tlNBL",
+        "chicken_heart": "Valve cells",
+    }
     for row_index, dataset in enumerate(dataset_order):
         row = support.loc[dataset]
         panel_row = molecular_panel.loc[dataset]
-        values = np.asarray(
-            [
-                float(panel_row.commot_exact_axis_percentile),
-                float(row.commot_pair_percentile),
-            ],
-            dtype=float,
+        y = float(len(dataset_order) - 1 - row_index)
+        if row_index:
+            ax_b.plot(
+                [0.0, 1.0],
+                [y + 0.48, y + 0.48],
+                color=grid_color,
+                linewidth=0.55,
+                zorder=0,
+            )
+        ax_b.text(
+            0.00,
+            y,
+            labels[dataset],
+            fontsize=7.5,
+            fontweight="bold",
+            va="center",
         )
-        ax_b.plot(
-            [float(np.nanmin(values)), float(np.nanmax(values))],
-            [row_index, row_index],
-            color="#B9C0C5",
-            linewidth=1.1,
-            zorder=1,
+        ax_b.text(
+            0.15,
+            y,
+            str(row.sender_type),
+            fontsize=7.2,
+            va="center",
         )
-        ax_b.scatter(
-            values[0],
-            row_index,
-            s=48,
-            marker="s",
-            color=teal,
-            edgecolor="white",
-            linewidth=0.6,
-            zorder=3,
+        ax_b.text(0.35, y, "→", fontsize=9.0, color=dark_grey, va="center")
+        ax_b.text(
+            0.39,
+            y + 0.10,
+            f"{str(row.ligand).upper()}–{str(row.receptor).upper()}",
+            fontsize=7.8,
+            fontweight="bold",
+            color="black",
+            va="center",
         )
-        ax_b.scatter(
-            values[1],
-            row_index,
-            s=45,
-            marker="o",
-            facecolor="white",
-            edgecolor=teal,
-            linewidth=1.4,
-            zorder=3,
+        ax_b.text(
+            0.39,
+            y - 0.15,
+            str(panel_row.cytobridge_pathway),
+            fontsize=7.1,
+            color=dark_grey,
+            va="center",
         )
-        b_labels.append(
-            f"{labels[dataset]}\n{str(row.ligand).upper()}–{str(row.receptor).upper()}"
-            f"  ({str(panel_row.cytobridge_pathway)})"
+        ax_b.text(0.60, y, "→", fontsize=9.0, color=dark_grey, va="center")
+        ax_b.text(
+            0.64,
+            y,
+            receiver_display[dataset],
+            fontsize=7.5,
+            va="center",
         )
-    ax_b.set_xlim(0.40, 1.01)
-    ax_b.set_ylim(len(dataset_order) - 0.5, -0.5)
-    ax_b.set_yticks(y_base, b_labels)
-    ax_b.set_xlabel("Within-method rank percentile", fontsize=8.5)
-    ax_b.grid(axis="x", color=grid_color, linewidth=0.6)
-    ax_b.spines[["top", "right"]].set_visible(False)
-    ax_b.tick_params(labelsize=7.4)
-    ax_b.legend(
-        handles=[
-            Line2D(
-                [0],
-                [0],
-                marker="s",
-                linestyle="",
-                color=teal,
-                markeredgecolor="white",
-                markersize=6,
-                label="COMMOT same LR × pair",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                linestyle="",
-                color=teal,
-                markerfacecolor="white",
-                markeredgewidth=1.4,
-                markersize=6,
-                label="COMMOT same directed pair",
-            ),
-        ],
-        frameon=False,
-        loc="lower left",
-        bbox_to_anchor=(0.0, 1.06),
-        ncol=2,
-        fontsize=7.0,
-        handletextpad=0.4,
-        columnspacing=1.0,
-    )
+        ax_b.text(
+            0.82,
+            y + 0.10,
+            f"LR rank  {int(panel_row.commot_within_pair_rank)} / "
+            f"{int(panel_row.within_pair_lr_count):,}",
+            fontsize=7.2,
+            color=accent,
+            fontweight="bold",
+            va="center",
+        )
+        ax_b.text(
+            0.82,
+            y - 0.15,
+            f"Pair percentile  {100 * float(row.commot_pair_percentile):.1f}",
+            fontsize=7.0,
+            color=dark_grey,
+            va="center",
+        )
 
-    panel_heading(fig.add_subplot(outer[4]), "c", "Molecular LR × pair consistency")
-    c_grid = outer[5].subgridspec(1, 2, wspace=0.27)
-    ax_c_rho = fig.add_subplot(c_grid[0])
-    ax_c_jaccard = fig.add_subplot(c_grid[1])
-    molecular_tables: dict[str, pd.DataFrame] = {}
-    for method in ("COMMOT", "NicheNet"):
-        molecular_tables[method] = rank_metrics.loc[
-            rank_metrics["external_method"].eq(method)
-        ].set_index("dataset")
-    dot_axis(
-        ax_c_rho,
-        metric="spearman_rho",
-        external_methods=("COMMOT", "NicheNet"),
-        tables=molecular_tables,
-        title="LR × directed-pair rank agreement",
-        x_label="Spearman rank correlation (ρ)",
-        x_limits=(-0.03, 0.62),
-        show_y=True,
+    panel_heading(
+        fig.add_subplot(outer[4]),
+        "c",
+        "NicheNet-linked receiver targets",
     )
-    dot_axis(
-        ax_c_jaccard,
-        metric="top_jaccard",
-        external_methods=("COMMOT", "NicheNet"),
-        tables=molecular_tables,
-        title="Top-ranked molecular overlap",
-        x_label="Top-20% LR × pair Jaccard",
-        x_limits=(-0.03, 0.42),
-        show_y=False,
+    ax_c_chain = fig.add_subplot(outer[5])
+    ax_c_chain.set_axis_off()
+    ax_c_chain.set_xlim(0.0, 1.0)
+    ax_c_chain.set_ylim(-0.55, 2.65)
+    ax_c_chain.text(
+        0.0,
+        2.50,
+        "Highest CytoBridge-ranked axis with NicheNet coverage",
+        fontsize=8.2,
+        fontweight="bold",
     )
-    ax_c_rho.legend(
-        frameon=False,
-        loc="lower left",
-        bbox_to_anchor=(0.0, 1.11),
-        ncol=2,
-        fontsize=7.2,
-        handletextpad=0.45,
-        columnspacing=1.2,
+    ax_c_chain.text(
+        0.64,
+        2.50,
+        "Receiver targets",
+        fontsize=8.2,
+        fontweight="bold",
     )
+    chain_order = ["mosta", "arista", "chicken_heart"]
+    for row_index, dataset in enumerate(chain_order):
+        group = chains.loc[chains["dataset"].astype(str).eq(dataset)].sort_values(
+            "receiver_target_rank"
+        )
+        if group.empty:
+            raise ValueError(f"NicheNet chain is missing for {dataset}")
+        first = group.iloc[0]
+        y = float(1.75 - row_index)
+        if row_index:
+            ax_c_chain.plot(
+                [0.0, 1.0],
+                [y + 0.48, y + 0.48],
+                color=grid_color,
+                linewidth=0.55,
+            )
+        ax_c_chain.text(
+            0.0,
+            y,
+            labels[dataset],
+            fontsize=7.5,
+            fontweight="bold",
+            va="center",
+        )
+        ax_c_chain.text(
+            0.14,
+            y + 0.10,
+            f"CytoBridge rank {int(first.cytobridge_global_rank)}  "
+            f"{str(first.sender_type)} → {str(first.ligand).upper()}–"
+            f"{str(first.receptor).upper()} → {str(first.receiver_type)}",
+            fontsize=7.2,
+            color="black",
+            fontweight="bold",
+            va="center",
+        )
+        ax_c_chain.text(
+            0.14,
+            y - 0.16,
+            f"{str(first.pathways)} · same-axis COMMOT "
+            f"{100 * float(first.commot_percentile):.1f}th percentile",
+            fontsize=6.9,
+            color=dark_grey,
+            va="center",
+        )
+        ax_c_chain.plot(
+            [0.57, 0.62],
+            [y, y],
+            color=dark_grey,
+            linewidth=1.3,
+            solid_capstyle="round",
+        )
+        ax_c_chain.scatter(
+            [0.62],
+            [y],
+            marker=">",
+            s=20,
+            color=dark_grey,
+            linewidths=0.0,
+            zorder=3,
+        )
+        ax_c_chain.text(
+            0.68,
+            y,
+            " / ".join(group["receiver_target"].astype(str).tolist()),
+            fontsize=7.6,
+            color=accent,
+            fontweight="bold",
+            va="center",
+        )
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -3119,19 +3178,23 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     chains.to_csv(panel_chain_path, index=False)
 
     caption = (
-        "**Four-dataset interaction consistency.** (a) CytoBridge exact-message "
-        "scores are compared with COMMOT and the frozen current-database "
+        "**Four-dataset interaction consistency.** (a) CytoBridge interaction-"
+        "contribution scores are compared with COMMOT and the frozen current-database "
         "CellAgentChat proxy over each complete, zero-filled directed cell-type-pair "
         "grid. Points report Spearman rank correlation and top-20% Jaccard overlap; "
         "weak datasets remain visible. (b) CytoBridge alone selected the highest "
-        "abundance-normalized exact-message × ligand × receptor axis. External "
-        "methods were queried only after selection: filled squares denote the same "
-        "COMMOT LR × directed-pair axis, open circles the same COMMOT directed pair, "
-        "and external scores are read only after CytoBridge selection. (c) Molecular "
-        "consistency is measured over jointly positive LR × directed-pair candidates; "
-        "points report rank correlation and top-20% overlap with COMMOT or NicheNet. "
-        "These are shared-input computational consistency analyses, not "
-        "independent-cohort or causal validation."
+        "abundance-normalized exact-message × ligand × receptor axis before any "
+        "external lookup. Rows connect the sender, LR pathway annotation, and receiver "
+        "and report the subsequent COMMOT LR rank within that same directed cell pair "
+        "and the pair-level percentile. (c) For each evaluable dataset, the highest "
+        "CytoBridge-ranked axis with formal NicheNet coverage is connected to receiver "
+        "target genes; zebrafish NicheNet evidence was unavailable under the frozen "
+        "mapping. Cell-type names follow the source-atlas annotations. "
+        "Across jointly positive LR × directed-pair candidates, molecular rank "
+        "agreement was positive in every evaluable dataset (COMMOT Spearman "
+        "ρ=0.17–0.56, top-20% Jaccard=0.20–0.36; NicheNet ρ=0.21–0.47, "
+        "Jaccard=0.19–0.30). These are shared-input computational "
+        "consistency analyses, not independent-cohort or causal validation."
     )
     caption_path = output / "caption.md"
     caption_path.write_text(caption + "\n", encoding="utf-8")
@@ -3166,8 +3229,10 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 "",
                 "## Interpretation boundary",
                 "",
-                "LR labels are model-linked molecular annotations, not native "
-                "biochemical probabilities. CellAgentChat is a frozen shared-database "
+                "LR identities and pathway labels are database-guided post-hoc "
+                "decompositions of learned interaction contributions, not native "
+                "biochemical probabilities. COMMOT and NicheNet are queried only "
+                "after CytoBridge ranking. CellAgentChat is a frozen shared-database "
                 "proxy analysis. Cross-method agreement is descriptive and does not "
                 "establish causality or independent-cohort validation.",
                 "",
@@ -3187,8 +3252,8 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         encoding="utf-8",
     )
     manifest = {
-        "schema_version": 3,
-        "workflow": "four_dataset_model_linked_communication_figure",
+        "schema_version": 4,
+        "workflow": "four_dataset_interaction_biology_figure",
         "displayed_datasets": dataset_order,
         "audit_datasets": audit_dataset_order,
         "implementation": implementation,
