@@ -3319,7 +3319,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 edgecolor="white",
                 linewidth=0.6,
                 zorder=3,
-                label="CellAgentChat proxy" if method == "CellAgentChat" else method,
+                label=method,
             )
         axis.set_xlim(*x_limits)
         axis.set_ylim(len(dataset_order) - 0.5, -0.5)
@@ -3532,16 +3532,16 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     panel_heading(
         fig.add_subplot(outer[4]),
         "c",
-        "NicheNet receiver targets for CytoBridge-ranked axes",
+        "NicheNet receiver targets for CytoBridge-selected axes",
     )
     ax_c_chain = fig.add_subplot(outer[5])
     ax_c_chain.set_axis_off()
     ax_c_chain.set_xlim(0.0, 1.0)
-    ax_c_chain.set_ylim(-1.04, 4.38)
+    ax_c_chain.set_ylim(-0.62, 4.38)
     ax_c_chain.text(
-        0.42,
+        0.40,
         4.18,
-        "CytoBridge ranking",
+        "CytoBridge selection",
         fontsize=7.8,
         fontweight="bold",
         ha="center",
@@ -3554,8 +3554,8 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         fontweight="bold",
         ha="center",
     )
-    ax_c_chain.plot([0.14, 0.70], [3.99, 3.99], color="black", linewidth=0.55)
-    ax_c_chain.plot([0.72, 1.0], [3.99, 3.99], color="black", linewidth=0.55)
+    ax_c_chain.plot([0.14, 0.64], [3.99, 3.99], color="black", linewidth=0.55)
+    ax_c_chain.plot([0.66, 1.0], [3.99, 3.99], color="black", linewidth=0.55)
     ax_c_chain.text(0.00, 3.72, "Dataset", fontsize=7.0, fontweight="bold")
     ax_c_chain.text(
         0.14,
@@ -3576,17 +3576,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         linespacing=1.1,
     )
     ax_c_chain.text(
-        0.665,
-        3.86,
-        "CytoBridge\nLR × directed-\npair rank*",
-        fontsize=6.5,
-        fontweight="bold",
-        ha="center",
-        va="top",
-        linespacing=1.0,
-    )
-    ax_c_chain.text(
-        0.78,
+        0.70,
         3.86,
         "COMMOT\nsame-axis\npercentile",
         fontsize=6.5,
@@ -3596,7 +3586,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         linespacing=1.0,
     )
     ax_c_chain.text(
-        0.925,
+        0.875,
         3.86,
         "NicheNet-predicted\nreceiver\ntargets",
         fontsize=6.5,
@@ -3607,6 +3597,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     ax_c_chain.plot([0.0, 1.0], [3.34, 3.34], color="black", linewidth=0.75)
     chain_order = ["zebrafish", "mosta", "arista", "chicken_heart"]
+    displayed_chain_ranks: dict[str, int] = {}
     for row_index, dataset in enumerate(chain_order):
         group = chains.loc[chains["dataset"].astype(str).eq(dataset)].sort_values(
             "receiver_target_rank"
@@ -3614,6 +3605,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         if group.empty:
             raise ValueError(f"NicheNet chain is missing for {dataset}")
         first = group.iloc[0]
+        displayed_chain_ranks[dataset] = int(first.cytobridge_global_rank)
         receiver_targets = ", ".join(group["receiver_target"].astype(str).tolist())
         if dataset == "zebrafish" and not zebrafish_is_strict_proxy:
             receiver_targets = ", ".join(
@@ -3670,16 +3662,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             va="center",
         )
         ax_c_chain.text(
-            0.665,
-            y,
-            f"{int(first.cytobridge_global_rank)}",
-            fontsize=7.5,
-            color="black",
-            ha="center",
-            va="center",
-        )
-        ax_c_chain.text(
-            0.78,
+            0.70,
             y,
             f"{100 * float(first.commot_percentile):.1f}",
             fontsize=7.5,
@@ -3688,7 +3671,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             va="center",
         )
         ax_c_chain.text(
-            0.855,
+            0.80,
             y,
             receiver_targets,
             fontsize=7.4,
@@ -3696,14 +3679,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             va="center",
         )
     ax_c_chain.plot([0.0, 1.0], [-0.50, -0.50], color="black", linewidth=0.75)
-    ax_c_chain.text(
-        0.0,
-        -0.67,
-        "*First CytoBridge-ranked LR × directed-pair axis with a matched NicheNet-predicted receiver target.",
-        fontsize=7.0,
-        color="black",
-        va="top",
-    )
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
     style.save_figure(fig, pdf, png, dpi=320)
@@ -3745,6 +3720,9 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     molecular_metric_summary = (
         f"{molecular_metric_range('COMMOT')}; " f"{molecular_metric_range('NicheNet')}"
     )
+    displayed_rank_summary = ", ".join(
+        f"{labels[dataset]} {displayed_chain_ranks[dataset]}" for dataset in chain_order
+    )
 
     caption = (
         "**Four-dataset interaction consistency.** (a) CytoBridge interaction-"
@@ -3759,6 +3737,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "ranked CytoBridge LR × directed-pair axis with matched positive NicheNet "
         "ligand-target evidence is listed. Ranks are calculated over all "
         "supported CytoBridge LR × directed-pair axes before NicheNet matching. The "
+        f"displayed supported-axis ranks are {displayed_rank_summary}. The "
         "COMMOT column is "
         "the same-axis percentile, and the final column contains NicheNet-predicted "
         "receiver target genes. These targets are not CytoBridge outputs or "

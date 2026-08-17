@@ -844,17 +844,21 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     panel_a_rank = next(
         record for record in artwork_axes if record["title"] == "Rank agreement"
     )
-    assert "CellAgentChat proxy" in panel_a_rank["legend"]
+    assert "CellAgentChat" in panel_a_rank["legend"]
+    assert "CellAgentChat proxy" not in joined_artwork_text
     assert "CytoBridge-selected LR axes" in joined_artwork_text
     assert "CytoBridge selection" in joined_artwork_text
     assert "COMMOT comparison" in joined_artwork_text
     assert "Selected\nLR axis" in joined_artwork_text
     assert "Same-pair\nLR rank" in joined_artwork_text
-    assert "NicheNet receiver targets for CytoBridge-ranked axes" in joined_artwork_text
-    assert "CytoBridge ranking" in joined_artwork_text
+    assert (
+        "NicheNet receiver targets for CytoBridge-selected axes" in joined_artwork_text
+    )
+    assert "CytoBridge selection" in joined_artwork_text
     assert "COMMOT and NicheNet results" in joined_artwork_text
     assert "NicheNet-predicted\nreceiver\ntargets" in joined_artwork_text
-    assert "CytoBridge\nLR × directed-\npair rank*" in joined_artwork_text
+    assert "CytoBridge\nLR × directed-\npair rank*" not in joined_artwork_text
+    assert "First CytoBridge-ranked" not in joined_artwork_text
     assert "Zebrafish" in joined_artwork_text
     assert "Ccnd1, Cbx5, Cdk1" in joined_artwork_text
     assert "†" not in joined_artwork_text
@@ -925,6 +929,10 @@ def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
     assert "NicheNet-predicted receiver target genes" in caption
     assert "not CytoBridge outputs" in caption
     assert "For each dataset, the highest globally ranked CytoBridge" in caption
+    assert (
+        "displayed supported-axis ranks are Zebrafish 94, MOSTA 1, ARISTA 2, "
+        "Chicken heart 25" in caption
+    )
     assert "prespecified Ensembl 116 one-to-one" in caption
     assert "not a native zebrafish regulatory prior" in caption
     assert "corrected AUPR = 0.093" in caption
