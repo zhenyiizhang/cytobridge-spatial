@@ -820,7 +820,12 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     assert "spatially neighboring" in caption_folded
     assert "label-permutation null" in caption_folded
     assert "cross-sectional" in caption_folded
-    assert "not evidence" in caption_folded
+    assert "does not test direct physical contact" in caption_folded
+    assert "doi:10.1038/s41467-018-06583-6" in caption_folded
+    assert "doi:10.1371/journal.pbio.1001216" in caption_folded
+    assert "jam3b was reduced but jam2a was unchanged" in caption_folded
+    assert "doi:10.1038/s41467-018-06583-6" in response.casefold()
+    assert "doi:10.1371/journal.pbio.1001216" in response.casefold()
     assert "attention coefficient cannot be interpreted directly" in response_folded
     assert "old `init` label is not relabelled" in provenance.casefold()
     assert "figure pdf" in provenance.casefold()
@@ -868,6 +873,15 @@ def test_submission_report_is_three_panel_and_uses_strong_evidence(
     assert claim_contract["jam_controls_are_biological_replicates"] is False
     assert claim_contract["jam_statistics_scope"] == "descriptive technical controls"
     assert "not causal" in claim_contract["myog_scope"]
+    literature = claim_contract["jam_literature_support"]
+    assert literature["heterophilic_fusion_axis"] == (
+        "doi:10.1371/journal.pbio.1001216"
+    )
+    assert literature["myog_differential_expression"] == (
+        "doi:10.1038/s41467-018-06583-6"
+    )
+    assert not literature["literature_validates_atlas_percentages"]
+    assert not literature["direct_myog_binding_to_jam3b_claimed"]
     assert claim_contract["legacy_jam_outputs_allowed"] is False
     assert claim_contract["attention_is_biochemical_probability"] is False
     assert claim_contract["figure_a_cytobridge_view"] == "attention"

@@ -2803,8 +2803,14 @@ def report(
         f"{float(myog_given_negative.loc['jam3b']):.1f}% of jam3b− cells. For jam2a, "
         f"the corresponding values were {float(myog_given_positive.loc['jam2a']):.1f}% "
         f"and {float(myog_given_negative.loc['jam2a']):.1f}%. These cross-sectional "
-        "analyses support spatial and molecular consistency but are not evidence of "
-        "direct physical contact or causal regulation."
+        "data are concordant with the differential response reported in 20 hpf "
+        "myog-null embryos, where jam3b was reduced but jam2a was unchanged "
+        "(Ganassi et al., 2018, Nature Communications 9:4232, "
+        "doi:10.1038/s41467-018-06583-6). Jam2a and Jam3b are both established "
+        "heterophilic myocyte-fusion factors (Powell and Wright, 2011, PLoS Biology "
+        "9:e1001216, doi:10.1371/journal.pbio.1001216). The atlas analysis does not "
+        "test direct physical contact, causal regulation, or the published mutant "
+        "phenotype."
     )
     (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
     reviewer_response = f"""# Response to reviewer concern on attention interpretability
@@ -2813,7 +2819,7 @@ We agree that an attention coefficient cannot be interpreted directly as a bioch
 
 1. **Complete interaction field.** Cell-level attention was aggregated into one model interaction rank for each of all 361 directed cell-type pairs, including structural zeros. After adjustment for sender and receiver abundance, spatial distance, and self-pair status, these attention ranks agreed with COMMOT at rho={float(attention_commot.adjusted_spearman_rho):.3f} (empirical upper-tail P={float(attention_commot.adjusted_spearman_empirical_p_upper):.4g}) under the structured within-stratum null. The shared-database CellAgentChat proxy supplies a secondary complete-grid comparison.
 2. **Pre-specified JAM edge compatibility.** Jam2a-Jam3b is a literature-supported heterophilic myocyte-fusion axis. We restricted this analysis to the same {n_somite:,} 18 hpf Somite cells and {n_somite_edges:,} model edges in every condition. JAM-compatible edges comprised {float(top_rates.loc['trained']):.1f}% of the top attention quartile but only {float(bottom_rates.loc['trained']):.1f}% of the bottom quartile after interaction training. The corresponding contrasts were {float(top_rates.loc['pre_interaction']):.1f}% versus {float(bottom_rates.loc['pre_interaction']):.1f}% before interaction learning and {float(top_rates.loc['random']):.1f}% versus {float(bottom_rates.loc['random']):.1f}% after randomization. The before-learning checkpoint is the same model before the interaction learning stage, whereas the randomized control shuffles the learned interaction weights. These are descriptive technical controls; edges and cells are not treated as biological replicates.
-3. **Localized molecular response.** The map shows all {len(cells):,} tissue cells only for anatomical orientation; spatial and molecular statistics use the {n_somite:,} Somite cells. The current-trained high-attention JAM-compatible display edges localize to this region. Jam2a/Jam3b-compatible spatial neighbors were enriched over a within-Somite label-permutation null (fold={fold:.2f}, Monte Carlo P={float(null_row[p_spatial_column]):.2g}). The myog+ fraction was {float(myog_given_positive.loc['jam3b']):.1f}% among jam3b+ cells versus {float(myog_given_negative.loc['jam3b']):.1f}% among jam3b− cells, whereas the jam2a contrast was weaker ({float(myog_given_positive.loc['jam2a']):.1f}% versus {float(myog_given_negative.loc['jam2a']):.1f}%). This cross-sectional association does not establish myog regulation or direct physical contact.
+3. **Localized molecular response.** The map shows all {len(cells):,} tissue cells only for anatomical orientation; spatial and molecular statistics use the {n_somite:,} Somite cells. The current-trained high-attention JAM-compatible display edges localize to this region. Jam2a/Jam3b-compatible spatial neighbors were enriched over a within-Somite label-permutation null (fold={fold:.2f}, Monte Carlo P={float(null_row[p_spatial_column]):.2g}). The myog+ fraction was {float(myog_given_positive.loc['jam3b']):.1f}% among jam3b+ cells versus {float(myog_given_negative.loc['jam3b']):.1f}% among jam3b− cells, whereas the jam2a contrast was weaker ({float(myog_given_positive.loc['jam2a']):.1f}% versus {float(myog_given_negative.loc['jam2a']):.1f}%). This differential association is concordant with the report that jam3b, but not jam2a, was reduced in 20 hpf myog-null embryos (Ganassi et al., 2018, Nature Communications 9:4232, doi:10.1038/s41467-018-06583-6). Jam2a and Jam3b remain established heterophilic myocyte-fusion factors (Powell and Wright, 2011, PLoS Biology 9:e1001216, doi:10.1371/journal.pbio.1001216). Our cross-sectional co-detection analysis does not reproduce those mutant experiments or establish direct myog regulation or physical contact.
 
 Together, these results show that the learned interaction field is reproducible across external CCI algorithms under shared inputs, preferentially organizes a pre-specified compatible JAM program relative to checkpoint controls, and localizes to a coherent myogenic molecular context. We retain the explicit boundary that attention is a model contribution, not a native ligand-receptor strength.
 """
@@ -2849,6 +2855,17 @@ Together, these results show that the learned interaction field is reproducible 
         "`trained`, `pre_interaction`, and `random` conditions; the old `init` label is "
         "not relabelled. Panel c display edges are selected upstream under the frozen "
         "current-checkpoint rule and are not selected inside the plotting function.\n\n"
+        "## Literature context\n\n"
+        "Powell and Wright (2011, PLoS Biology 9:e1001216, "
+        'doi:10.1371/journal.pbio.1001216) reported that "jamb is expressed by all '
+        'fast muscle myoblasts shortly after the formation of each somite." The '
+        "same study established Jam2a/Jamb and Jam3b/Jamc as a heterophilic pair "
+        "required for myocyte fusion. Ganassi et al. (2018, Nature Communications "
+        '9:4232, doi:10.1038/s41467-018-06583-6) reported that "jam3b mRNA was '
+        "significantly reduced (22%) in mutants, but jam2a and kirrel3l were "
+        'unaffected." These studies support biological concordance, not the exact '
+        "atlas percentages or a causal claim from co-detection. Direct Myog promoter "
+        "binding in Ganassi et al. was demonstrated for mymk, not jam3b.\n\n"
         "## Rebuild\n\n"
         f"```bash\n{rebuild_command}\n```\n\n"
         "## SHA-256\n\n"
@@ -2911,6 +2928,12 @@ Together, these results show that the learned interaction field is reproducible 
             "jam_controls_are_biological_replicates": False,
             "jam_statistics_scope": "descriptive technical controls",
             "myog_scope": "cross-sectional association; not causal regulation",
+            "jam_literature_support": {
+                "heterophilic_fusion_axis": "doi:10.1371/journal.pbio.1001216",
+                "myog_differential_expression": "doi:10.1038/s41467-018-06583-6",
+                "literature_validates_atlas_percentages": False,
+                "direct_myog_binding_to_jam3b_claimed": False,
+            },
             "legacy_jam_outputs_allowed": False,
             "attention_is_biochemical_probability": False,
         }
