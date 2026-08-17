@@ -2091,7 +2091,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
 
     aggregate_dir = Path(args.aggregate_dir).expanduser().resolve()
     selection_dir = Path(args.selection_dir).expanduser().resolve()
-    edge_dir = Path(args.edge_dir).expanduser().resolve()
     molecular_dir = Path(args.molecular_panel_data_dir).expanduser().resolve()
     molecular_manifest_path = molecular_dir / "manifest.json"
     molecular_manifest = json.loads(molecular_manifest_path.read_text(encoding="utf-8"))
@@ -2117,24 +2116,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             dict(molecular_manifest["outputs"][manifest_key]),
             label=f"model-biology {manifest_key}",
         )
-    panel_input = (
-        Path(args.spatial_panel_data_dir).expanduser().resolve()
-        if args.spatial_panel_data_dir
-        else None
-    )
-    if panel_input is None:
-        config_path, config = _model_biology_config(args.config)
-        input_cells = None
-        input_edges = None
-    else:
-        config_path = None
-        config = None
-        input_cells = _read_table(
-            panel_input / "spatial_map_cells.csv.gz", label="spatial map cells"
-        )
-        input_edges = _read_table(
-            panel_input / "spatial_map_edges.csv.gz", label="spatial map edges"
-        )
     output = Path(args.output_dir).expanduser().resolve()
     if output.exists():
         raise FileExistsError(f"output directory exists: {output}")
@@ -2158,26 +2139,23 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     ).set_index("dataset")
     pair_scores_path = aggregate_dir / "directed_pair_method_scores.csv"
     pair_scores = pd.read_csv(pair_scores_path)
-    cellagent_pairs = pair_scores.loc[
-        pair_scores["method"].eq("CellAgentChat")
-        & pair_scores["available"].astype(str).str.casefold().isin({"true", "1"})
-    ][["dataset", "sender_type", "receiver_type", "score", "rank_percentile"]]
-    support = (
-        support.reset_index()
-        .merge(
-            cellagent_pairs.rename(
+    support_rows = support.reset_index()
+    for method, prefix in (("COMMOT", "commot"), ("CellAgentChat", "cellagentchat")):
+        method_pairs = pair_scores.loc[
+            pair_scores["method"].eq(method)
+            & pair_scores["available"].astype(str).str.casefold().isin({"true", "1"})
+        ][["dataset", "sender_type", "receiver_type", "score", "rank_percentile"]]
+        support_rows = support_rows.merge(
+            method_pairs.rename(
                 columns={
-                    "score": "cellagentchat_pair_score",
-                    "rank_percentile": "cellagentchat_pair_percentile",
+                    "score": f"{prefix}_pair_score",
+                    "rank_percentile": f"{prefix}_pair_percentile",
                 }
             ),
             on=["dataset", "sender_type", "receiver_type"],
             how="left",
         )
-        .set_index("dataset")
-    )
-    edge_path = edge_dir / "cytobridge_top_model_linked_edges.csv.gz"
-    edges = pd.read_csv(edge_path)
+    support = support_rows.set_index("dataset")
     dataset_order = list(FORMAL_DATASET_CONTRACTS)
     labels = {
         key: str(value["display_name"])
@@ -2212,8 +2190,9 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         colors: tuple[str, str, str],
         percentage: bool = False,
         cell_labels: np.ndarray | None = None,
-        row_fontsize: float = 6.3,
-        column_fontsize: float = 6.2,
+        row_fontsize: float = 7.5,
+        column_fontsize: float = 7.2,
+        cell_fontsize: float = 7.2,
     ) -> None:
         """Draw a compact numeric matrix without decorative chart furniture."""
 
@@ -2272,25 +2251,58 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                     label,
                     ha="center",
                     va="center",
-                    fontsize=5.8,
+                    fontsize=cell_fontsize,
                     fontweight=fontweight,
                     color=color,
                 )
+
+    rank_metrics = pd.read_csv(molecular_dir / "molecular_rank_consistency.csv")
+    chains = pd.read_csv(molecular_dir / "model_first_nichenet_chains.csv")
+
+    def panel_heading(axis: plt.Axes, label: str, title: str) -> None:
+        axis.set_axis_off()
+        axis.text(
+            0.0,
+            0.54,
+            label,
+            fontsize=14,
+            fontweight="bold",
+            color="black",
+            va="center",
+        )
+        axis.text(
+            0.09,
+            0.54,
+            title,
+            fontsize=12,
+            fontweight="bold",
+            color="black",
+            va="center",
+        )
 
     fig = plt.figure(figsize=style.A4_PORTRAIT)
     outer = fig.add_gridspec(
         2,
         1,
-        height_ratios=(0.30, 0.70),
-        left=0.12,
+        height_ratios=(0.44, 0.56),
+        left=0.095,
         right=0.97,
-        top=0.92,
-        bottom=0.045,
-        hspace=0.18,
+        top=0.965,
+        bottom=0.065,
+        hspace=0.19,
     )
-    top = outer[0].subgridspec(1, 2, width_ratios=(0.50, 0.50), wspace=0.42)
+    top = outer[0].subgridspec(
+        2,
+        2,
+        height_ratios=(0.13, 0.87),
+        width_ratios=(0.50, 0.50),
+        hspace=0.06,
+        wspace=0.36,
+    )
+    panel_heading(fig.add_subplot(top[0, 0]), "a", "Directed-pair consistency")
+    panel_heading(fig.add_subplot(top[0, 1]), "b", "Model-first interaction axes")
 
-    ax_a = fig.add_subplot(top[0])
+    ax_a = fig.add_subplot(top[1, 0])
     a_values = np.full((len(dataset_order), 4), np.nan, dtype=float)
     for row_index, dataset in enumerate(dataset_order):
         for method_index, table in enumerate((commot, cellagent)):
@@ -2303,8 +2315,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         ax_a,
         a_values,
         [labels[dataset] for dataset in dataset_order],
-        ["COMMOT", "CellAgentChat", "COMMOT", "CellAgentChat"],
+        ["COMMOT", "CellAgentChat\nproxy", "COMMOT", "CellAgentChat\nproxy"],
         colors=("#F5F9F8", "#B9DDD8", "#4BA99E"),
+        row_fontsize=7.8,
+        column_fontsize=7.2,
+        cell_fontsize=7.4,
     )
     ax_a.axvline(1.5, color="white", linewidth=3.0)
     ax_a.text(
@@ -2313,7 +2328,7 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "Rank correlation (ρ)",
         transform=ax_a.transAxes,
         ha="center",
-        fontsize=6.2,
+        fontsize=8.0,
         fontweight="bold",
         color="black",
     )
@@ -2323,11 +2338,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "Top-20% Jaccard",
         transform=ax_a.transAxes,
         ha="center",
-        fontsize=6.2,
+        fontsize=8.0,
         fontweight="bold",
         color="black",
     )
-    ax_b = fig.add_subplot(top[1])
+    ax_b = fig.add_subplot(top[1, 1])
     b_values = np.full((len(dataset_order), 4), np.nan, dtype=float)
     b_cell_labels = np.full((len(dataset_order), 4), "N/A", dtype=object)
     b_labels: list[str] = []
@@ -2337,330 +2352,67 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             continue
         row = support.loc[dataset]
         panel_row = molecular_panel.loc[dataset]
+        lr_count = int(panel_row.within_pair_lr_count)
+        cytobridge_rank = int(panel_row.cytobridge_within_pair_rank)
+        commot_rank = int(panel_row.commot_within_pair_rank)
+
+        def within_pair_percentile(rank: int) -> float:
+            if lr_count <= 1:
+                return 1.0
+            return 1.0 - (rank - 1) / (lr_count - 1)
+
         b_values[row_index] = [
-            float(panel_row.cytobridge_lr_percentile),
-            float(panel_row.cytobridge_pathway_percentile),
-            float(panel_row.commot_exact_axis_percentile),
+            within_pair_percentile(cytobridge_rank),
+            within_pair_percentile(commot_rank),
+            float(row.commot_pair_percentile),
             float(row.cellagentchat_pair_percentile),
         ]
         b_cell_labels[row_index] = [
-            (
-                f"{int(panel_row.cytobridge_within_pair_rank)}/"
-                f"{int(panel_row.within_pair_lr_count)}"
-            ),
-            (
-                f"{int(panel_row.cytobridge_pathway_rank)}/"
-                f"{int(panel_row.cytobridge_pathway_count)}"
-            ),
-            (
-                f"{int(panel_row.commot_within_pair_rank)}/"
-                f"{int(panel_row.within_pair_lr_count)}"
-            ),
-            f"{100 * float(row.cellagentchat_pair_percentile):.0f}",
+            f"{cytobridge_rank}/{lr_count}",
+            f"{commot_rank}/{lr_count}",
+            f"{100 * float(row.commot_pair_percentile):.0f}%",
+            f"{100 * float(row.cellagentchat_pair_percentile):.0f}%",
         ]
         b_labels.append(
             f"{labels[dataset]}\n{str(row.ligand).upper()}–{str(row.receptor).upper()}"
+            f" · {panel_row.cytobridge_pathway}"
         )
     value_matrix(
         ax_b,
         b_values,
         b_labels,
         [
-            "CytoBridge\nLR rank",
-            "CytoBridge\npathway rank",
+            "CytoBridge\nLR within pair",
             "COMMOT\nsame LR",
-            "CellAgentChat\nsame pair",
+            "COMMOT\nsame pair",
+            "CellAgentChat proxy\nsame pair",
         ],
         colors=("#F8F6FA", "#D9D1E8", "#8B79B6"),
         percentage=True,
         cell_labels=b_cell_labels,
-        row_fontsize=5.9,
+        row_fontsize=7.0,
+        column_fontsize=6.9,
+        cell_fontsize=7.0,
     )
     ax_b.text(
         0.5,
         -0.10,
-        "Within-method percentile (100 = highest)",
+        "Cell shading: within-method percentile (100 = highest)",
         transform=ax_b.transAxes,
         ha="center",
         va="top",
-        fontsize=5.7,
+        fontsize=7.0,
         color="black",
     )
-    position_a = ax_a.get_position()
-    position_b = ax_b.get_position()
-    fig.text(
-        position_a.x0 - 0.030,
-        0.967,
-        "a",
-        fontsize=10,
-        fontweight="bold",
-        color="black",
-        va="center",
-    )
-    fig.text(
-        position_a.x0,
-        0.967,
-        "Full directed cell-pair space",
-        fontsize=8.2,
-        fontweight="bold",
-        color="black",
-        va="center",
-    )
-    fig.text(
-        position_b.x0 - 0.030,
-        0.967,
-        "b",
-        fontsize=10,
-        fontweight="bold",
-        color="black",
-        va="center",
-    )
-    fig.text(
-        position_b.x0,
-        0.967,
-        "Model-first selected interaction axes",
-        fontsize=8.2,
-        fontweight="bold",
-        color="black",
-        va="center",
-    )
-
-    c_block = outer[1].subgridspec(2, 1, height_ratios=(0.11, 0.89), hspace=0.02)
-    ax_c_title = fig.add_subplot(c_block[0])
-    ax_c_title.set_axis_off()
-    ax_c_title.text(
-        -0.035,
-        0.78,
+    c_block = outer[1].subgridspec(2, 1, height_ratios=(0.16, 0.84), hspace=0.08)
+    panel_heading(
+        fig.add_subplot(c_block[0]),
         "c",
-        transform=ax_c_title.transAxes,
-        fontsize=10,
-        fontweight="bold",
-        color="black",
-        va="center",
+        "Molecular rank consistency and NicheNet receiver-target support",
     )
-    ax_c_title.text(
-        0.005,
-        0.78,
-        "Spatial and molecular support",
-        transform=ax_c_title.transAxes,
-        fontsize=8.2,
-        fontweight="bold",
-        color="black",
-        va="center",
-    )
-    ax_c_title.legend(
-        handles=[
-            plt.Line2D(
-                [0],
-                [0],
-                marker="o",
-                linestyle="none",
-                markerfacecolor="#3A86A8",
-                markeredgecolor="none",
-                label="active sender",
-            ),
-            plt.Line2D(
-                [0],
-                [0],
-                marker="o",
-                linestyle="none",
-                markerfacecolor="#E08C46",
-                markeredgecolor="none",
-                label="active receiver",
-            ),
-            plt.Line2D(
-                [0],
-                [0],
-                color="#6A51A3",
-                lw=1.1,
-                marker=">",
-                markevery=[1],
-                label="directed model edge",
-            ),
-        ],
-        frameon=False,
-        fontsize=4.8,
-        ncol=3,
-        loc="center left",
-        bbox_to_anchor=(0.24, 0.78),
-        handlelength=1.5,
-        handletextpad=0.35,
-        columnspacing=0.75,
-    )
+    c_body = c_block[1].subgridspec(1, 2, width_ratios=(0.46, 0.54), wspace=0.18)
 
-    c_body = c_block[1].subgridspec(1, 2, width_ratios=(0.57, 0.43), wspace=0.20)
-    maps = c_body[0].subgridspec(2, 2, wspace=0.10, hspace=0.18)
-    map_datasets = ["zebrafish", "mosta", "arista", "chicken_heart"]
-    panel_cell_frames: list[pd.DataFrame] = []
-    panel_edge_frames: list[pd.DataFrame] = []
-    for map_index, dataset in enumerate(map_datasets):
-        axis = fig.add_subplot(maps[map_index])
-        row = support.loc[dataset]
-        if panel_input is None:
-            assert config is not None
-            spec = dict(config["datasets"][dataset])
-            data = ad.read_h5ad(Path(spec["h5ad"]).expanduser().resolve())
-            stage_mask = np.isclose(
-                pd.to_numeric(data.obs["ccc_stage"], errors="coerce"),
-                float(row.stage),
-            )
-            all_coordinates = np.asarray(data.obsm["spatial_aligned"], dtype=float)
-            all_types = data.obs["ccc_cell_type"].astype(str).to_numpy()
-            cell_indices = np.flatnonzero(stage_mask)
-            map_cells = pd.DataFrame(
-                {
-                    "dataset": dataset,
-                    "cell_index": cell_indices,
-                    "x": all_coordinates[cell_indices, 0],
-                    "y": all_coordinates[cell_indices, 1],
-                    "cell_type": all_types[cell_indices],
-                }
-            )
-            selected_edges = edges.loc[edges["dataset"].eq(dataset)].sort_values(
-                "cytobridge_message_lr_flow", ascending=False
-            )
-            source_index = selected_edges["source_index"].to_numpy(int)
-            target_index = selected_edges["target_index"].to_numpy(int)
-            map_edges = pd.DataFrame(
-                {
-                    "dataset": dataset,
-                    "source_index": source_index,
-                    "target_index": target_index,
-                    "source_x": all_coordinates[source_index, 0],
-                    "source_y": all_coordinates[source_index, 1],
-                    "target_x": all_coordinates[target_index, 0],
-                    "target_y": all_coordinates[target_index, 1],
-                    "cytobridge_message_lr_flow": selected_edges[
-                        "cytobridge_message_lr_flow"
-                    ].to_numpy(float),
-                }
-            )
-        else:
-            assert input_cells is not None and input_edges is not None
-            map_cells = input_cells.loc[input_cells["dataset"].eq(dataset)].copy()
-            map_edges = input_edges.loc[input_edges["dataset"].eq(dataset)].copy()
-            if map_cells.empty or map_edges.empty:
-                raise ValueError(f"spatial panel data is incomplete for {dataset}")
-        panel_cell_frames.append(map_cells)
-        panel_edge_frames.append(map_edges)
-        coordinates = map_cells[["x", "y"]].to_numpy(float)
-        types = map_cells["cell_type"].astype(str).to_numpy()
-        axis.scatter(
-            coordinates[:, 0],
-            coordinates[:, 1],
-            s=0.44,
-            color="#BFC6CA",
-            alpha=0.60,
-            linewidths=0,
-            rasterized=False,
-            zorder=0,
-        )
-        sender = types == str(row.sender_type)
-        receiver = types == str(row.receiver_type)
-        axis.scatter(
-            coordinates[sender, 0],
-            coordinates[sender, 1],
-            s=0.75,
-            color="#8DC3D2",
-            alpha=0.28,
-            linewidths=0,
-            zorder=1,
-        )
-        axis.scatter(
-            coordinates[receiver, 0],
-            coordinates[receiver, 1],
-            s=0.75,
-            color="#F3BC86",
-            alpha=0.28,
-            linewidths=0,
-            zorder=1,
-        )
-        display_edges = map_edges.sort_values(
-            "cytobridge_message_lr_flow", ascending=False
-        ).head(min(int(args.maximum_display_edges), 12))
-        scores = display_edges["cytobridge_message_lr_flow"].to_numpy(float)
-        low, high = (
-            np.quantile(scores, [0.20, 0.95])
-            if len(scores) > 1
-            else (float(scores[0]), float(scores[0]))
-        )
-        denominator = max(float(high - low), np.finfo(float).eps)
-        scaled = np.clip((scores - low) / denominator, 0, 1)
-        for edge, relative_score in zip(
-            display_edges.itertuples(index=False), scaled, strict=True
-        ):
-            axis.plot(
-                [float(edge.source_x), float(edge.target_x)],
-                [float(edge.source_y), float(edge.target_y)],
-                color="white",
-                linewidth=1.55,
-                alpha=0.92,
-                solid_capstyle="round",
-                zorder=2,
-            )
-            axis.annotate(
-                "",
-                xy=(float(edge.target_x), float(edge.target_y)),
-                xytext=(float(edge.source_x), float(edge.source_y)),
-                arrowprops={
-                    "arrowstyle": "-|>",
-                    "color": "#6A51A3",
-                    "linewidth": 0.72 + 0.62 * float(relative_score),
-                    "alpha": 0.72 + 0.22 * float(relative_score),
-                    "mutation_scale": 5.5 + 2.0 * float(relative_score),
-                    "shrinkA": 0.0,
-                    "shrinkB": 0.0,
-                },
-                zorder=3,
-            )
-        axis.scatter(
-            display_edges["source_x"],
-            display_edges["source_y"],
-            s=10.5,
-            color="#3A86A8",
-            edgecolor="white",
-            linewidth=0.25,
-            zorder=4,
-        )
-        axis.scatter(
-            display_edges["target_x"],
-            display_edges["target_y"],
-            s=10.5,
-            color="#E08C46",
-            edgecolor="white",
-            linewidth=0.25,
-            zorder=4,
-        )
-        x_span = max(float(np.ptp(coordinates[:, 0])), 0.08)
-        y_span = max(float(np.ptp(coordinates[:, 1])), 0.08)
-        axis.set_xlim(
-            float(coordinates[:, 0].min() - 0.03 * x_span),
-            float(coordinates[:, 0].max() + 0.03 * x_span),
-        )
-        axis.set_ylim(
-            float(coordinates[:, 1].min() - 0.03 * y_span),
-            float(coordinates[:, 1].max() + 0.03 * y_span),
-        )
-        axis.set_aspect("equal", adjustable="datalim")
-        axis.set_axis_off()
-        panel_row = molecular_panel.loc[dataset]
-        axis.set_title(
-            (
-                f"{labels[dataset]}\n"
-                f"{str(row.ligand).upper()}–{str(row.receptor).upper()} · "
-                f"{panel_row.cytobridge_pathway}"
-            ),
-            fontsize=6.3,
-            fontweight="bold",
-            color="black",
-            pad=1.5,
-            linespacing=1.1,
-        )
-
-    rank_metrics = pd.read_csv(molecular_dir / "molecular_rank_consistency.csv")
-    chains = pd.read_csv(molecular_dir / "model_first_nichenet_chains.csv")
-    evidence = c_body[1].subgridspec(2, 1, height_ratios=(0.43, 0.57), hspace=0.25)
-    ax_molecular = fig.add_subplot(evidence[0])
+    ax_molecular = fig.add_subplot(c_body[0])
     molecular_values = np.full((len(dataset_order), 4), np.nan, dtype=float)
     for row_index, dataset in enumerate(dataset_order):
         for method_index, method in enumerate(("COMMOT", "NicheNet")):
@@ -2686,157 +2438,215 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         [labels[dataset] for dataset in dataset_order],
         ["COMMOT", "NicheNet", "COMMOT", "NicheNet"],
         colors=("#FBF7F5", "#F3C8BB", "#E48162"),
-        row_fontsize=5.7,
-        column_fontsize=5.7,
+        row_fontsize=7.8,
+        column_fontsize=7.2,
+        cell_fontsize=7.4,
     )
     ax_molecular.axvline(1.5, color="white", linewidth=3.0)
     ax_molecular.text(
         0.25,
-        1.10,
+        1.06,
         "LR×pair rank correlation (ρ)",
         transform=ax_molecular.transAxes,
         ha="center",
-        fontsize=5.8,
+        fontsize=8.0,
         fontweight="bold",
         color="black",
     )
     ax_molecular.text(
         0.75,
-        1.10,
+        1.06,
         "Top-20% overlap",
         transform=ax_molecular.transAxes,
         ha="center",
-        fontsize=5.8,
+        fontsize=8.0,
         fontweight="bold",
         color="black",
     )
-    ax_molecular.text(
-        -0.01,
-        1.18,
-        "Molecular rank consistency",
-        transform=ax_molecular.transAxes,
-        fontsize=6.8,
-        fontweight="bold",
-        color="black",
-        ha="left",
-    )
-
-    ax_chain = fig.add_subplot(evidence[1])
+    ax_chain = fig.add_subplot(c_body[1])
     ax_chain.set_axis_off()
     ax_chain.text(
         0.00,
-        1.01,
-        "Highest NicheNet-covered CytoBridge axes",
+        1.02,
+        "NicheNet receiver-target support for model-ranked axes",
         transform=ax_chain.transAxes,
-        fontsize=6.8,
+        fontsize=9.0,
         fontweight="bold",
         color="black",
         va="bottom",
     )
     ax_chain.text(
-        0.00,
-        0.935,
+        0.22,
+        0.945,
         "CytoBridge LR / pathway",
         transform=ax_chain.transAxes,
-        fontsize=5.3,
+        fontsize=7.0,
         fontweight="bold",
         color="black",
         va="center",
     )
     ax_chain.text(
-        0.72,
+        0.60,
         0.935,
-        "NicheNet receiver target",
+        "COMMOT",
         transform=ax_chain.transAxes,
-        fontsize=5.3,
+        fontsize=7.0,
         fontweight="bold",
         color="black",
         va="center",
     )
-    chain_datasets = ["mosta", "arista", "chicken_heart"]
-    y_positions = [0.73, 0.45, 0.17]
+    ax_chain.text(
+        0.79,
+        0.945,
+        "NicheNet\nreceiver target",
+        transform=ax_chain.transAxes,
+        fontsize=6.4,
+        fontweight="bold",
+        color="black",
+        va="center",
+    )
+    y_positions = np.linspace(0.82, 0.10, len(dataset_order))
     for row_index, (y_value, dataset) in enumerate(
-        zip(y_positions, chain_datasets, strict=True)
+        zip(y_positions, dataset_order, strict=True)
     ):
         local = chains.loc[chains["dataset"].eq(dataset)].sort_values(
             "receiver_target_rank"
         )
         ax_chain.axhline(
-            0.86 - row_index * 0.28,
+            0.91 - row_index * 0.18,
             color="#D4D9DD",
             lw=0.55,
             xmin=0,
             xmax=1,
         )
-        if local.empty:
-            continue
-        first = local.iloc[0]
-        targets = " / ".join(local["receiver_target"].astype(str).head(3))
         ax_chain.text(
             0.00,
-            y_value + 0.045,
+            y_value,
             labels[dataset],
             transform=ax_chain.transAxes,
-            fontsize=5.8,
+            fontsize=7.4,
             fontweight="bold",
             color="black",
             va="center",
         )
-        ax_chain.text(
-            0.28,
-            y_value + 0.045,
-            (
-                f"rank {int(first.cytobridge_global_rank)} · "
-                f"{str(first.ligand).upper()}–{str(first.receptor).upper()}"
-            ),
+        if dataset == "admouse":
+            ax_chain.text(
+                0.22,
+                y_value,
+                "N/A",
+                transform=ax_chain.transAxes,
+                fontsize=7.2,
+                color="#687078",
+                va="center",
+            )
+            continue
+        if local.empty:
+            panel_row = molecular_panel.loc[dataset]
+            ax_chain.text(
+                0.22,
+                y_value + 0.023,
+                (
+                    f"rank 1 · {str(panel_row.ligand).upper()}–"
+                    f"{str(panel_row.receptor).upper()}"
+                ),
+                transform=ax_chain.transAxes,
+                fontsize=7.1,
+                fontweight="bold",
+                color="#5B4B8A",
+                va="center",
+            )
+            ax_chain.text(
+                0.22,
+                y_value - 0.035,
+                str(panel_row.cytobridge_pathway),
+                transform=ax_chain.transAxes,
+                fontsize=6.6,
+                color="black",
+                va="center",
+            )
+            commot_percentile = float(panel_row.commot_exact_axis_percentile)
+            targets = "N/A"
+            receiver = "NicheNet unavailable"
+        else:
+            first = local.iloc[0]
+            targets = " / ".join(local["receiver_target"].astype(str).head(3))
+            receiver = str(first.receiver_type)
+            commot_percentile = float(first.commot_percentile)
+            ax_chain.text(
+                0.22,
+                y_value + 0.023,
+                (
+                    f"rank {int(first.cytobridge_global_rank)} · "
+                    f"{str(first.ligand).upper()}–{str(first.receptor).upper()}"
+                ),
+                transform=ax_chain.transAxes,
+                fontsize=7.1,
+                fontweight="bold",
+                color="#5B4B8A",
+                va="center",
+            )
+            ax_chain.text(
+                0.22,
+                y_value - 0.035,
+                str(first.pathways),
+                transform=ax_chain.transAxes,
+                fontsize=6.6,
+                color="black",
+                va="center",
+            )
+        ax_chain.scatter(
+            [0.61],
+            [y_value + 0.010],
             transform=ax_chain.transAxes,
-            fontsize=5.6,
-            fontweight="bold",
-            color="#5B4B8A",
-            va="center",
+            s=23,
+            marker="s",
+            color="#2A9D8F",
+            edgecolor="white",
+            linewidth=0.4,
+            clip_on=False,
         )
         ax_chain.text(
-            0.28,
-            y_value - 0.050,
-            str(first.pathways),
+            0.64,
+            y_value + 0.010,
+            f"{100 * commot_percentile:.1f}%",
             transform=ax_chain.transAxes,
-            fontsize=5.2,
+            fontsize=6.8,
             color="black",
             va="center",
         )
         ax_chain.annotate(
             "",
-            xy=(0.69, y_value),
-            xytext=(0.62, y_value),
+            xy=(0.78, y_value),
+            xytext=(0.72, y_value),
             xycoords=ax_chain.transAxes,
             textcoords=ax_chain.transAxes,
             arrowprops={
                 "arrowstyle": "-|>",
-                "color": "#7E8790",
-                "linewidth": 0.75,
-                "mutation_scale": 6,
+                "color": "#E76F51",
+                "linewidth": 0.9,
+                "mutation_scale": 7,
             },
         )
         ax_chain.text(
-            0.72,
-            y_value + 0.030,
+            0.80,
+            y_value + 0.022,
             targets,
             transform=ax_chain.transAxes,
-            fontsize=5.7,
+            fontsize=6.8,
             color="#C95840",
             fontweight="bold",
             va="center",
         )
         ax_chain.text(
-            0.72,
-            y_value - 0.060,
-            f"receiver: {first.receiver_type}",
+            0.80,
+            y_value - 0.038,
+            receiver,
             transform=ax_chain.transAxes,
-            fontsize=4.9,
-            color="black",
+            fontsize=6.1,
+            color="#4E565D" if local.empty else "black",
             va="center",
         )
-    ax_chain.axhline(0.02, color="#D4D9DD", lw=0.55, xmin=0, xmax=1)
+    ax_chain.axhline(0.01, color="#D4D9DD", lw=0.55, xmin=0, xmax=1)
 
     pdf = output / "spatial_communication_model_biology_a4.pdf"
     png = output / "spatial_communication_model_biology_a4.png"
@@ -2844,20 +2654,12 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     plt.close(fig)
     panel_output = output / "panel_data"
     panel_output.mkdir()
-    panel_cells_path = panel_output / "spatial_map_cells.csv.gz"
-    panel_edges_path = panel_output / "spatial_map_edges.csv.gz"
     panel_metrics_path = panel_output / "global_pair_metrics.csv"
     panel_support_path = panel_output / "model_linked_external_support.csv"
     panel_status_path = panel_output / "model_linked_lr_selection_status.csv"
     panel_molecular_path = panel_output / "model_biology_molecular_panel.csv"
     panel_rank_path = panel_output / "molecular_rank_consistency.csv"
     panel_chain_path = panel_output / "model_first_nichenet_chains.csv"
-    pd.concat(panel_cell_frames, ignore_index=True).to_csv(
-        panel_cells_path, index=False
-    )
-    pd.concat(panel_edge_frames, ignore_index=True).to_csv(
-        panel_edges_path, index=False
-    )
     primary_metrics.to_csv(panel_metrics_path, index=False)
     support.reset_index().to_csv(panel_support_path, index=False)
     status.reset_index().to_csv(panel_status_path, index=False)
@@ -2871,21 +2673,19 @@ def plot_model_biology(args: argparse.Namespace) -> None:
         "dataset, CytoBridge alone selected the highest "
         "abundance-normalized exact-message magnitude × sender-ligand × "
         "receiver-receptor activity axis from the frozen LR database crossed with "
-        "every off-diagonal model pair; neither COMMOT nor CellAgentChat entered "
+        "every off-diagonal model pair; neither COMMOT nor the CellAgentChat proxy entered "
         "selection. COMMOT was evaluated on the complete zero-filled LR×pair "
-        "universe; CellAgentChat shows its native CTPS rank for the same selected "
+        "universe; the CellAgentChat proxy shows its native CTPS rank for the same selected "
         "cell-type pair. AdMouse had no "
         "axis with at least 10 active model-linked edges under its 347-gene panel and "
-        "learned-edge threshold. (c) Four full-tissue spatial maps show the eight "
-        "strongest directional exact-message × LR-activity edges selected by "
-        "CytoBridge. Molecular consistency is then measured "
-        "over the complete jointly positive LR×directed-cell-pair universe: matrix "
-        "cells "
+        "learned-edge threshold. (c) Molecular consistency is measured over the "
+        "complete jointly positive LR×directed-cell-pair universe. Matrix cells "
         "report Spearman rank agreement and top-20% Jaccard overlap with COMMOT or "
-        "NicheNet. The lower-right chains begin from the "
-        "highest-ranked CytoBridge axis with formal NicheNet coverage in each dataset "
-        "and connect its pathway/LR annotation to independently ranked receiver "
-        "targets. External methods are evaluated only after CytoBridge ranking."
+        "NicheNet. The right-hand rows begin from the highest-ranked CytoBridge axis "
+        "with formal NicheNet coverage in each dataset and connect its LR/pathway "
+        "annotation to NicheNet-ranked candidate receiver targets; where NicheNet is not "
+        "available, the model-first axis and its COMMOT percentile remain visible. "
+        "External methods are evaluated only after CytoBridge ranking."
     )
     caption_path = output / "caption.md"
     caption_path.write_text(caption + "\n", encoding="utf-8")
@@ -2907,7 +2707,6 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 "",
                 f"- aggregate manifest: `{aggregate_dir / 'manifest.json'}`",
                 f"- selection manifest: `{selection_dir / 'manifest.json'}`",
-                f"- edge manifest: `{edge_dir / 'manifest.json'}`",
                 f"- molecular summary manifest: `{molecular_manifest_path}`",
                 "- compact visual inputs: `panel_data/` in this bundle",
                 "",
@@ -2922,10 +2721,9 @@ def plot_model_biology(args: argparse.Namespace) -> None:
                 "## Rebuild",
                 "",
                 "Run `scripts/run_spatial_communication_consistency.py "
-                "plot-model-biology` with the aggregate, selection, edge, and either "
-                "the five-dataset config or this bundle's compact `panel_data` "
-                "directory, plus `--molecular-panel-data-dir`. The compact route "
-                "reproduces the visual without the original large H5AD files.",
+                "plot-model-biology` with the aggregate, selection, and molecular "
+                "summary directories. The figure does not require spatial "
+                "coordinates or the original large H5AD files.",
                 "",
                 "## Interpretation boundary",
                 "",
@@ -2940,12 +2738,11 @@ def plot_model_biology(args: argparse.Namespace) -> None:
     )
     manifest = {
         "schema_version": 1,
-        "workflow": "five_dataset_model_linked_spatial_communication_figure",
+        "workflow": "five_dataset_model_linked_communication_figure",
         "implementation": implementation,
         "inputs": {
             "aggregate_manifest": _artifact(aggregate_dir / "manifest.json"),
             "selection_manifest": _artifact(selection_dir / "manifest.json"),
-            "edge_manifest": _artifact(edge_dir / "manifest.json"),
             "molecular_summary_manifest": _artifact(molecular_manifest_path),
         },
         "figure": {pdf.name: _artifact(pdf), png.name: _artifact(png)},
@@ -2958,18 +2755,8 @@ def plot_model_biology(args: argparse.Namespace) -> None:
             "molecular_summary": _artifact(panel_molecular_path),
             "molecular_rank_consistency": _artifact(panel_rank_path),
             "model_first_nichenet_chains": _artifact(panel_chain_path),
-            "spatial_map_cells": _artifact(panel_cells_path),
-            "spatial_map_edges": _artifact(panel_edges_path),
         },
     }
-    if config_path is not None:
-        manifest["inputs"]["config"] = _artifact(config_path)
-    else:
-        assert panel_input is not None
-        manifest["inputs"]["spatial_panel_data"] = {
-            "cells": _artifact(panel_input / "spatial_map_cells.csv.gz"),
-            "edges": _artifact(panel_input / "spatial_map_edges.csv.gz"),
-        }
     _write_json(output / "figure_manifest.json", manifest)
 
 
@@ -3059,12 +2846,11 @@ def build_parser() -> argparse.ArgumentParser:
     plot_parser.add_argument("--output-dir", required=True)
     plot_parser.set_defaults(function=plot)
     model_figure = sub.add_parser("plot-model-biology")
-    model_figure_input = model_figure.add_mutually_exclusive_group(required=True)
-    model_figure_input.add_argument("--config")
-    model_figure_input.add_argument("--spatial-panel-data-dir")
+    model_figure.add_argument("--config")
+    model_figure.add_argument("--spatial-panel-data-dir")
     model_figure.add_argument("--aggregate-dir", required=True)
     model_figure.add_argument("--selection-dir", required=True)
-    model_figure.add_argument("--edge-dir", required=True)
+    model_figure.add_argument("--edge-dir")
     model_figure.add_argument("--molecular-panel-data-dir", required=True)
     model_figure.add_argument("--output-dir", required=True)
     model_figure.add_argument("--maximum-display-edges", type=int, default=60)

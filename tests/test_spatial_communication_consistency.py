@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import importlib.util
 import hashlib
+import inspect
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -531,49 +532,43 @@ def test_model_biology_plot_requires_computed_molecular_panel_data() -> None:
     args = module.build_parser().parse_args(
         [
             "plot-model-biology",
-            "--spatial-panel-data-dir",
-            "panel",
             "--molecular-panel-data-dir",
             "molecular",
             "--aggregate-dir",
             "aggregate",
             "--selection-dir",
             "selection",
-            "--edge-dir",
-            "edges",
             "--output-dir",
             "figure",
         ]
     )
-    assert args.spatial_panel_data_dir == "panel"
     assert args.molecular_panel_data_dir == "molecular"
     assert args.config is None
+    assert args.spatial_panel_data_dir is None
+    assert args.edge_dir is None
 
     with pytest.raises(SystemExit):
         module.build_parser().parse_args(
             [
                 "plot-model-biology",
-                "--spatial-panel-data-dir",
-                "panel",
                 "--aggregate-dir",
                 "aggregate",
                 "--selection-dir",
                 "selection",
-                "--edge-dir",
-                "edges",
                 "--output-dir",
                 "figure",
             ]
         )
 
-    source = (
-        Path(__file__).parents[1]
-        / "scripts"
-        / "run_spatial_communication_consistency.py"
-    ).read_text(encoding="utf-8")
-    assert '"biological_program"' not in source
-    assert "model_linked_biological_programs.csv" not in source
-    assert "spatial_communication_model_biology_a4.pdf" in source
+    plot_source = inspect.getsource(module.plot_model_biology)
+    assert '"biological_program"' not in plot_source
+    assert "model_linked_biological_programs.csv" not in plot_source
+    assert "spatial_map_cells" not in plot_source
+    assert "spatial_map_edges" not in plot_source
+    assert "cytobridge_top_model_linked_edges" not in plot_source
+    assert "edge_dir" not in plot_source
+    assert "cytobridge_pathway_rank" not in plot_source
+    assert "spatial_communication_model_biology_a4.pdf" in plot_source
 
 
 def _artifact_record(path: Path) -> dict[str, object]:
@@ -582,6 +577,255 @@ def _artifact_record(path: Path) -> dict[str, object]:
         "sha256": sha256_file(path),
         "size_bytes": path.stat().st_size,
     }
+
+
+def _write_model_biology_plot_inputs(root: Path) -> tuple[Path, Path, Path]:
+    aggregate = root / "aggregate"
+    selection = root / "selection"
+    molecular = root / "molecular"
+    for directory in (aggregate, selection, molecular):
+        directory.mkdir(parents=True)
+
+    datasets = list(FORMAL_DATASET_CONTRACTS)
+    complete = [dataset for dataset in datasets if dataset != "admouse"]
+    axes = {
+        dataset: {
+            "sender_type": f"sender-{index}",
+            "receiver_type": f"receiver-{index}",
+            "ligand": f"ligand-{index}",
+            "receptor": f"receptor-{index}",
+            "pathway": f"PATHWAY-{index}",
+        }
+        for index, dataset in enumerate(complete, start=1)
+    }
+
+    metric_rows: list[dict[str, object]] = []
+    for dataset_index, dataset in enumerate(datasets):
+        for method_index, method in enumerate(("COMMOT", "CellAgentChat")):
+            metric_rows.append(
+                {
+                    "dataset": dataset,
+                    "cytobridge_view": "CytoBridge exact message",
+                    "external_method": method,
+                    "spearman_rho": 0.25 + 0.05 * dataset_index + 0.02 * method_index,
+                    "top_jaccard": 0.15 + 0.02 * dataset_index,
+                    "metric_available": True,
+                }
+            )
+    pd.DataFrame(metric_rows).to_csv(
+        aggregate / "cytobridge_external_metrics.csv", index=False
+    )
+
+    pair_rows: list[dict[str, object]] = []
+    for dataset_index, dataset in enumerate(complete):
+        axis = axes[dataset]
+        for method_index, method in enumerate(("COMMOT", "CellAgentChat")):
+            pair_rows.append(
+                {
+                    "dataset": dataset,
+                    "sender_type": axis["sender_type"],
+                    "receiver_type": axis["receiver_type"],
+                    "method": method,
+                    "score": 1.0 + method_index,
+                    "rank_percentile": 0.82 + 0.03 * dataset_index,
+                    "available": True,
+                }
+            )
+    pd.DataFrame(pair_rows).to_csv(
+        aggregate / "directed_pair_method_scores.csv", index=False
+    )
+    (aggregate / "manifest.json").write_text("{}\n", encoding="utf-8")
+
+    support_rows = []
+    for dataset_index, dataset in enumerate(complete):
+        axis = axes[dataset]
+        support_rows.append(
+            {
+                "dataset": dataset,
+                "stage": 4.0,
+                **axis,
+                "pathways": axis["pathway"],
+                "cytobridge_percentile": 0.99,
+                "commot_percentile": 0.94 - 0.01 * dataset_index,
+            }
+        )
+    pd.DataFrame(support_rows).drop(columns="pathway").to_csv(
+        selection / "model_linked_external_support.csv", index=False
+    )
+    pd.DataFrame(
+        {
+            "dataset": datasets,
+            "status": [
+                "not_evaluable" if dataset == "admouse" else "complete"
+                for dataset in datasets
+            ],
+            "reason": [
+                "no model-linked LR axis" if dataset == "admouse" else ""
+                for dataset in datasets
+            ],
+        }
+    ).to_csv(selection / "model_linked_lr_selection_status.csv", index=False)
+    (selection / "manifest.json").write_text("{}\n", encoding="utf-8")
+
+    molecular_rows: list[dict[str, object]] = []
+    for dataset in datasets:
+        if dataset == "admouse":
+            molecular_rows.append(
+                {
+                    "dataset": dataset,
+                    "status": "not_evaluable",
+                    "reason": "no model-linked LR axis",
+                }
+            )
+            continue
+        axis = axes[dataset]
+        molecular_rows.append(
+            {
+                "dataset": dataset,
+                "status": "complete",
+                "reason": "",
+                "ligand": axis["ligand"],
+                "receptor": axis["receptor"],
+                "cytobridge_pathway": axis["pathway"],
+                "within_pair_lr_count": 100,
+                "cytobridge_within_pair_rank": 1,
+                "commot_within_pair_rank": 3,
+                "commot_exact_axis_percentile": 0.97,
+                # This deliberately remains in the formal molecular table. The
+                # plotting contract below checks that panel b does not consume it.
+                "cytobridge_pathway_rank": 1,
+            }
+        )
+    molecular_panel_path = molecular / "model_biology_molecular_panel.csv"
+    pd.DataFrame(molecular_rows).to_csv(molecular_panel_path, index=False)
+
+    rank_rows: list[dict[str, object]] = []
+    for dataset_index, dataset in enumerate(complete):
+        rank_rows.append(
+            {
+                "dataset": dataset,
+                "external_method": "COMMOT",
+                "available": True,
+                "n_jointly_positive_axes": 25,
+                "spearman_rho": 0.30 + 0.03 * dataset_index,
+                "top_fraction": 0.2,
+                "top_jaccard": 0.20 + 0.02 * dataset_index,
+            }
+        )
+        if dataset != "zebrafish":
+            rank_rows.append(
+                {
+                    "dataset": dataset,
+                    "external_method": "NicheNet",
+                    "available": True,
+                    "n_jointly_positive_axes": 15,
+                    "spearman_rho": 0.24 + 0.02 * dataset_index,
+                    "top_fraction": 0.2,
+                    "top_jaccard": 0.18 + 0.01 * dataset_index,
+                }
+            )
+    rank_path = molecular / "molecular_rank_consistency.csv"
+    pd.DataFrame(rank_rows).to_csv(rank_path, index=False)
+
+    chain_path = molecular / "model_first_nichenet_chains.csv"
+    mosta_axis = axes["mosta"]
+    pd.DataFrame(
+        {
+            "dataset": ["mosta", "mosta"],
+            "cytobridge_global_rank": [1, 1],
+            "sender_type": [mosta_axis["sender_type"]] * 2,
+            "receiver_type": [mosta_axis["receiver_type"]] * 2,
+            "ligand": [mosta_axis["ligand"]] * 2,
+            "receptor": [mosta_axis["receptor"]] * 2,
+            "pathways": [mosta_axis["pathway"]] * 2,
+            "cytobridge_percentile": [0.99, 0.99],
+            "commot_percentile": [0.97, 0.97],
+            "receiver_target_rank": [1, 2],
+            "receiver_target": ["TARGET-A", "TARGET-B"],
+            "nichenet_ligand_target_evidence": [0.5, 0.2],
+        }
+    ).to_csv(chain_path, index=False)
+    (molecular / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "workflow": "five_dataset_model_biology_molecular_summary",
+                "status": "complete",
+                "outputs": {
+                    "panel": _artifact_record(molecular_panel_path),
+                    "rank_consistency": _artifact_record(rank_path),
+                    "model_first_nichenet_chains": _artifact_record(chain_path),
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return aggregate, selection, molecular
+
+
+def test_model_biology_figure_bundle_contains_only_six_formal_panel_tables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_spatial_script()
+    aggregate, selection, molecular = _write_model_biology_plot_inputs(
+        tmp_path / "inputs"
+    )
+    output = tmp_path / "figure"
+    from CytoBridge.nonspatial import scnt_figure_style as style
+
+    monkeypatch.setattr(style, "apply_style", lambda: None)
+
+    def fake_save_figure(_figure: object, pdf: Path, png: Path, *, dpi: int) -> None:
+        assert dpi == 320
+        Path(pdf).write_bytes(b"%PDF-1.4\n% test fixture\n")
+        Path(png).write_bytes(b"PNG test fixture\n")
+
+    monkeypatch.setattr(style, "save_figure", fake_save_figure)
+    module.plot_model_biology(
+        SimpleNamespace(
+            aggregate_dir=str(aggregate),
+            selection_dir=str(selection),
+            molecular_panel_data_dir=str(molecular),
+            output_dir=str(output),
+            config=None,
+            spatial_panel_data_dir=None,
+            edge_dir=None,
+            maximum_display_edges=60,
+        )
+    )
+
+    assert (output / "spatial_communication_model_biology_a4.pdf").is_file()
+    assert (output / "spatial_communication_model_biology_a4.png").is_file()
+    expected_tables = {
+        "global_pair_metrics.csv",
+        "model_linked_external_support.csv",
+        "model_linked_lr_selection_status.csv",
+        "model_biology_molecular_panel.csv",
+        "molecular_rank_consistency.csv",
+        "model_first_nichenet_chains.csv",
+    }
+    assert {path.name for path in (output / "panel_data").iterdir()} == expected_tables
+
+    manifest = json.loads((output / "figure_manifest.json").read_text(encoding="utf-8"))
+    assert set(manifest["inputs"]) == {
+        "aggregate_manifest",
+        "selection_manifest",
+        "molecular_summary_manifest",
+    }
+    assert set(manifest["panel_data"]) == {
+        "global_metrics",
+        "external_support",
+        "selection_status",
+        "molecular_summary",
+        "molecular_rank_consistency",
+        "model_first_nichenet_chains",
+    }
+    serialized_manifest = json.dumps(manifest, sort_keys=True).casefold()
+    assert "spatial_map" not in serialized_manifest
+    assert "edge_manifest" not in serialized_manifest
+    assert "biological_program" not in serialized_manifest
 
 
 def _write_model_biology_molecular_fixture(
