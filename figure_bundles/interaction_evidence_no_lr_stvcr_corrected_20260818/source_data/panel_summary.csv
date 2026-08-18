@@ -1,0 +1,31 @@
+comparison,dataset,space,n_targets,mean_relative_difference,sem
+No LR prior minus full model,admouse,joint,2,0.2388599701495,0.0921719200585
+No LR prior minus full model,admouse,spatial,2,0.2547022272575,0.05792305797749999
+No LR prior minus full model,admouse,state,2,0.2701417268165,0.09357143898550001
+No LR prior minus full model,arista,joint,4,0.6955304501127499,0.15878115297301662
+No LR prior minus full model,arista,spatial,4,0.210677348111325,0.08897841832222891
+No LR prior minus full model,arista,state,4,0.87710161696625,0.2278957807226481
+No LR prior minus full model,mosta,joint,3,0.3176660181393333,0.2767169324125153
+No LR prior minus full model,mosta,spatial,3,0.019503399452666662,0.13102595379803195
+No LR prior minus full model,mosta,state,3,0.446736549605,0.3988540537706533
+No LR prior minus full model,zebrafish,joint,4,0.079843476444,0.3691338652134211
+No LR prior minus full model,zebrafish,spatial,4,0.189165141546,0.15759173336969104
+No LR prior minus full model,zebrafish,state,4,0.13684102138374998,0.40922478139468715
+No LR prior minus full model,chicken_heart,joint,3,0.007074787815252395,0.02269988991296662
+No LR prior minus full model,chicken_heart,spatial,3,0.07707494891799312,0.10919385201750673
+No LR prior minus full model,chicken_heart,state,3,-0.011489164573425685,0.0058960822323233806
+stVCR minus CytoBridge,admouse,joint,1,0.18923325590696521,0.0
+stVCR minus CytoBridge,admouse,spatial,1,1.2734344349491569,0.0
+stVCR minus CytoBridge,admouse,state,1,0.07023134636489732,0.0
+stVCR minus CytoBridge,arista,joint,3,-0.07710423817634311,0.05003423598250153
+stVCR minus CytoBridge,arista,spatial,3,0.31779514486407706,0.271073973648513
+stVCR minus CytoBridge,arista,state,3,-0.07227068004332911,0.04795651747430144
+stVCR minus CytoBridge,chicken_heart,joint,2,1.8570166525977774,0.6654554674681674
+stVCR minus CytoBridge,chicken_heart,spatial,2,3.2000547806394524,1.4782333861694932
+stVCR minus CytoBridge,chicken_heart,state,2,1.8495559212652832,0.8425202371059943
+stVCR minus CytoBridge,mosta,joint,2,-0.010615568670040789,0.06148101149371026
+stVCR minus CytoBridge,mosta,spatial,2,0.1576900596213575,0.5100809345182866
+stVCR minus CytoBridge,mosta,state,2,-0.010318978583220381,0.0753565366269911
+stVCR minus CytoBridge,zebrafish,joint,3,0.7553421378415526,0.31096781371048327
+stVCR minus CytoBridge,zebrafish,spatial,3,3.3081669106711717,1.3259072100105702
+stVCR minus CytoBridge,zebrafish,state,3,0.6912042386422091,0.2778289429242032
