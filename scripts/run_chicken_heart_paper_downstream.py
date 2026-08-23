@@ -114,6 +114,74 @@ def _validate_standard_downstream_summary(summary: Mapping[str, object]) -> None
         )
 
 
+def _coordinate_sha256(values: np.ndarray) -> str:
+    array = np.ascontiguousarray(np.asarray(values, dtype="<f8"))
+    digest = hashlib.sha256()
+    digest.update(str(tuple(int(value) for value in array.shape)).encode("ascii"))
+    digest.update(f"|{array.dtype.str}|".encode("ascii"))
+    digest.update(array.tobytes(order="C"))
+    return digest.hexdigest()
+
+
+def _validate_workflow_aligned_input(adata) -> dict[str, object]:
+    """Validate the formal package-preprocessed H5AD used by this runner."""
+
+    for key in ("preprocess_info", "spatial_alignment_info"):
+        if key not in adata.uns or not isinstance(adata.uns[key], Mapping):
+            raise RuntimeError(
+                "Chicken-heart paper downstream requires the formal package "
+                f"preprocessing output with uns[{key!r}]."
+            )
+    required_obsm = {"spatial_aligned": 2, "X_latent": 50}
+    for key, width in required_obsm.items():
+        values = np.asarray(adata.obsm.get(key))
+        if values.shape != (adata.n_obs, width) or not np.isfinite(values).all():
+            raise RuntimeError(
+                f"Formal chicken-heart obsm[{key!r}] must be finite "
+                f"({adata.n_obs}, {width})."
+            )
+    if "counts" not in adata.layers:
+        raise RuntimeError("Formal chicken-heart H5AD lacks layers['counts'].")
+    for key in ("timepoint", "time_point_processed", "region", "celltype_prediction"):
+        if key not in adata.obs:
+            raise RuntimeError(f"Formal chicken-heart H5AD lacks obs[{key!r}].")
+        values = adata.obs[key]
+        if values.isna().any() or values.astype(str).str.strip().eq("").any():
+            raise RuntimeError(
+                f"Formal chicken-heart obs[{key!r}] contains missing values."
+            )
+    if "Annotation" in adata.obs and not np.array_equal(
+        adata.obs["Annotation"].astype(str).to_numpy(),
+        adata.obs["celltype_prediction"].astype(str).to_numpy(),
+    ):
+        raise RuntimeError(
+            "Formal chicken-heart obs['Annotation'] must match "
+            "obs['celltype_prediction']."
+        )
+    observed_times = sorted(
+        np.unique(
+            adata.obs["time_point_processed"].to_numpy(dtype=np.float64)
+        ).tolist()
+    )
+    if observed_times != [0.0, 1.0, 2.0, 3.0]:
+        raise RuntimeError(
+            "Formal chicken-heart processed times must be [0, 1, 2, 3], "
+            f"received {observed_times}."
+        )
+    anatomical = cb.pp.chicken_heart_anatomical_orientation_qc(adata)
+    if anatomical.get("status") != "pass":
+        raise RuntimeError(
+            "Formal chicken-heart aligned anatomy failed orientation QC: "
+            f"{anatomical.get('failures')}."
+        )
+    return {
+        "source_kind": "package_preprocessed_aligned_h5ad",
+        "coordinate_sha256": _coordinate_sha256(adata.obsm["spatial_aligned"]),
+        "downstream_annotation_key": "celltype_prediction",
+        "anatomical_orientation_qc": anatomical,
+    }
+
+
 def _label_colors(labels: Sequence[str]) -> dict[str, str]:
     order = tuple(sorted({str(label) for label in labels}))
     palette = mpl.colormaps["tab20"].resampled(len(order))
@@ -440,7 +508,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     _validate_standard_downstream_summary(standard_summary)
 
     adata = ad.read_h5ad(input_h5ad)
-    input_contract = cb.pp.validate_prepared_chicken_heart_input(adata)
+    input_contract = _validate_workflow_aligned_input(adata)
     dataframe, resolved_time_key = cb.tl.adata_to_aligned_dataframe(
         adata,
         time_key="time_point_processed",

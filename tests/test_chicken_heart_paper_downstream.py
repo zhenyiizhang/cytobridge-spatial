@@ -49,6 +49,38 @@ def test_standard_downstream_requires_every_formal_analysis():
         MODULE._validate_standard_downstream_summary(bad)
 
 
+def test_workflow_aligned_input_accepts_package_preprocess_output(monkeypatch):
+    adata = MODULE.ad.AnnData(np.ones((4, 2), dtype=np.float32))
+    adata.obs["timepoint"] = ["D4", "D7", "D10", "D14"]
+    adata.obs["time_point_processed"] = [0.0, 1.0, 2.0, 3.0]
+    adata.obs["region"] = ["Atria"] * 4
+    adata.obs["celltype_prediction"] = ["Cardiomyocytes-1"] * 4
+    adata.obs["Annotation"] = adata.obs["celltype_prediction"].copy()
+    adata.obsm["spatial_aligned"] = np.arange(8, dtype=np.float64).reshape(4, 2)
+    adata.obsm["X_latent"] = np.zeros((4, 50), dtype=np.float32)
+    adata.layers["counts"] = np.ones((4, 2), dtype=np.float32)
+    adata.uns["preprocess_info"] = {"expression_source": "layers['counts']"}
+    adata.uns["spatial_alignment_info"] = {"mode": "fitted"}
+    monkeypatch.setattr(
+        MODULE.cb.pp,
+        "chicken_heart_anatomical_orientation_qc",
+        lambda value: {"status": "pass", "failures": []},
+    )
+
+    contract = MODULE._validate_workflow_aligned_input(adata)
+
+    assert contract["source_kind"] == "package_preprocessed_aligned_h5ad"
+    assert len(contract["coordinate_sha256"]) == 64
+    assert contract["downstream_annotation_key"] == "celltype_prediction"
+
+
+def test_workflow_aligned_input_requires_package_provenance(monkeypatch):
+    adata = MODULE.ad.AnnData(np.ones((4, 2), dtype=np.float32))
+    adata.uns["preprocess_info"] = {"expression_source": "layers['counts']"}
+    with pytest.raises(RuntimeError, match="spatial_alignment_info"):
+        MODULE._validate_workflow_aligned_input(adata)
+
+
 def test_interaction_composition_rows_sum_to_one():
     frames = {
         "interaction_on": tuple(
