@@ -397,10 +397,10 @@ def _write_lr_attention_figures(
             ax.set_xticks(range(len(regions)), display_regions, rotation=90, fontsize=6)
             if column == 0:
                 ax.set_yticks(range(len(regions)), display_regions, fontsize=6)
-                ax.set_ylabel("Sender anatomical region")
+                ax.set_ylabel("Sender cell type")
             else:
                 ax.set_yticks([])
-            ax.set_xlabel("Receiver anatomical region")
+            ax.set_xlabel("Receiver cell type")
         assert image is not None
         colorbar = fig.colorbar(image, cax=colorbar_axis)
         colorbar.set_label("log(1 + attention per source)")

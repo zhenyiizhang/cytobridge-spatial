@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 from pathlib import Path
 
 import numpy as np
@@ -158,6 +159,13 @@ def test_lr_attention_renderer_uses_formal_tables(tmp_path):
     assert all(path.is_file() for path in files)
     selected = pd.read_csv(tmp_path / "figures" / "top_lr_pair_timecourses.csv")
     assert selected["pair"].nunique() == 8
+
+
+def test_communication_heatmap_axes_report_celltype_semantics():
+    source = inspect.getsource(MODULE._write_lr_attention_figures)
+    assert 'set_ylabel("Sender cell type")' in source
+    assert 'set_xlabel("Receiver cell type")' in source
+    assert "anatomical region" not in source
 
 
 def test_metric_summary_uses_public_ablation_w2_schema(tmp_path):
