@@ -150,14 +150,13 @@ def _validate_workflow_aligned_input(adata) -> dict[str, object]:
             raise RuntimeError(
                 f"Formal chicken-heart obs[{key!r}] contains missing values."
             )
-    if "Annotation" in adata.obs and not np.array_equal(
-        adata.obs["Annotation"].astype(str).to_numpy(),
-        adata.obs["celltype_prediction"].astype(str).to_numpy(),
-    ):
-        raise RuntimeError(
-            "Formal chicken-heart obs['Annotation'] must match "
-            "obs['celltype_prediction']."
+    legacy_annotation_alias_ignored = bool(
+        "Annotation" in adata.obs
+        and not np.array_equal(
+            adata.obs["Annotation"].astype(str).to_numpy(),
+            adata.obs["celltype_prediction"].astype(str).to_numpy(),
         )
+    )
     observed_times = sorted(
         np.unique(
             adata.obs["time_point_processed"].to_numpy(dtype=np.float64)
@@ -178,6 +177,7 @@ def _validate_workflow_aligned_input(adata) -> dict[str, object]:
         "source_kind": "package_preprocessed_aligned_h5ad",
         "coordinate_sha256": _coordinate_sha256(adata.obsm["spatial_aligned"]),
         "downstream_annotation_key": "celltype_prediction",
+        "legacy_annotation_alias_ignored": legacy_annotation_alias_ignored,
         "anatomical_orientation_qc": anatomical,
     }
 

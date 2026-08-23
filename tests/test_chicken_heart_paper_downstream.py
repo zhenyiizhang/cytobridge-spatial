@@ -55,7 +55,7 @@ def test_workflow_aligned_input_accepts_package_preprocess_output(monkeypatch):
     adata.obs["time_point_processed"] = [0.0, 1.0, 2.0, 3.0]
     adata.obs["region"] = ["Atria"] * 4
     adata.obs["celltype_prediction"] = ["Cardiomyocytes-1"] * 4
-    adata.obs["Annotation"] = adata.obs["celltype_prediction"].copy()
+    adata.obs["Annotation"] = ["legacy-region"] * 4
     adata.obsm["spatial_aligned"] = np.arange(8, dtype=np.float64).reshape(4, 2)
     adata.obsm["X_latent"] = np.zeros((4, 50), dtype=np.float32)
     adata.layers["counts"] = np.ones((4, 2), dtype=np.float32)
@@ -72,6 +72,7 @@ def test_workflow_aligned_input_accepts_package_preprocess_output(monkeypatch):
     assert contract["source_kind"] == "package_preprocessed_aligned_h5ad"
     assert len(contract["coordinate_sha256"]) == 64
     assert contract["downstream_annotation_key"] == "celltype_prediction"
+    assert contract["legacy_annotation_alias_ignored"] is True
 
 
 def test_workflow_aligned_input_requires_package_provenance(monkeypatch):
