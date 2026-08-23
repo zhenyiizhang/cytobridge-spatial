@@ -47,6 +47,13 @@ python scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py \
   --output-dir <new-publication-bundle-dir>
 ```
 
+`prepare_chicken_heart_ot_input.py` converts the count-recovered, fixed-roster
+GSE149457 handoff into the coordinate input consumed by the current
+`chicken_heart` preset. It uses `spatial_original`, rotates only D7 by 180
+degrees around its raw-stage centroid, removes fitted PCA/alignment state, and
+writes `spatial_ot_input` plus a hash manifest. Reviewed coordinates are kept
+only as `spatial_reviewed_reference` and are not used by OT.
+
 `run_chicken_heart_paper_downstream.py` adds the formal chicken-heart
 perturbation bank after the standard `cytobridge workflow --config
 chicken_heart` downstream is complete. Every branch starts once from the real

@@ -156,6 +156,21 @@ def test_chicken_heart_lr_scope_is_structured_for_summary_serialization():
     config, _ = load_workflow_config("chicken_heart")
     assert config["dataset"]["annotation_key"] == "celltype_prediction"
     assert config["preprocess"]["annotation_source"] == "celltype_prediction"
+    assert config["preprocess"]["mode"] == "fit_spatial_alignment"
+    assert config["preprocess"]["batch_values"] == ["D4", "D7", "D10", "D14"]
+    align = config["preprocess"]["align"]
+    assert align["input_spatial_key"] == "spatial_ot_input"
+    assert align["center_x"] is True
+    assert align["center_y"] is True
+    assert align["flip_y"] is False
+    assert align["lambda_local"] == 100.0
+    assert align["lambda_ot"] == 1.0
+    assert align["phase1_epochs"] == 10_000
+    assert align["phase2_epochs"] == 500
+    # Chicken-heart generated slices retain the accepted interval-local
+    # demonstration protocol; the OT-input change does not alter it.
+    assert config["downstream"]["split_sde_piecewise"] is True
+    assert config["downstream"]["piecewise_observed_sample_mode"] == "per_timepoint"
     scope = config["downstream"]["lr_scope"]
     assert scope["species_database"] == "human CellChatDB conserved-symbol proxy"
     assert (

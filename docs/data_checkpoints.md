@@ -14,7 +14,7 @@ explicit downstream override. Raw study data are public:
 | MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
 | ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
 | AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
-| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `celltype_prediction` (`region` retained for anatomy QC) | four raw 10x matrices / reviewed `obsm['spatial_aligned']` |
+| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `celltype_prediction` (`region` retained for anatomy QC) | four raw 10x matrices / `obsm['spatial_original']`, then D7-preoriented `obsm['spatial_ot_input']` |
 
 These are the raw-input keys consumed by the five packaged presets. The
 preprocessing output standardizes them to `time_point_processed`, the preset's
@@ -25,10 +25,13 @@ across batches, so its preset constructs a reversible `Batch` + `CellID`
 identity; it does not assign identities from row order.
 AD mouse similarly uses `sample` plus `cell_id`, so the original and the
 notebook-deduplicated handoff H5ADs resolve to the same stable identity scheme.
-Chicken heart is prepared by `scripts/prepare_chicken_heart_input.py`, not by
-the generic spatial registration fit. Its D4/D7/D10/D14 anatomical orientation
-and any explicit legacy D7 reflection are validated and recorded before the
-shared graph/training workflow begins.
+Chicken heart first uses `scripts/prepare_chicken_heart_input.py` to recover
+the exact reviewed spot roster, annotations, and matching raw counts. The
+deterministic `scripts/prepare_chicken_heart_ot_input.py` then rotates only raw
+D7 by 180 degrees around its stage centroid and writes
+`obsm['spatial_ot_input']`. The packaged preset fits expression-guided OT from
+that coordinate input. The reviewed alignment is retained only for post-hoc
+comparison and is not an OT fitting target.
 
 The ARISTA preset accepts the complete 16,379-gene `Regeneration.h5ad`. It maps
 the five named injury batches at 2/5/10/15/20 DPI to model times 0–4, uses all
@@ -52,8 +55,8 @@ each of the four datasets. All 12 profiles and all four matched three-arm
 families pass acceptance SHA-256
 `c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
 Developing chicken heart adds one separately completed full learned-prior
-profile and package-downstream chain. It uses the anatomy-reviewed aligned
-H5AD and is not represented as a matched no-LR/no-interaction family.
+profile and package-downstream chain. It uses the D7-preoriented raw-coordinate
+OT workflow and is not represented as a matched no-LR/no-interaction family.
 These artifacts must be deposited and linked here before the 1.5 stable
 release. Until then, the release candidate is fully installable and supports
 user-provided inputs, but a new reader cannot download the exact manuscript

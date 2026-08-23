@@ -3,16 +3,22 @@
 **Notebook:** {download}`notebooks/05_chicken_heart.ipynb <../../notebooks/05_chicken_heart.ipynb>`
 
 The GSE149457 D4/D7/D10/D14 series uses a dataset-specific preparation step
-before the ordinary CytoBridge graph, training, and downstream workflow. The
-adapter recovers raw integer counts from the four public 10x matrices, selects
-the 3,550 reviewed spots in fixed order, preserves the reviewed anatomy, and
-runs the package's strict normalization, batch-aware HVG selection, and 50-PC
-expression preprocessing.
+before the ordinary CytoBridge alignment, graph, training, and downstream
+workflow. The adapter recovers raw integer counts from the four public 10x
+matrices and selects the 3,550 reviewed spots in fixed order. A second
+deterministic step constructs `obsm['spatial_ot_input']` from the raw
+coordinates. The package then fits expression-guided spatial alignment,
+batch-aware HVG selection, and a 50-PC expression state.
 
 ## Alignment contract
 
-The generic spatial registration routine is not fitted on these four Visium
-slides. The prepared input must satisfy all of the following checks:
+The known reversed D7 raw section is rotated by 180 degrees around its own
+stage centroid before OT. D4, D10, and D14 are unchanged. This rigid
+pre-orientation preserves every within-D7 pairwise distance and is recorded in
+the input manifest. The package then jointly aligns D4/D7/D10/D14 using the
+same expression-guided OT implementation exposed by `align_spatial`.
+
+The aligned output must satisfy all of the following checks:
 
 - D4 Atria are above Valves, and Valves are above the unsplit Ventricle;
 - D7, D10, and D14 Atria are above Valves;
@@ -20,12 +26,6 @@ slides. The prepared input must satisfy all of the following checks:
   LV/inter-ventricular septum; and
 - all coordinates, time labels, spot order, raw sources, and any explicit
   repair are recorded by SHA-256 in the preparation manifest.
-
-The retained legacy local alignment has a single D7 horizontal mirror. The
-adapter rejects it by default. `--repair-legacy-d7-left-right` reflects only D7
-around its stage mean x, preserves every within-D7 pairwise distance, leaves
-D4/D10/D14 byte-identical, and records before/after coordinate hashes. It may
-not repair any other orientation failure.
 
 `region` is retained only for these anatomical orientation checks. The
 downstream MLP, generated-slice labels, composition, lineage, and grouped
@@ -47,19 +47,32 @@ python scripts/prepare_chicken_heart_input.py \
   --manifest /runs/chicken-input/manifest.json
 ```
 
-Prefer a corrected reviewed reference when one is available; it should pass
-without the compatibility flag.
+This first adapter uses the reviewed file only to fix the public spot roster,
+row order, and annotations and to recover the matching raw counts. Convert its
+output to the OT input without fitting coordinates:
+
+```bash
+python scripts/prepare_chicken_heart_ot_input.py \
+  --input-h5ad /runs/chicken-input/chicken_heart_aligned_package.h5ad \
+  --output-h5ad /runs/chicken-input/chicken_heart_ot_input.h5ad \
+  --output-table /runs/chicken-input/chicken_heart_ot_input.csv \
+  --manifest /runs/chicken-input/chicken_heart_ot_input_manifest.json
+```
+
+The old reviewed coordinates are retained only in
+`obsm['spatial_reviewed_reference']` for post-hoc visual comparison. They are
+not passed to the OT objective.
 
 ## Train and analyze with the package
 
-The `chicken_heart` preset validates and copies the prepared H5AD without
-refitting coordinates. It then builds four interaction graphs, fits a new edge
+The `chicken_heart` preset fits spatial alignment from
+`obsm['spatial_ot_input']`, builds four interaction graphs, fits a new edge
 predictor with a validation-selected threshold, executes the packaged six-stage
 model plan, and runs standard downstream analysis.
 
 ```bash
 cytobridge workflow --config chicken_heart --train \
-  --input-h5ad /runs/chicken-input/chicken_heart_aligned_package.h5ad \
+  --input-h5ad /runs/chicken-input/chicken_heart_ot_input.h5ad \
   --output-dir /runs/chicken-heart-full \
   --device cuda:0
 ```

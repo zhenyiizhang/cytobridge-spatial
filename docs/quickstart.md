@@ -66,13 +66,14 @@ with the bundled mouse CellChatDB, trains a new edge predictor in that same
 feature space, fits the six-stage dynamical model, and runs the shared
 downstream chain. Supplying an old edge predictor to a raw-H5AD run is rejected.
 
-Chicken heart first uses the anatomy-reviewed adapter shown in its dataset
-tutorial. Then the same package workflow validates the fixed H5AD, fits the
-graph and predictor, trains, and runs downstream without refitting coordinates:
+Chicken heart first uses the two deterministic adapters shown in its dataset
+tutorial to recover raw counts and construct `spatial_ot_input`. The same
+package workflow then fits spatial alignment, the graph and predictor, trains,
+and runs downstream:
 
 ```bash
 cytobridge workflow --config chicken_heart --train \
-  --input-h5ad /runs/chicken-input/chicken_heart_aligned_package.h5ad \
+  --input-h5ad /runs/chicken-input/chicken_heart_ot_input.h5ad \
   --output-dir /results/chicken-heart \
   --device cuda:0
 ```

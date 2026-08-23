@@ -1,4 +1,4 @@
-# Chicken-heart production profile using the reviewed fixed spatial alignment.
+# Chicken-heart production profile using the package-fitted OT spatial alignment.
 model:
   components: [velocity, growth, score, interaction]
   interaction_type: gnn
