@@ -86,6 +86,169 @@ def test_preprocess_forwards_batch_key_to_hvg_selection(monkeypatch) -> None:
     assert result.uns["preprocess_info"]["hvg_batch_key"] == "Batch"
 
 
+def test_preprocess_can_rank_hvgs_before_clean_latent_normalization(monkeypatch) -> None:
+    counts = np.asarray(
+        [
+            [4.0, 1.0, 2.0, 0.0],
+            [1.0, 5.0, 3.0, 1.0],
+            [2.0, 0.0, 6.0, 2.0],
+            [3.0, 2.0, 1.0, 4.0],
+        ],
+        dtype=np.float32,
+    )
+    adata = AnnData(
+        X=sparse.csr_matrix(np.log1p(counts)),
+        obs=pd.DataFrame(
+            {
+                "time": ["fit-a", "fit-a", "fit-b", "reference-only"],
+                "Batch": ["a", "a", "b", "reference"],
+            },
+            index=["c0", "c1", "c2", "c3"],
+        ),
+        var=pd.DataFrame(index=["g0", "g1", "g2", "g3"]),
+    )
+    adata.layers["counts"] = sparse.csr_matrix(counts)
+    captured = {}
+
+    def fake_hvg(target, *, n_top_genes, batch_key):
+        captured["n_obs"] = target.n_obs
+        captured["matrix"] = target.X.toarray().copy()
+        captured["batch_key"] = batch_key
+        target.var["highly_variable"] = [True, False, True, False]
+
+    monkeypatch.setattr("scanpy.pp.highly_variable_genes", fake_hvg)
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=True,
+        normalization_target_sum=None,
+        log1p=True,
+        select_hvg=True,
+        n_top_genes=2,
+        dim_reduction="none",
+        expression_layer="counts",
+        raw_count_validation="strict",
+        hvg_batch_key="Batch",
+        hvg_selection_transform="log1p_counts",
+        normalization_reference="latent_features",
+        required_latent_features=("g3",),
+        latent_fit_obs_values=("fit-a", "fit-b"),
+    )
+
+    np.testing.assert_allclose(captured["matrix"], np.log1p(counts))
+    assert captured["n_obs"] == 4
+    assert captured["batch_key"] == "Batch"
+    selected_counts = counts[:3]
+    reference_totals = selected_counts[:, [0, 2, 3]].sum(axis=1)
+    target = float(np.median(reference_totals))
+    expected = np.log1p(
+        selected_counts * (target / reference_totals)[:, None]
+    )
+    np.testing.assert_allclose(result.X.toarray(), expected, rtol=1e-6, atol=1e-7)
+    assert result.obs_names.tolist() == ["c0", "c1", "c2"]
+    assert result.var["highly_variable"].tolist() == [True, False, True, True]
+    info = result.uns["preprocess_info"]
+    assert info["hvg_selection_transform"] == "log1p_counts"
+    assert info["normalization_reference"] == "latent_features"
+    assert info["normalization_reference_feature_count"] == 3
+    assert info["normalization_target_sum_resolved"] == target
+    assert info["hvg_fit_n_obs"] == 4
+    assert info["latent_fit_n_obs"] == 3
+    assert info["latent_fit_obs_values"] == ["fit-a", "fit-b"]
+    assert info["n_statistical_hvgs"] == 2
+    assert info["n_latent_fit_features"] == 3
+
+
+def test_latent_fit_scope_requires_pre_normalization_hvg_ranking() -> None:
+    with pytest.raises(ValueError, match="latent_fit_obs_values"):
+        preprocess(
+            _example_adata(),
+            time_key="time",
+            dim_reduction="none",
+            hvg_selection_transform="post_transform",
+            latent_fit_obs_values=("2DPI",),
+        )
+
+
+def test_preprocess_filters_label_blind_spatial_outlier_before_latent_fit() -> None:
+    counts = np.asarray(
+        [
+            [1.0, 2.0],
+            [2.0, 1.0],
+            [1.0, 3.0],
+            [3.0, 1.0],
+            [2.0, 2.0],
+            [4.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+    obs = pd.DataFrame(
+        {
+            "time": ["t0"] * 6,
+            "Batch": ["batch-a"] * 6,
+            "CellID": [f"cell-{index}" for index in range(6)],
+            "Annotation": ["common"] * 5 + ["rare"],
+        },
+        index=[f"row-{index}" for index in range(6)],
+    )
+    adata = AnnData(X=counts, obs=obs)
+    adata.obsm["spatial"] = np.asarray(
+        [[0.0, 0.0], [1.0, 0.0], [2.1, 0.0], [3.3, 0.0], [4.7, 0.0], [50.0, 0.0]],
+        dtype=np.float32,
+    )
+
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        select_hvg=False,
+        dim_reduction="none",
+        observation_id_keys=("Batch", "CellID"),
+        spatial_outlier_filter=True,
+        spatial_outlier_key="spatial",
+        spatial_outlier_group_key="Batch",
+        spatial_outlier_nn_mad_z_threshold=50.0,
+    )
+
+    assert result.n_obs == 5
+    assert "Batch=batch-a|CellID=cell-5" not in result.obs_names
+    info = json.loads(result.uns["preprocess_info"]["spatial_outlier_filter_json"])
+    assert info["label_blind"] is True
+    assert info["n_input"] == 6
+    assert info["n_removed"] == 1
+    assert info["n_retained"] == 5
+    assert info["removed_observations"][0]["obs_name"] == (
+        "Batch=batch-a|CellID=cell-5"
+    )
+    assert info["removed_observations"][0]["robust_nn_z"] > 50.0
+
+
+def test_spatial_outlier_filter_is_disabled_by_default() -> None:
+    adata = _example_adata()
+    adata.obsm["spatial"] = np.asarray(
+        [[0.0, 0.0], [1.0, 0.0], [100.0, 0.0]], dtype=np.float32
+    )
+    result = preprocess(
+        adata,
+        time_key="time",
+        normalization=False,
+        log1p=False,
+        select_hvg=False,
+        dim_reduction="none",
+    )
+    assert result.n_obs == 3
+    info = json.loads(result.uns["preprocess_info"]["spatial_outlier_filter_json"])
+    assert info == {
+        "enabled": False,
+        "method": "not_applied",
+        "n_input": 3,
+        "n_removed": 0,
+        "n_retained": 3,
+    }
+
+
 def test_preprocess_rejects_missing_hvg_batch_column() -> None:
     with pytest.raises(KeyError, match="hvg_batch_key"):
         preprocess(

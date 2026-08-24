@@ -82,6 +82,21 @@ class AlignConfig:
     # Optional batch-aware HVG selection column, evaluated on the complete
     # input before the alignment subset is chosen.
     hvg_batch_key: Optional[str] = None
+    # Keep feature ranking separate from the clean latent transform when a
+    # dataset's published feature contract was fit on log1p(raw counts).
+    hvg_selection_transform: str = "post_transform"
+    # Per-cell normalization totals may be defined by every gene (default) or
+    # only by the final HVG + required-feature latent roster.
+    normalization_reference: str = "all_features"
+    # ``alignment_batches`` ranks HVGs on the complete input, then restricts
+    # normalization and PCA fitting to the batches used by alignment/modeling.
+    latent_fit_scope: str = "all_input"
+    # Optional label-blind spatial QC applied before latent normalization/PCA.
+    # Defaults preserve every observation for all existing workflows.
+    spatial_outlier_filter: bool = False
+    spatial_outlier_key: str = "spatial"
+    spatial_outlier_group_key: Optional[str] = None
+    spatial_outlier_nn_mad_z_threshold: float = 50.0
 
 
 def _h5ad_uns_safe(value, *, path: str = "config"):
@@ -701,6 +716,17 @@ def preprocess_and_align(
     if cfg is None:
         cfg = AlignConfig()
 
+    latent_fit_scope = str(cfg.latent_fit_scope).strip().lower()
+    if latent_fit_scope not in {"all_input", "alignment_batches"}:
+        raise ValueError(
+            "latent_fit_scope must be one of {'all_input', 'alignment_batches'}, "
+            f"got {cfg.latent_fit_scope!r}."
+        )
+    if latent_fit_scope == "alignment_batches" and batch_values is None:
+        raise ValueError(
+            "latent_fit_scope='alignment_batches' requires explicit batch_values."
+        )
+
     adata_preprocessed = preprocess(
         adata=adata.copy() if copy_adata else adata,
         time_key=time_key,
@@ -720,6 +746,17 @@ def preprocess_and_align(
         required_latent_features=cfg.required_latent_features,
         observation_id_keys=cfg.observation_id_keys,
         hvg_batch_key=cfg.hvg_batch_key,
+        hvg_selection_transform=cfg.hvg_selection_transform,
+        normalization_reference=cfg.normalization_reference,
+        latent_fit_obs_values=(
+            batch_values if latent_fit_scope == "alignment_batches" else None
+        ),
+        spatial_outlier_filter=cfg.spatial_outlier_filter,
+        spatial_outlier_key=cfg.spatial_outlier_key,
+        spatial_outlier_group_key=cfg.spatial_outlier_group_key,
+        spatial_outlier_nn_mad_z_threshold=(
+            cfg.spatial_outlier_nn_mad_z_threshold
+        ),
     )
     return _align_preprocessed_adata(
         adata=adata_preprocessed,

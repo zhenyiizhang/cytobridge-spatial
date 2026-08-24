@@ -9,6 +9,7 @@ from urllib.parse import quote
 from collections.abc import Mapping
 from typing import Optional, Dict, Sequence
 from scipy import sparse
+from scipy.spatial import cKDTree
 
 _TIME_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -458,6 +459,121 @@ def _auto_time_order(unique_times) -> list:
     return unique_times
 
 
+def _filter_spatial_outliers(
+    adata: AnnData,
+    *,
+    spatial_key: str,
+    group_key: str,
+    robust_nn_z_threshold: float,
+) -> tuple[AnnData, Dict[str, object]]:
+    """Remove label-blind spatially isolated observations within each group."""
+    spatial_key = str(spatial_key).strip()
+    group_key = str(group_key).strip()
+    threshold = float(robust_nn_z_threshold)
+    if not spatial_key:
+        raise ValueError("spatial_outlier_key must be a non-empty obsm key.")
+    if not group_key:
+        raise ValueError("spatial_outlier_group_key must be a non-empty obs key.")
+    if not np.isfinite(threshold) or threshold <= 0:
+        raise ValueError(
+            "spatial_outlier_nn_mad_z_threshold must be positive and finite, "
+            f"got {robust_nn_z_threshold!r}."
+        )
+    if spatial_key not in adata.obsm:
+        raise KeyError(
+            f"spatial_outlier_key {spatial_key!r} is absent from adata.obsm. "
+            f"Available keys: {list(adata.obsm.keys())}"
+        )
+    if group_key not in adata.obs:
+        raise KeyError(
+            f"spatial_outlier_group_key {group_key!r} is absent from adata.obs. "
+            f"Available columns: {list(adata.obs.columns)}"
+        )
+
+    coordinates = np.asarray(adata.obsm[spatial_key], dtype=np.float64)
+    if coordinates.ndim != 2 or coordinates.shape[0] != adata.n_obs:
+        raise ValueError(
+            f"adata.obsm[{spatial_key!r}] must have one coordinate row per observation."
+        )
+    if coordinates.shape[1] < 2:
+        raise ValueError(
+            f"adata.obsm[{spatial_key!r}] must contain at least two coordinate columns."
+        )
+    if not np.isfinite(coordinates).all():
+        raise ValueError(
+            f"adata.obsm[{spatial_key!r}] contains non-finite coordinates."
+        )
+    if adata.obs[group_key].isna().any():
+        raise ValueError(
+            f"adata.obs[{group_key!r}] contains missing grouping values."
+        )
+
+    flagged = np.zeros(adata.n_obs, dtype=bool)
+    robust_z_all = np.full(adata.n_obs, np.nan, dtype=np.float64)
+    nearest_all = np.full(adata.n_obs, np.nan, dtype=np.float64)
+    group_summaries: list[Dict[str, object]] = []
+    group_values = adata.obs[group_key].to_numpy()
+    for group_value in pd.unique(group_values):
+        positions = np.flatnonzero(group_values == group_value)
+        if positions.size < 3:
+            raise ValueError(
+                f"Spatial outlier group {group_value!r} has only {positions.size} "
+                "observations; at least three are required."
+            )
+        nearest = cKDTree(coordinates[positions]).query(
+            coordinates[positions], k=2
+        )[0][:, 1]
+        median = float(np.median(nearest))
+        mad = float(np.median(np.abs(nearest - median)))
+        robust_scale = 1.4826 * mad
+        if not np.isfinite(robust_scale) or robust_scale <= 0:
+            raise ValueError(
+                f"Spatial outlier group {group_value!r} has zero/non-finite "
+                "nearest-neighbor MAD; the robust filter is undefined."
+            )
+        robust_z = (nearest - median) / robust_scale
+        group_flagged = robust_z > threshold
+        flagged[positions] = group_flagged
+        robust_z_all[positions] = robust_z
+        nearest_all[positions] = nearest
+        group_summaries.append(
+            {
+                "group": str(group_value),
+                "n_input": int(positions.size),
+                "n_removed": int(group_flagged.sum()),
+                "nearest_neighbor_median": median,
+                "nearest_neighbor_mad": mad,
+            }
+        )
+
+    removed_positions = np.flatnonzero(flagged)
+    removed = [
+        {
+            "obs_name": str(adata.obs_names[position]),
+            "group": str(adata.obs.iloc[position][group_key]),
+            "nearest_neighbor_distance": float(nearest_all[position]),
+            "robust_nn_z": float(robust_z_all[position]),
+        }
+        for position in removed_positions
+    ]
+    info: Dict[str, object] = {
+        "enabled": True,
+        "method": "within-group robust 1-nearest-neighbor isolation",
+        "label_blind": True,
+        "spatial_key": spatial_key,
+        "group_key": group_key,
+        "robust_nn_z_threshold": threshold,
+        "n_input": int(adata.n_obs),
+        "n_removed": int(flagged.sum()),
+        "n_retained": int((~flagged).sum()),
+        "group_summaries": group_summaries,
+        "removed_observations": removed,
+    }
+    if not flagged.any():
+        return adata, info
+    return adata[~flagged].copy(), info
+
+
 def preprocess(
     adata: AnnData,
     time_key: str,
@@ -477,6 +593,13 @@ def preprocess(
     required_latent_features: Optional[Sequence[str]] = None,
     observation_id_keys: Optional[Sequence[str]] = None,
     hvg_batch_key: Optional[str] = None,
+    hvg_selection_transform: str = "post_transform",
+    normalization_reference: str = "all_features",
+    latent_fit_obs_values: Optional[Sequence[object]] = None,
+    spatial_outlier_filter: bool = False,
+    spatial_outlier_key: str = "spatial",
+    spatial_outlier_group_key: Optional[str] = None,
+    spatial_outlier_nn_mad_z_threshold: float = 50.0,
 ) -> AnnData:
     """
     Preprocess step for dynamical optimal transport analysis.
@@ -553,6 +676,37 @@ def preprocess(
         Optional observation column for batch-aware highly-variable-gene
         selection. The complete input population still participates in the
         PCA fit before any later alignment-time subset is selected.
+    hvg_selection_transform
+        ``'post_transform'`` (default) preserves the standard workflow and
+        ranks HVGs after the main normalization/log1p transform.
+        ``'log1p_counts'`` ranks HVGs on an independent ``log1p`` view of the
+        selected raw-count expression source, without total-count
+        normalization. The latter separates feature ranking from the clean
+        expression transform used for the latent state.
+    normalization_reference
+        ``'all_features'`` (default) computes per-cell size factors from every
+        gene. ``'latent_features'`` computes size factors from the final HVG +
+        required-feature mask, then applies those factors to the full gene
+        matrix before log1p. This keeps full gene-space expression available
+        while making the latent feature universe define its own scale.
+    latent_fit_obs_values
+        Optional values from ``adata.obs[time_key]`` to retain after HVG
+        ranking but before normalization and PCA. This permits HVGs to be
+        selected on a reference population while the latent transform is fit
+        only on the observations used by the model.
+    spatial_outlier_filter
+        If True, remove spatially isolated observations after any independent
+        HVG-reference ranking and latent observation subsetting, but before
+        normalization and PCA. The filter is label-blind and disabled by
+        default.
+    spatial_outlier_key
+        ``adata.obsm`` key used by the spatial-isolation filter.
+    spatial_outlier_group_key
+        Optional ``adata.obs`` column within which nearest-neighbor distances
+        are calibrated independently. Defaults to ``time_key``.
+    spatial_outlier_nn_mad_z_threshold
+        Robust within-group 1-nearest-neighbor z-score threshold. The score is
+        ``(distance - median(distance)) / (1.4826 * MAD(distance))``.
     Returns
     -------
     AnnData
@@ -590,6 +744,36 @@ def preprocess(
             "raw_count_validation must be one of {'auto', 'strict', 'off'}, "
             f"got {raw_count_validation!r}."
         )
+    hvg_selection_transform = str(hvg_selection_transform).strip().lower()
+    if hvg_selection_transform not in {"post_transform", "log1p_counts"}:
+        raise ValueError(
+            "hvg_selection_transform must be one of "
+            "{'post_transform', 'log1p_counts'}, "
+            f"got {hvg_selection_transform!r}."
+        )
+    normalization_reference = str(normalization_reference).strip().lower()
+    if normalization_reference not in {"all_features", "latent_features"}:
+        raise ValueError(
+            "normalization_reference must be one of "
+            "{'all_features', 'latent_features'}, "
+            f"got {normalization_reference!r}."
+        )
+    if normalization_reference == "latent_features" and not select_hvg:
+        raise ValueError(
+            "normalization_reference='latent_features' requires select_hvg=True."
+        )
+    if latent_fit_obs_values is not None and hvg_selection_transform != "log1p_counts":
+        raise ValueError(
+            "latent_fit_obs_values requires hvg_selection_transform='log1p_counts' "
+            "so HVGs can be ranked before observations are subset."
+        )
+    resolved_spatial_outlier_group_key = (
+        time_key
+        if spatial_outlier_group_key is None
+        else str(spatial_outlier_group_key).strip()
+    )
+    if spatial_outlier_filter and not resolved_spatial_outlier_group_key:
+        raise ValueError("spatial_outlier_group_key must not be empty.")
 
     # --- Time Point Mapping Logic ---
     unique_times = adata.obs[time_key].unique()
@@ -695,68 +879,38 @@ def preprocess(
             "used with normalize_total."
         )
 
-    resolved_normalization_target_sum = None
-    if normalization:
-        if normalization_target_sum is not None:
-            normalization_target_sum = float(normalization_target_sum)
-            if (
-                not np.isfinite(normalization_target_sum)
-                or normalization_target_sum <= 0
-            ):
-                raise ValueError(
-                    "normalization_target_sum must be a positive finite value or None, "
-                    f"got {normalization_target_sum}."
-                )
-        if normalization_target_sum is None:
-            if sparse.issparse(adata.X):
-                library_sizes = np.asarray(adata.X.sum(axis=1)).reshape(-1)
-            else:
-                library_sizes = np.asarray(adata.X, dtype=np.float64).sum(axis=1)
-            positive_library_sizes = library_sizes[
-                np.isfinite(library_sizes) & (library_sizes > 0)
-            ]
-            if positive_library_sizes.size == 0:
-                raise ValueError(
-                    "Cannot resolve median normalization target because all library sizes are zero."
-                )
-            resolved_normalization_target_sum = float(np.median(positive_library_sizes))
-        else:
-            resolved_normalization_target_sum = float(normalization_target_sum)
-        target_label = (
-            "median library size"
-            if normalization_target_sum is None
-            else normalization_target_sum
-        )
-        print(f"Normalizing total counts to {target_label}.")
-        sc.pp.normalize_total(adata, target_sum=normalization_target_sum)
-
-    if log1p:
-        sc.pp.log1p(adata)
-
-    # Record the HVG mask (for later storage in original_gene_info)
+    # Resolve the batch-aware HVG contract once so both selection modes use
+    # identical validation and required-feature handling.
     hvg_mask = None
+    statistical_hvg_mask = None
+    hvg_fit_n_obs = None
     required_latent_features_requested = tuple(
         dict.fromkeys(str(name) for name in (required_latent_features or ()))
     )
     required_latent_features_added: list[str] = []
-    if select_hvg:
+    resolved_hvg_batch_key = None
+    if hvg_batch_key is not None:
+        resolved_hvg_batch_key = str(hvg_batch_key).strip()
+        if not resolved_hvg_batch_key:
+            raise ValueError("hvg_batch_key must be a non-empty obs column name.")
+        if resolved_hvg_batch_key not in adata.obs:
+            raise KeyError(
+                f"hvg_batch_key {resolved_hvg_batch_key!r} is absent from "
+                f"adata.obs. Available columns: {list(adata.obs.columns)}"
+            )
+
+    def _select_hvgs(target: AnnData) -> None:
         print(f"Selecting top {n_top_genes} highly variable genes.")
-        resolved_hvg_batch_key = None
-        if hvg_batch_key is not None:
-            resolved_hvg_batch_key = str(hvg_batch_key).strip()
-            if not resolved_hvg_batch_key:
-                raise ValueError("hvg_batch_key must be a non-empty obs column name.")
-            if resolved_hvg_batch_key not in adata.obs:
-                raise KeyError(
-                    f"hvg_batch_key {resolved_hvg_batch_key!r} is absent from "
-                    f"adata.obs. Available columns: {list(adata.obs.columns)}"
-                )
         sc.pp.highly_variable_genes(
-            adata,
+            target,
             n_top_genes=n_top_genes,
             batch_key=resolved_hvg_batch_key,
         )
-        hvg_mask = adata.var.highly_variable.copy()
+
+    def _finalize_hvg_mask() -> None:
+        nonlocal hvg_mask, statistical_hvg_mask, required_latent_features_added
+        statistical_hvg_mask = adata.var["highly_variable"].copy()
+        hvg_mask = statistical_hvg_mask.copy()
         if required_latent_features_requested:
             feature_index = pd.Index(adata.var_names.astype(str))
             missing_required = [
@@ -772,7 +926,7 @@ def preprocess(
             required_positions = feature_index.get_indexer(
                 required_latent_features_requested
             )
-            previous_mask = hvg_mask.to_numpy(dtype=bool, copy=True)
+            previous_mask = statistical_hvg_mask.to_numpy(dtype=bool, copy=True)
             final_mask = previous_mask.copy()
             final_mask[required_positions] = True
             adata.var["highly_variable"] = final_mask
@@ -789,10 +943,142 @@ def preprocess(
             f"({len(required_latent_features_added)} required features added; "
             "no subsetting of adata.X)."
         )
-    elif required_latent_features_requested:
+
+    if not select_hvg and required_latent_features_requested:
         raise ValueError(
             "required_latent_features is only meaningful when select_hvg=True."
         )
+
+    # Paper-compatible clean mode: rank features on a separate log1p(counts)
+    # view. The model expression matrix itself remains raw until the final HVG
+    # mask and optional model-observation scope are frozen.
+    if select_hvg and hvg_selection_transform == "log1p_counts":
+        hvg_obs = pd.DataFrame(index=adata.obs_names.copy())
+        if resolved_hvg_batch_key is not None:
+            hvg_obs[resolved_hvg_batch_key] = adata.obs[
+                resolved_hvg_batch_key
+            ].copy()
+        hvg_source = AnnData(
+            X=adata.X.copy(),
+            obs=hvg_obs,
+            var=pd.DataFrame(index=adata.var_names.copy()),
+        )
+        sc.pp.log1p(hvg_source)
+        _select_hvgs(hvg_source)
+        for column in hvg_source.var.columns:
+            adata.var[column] = hvg_source.var[column].to_numpy(copy=True)
+        del hvg_source
+        hvg_fit_n_obs = int(adata.n_obs)
+        _finalize_hvg_mask()
+
+    latent_fit_obs_values_resolved: list[str] = []
+    latent_input_n_obs = int(adata.n_obs)
+    if latent_fit_obs_values is not None:
+        requested = list(dict.fromkeys(latent_fit_obs_values))
+        if not requested:
+            raise ValueError("latent_fit_obs_values must not be empty.")
+        observed = pd.Index(pd.unique(adata.obs[time_key]))
+        missing = [value for value in requested if value not in observed]
+        if missing:
+            raise ValueError(
+                f"latent_fit_obs_values contains values absent from {time_key!r}: {missing}"
+            )
+        keep = adata.obs[time_key].isin(requested).to_numpy(dtype=bool)
+        adata = adata[keep].copy()
+        hvg_mask = adata.var["highly_variable"].copy() if select_hvg else None
+        statistical_hvg_mask = (
+            adata.var["highly_variable"].copy()
+            if statistical_hvg_mask is None and select_hvg
+            else statistical_hvg_mask
+        )
+        latent_fit_obs_values_resolved = [str(value) for value in requested]
+        print(
+            "Restricted latent normalization/PCA fit after HVG ranking: "
+            f"{latent_input_n_obs} -> {adata.n_obs} observations."
+        )
+
+    spatial_outlier_filter_info: Dict[str, object] = {
+        "enabled": False,
+        "method": "not_applied",
+        "n_input": int(adata.n_obs),
+        "n_removed": 0,
+        "n_retained": int(adata.n_obs),
+    }
+    if spatial_outlier_filter:
+        before_filter = int(adata.n_obs)
+        adata, spatial_outlier_filter_info = _filter_spatial_outliers(
+            adata,
+            spatial_key=spatial_outlier_key,
+            group_key=resolved_spatial_outlier_group_key,
+            robust_nn_z_threshold=spatial_outlier_nn_mad_z_threshold,
+        )
+        print(
+            "Filtered label-blind spatial outliers before latent normalization/PCA: "
+            f"{before_filter} -> {adata.n_obs} observations "
+            f"(removed {spatial_outlier_filter_info['n_removed']})."
+        )
+
+    resolved_normalization_target_sum = None
+    normalization_reference_feature_count = int(adata.n_vars)
+    if normalization:
+        if normalization_target_sum is not None:
+            normalization_target_sum = float(normalization_target_sum)
+            if (
+                not np.isfinite(normalization_target_sum)
+                or normalization_target_sum <= 0
+            ):
+                raise ValueError(
+                    "normalization_target_sum must be a positive finite value or None, "
+                    f"got {normalization_target_sum}."
+                )
+        reference_matrix = adata.X
+        if normalization_reference == "latent_features":
+            if hvg_mask is None:
+                raise RuntimeError("Latent-feature normalization has no resolved HVG mask.")
+            reference_mask = hvg_mask.to_numpy(dtype=bool)
+            normalization_reference_feature_count = int(reference_mask.sum())
+            reference_matrix = adata.X[:, reference_mask]
+        if sparse.issparse(reference_matrix):
+            library_sizes = np.asarray(reference_matrix.sum(axis=1)).reshape(-1)
+        else:
+            library_sizes = np.asarray(reference_matrix, dtype=np.float64).sum(axis=1)
+        positive = np.isfinite(library_sizes) & (library_sizes > 0)
+        if not np.all(positive):
+            raise ValueError(
+                "Cannot normalize because the selected normalization reference has "
+                f"{int((~positive).sum())} non-positive or non-finite cell totals."
+            )
+        resolved_normalization_target_sum = (
+            float(np.median(library_sizes))
+            if normalization_target_sum is None
+            else float(normalization_target_sum)
+        )
+        target_label = (
+            "median library size"
+            if normalization_target_sum is None
+            else normalization_target_sum
+        )
+        print(
+            f"Normalizing total counts to {target_label} using "
+            f"{normalization_reference}."
+        )
+        if normalization_reference == "all_features":
+            sc.pp.normalize_total(adata, target_sum=normalization_target_sum)
+        else:
+            factors = resolved_normalization_target_sum / library_sizes
+            if sparse.issparse(adata.X):
+                adata.X = sparse.diags(factors).dot(adata.X).tocsr()
+            else:
+                adata.X = np.asarray(adata.X, dtype=np.float64) * factors[:, None]
+
+    if log1p:
+        sc.pp.log1p(adata)
+
+    # Standard mode ranks HVGs on the matrix after its main transform.
+    if select_hvg and hvg_selection_transform == "post_transform":
+        _select_hvgs(adata)
+        hvg_fit_n_obs = int(adata.n_obs)
+        _finalize_hvg_mask()
 
     # Persist the exact feature-wise center of the matrix used to fit PCA.
     # Spatial alignment may subsequently retain only a subset of time points;
@@ -860,6 +1146,10 @@ def preprocess(
             if resolved_normalization_target_sum is not None
             else "not_applied"
         ),
+        "normalization_reference": normalization_reference,
+        "normalization_reference_feature_count": int(
+            normalization_reference_feature_count
+        ),
         "log1p": bool(log1p),
         "select_hvg": bool(select_hvg),
         "n_top_genes": int(n_top_genes),
@@ -870,6 +1160,20 @@ def preprocess(
         "required_latent_features_added": list(required_latent_features_added),
         "n_latent_fit_features": (
             int(np.sum(hvg_mask.values)) if hvg_mask is not None else int(adata.n_vars)
+        ),
+        "n_statistical_hvgs": (
+            int(np.sum(statistical_hvg_mask.values))
+            if statistical_hvg_mask is not None
+            else 0
+        ),
+        "hvg_selection_transform": hvg_selection_transform,
+        "hvg_fit_n_obs": int(hvg_fit_n_obs) if hvg_fit_n_obs is not None else 0,
+        "latent_fit_input_n_obs": int(latent_input_n_obs),
+        "latent_fit_n_obs": int(adata.n_obs),
+        "latent_fit_obs_values": latent_fit_obs_values_resolved,
+        "spatial_outlier_filter": bool(spatial_outlier_filter),
+        "spatial_outlier_filter_json": json.dumps(
+            spatial_outlier_filter_info, sort_keys=True
         ),
         "x_representation": "gene_expression",
         "expression_source": expression_source,
@@ -914,6 +1218,10 @@ def preprocess(
     }
     if hvg_mask is not None:
         original_gene_info["hvg_mask"] = hvg_mask.values.astype(bool)
+    if statistical_hvg_mask is not None:
+        original_gene_info["statistical_hvg_mask"] = (
+            statistical_hvg_mask.values.astype(bool)
+        )
     adata.uns["original_gene_info"] = original_gene_info
 
     print(
