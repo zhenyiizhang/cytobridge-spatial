@@ -486,6 +486,48 @@ def main() -> None:
         )
 
     lineage_labels = result.predicted_labels_list or result.predicted_labels_split
+    fixed_particle_state = {
+        "status": "not available",
+        "identity_source": None,
+        "labels_npz": None,
+        "composition_csv": None,
+        "particle_counts_by_time": None,
+    }
+    if result.predicted_labels_list is not None:
+        import pandas as pd
+
+        labels_path = output_dir / "fixed_particle_lineage_labels.npz"
+        composition_path = output_dir / "fixed_particle_composition.csv"
+        label_payload = {
+            "time_points": np.asarray(result.ts_points, dtype=np.float64),
+        }
+        composition_rows = []
+        particle_counts = {}
+        for index, (time_value, labels_at_time) in enumerate(
+            zip(result.ts_points, result.predicted_labels_list)
+        ):
+            labels_array = np.asarray(labels_at_time).astype("U")
+            label_payload[f"labels_{index}"] = labels_array
+            particle_counts[str(float(time_value))] = int(len(labels_array))
+            values, counts = np.unique(labels_array, return_counts=True)
+            for label, count in zip(values, counts):
+                composition_rows.append(
+                    {
+                        "time": float(time_value),
+                        "celltype": str(label),
+                        "count": int(count),
+                        "fraction": float(count / max(len(labels_array), 1)),
+                    }
+                )
+        np.savez_compressed(labels_path, **label_payload)
+        pd.DataFrame(composition_rows).to_csv(composition_path, index=False)
+        fixed_particle_state = {
+            "status": "completed",
+            "identity_source": "non_split_fixed_particles",
+            "labels_npz": str(labels_path),
+            "composition_csv": str(composition_path),
+            "particle_counts_by_time": particle_counts,
+        }
     static_exports = {}
     if not args.skip_lineage and lineage_labels is not None:
         lineage_cfg = config.get("lineage", {})
@@ -647,6 +689,7 @@ def main() -> None:
                 else None
             ),
         },
+        "fixed_particle_lineage_state": fixed_particle_state,
         "simulation_seeds": result.simulation_seeds,
         "video": {
             "enabled": bool(args.render_video),
