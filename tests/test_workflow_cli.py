@@ -606,6 +606,13 @@ def test_arista_preprocessing_uses_raw_counts_layer():
     assert align["raw_count_validation"] == "strict"
     assert align["observation_id_keys"] == ["Batch", "CellID"]
     assert align["hvg_batch_key"] == "Batch"
+    assert align["hvg_selection_transform"] == "log1p_counts"
+    assert align["normalization_reference"] == "latent_features"
+    assert align["latent_fit_scope"] == "alignment_batches"
+    assert align["spatial_outlier_filter"] is True
+    assert align["spatial_outlier_key"] == "spatial"
+    assert align["spatial_outlier_group_key"] == "Batch"
+    assert align["spatial_outlier_nn_mad_z_threshold"] == 50.0
     assert align["center_x"] is True
     assert align["center_y"] is True
     assert config["preprocess"]["time_key"] == "Batch"

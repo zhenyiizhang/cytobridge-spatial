@@ -255,6 +255,16 @@ def run_preprocessing_pipeline(
         raw_count_validation=align_config.raw_count_validation,
         raw_count_integer_tolerance=align_config.raw_count_integer_tolerance,
         required_latent_features=align_config.required_latent_features,
+        observation_id_keys=align_config.observation_id_keys,
+        hvg_batch_key=align_config.hvg_batch_key,
+        hvg_selection_transform=align_config.hvg_selection_transform,
+        normalization_reference=align_config.normalization_reference,
+        spatial_outlier_filter=align_config.spatial_outlier_filter,
+        spatial_outlier_key=align_config.spatial_outlier_key,
+        spatial_outlier_group_key=align_config.spatial_outlier_group_key,
+        spatial_outlier_nn_mad_z_threshold=(
+            align_config.spatial_outlier_nn_mad_z_threshold
+        ),
     )
     adata_aligned = align_spatial(
         adata_or_h5ad=adata_preprocessed,

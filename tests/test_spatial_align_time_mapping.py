@@ -123,6 +123,68 @@ def test_fixed_spatial_preprocessing_fails_if_preprocess_changes_coordinates(
         )
 
 
+def test_preprocess_and_align_can_fit_latent_on_alignment_batches(monkeypatch):
+    adata = ad.AnnData(
+        X=np.ones((4, 3), dtype=np.float32),
+        obs=pd.DataFrame({"time": ["a", "b", "c", "reference"]}),
+    )
+    captured = {}
+
+    def fake_preprocess(
+        *,
+        adata,
+        latent_fit_obs_values,
+        spatial_outlier_filter,
+        spatial_outlier_key,
+        spatial_outlier_group_key,
+        spatial_outlier_nn_mad_z_threshold,
+        **kwargs,
+    ):
+        captured["latent_fit_obs_values"] = list(latent_fit_obs_values)
+        captured["spatial_outlier"] = {
+            "enabled": spatial_outlier_filter,
+            "key": spatial_outlier_key,
+            "group": spatial_outlier_group_key,
+            "threshold": spatial_outlier_nn_mad_z_threshold,
+        }
+        selected = adata[adata.obs["time"].isin(latent_fit_obs_values)].copy()
+        selected.obs["time_point_processed"] = [0.0, 1.0, 2.0]
+        selected.obsm["X_latent"] = np.zeros((3, 2), dtype=np.float32)
+        return selected
+
+    def fake_align(*, adata, batch_values, **kwargs):
+        assert batch_values == ["a", "b", "c"]
+        return adata, pd.DataFrame({"samples": [0.0, 1.0, 2.0]})
+
+    monkeypatch.setattr(spatial_align, "preprocess", fake_preprocess)
+    monkeypatch.setattr(spatial_align, "_align_preprocessed_adata", fake_align)
+    cfg = spatial_align.AlignConfig(
+        hvg_selection_transform="log1p_counts",
+        normalization_reference="latent_features",
+        latent_fit_scope="alignment_batches",
+        spatial_outlier_filter=True,
+        spatial_outlier_key="spatial",
+        spatial_outlier_group_key="time",
+        spatial_outlier_nn_mad_z_threshold=50.0,
+    )
+    result, _ = spatial_align.preprocess_and_align(
+        adata,
+        time_key="time",
+        cfg=cfg,
+        batch_values=["a", "b", "c"],
+        device="cpu",
+    )
+
+    assert captured["latent_fit_obs_values"] == ["a", "b", "c"]
+    assert captured["spatial_outlier"] == {
+        "enabled": True,
+        "key": "spatial",
+        "group": "time",
+        "threshold": 50.0,
+    }
+    assert result.obs["time"].tolist() == ["a", "b", "c"]
+
+
 def test_numeric_time_mapping_in_alignment_config_is_h5ad_safe(tmp_path):
     cfg = spatial_align.AlignConfig(
         time_mapping={1: 0.0, 2: 1.0},
