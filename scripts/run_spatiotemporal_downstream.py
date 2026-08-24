@@ -517,6 +517,7 @@ def main() -> None:
                         "celltype": str(label),
                         "count": int(count),
                         "fraction": float(count / max(len(labels_array), 1)),
+                        "total": int(len(labels_array)),
                     }
                 )
         np.savez_compressed(labels_path, **label_payload)
