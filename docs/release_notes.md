@@ -13,6 +13,11 @@
 - corrected time-slice interaction velocity, pre-warp growth, sparse attention,
   generated expression, strict LR, gene/module, and distribution-evaluation
   semantics;
+- added the accepted package-native ARISTA retraining archive and paper/reviewer
+  scripts: clean-count 2,000-HVG selection with required LR features,
+  alignment-batch latent fitting, label-blind detached-cell spatial QC, six-stage
+  retraining, corrected Figure 5 and S12--S17 replacements in the submitted
+  visual style, and the Figure 5c two-niche matched-null mechanism analysis;
 - added a formal LR-complex aggregation sensitivity that holds trajectories,
   expression support, communication attention, database, and scored pair
   universe fixed while replacing the primary minimum gate with a
