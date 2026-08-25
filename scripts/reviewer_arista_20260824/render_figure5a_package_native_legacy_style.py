@@ -2,8 +2,8 @@
 """Render corrected package-native ARISTA Figure 5a with the old plot grammar.
 
 Numerical communication matrices and fixed-particle lineage labels come from
-the new package run.  Point geometry comes from its k=1 visualization-only
-spatial-warp snapshots.  Every visual parameter is copied from the historical
+the new package run. Point geometry comes from a separately declared raw or
+visualization-only-warped snapshot run. Every visual parameter is copied from the historical
 ``3d_plot_5_slices_focus_anchor_local.py`` Figure 5a renderer.
 """
 
@@ -27,15 +27,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from evaluation.arista_code.arista_helpers_focus_anchor import (
-    plot_3d_spatial_sankey_style_focus_anchor,
-)
+try:
+    from evaluation.arista_code.arista_helpers_focus_anchor import (
+        plot_3d_spatial_sankey_style_focus_anchor,
+    )
+except ModuleNotFoundError:
+    # Release snapshots keep the historical renderer beside this entry point
+    # so the archived script remains runnable outside the original workspace.
+    from arista_helpers_focus_anchor import plot_3d_spatial_sankey_style_focus_anchor
 
 
 TIMES = (0.0, 0.5, 1.0, 1.5, 2.0)
 OBSERVED_TIMES = (0.0, 1.0, 2.0)
 GENERATED_TIMES = (0.5, 1.5)
 FILL_RE = re.compile(r"(?:^|;)\s*fill:\s*(#[0-9a-fA-F]{6})")
+DEFAULT_BIDIRECTIONAL_OFFSET_FRACTION = 0.06
 
 
 def sha256(path: Path) -> str:
@@ -49,8 +55,47 @@ def sha256(path: Path) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recolored-input-dir", required=True, type=Path)
+    parser.add_argument(
+        "--science-input-dir",
+        type=Path,
+        default=None,
+        help="Directory containing communication and lineage files; defaults to --recolored-input-dir.",
+    )
     parser.add_argument("--legacy-palette", required=True, type=Path)
+    parser.add_argument(
+        "--source-palette",
+        type=Path,
+        default=None,
+        help="Palette used by source SVGs for label decoding; defaults to --legacy-palette.",
+    )
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument(
+        "--spatial-warp-k",
+        type=int,
+        default=None,
+        help="Neighbor count for --spatial-coordinate-mode visualization-only; omit for unwarped.",
+    )
+    parser.add_argument(
+        "--spatial-coordinate-mode",
+        choices=("unwarped", "visualization-only"),
+        default="visualization-only",
+        help="Whether geometry uses raw split-SDE coordinates or display-only warped coordinates.",
+    )
+    parser.add_argument(
+        "--html-only",
+        action="store_true",
+        help="Write Plotly HTML and provenance only; static export can then run in a compatible server renderer.",
+    )
+    parser.add_argument(
+        "--bidirectional-offset-fraction",
+        type=float,
+        default=DEFAULT_BIDIRECTIONAL_OFFSET_FRACTION,
+        help=(
+            "Display-only reciprocal-edge separation as a fraction of the global "
+            "planar diagonal. The default keeps overlaps readable without the "
+            "exaggerated loops produced by the earlier 0.20 trial."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -90,20 +135,44 @@ def parse_snapshot(path: Path, palette: dict[str, str]) -> tuple[np.ndarray, np.
 
 def main() -> None:
     args = parse_args()
+    if args.spatial_coordinate_mode == "visualization-only":
+        if args.spatial_warp_k is None or int(args.spatial_warp_k) < 1:
+            raise ValueError("--spatial-warp-k must be >= 1 for visualization-only mode")
+        spatial_description = (
+            "fresh visualization-only warped snapshots "
+            f"(spatial_warp_k={int(args.spatial_warp_k)})"
+        )
+    else:
+        if args.spatial_warp_k is not None:
+            raise ValueError("--spatial-warp-k must be omitted for unwarped mode")
+        spatial_description = "fresh raw unwarped split-SDE snapshots"
     input_dir = args.recolored_input_dir.expanduser().resolve()
+    science_input_dir = (
+        args.science_input_dir.expanduser().resolve()
+        if args.science_input_dir is not None
+        else input_dir
+    )
     output_dir = args.output_dir.expanduser().resolve()
     palette_path = args.legacy_palette.expanduser().resolve()
     palette = json.loads(palette_path.read_text(encoding="utf-8"))
+    source_palette_path = (
+        args.source_palette.expanduser().resolve()
+        if args.source_palette is not None
+        else palette_path
+    )
+    source_palette = json.loads(source_palette_path.read_text(encoding="utf-8"))
+    if set(source_palette) != set(palette):
+        raise ValueError("Source and legacy display palettes have different label sets")
     snapshot_dir = input_dir / "snapshots"
-    comm_path = input_dir / "all_time_communications.pkl"
-    lineage_path = input_dir / "fixed_particle_lineage_labels.npz"
+    comm_path = science_input_dir / "all_time_communications.pkl"
+    lineage_path = science_input_dir / "fixed_particle_lineage_labels.npz"
     output_dir.mkdir(parents=True, exist_ok=False)
 
     adata_dict: dict[str, ad.AnnData] = {}
     snapshot_inventory: list[dict[str, object]] = []
     for time in TIMES:
         source = snapshot_path(snapshot_dir, time)
-        coordinates, labels = parse_snapshot(source, palette)
+        coordinates, labels = parse_snapshot(source, source_palette)
         state = ad.AnnData(X=np.zeros((len(labels), 1), dtype=np.float32))
         state.obs["Annotation"] = labels
         state.obsm["spatial"] = coordinates
@@ -119,6 +188,25 @@ def main() -> None:
                 "n_cell_types": int(len(np.unique(labels))),
             }
         )
+
+    # The historical renderer used normalized coordinates whereas the current
+    # package-native coordinates are in image units.  Express reciprocal-edge
+    # separation in scale-free display units, but keep it deliberately subtle:
+    # the earlier 0.20 scale-aware trial overemphasized curvature in the compact
+    # local anchor region.  This affects rendering only, never the selected edge
+    # identities, directions, or weights.
+    all_planar_coordinates = np.concatenate(
+        [np.asarray(state.obsm["spatial"], dtype=float)[:, :2] for state in adata_dict.values()],
+        axis=0,
+    )
+    planar_ranges = np.ptp(all_planar_coordinates, axis=0)
+    planar_diagonal = float(np.hypot(planar_ranges[0], planar_ranges[1]))
+    if not np.isfinite(planar_diagonal) or planar_diagonal <= 0.0:
+        raise ValueError(f"Invalid global planar coordinate extent: {planar_diagonal}")
+    bidirectional_offset_fraction = float(args.bidirectional_offset_fraction)
+    if not 0.0 <= bidirectional_offset_fraction <= 0.2:
+        raise ValueError("--bidirectional-offset-fraction must be between 0 and 0.2")
+    bidirectional_offset = float(bidirectional_offset_fraction * planar_diagonal)
 
     with comm_path.open("rb") as handle:
         all_communications = pickle.load(handle)
@@ -169,7 +257,7 @@ def main() -> None:
         edge_center_highlight=False,
         edge_center_highlight_width_scale=0.45,
         edge_center_highlight_alpha=0.9,
-        bidirectional_offset=0.2,
+        bidirectional_offset=bidirectional_offset,
         bidirectional_curve=True,
         bidirectional_curve_points=18,
         ribbon_line_width_base=6,
@@ -229,9 +317,12 @@ def main() -> None:
     png = output_dir / "spatiotemporal_3d.png"
     fig.write_html(html)
     width, height = int(11.69 * 300), int(8.27 * 300)
-    pio.write_image(fig, svg, width=width, height=height, scale=3)
-    pio.write_image(fig, pdf, width=width, height=height, scale=3)
-    pio.write_image(fig, png, width=width, height=height, scale=2)
+    static_outputs: list[Path] = []
+    if not args.html_only:
+        pio.write_image(fig, svg, width=width, height=height, scale=3)
+        pio.write_image(fig, pdf, width=width, height=height, scale=3)
+        pio.write_image(fig, png, width=width, height=height, scale=2)
+        static_outputs = [svg, pdf, png]
 
     trace_types: dict[str, int] = {}
     for trace in fig.data:
@@ -241,13 +332,33 @@ def main() -> None:
         "scientific_contract": {
             "communications": "fresh package-native matrices",
             "lineage": "fresh fixed-particle package-native labels",
-            "spatial": "fresh k=1 visualization-only warped snapshots",
+            "spatial": spatial_description,
+            "spatial_coordinate_mode": str(args.spatial_coordinate_mode),
+            "spatial_warp_k": (
+                int(args.spatial_warp_k)
+                if args.spatial_coordinate_mode == "visualization-only"
+                else None
+            ),
         },
         "style_contract": {
             "source": "evaluation/arista_code/3d_plot_5_slices_focus_anchor_local.py",
             "palette_path": str(palette_path),
             "palette_sha256": sha256(palette_path),
-            "parameters": "literal historical Figure 5a values",
+            "source_palette_path": str(source_palette_path),
+            "source_palette_sha256": sha256(source_palette_path),
+            "palette_policy": "decode source SVG labels with source palette; display with legacy palette",
+            "parameters": (
+                "literal historical Figure 5a values, with the historical "
+                "bidirectional offset expressed relative to the displayed planar extent"
+            ),
+            "bidirectional_curve_scale": {
+                "offset_fraction": bidirectional_offset_fraction,
+                "default_offset_fraction": DEFAULT_BIDIRECTIONAL_OFFSET_FRACTION,
+                "planar_ranges": planar_ranges.tolist(),
+                "planar_diagonal": planar_diagonal,
+                "realized_coordinate_offset": bidirectional_offset,
+                "scope": "display only; edge identities, directions, and weights unchanged",
+            },
             "time_slices": list(TIMES),
         },
         "inputs": {
@@ -259,11 +370,15 @@ def main() -> None:
             "trace_types": trace_types,
             "reaEGC_color": palette.get("reaEGC"),
             "expected_reaEGC_color": "#BA0900",
-            "output_exists": {path.name: path.is_file() and path.stat().st_size > 0 for path in [html, svg, pdf, png]},
+            "html_only": bool(args.html_only),
+            "output_exists": {
+                path.name: path.is_file() and path.stat().st_size > 0
+                for path in [html, *static_outputs]
+            },
         },
         "outputs": {
             path.name: {"sha256": sha256(path), "size_bytes": path.stat().st_size}
-            for path in [html, svg, pdf, png]
+            for path in [html, *static_outputs]
         },
     }
     if manifest["qa"]["reaEGC_color"].lower() != "#ba0900":

@@ -32,7 +32,10 @@ cherry-picked into the release branch.
 
 - `render_figure5a_package_native_legacy_style.py` and
   `preview_figure5a_foreground_lift_html.py`: Figure 5a legacy renderer and the
-  audited foreground-z lift.
+  audited foreground-z lift. Reciprocal-edge curvature is display-only and
+  defaults to 0.06 of the global planar diagonal; edge identities, directions,
+  and weights are unchanged. `arista_helpers_focus_anchor.py` is the archived
+  historical renderer dependency used by this entry point.
 - `extract_figure5b_package_native_points_legacy_style.py` and
   `assemble_figure5b_original_style.py`: generated t=0.5 markers and Figure 5b.
 - `build_figure5c_package_native_state.py` and
@@ -47,8 +50,11 @@ cherry-picked into the release branch.
 - `assemble_figure5_fullpage_from_accepted_panels.py`: deterministic assembly
   of the accepted Figure 5 page.
 - `build_s12_package_native_warpk1_oldstyle.py`,
-  `build_s13_s14_package_native_oldstyle.py`, and
+  `build_s13_s14_package_native_oldstyle.py`, its archived legacy-style helper
+  `build_s12_s14_legacy_style_corrected.py`, and
   `build_s15_s17_strict_legacy_style.py`: accepted S12--S17 replacements.
+  S13 can repeat one fixed anatomical injury locator across all nine panels via
+  `--annotate-injury-all-panels`; the locator is not inferred from growth values.
 
 ## Figure 5c reviewer analysis
 
@@ -61,4 +67,3 @@ figure is rendered by `plot_figure5c_two_niche_reviewer_figure_clean.py`.
 The final figure, tables, caption, provenance, reviewer-response summary, and
 the Chinese internal interpretation note are archived with the run. Earlier
 hotspot/GO prototypes and rejected visual iterations are deliberately omitted.
-

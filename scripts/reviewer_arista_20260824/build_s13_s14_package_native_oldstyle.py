@@ -22,8 +22,14 @@ import build_s12_s14_legacy_style_corrected as legacy
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_PALETTE = (
-    PROJECT_ROOT / "repositories/cb_reproducibility/assets/arista/label_to_color.json"
+PALETTE_CANDIDATES = (
+    PROJECT_ROOT / "repositories/cb_reproducibility/assets/arista/label_to_color.json",
+    PROJECT_ROOT
+    / "release_artifacts/arista_package_native_spatialqc_z50_retrain_20260824_r1"
+    / "main_run/downstream/label_to_color.json",
+)
+DEFAULT_PALETTE = next(
+    (path for path in PALETTE_CANDIDATES if path.is_file()), PALETTE_CANDIDATES[0]
 )
 
 
@@ -39,6 +45,23 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--palette", type=Path, default=DEFAULT_PALETTE)
+    parser.add_argument("--font-family", default="DejaVu Sans")
+    parser.add_argument(
+        "--annotate-injury-reference",
+        action="store_true",
+        help=(
+            "Annotate the right-hemisphere lower injury region on the t=0 "
+            "reference panel without changing growth values or normalization."
+        ),
+    )
+    parser.add_argument(
+        "--annotate-injury-all-panels",
+        action="store_true",
+        help=(
+            "Repeat the same schematic lower-right-hemisphere injury ROI on "
+            "all nine S13 panels. This implies --annotate-injury-reference."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -111,6 +134,11 @@ def main() -> None:
         directories,
         directories["tables"],
         fit_package_native_canvas=True,
+        annotate_injury_reference=(
+            args.annotate_injury_reference or args.annotate_injury_all_panels
+        ),
+        annotate_injury_all_panels=args.annotate_injury_all_panels,
+        font_family=args.font_family,
     )
 
     s14a_name = "PanelS14a_ARISTA_package_native_fixed_particle_lineage"
@@ -147,6 +175,18 @@ def main() -> None:
             "s13_display_sample_seed": legacy.DISPLAY_SAMPLE_SEED,
             "s13_display_cap_per_time": legacy.DISPLAY_SAMPLE_CAP,
             "s13_secondary_display_filter": False,
+            "s13_injury_annotation": (
+                "the same schematic anatomical locator is repeated on all nine "
+                "panels in the right-hemisphere lower region; not inferred from "
+                "growth values"
+                if args.annotate_injury_all_panels
+                else (
+                    "schematic anatomical locator on t=0 right-hemisphere lower region; "
+                    "not inferred from growth values"
+                    if args.annotate_injury_reference
+                    else None
+                )
+            ),
             "s14_identity_source": "non_split_fixed_particles",
             "s14_particle_counts_by_time": {
                 str(float(time)): int(value)
@@ -154,10 +194,14 @@ def main() -> None:
             },
         },
         "display_contract": {
-            "S13": "submitted 3x3 viridis seed-42 sample/cap with per-panel q05-q95",
+            "S13": (
+                "submitted 3x3 viridis seed-42 sample/cap with per-panel q05-q95; "
+                "optional fixed anatomical injury locator"
+            ),
             "S14a": "nature-methods Plotly Sankey in submitted compact crop",
             "S14b": "submitted 11x4.8-inch top-15-plus-Other stacked-bar grammar",
             "palette_sha256": legacy.sha256(palette_path),
+            "font_family": str(args.font_family),
         },
         "inputs": {str(path): legacy.sha256(path) for path in required},
         "primary_outputs": {
