@@ -1,0 +1,98 @@
+{
+  "claim": "The heterogeneous Figure 5c field contains two localized, model-edge-supported ependymoglial interaction domains with distinct candidate pathway and ligand-receptor axes.",
+  "inputs": {
+    "analysis_manifest": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_timecourse_v1/manifest.json",
+      "sha256": "904bbafd5748ab3e5425c5042020f0cdba9a608d857f11b1ca86432e71597edd"
+    },
+    "attention_null": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_timecourse_v1/tables/two_niche_attention_matched_null.csv",
+      "sha256": "de9aab0bb22e0866599d1399b4c0c827bd50ee40dd01a73b426ea6965e3778ca"
+    },
+    "cells": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_timecourse_v1/tables/roi_two_niche_assignments.csv",
+      "sha256": "88c75b9de1b5cc547360a3914467bb9b744373cf47ba5869fbb30d188a5332f3"
+    },
+    "edges": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_timecourse_v1/tables/two_niche_t1_celltype_edges.csv",
+      "sha256": "4fd0cc553b3fa28398a83c34e6299246838b5b6fada1ae0b0ad40e1ce9bbba3b"
+    },
+    "pair_axes": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_lr_axes_v1/two_niche_lr_pair_matched_null.csv.gz",
+      "sha256": "25404516ec47ff3495f5af7adca378455a4ed294b38161ed51d4379fdb5bc7b6"
+    },
+    "pair_axes_manifest": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_lr_axes_v1/manifest.json",
+      "sha256": "7c0960d304eeff619a88e7de61ab671a8ada0c1233f506a97ca4df6e527bc100"
+    },
+    "pathway_null": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_two_niche_timecourse_v1/tables/two_niche_lr_pathway_matched_null.csv",
+      "sha256": "d82d9e1414ec01ec08ab84de3498a23e1a650c9f0cd8f126dfc9f97a200791de"
+    }
+  },
+  "limitations": [
+    "No pixel-level wound-boundary annotation was available.",
+    "Attention is model influence rather than a measured biophysical rate.",
+    "Human-symbol-mapped axolotl features are scored against a human CellChat LR database.",
+    "Composition-matched null sets do not preserve spatial geometry.",
+    "The analysis supports organized interaction hypotheses, not causal signaling."
+  ],
+  "outputs": {
+    "FigureS_ARISTA_Figure5c_local_interaction_niches_clean.pdf": {
+      "sha256": "dce13c9a3379410d70a0f7fb9976c0986c615f9f8f7211c6625b907f453596d8",
+      "size_bytes": 95758
+    },
+    "FigureS_ARISTA_Figure5c_local_interaction_niches_clean.png": {
+      "sha256": "aa2b56cf191eb66b180b33b71f9467a6df5beb537e7d88fe11ce95fe1c328cbd",
+      "size_bytes": 989382
+    },
+    "FigureS_ARISTA_Figure5c_local_interaction_niches_clean.svg": {
+      "sha256": "bd39d5ba8f085a50f586cc2c52151fe202016c2869597a4f1737e932d8a64439",
+      "size_bytes": 298574
+    },
+    "PROVENANCE.md": {
+      "sha256": "d51de1a413b0d6b3ce1629f038f490f54b2bb93f09c6fcc877d5cec8526282f2",
+      "size_bytes": 5586
+    },
+    "caption.md": {
+      "sha256": "33ac0bc96d2de09c3eb38a9b4a58be4aa98a5823b221cbf2a519f524d70d7345",
+      "size_bytes": 1903
+    },
+    "plot_figure5c_two_niche_reviewer_figure_clean.py": {
+      "sha256": "4a6a38636ee74c54f6cec7b016954f0c9e9911c670cff1fa23875137d862046a",
+      "size_bytes": 26439
+    },
+    "reviewer_response_summary.md": {
+      "sha256": "cf2c1deb90fd6553c95852bc5fe886d494b5e8fdea5c462b839f85c2768e08e4",
+      "size_bytes": 930
+    },
+    "tables/panel_b_attention_matched_null.csv": {
+      "sha256": "8b3f5b0018b417abddefb00b1637d1fec6420bcbe8bc7f657d6ea5178d85f486",
+      "size_bytes": 276
+    },
+    "tables/panel_b_selected_edge_structure.csv": {
+      "sha256": "455169a8d776f3a654b7ed32e412c4c10e9507758b2e2a6824fc554c946494fa",
+      "size_bytes": 476
+    },
+    "tables/panel_c_lr_pathway_enrichment.csv": {
+      "sha256": "8a47c7b0e168247d75bd46b55ae096e8997b6de2b9aab72ff98330ee3706e803",
+      "size_bytes": 1552
+    },
+    "tables/panel_d_candidate_lr_axes.csv": {
+      "sha256": "1e1277ed6a8993b75243c10c6c9b4000e3f6d6d87035ea32c0b9717e44205195",
+      "size_bytes": 2625
+    }
+  },
+  "schema": "cytobridge.arista.figure5c-local-interaction-niches.v2",
+  "style": {
+    "cosine_colormap": "plasma, retained from accepted Figure 5c",
+    "font": "Arial",
+    "heatmap": false,
+    "palette": {
+      "N1": "#CC6677",
+      "N2": "#07838B",
+      "reference": "#214761",
+      "text": "#111111"
+    }
+  }
+}

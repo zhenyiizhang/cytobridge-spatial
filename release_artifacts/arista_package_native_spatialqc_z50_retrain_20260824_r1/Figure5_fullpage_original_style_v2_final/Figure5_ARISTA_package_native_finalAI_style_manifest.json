@@ -1,0 +1,125 @@
+{
+  "schema": "cytobridge.arista.figure5.fullpage-assembly.v2",
+  "figure": "ARISTA Figure 5, panels a-e",
+  "assembly_contract": "Deterministic one-page assembly of fresh package-native Figure 5a-e scientific payloads in the locked original Illustrator page; submitted palette/style retained; Figure 5a has the renderer-only +0.04 foreground-z lift; all fresh Figure 5b markers retained; stale historical Figure 5d manual white arrow removed without replacement",
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/Arista.ai": "673dc81f4856833c30c943ad5f2f4af9e69f771cea4cb63f2484ffbd18907694",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5a_final_original_style_v2_foregroundz004/Figure5a_ARISTA_package_native_finalAI_style.pdf": "41ad9ccaed94f4364b14afc6b668e79d9aafb357fcf73f0ea5a1c6a4e330a643",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5a_final_original_style_v2_foregroundz004/Figure5a_ARISTA_package_native_finalAI_style_manifest.json": "1efca323fa1f5ec8840b4d0d20fb021acd2a2f16330f8775c3924436fc6c8413",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5b_final_original_style_v2/Figure5b_ARISTA_package_native_finalAI_style_fullpage.pdf": "f8197cc3026313148f850dc324ff800b25b9c6b85a7f83c930de73b17d393a79",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5b_final_original_style_v2/Figure5b_ARISTA_package_native_finalAI_style_manifest.json": "06308b3f62984270accd3ef414fa1cffe580b7710277cf91c1b5f2d635421ca2",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5b_payload_legacy_palette_v2/time_0.5_points_only.svg": "02b747361f24ae4b0b2f1686a24f29d89cd86beafd7629d985fe34f108be7d80",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_final_original_style_v2/Figure5c_ARISTA_package_native_finalAI_style_fullpage.pdf": "3a2fb8a4f482d774ba11ff90766c9af5bda5fe0ac2dec08aebee0feedec72371",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_final_original_style_v2/Figure5c_ARISTA_package_native_finalAI_style_manifest.json": "ea2679b724845570a8bcf59f0d99d69681bd485e46568fcd2b1deb53f2cc6eb8",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5d_final_original_style_v2/Figure5d_ARISTA_package_native_finalAI_style_fullpage.pdf": "6d72661213a2dcd30a8a3e406ea266ff6fda2448d7611bf316ceab505aadde8a",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5d_final_original_style_v2/Figure5d_ARISTA_package_native_finalAI_style_manifest.json": "e61de5742bbcc9e377e4c65e89282248dacd6f5c028c10b3d5d6da2a42af3b02",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5e_final_original_style_v1/Figure5e_ARISTA_package_native_finalAI_style_fullpage.pdf": "77b2f7ad205b7105dfaee352a7bf5bcbcfad51f5e7acb87b1af18b45abb45341",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5e_final_original_style_v1/manifest.json": "2ef6656ca231e0201d8a47bda830096b80816df04f1391f42658a5905879e1d9"
+  },
+  "source_panel_bundles": {
+    "5a": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5a_final_original_style_v2_foregroundz004",
+    "5b": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5b_final_original_style_v2",
+    "5c": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5c_final_original_style_v2",
+    "5d": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5d_final_original_style_v2",
+    "5e": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5e_final_original_style_v1"
+  },
+  "replacement_ledger": [
+    {
+      "panel_payload": "5e bubbles",
+      "old_span": [
+        89,
+        20030
+      ],
+      "old_size_bytes": 19941,
+      "old_sha256": "dbf19addd92a63629726f090a75b3560c0ea076853035f3c1a4c5a362183ae7d",
+      "new_size_bytes": 155805,
+      "new_sha256": "31891a03559e24f556c55ceda1087c7c12745586b986d4db2ff9f0155cd6829d"
+    },
+    {
+      "panel_payload": "5c streams",
+      "old_span": [
+        20107,
+        486615
+      ],
+      "old_size_bytes": 466508,
+      "old_sha256": "f071b63af75a979f6b45fbf6a5f8c729d2d3e0b4305cd6204b2bc12b212efd0e",
+      "new_size_bytes": 569263,
+      "new_sha256": "d6252656bfa82efa3a13f9305d638d4b4277ad2a5bc1b6a95eed924d7fc78f73"
+    },
+    {
+      "panel_payload": "5d streams",
+      "old_span": [
+        559095,
+        870414
+      ],
+      "old_size_bytes": 311319,
+      "old_sha256": "3b9c028f2fe46f15cbab91444d031f57f5d70351bcc021974a1fd79858287db9",
+      "new_size_bytes": 302933,
+      "new_sha256": "12531ea1040037c4013324b0f88b2581aa5b14103ca1f55a46bfffa608f9cad0"
+    },
+    {
+      "panel_payload": "5d labels",
+      "old_span": [
+        870415,
+        972341
+      ],
+      "old_size_bytes": 101926,
+      "old_sha256": "c373b2128fb21982b06beb017e3cd355df11fbf9ba0f7dfcda5e290d31ab9c93",
+      "new_size_bytes": 102070,
+      "new_sha256": "de29dca4af28c6f4296d015afc6515e05e7300f559ae35bb538a8748af13a840"
+    },
+    {
+      "panel_payload": "5b markers",
+      "old_span": [
+        1087709,
+        1644917
+      ],
+      "old_size_bytes": 557208,
+      "old_sha256": "276b8fd28acfb89ad1a548a1a1a85fe23c6f4f45839573e0873e450ddb352423",
+      "new_size_bytes": 16,
+      "new_sha256": "a0711568e0704ff765cdf2417cc0efc0ccf533c349ac8990aceae2ce966a6c70"
+    },
+    {
+      "panel_payload": "5d corrected field arrow",
+      "old_span": [
+        1644951,
+        1645489
+      ],
+      "old_size_bytes": 538,
+      "old_sha256": "905d7925ee246a077139637cfc1094d11249f1e9240c5f5e2e998d8dbbec10a8",
+      "new_size_bytes": 0,
+      "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "qa": {
+    "passed": true,
+    "object_qa_passed": true,
+    "pixel_composition_qa_passed": true,
+    "determinism_qa_passed": true,
+    "qa_file": "Figure5_ARISTA_package_native_finalAI_style_QA.json",
+    "qa_sha256": "4b6e554a4d6826b19e5badce21cf66ccfb81caed5a452e3b4aeb5a3e365b47ef"
+  },
+  "outputs": {
+    "Figure5_ARISTA_package_native_finalAI_style.pdf": {
+      "sha256": "b8bdf55db1a7bf7801a2ab4dbd33e9a391673cf592a10c55ba2dc98a771cf542",
+      "size_bytes": 42326120
+    },
+    "Figure5_ARISTA_package_native_finalAI_style.png": {
+      "sha256": "9a8aa258fe4ca57930c9e15fb9f2058eea01f83577f0f67c5011760451abd35d",
+      "size_bytes": 4770176
+    },
+    "Figure5_ARISTA_package_native_finalAI_style_QA.json": {
+      "sha256": "4b6e554a4d6826b19e5badce21cf66ccfb81caed5a452e3b4aeb5a3e365b47ef",
+      "size_bytes": 20390
+    },
+    "assemble_figure5_fullpage_from_accepted_panels.py": {
+      "sha256": "40c164dd942f7312f5107ee21af95c332808c600c1975c1e5f5792d776899a54",
+      "size_bytes": 59410
+    },
+    "PROVENANCE.md": {
+      "sha256": "22ee86fe5f591ccae8a2db1bf6c2c94deabf356005b8aafc42e1eb5990e5c6a8",
+      "size_bytes": 945
+    }
+  },
+  "rebuild_command": "python scripts/arista_paper_equivalent/assemble_figure5_fullpage_from_accepted_panels.py --output-dir <NEW_EMPTY_OUTPUT_DIR>"
+}

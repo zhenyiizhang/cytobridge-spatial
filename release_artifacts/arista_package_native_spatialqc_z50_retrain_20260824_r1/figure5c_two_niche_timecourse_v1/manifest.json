@@ -1,0 +1,161 @@
+{
+  "claim_tested": "The heterogeneous 5-DPI Figure 5c field contains two discrete model-edge-supported ependymoglial niches whose programs can be tracked in injured versus uninjured dorsal tissue across regeneration.",
+  "inputs": {
+    "aligned_h5ad": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/preprocess/arista_aligned.h5ad",
+      "sha256": "6fc1a9b6215ecd68bf1c2d4454a5ac4c2b9b5055b43816d6615f8797adfc0be9"
+    },
+    "assignments": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/figure5c_hotspot_expression_inputs_v1/figure5c_roi_hotspot_assignments.csv",
+      "sha256": "52fd2a22ece70cc7f022c42d4241cd263eddfa585733dcf00350f7d333eeca83"
+    },
+    "attention_t0.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t0.0.npy",
+      "sha256": "50b728f9f44b7d42da8c71ff5f0f3eb7b629a0544b3f602198ccd4ac63dacd92"
+    },
+    "attention_t1.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t1.0.npy",
+      "sha256": "919173e8fb6e40176acb22ad2a193a92b641846d5f40a57623078ca548aac9ea"
+    },
+    "attention_t2.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t2.0.npy",
+      "sha256": "c2817d8d47fd77405c229bf399bc847fb20445370f3ad92277853095e5e4e111"
+    },
+    "attention_t3.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t3.0.npy",
+      "sha256": "6188e26ec788dcb58a3b15d9c19662674d6d79a3a562541cc6a24f017e3389d4"
+    },
+    "attention_t4.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t4.0.npy",
+      "sha256": "74dd3620c596c9740bf45a1c7f768d1e5d774ec0d054607c8d0f1c14a7e7bb6b"
+    },
+    "edge_t0.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t0.0.npy",
+      "sha256": "2f8e9243e54ebf20ca7c2d6dac7b53d71e607b449f6cf8e61534c9f8243a145d"
+    },
+    "edge_t1.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t1.0.npy",
+      "sha256": "3b07af9fd05b53f3ff56905b9bcdfa64c1a23d98c1f9dffc73afb89d1a72c7b4"
+    },
+    "edge_t2.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t2.0.npy",
+      "sha256": "e1caf655b39c8fea6013d902c93f45a9a3b746876fb496ffb8d2edb7c91c8824"
+    },
+    "edge_t3.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t3.0.npy",
+      "sha256": "fb0ff0df7a5f77c9122becdc928919354300e0cd24a2449ab0600ba0bbb08e1d"
+    },
+    "edge_t4.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t4.0.npy",
+      "sha256": "4a599ccbd4a004312c13894679f0971c5796b7218b6394d8574bc8bc94b009ec"
+    },
+    "lr_database": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-arista-rootfix-b0a9faa-20260824/CytoBridge/workflow_databases/CellChatDB.ligrec.human.csv",
+      "sha256": "8bfb86da81206cc4c1d8ab15a0086e9fc6cd38a7206450a427e4e77bfb32731c"
+    },
+    "pair_timecourse": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/pair_timecourse.csv",
+      "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde"
+    },
+    "slice_t0.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_0.h5ad",
+      "sha256": "6a17b0f717b05b0a46af5a14b906eb00d2d8e37d200a7feddcd16ee80669f61b"
+    },
+    "slice_t1.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_1.h5ad",
+      "sha256": "d02c407acdf6519d14de479d8796e70293e4f33a983d407989e6d957b9a206b5"
+    },
+    "slice_t2.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_2.h5ad",
+      "sha256": "71e847a62e709fe76a20677348d244443b6e9ac95eb5fecd9a5c697d8169c196"
+    },
+    "slice_t3.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_3.h5ad",
+      "sha256": "04ff8121f3e9cd3699a073fc439dd411712789da2e1caf4f3fb4725899e4a7c4"
+    },
+    "slice_t4.0": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_4.h5ad",
+      "sha256": "4799479ca6babfacb3fd0c24cb9dcb66f8336cbc2bd94361d3b2b8667a9b2fd4"
+    }
+  },
+  "limitations": [
+    "One section per time point; cells are not biological replicates.",
+    "Injured/uninjured dorsal contrasts are descriptive within-section controls, not population-level tests.",
+    "The 5-DPI niche definitions and selected edges derive from the same fitted model.",
+    "Attention is relative model influence, not a biophysical signaling rate.",
+    "No pixel-level wound contour is available."
+  ],
+  "outputs": {
+    "lr_feature_coverage.csv": {
+      "sha256": "1955b08bbeb7a04459e6ddb8b279af841c03e82859c272a1b5c3b3d63c4ba521",
+      "size_bytes": 10830
+    },
+    "roi_two_niche_assignments.csv": {
+      "sha256": "88c75b9de1b5cc547360a3914467bb9b744373cf47ba5869fbb30d188a5332f3",
+      "size_bytes": 493191
+    },
+    "two_niche_attention_injury_contrast.csv": {
+      "sha256": "91cd86436f13158ddd905d13545f8244f6ea667e1bf5fe64cfc01049efaca5c6",
+      "size_bytes": 844
+    },
+    "two_niche_attention_matched_null.csv": {
+      "sha256": "de9aab0bb22e0866599d1399b4c0c827bd50ee40dd01a73b426ea6965e3778ca",
+      "size_bytes": 1068
+    },
+    "two_niche_attention_timecourse.csv": {
+      "sha256": "3e97b9d63fdcc47de4e8452de4707235fb6cba88768598ccd53aaf1d9dead8c9",
+      "size_bytes": 1780
+    },
+    "two_niche_lr_pair_timecourse.csv.gz": {
+      "sha256": "a91849c924b42ad93e5eb9b9977102583dc7465cb9575da115f15828e2ac8cd7",
+      "size_bytes": 1367098
+    },
+    "two_niche_lr_pathway_injury_contrast.csv": {
+      "sha256": "9764025281875c55bfc1e728be4e2402fb0fbeb0242e1c7e3f79d0ec343bdecb",
+      "size_bytes": 81295
+    },
+    "two_niche_lr_pathway_matched_null.csv": {
+      "sha256": "d82d9e1414ec01ec08ab84de3498a23e1a650c9f0cd8f126dfc9f97a200791de",
+      "size_bytes": 17899
+    },
+    "two_niche_lr_pathway_timecourse.csv": {
+      "sha256": "51b821b1e1b23ba99a9d0ce08959f4a2f7825cc4b976b19a16927bde650695a2",
+      "size_bytes": 111459
+    },
+    "two_niche_metadata.csv": {
+      "sha256": "74433282d125231530bc1e86871b4156d571f293195302403645f9656a53a71f",
+      "size_bytes": 331
+    },
+    "two_niche_t1_celltype_edges.csv": {
+      "sha256": "4fd0cc553b3fa28398a83c34e6299246838b5b6fada1ae0b0ad40e1ce9bbba3b",
+      "size_bytes": 1493
+    }
+  },
+  "schema": "cytobridge.arista.figure5c-two-niche-timecourse.v1",
+  "segmentation_contract": {
+    "biological_annotation": "performed after segmentation from the selected-edge cell-state network",
+    "connectivity": "physical-radius graph at the trained interaction cutoff 0.031541051485517453",
+    "minimum_component_size": 20,
+    "model_edge_filter": "retain only components with internal selected attention edges",
+    "roi": "frozen 1,454-cell Figure 5c ROI",
+    "selection": "cosine >= within-ROI quantile 0.75"
+  },
+  "timecourse_contract": {
+    "anatomy": "D_V == D",
+    "complex": "strict minimum, all subunits required",
+    "conditions": [
+      "inj",
+      "uninj"
+    ],
+    "expression": "per-cell expm1 from persisted log1p aligned h5ad before arithmetic means",
+    "lr_formula": "mean_source(ligand/complex) * mean_target(receptor/complex) * selected_attention_per_source_cell",
+    "network_roster": "exact sender/receiver cell-state pairs selected inside each 5-DPI niche",
+    "times": {
+      "0.0": 2,
+      "1.0": 5,
+      "2.0": 10,
+      "3.0": 15,
+      "4.0": 20
+    }
+  }
+}

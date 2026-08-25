@@ -1,0 +1,786 @@
+{
+  "schema": "cytobridge.arista.figure5.fullpage-assembly-qa.v2",
+  "passed": true,
+  "source_compatibility": {
+    "locked_template_sha256": "673dc81f4856833c30c943ad5f2f4af9e69f771cea4cb63f2484ffbd18907694",
+    "same_locked_template_for_all_panels": true,
+    "replacement_spans_pairwise_non_overlapping": true
+  },
+  "assembly": {
+    "original_main_content_sha256": "454fded539ece9063010eddaa0a62d174c428fe73667d927f1426384f7b7c499",
+    "updated_main_content_sha256": "0e06fb9c551abbc41bbb3bc4a4cd6c7740bd05bd49267f99499c50be0e56d477",
+    "updated_main_content_size_bytes": 1318728,
+    "replacement_ledger": [
+      {
+        "panel_payload": "5e bubbles",
+        "old_span": [
+          89,
+          20030
+        ],
+        "old_size_bytes": 19941,
+        "old_sha256": "dbf19addd92a63629726f090a75b3560c0ea076853035f3c1a4c5a362183ae7d",
+        "new_size_bytes": 155805,
+        "new_sha256": "31891a03559e24f556c55ceda1087c7c12745586b986d4db2ff9f0155cd6829d"
+      },
+      {
+        "panel_payload": "5c streams",
+        "old_span": [
+          20107,
+          486615
+        ],
+        "old_size_bytes": 466508,
+        "old_sha256": "f071b63af75a979f6b45fbf6a5f8c729d2d3e0b4305cd6204b2bc12b212efd0e",
+        "new_size_bytes": 569263,
+        "new_sha256": "d6252656bfa82efa3a13f9305d638d4b4277ad2a5bc1b6a95eed924d7fc78f73"
+      },
+      {
+        "panel_payload": "5d streams",
+        "old_span": [
+          559095,
+          870414
+        ],
+        "old_size_bytes": 311319,
+        "old_sha256": "3b9c028f2fe46f15cbab91444d031f57f5d70351bcc021974a1fd79858287db9",
+        "new_size_bytes": 302933,
+        "new_sha256": "12531ea1040037c4013324b0f88b2581aa5b14103ca1f55a46bfffa608f9cad0"
+      },
+      {
+        "panel_payload": "5d labels",
+        "old_span": [
+          870415,
+          972341
+        ],
+        "old_size_bytes": 101926,
+        "old_sha256": "c373b2128fb21982b06beb017e3cd355df11fbf9ba0f7dfcda5e290d31ab9c93",
+        "new_size_bytes": 102070,
+        "new_sha256": "de29dca4af28c6f4296d015afc6515e05e7300f559ae35bb538a8748af13a840"
+      },
+      {
+        "panel_payload": "5b markers",
+        "old_span": [
+          1087709,
+          1644917
+        ],
+        "old_size_bytes": 557208,
+        "old_sha256": "276b8fd28acfb89ad1a548a1a1a85fe23c6f4f45839573e0873e450ddb352423",
+        "new_size_bytes": 16,
+        "new_sha256": "a0711568e0704ff765cdf2417cc0efc0ccf533c349ac8990aceae2ce966a6c70"
+      },
+      {
+        "panel_payload": "5d corrected field arrow",
+        "old_span": [
+          1644951,
+          1645489
+        ],
+        "old_size_bytes": 538,
+        "old_sha256": "905d7925ee246a077139637cfc1094d11249f1e9240c5f5e2e998d8dbbec10a8",
+        "new_size_bytes": 0,
+        "new_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "panel_a": {
+      "target_image_xref": 9766,
+      "raw_rgb_sha256": "7bc00865e72684ac562544a35001a5cbeffedaf3952f7193cb9e4f8cf2590af1",
+      "new_colorspace_xref": 28861,
+      "new_icc_profile_xref": 28860
+    },
+    "panel_b": {
+      "wrapper_form_name": "fzFrm0",
+      "invocation_sha256": "1cf067e40acb18af9fab6b79333b3b3bcfdbc6daa4805b163e69cf745f1e56a5",
+      "removed_historical_resources": 7739,
+      "target_rect_pt": [
+        -9.382843881239,
+        430.812650554,
+        220.27503756689265,
+        628.4704839027556
+      ]
+    },
+    "panel_c": {
+      "form_first": 332,
+      "form_last": 1785,
+      "form_count": 1454,
+      "forms_changed_from_original": 1434,
+      "ordered_stream_hashes_sha256": "d2888404c5462f1ce1333e2b8a8f29a00cd12b8d835fd5d5c2e964edcd75ede9"
+    },
+    "panel_d": {
+      "image_xref": 9545,
+      "smask_xref": 28820,
+      "raw_rgb_sha256": "721a2c3ed3cb38f858a5f9be9accecff7f2be766589b12928625a3bf13480c29",
+      "raw_alpha_sha256": "034503a2c93049c6a8268aee0af0d38e39a33067da2493d3bf8f06edaa645ccd"
+    }
+  },
+  "static_object_qa": {
+    "passed": true,
+    "page_size_equal": true,
+    "all_extractable_text_spans_equal": true,
+    "main_content_stream_exact": true,
+    "original_xrefs_checked_as_static": 27396,
+    "original_static_streams_checked": 8308,
+    "static_object_mismatch_count": 0,
+    "static_object_mismatch_xrefs": [],
+    "static_stream_mismatch_count": 0,
+    "static_stream_mismatch_xrefs": [],
+    "static_visible_image_groups_equal": true,
+    "figure5a_visible_image_group_equal_to_accepted_panel": true,
+    "figure5d_visible_image_group_equal_to_accepted_panel": true,
+    "static_resource_image_entries_equal": true,
+    "targeted_resource_image_geometry_equal": true,
+    "figure5a_raw_payload_exact": true,
+    "figure5c_roi_form_stream_mismatches": [],
+    "figure5d_rgb_payload_exact": true,
+    "figure5d_alpha_payload_exact": true,
+    "figure5b_vector_marker_count": 7798,
+    "figure5b_marker_fill_opacities": [
+      0.899994
+    ],
+    "historical_5b_and_5e_form_call_count": 0,
+    "replacement_sentinel_counts": {
+      "5c_begin": 1,
+      "5c_end": 1,
+      "5d_begin": 1,
+      "5d_end": 1,
+      "5e_begin": 1,
+      "5e_end": 1,
+      "5d_corrected_field_arrow_begin": 0,
+      "5d_corrected_field_arrow_end": 0
+    },
+    "corrected_field_arrow_payload_exact": true,
+    "locked_historical_arrow_object_count_inside_corrected_wrapper": 0,
+    "locked_historical_arrow_object_sha256": "905d7925ee246a077139637cfc1094d11249f1e9240c5f5e2e998d8dbbec10a8"
+  },
+  "pixel_composition_qa": {
+    "passed": true,
+    "mupdf": {
+      "scale_1": {
+        "passed": true,
+        "shape_hwc": [
+          842,
+          596,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 109945,
+          "b": 19367,
+          "c": 24599,
+          "d": 29318,
+          "e": 10056
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      },
+      "scale_2": {
+        "passed": true,
+        "shape_hwc": [
+          1684,
+          1191,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 435478,
+          "b": 68296,
+          "c": 78308,
+          "d": 112690,
+          "e": 37582
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      },
+      "scale_4": {
+        "passed": true,
+        "shape_hwc": [
+          3368,
+          2382,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 1731280,
+          "b": 245900,
+          "c": 257986,
+          "d": 435898,
+          "e": 145173
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      }
+    },
+    "poppler": {
+      "scale_1": {
+        "passed": true,
+        "shape_hwc": [
+          842,
+          596,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 109708,
+          "b": 19814,
+          "c": 24873,
+          "d": 29289,
+          "e": 9827
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      },
+      "scale_2": {
+        "passed": true,
+        "shape_hwc": [
+          1684,
+          1191,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 434547,
+          "b": 68441,
+          "c": 77746,
+          "d": 112003,
+          "e": 36910
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      },
+      "scale_4": {
+        "passed": true,
+        "shape_hwc": [
+          3368,
+          2382,
+          3
+        ],
+        "panel_changed_pixel_counts": {
+          "a": 1727174,
+          "b": 238579,
+          "c": 252856,
+          "d": 432588,
+          "e": 143037
+        },
+        "pairwise_overlap": [
+          {
+            "panels": [
+              "a",
+              "b"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "a",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "c"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "b",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "d"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "c",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          },
+          {
+            "panels": [
+              "d",
+              "e"
+            ],
+            "overlap_pixels": 0,
+            "conflicting_overlap_pixels": 0
+          }
+        ],
+        "conflicting_overlap_pixels": 0,
+        "aggregate_vs_composed_oracle_differing_pixels": 0,
+        "aggregate_vs_composed_oracle_max_abs_error_0_255": 0,
+        "aggregate_vs_composed_oracle_mae_0_255": 0.0
+      }
+    }
+  },
+  "determinism_qa": {
+    "passed": true,
+    "pdf_byte_identical_on_independent_rebuild": true,
+    "pdf_sha256_primary": "b8bdf55db1a7bf7801a2ab4dbd33e9a391673cf592a10c55ba2dc98a771cf542",
+    "pdf_sha256_repeat": "b8bdf55db1a7bf7801a2ab4dbd33e9a391673cf592a10c55ba2dc98a771cf542",
+    "png_byte_identical_on_independent_rebuild": true,
+    "png_sha256_primary": "9a8aa258fe4ca57930c9e15fb9f2058eea01f83577f0f67c5011760451abd35d",
+    "png_sha256_repeat": "9a8aa258fe4ca57930c9e15fb9f2058eea01f83577f0f67c5011760451abd35d",
+    "main_content_sha256_primary": "0e06fb9c551abbc41bbb3bc4a4cd6c7740bd05bd49267f99499c50be0e56d477",
+    "main_content_sha256_repeat": "0e06fb9c551abbc41bbb3bc4a4cd6c7740bd05bd49267f99499c50be0e56d477",
+    "preview_contract_equal": true
+  },
+  "preview": {
+    "pixel_size": [
+      2481,
+      3508
+    ],
+    "declared_dpi": [
+      299.9994,
+      299.9994
+    ]
+  }
+}

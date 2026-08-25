@@ -1,0 +1,525 @@
+{
+  "determinism_validation": null,
+  "immutable_contract": "transactional build; existing output directory is rejected",
+  "inputs": {
+    "bank_summary": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/summary.json",
+      "sha256": "e80458dc552774af59f914691a865fd35fdb94b01e86ea62d68bd0d2ffd73de0",
+      "size_bytes": 9629
+    },
+    "builder": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/scripts/arista_paper_equivalent/build_s15_s17_strict_legacy_style.py",
+      "sha256": "d4301caad2869292d27d9afe606a8b354d6e2ac1fca0ef36ec185fb327b5280f",
+      "size_bytes": 70864
+    },
+    "gene_mean_expression": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/gene_dynamics/mean_expression.csv",
+      "sha256": "5492f1e6bdaf71fa795fed7dd5dc4f1980068b00c05b39300f48096ac89240c6",
+      "size_bytes": 256030
+    },
+    "gene_reconstruction_diagnostics": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/gene_dynamics/reconstruction_diagnostics.csv",
+      "sha256": "037c853363527aa0761bc86271d748bf55cc2805c334b8f7ac46b6dbe1786bfa",
+      "size_bytes": 1178
+    },
+    "go_bp_gmt": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/gsea_databases/GO_Biological_Process_2023.gmt",
+      "sha256": "4be7e1b5ed62ab3a8a4837743fa8c9520fc572c5d28dcad8478ed136189908b9",
+      "size_bytes": 1374880
+    },
+    "legacy_plot_source": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/arista_code/arista_build_review_suite_local.py",
+      "sha256": "ef45b672bbc7191d23bed48dc37df33722b989994f5981f37c51722f33bcbfc1",
+      "size_bytes": 52403
+    },
+    "legacy_s15_reference": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/manuscript_edits/lr_complex_sensitivity_si_20260815/figures/arista/arista_gene_pattern_curves_updated_compact.jpg",
+      "sha256": "3a8b85144e5977efd3838880ffc7c3aa684b70a3f62c8dc4d8b59dcffec0989f",
+      "size_bytes": 434801
+    },
+    "legacy_s16_reference": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/manuscript_edits/lr_complex_sensitivity_si_20260815/figures/arista/arista_lr_cluster_prototypes_compact_v15.pdf",
+      "sha256": "53d009512f2b72b1cc34dbd7b57181774e12c7bc03afb66b7fc695fbd27becc3",
+      "size_bytes": 30516
+    },
+    "legacy_s17_reference": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/manuscript_edits/lr_complex_sensitivity_si_20260815/figures/arista/arista_lr_small_multiples_compact_v15.pdf",
+      "sha256": "9a17bef085c27b5dfaf49c3d0a8f0a3c4f86f3ae4b87128f66224b2656f83aef",
+      "size_bytes": 940486
+    },
+    "legacy_s17_roster": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/results/arista_review_dense_local/tables/arista_lr_pattern_summary.csv",
+      "sha256": "c5cd66c3e82089ed80fba5fba0806b4438d74888b44da58e2fa8fefb067ad5b6",
+      "size_bytes": 10391
+    },
+    "lr_coverage": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/coverage.csv",
+      "sha256": "2c6c0a110953a130d1eb6b4e25ad215a34f40c1aed14a2107af54d0e00153cc2",
+      "size_bytes": 34350
+    },
+    "lr_pair_timecourse": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pair_timecourse.csv",
+      "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+      "size_bytes": 625953
+    },
+    "lr_pattern_summary": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pattern_summary.csv",
+      "sha256": "26e7b3ec4b6785a3383f165a84c8b260ec2d232d47311baf4904bb3d008fbbad",
+      "size_bytes": 96518
+    },
+    "lr_trajectory_coverage": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/trajectory_coverage.csv",
+      "sha256": "7b8a816c477cba8314ef4714301b7df31c2e5ac0fa2dd1353b67ef89b49e74e5",
+      "size_bytes": 3698840
+    },
+    "training_run_summary": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/provenance/training_run_summary.json",
+      "sha256": "e25c57112d4ceae8a1cb792b35c8a15a34d13900ed8c9b866a46eeec217b8dfa",
+      "size_bytes": 5251
+    }
+  },
+  "known_legacy_analysis_errors_not_reproduced": [
+    "S15a omitted the PCA fit center and appeared signed/zero-centered.",
+    "Permissive LR scoring retained partial complexes with missing/inactive subunits.",
+    "The submitted S17 caption described normalization although the plotted y-axis/data were raw Score.",
+    "A later v11 GO rerun used the whole GO-library union as background; this bundle uses the expression universe."
+  ],
+  "legacy_visual_contract": {
+    "S15": {
+      "a": "18 tab20 lines; o markers; linewidth 1.8; dashed alpha-0.2 grid; outside frameless legend",
+      "b": "Set2 green/orange; o markers; linewidth 2.2; mean +/- population SD; zero line",
+      "c": "20-term horizontal Count bars; raw p.adjust color scale",
+      "canvas_px": [
+        2400,
+        1554
+      ],
+      "d": "GeneRatio x; Count size; raw p.adjust red-to-blue fill; black edges",
+      "panel_label_glyphs": "pixel-exact crops reused from submitted S15 image",
+      "placements": {
+        "a": {
+          "width": 1158,
+          "x": 19,
+          "y": 20
+        },
+        "b": {
+          "width": 1194,
+          "x": 1201,
+          "y": 12
+        },
+        "c": {
+          "width": 1202,
+          "x": 0,
+          "y": 652
+        },
+        "d": {
+          "width": 1194,
+          "x": 1204,
+          "y": 654
+        }
+      }
+    },
+    "S16": {
+      "colors": {
+        "1": "#66c2a5",
+        "2": "#fc8d62"
+      },
+      "line": "o markers size 5; linewidth 2.6; fill from zero alpha 0.12",
+      "normalization": "row-wise min-max per pair before cluster mean",
+      "page_pt": [
+        569.192,
+        317.15225
+      ]
+    },
+    "S17": {
+      "colors": {
+        "1": "#1f77b4",
+        "2": "#ff7f0e"
+      },
+      "curve": "300-point np.interp; raw Score; linewidth 1.8; scatter size 12",
+      "grid": "5 columns x 14 rows",
+      "ordering": "submitted cluster_id, shape_rank, auc ordering",
+      "page_pt": [
+        1288.692187,
+        2159.631188
+      ]
+    },
+    "global_style": "seaborn white/paper; DejaVu Sans 10; top/right spines off; 0.8 axes/ticks",
+    "source_code": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/arista_code/arista_build_review_suite_local.py"
+  },
+  "outputs": {
+    "CAPTION_UPDATE_NOTES.md": {
+      "sha256": "378f518eb2c10a0d647706ee1b15c189fff49483c47fac7ebbbdc8ddc473a3e7",
+      "size_bytes": 916
+    },
+    "QA_REPORT.json": {
+      "sha256": "b6d8e1f8de4203742d323b730af4e338f82d148f27d1990447f568fd1125969a",
+      "size_bytes": 3076
+    },
+    "README.md": {
+      "sha256": "bd07c965a277b5dc56e0c58c335a65a55429814694c8599d9132b5cdfbbfb3f5",
+      "size_bytes": 984
+    },
+    "figures/FigureS15_ARISTA_strict_corrected_legacy_style.jpg": {
+      "sha256": "09d6b45384b43f4c10bab324fd40a9bdaa23c31cee4541ec15a16ca92337fe5f",
+      "size_bytes": 756016
+    },
+    "figures/FigureS15_ARISTA_strict_corrected_legacy_style.pdf": {
+      "sha256": "d1c0743f90c0eef46ccd0c312ddba20c5f694d59be6861599b41b6d0e949c1b4",
+      "size_bytes": 632615
+    },
+    "figures/FigureS15_ARISTA_strict_corrected_legacy_style.png": {
+      "sha256": "fe081bb05b6683d36e80544e91822914f7563d1bdf1e64f1abad8fc006800b13",
+      "size_bytes": 746815
+    },
+    "figures/FigureS16_ARISTA_strict_corrected_legacy_style.pdf": {
+      "sha256": "f438c6043f267ec385ad1876351f60681db2b2bd5d54ee6a19facfdcdbd87eb4",
+      "size_bytes": 28134
+    },
+    "figures/FigureS16_ARISTA_strict_corrected_legacy_style.png": {
+      "sha256": "94bc17e4adb7b0a01b5683c7fe9cfb8bb79da9ba6d84dcc33cb3b66bb5417070",
+      "size_bytes": 81890
+    },
+    "figures/FigureS16_ARISTA_strict_corrected_legacy_style.svg": {
+      "sha256": "0d16b222fe976c95c013873117176740ea2996306b430b090dba278a85c509f7",
+      "size_bytes": 32781
+    },
+    "figures/FigureS17_ARISTA_strict_corrected_legacy_style.pdf": {
+      "sha256": "828d8437f696e4f96887d6926be6bb4eb536ded44ab6fcbb22e387898279ce5a",
+      "size_bytes": 797971
+    },
+    "figures/FigureS17_ARISTA_strict_corrected_legacy_style.png": {
+      "sha256": "a4b06545c30313259071185220bb92e5eaec23547b13040125cc8eda06c98030",
+      "size_bytes": 603959
+    },
+    "figures/FigureS17_ARISTA_strict_corrected_legacy_style.svg": {
+      "sha256": "d5e76103cfd70f152184789c4a8661c363eb0f24aa728965811a09f08972849d",
+      "size_bytes": 664215
+    },
+    "figures/panels/S15a_top_variable_gene_trajectories.svg": {
+      "sha256": "cec097a9ed9569e1171ff5a73243957be531ee8b23bc736497fb98e3c408043f",
+      "size_bytes": 81440
+    },
+    "figures/panels/S15b_gene_pattern_curves.svg": {
+      "sha256": "3fd09cdc363c43755a029083081867c8cc027f236800a754b1a9f7e261bca3a6",
+      "size_bytes": 30019
+    },
+    "figures/panels/S15c_pattern_1_GO_barplot.png": {
+      "sha256": "018da8885272dbdf73083561314f973e2bf242dc293ee33756d064fac56925f5",
+      "size_bytes": 327556
+    },
+    "figures/panels/S15c_pattern_1_GO_barplot.svg": {
+      "sha256": "399bab807ac793f2471659820cd1f4a6eb27e76a49c6cee5e05f463e5f079505",
+      "size_bytes": 78611
+    },
+    "figures/panels/S15d_pattern_2_GO_dotplot.png": {
+      "sha256": "3d1b77aba186d631e2274fefed50794bd62c0b36d3c15e913241ee7ef7ae83c7",
+      "size_bytes": 375422
+    },
+    "figures/panels/S15d_pattern_2_GO_dotplot.svg": {
+      "sha256": "cc0f3bcdcf6b3404fea9051182ed0a0362b664749053d55b309daf99ccbbc32a",
+      "size_bytes": 96929
+    },
+    "provenance/source_snapshots/bank_summary.json": {
+      "sha256": "e80458dc552774af59f914691a865fd35fdb94b01e86ea62d68bd0d2ffd73de0",
+      "size_bytes": 9629
+    },
+    "provenance/source_snapshots/gene_mean_expression.csv": {
+      "sha256": "5492f1e6bdaf71fa795fed7dd5dc4f1980068b00c05b39300f48096ac89240c6",
+      "size_bytes": 256030
+    },
+    "provenance/source_snapshots/gene_reconstruction_diagnostics.csv": {
+      "sha256": "037c853363527aa0761bc86271d748bf55cc2805c334b8f7ac46b6dbe1786bfa",
+      "size_bytes": 1178
+    },
+    "provenance/source_snapshots/legacy_s17_roster.csv": {
+      "sha256": "c5cd66c3e82089ed80fba5fba0806b4438d74888b44da58e2fa8fefb067ad5b6",
+      "size_bytes": 10391
+    },
+    "provenance/source_snapshots/lr_coverage.csv": {
+      "sha256": "2c6c0a110953a130d1eb6b4e25ad215a34f40c1aed14a2107af54d0e00153cc2",
+      "size_bytes": 34350
+    },
+    "provenance/source_snapshots/lr_pair_timecourse.csv": {
+      "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+      "size_bytes": 625953
+    },
+    "provenance/source_snapshots/lr_pattern_summary.csv": {
+      "sha256": "26e7b3ec4b6785a3383f165a84c8b260ec2d232d47311baf4904bb3d008fbbad",
+      "size_bytes": 96518
+    },
+    "provenance/source_snapshots/lr_trajectory_coverage.csv": {
+      "sha256": "7b8a816c477cba8314ef4714301b7df31c2e5ac0fa2dd1353b67ef89b49e74e5",
+      "size_bytes": 3698840
+    },
+    "provenance/source_snapshots/training_run_summary.json": {
+      "sha256": "e25c57112d4ceae8a1cb792b35c8a15a34d13900ed8c9b866a46eeec217b8dfa",
+      "size_bytes": 5251
+    },
+    "qa/S15_legacy_corrected_overlay.png": {
+      "sha256": "78e26d6204ed35a4a5f569b718001d11bf003b2cf24f20f5da090797e025a1cb",
+      "size_bytes": 589895
+    },
+    "qa/S16_legacy_corrected_overlay.png": {
+      "sha256": "dc33de45412b44ea5073377e06d62d15ebdee6ee60d61e432cbaabb783b9e11a",
+      "size_bytes": 168252
+    },
+    "qa/S17_legacy_corrected_overlay.png": {
+      "sha256": "a432f13ef530d2cfade50fc5b93081bf49a82380f5e159046e8b595351ba48ce",
+      "size_bytes": 559151
+    },
+    "qa/candidate_S16_render.png": {
+      "sha256": "892b42d548ba20292cfb6a4a5732cf508d573561c80f92a63fee0c5a36fe546f",
+      "size_bytes": 53586
+    },
+    "qa/candidate_S17_render.png": {
+      "sha256": "9d463d6022b2d10e46ef03d3ae1fbb6afc7ca71410975c056d36828f69b1cc58",
+      "size_bytes": 390193
+    },
+    "qa/legacy_S16_render.png": {
+      "sha256": "ce4808b8043de24f02bda933adcea1d2f46a8317bc69d26b927e23e8d9c7b54e",
+      "size_bytes": 58082
+    },
+    "qa/legacy_S17_render.png": {
+      "sha256": "4c9ae13c89899616b0058e64085cf89aeb3fa9a992e658178ab8e58cdbfdee33",
+      "size_bytes": 440081
+    },
+    "qa/legacy_vs_strict_corrected_contact_sheet.png": {
+      "sha256": "791f06727211046499b59dcdcf22dcc9a627fa8cb17d7709f6d75f8698df6ccc",
+      "size_bytes": 1761480
+    },
+    "tables/S15_GO_expression_background.csv": {
+      "sha256": "49e76a03454ba7a5f56421aec95a8b24cfb953a11951538f2612cc0884bee10b",
+      "size_bytes": 9404
+    },
+    "tables/S15_gene_variance_ranking.csv": {
+      "sha256": "e5ba65be5930c8ffcb51630c4d4e3ad990b0c5b569eb5e0b4a8f3d9d8792a7f5",
+      "size_bytes": 79067
+    },
+    "tables/S15_pattern_1_GO_BP_full.csv": {
+      "sha256": "003145ce55d307cf3b351e7d47d12ca7400a318dbc7685e4c9bd6e7e617dae80",
+      "size_bytes": 199210
+    },
+    "tables/S15_pattern_2_GO_BP_full.csv": {
+      "sha256": "f8065c823042d525fb719e65e99ff35de77e1fc2b61afcfc67bb3abc0b0cf2e1",
+      "size_bytes": 368066
+    },
+    "tables/S15_program_prototypes.csv": {
+      "sha256": "6c548d336f8aee251f4dcf2dcdeb60eaa327461192efaa67fbdf388674a5cb70",
+      "size_bytes": 921
+    },
+    "tables/S15_top18_gene_roster.csv": {
+      "sha256": "023496bccf12f376a8b2216d3d259e62e909f7f7ef91ea74e36013eb015e4e48",
+      "size_bytes": 847
+    },
+    "tables/S15_top2000_program_assignments.csv": {
+      "sha256": "f4db2b924dafc466e4d04c31b96a623638d24aeb81b8f350783c149ac3cb10e1",
+      "size_bytes": 104336
+    },
+    "tables/S15_top2000_row_zscores.csv": {
+      "sha256": "ba0f482a7f9bc9cf099ac68f91263e46baf2347c6fef547762639e4d2685d5a2",
+      "size_bytes": 369307
+    },
+    "tables/S15a_actual_reconstructed_mean_values.csv": {
+      "sha256": "9209a0e048fcb1b0c4cd2542c61c378eee74e9c8dd58e1f86c61cee16b2e7a86",
+      "size_bytes": 1854
+    },
+    "tables/S15c_panel_terms.csv": {
+      "sha256": "bb0f7e91da58ef76e0e358d5c2ff19dcd133b18a06c4b80483493e18d0aec4ed",
+      "size_bytes": 5779
+    },
+    "tables/S15d_panel_terms.csv": {
+      "sha256": "f6e20c880aa711cb29fffb5b5ac7b7866601b60540bfb27e57dac46ee649e78b",
+      "size_bytes": 5763
+    },
+    "tables/S16_strict_cluster_prototypes.csv": {
+      "sha256": "57e3be4addb4b50afb752383bc944057868adec6723ed654f50c1b7632f767f9",
+      "size_bytes": 768
+    },
+    "tables/S17_historical_roster_strict_status.csv": {
+      "sha256": "210eebf2595d812194cafe75d230dc2d572c57be5d559f68f4bb41762c8c6377",
+      "size_bytes": 4825
+    },
+    "tables/S17_historical_roster_timecourse.csv": {
+      "sha256": "e41d9b6bb8f1f6f01aeb5e66561f4d5ea322ba93edf0c730eed4b6e2791fd5f9",
+      "size_bytes": 38549
+    },
+    "tables/S17_non_estimable_pairs.csv": {
+      "sha256": "7d1872aabf86699d1ed729f524e637a3a36a83ee01c4f389aa0899dece8e75e3",
+      "size_bytes": 1991
+    }
+  },
+  "qa_status": "PASS",
+  "scientific_source_contract": {
+    "S17": {
+      "historical_slots": 68,
+      "non_estimable": 17,
+      "non_estimable_display": "old-style titled/axed/grid slot with centered gray N/E; score remains NaN",
+      "strict_estimable": 51
+    },
+    "clip_min": 0.0,
+    "complex_mode": "min",
+    "expression_values": "actual corrected mean_expression.csv; no temporal centering or cosmetic shift",
+    "feature_universe_shared_across_time": true,
+    "gene_expression_shape": [
+      2246,
+      9
+    ],
+    "gene_programs": {
+      "candidate_genes": 2000,
+      "cut": "SciPy cut_tree exact n_clusters=2",
+      "linkage": "SciPy average linkage, Euclidean metric",
+      "normalization": "row z-score with population standard deviation (ddof=0)",
+      "pattern_counts": {
+        "1": 484,
+        "2": 1516
+      },
+      "semantic_order": "earlier prototype peak is Pattern 1; later peak is Pattern 2",
+      "variance": "population temporal variance (ddof=0)"
+    },
+    "go_ora": {
+      "alpha": 0.05,
+      "background": "corrected 2246-gene candidate universe mapped into the frozen GO BP library",
+      "background_size": 1538,
+      "library": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/gsea_databases/GO_Biological_Process_2023.gmt",
+      "multiple_testing": "Benjamini-Hochberg separately within each pattern",
+      "significant_term_counts": {
+        "1": 0,
+        "2": 0
+      },
+      "test": "one-sided hypergeometric survival function"
+    },
+    "lr_cluster_counts": {
+      "1": 1,
+      "2": 530
+    },
+    "model_identifier": "package-native-spatialqc-z50-retrain-r1",
+    "n_strict_lr_pairs": 531,
+    "pca_active_filter_applied_all_times": true,
+    "pca_center_source": "reference var['pca_center']",
+    "require_all_subunits": true
+  },
+  "software": {
+    "packages": {
+      "Pillow": "10.2.0",
+      "PyMuPDF": "1.27.2.2",
+      "matplotlib": "3.8.0",
+      "numpy": "1.26.4",
+      "pandas": "2.0.3",
+      "scipy": "1.16.3",
+      "seaborn": "0.13.2"
+    },
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.11.7 (main, Dec 15 2023, 12:09:56) [Clang 14.0.6 ]"
+  },
+  "source_snapshots": {
+    "bank_summary": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/bank_summary.json",
+        "sha256": "e80458dc552774af59f914691a865fd35fdb94b01e86ea62d68bd0d2ffd73de0",
+        "size_bytes": 9629
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/summary.json",
+        "sha256": "e80458dc552774af59f914691a865fd35fdb94b01e86ea62d68bd0d2ffd73de0",
+        "size_bytes": 9629
+      }
+    },
+    "gene_mean_expression": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/gene_mean_expression.csv",
+        "sha256": "5492f1e6bdaf71fa795fed7dd5dc4f1980068b00c05b39300f48096ac89240c6",
+        "size_bytes": 256030
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/gene_dynamics/mean_expression.csv",
+        "sha256": "5492f1e6bdaf71fa795fed7dd5dc4f1980068b00c05b39300f48096ac89240c6",
+        "size_bytes": 256030
+      }
+    },
+    "gene_reconstruction_diagnostics": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/gene_reconstruction_diagnostics.csv",
+        "sha256": "037c853363527aa0761bc86271d748bf55cc2805c334b8f7ac46b6dbe1786bfa",
+        "size_bytes": 1178
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/gene_dynamics/reconstruction_diagnostics.csv",
+        "sha256": "037c853363527aa0761bc86271d748bf55cc2805c334b8f7ac46b6dbe1786bfa",
+        "size_bytes": 1178
+      }
+    },
+    "legacy_s17_roster": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/legacy_s17_roster.csv",
+        "sha256": "c5cd66c3e82089ed80fba5fba0806b4438d74888b44da58e2fa8fefb067ad5b6",
+        "size_bytes": 10391
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/results/arista_review_dense_local/tables/arista_lr_pattern_summary.csv",
+        "sha256": "c5cd66c3e82089ed80fba5fba0806b4438d74888b44da58e2fa8fefb067ad5b6",
+        "size_bytes": 10391
+      }
+    },
+    "lr_coverage": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/lr_coverage.csv",
+        "sha256": "2c6c0a110953a130d1eb6b4e25ad215a34f40c1aed14a2107af54d0e00153cc2",
+        "size_bytes": 34350
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/coverage.csv",
+        "sha256": "2c6c0a110953a130d1eb6b4e25ad215a34f40c1aed14a2107af54d0e00153cc2",
+        "size_bytes": 34350
+      }
+    },
+    "lr_pair_timecourse": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/lr_pair_timecourse.csv",
+        "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+        "size_bytes": 625953
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pair_timecourse.csv",
+        "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+        "size_bytes": 625953
+      }
+    },
+    "lr_pattern_summary": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/lr_pattern_summary.csv",
+        "sha256": "26e7b3ec4b6785a3383f165a84c8b260ec2d232d47311baf4904bb3d008fbbad",
+        "size_bytes": 96518
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pattern_summary.csv",
+        "sha256": "26e7b3ec4b6785a3383f165a84c8b260ec2d232d47311baf4904bb3d008fbbad",
+        "size_bytes": 96518
+      }
+    },
+    "lr_trajectory_coverage": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/lr_trajectory_coverage.csv",
+        "sha256": "7b8a816c477cba8314ef4714301b7df31c2e5ac0fa2dd1353b67ef89b49e74e5",
+        "size_bytes": 3698840
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/trajectory_coverage.csv",
+        "sha256": "7b8a816c477cba8314ef4714301b7df31c2e5ac0fa2dd1353b67ef89b49e74e5",
+        "size_bytes": 3698840
+      }
+    },
+    "training_run_summary": {
+      "snapshot": {
+        "path": "provenance/source_snapshots/training_run_summary.json",
+        "sha256": "e25c57112d4ceae8a1cb792b35c8a15a34d13900ed8c9b866a46eeec217b8dfa",
+        "size_bytes": 5251
+      },
+      "source": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/provenance/training_run_summary.json",
+        "sha256": "e25c57112d4ceae8a1cb792b35c8a15a34d13900ed8c9b866a46eeec217b8dfa",
+        "size_bytes": 5251
+      }
+    }
+  },
+  "workflow": "arista_s15_s17_strict_corrected_legacy_style_v1"
+}

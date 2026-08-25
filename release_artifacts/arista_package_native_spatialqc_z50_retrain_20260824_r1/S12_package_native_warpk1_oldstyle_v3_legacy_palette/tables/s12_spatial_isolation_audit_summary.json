@@ -1,0 +1,22 @@
+{
+  "computation_policy": "all 128,330 S12 rows retained: 46,209 observed plus 82,121 split-SDE generated",
+  "flags_by_panel": {},
+  "label_blind": true,
+  "legacy_20_policy": "annotated for audit only; never used as a display mask",
+  "n_display_flags": 0,
+  "n_generated_compute_rows": 81986,
+  "n_generated_display_flags": 0,
+  "n_malformed_or_wrong_source": 0,
+  "n_observed_compute_rows": 46199,
+  "n_observed_display_flags": 0,
+  "n_s12_compute_rows": 128185,
+  "rule": "within each of all 14 S12 panels, flag robust 1-NN z > threshold; z=(d-median(d))/(1.4826*MAD(d))",
+  "threshold": 50.0,
+  "threshold_sensitivity_counts": {
+    "100.0": 0,
+    "15.0": 12,
+    "20.0": 3,
+    "30.0": 2,
+    "50.0": 0
+  }
+}

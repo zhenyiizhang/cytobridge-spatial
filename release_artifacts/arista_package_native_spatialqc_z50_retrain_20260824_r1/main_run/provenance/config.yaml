@@ -1,0 +1,130 @@
+ckpt_dir: /data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/training
+model:
+  components:
+  - velocity
+  - growth
+  - score
+  - interaction
+  growth_net:
+    activation: leaky_relu
+    hidden_dim: 256
+    n_layers: 3
+    residual: false
+  interaction_group_size: 1024
+  interaction_net:
+    activation: leakyrelu
+    cutoff: 0.03154105148551745
+    edge_predictor_path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/preprocess/edge_classifier/arista_edge_model.pt
+    edge_predictor_thre: 0.6523735523223877
+    hidden_dim: 256
+    num_heads: 8
+    num_layers: 1
+    num_rbf: 8
+    rbf_trainable: false
+    use_spatial: true
+  interaction_type: gnn
+  score_net:
+    activation: leaky_relu
+    hidden_dim: 400
+    n_layers: 3
+  spatial_dim: 2
+  velocity_net:
+    activation: leaky_relu
+    hidden_dim: 256
+    n_layers: 5
+    residual: false
+    use_spatial: true
+reverse: true
+seed: 42
+spatial_dim: 2
+training:
+  defaults:
+    alpha_express: 0.015
+    alpha_spatial: 10.0
+    batch_size: 512
+    global_mass: true
+    lambda_energy: 0.01
+    lambda_mass: 1.0
+    lambda_ot: 1.0
+    lr: 0.0001
+    sigma: 0.03
+  plan:
+  - OT_loss: weighted_emd_detach
+    batch_size: 512
+    checkpoint_metric: legacy_forward_last_ot
+    epochs: 100
+    global_mass: false
+    lambda_energy: 0.0
+    lambda_mass: 0.01
+    lambda_ot: 1.0
+    mode: neural_ode
+    name: Pretrain
+    reverse_mass_norm: true
+    reverse_mass_offset: false
+    train_strategy: v+g
+  - OT_loss: weighted_emd
+    batch_size: 512
+    checkpoint_metric: legacy_forward_last_ot
+    epochs: 100
+    global_mass: true
+    lambda_energy: 0.0
+    lambda_mass: 0.01
+    lambda_ot: 1.0
+    mode: neural_ode
+    name: Refine
+    reverse_mass_norm: true
+    reverse_mass_offset: false
+    train_strategy: v+g
+  - OT_loss: weighted_emd
+    batch_size: 512
+    checkpoint_metric: legacy_forward_last_ot
+    epochs: 50
+    global_mass: true
+    lambda_energy: 0.01
+    lambda_mass: 10.0
+    lambda_ot: 10.0
+    mode: neural_ode
+    name: Init_interaction
+    reverse_mass_norm: false
+    reverse_mass_offset: true
+    train_strategy: v+g+i
+  - batch_size: 128
+    epochs: 2001
+    lambda_penalty: 0
+    lr: 0.0001
+    mode: score_matching
+    name: Train_Score
+    optimizer_type: adamw
+    save_strategy: last
+    sigma: 0.03
+    train_strategy: s
+  - OT_loss: weighted_emd
+    batch_size: 512
+    checkpoint_metric: legacy_forward_last_ot
+    epochs: 1000
+    global_mass: true
+    lambda_energy: 0.01
+    lambda_mass: 1.0
+    lambda_ot: 1.0
+    lr: 0.0001
+    max_grad_norm: 10.0
+    mode: neural_ode
+    name: Finetune
+    reverse_mass_norm: false
+    reverse_mass_offset: true
+    save_strategy: best
+    scheduler_metric: forward_last_ot
+    scheduler_step_before_reverse: true
+    scheduler_type: plateau
+    score_use: true
+    train_strategy: v+g+i
+  - batch_size: 128
+    epochs: 2001
+    lambda_penalty: 0
+    lr: 0.0001
+    mode: score_matching
+    name: Score_Refine
+    optimizer_type: adamw
+    save_strategy: last
+    sigma: 0.03
+    train_strategy: s
