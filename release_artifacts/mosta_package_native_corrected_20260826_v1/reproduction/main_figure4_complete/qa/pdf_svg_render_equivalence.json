@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "pdf_render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8/qa/corrected_complete_Figure4_240dpi.png",
+  "svg_render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8/qa/corrected_complete_Figure4_SVG_240dpi.png",
+  "render_size_px": [
+    1985,
+    2807
+  ],
+  "dpi": 240,
+  "mean_absolute_channel_difference_0_255": 3.6770585830015343,
+  "maximum_channel_difference_0_255": 255,
+  "fraction_pixels_difference_gt_2": 0.1988319952188618,
+  "fraction_pixels_difference_gt_10": 0.10837228626885467,
+  "interpretation": "Both vector formats independently render the same accepted panel content and AI geometry. Residual pixel differences are renderer/antialiasing effects."
+}

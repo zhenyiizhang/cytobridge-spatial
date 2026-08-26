@@ -1,0 +1,428 @@
+{
+  "schema_version": 1,
+  "status": "READER_RELEASE_COMPLETE",
+  "created_date": "2026-08-26",
+  "scope": {
+    "main": [
+      "Figure 4a",
+      "Figure 4b",
+      "Figure 4c",
+      "Figure 4d",
+      "Figure 4e",
+      "complete Figure 4"
+    ],
+    "supplementary": [
+      "Figure S4",
+      "Figure S5",
+      "Figure S6",
+      "Figure S7",
+      "Figure S8",
+      "Figure S9",
+      "Figure S10",
+      "Figure S11"
+    ],
+    "out_of_scope": "Figure S12 onward is ARISTA"
+  },
+  "software": {
+    "repository": "https://github.com/zhenyiizhang/cytobridge-spatial",
+    "branch": "release/cytobridge-reproducible-20260812",
+    "package_commit_used_for_all_numerical_results": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84"
+  },
+  "model": {
+    "accepted_server_run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta",
+    "files": {
+      "model/checkpoints/Finetune/best_model.pth": {
+        "sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+        "bytes": 8620533
+      },
+      "model/checkpoints/Score_Refine/score_model.pth": {
+        "sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a",
+        "bytes": 1375237
+      },
+      "model/classifier_cache/classifier_resmlp_6d2d7acf7d0ed92d.pt": {
+        "sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+        "bytes": 2513941
+      }
+    },
+    "config": {
+      "path": "model/checkpoints/config.yaml",
+      "sha256": "ebd8b00a8e825034c1e6443f8143889aa0739ad192ebfe01eecef7f406f7b815"
+    }
+  },
+  "data": {
+    "aligned_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "aligned_h5ad_size": "15 GB",
+    "git_policy": "not stored in Git; rebuild from public MOSTA data with packaged preprocessing",
+    "public_source_documentation": "../../docs/data_checkpoints.md"
+  },
+  "numerical_contract": {
+    "seed": 42,
+    "alpha_spatial": 10,
+    "alpha_express": 0.015,
+    "classifier_k": 10,
+    "global_t0_for_generated_intermediate_stages": true,
+    "shared_dense_trajectory_initial_particles": 50000,
+    "arista_data_labels_palette_model_or_analysis_used": false
+  },
+  "figures": [
+    {
+      "path": "figures/main/Figure_4_complete.pdf",
+      "sha256": "45beb12c6314052c4e33ce73255dcd8511a2e9e81e0a765ad858b0961cf80b40",
+      "bytes": 28381538
+    },
+    {
+      "path": "figures/main/Figure_4_complete.svg",
+      "sha256": "e4c993d0b73456b83ce933196c5e0e70468a78bf59c93dc1b24665b891c5d73e",
+      "bytes": 47779786
+    },
+    {
+      "path": "figures/main/Figure_4_complete_300dpi.png",
+      "sha256": "d3a33f830ac66f343382b54d1b0fed383ee1a6205bdf02eb437138a2759b559a",
+      "bytes": 4898966
+    },
+    {
+      "path": "figures/main/panels/Fig4a.pdf",
+      "sha256": "46714b8a416c634ff132f2706cfbf2d5f5d1106ac36eeba1216bdecf2cc589f7",
+      "bytes": 8416967
+    },
+    {
+      "path": "figures/main/panels/Fig4a.svg",
+      "sha256": "6cf2272f8fd0d498cf331d6332b3f567915e7db3b08382d6a780a921bfcc6da0",
+      "bytes": 10881115
+    },
+    {
+      "path": "figures/main/panels/Fig4b.pdf",
+      "sha256": "b6f565b16b1c603f5f51df65ad2fb3edca9b17c38ce17cf6c002a927fbba5350",
+      "bytes": 7060270
+    },
+    {
+      "path": "figures/main/panels/Fig4b.svg",
+      "sha256": "348706ed6438b7d78230b9454f9623aace79aaa0b47bd11b212e37816a9f3274",
+      "bytes": 10349746
+    },
+    {
+      "path": "figures/main/panels/Fig4c.pdf",
+      "sha256": "bc387a82c0409c976cf977f44d91f7b6d0fda54fa2a6b01d31429aea70dc1737",
+      "bytes": 402235
+    },
+    {
+      "path": "figures/main/panels/Fig4c.svg",
+      "sha256": "c8ea47101d249cb9b9b3497bfa44c0f22022c3327432cb1b9ffed07a4d989c38",
+      "bytes": 543276
+    },
+    {
+      "path": "figures/main/panels/Fig4d.pdf",
+      "sha256": "52c84b237a1944fea2f1cbf0352b64b5b82a2307317752337161b168105c8992",
+      "bytes": 3118378
+    },
+    {
+      "path": "figures/main/panels/Fig4d.svg",
+      "sha256": "3f4328299174744489c155385e94fd70903e86ac3275ce5c2016bf0e8aa369eb",
+      "bytes": 7079258
+    },
+    {
+      "path": "figures/main/panels/Fig4e.pdf",
+      "sha256": "de1ae3596088fb560f2bf0f817c4cca2b3984dcd7d191793c198d097d78083a5",
+      "bytes": 8527097
+    },
+    {
+      "path": "figures/main/panels/Fig4e.svg",
+      "sha256": "7ec1599860027c5a963389d88ccb0140da4e4324cf3d329fb4fa70311e63b8b5",
+      "bytes": 15158441
+    },
+    {
+      "path": "figures/si/Figure_S10.pdf",
+      "sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+      "bytes": 350796
+    },
+    {
+      "path": "figures/si/Figure_S10.svg",
+      "sha256": "3db83882d612c6cf0c88f4e6308ea5b53d0d06813703b314b2734ceedd373b6e",
+      "bytes": 9309576
+    },
+    {
+      "path": "figures/si/Figure_S11.pdf",
+      "sha256": "e3aed96eacb8e14019a181d32f070158dfec19c283ed826cda7bf51056570484",
+      "bytes": 54899
+    },
+    {
+      "path": "figures/si/Figure_S11.svg",
+      "sha256": "21f9290ef8d3622b2cd3a601dfc89c66930f1895cbe6e41959263fefb8a1ba67",
+      "bytes": 307641
+    },
+    {
+      "path": "figures/si/Figure_S4.pdf",
+      "sha256": "347560a2749ab16950727d9c583cba56fc19cc69637b267c03703caf2b89fd7e",
+      "bytes": 1278211
+    },
+    {
+      "path": "figures/si/Figure_S4.svg",
+      "sha256": "905ff7b14ead941b39a84742955abaffa418b49f565bff3000b1e95a01cc9272",
+      "bytes": 1894177
+    },
+    {
+      "path": "figures/si/Figure_S5.pdf",
+      "sha256": "4fbe2b269ee144e00dda328548875cde823b519b9a7b8a18b108c56281a79ebf",
+      "bytes": 830969
+    },
+    {
+      "path": "figures/si/Figure_S5.svg",
+      "sha256": "f564ad5670f99a705295f40ce1ba9a58d09883b5581b969e5851b5c8baf1b866",
+      "bytes": 1180028
+    },
+    {
+      "path": "figures/si/Figure_S6.pdf",
+      "sha256": "c7d64bcef512c96cfad54d7ada5f3e8bd273067b2729cf454fa9d5a5ed70c9ac",
+      "bytes": 28069
+    },
+    {
+      "path": "figures/si/Figure_S6.svg",
+      "sha256": "fe81ea3b70278acc170c52034bc7f1060d6250f2a4af907b24909c4ac0620567",
+      "bytes": 102569
+    },
+    {
+      "path": "figures/si/Figure_S7.pdf",
+      "sha256": "2f8e498e4161324d7655142024ee14a88b96f6a105dba091783eb5a19950845c",
+      "bytes": 1408518
+    },
+    {
+      "path": "figures/si/Figure_S7.svg",
+      "sha256": "835f92d41db94c98bc9f86c6d57def3ecd3d6e63b9373b991fb6447fbf512542",
+      "bytes": 259443
+    },
+    {
+      "path": "figures/si/Figure_S8.pdf",
+      "sha256": "fe3fbb7d502311f653c6cfcbee42770fdcb2c957c006a2a1e99da318e1e3fc52",
+      "bytes": 59941
+    },
+    {
+      "path": "figures/si/Figure_S8.svg",
+      "sha256": "6210997a1769571c843d2532ee04a1f62c1165cbf1e674c7d39d107f328f9011",
+      "bytes": 1785486
+    },
+    {
+      "path": "figures/si/Figure_S9.pdf",
+      "sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+      "bytes": 48940
+    },
+    {
+      "path": "figures/si/Figure_S9.svg",
+      "sha256": "108e6967ae5cf4f33f1307fa975ec3d0ba3c5af8a530d6d97a576a79249958d9",
+      "bytes": 3314427
+    }
+  ],
+  "accepted_panel_manifest": {
+    "status": "COMPLETE_ACCEPTED_MOSTA_MAIN_AND_SI",
+    "created_date": "2026-08-26",
+    "scope": {
+      "main": [
+        "Fig. 4a",
+        "Fig. 4b",
+        "Fig. 4c",
+        "Fig. 4d",
+        "Fig. 4e"
+      ],
+      "si": [
+        "Fig. S4",
+        "Fig. S5",
+        "Fig. S6",
+        "Fig. S7",
+        "Fig. S8",
+        "Fig. S9",
+        "Fig. S10",
+        "Fig. S11"
+      ],
+      "out_of_scope": "Fig. S12 onward is ARISTA, not MOSTA."
+    },
+    "package": {
+      "release_path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime",
+      "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+      "archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e"
+    },
+    "accepted_model_run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "finetune_sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+    "score_sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a",
+    "aligned_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "classifier_k10_sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+    "shared_global_t0_50k_run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1",
+    "clusterprofiler": {
+      "run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1",
+      "clusterProfiler_version": "4.10.0",
+      "org_Mm_eg_db_version": "3.18.0",
+      "ontology": "ALL pooled",
+      "adjustment": "Benjamini-Hochberg per query"
+    },
+    "manuscript_sources": {
+      "main_pdf": "/Users/zhenyizhang/Desktop/202511/nbme预投稿/投稿/投稿修改/cytobridge_manuscript_latest_clean.pdf",
+      "main_pdf_sha256": "94c26a14500b16706ab9647ce26c628b9b7f642a58faf79421dd17577cae4337",
+      "si_pdf": "/Users/zhenyizhang/Desktop/202511/nbme预投稿/投稿/投稿修改/si.pdf",
+      "si_pdf_sha256": "150deefb96083732a7aa7ac89bda1556c3ee4900699ed84946ecf7de48f9c93d"
+    },
+    "guardrails": {
+      "arista_dataset_assets_used": false,
+      "arista_labels_or_palette_used": false,
+      "arista_model_or_analysis_result_used": false,
+      "rotation_stretch_shear_or_projection_warp_used": false,
+      "computed_values_and_style_authority_separated": true
+    },
+    "delivered": [
+      {
+        "panel": "Fig. 4a",
+        "pdf": "figures/main/Fig4a.pdf",
+        "pdf_sha256": "46714b8a416c634ff132f2706cfbf2d5f5d1106ac36eeba1216bdecf2cc589f7",
+        "svg": "figures/main/Fig4a.svg",
+        "svg_sha256": "6cf2272f8fd0d498cf331d6332b3f567915e7db3b08382d6a780a921bfcc6da0"
+      },
+      {
+        "panel": "Fig. 4b",
+        "pdf": "figures/main/Fig4b.pdf",
+        "pdf_sha256": "b6f565b16b1c603f5f51df65ad2fb3edca9b17c38ce17cf6c002a927fbba5350",
+        "svg": "figures/main/Fig4b.svg",
+        "svg_sha256": "348706ed6438b7d78230b9454f9623aace79aaa0b47bd11b212e37816a9f3274"
+      },
+      {
+        "panel": "Fig. 4c",
+        "pdf": "figures/main/Fig4c.pdf",
+        "pdf_sha256": "bc387a82c0409c976cf977f44d91f7b6d0fda54fa2a6b01d31429aea70dc1737",
+        "svg": "figures/main/Fig4c.svg",
+        "svg_sha256": "c8ea47101d249cb9b9b3497bfa44c0f22022c3327432cb1b9ffed07a4d989c38"
+      },
+      {
+        "panel": "Fig. 4d",
+        "pdf": "figures/main/Fig4d.pdf",
+        "pdf_sha256": "52c84b237a1944fea2f1cbf0352b64b5b82a2307317752337161b168105c8992",
+        "svg": "figures/main/Fig4d.svg",
+        "svg_sha256": "3f4328299174744489c155385e94fd70903e86ac3275ce5c2016bf0e8aa369eb"
+      },
+      {
+        "panel": "Fig. 4e",
+        "pdf": "figures/main/Fig4e.pdf",
+        "pdf_sha256": "de1ae3596088fb560f2bf0f817c4cca2b3984dcd7d191793c198d097d78083a5",
+        "svg": "figures/main/Fig4e.svg",
+        "svg_sha256": "7ec1599860027c5a963389d88ccb0140da4e4324cf3d329fb4fa70311e63b8b5"
+      },
+      {
+        "panel": "Fig. S4",
+        "pdf": "figures/si/Figure_S4.pdf",
+        "pdf_sha256": "347560a2749ab16950727d9c583cba56fc19cc69637b267c03703caf2b89fd7e",
+        "svg": "figures/si/Figure_S4.svg",
+        "svg_sha256": "905ff7b14ead941b39a84742955abaffa418b49f565bff3000b1e95a01cc9272"
+      },
+      {
+        "panel": "Fig. S5",
+        "pdf": "figures/si/Figure_S5.pdf",
+        "pdf_sha256": "4fbe2b269ee144e00dda328548875cde823b519b9a7b8a18b108c56281a79ebf",
+        "svg": "figures/si/Figure_S5.svg",
+        "svg_sha256": "f564ad5670f99a705295f40ce1ba9a58d09883b5581b969e5851b5c8baf1b866"
+      },
+      {
+        "panel": "Fig. S6",
+        "pdf": "figures/si/Figure_S6.pdf",
+        "pdf_sha256": "c7d64bcef512c96cfad54d7ada5f3e8bd273067b2729cf454fa9d5a5ed70c9ac",
+        "svg": "figures/si/Figure_S6.svg",
+        "svg_sha256": "fe81ea3b70278acc170c52034bc7f1060d6250f2a4af907b24909c4ac0620567"
+      },
+      {
+        "panel": "Fig. S7",
+        "pdf": "figures/si/Figure_S7.pdf",
+        "pdf_sha256": "2f8e498e4161324d7655142024ee14a88b96f6a105dba091783eb5a19950845c",
+        "svg": "figures/si/Figure_S7.svg",
+        "svg_sha256": "835f92d41db94c98bc9f86c6d57def3ecd3d6e63b9373b991fb6447fbf512542"
+      },
+      {
+        "panel": "Fig. S8",
+        "pdf": "figures/si/Figure_S8.pdf",
+        "pdf_sha256": "fe3fbb7d502311f653c6cfcbee42770fdcb2c957c006a2a1e99da318e1e3fc52",
+        "svg": "figures/si/Figure_S8.svg",
+        "svg_sha256": "6210997a1769571c843d2532ee04a1f62c1165cbf1e674c7d39d107f328f9011"
+      },
+      {
+        "panel": "Fig. S9",
+        "pdf": "figures/si/Figure_S9.pdf",
+        "pdf_sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+        "svg": "figures/si/Figure_S9.svg",
+        "svg_sha256": "108e6967ae5cf4f33f1307fa975ec3d0ba3c5af8a530d6d97a576a79249958d9"
+      },
+      {
+        "panel": "Fig. S10",
+        "pdf": "figures/si/Figure_S10.pdf",
+        "pdf_sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+        "svg": "figures/si/Figure_S10.svg",
+        "svg_sha256": "3db83882d612c6cf0c88f4e6308ea5b53d0d06813703b314b2734ceedd373b6e"
+      },
+      {
+        "panel": "Fig. S11",
+        "pdf": "figures/si/Figure_S11.pdf",
+        "pdf_sha256": "e3aed96eacb8e14019a181d32f070158dfec19c283ed826cda7bf51056570484",
+        "svg": "figures/si/Figure_S11.svg",
+        "svg_sha256": "21f9290ef8d3622b2cd3a601dfc89c66930f1895cbe6e41959263fefb8a1ba67"
+      }
+    ],
+    "upstream_archive_verification": [
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1",
+        "checksum_manifest": "SHA256SUMS.txt",
+        "checksum_manifest_sha256": "7fdfa857a2ae99ac63cc966ce8432b97345385b22ac87c2b8298319d85f30cbb",
+        "verified_file_count": 105,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s4_20260825_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "60c69c3dc3cf5c75c5d845fbef75db6e533eeac561caca16664b140d00a64771",
+        "verified_file_count": 14,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s5_growth_20260825_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "96464cc16dd6476e1a91a52c8b2a5da62f65daef061c9328b11282354a8e8914",
+        "verified_file_count": 26,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s6_composition_20260825_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "ce90886e950cf4bcb5ec8954f033e84d10c9eea5c0821fa1cafb1d2e02c6e821",
+        "verified_file_count": 22,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s7_lineage_20260826_v2",
+        "checksum_manifest": "SHA256SUMS.txt",
+        "checksum_manifest_sha256": "36d4e8323e5891a604d3f88e70c73310d62aa90a78a44a20abf63a961056dcfe",
+        "verified_file_count": 24,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s8_gene_programs_20260826_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "161fd22f7a4ec328fa08fab0531ed57d28bb02f2ade349b7f37f4d6724ee94d0",
+        "verified_file_count": 17,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "cd584476bf86bab1090a11b2beb87f01a3b130f69e5e72e47a3bd6d88ed93e84",
+        "verified_file_count": 61,
+        "status": "PASS"
+      },
+      {
+        "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s11_msum_corrected_20260826_v1/archive_v1",
+        "checksum_manifest": "CHECKSUMS.sha256",
+        "checksum_manifest_sha256": "14052e2d5a6ad5bb2d3370ae4f06e927ffdaeb052d7e114a16ea3feb31408f25",
+        "verified_file_count": 58,
+        "status": "PASS"
+      }
+    ],
+    "master_pdf_count": 13,
+    "master_svg_count": 13
+  },
+  "visual_contract": {
+    "style_authority": "submitted manuscript/SI, historical MOSTA code, and Figure_mouse1.ai",
+    "complete_figure4_transform": "translation only; scale 1; rotation 0; no warp",
+    "vector_first": true,
+    "intentional_raster_layers": "dense scatter/spatial data layers only"
+  }
+}

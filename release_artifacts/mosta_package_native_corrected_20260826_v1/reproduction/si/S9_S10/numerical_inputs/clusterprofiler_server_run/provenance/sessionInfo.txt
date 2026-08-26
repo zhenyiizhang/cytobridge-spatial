@@ -1,0 +1,60 @@
+R version 4.3.3 (2024-02-29)
+Platform: x86_64-conda-linux-gnu (64-bit)
+Running under: Ubuntu 22.04.5 LTS
+
+Matrix products: default
+BLAS/LAPACK: /data/cytobridge/projects/CytoBridge-ST-1104/workspace/envs/r-clusterprofiler/lib/libopenblasp-r0.3.34.so;  LAPACK version 3.12.0
+
+locale:
+ [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+ [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+ [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+[10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+
+time zone: Asia/Shanghai
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+[1] org.Mm.eg.db_3.18.0    jsonlite_2.0.0         digest_0.6.37         
+[4] clusterProfiler_4.10.0 AnnotationDbi_1.64.1   IRanges_2.36.0        
+[7] S4Vectors_0.40.2       Biobase_2.62.0         BiocGenerics_0.48.1   
+
+loaded via a namespace (and not attached):
+  [1] DBI_1.2.3               bitops_1.0-9            gson_0.1.0             
+  [4] shadowtext_0.1.6        gridExtra_2.3           rlang_1.1.6            
+  [7] magrittr_2.0.3          DOSE_3.28.1             compiler_4.3.3         
+ [10] RSQLite_2.4.3           systemfonts_1.2.3       png_0.1-8              
+ [13] vctrs_0.6.5             reshape2_1.4.4          stringr_1.5.2          
+ [16] pkgconfig_2.0.3         crayon_1.5.3            fastmap_1.2.0          
+ [19] XVector_0.42.0          ggraph_2.2.1            HDO.db_0.99.1          
+ [22] enrichplot_1.22.0       purrr_1.1.0             bit_4.6.0              
+ [25] zlibbioc_1.48.0         cachem_1.1.0            aplot_0.2.9            
+ [28] GenomeInfoDb_1.38.1     blob_1.2.4              uuid_1.2-1             
+ [31] BiocParallel_1.36.0     tweenr_2.0.3            parallel_4.3.3         
+ [34] R6_2.6.1                stringi_1.8.7           RColorBrewer_1.1-3     
+ [37] GOSemSim_2.28.0         Rcpp_1.1.0              Matrix_1.6-5           
+ [40] splines_4.3.3           igraph_2.1.4            tidyselect_1.2.1       
+ [43] qvalue_2.34.0           viridis_0.6.5           codetools_0.2-20       
+ [46] lattice_0.22-7          tibble_3.3.0            plyr_1.8.9             
+ [49] S7_0.2.0                treeio_1.26.0           withr_3.0.2            
+ [52] KEGGREST_1.42.0         gridGraphics_0.5-1      scatterpie_0.2.6       
+ [55] polyclip_1.10-7         Biostrings_2.70.1       pillar_1.11.0          
+ [58] ggtree_3.10.0           ggfun_0.2.0             generics_0.1.4         
+ [61] RCurl_1.98-1.17         ggplot2_3.5.2           scales_1.4.0           
+ [64] tidytree_0.4.6          glue_1.8.0              lazyeval_0.2.2         
+ [67] tools_4.3.3             data.table_1.17.8       fgsea_1.28.0           
+ [70] ggiraph_0.8.12          fs_1.6.6                graphlayouts_1.2.2     
+ [73] fastmatch_1.1-6         tidygraph_1.3.0         cowplot_1.2.0          
+ [76] grid_4.3.3              tidyr_1.3.1             ape_5.8-1              
+ [79] colorspace_2.1-1        nlme_3.1-168            GenomeInfoDbData_1.2.11
+ [82] patchwork_1.3.2         ggforce_0.5.0           cli_3.6.5              
+ [85] rappdirs_0.3.3          viridisLite_0.4.2       dplyr_1.1.4            
+ [88] gtable_0.3.6            yulab.utils_0.2.1       ggrepel_0.9.6          
+ [91] ggplotify_0.1.3         htmlwidgets_1.6.4       farver_2.1.2           
+ [94] memoise_2.0.1           htmltools_0.5.8.1       lifecycle_1.0.4        
+ [97] httr_1.4.7              GO.db_3.18.0            bit64_4.6.0-1          
+[100] MASS_7.3-60.0.1        

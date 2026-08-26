@@ -1,0 +1,198 @@
+{
+  "status": "CANDIDATE_READY_FOR_VISUAL_QA",
+  "canvas_pt": [
+    595.2760009765625,
+    841.8900146484375
+  ],
+  "layout_truth": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/style_authority/Figure_mouse1.ai",
+  "layout_truth_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+  "numerical_truth": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1",
+  "source_panel_checksum_manifest_sha256": "7fdfa857a2ae99ac63cc966ce8432b97345385b22ac87c2b8298319d85f30cbb",
+  "placements": [
+    {
+      "panel": "a",
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/figures/fig4a.pdf",
+      "source_pdf_sha256": "46714b8a416c634ff132f2706cfbf2d5f5d1106ac36eeba1216bdecf2cc589f7",
+      "source_svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/figures/fig4a.svg",
+      "source_svg_sha256": "6cf2272f8fd0d498cf331d6332b3f567915e7db3b08382d6a780a921bfcc6da0",
+      "source_width_pt": 595.276,
+      "source_height_pt": 192.0,
+      "target_top_left": [
+        0.0,
+        0.0,
+        595.2760009765625,
+        192.0
+      ],
+      "pdf_translation_bottom_left": [
+        0.0,
+        649.8900146484375
+      ],
+      "scale_x": 1.0,
+      "scale_y": 1.0,
+      "rotation_degrees": 0.0,
+      "width_error_pt": -9.765625463842298e-07,
+      "height_error_pt": 0.0
+    },
+    {
+      "panel": "b",
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/figures/fig4b.pdf",
+      "source_pdf_sha256": "b6f565b16b1c603f5f51df65ad2fb3edca9b17c38ce17cf6c002a927fbba5350",
+      "source_svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/figures/fig4b.svg",
+      "source_svg_sha256": "348706ed6438b7d78230b9454f9623aace79aaa0b47bd11b212e37816a9f3274",
+      "source_width_pt": 326.6,
+      "source_height_pt": 258.5,
+      "target_top_left": [
+        0.0,
+        183.5,
+        326.6,
+        442.0
+      ],
+      "pdf_translation_bottom_left": [
+        0.0,
+        399.8900146484375
+      ],
+      "scale_x": 1.0,
+      "scale_y": 1.0,
+      "rotation_degrees": 0.0,
+      "width_error_pt": 0.0,
+      "height_error_pt": 0.0
+    },
+    {
+      "panel": "c",
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/figures/fig4c.pdf",
+      "source_pdf_sha256": "bc387a82c0409c976cf977f44d91f7b6d0fda54fa2a6b01d31429aea70dc1737",
+      "source_svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/figures/fig4c.svg",
+      "source_svg_sha256": "c8ea47101d249cb9b9b3497bfa44c0f22022c3327432cb1b9ffed07a4d989c38",
+      "source_width_pt": 278.9136047363,
+      "source_height_pt": 238.0,
+      "target_top_left": [
+        316.0863952636719,
+        202.0,
+        595.0,
+        440.0
+      ],
+      "pdf_translation_bottom_left": [
+        316.0863952636719,
+        401.8900146484375
+      ],
+      "scale_x": 1.0,
+      "scale_y": 1.0,
+      "rotation_degrees": 0.0,
+      "width_error_pt": -2.8137492336099967e-11,
+      "height_error_pt": 0.0
+    },
+    {
+      "panel": "d",
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/figures/fig4d.pdf",
+      "source_pdf_sha256": "52c84b237a1944fea2f1cbf0352b64b5b82a2307317752337161b168105c8992",
+      "source_svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/figures/fig4d.svg",
+      "source_svg_sha256": "3f4328299174744489c155385e94fd70903e86ac3275ce5c2016bf0e8aa369eb",
+      "source_width_pt": 290.0,
+      "source_height_pt": 378.0,
+      "target_top_left": [
+        0.0,
+        463.8900146484375,
+        290.0,
+        841.8900146484375
+      ],
+      "pdf_translation_bottom_left": [
+        0.0,
+        0.0
+      ],
+      "scale_x": 1.0,
+      "scale_y": 1.0,
+      "rotation_degrees": 0.0,
+      "width_error_pt": 0.0,
+      "height_error_pt": 0.0
+    },
+    {
+      "panel": "e",
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/figures/fig4e.pdf",
+      "source_pdf_sha256": "de1ae3596088fb560f2bf0f817c4cca2b3984dcd7d191793c198d097d78083a5",
+      "source_svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/figures/fig4e.svg",
+      "source_svg_sha256": "7ec1599860027c5a963389d88ccb0140da4e4324cf3d329fb4fa70311e63b8b5",
+      "source_width_pt": 309.276,
+      "source_height_pt": 379.89,
+      "target_top_left": [
+        286.0,
+        462.0,
+        595.2760009765625,
+        841.8900146484375
+      ],
+      "pdf_translation_bottom_left": [
+        286.0,
+        1.464843751364242e-05
+      ],
+      "scale_x": 1.0,
+      "scale_y": 1.0,
+      "rotation_degrees": 0.0,
+      "width_error_pt": -9.76562489540811e-07,
+      "height_error_pt": -1.464843751364242e-05
+    }
+  ],
+  "cross_panel_connectors": [
+    {
+      "source_operation": 119949,
+      "p0_pdf": [
+        105.4854,
+        315.5952
+      ],
+      "p1_pdf": [
+        285.8274,
+        344.5882
+      ],
+      "width_pt": 2.0,
+      "stroke_rgb": [
+        0.137,
+        0.09,
+        0.082
+      ],
+      "line_cap": 0,
+      "line_join": 0
+    },
+    {
+      "source_operation": 119955,
+      "p0_pdf": [
+        105.4854,
+        248.9149
+      ],
+      "p1_pdf": [
+        285.8274,
+        8.9109
+      ],
+      "width_pt": 2.0,
+      "stroke_rgb": [
+        0.137,
+        0.09,
+        0.082
+      ],
+      "line_cap": 0,
+      "line_join": 0
+    }
+  ],
+  "master_svg_method": "PyMuPDF get_svg_image(text_as_path=True) from each exact accepted panel PDF, with collision-safe id prefixing and unitless nested viewports; isolated Fig4e label restored from its audited PDF text object",
+  "connector_style_truth_method": "Direct extraction from Illustrator-compatible PDF content stream; no coordinate or style estimation",
+  "guards": {
+    "panel_scaling_used": false,
+    "panel_rotation_used": false,
+    "panel_warp_used": false,
+    "recomposition_design_changes": false,
+    "only_exact_AI_coordinate_translation_used": true,
+    "only_exact_AI_connector_objects_restored": true,
+    "arista_data_labels_palette_model_or_analysis_used": false
+  },
+  "outputs": {
+    "pdf": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8/figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout.pdf",
+      "sha256": "45beb12c6314052c4e33ce73255dcd8511a2e9e81e0a765ad858b0961cf80b40"
+    },
+    "svg": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8/figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout.svg",
+      "sha256": "e4c993d0b73456b83ce933196c5e0e70468a78bf59c93dc1b24665b891c5d73e"
+    },
+    "png": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8/figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout_300dpi.png",
+      "sha256": "d3a33f830ac66f343382b54d1b0fed383ee1a6205bdf02eb437138a2759b559a"
+    }
+  }
+}

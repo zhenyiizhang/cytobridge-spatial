@@ -1,0 +1,635 @@
+{
+  "base_helper": {
+    "path": "/tmp/server_audit_mosta_s11_mrow_20260826_v2.py",
+    "sha256": "8004e9f5961a39cac371459826c589298ced760f90319802c255d959bcbdec3e"
+  },
+  "components": {
+    "M_mean": {
+      "class": "package_native",
+      "cluster_sizes": {
+        "1": 1601,
+        "2": 100,
+        "3": 56
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.6924392410366929
+        }
+      ],
+      "meaning": "mean attention per observed cell edge",
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.22766078542970974,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": 0.0766247727536421
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.06715993170176437,
+          "median_normalized_prominence": -0.14611636427946129
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.00796812749003984,
+          "median_normalized_prominence": -0.0647019071786736
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.001707455890722823,
+          "fraction_prominence_lt_minus_0p25": 0.0005691519635742744,
+          "median_normalized_prominence": -0.006421328717057348
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.012232584598982632
+        }
+      },
+      "raw_score_summary": [
+        {
+          "n_pairs": 1757,
+          "score_max": 30961.913715433355,
+          "score_median": 0.8319657039186462,
+          "score_q10": 0.003842767627493988,
+          "score_q90": 31.95341615341922,
+          "score_sum": 189817.17024385819,
+          "time": 0.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 37117.50413035737,
+          "score_median": 0.6352176309291919,
+          "score_q10": 0.0032199446555447055,
+          "score_q90": 22.573842627666153,
+          "score_sum": 200573.81198222958,
+          "time": 0.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 37554.7073026616,
+          "score_median": 0.3771101327185048,
+          "score_q10": 0.002002492227907325,
+          "score_q90": 12.735702627851726,
+          "score_sum": 171184.73863322134,
+          "time": 1.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 44199.03744635057,
+          "score_median": 0.2872725729449036,
+          "score_q10": 0.0015851967767215726,
+          "score_q90": 10.01876294678402,
+          "score_sum": 183404.2157644981,
+          "time": 1.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 56153.69887186386,
+          "score_median": 0.27273478079612834,
+          "score_q10": 0.001517791276168339,
+          "score_q90": 9.38386539539218,
+          "score_sum": 218451.66452102497,
+          "time": 2.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 59265.97696064876,
+          "score_median": 0.2627483198664171,
+          "score_q10": 0.001539347913070179,
+          "score_q90": 9.203359378871083,
+          "score_sum": 232784.91089793263,
+          "time": 2.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 65852.65109848998,
+          "score_median": 0.2605332114033451,
+          "score_q10": 0.0015810327011140633,
+          "score_q90": 9.361006208034931,
+          "score_sum": 254612.32675634054,
+          "time": 3.0
+        }
+      ],
+      "submitted_profile_cluster_counts": {
+        "1": 29,
+        "3": 2
+      }
+    },
+    "M_per_source_global_fraction": {
+      "class": "diagnostic_only",
+      "cluster_sizes": {
+        "1": 957,
+        "2": 799,
+        "3": 1
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.5119280397376944
+        }
+      ],
+      "meaning": "M_per_source divided by its per-time global sum",
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.01309049516220831,
+          "fraction_prominence_lt_minus_0p25": 0.03130335799658509,
+          "median_normalized_prominence": -0.04821478097537346
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.02618099032441662,
+          "fraction_prominence_lt_minus_0p25": 0.004553215708594195,
+          "median_normalized_prominence": -0.005696669213643146
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.00796812749003984,
+          "fraction_prominence_lt_minus_0p25": 0.008537279453614115,
+          "median_normalized_prominence": -0.011383800268067068
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.0221969265793967,
+          "fraction_prominence_lt_minus_0p25": 0.01195219123505976,
+          "median_normalized_prominence": 0.011740359379636975
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.014797951052931132,
+          "fraction_prominence_lt_minus_0p25": 0.005691519635742743,
+          "median_normalized_prominence": 0.0031722571864641266
+        }
+      },
+      "raw_score_summary": [
+        {
+          "n_pairs": 1757,
+          "score_max": 86.7408323644404,
+          "score_median": 0.002326233886105678,
+          "score_q10": 1.0476240894754811e-05,
+          "score_q90": 0.08756870599372614,
+          "score_sum": 512.6612363597684,
+          "time": 0.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 114.31095422013877,
+          "score_median": 0.0020678621062141375,
+          "score_q10": 1.0511724424309373e-05,
+          "score_q90": 0.07526742488069714,
+          "score_sum": 641.8950182738884,
+          "time": 0.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 180.69835468902616,
+          "score_median": 0.0018976715690705664,
+          "score_q10": 1.088564216098484e-05,
+          "score_q90": 0.06616615384672182,
+          "score_sum": 858.720982929565,
+          "time": 1.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 250.70207614851634,
+          "score_median": 0.0017851087046308633,
+          "score_q10": 1.0188340179525272e-05,
+          "score_q90": 0.06192675153945807,
+          "score_sum": 1070.714112287039,
+          "time": 1.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 329.01569818001957,
+          "score_median": 0.0016757362768549805,
+          "score_q10": 9.837348440092644e-06,
+          "score_q90": 0.055908099451081106,
+          "score_sum": 1259.7906962427508,
+          "time": 2.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 330.7747652072337,
+          "score_median": 0.0015435982042933186,
+          "score_q10": 9.78615842493246e-06,
+          "score_q90": 0.054035782455898976,
+          "score_sum": 1310.436669132844,
+          "time": 2.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 330.8193809215882,
+          "score_median": 0.0013745473686669015,
+          "score_q10": 8.669139000881766e-06,
+          "score_q90": 0.04933511830703479,
+          "score_sum": 1300.2137447697414,
+          "time": 3.0
+        }
+      ],
+      "submitted_profile_cluster_counts": {
+        "1": 26,
+        "2": 5
+      }
+    },
+    "M_sum": {
+      "class": "package_native",
+      "cluster_sizes": {
+        "1": 1632,
+        "2": 108,
+        "3": 17
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.7083772934010394
+        }
+      ],
+      "meaning": "total attention by type pair",
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.07342060330108138,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.04071086908663968
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.011383039271485486,
+          "median_normalized_prominence": -0.1083979283202316
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.0022766078542970974,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.022413757185676925
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.0022766078542970974,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.004354637049398119
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.004553215708594195,
+          "median_normalized_prominence": -0.019511817724790305
+        }
+      },
+      "raw_score_summary": [
+        {
+          "n_pairs": 1757,
+          "score_max": 7061377.24668631,
+          "score_median": 196.94854226255825,
+          "score_q10": 0.8603943408859763,
+          "score_q90": 8212.94843457054,
+          "score_sum": 49242524.268791474,
+          "time": 0.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 7432052.889200758,
+          "score_median": 123.77602364770168,
+          "score_q10": 0.577284774246133,
+          "score_q90": 4572.058822781145,
+          "score_sum": 41747684.58641267,
+          "time": 0.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 6850675.260821718,
+          "score_median": 67.79610195006731,
+          "score_q10": 0.3707555156612451,
+          "score_q90": 2433.3502190717504,
+          "score_sum": 32121403.526315715,
+          "time": 1.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 7438925.238293383,
+          "score_median": 48.670085706674215,
+          "score_q10": 0.2723283450296822,
+          "score_q90": 1764.1049252108614,
+          "score_sum": 31151770.432976708,
+          "time": 1.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 7577301.906524662,
+          "score_median": 37.3495350994166,
+          "score_q10": 0.235092952639474,
+          "score_q90": 1404.8078736016294,
+          "score_sum": 29718478.20450633,
+          "time": 2.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 6810481.628842892,
+          "score_median": 28.582694386256684,
+          "score_q10": 0.18660434424061367,
+          "score_q90": 1118.9469713498315,
+          "score_sum": 26011584.623658307,
+          "time": 2.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 6462184.549861001,
+          "score_median": 25.27939919104312,
+          "score_q10": 0.16909266047380556,
+          "score_q90": 1008.1360940748789,
+          "score_sum": 24346866.20505647,
+          "time": 3.0
+        }
+      ],
+      "submitted_profile_cluster_counts": {
+        "1": 31
+      }
+    },
+    "M_sum_maxnorm_legacy": {
+      "class": "legacy_diagnostic_only",
+      "cluster_sizes": {
+        "1": 1211,
+        "2": 264,
+        "3": 282
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.4881990424605889
+        }
+      ],
+      "meaning": "old notebook M_sum divided by its per-time maximum",
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.4900398406374502,
+          "median_normalized_prominence": -0.24807057809893984
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.6044393853158794,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": 0.29922203284643045
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.015367103016505406,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": 0.025522360329562455
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.014228799089356859,
+          "median_normalized_prominence": -0.08978627696545333
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.029458757562558613
+        }
+      },
+      "raw_score_summary": [
+        {
+          "n_pairs": 1757,
+          "score_max": 508.8547863672933,
+          "score_median": 0.014192445028396304,
+          "score_q10": 6.200147127511353e-05,
+          "score_q90": 0.5918389536658955,
+          "score_sum": 3548.499576161402,
+          "time": 0.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 702.0461455017013,
+          "score_median": 0.01169212350919387,
+          "score_q10": 5.45314405936502e-05,
+          "score_q90": 0.43188555321028266,
+          "score_sum": 3943.5673406064343,
+          "time": 0.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 1373.2309291119727,
+          "score_median": 0.013589858010565508,
+          "score_q10": 7.431865062361915e-05,
+          "score_q90": 0.4877696949526569,
+          "score_sum": 6438.7966338273445,
+          "time": 1.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 1654.5910704458506,
+          "score_median": 0.010825366115195982,
+          "score_q10": 6.057219739161975e-05,
+          "score_q90": 0.3923782217299277,
+          "score_sum": 6928.88280710928,
+          "time": 1.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 1594.5374499803595,
+          "score_median": 0.007859688473557305,
+          "score_q10": 4.947203131596381e-05,
+          "score_q90": 0.2956222138326359,
+          "score_sum": 6253.839036386584,
+          "time": 2.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 1587.2384690109093,
+          "score_median": 0.006661430798919395,
+          "score_q10": 4.348966927814451e-05,
+          "score_q90": 0.26077974723374314,
+          "score_sum": 6062.2126311524535,
+          "time": 2.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 1534.8522193612484,
+          "score_median": 0.006004183516134038,
+          "score_q10": 4.01616888535783e-05,
+          "score_q90": 0.2394453314463591,
+          "score_sum": 5782.694898449796,
+          "time": 3.0
+        }
+      ],
+      "submitted_profile_cluster_counts": {
+        "1": 29,
+        "3": 2
+      }
+    },
+    "M_uniform_expression_only": {
+      "class": "diagnostic_only",
+      "cluster_sizes": {
+        "1": 16,
+        "2": 1112,
+        "3": 629
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 61,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.47512968286663376
+        }
+      ],
+      "meaning": "uniform type-pair weights summing to one",
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.010813887307911212,
+          "fraction_prominence_lt_minus_0p25": 0.08309618668184406,
+          "median_normalized_prominence": -0.06832514160849412
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.035856573705179286,
+          "fraction_prominence_lt_minus_0p25": 0.005691519635742743,
+          "median_normalized_prominence": 0.006399661048632432
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.02618099032441662,
+          "fraction_prominence_lt_minus_0p25": 0.01309049516220831,
+          "median_normalized_prominence": 0.01398925176404825
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.07285145133750712,
+          "fraction_prominence_lt_minus_0p25": 0.032441661923733635,
+          "median_normalized_prominence": -0.011459369915995277
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.04780876494023904,
+          "fraction_prominence_lt_minus_0p25": 0.004553215708594195,
+          "median_normalized_prominence": 0.005725113634834453
+        }
+      },
+      "raw_score_summary": [
+        {
+          "n_pairs": 1757,
+          "score_max": 82.85746139557227,
+          "score_median": 0.002244140733426805,
+          "score_q10": 1.0838064461002618e-05,
+          "score_q90": 0.0754980727924129,
+          "score_sum": 444.47433822788895,
+          "time": 0.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 108.91546359826023,
+          "score_median": 0.0020489419652641163,
+          "score_q10": 1.0344487493321846e-05,
+          "score_q90": 0.0703568600999942,
+          "score_sum": 589.3758183065638,
+          "time": 0.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 176.50998699330114,
+          "score_median": 0.0019243651272610055,
+          "score_q10": 1.0586794967121186e-05,
+          "score_q90": 0.06468377945808375,
+          "score_sum": 810.9836530776126,
+          "time": 1.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 252.15189968415186,
+          "score_median": 0.0018289384224967468,
+          "score_q10": 1.033704131904687e-05,
+          "score_q90": 0.06145250201352515,
+          "score_sum": 1050.5045612299762,
+          "time": 1.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 328.75915055453174,
+          "score_median": 0.0017356511205475346,
+          "score_q10": 1.036469490494114e-05,
+          "score_q90": 0.05760918491857216,
+          "score_sum": 1249.2019357533197,
+          "time": 2.0
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 323.8024072621105,
+          "score_median": 0.0016160643895597538,
+          "score_q10": 9.570253991812428e-06,
+          "score_q90": 0.054654832774320865,
+          "score_sum": 1287.0035729338288,
+          "time": 2.5
+        },
+        {
+          "n_pairs": 1757,
+          "score_max": 312.6262596944548,
+          "score_median": 0.0014681563187663332,
+          "score_q10": 8.865117233850336e-06,
+          "score_q90": 0.049542023928793616,
+          "score_sum": 1243.3311459115093,
+          "time": 3.0
+        }
+      ],
+      "submitted_profile_cluster_counts": {
+        "1": 1,
+        "2": 24,
+        "3": 6
+      }
+    }
+  },
+  "dataset": "MOSTA",
+  "hard_gates": {
+    "exact_sparse_reconstruction_of_source_M_per_source": true,
+    "no_smoothing": true,
+    "same_1757_pair_universe_every_component": true,
+    "same_fully_generated_states_and_inverse_pca_expression": true,
+    "seed42_sample_indices_exact": true
+  },
+  "package": {
+    "archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+    "attention_signature": "(edge_index: 'np.ndarray', attn: 'np.ndarray', labels: 'np.ndarray', spatial_coord: 'Optional[np.ndarray]' = None, time_title: 'Optional[str]' = None, remove_self_loop: 'bool' = True, winsor_quantile: 'float' = 0.995, distance_bins: 'Union[str, Sequence[float]]' = 'quartile', n_permutations: 'int' = 0, random_state: 'int' = 0, show_plots: 'bool' = True, plot: 'Optional[bool]' = None) -> 'Dict'",
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "module": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py",
+    "projection_signature": "(adata_dict: 'Mapping[str, object]', reference_adata, communications: 'Mapping[str, Mapping[str, object]]', lr_database: 'str | Path | pd.DataFrame', *, time_points: 'Optional[Sequence[float]]' = None, annotation_key: 'str' = 'Annotation', matrix_key: 'str' = 'M_per_source', spatial_dim: 'int' = 2, loadings_key: 'str' = 'PCs', reference_layer: 'Optional[str]' = None, allow_complete_reference_pca_center_fallback: 'bool' = False, expression_space: 'str' = 'count', complex_mode: 'str' = 'min', require_all_subunits: 'bool' = True, duplicate_policy: 'str' = 'first', preferred_species_tag: 'Optional[str]' = None, n_clusters: 'int' = 2, pca_reconstruction: 'Optional[PCAReconstructionSpec]' = None, profile_linkage_method: 'str' = 'average', profile_cluster_order: 'str' = 'peak_time', observed_adata=None, observed_time_key: 'Optional[str]' = None, observed_time_points: 'Optional[Sequence[float]]' = None, observed_annotation_key: 'Optional[str]' = None, observed_layer: 'Optional[str]' = None, observed_expression_space: 'str' = 'log1p', observed_missing_time_policy: 'str' = 'error', observed_time_atol: 'float' = 1e-08, pca_active_absolute_tolerance: 'float' = 1e-12, pca_active_relative_tolerance: 'float' = 1e-07, return_type_matrices: 'bool' = False) -> 'LRTemporalProjectionResult'",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime"
+  },
+  "panel": "S11",
+  "question": "Which communication or expression component drives the synchronized temporal pulses?",
+  "runtime": {
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]"
+  },
+  "schema_version": 1,
+  "shared_states": {
+    "files_verified": 44,
+    "manifest": "SHA256SUMS.txt",
+    "manifest_sha256": "4c693bf8902381e9e78979917a695c444c494f0aa221c87c374ac630642edf04",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1"
+  },
+  "source_run": {
+    "files_verified": 35,
+    "manifest": "SHA256SUMS.txt",
+    "manifest_sha256": "62a18c6ab2aa7285dedec2474f3f5924a586b3aec247ad11b78f1bc61524cfff",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s11-global-t0-generated7-comm12k-average-k3-2b3c79e-seed42-20260825-v2"
+  },
+  "status": "COMPLETE_AUDIT_NOT_FINAL",
+  "wall_seconds": 143.72664280142635
+}

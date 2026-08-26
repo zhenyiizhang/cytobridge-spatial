@@ -1,0 +1,92 @@
+{
+  "accepted_model_hashes": {
+    "finetune": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+    "score": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a"
+  },
+  "accepted_package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "alignment": {
+    "all_growth_rows_map_one_to_one_to_generated_state_rows": true,
+    "labels_match_generated_states": true,
+    "maximum_growth_table_vs_state_coordinate_error": 0.0,
+    "maximum_spatial_vs_state_first_two_error": 0.0,
+    "stored_summary_max_abs_error": 1.9789501426448197e-08
+  },
+  "brain": {
+    "common_scale": {
+      "agreement_within_one_float32_ulp": true,
+      "authoritative_vmax": 0.539695218205452,
+      "authoritative_vmin": -0.025904556736350056,
+      "csv_recomputed_vmax": 0.539695233,
+      "csv_recomputed_vmin": -0.0259045568,
+      "percentiles": [
+        5.0,
+        95.0
+      ],
+      "vmax_float32_ulp": 5.960464477539063e-08,
+      "vmax_serialization_error": 1.4794548031105137e-08,
+      "vmin_float32_ulp": 1.862645149230957e-09,
+      "vmin_serialization_error": 6.364994295515736e-11
+    },
+    "display_only_omission": 1.5,
+    "largest_mean_adjacent_increase": -0.019124384487305454,
+    "largest_median_adjacent_increase": -0.0183569015,
+    "mean_end": 0.03848752854513999,
+    "mean_monotonically_decreasing": true,
+    "mean_start": 0.5034122603907168,
+    "median_monotonically_decreasing": true,
+    "n_rows_all_times": 272410,
+    "time_points_calculated": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ],
+    "time_points_displayed": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.75,
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ]
+  },
+  "claim": "Package-predicted Brain growth decreases smoothly along one fully generated global-t0 developmental trajectory.",
+  "dataset": "MOSTA",
+  "files_verified_from_manifest": 44,
+  "gates": {
+    "all_13_times_generated_global_t0": true,
+    "all_values_finite": true,
+    "arista_assets_used": false,
+    "common_scale_from_all_13_brain_slices": true,
+    "growth_value_smoothing": false,
+    "independent_panel_normalization": false,
+    "package_native_evaluate_growth_by_timepoint": true,
+    "restart_from_observed_anchors": false,
+    "spatial_warp": false
+  },
+  "growth_table": {
+    "n_rows": 1077496,
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s5_growth/growth_by_cell_fully_generated.csv",
+    "sha256": "78073f25684bc456b822b7536e81fd3d5d796a73fd3dfc8cdb1371d239147fb9"
+  },
+  "numerical_manifest_sha256": "4c693bf8902381e9e78979917a695c444c494f0aa221c87c374ac630642edf04",
+  "numerical_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1",
+  "panel": "Supplementary Figure S5",
+  "schema_version": 1,
+  "status": "pass"
+}

@@ -1,0 +1,948 @@
+{
+  "annotation_audit_method": {
+    "local_field": "100-nearest-neighbour adaptive Gaussian mean; sigma is median neighbour distance",
+    "purpose": "biological interpretation and schematic-arrow direction QA only",
+    "retain_original_threshold": "mean cosine >= 0.5 and median cosine >= 0.5",
+    "samples_per_arrow": 9,
+    "style_geometry": "arrow glyphs preserve original length and are transformed rigidly; numerical fields are never transformed"
+  },
+  "arrows": {
+    "gene_full": [
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.9940058058937935,
+          "mean_local_magnitude": 0.004072713443536343,
+          "median_cosine": 0.9977287359360026,
+          "min_cosine": 0.979861180409179,
+          "sample_cosines": [
+            0.979861180409179,
+            0.9836496768019095,
+            0.9910290743665265,
+            0.9960391762146413,
+            0.9977287359360026,
+            0.9997949441699339,
+            0.9996626121924194,
+            0.9999999774054749,
+            0.9982868755480546
+          ]
+        },
+        "final_tail_AI_points": [
+          328.507,
+          575.549
+        ],
+        "final_tip_AI_points": [
+          361.556,
+          549.086
+        ],
+        "id": "gf_1",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.9940058058937935,
+          "mean_local_magnitude": 0.004072713443536343,
+          "median_cosine": 0.9977287359360026,
+          "min_cosine": 0.979861180409179,
+          "sample_cosines": [
+            0.979861180409179,
+            0.9836496768019095,
+            0.9910290743665265,
+            0.9960391762146413,
+            0.9977287359360026,
+            0.9997949441699339,
+            0.9996626121924194,
+            0.9999999774054749,
+            0.9982868755480546
+          ]
+        },
+        "original_tail_AI_points": [
+          328.507,
+          575.549
+        ],
+        "original_tip_AI_points": [
+          361.556,
+          549.086
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.9655644762243603,
+          "mean_local_magnitude": 0.0055748618062917065,
+          "median_cosine": 0.9872193843188845,
+          "min_cosine": 0.9051675286835207,
+          "sample_cosines": [
+            0.9872193843188845,
+            0.9915260774523693,
+            0.9944114977351876,
+            0.9976065853808769,
+            0.9991921466743312,
+            0.9750290554294992,
+            0.9291573991203133,
+            0.9107706112242597,
+            0.9051675286835207
+          ]
+        },
+        "final_tail_AI_points": [
+          386.598,
+          543.003
+        ],
+        "final_tip_AI_points": [
+          424.281,
+          532.65
+        ],
+        "id": "gf_2",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.9655644762243603,
+          "mean_local_magnitude": 0.0055748618062917065,
+          "median_cosine": 0.9872193843188845,
+          "min_cosine": 0.9051675286835207,
+          "sample_cosines": [
+            0.9872193843188845,
+            0.9915260774523693,
+            0.9944114977351876,
+            0.9976065853808769,
+            0.9991921466743312,
+            0.9750290554294992,
+            0.9291573991203133,
+            0.9107706112242597,
+            0.9051675286835207
+          ]
+        },
+        "original_tail_AI_points": [
+          386.598,
+          543.003
+        ],
+        "original_tip_AI_points": [
+          424.281,
+          532.65
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.993614989190071,
+          "mean_local_magnitude": 0.007288126803372073,
+          "median_cosine": 0.9955240844570338,
+          "min_cosine": 0.9821848786760832,
+          "sample_cosines": [
+            0.9821848786760832,
+            0.9843909538256688,
+            0.9874153796606916,
+            0.9945341739002719,
+            0.9992917296064575,
+            0.9999586113005572,
+            0.9995551761056799,
+            0.9955240844570338,
+            0.9996799151781951
+          ]
+        },
+        "final_tail_AI_points": [
+          361.717,
+          583.344
+        ],
+        "final_tip_AI_points": [
+          404.897,
+          580.995
+        ],
+        "id": "gf_3",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.993614989190071,
+          "mean_local_magnitude": 0.007288126803372073,
+          "median_cosine": 0.9955240844570338,
+          "min_cosine": 0.9821848786760832,
+          "sample_cosines": [
+            0.9821848786760832,
+            0.9843909538256688,
+            0.9874153796606916,
+            0.9945341739002719,
+            0.9992917296064575,
+            0.9999586113005572,
+            0.9995551761056799,
+            0.9955240844570338,
+            0.9996799151781951
+          ]
+        },
+        "original_tail_AI_points": [
+          361.717,
+          583.344
+        ],
+        "original_tip_AI_points": [
+          404.897,
+          580.995
+        ]
+      }
+    ],
+    "gene_interaction": [
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "rigid_reorientation_at_original_center",
+        "final_alignment": {
+          "mean_cosine": 0.9986689606672695,
+          "mean_local_magnitude": 0.0030636974991785845,
+          "median_cosine": 0.9987704457700946,
+          "min_cosine": 0.9968623293540871,
+          "sample_cosines": [
+            0.9982916015047574,
+            0.9975379665072416,
+            0.9998701003395372,
+            0.999986689121209,
+            1.0,
+            0.9968623293540871,
+            0.9987704457700946,
+            0.9995502975371348,
+            0.9971512158713641
+          ]
+        },
+        "final_tail_AI_points": [
+          504.34747444701856,
+          535.4483906180927
+        ],
+        "final_tip_AI_points": [
+          523.5175255529815,
+          507.7396093819074
+        ],
+        "id": "gi_1",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": -0.6865180143611962,
+          "mean_local_magnitude": 0.003055962726905091,
+          "median_cosine": -0.7051359143110337,
+          "min_cosine": -0.7482573554321311,
+          "sample_cosines": [
+            -0.6316819951806492,
+            -0.6223100942009604,
+            -0.6380505134379403,
+            -0.666262378056279,
+            -0.7051359143110337,
+            -0.7152234015984436,
+            -0.7115543130530104,
+            -0.7401861639803181,
+            -0.7482573554321311
+          ]
+        },
+        "original_tail_AI_points": [
+          530.302,
+          517.612
+        ],
+        "original_tip_AI_points": [
+          497.563,
+          525.576
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "rigid_reorientation_at_original_center",
+        "final_alignment": {
+          "mean_cosine": 0.9994563882181716,
+          "mean_local_magnitude": 0.0036469674585752412,
+          "median_cosine": 0.9999156729800106,
+          "min_cosine": 0.9983561667178817,
+          "sample_cosines": [
+            0.9986511919389773,
+            0.9990494758644034,
+            0.9983561667178817,
+            0.9999999889646534,
+            1.0,
+            0.9999156729800106,
+            0.9999769372368383,
+            0.9992056168089224,
+            0.9999524434518584
+          ]
+        },
+        "final_tail_AI_points": [
+          461.3892278820158,
+          573.5899888840263
+        ],
+        "final_tip_AI_points": [
+          475.6537721179842,
+          543.0650111159737
+        ],
+        "id": "gi_2",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": -0.6014012426989025,
+          "mean_local_magnitude": 0.003709127952466498,
+          "median_cosine": -0.6063763109658699,
+          "min_cosine": -0.6277297429570209,
+          "sample_cosines": [
+            -0.6057551454997062,
+            -0.5679375130434334,
+            -0.5874997698982689,
+            -0.5753206144923201,
+            -0.6063763109658699,
+            -0.6206535029692397,
+            -0.6112611995822973,
+            -0.6100773848819668,
+            -0.6277297429570209
+          ]
+        },
+        "original_tail_AI_points": [
+          484.891,
+          554.346
+        ],
+        "original_tip_AI_points": [
+          452.152,
+          562.309
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "rigid_reorientation_at_original_center",
+        "final_alignment": {
+          "mean_cosine": 0.9987536422326796,
+          "mean_local_magnitude": 0.005323567667847899,
+          "median_cosine": 0.999165187655675,
+          "min_cosine": 0.996163240462712,
+          "sample_cosines": [
+            0.9980681453152452,
+            0.999165187655675,
+            0.9998328116593009,
+            0.9999997881523235,
+            1.0,
+            0.9994135707222919,
+            0.9983230758726608,
+            0.996163240462712,
+            0.9978169602539061
+          ]
+        },
+        "final_tail_AI_points": [
+          464.10953912511854,
+          611.7064114130742
+        ],
+        "final_tip_AI_points": [
+          469.30946087488144,
+          578.4165885869259
+        ],
+        "id": "gi_3",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": -0.36122992767257345,
+          "mean_local_magnitude": 0.005124280829812231,
+          "median_cosine": -0.4363005416580596,
+          "min_cosine": -0.4764683315473034,
+          "sample_cosines": [
+            -0.051323788504618766,
+            -0.18513746076086454,
+            -0.33582167682603664,
+            -0.3952932836161531,
+            -0.4363005416580596,
+            -0.44558639590072285,
+            -0.45421533275422465,
+            -0.47092253748517754,
+            -0.4764683315473034
+          ]
+        },
+        "original_tail_AI_points": [
+          483.079,
+          591.08
+        ],
+        "original_tip_AI_points": [
+          450.34,
+          599.043
+        ]
+      }
+    ],
+    "physical_full": [
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.968479435051028,
+          "mean_local_magnitude": 0.23874974705183952,
+          "median_cosine": 0.9682664219515409,
+          "min_cosine": 0.967544109814318,
+          "sample_cosines": [
+            0.967544109814318,
+            0.9681747974296553,
+            0.9692392614979161,
+            0.9684442272978143,
+            0.968816051091964,
+            0.9682664219515409,
+            0.9679684625160164,
+            0.9682638571634246,
+            0.9695977266966025
+          ]
+        },
+        "final_tail_AI_points": [
+          323.396,
+          692.993
+        ],
+        "final_tip_AI_points": [
+          327.007,
+          671.314
+        ],
+        "id": "pf_1",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.968479435051028,
+          "mean_local_magnitude": 0.23874974705183952,
+          "median_cosine": 0.9682664219515409,
+          "min_cosine": 0.967544109814318,
+          "sample_cosines": [
+            0.967544109814318,
+            0.9681747974296553,
+            0.9692392614979161,
+            0.9684442272978143,
+            0.968816051091964,
+            0.9682664219515409,
+            0.9679684625160164,
+            0.9682638571634246,
+            0.9695977266966025
+          ]
+        },
+        "original_tail_AI_points": [
+          323.396,
+          692.993
+        ],
+        "original_tip_AI_points": [
+          327.007,
+          671.314
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.9975362162568513,
+          "mean_local_magnitude": 0.2254949928722088,
+          "median_cosine": 0.9993943135431493,
+          "min_cosine": 0.9914460527642961,
+          "sample_cosines": [
+            0.999802238948382,
+            0.9992033481951996,
+            0.9993943135431493,
+            0.9998665594909544,
+            0.9999006239974445,
+            0.9997888315490648,
+            0.9968425592565154,
+            0.9915814185666547,
+            0.9914460527642961
+          ]
+        },
+        "final_tail_AI_points": [
+          398.287,
+          741.346
+        ],
+        "final_tip_AI_points": [
+          393.496,
+          683.638
+        ],
+        "id": "pf_2",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.9975362162568513,
+          "mean_local_magnitude": 0.2254949928722088,
+          "median_cosine": 0.9993943135431493,
+          "min_cosine": 0.9914460527642961,
+          "sample_cosines": [
+            0.999802238948382,
+            0.9992033481951996,
+            0.9993943135431493,
+            0.9998665594909544,
+            0.9999006239974445,
+            0.9997888315490648,
+            0.9968425592565154,
+            0.9915814185666547,
+            0.9914460527642961
+          ]
+        },
+        "original_tail_AI_points": [
+          398.287,
+          741.346
+        ],
+        "original_tip_AI_points": [
+          393.496,
+          683.638
+        ]
+      }
+    ],
+    "physical_interaction": [
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.9836561746127782,
+          "mean_local_magnitude": 0.0018885070330418284,
+          "median_cosine": 0.9883061380517135,
+          "min_cosine": 0.964399938626007,
+          "sample_cosines": [
+            0.9684227832751674,
+            0.9839031589225264,
+            0.964399938626007,
+            0.9654475757748124,
+            0.9955087786349704,
+            0.9957578495448088,
+            0.9883061380517135,
+            0.9953936724221883,
+            0.9957656762628101
+          ]
+        },
+        "final_tail_AI_points": [
+          476.123,
+          663.131
+        ],
+        "final_tip_AI_points": [
+          494.587,
+          672.737
+        ],
+        "id": "pi_1",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.9836561746127782,
+          "mean_local_magnitude": 0.0018885070330418284,
+          "median_cosine": 0.9883061380517135,
+          "min_cosine": 0.964399938626007,
+          "sample_cosines": [
+            0.9684227832751674,
+            0.9839031589225264,
+            0.964399938626007,
+            0.9654475757748124,
+            0.9955087786349704,
+            0.9957578495448088,
+            0.9883061380517135,
+            0.9953936724221883,
+            0.9957656762628101
+          ]
+        },
+        "original_tail_AI_points": [
+          476.123,
+          663.131
+        ],
+        "original_tip_AI_points": [
+          494.587,
+          672.737
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 7.0,
+        "data_projection_transform": false,
+        "decision": "rigid_reorientation_and_minimal_local_translation",
+        "final_alignment": {
+          "mean_cosine": 0.9953292095781833,
+          "mean_local_magnitude": 0.0012496445669766616,
+          "median_cosine": 0.9973222678616809,
+          "min_cosine": 0.9831369456553929,
+          "sample_cosines": [
+            0.9980939783600435,
+            0.9971745484521132,
+            0.9969089611354041,
+            0.9998716236044697,
+            1.0,
+            0.9973222678616809,
+            0.998695802283285,
+            0.9831369456553929,
+            0.9867587588512596
+          ]
+        },
+        "final_tail_AI_points": [
+          504.1304742412774,
+          671.4462024009641
+        ],
+        "final_tip_AI_points": [
+          523.1655257587227,
+          679.8627975990361
+        ],
+        "id": "pi_2",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": -0.14781869755556423,
+          "mean_local_magnitude": 0.000557496580894342,
+          "median_cosine": -0.9572987274958782,
+          "min_cosine": -0.9998518371239101,
+          "sample_cosines": [
+            0.9702602549434605,
+            0.8546673945043237,
+            0.8596470814463195,
+            0.9019461408951022,
+            -0.9625676189701163,
+            -0.9572987274958782,
+            -0.9979849715322504,
+            -0.9998518371239101,
+            -0.9991859946671289
+          ]
+        },
+        "original_tail_AI_points": [
+          523.301,
+          686.542
+        ],
+        "original_tip_AI_points": [
+          503.995,
+          678.767
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "retain_exact_original_AI_geometry",
+        "final_alignment": {
+          "mean_cosine": 0.6883612076243386,
+          "mean_local_magnitude": 0.0008736355573329259,
+          "median_cosine": 0.7923503455134655,
+          "min_cosine": 0.06790216403059457,
+          "sample_cosines": [
+            0.5420643488827289,
+            0.5420783235396434,
+            0.06790216403059457,
+            0.5349362252184671,
+            0.8015876586152254,
+            0.7923503455134655,
+            0.960240068957437,
+            0.9545365314034076,
+            0.9995552024580787
+          ]
+        },
+        "final_tail_AI_points": [
+          438.37,
+          702.528
+        ],
+        "final_tip_AI_points": [
+          456.833,
+          712.134
+        ],
+        "id": "pi_3",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": 0.6883612076243386,
+          "mean_local_magnitude": 0.0008736355573329259,
+          "median_cosine": 0.7923503455134655,
+          "min_cosine": 0.06790216403059457,
+          "sample_cosines": [
+            0.5420643488827289,
+            0.5420783235396434,
+            0.06790216403059457,
+            0.5349362252184671,
+            0.8015876586152254,
+            0.7923503455134655,
+            0.960240068957437,
+            0.9545365314034076,
+            0.9995552024580787
+          ]
+        },
+        "original_tail_AI_points": [
+          438.37,
+          702.528
+        ],
+        "original_tip_AI_points": [
+          456.833,
+          712.134
+        ]
+      },
+      {
+        "annotation_transform_only": true,
+        "center_relocation_points": 0.0,
+        "data_projection_transform": false,
+        "decision": "rigid_reorientation_at_original_center",
+        "final_alignment": {
+          "mean_cosine": 0.8764144995556571,
+          "mean_local_magnitude": 0.0008919489579551743,
+          "median_cosine": 0.868906938890647,
+          "min_cosine": 0.8026497301753899,
+          "sample_cosines": [
+            0.9067546644874607,
+            0.8049605300154503,
+            0.8244062221958885,
+            0.868906938890647,
+            1.0000000000000002,
+            0.9036669423124245,
+            0.8026497301753899,
+            0.932504170358486,
+            0.8438812975651656
+          ]
+        },
+        "final_tail_AI_points": [
+          465.51574679162394,
+          722.8026112343825
+        ],
+        "final_tip_AI_points": [
+          486.274253208376,
+          721.3003887656175
+        ],
+        "id": "pi_4",
+        "length_preserved": true,
+        "original_alignment": {
+          "mean_cosine": -0.8713703128580974,
+          "mean_local_magnitude": 0.000716546228439757,
+          "median_cosine": -0.9048668888898922,
+          "min_cosine": -0.9976640005075688,
+          "sample_cosines": [
+            -0.9388531944008252,
+            -0.7113353273512999,
+            -0.7978510357907632,
+            -0.9187495871346968,
+            -0.7983669534400362,
+            -0.7874695422879938,
+            -0.9871762859198,
+            -0.9976640005075688,
+            -0.9048668888898922
+          ]
+        },
+        "original_tail_AI_points": [
+          485.548,
+          725.939
+        ],
+        "original_tip_AI_points": [
+          466.242,
+          718.164
+        ]
+      }
+    ]
+  },
+  "calculation_contract": {
+    "ARISTA_used": false,
+    "accepted_latest_package_model": true,
+    "complete_E15p5_Brain_n": 17071,
+    "historical_display_ROI_n": 2844,
+    "historical_plot_region_xmin_xmax_ymin_ymax": [
+      -1.3,
+      -0.5,
+      3.3,
+      4.2
+    ],
+    "interaction_m": 1024
+  },
+  "dataset": "MOSTA",
+  "final_arrow_geometry": {
+    "gene_full": [
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "gf_1",
+        "tail": [
+          328.507,
+          575.549
+        ],
+        "tip": [
+          361.556,
+          549.086
+        ]
+      },
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "gf_2",
+        "tail": [
+          386.598,
+          543.003
+        ],
+        "tip": [
+          424.281,
+          532.65
+        ]
+      },
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "gf_3",
+        "tail": [
+          361.717,
+          583.344
+        ],
+        "tip": [
+          404.897,
+          580.995
+        ]
+      }
+    ],
+    "gene_interaction": [
+      {
+        "decision": "rigid_reorientation_at_original_center",
+        "id": "gi_1",
+        "tail": [
+          504.34747444701856,
+          535.4483906180927
+        ],
+        "tip": [
+          523.5175255529815,
+          507.7396093819074
+        ]
+      },
+      {
+        "decision": "rigid_reorientation_at_original_center",
+        "id": "gi_2",
+        "tail": [
+          461.3892278820158,
+          573.5899888840263
+        ],
+        "tip": [
+          475.6537721179842,
+          543.0650111159737
+        ]
+      },
+      {
+        "decision": "rigid_reorientation_at_original_center",
+        "id": "gi_3",
+        "tail": [
+          464.10953912511854,
+          611.7064114130742
+        ],
+        "tip": [
+          469.30946087488144,
+          578.4165885869259
+        ]
+      }
+    ],
+    "physical_full": [
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "pf_1",
+        "tail": [
+          323.396,
+          692.993
+        ],
+        "tip": [
+          327.007,
+          671.314
+        ]
+      },
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "pf_2",
+        "tail": [
+          398.287,
+          741.346
+        ],
+        "tip": [
+          393.496,
+          683.638
+        ]
+      }
+    ],
+    "physical_interaction": [
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "pi_1",
+        "tail": [
+          476.123,
+          663.131
+        ],
+        "tip": [
+          494.587,
+          672.737
+        ]
+      },
+      {
+        "decision": "rigid_reorientation_and_minimal_local_translation",
+        "id": "pi_2",
+        "tail": [
+          504.1304742412774,
+          671.4462024009641
+        ],
+        "tip": [
+          523.1655257587227,
+          679.8627975990361
+        ]
+      },
+      {
+        "decision": "retain_exact_original_AI_geometry",
+        "id": "pi_3",
+        "tail": [
+          438.37,
+          702.528
+        ],
+        "tip": [
+          456.833,
+          712.134
+        ]
+      },
+      {
+        "decision": "rigid_reorientation_at_original_center",
+        "id": "pi_4",
+        "tail": [
+          465.51574679162394,
+          722.8026112343825
+        ],
+        "tip": [
+          486.274253208376,
+          721.3003887656175
+        ]
+      }
+    ]
+  },
+  "inputs": {
+    "calculation_gate": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/server_run_v2_m1024/calculation_gate.json",
+      "sha256": "115c14d1931d65534441d2c92e54cd6685ca1141650d144e910fbe64ae345e3a"
+    },
+    "numeric": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/server_run_v2_m1024/fig4e_complete_brain_numeric_inputs.npz",
+      "sha256": "f0e66c42cde757186d6b5ab11f2bb2fca851157045a36f4274001bc60d3d0ef4"
+    },
+    "original_AI": {
+      "path": "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai",
+      "sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2"
+    },
+    "script": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/source/audit_fig4e_annotation_semantics.py",
+      "sha256": "4e0e193997a47bc3bb4f41975648227aefc3ef41736e001ad4faece970617785"
+    }
+  },
+  "manuscript_messages": {
+    "Cortical plate consolidation": {
+      "divergence": {
+        "bootstrap_median": -0.01861718094392193,
+        "ci95": [
+          -0.03749205257732549,
+          -0.0016081649961234038
+        ],
+        "estimate": -0.019121227996646308,
+        "n_bootstrap": 2000,
+        "probability_negative": 0.981,
+        "probability_positive": 0.019,
+        "seed": 42
+      },
+      "evidence": "negative affine divergence of corrected physical-interaction velocity within Excitatory Neurons",
+      "n_excitatory_cells": 94,
+      "status": "PASS"
+    },
+    "Developmental gradient": {
+      "evidence": "all three corrected gene-full arrows retain exact AI geometry and align with the corrected local field",
+      "status": "PASS"
+    },
+    "Interaction drive": {
+      "evidence": "corrected gene-interaction median magnitude is substantial relative to gene-full; old leftward arrows are reoriented to the corrected field",
+      "median_interaction_to_full_magnitude_ratio": 0.8172699516245694,
+      "status": "PASS"
+    },
+    "Tissue expansion": {
+      "divergence": {
+        "bootstrap_median": 0.08891014505379981,
+        "ci95": [
+          0.08134652134227972,
+          0.09640667513804865
+        ],
+        "estimate": 0.08896975535712,
+        "n_bootstrap": 2000,
+        "probability_negative": 0.0,
+        "probability_positive": 1.0,
+        "seed": 42
+      },
+      "evidence": "positive affine divergence of corrected physical-full velocity over the historical ROI",
+      "status": "PASS"
+    }
+  },
+  "panel": "Fig4e",
+  "schema_version": 1,
+  "status": "PASS"
+}

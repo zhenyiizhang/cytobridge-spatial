@@ -7,15 +7,17 @@ series.
 
 This is the release-candidate package and methods repository. New analyses and datasets should
 extend these public APIs rather than copy training or downstream pipelines into
-separate code trees. Large raw datasets and trained checkpoints are not bundled
-here. The wheel does include the small species-matched CellChatDB tables used
-by its five supported workflow presets; users can override them with another
-compatible database.
+separate code trees. Large raw datasets and the general matched-checkpoint matrix
+are not bundled here; the corrected MOSTA manuscript-figure reader release below
+is a versioned exception. The wheel does include the small species-matched
+CellChatDB tables used by its five supported workflow presets; users can override
+them with another compatible database.
 
 Raw-data accessions, aligned-AnnData keys, checkpoint layout, LR-table format,
 and the downstream output tree are documented in
 [`docs/data_checkpoints.md`](docs/data_checkpoints.md). The processed formal
-H5ADs/checkpoints still need a public archive DOI before the 1.5 stable release.
+H5ADs and the remaining matched checkpoints still need a public archive DOI
+before the 1.5 stable release.
 
 ## Scope
 
@@ -683,6 +685,21 @@ The feature table must match the checkpoint contract recorded in
 `params.yml`; the published ARISTA checkpoint expects 52 model dimensions
 (two aligned spatial coordinates followed by 50 expression PCs). The checked-in
 `notebooks/03_arista.ipynb` provides the package-facing executable tutorial.
+
+## Canonical MOSTA manuscript-figure reproduction
+
+The corrected package-native MOSTA checkpoints, complete main Figure 4,
+standalone Figure 4a-e panels, Supplementary Figures S4-S11, compact numerical
+inputs, plotting-code snapshots, manifests, and SHA-256 verification are released
+under
+[`release_artifacts/mosta_package_native_corrected_20260826_v1`](release_artifacts/mosta_package_native_corrected_20260826_v1).
+
+Start with its
+[`REPRODUCIBILITY.md`](release_artifacts/mosta_package_native_corrected_20260826_v1/REPRODUCIBILITY.md).
+The included Finetune, Score, and generated-cell classifier checkpoints match the
+accepted Figure 4/SI computation. The 15 GB aligned H5AD is rebuilt from the
+public MOSTA source through the packaged preprocessing workflow and is verified
+against the release hash; it is intentionally not stored in Git.
 
 ## Canonical ARISTA reproduction
 

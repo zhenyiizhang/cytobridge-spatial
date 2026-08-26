@@ -1,0 +1,349 @@
+{
+  "calculation": {
+    "ARISTA_data_labels_model_analysis_used": false,
+    "accepted_latest_model": true,
+    "complete_E15p5_Brain_n": 17071,
+    "generated_state": false,
+    "interaction_m": 1024
+  },
+  "dataset": "MOSTA",
+  "inputs": {
+    "calculation_gate": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/server_run_v2_m1024/calculation_gate.json",
+      "sha256": "115c14d1931d65534441d2c92e54cd6685ca1141650d144e910fbe64ae345e3a"
+    },
+    "numeric": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/server_run_v2_m1024/fig4e_complete_brain_numeric_inputs.npz",
+      "sha256": "f0e66c42cde757186d6b5ab11f2bb2fca851157045a36f4274001bc60d3d0ef4"
+    },
+    "plotter": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/arista_code/mosta_ported/velocity.py",
+      "sha256": "0c3a78bd663c056dc66ceeb781ab3d9073441c3d993c512ddd945322b2105532"
+    },
+    "style_notebook": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_telencephalon_velocity_stream_grid.ipynb",
+      "sha256": "ab1ee780f57ac6868804a642e70004d238b36c50a79efed74dbb3df666f6423b"
+    }
+  },
+  "panel": "Fig4e",
+  "panels": {
+    "gene_full": {
+      "AI_ready_stroke_parity": {
+        "anisotropic_stretch": false,
+        "outputs": {
+          "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf": {
+            "sha256": "bcd88135d4d568e809e028222283245c60d6b3981c711f03c1d3b1f934a43d45",
+            "size_bytes": 374213
+          },
+          "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.png": {
+            "sha256": "6963d19d2ae078f44a37ab2632425002725fb62e775e3caa3557aef35af82fba",
+            "size_bytes": 425887
+          },
+          "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.svg": {
+            "sha256": "d178af331c57e11992491d1325c7ff0f10bffc06ac3093f95ff8d0a7a59afc37",
+            "size_bytes": 777888
+          }
+        },
+        "rotation": false,
+        "scatter_collections_scaled": 8,
+        "scatter_marker_area_scale": 0.1129434812177804,
+        "source_axes_points": [
+          390.59999999999997,
+          277.20000000000005
+        ],
+        "stream_arrow_glyph_geometry_scale": 0.3360706491465454,
+        "stream_arrow_patches_scaled": 68,
+        "stream_arrow_style_parameter_source": 1.2,
+        "stream_linewidth_points_retained": 1.5,
+        "target_page_points": [
+          131.26919555664062,
+          93.15878659014811
+        ],
+        "uniform_marker_geometry_scale": 0.3360706491465454,
+        "warp": false
+      },
+      "axes_crop_inches": [
+        5.425,
+        3.8500000000000005
+      ],
+      "axes_crop_outputs": {
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__axes_only.pdf": {
+          "sha256": "b8bb6e9dc44e89cd7831fe9516694fcb027d109fe8db56f97cdec18db9d876e0",
+          "size_bytes": 600747
+        },
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__axes_only.png": {
+          "sha256": "47674f3c9888c558fa9713f2a9a70f8e9f5cab192811b3685d2d7832d98bdcf6",
+          "size_bytes": 725418
+        },
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook__axes_only.svg": {
+          "sha256": "b421e473e33b471ded7f575baed0170e28dce5a99dda15e2b86fa4b136355f20",
+          "size_bytes": 1116237
+        }
+      },
+      "export_audit": {
+        "nonfinite_linewidths_repaired": 0,
+        "scatter_collections_rasterized": 8
+      },
+      "raw_outputs": {
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook.pdf": {
+          "sha256": "84de2fbbee73534196a462e9c6451201527ae51f6c7625b9afa453f638732334",
+          "size_bytes": 622179
+        },
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook.png": {
+          "sha256": "bbeeb0a70fc8fd853456c0fe61cddb82b3bb3cfb71cef061d16f35fbbadb9de4",
+          "size_bytes": 844252
+        },
+        "Fig4e_gene_full_latest52D_m1024_exact_old_notebook.svg": {
+          "sha256": "b207c61a53f81c29e44c78a25a2e060417169fddd4663a5223aec44cb2413676",
+          "size_bytes": 1154133
+        }
+      }
+    },
+    "gene_interaction": {
+      "AI_ready_stroke_parity": {
+        "anisotropic_stretch": false,
+        "outputs": {
+          "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf": {
+            "sha256": "ad0b2725a2f17cb7e0ac8774d5735ad61a104fd8df045306bd611cf640000f99",
+            "size_bytes": 413269
+          },
+          "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.png": {
+            "sha256": "f6ed3dbafa2de648e0f331b4d9fb2fd09e53294164a7d7482cd0dabbcbec21a5",
+            "size_bytes": 485710
+          },
+          "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.svg": {
+            "sha256": "a0b56222e185e7fdcf6189a1ce4b7fea68dd4c74ca33cd24472a420c9783b677",
+            "size_bytes": 1017945
+          }
+        },
+        "rotation": false,
+        "scatter_collections_scaled": 8,
+        "scatter_marker_area_scale": 0.1217015435350449,
+        "source_axes_points": [
+          390.59999999999997,
+          277.20000000000005
+        ],
+        "stream_arrow_glyph_geometry_scale": 0.3488574831289203,
+        "stream_arrow_patches_scaled": 96,
+        "stream_arrow_style_parameter_source": 1.2,
+        "stream_linewidth_points_retained": 1.5,
+        "target_page_points": [
+          136.26373291015625,
+          96.70329707076519
+        ],
+        "uniform_marker_geometry_scale": 0.3488574831289203,
+        "warp": false
+      },
+      "axes_crop_inches": [
+        5.425,
+        3.8500000000000005
+      ],
+      "axes_crop_outputs": {
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__axes_only.pdf": {
+          "sha256": "17aba40cc93f8af74150caa4d683c69097ad6c33540b498226152d195f318bf8",
+          "size_bytes": 622710
+        },
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__axes_only.png": {
+          "sha256": "3fa710a72f08491c2b2f7878ee2c438527327c4362e689157766914d4e872968",
+          "size_bytes": 750900
+        },
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__axes_only.svg": {
+          "sha256": "b388bb00b47f72650349dd2df474878b8b78f1e471146adfc763e113cb22349f",
+          "size_bytes": 1333771
+        }
+      },
+      "export_audit": {
+        "nonfinite_linewidths_repaired": 0,
+        "scatter_collections_rasterized": 8
+      },
+      "raw_outputs": {
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook.pdf": {
+          "sha256": "98a4649d83ad2ba32b9f8192f4c0f3050e67cea566ab08e4ec15719ccc26a10d",
+          "size_bytes": 643663
+        },
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook.png": {
+          "sha256": "58edab40c49421edc3aa0f78f305cf2ab2b49f4c0a949949a6e3b92fb6d4c9fc",
+          "size_bytes": 878075
+        },
+        "Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook.svg": {
+          "sha256": "a5e13ba95989669913e7176aa30575eed14f8f33aa5fa61d9b6a78eeef3c4777",
+          "size_bytes": 1373374
+        }
+      }
+    },
+    "physical_full": {
+      "AI_ready_stroke_parity": {
+        "anisotropic_stretch": false,
+        "outputs": {
+          "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf": {
+            "sha256": "1fca8168d752b22c47da9b95e69fb4234260bd63d0f97cb913f32f558cfc7401",
+            "size_bytes": 389790
+          },
+          "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.png": {
+            "sha256": "ca7bedc75492ad98675bb823ba8b18dfcfbce25ad6c32d668240b365d0195c71",
+            "size_bytes": 405388
+          },
+          "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.svg": {
+            "sha256": "fc9513b835863ef12a511efc4d2a327928e5d17cb0606fdaab13407a9403ad56",
+            "size_bytes": 691386
+          }
+        },
+        "rotation": false,
+        "scatter_collections_scaled": 8,
+        "scatter_marker_area_scale": 0.12721338769199705,
+        "source_axes_points": [
+          390.59999999999997,
+          277.20000000000005
+        ],
+        "stream_arrow_glyph_geometry_scale": 0.3566698581209198,
+        "stream_arrow_patches_scaled": 53,
+        "stream_arrow_style_parameter_source": 1.2,
+        "stream_linewidth_points_retained": 1.5,
+        "target_page_points": [
+          139.31524658203125,
+          98.8688874800738
+        ],
+        "uniform_marker_geometry_scale": 0.3566698581209198,
+        "warp": false
+      },
+      "axes_crop_inches": [
+        5.425,
+        3.8500000000000005
+      ],
+      "axes_crop_outputs": {
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__axes_only.pdf": {
+          "sha256": "c6e1ec6533b08e84ea7ca6cd771bd856acc0d749877d51a9c55b1cccb8f7e817",
+          "size_bytes": 588929
+        },
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__axes_only.png": {
+          "sha256": "3f2de8dadfde6425c46f800e6dac220b7139ee33304c8a7f0394982369938dce",
+          "size_bytes": 691158
+        },
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook__axes_only.svg": {
+          "sha256": "0b62f7b6b9966648c1b14cce988fd8367f5d1916580cac761be486e32a7f38f1",
+          "size_bytes": 987189
+        }
+      },
+      "export_audit": {
+        "nonfinite_linewidths_repaired": 0,
+        "scatter_collections_rasterized": 8
+      },
+      "raw_outputs": {
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook.pdf": {
+          "sha256": "00490dc2ef99bffaa10583b021bc59ba4230fdf9a18f9f2c8a2c298a4bf2e55e",
+          "size_bytes": 610337
+        },
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook.png": {
+          "sha256": "d6a8a46330435b08b8805abadb50e5395965dd7c06a2594299be7bad043704bc",
+          "size_bytes": 819866
+        },
+        "Fig4e_physical_full_latest52D_m1024_exact_old_notebook.svg": {
+          "sha256": "3b8e281a4217f35ceb9d11ccd636d3ba896e1ccd0f1924249623a01b5477d70d",
+          "size_bytes": 1024734
+        }
+      }
+    },
+    "physical_interaction": {
+      "AI_ready_stroke_parity": {
+        "anisotropic_stretch": false,
+        "outputs": {
+          "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf": {
+            "sha256": "a2d40b518898d27f793ac59307500c03d23ff62a41c9e50ce8141d406f01ff26",
+            "size_bytes": 493857
+          },
+          "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.png": {
+            "sha256": "fe0f407b472c104de141c0f19bea1123c6269f250d6a662415627beb4273b0b6",
+            "size_bytes": 450633
+          },
+          "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.svg": {
+            "sha256": "153bafea27973cdde7c5e2e4eb1e183576f2612713d502a6eeeadf8c54c5b5eb",
+            "size_bytes": 1992036
+          }
+        },
+        "rotation": false,
+        "scatter_collections_scaled": 8,
+        "scatter_marker_area_scale": 0.11474460211789192,
+        "source_axes_points": [
+          390.59999999999997,
+          277.20000000000005
+        ],
+        "stream_arrow_glyph_geometry_scale": 0.33873972621747794,
+        "stream_arrow_patches_scaled": 124,
+        "stream_arrow_style_parameter_source": 1.2,
+        "stream_linewidth_points_retained": 1.5,
+        "target_page_points": [
+          132.31173706054688,
+          93.89865477523097
+        ],
+        "uniform_marker_geometry_scale": 0.33873972621747794,
+        "warp": false
+      },
+      "axes_crop_inches": [
+        5.425,
+        3.8500000000000005
+      ],
+      "axes_crop_outputs": {
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__axes_only.pdf": {
+          "sha256": "e33ed7659564cc6ac7234271ebeb552dd951d9b2217f0a585969ee3f67ed4388",
+          "size_bytes": 722176
+        },
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__axes_only.png": {
+          "sha256": "4a537c20929b61eb62bb2ded0d487c6a8b734ab69120e16ba2dcfda4e6033a3e",
+          "size_bytes": 709970
+        },
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__axes_only.svg": {
+          "sha256": "ecb9bb5a26cfd98755233fd87430e89f7deb352fcec58bb05b5eb1323be39d0b",
+          "size_bytes": 2344385
+        }
+      },
+      "export_audit": {
+        "nonfinite_linewidths_repaired": 0,
+        "scatter_collections_rasterized": 8
+      },
+      "raw_outputs": {
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook.pdf": {
+          "sha256": "0707883e6fdb2970e6d62b21c93c3daaa2cd6af8b764b6d29d97737186b5afa2",
+          "size_bytes": 743690
+        },
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook.png": {
+          "sha256": "b3518abc51587a62a9cd78cf7b057e60fb263a3c3d12bd8a352ff6323bee89fb",
+          "size_bytes": 848704
+        },
+        "Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook.svg": {
+          "sha256": "840b7c9fc6f16ed594eaa95d0f1daad7d9d4ac84d95741a2f5d0e811145c0f1f",
+          "size_bytes": 2389475
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "status": "PASS",
+  "style": {
+    "AI_composition_behavior": "raster scatter markers receive exact uniform AI scale; vector stream strokes and arrow effects retain historical point widths",
+    "arrow_size": 1.2,
+    "cutoff_perc": 3,
+    "density": 1.0,
+    "figsize_inches": [
+      7,
+      5
+    ],
+    "flip_x": false,
+    "flip_y": false,
+    "implementation": "direct call to archived plot_single_velocity_field",
+    "legend_loc": "right margin",
+    "linewidth": 1.5,
+    "min_mass": 1,
+    "no_manual_reimplementation": true,
+    "plot_region": [
+      -1.3,
+      -0.5,
+      3.3,
+      4.2
+    ],
+    "point_alpha": 0.25,
+    "point_size": 60,
+    "remove_outliers": true,
+    "smooth": 0.8,
+    "titles": "historical notebook raw; omitted only from axes crop used by AI composition"
+  }
+}

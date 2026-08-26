@@ -1,0 +1,128 @@
+{
+  "complex_mode": "min",
+  "compute_cohort": "accepted corrected workflow snapshots (configured initial cap 12000; t0.5 realized 15144)",
+  "compute_state_gates": [
+    {
+      "expected_source_anchor_time": 0.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 51365,
+      "pass": true,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "state_dim": 52,
+      "time": 0.0
+    },
+    {
+      "expected_source_anchor_time": 0.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 15144,
+      "pass": true,
+      "slice_origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "state_dim": 52,
+      "time": 0.5
+    },
+    {
+      "expected_source_anchor_time": 1.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 77369,
+      "pass": true,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "state_dim": 52,
+      "time": 1.0
+    }
+  ],
+  "core_compute_n_unmapped_cells": 0,
+  "dataset": "mosta",
+  "display_cohort": "50k initial-particle global-t0 manuscript run",
+  "display_mapping": {
+    "n_available_cells": 192227,
+    "n_display_cells": 192267,
+    "n_dropped_cells": 0,
+    "n_unavailable_cells": 40,
+    "unavailable_policy": "retain and render base grey only; NaN unavailable; no zero imputation",
+    "unavailable_types": [
+      "Pancreas",
+      "Spinal cord"
+    ]
+  },
+  "display_mapping_reestimates_scores": false,
+  "display_state_gates": [
+    {
+      "expected_source_anchor_time": 0.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 51365,
+      "pass": true,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "state_dim": 52,
+      "time": 0.0
+    },
+    {
+      "expected_source_anchor_time": 0.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 63533,
+      "pass": true,
+      "slice_origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "state_dim": 52,
+      "time": 0.5
+    },
+    {
+      "expected_source_anchor_time": 1.0,
+      "max_abs_X_xy_minus_obsm_spatial": 0.0,
+      "n_cells": 77369,
+      "pass": true,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "state_dim": 52,
+      "time": 1.0
+    }
+  ],
+  "estimand": "mean_sender(Wnt3a) * mean_receiver(min(Fzd7,Lrp6)) * M_per_source; incoming+outgoing",
+  "formal_primary_reproduction_max_abs_error": 5.480204068319949e-10,
+  "formal_primary_reproduction_max_relative_error": 3.6558771833675154e-09,
+  "formal_primary_reproduction_tolerance": {
+    "absolute": 1e-08,
+    "rationale": "float32 saved-state reconstruction and summation-order tolerance",
+    "relative": 1e-08
+  },
+  "hotspot": "total",
+  "max_formula_abs_error": 0.0,
+  "missing_subunits_empty": true,
+  "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "pair": "Wnt3a_Fzd7_Lrp6",
+  "panel": "Fig4b",
+  "particle_density_sensitivity": {
+    "accepted_candidate_edges": 76414,
+    "accepted_compute_cells": 15144,
+    "accepted_pair_score": 0.1499012076559161,
+    "candidate_edges_per_cell_accepted": 5.045826730058109,
+    "candidate_edges_per_cell_full50k": 20.379204507893537,
+    "candidate_edges_per_cell_ratio": 4.038823685025515,
+    "cell_count_ratio_full_over_accepted": 4.195258848388801,
+    "full50k_candidate_edges": 1294752,
+    "full50k_display_cells": 63533,
+    "full50k_pair_score": 0.6325948517801893,
+    "pair_score_ratio_full_over_accepted": 4.220078421464424,
+    "reason": "Full-radius M_per_source hotspot scales with numerical particle density; 50k is display-only.",
+    "status": "REJECT_FULL50K_AS_PRIMARY_COMPUTE"
+  },
+  "require_all_subunits": true,
+  "restart_from_preceding_observed_stage": false,
+  "shared_normalization": {
+    "high": 0.13224278534155828,
+    "legacy_per_panel_normalization_used": false,
+    "low": 0.0017711041349544661,
+    "q_high_percent": 99.0,
+    "q_low_percent": 1.0,
+    "scope": "all finite display scores across the three panels",
+    "unavailable_cells_excluded": true
+  },
+  "spatial_warp": false,
+  "status": "PASS",
+  "trajectory_mode": "global_t0_extrapolation",
+  "unreconstructable_subunits_empty": true,
+  "within_time_type_score_max_nunique": 1
+}

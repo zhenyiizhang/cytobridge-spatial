@@ -1,0 +1,226 @@
+{
+  "accepted_model_contract": {
+    "alpha_express": true,
+    "alpha_spatial": true,
+    "dataset": true,
+    "interaction_component": true,
+    "score_stage": true,
+    "seed": true,
+    "weight_stage": true
+  },
+  "cohort": {
+    "compute_n_cells": 17071,
+    "ordered_cell_ids_sha256": "94865f45f7642bf33d64c10569746da0751579f135b3a168499acd68c915e461",
+    "sampling_cap": null,
+    "state_signature": {
+      "expression_sha256": "5da7d9d6da48ec33df2e8afe8cfccb7e359022dd65a50f8e2a467e06c34c1a9b",
+      "expression_storage": "csr",
+      "labels_sha256": "48680ffac59e4caba27133eb6f070d7787cb650d6178bff67625930b04a560be",
+      "latent_sha256": "4bdb81cd2cc422c4d13fc4cbf37ba41f05b57489630d020f6137de8ff54bd53b",
+      "n_cells": 17071,
+      "n_expression_features": 23761,
+      "ordered_cell_ids_sha256": "94865f45f7642bf33d64c10569746da0751579f135b3a168499acd68c915e461",
+      "spatial_sha256": "74b66f36be099d73382b8654b2a200124e04e1e3845fd1ef9c25db3ed970dbcd",
+      "var_names_sha256": "71b9938f5e55c6479338109353cc51267253a6a0e720dc4333842ac7fd12add9"
+    },
+    "state_unchanged_after_velocity": true
+  },
+  "dataset": "MOSTA",
+  "display_policies": {
+    "formal_repaired": {
+      "category_counts": {
+        "Apical Progenitors (RG)": 330,
+        "Basal Progenitors (IP)": 110,
+        "Choroid Plexus": 247,
+        "Excitatory Neurons": 94,
+        "Glioblasts": 110,
+        "Inhibitory Neurons": 473,
+        "Other": 623
+      },
+      "n_cells": 1987,
+      "rule": "mapped telencephalon cells in ROI; Immature Neurons -> Other"
+    },
+    "historical_notebook": {
+      "category_counts": {
+        "Apical Progenitors (RG)": 330,
+        "Basal Progenitors (IP)": 110,
+        "Choroid Plexus": 247,
+        "Excitatory Neurons": 94,
+        "Glioblasts": 110,
+        "Immature Neurons": 623,
+        "Inhibitory Neurons": 473,
+        "Other": 857
+      },
+      "n_cells": 2844,
+      "rule": "all coarse Brain cells in ROI; mapped fine labels, otherwise Other"
+    },
+    "roi_bounds_xmin_xmax_ymin_ymax": [
+      -1.3,
+      -0.5,
+      3.3,
+      4.2
+    ],
+    "strict_bounds": true
+  },
+  "fine_annotation_identity": {
+    "exact_cell_id_order": true,
+    "exact_coarse_annotation": true,
+    "exact_time": true,
+    "row_count": true,
+    "sidecar_sha256": "5116d8e4673234e0f8642e6742653994d4fea4ee02e348a4bdb6032186e2e00c",
+    "source_is_annotation_not_model_output": true
+  },
+  "model_time": 3.0,
+  "panel": "Fig4e",
+  "schema_version": 1,
+  "state": "observed E15.5 complete coarse Brain cohort",
+  "status": "PASS",
+  "velocity": {
+    "anisotropic_stretch": false,
+    "component_norms": {
+      "drift": {
+        "expression_50d": {
+          "max": 3.98559802449283,
+          "mean": 2.1251434380228464,
+          "median": 2.1161605120963642,
+          "nonzero_fraction": 1.0,
+          "q01": 1.2403917448588055,
+          "q99": 3.166428714129262
+        },
+        "model_52d": {
+          "max": 3.9872354817221147,
+          "mean": 2.1323170859804548,
+          "median": 2.122635909428752,
+          "nonzero_fraction": 1.0,
+          "q01": 1.258839555036701,
+          "q99": 3.1714529319434828
+        },
+        "physical_2d": {
+          "max": 0.3277250977212265,
+          "mean": 0.15978282887964337,
+          "median": 0.15788457259105088,
+          "nonzero_fraction": 1.0,
+          "q01": 0.04677110529890862,
+          "q99": 0.2759322684911991
+        }
+      },
+      "full": {
+        "expression_50d": {
+          "max": 3.9727963316032673,
+          "mean": 2.065075195132747,
+          "median": 2.042358651883711,
+          "nonzero_fraction": 1.0,
+          "q01": 1.2591935627505864,
+          "q99": 3.084994592069164
+        },
+        "model_52d": {
+          "max": 3.976599791963105,
+          "mean": 2.0724849940623673,
+          "median": 2.0496108789202956,
+          "nonzero_fraction": 1.0,
+          "q01": 1.2751439085203373,
+          "q99": 3.089518414206075
+        },
+        "physical_2d": {
+          "max": 0.3604966497269691,
+          "mean": 0.16075381054832966,
+          "median": 0.15926828112615743,
+          "nonzero_fraction": 1.0,
+          "q01": 0.04257583408176541,
+          "q99": 0.2808540423896932
+        }
+      },
+      "interaction": {
+        "expression_50d": {
+          "max": 2.8903739511018154,
+          "mean": 0.49784897170075215,
+          "median": 0.4142712487842333,
+          "nonzero_fraction": 1.0,
+          "q01": 0.2681091625857035,
+          "q99": 1.4598806967441398
+        },
+        "model_52d": {
+          "max": 2.893054382047465,
+          "mean": 0.49821146953112816,
+          "median": 0.4147817134389267,
+          "nonzero_fraction": 1.0,
+          "q01": 0.2681091625857035,
+          "q99": 1.4611649912431106
+        },
+        "physical_2d": {
+          "max": 0.20358955616724883,
+          "mean": 0.015583624642709237,
+          "median": 0.009144278673420436,
+          "nonzero_fraction": 0.5333020912658896,
+          "q01": 0.0,
+          "q99": 0.06451499550035676
+        }
+      },
+      "score": {
+        "expression_50d": {
+          "max": 0.007601124834454762,
+          "mean": 0.0050295202011420076,
+          "median": 0.005019986585596211,
+          "nonzero_fraction": 1.0,
+          "q01": 0.0038292419555612267,
+          "q99": 0.006388233068992509
+        },
+        "model_52d": {
+          "max": 0.007604866403255394,
+          "mean": 0.005128781789518614,
+          "median": 0.005118216100060335,
+          "nonzero_fraction": 1.0,
+          "q01": 0.003944179413842382,
+          "q99": 0.006486901955669456
+        },
+        "physical_2d": {
+          "max": 0.0032674098493950515,
+          "mean": 0.000890058676396396,
+          "median": 0.000836218195976591,
+          "nonzero_fraction": 1.0,
+          "q01": 0.00010299632106853915,
+          "q99": 0.002180382787764972
+        }
+      }
+    },
+    "decomposition_max_abs_error": 1.1915108188986778e-07,
+    "gene_projection": "50D expression-state transition graph to observed spatial_aligned coordinates",
+    "generated_state": false,
+    "interaction_cutoff": 0.02400244047956264,
+    "interaction_m": 1024,
+    "n_neighbors": 30,
+    "nonfinite_values": 0,
+    "physical_projection": "direct first two fitted model dimensions",
+    "projection_audit": {
+      "full": {
+        "fallback": null,
+        "projection_mode": "model_state_velocity_to_plot_coordinates",
+        "render_mode": "scvelo_stream_vector",
+        "velocity_norm": {
+          "max": 0.02722710557854223,
+          "mean": 0.0047979876016764535,
+          "median": 0.004162780242348841,
+          "nonzero_fraction": 1.0,
+          "q01": 0.0004911694389654304,
+          "q99": 0.015089634117828982
+        }
+      },
+      "interaction": {
+        "fallback": null,
+        "projection_mode": "model_state_velocity_to_plot_coordinates",
+        "render_mode": "scvelo_stream_vector",
+        "velocity_norm": {
+          "max": 0.02547882466936041,
+          "mean": 0.005535864045132739,
+          "median": 0.0048290946183671395,
+          "nonzero_fraction": 1.0,
+          "q01": 0.0005480594683966521,
+          "q99": 0.015995960589258007
+        }
+      }
+    },
+    "projection_context": "complete E15.5 Brain cohort before display ROI",
+    "rotation": false,
+    "warp": false
+  }
+}

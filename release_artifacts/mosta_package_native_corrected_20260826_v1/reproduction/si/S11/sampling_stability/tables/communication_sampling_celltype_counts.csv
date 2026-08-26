@@ -1,0 +1,365 @@
+seed,time,cell_type,n_available,n_sampled
+43,0.0,Blood vessel,1424,353
+43,0.0,Brain,11397,2692
+43,0.0,Cartilage primordium,3830,952
+43,0.0,Cavity,6527,1563
+43,0.0,Choroid plexus,432,94
+43,0.0,Connective tissue,2567,592
+43,0.0,Dorsal root ganglion,1330,321
+43,0.0,Epidermis,1180,310
+43,0.0,GI tract,1461,357
+43,0.0,Heart,1541,351
+43,0.0,Jaw and tooth,2587,621
+43,0.0,Kidney,266,63
+43,0.0,Liver,1391,323
+43,0.0,Lung primordium,580,142
+43,0.0,Meninges,4868,1189
+43,0.0,Mesentery,778,175
+43,0.0,Mesothelium,579,114
+43,0.0,Mucosal epithelium,554,131
+43,0.0,Muscle,5285,1302
+43,0.0,Ovary,322,77
+43,0.0,Pancreas,44,5
+43,0.0,Sympathetic nerve,162,44
+43,0.0,Urogenital ridge,895,229
+43,0.5,Blood vessel,1272,264
+43,0.5,Brain,15055,2767
+43,0.5,Cartilage primordium,3705,684
+43,0.5,Cavity,7998,1550
+43,0.5,Choroid plexus,292,64
+43,0.5,Connective tissue,2936,569
+43,0.5,Dorsal root ganglion,1647,317
+43,0.5,Epidermis,1842,378
+43,0.5,GI tract,2408,436
+43,0.5,Heart,2056,389
+43,0.5,Jaw and tooth,3643,726
+43,0.5,Kidney,371,68
+43,0.5,Liver,2223,404
+43,0.5,Lung,26,3
+43,0.5,Lung primordium,606,114
+43,0.5,Meninges,4791,962
+43,0.5,Mesentery,654,106
+43,0.5,Mesothelium,838,146
+43,0.5,Mucosal epithelium,665,131
+43,0.5,Muscle,9335,1738
+43,0.5,Ovary,384,77
+43,0.5,Pancreas,8,0
+43,0.5,Spinal cord,13,3
+43,0.5,Sympathetic nerve,208,44
+43,0.5,Urogenital ridge,318,60
+43,1.0,Adipose tissue,1,0
+43,1.0,Blood vessel,1,0
+43,1.0,Brain,18429,2944
+43,1.0,Cartilage primordium,3257,511
+43,1.0,Cavity,11792,1866
+43,1.0,Choroid plexus,219,38
+43,1.0,Connective tissue,4506,692
+43,1.0,Dorsal root ganglion,2028,308
+43,1.0,Epidermis,3781,647
+43,1.0,GI tract,3059,488
+43,1.0,Heart,2205,335
+43,1.0,Jaw and tooth,4821,761
+43,1.0,Kidney,312,43
+43,1.0,Liver,3257,501
+43,1.0,Lung,818,125
+43,1.0,Meninges,4330,681
+43,1.0,Mesentery,268,47
+43,1.0,Mesothelium,371,59
+43,1.0,Mucosal epithelium,545,89
+43,1.0,Muscle,11384,1770
+43,1.0,Ovary,101,15
+43,1.0,Pancreas,38,5
+43,1.0,Smooth muscle,8,3
+43,1.0,Spinal cord,368,53
+43,1.0,Sympathetic nerve,124,19
+43,1.5,Adipose tissue,121,18
+43,1.5,Blood vessel,11,2
+43,1.5,Brain,21568,2910
+43,1.5,Cartilage,2,1
+43,1.5,Cartilage primordium,3454,481
+43,1.5,Cavity,13504,1926
+43,1.5,Choroid plexus,150,17
+43,1.5,Connective tissue,9045,1229
+43,1.5,Dorsal root ganglion,2278,310
+43,1.5,Epidermis,4320,564
+43,1.5,GI tract,2710,382
+43,1.5,Heart,2598,362
+43,1.5,Jaw and tooth,5877,818
+43,1.5,Kidney,243,35
+43,1.5,Liver,4223,610
+43,1.5,Lung,1273,176
+43,1.5,Meninges,4111,579
+43,1.5,Mesentery,173,24
+43,1.5,Mesothelium,92,15
+43,1.5,Mucosal epithelium,423,53
+43,1.5,Muscle,7786,1090
+43,1.5,Ovary,3,0
+43,1.5,Pancreas,87,17
+43,1.5,Smooth muscle,98,18
+43,1.5,Spinal cord,2418,356
+43,1.5,Sympathetic nerve,75,7
+43,2.0,Adipose tissue,550,52
+43,2.0,Adrenal gland,12,2
+43,2.0,Blood vessel,15,2
+43,2.0,Brain,24684,3171
+43,2.0,Cartilage,25,4
+43,2.0,Cartilage primordium,3503,448
+43,2.0,Cavity,12080,1561
+43,2.0,Choroid plexus,111,16
+43,2.0,Connective tissue,15873,1971
+43,2.0,Dorsal root ganglion,2385,314
+43,2.0,Epidermis,3557,433
+43,2.0,Facial nerve,20,1
+43,2.0,GI tract,1504,196
+43,2.0,Heart,3430,447
+43,2.0,Inner ear,1,0
+43,2.0,Jaw and tooth,6364,781
+43,2.0,Kidney,214,30
+43,2.0,Liver,5026,633
+43,2.0,Lung,1511,166
+43,2.0,Meninges,4110,498
+43,2.0,Mesentery,37,5
+43,2.0,Mesothelium,49,2
+43,2.0,Mucosal epithelium,388,48
+43,2.0,Muscle,3510,459
+43,2.0,Pancreas,76,12
+43,2.0,Smooth muscle,566,68
+43,2.0,Spinal cord,5272,674
+43,2.0,Sympathetic nerve,24,6
+43,2.5,Adipose tissue,1035,136
+43,2.5,Adrenal gland,34,6
+43,2.5,Blood vessel,97,12
+43,2.5,Brain,26952,3176
+43,2.5,Cartilage,254,32
+43,2.5,Cartilage primordium,2604,319
+43,2.5,Cavity,11798,1452
+43,2.5,Choroid plexus,264,33
+43,2.5,Connective tissue,19612,2353
+43,2.5,Dorsal root ganglion,2287,282
+43,2.5,Epidermis,2940,338
+43,2.5,Facial nerve,23,5
+43,2.5,GI tract,792,95
+43,2.5,Heart,4121,470
+43,2.5,Inner ear,22,6
+43,2.5,Jaw and tooth,6416,737
+43,2.5,Kidney,261,30
+43,2.5,Liver,5803,699
+43,2.5,Lung,1541,171
+43,2.5,Meninges,4086,470
+43,2.5,Mesentery,2,0
+43,2.5,Mesothelium,5,0
+43,2.5,Mucosal epithelium,510,49
+43,2.5,Muscle,1523,178
+43,2.5,Pancreas,48,6
+43,2.5,Smooth muscle,1274,149
+43,2.5,Spinal cord,6591,794
+43,2.5,Sympathetic nerve,25,2
+43,3.0,Adipose tissue,1520,164
+43,3.0,Adrenal gland,76,11
+43,3.0,Blood vessel,130,11
+43,3.0,Brain,27595,3128
+43,3.0,Cartilage,1805,228
+43,3.0,Cartilage primordium,1239,133
+43,3.0,Cavity,12866,1476
+43,3.0,Choroid plexus,703,91
+43,3.0,Connective tissue,18703,2131
+43,3.0,Dorsal root ganglion,2083,215
+43,3.0,Epidermis,2710,351
+43,3.0,Facial nerve,11,2
+43,3.0,GI tract,396,58
+43,3.0,Heart,4956,522
+43,3.0,Inner ear,73,4
+43,3.0,Jaw and tooth,6450,749
+43,3.0,Kidney,342,36
+43,3.0,Liver,6404,740
+43,3.0,Lung,1686,193
+43,3.0,Meninges,4441,489
+43,3.0,Mucosal epithelium,623,62
+43,3.0,Muscle,581,67
+43,3.0,Olfactory epithelium,15,0
+43,3.0,Pancreas,60,6
+43,3.0,Smooth muscle,2167,250
+43,3.0,Spinal cord,7526,881
+43,3.0,Sympathetic nerve,4,2
+44,0.0,Blood vessel,1424,355
+44,0.0,Brain,11397,2692
+44,0.0,Cartilage primordium,3830,950
+44,0.0,Cavity,6527,1583
+44,0.0,Choroid plexus,432,104
+44,0.0,Connective tissue,2567,628
+44,0.0,Dorsal root ganglion,1330,311
+44,0.0,Epidermis,1180,302
+44,0.0,GI tract,1461,339
+44,0.0,Heart,1541,389
+44,0.0,Jaw and tooth,2587,603
+44,0.0,Kidney,266,53
+44,0.0,Liver,1391,312
+44,0.0,Lung primordium,580,158
+44,0.0,Meninges,4868,1186
+44,0.0,Mesentery,778,170
+44,0.0,Mesothelium,579,124
+44,0.0,Mucosal epithelium,554,134
+44,0.0,Muscle,5285,1248
+44,0.0,Ovary,322,80
+44,0.0,Pancreas,44,8
+44,0.0,Sympathetic nerve,162,50
+44,0.0,Urogenital ridge,895,221
+44,0.5,Blood vessel,1272,255
+44,0.5,Brain,15055,2922
+44,0.5,Cartilage primordium,3705,677
+44,0.5,Cavity,7998,1547
+44,0.5,Choroid plexus,292,49
+44,0.5,Connective tissue,2936,527
+44,0.5,Dorsal root ganglion,1647,329
+44,0.5,Epidermis,1842,344
+44,0.5,GI tract,2408,451
+44,0.5,Heart,2056,366
+44,0.5,Jaw and tooth,3643,678
+44,0.5,Kidney,371,68
+44,0.5,Liver,2223,430
+44,0.5,Lung,26,3
+44,0.5,Lung primordium,606,127
+44,0.5,Meninges,4791,893
+44,0.5,Mesentery,654,126
+44,0.5,Mesothelium,838,145
+44,0.5,Mucosal epithelium,665,129
+44,0.5,Muscle,9335,1745
+44,0.5,Ovary,384,69
+44,0.5,Pancreas,8,1
+44,0.5,Spinal cord,13,3
+44,0.5,Sympathetic nerve,208,48
+44,0.5,Urogenital ridge,318,68
+44,1.0,Adipose tissue,1,1
+44,1.0,Blood vessel,1,1
+44,1.0,Brain,18429,2931
+44,1.0,Cartilage primordium,3257,514
+44,1.0,Cavity,11792,1849
+44,1.0,Choroid plexus,219,34
+44,1.0,Connective tissue,4506,742
+44,1.0,Dorsal root ganglion,2028,332
+44,1.0,Epidermis,3781,574
+44,1.0,GI tract,3059,489
+44,1.0,Heart,2205,368
+44,1.0,Jaw and tooth,4821,767
+44,1.0,Kidney,312,46
+44,1.0,Liver,3257,515
+44,1.0,Lung,818,127
+44,1.0,Meninges,4330,665
+44,1.0,Mesentery,268,34
+44,1.0,Mesothelium,371,53
+44,1.0,Mucosal epithelium,545,84
+44,1.0,Muscle,11384,1778
+44,1.0,Ovary,101,11
+44,1.0,Pancreas,38,4
+44,1.0,Smooth muscle,8,0
+44,1.0,Spinal cord,368,56
+44,1.0,Sympathetic nerve,124,25
+44,1.5,Adipose tissue,121,19
+44,1.5,Blood vessel,11,1
+44,1.5,Brain,21568,2989
+44,1.5,Cartilage,2,0
+44,1.5,Cartilage primordium,3454,468
+44,1.5,Cavity,13504,1896
+44,1.5,Choroid plexus,150,23
+44,1.5,Connective tissue,9045,1244
+44,1.5,Dorsal root ganglion,2278,321
+44,1.5,Epidermis,4320,590
+44,1.5,GI tract,2710,346
+44,1.5,Heart,2598,381
+44,1.5,Jaw and tooth,5877,778
+44,1.5,Kidney,243,33
+44,1.5,Liver,4223,604
+44,1.5,Lung,1273,169
+44,1.5,Meninges,4111,601
+44,1.5,Mesentery,173,16
+44,1.5,Mesothelium,92,13
+44,1.5,Mucosal epithelium,423,67
+44,1.5,Muscle,7786,1091
+44,1.5,Ovary,3,0
+44,1.5,Pancreas,87,10
+44,1.5,Smooth muscle,98,12
+44,1.5,Spinal cord,2418,316
+44,1.5,Sympathetic nerve,75,12
+44,2.0,Adipose tissue,550,71
+44,2.0,Adrenal gland,12,1
+44,2.0,Blood vessel,15,3
+44,2.0,Brain,24684,3114
+44,2.0,Cartilage,25,0
+44,2.0,Cartilage primordium,3503,429
+44,2.0,Cavity,12080,1555
+44,2.0,Choroid plexus,111,11
+44,2.0,Connective tissue,15873,2003
+44,2.0,Dorsal root ganglion,2385,300
+44,2.0,Epidermis,3557,458
+44,2.0,Facial nerve,20,3
+44,2.0,GI tract,1504,200
+44,2.0,Heart,3430,390
+44,2.0,Inner ear,1,0
+44,2.0,Jaw and tooth,6364,848
+44,2.0,Kidney,214,29
+44,2.0,Liver,5026,635
+44,2.0,Lung,1511,174
+44,2.0,Meninges,4110,523
+44,2.0,Mesentery,37,5
+44,2.0,Mesothelium,49,7
+44,2.0,Mucosal epithelium,388,51
+44,2.0,Muscle,3510,401
+44,2.0,Pancreas,76,10
+44,2.0,Smooth muscle,566,76
+44,2.0,Spinal cord,5272,700
+44,2.0,Sympathetic nerve,24,3
+44,2.5,Adipose tissue,1035,118
+44,2.5,Adrenal gland,34,3
+44,2.5,Blood vessel,97,11
+44,2.5,Brain,26952,3266
+44,2.5,Cartilage,254,25
+44,2.5,Cartilage primordium,2604,324
+44,2.5,Cavity,11798,1400
+44,2.5,Choroid plexus,264,40
+44,2.5,Connective tissue,19612,2280
+44,2.5,Dorsal root ganglion,2287,272
+44,2.5,Epidermis,2940,347
+44,2.5,Facial nerve,23,4
+44,2.5,GI tract,792,85
+44,2.5,Heart,4121,538
+44,2.5,Inner ear,22,2
+44,2.5,Jaw and tooth,6416,758
+44,2.5,Kidney,261,28
+44,2.5,Liver,5803,687
+44,2.5,Lung,1541,198
+44,2.5,Meninges,4086,462
+44,2.5,Mesentery,2,0
+44,2.5,Mesothelium,5,0
+44,2.5,Mucosal epithelium,510,48
+44,2.5,Muscle,1523,159
+44,2.5,Pancreas,48,6
+44,2.5,Smooth muscle,1274,149
+44,2.5,Spinal cord,6591,786
+44,2.5,Sympathetic nerve,25,4
+44,3.0,Adipose tissue,1520,158
+44,3.0,Adrenal gland,76,7
+44,3.0,Blood vessel,130,9
+44,3.0,Brain,27595,3183
+44,3.0,Cartilage,1805,215
+44,3.0,Cartilage primordium,1239,132
+44,3.0,Cavity,12866,1479
+44,3.0,Choroid plexus,703,91
+44,3.0,Connective tissue,18703,2168
+44,3.0,Dorsal root ganglion,2083,228
+44,3.0,Epidermis,2710,288
+44,3.0,Facial nerve,11,1
+44,3.0,GI tract,396,34
+44,3.0,Heart,4956,564
+44,3.0,Inner ear,73,8
+44,3.0,Jaw and tooth,6450,748
+44,3.0,Kidney,342,43
+44,3.0,Liver,6404,717
+44,3.0,Lung,1686,184
+44,3.0,Meninges,4441,491
+44,3.0,Mucosal epithelium,623,66
+44,3.0,Muscle,581,62
+44,3.0,Olfactory epithelium,15,2
+44,3.0,Pancreas,60,9
+44,3.0,Smooth muscle,2167,245
+44,3.0,Spinal cord,7526,868
+44,3.0,Sympathetic nerve,4,0

@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve byte-identical historical evidence files referenced by the immutable
+# MOSTA reader-release checksum manifest.
+release_artifacts/mosta_package_native_corrected_20260826_v1/** -whitespace
+release_artifacts/mosta_package_native_corrected_20260826_v1/provenance/master_delivery/ARCHIVE_CONTRACTS.csv -text
+release_artifacts/mosta_package_native_corrected_20260826_v1/reproduction/main_fig4_panels/fig4c/evidence/displayed_transitions.csv -text

@@ -1,0 +1,55 @@
+{
+  "hardcoded_legacy_phase_sizes": false,
+  "legacy_published_phase_sizes_reference_only": [
+    365,
+    417,
+    218
+  ],
+  "package_settings": {
+    "min_phase_size": 5,
+    "n_input_profiles": 2000,
+    "n_phases": 3,
+    "n_selected_profiles": 1000,
+    "n_top_profiles": 1000,
+    "peak_tie_policy": "earliest_time",
+    "phase_boundaries": [
+      {
+        "end_exclusive": 483,
+        "start": 0
+      },
+      {
+        "end_exclusive": 782,
+        "start": 483
+      },
+      {
+        "end_exclusive": 1000,
+        "start": 782
+      }
+    ],
+    "segmentation": "contiguous_dynamic_programming_peak_time_sse",
+    "selection": "population_temporal_variance",
+    "standardization": "zscore",
+    "time_points": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ],
+    "total_within_peak_sse": 70.34855609421834,
+    "wave_tie_policy": "variance_desc_then_profile_name"
+  },
+  "phase_sizes": {
+    "1": 483,
+    "2": 299,
+    "3": 218
+  }
+}

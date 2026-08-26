@@ -59,8 +59,18 @@ profile and package-downstream chain. It uses the D7-preoriented raw-coordinate
 OT workflow and is not represented as a matched no-LR/no-interaction family.
 These artifacts must be deposited and linked here before the 1.5 stable
 release. Until then, the release candidate is fully installable and supports
-user-provided inputs, but a new reader cannot download the exact manuscript
-artifacts from the package documentation alone.
+user-provided inputs, but outside the MOSTA exception below, a new reader cannot
+download the exact manuscript artifacts from the package documentation alone.
+
+The accepted corrected MOSTA Finetune, Score, and generated-cell classifier
+checkpoints used for main Figure 4 and Supplementary Figures S4-S11 are an
+exception: they are versioned in the
+[MOSTA manuscript-figure reader release](../release_artifacts/mosta_package_native_corrected_20260826_v1/README.md),
+together with their SHA-256 identities, resolved configuration, plotting code,
+compact downstream inputs, and final vector figures. The approximately 15 GB
+aligned MOSTA H5AD remains outside Git; the release documents its public raw-data
+source, package-native reconstruction procedure, required AnnData contract, and
+expected SHA-256 identity.
 
 ## Aligned AnnData contract
 

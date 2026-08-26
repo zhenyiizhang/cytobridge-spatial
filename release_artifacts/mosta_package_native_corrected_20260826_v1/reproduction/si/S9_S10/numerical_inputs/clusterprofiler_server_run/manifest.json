@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "dataset": "MOSTA",
+  "panels": ["S9a-b", "S10b-d"],
+  "status": "COMPLETE",
+  "computation_only": true,
+  "style_source": "not used in computation; submitted SI and historical MOSTA plotters are render-only authority",
+  "calculation_contract": {
+    "query_source": "corrected latest-package S8 Ward-k2 programs and S10 DP3 phases",
+    "background": "same 2,000 eligible Brain original-HVG symbols used by S8",
+    "organism": "Mus musculus",
+    "orgdb": "org.Mm.eg.db",
+    "key_type": "ENTREZID",
+    "ontology": "ALL",
+    "ontologies_pooled": true,
+    "multiple_testing": "Benjamini-Hochberg over one pooled BP+MF+CC family per query",
+    "pvalue_cutoff_compute": 1,
+    "qvalue_cutoff_compute": 1,
+    "display_significance_cutoff": "p.adjust < 0.05",
+    "min_gene_set_size": 5,
+    "max_gene_set_size": 500,
+    "display_order": "p.adjust asc, pvalue asc, Count desc, Description asc",
+    "display_top_n": 20,
+    "no_term_cherry_picking": true
+  },
+  "mapping": {
+    "background_input_symbols": 2000,
+    "background_mapped_symbols": 1725,
+    "background_unique_entrez": 1725,
+    "ambiguous_symbol_count": 0,
+    "policy": "retain all valid SYMBOL-to-ENTREZID mappings; deduplicate Entrez IDs per query and universe"
+  },
+  "inputs": {
+    "s8_assignments": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s8_gene_programs/brain_hvg_ward_k2_assignments.csv",
+      "size_bytes": 18485,
+      "sha256": "d3b7a73e8775247334bd204ed5e1177fe3a2f3b47db0201e7e4a21a71a3cba84"
+    },
+    "s10_phase_assignments": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s10_developmental_wave/s10_top1000_dp3_assignments.csv",
+      "size_bytes": 40792,
+      "sha256": "7900086ca6d989f23bd6803cb9444b67765243c31cd1603f6d8e2a6f54e44b6f"
+    },
+    "shared_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/summary.json",
+      "size_bytes": 48965,
+      "sha256": "355dab8c6adda3271119cc34abedf22856bf1c7882fe5e2696340d36f3fd84a1"
+    },
+    "s8_settings": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s8_gene_programs/s8_gene_program_settings.json",
+      "size_bytes": 75630,
+      "sha256": "904235a161916f330a3e7930e55434dfa2ed4d2c5f2ab7f1f1560198f734f4ff"
+    }
+  },
+  "queries": {
+    "s9_pattern_1": {
+      "query_id": "s9_pattern_1",
+      "input_symbol_count": 883,
+      "mapped_symbol_count": 789,
+      "unique_entrez_count": 789,
+      "tested_term_count": 3554,
+      "significant_term_count_fdr_lt_0p05": 305,
+      "displayed_term_count": 20,
+      "minimum_p_adjust": 6.00405430704343e-24,
+      "top_term": "nucleus",
+      "top_term_id": "GO:0005634",
+      "top_term_ontology": "CC"
+    },
+    "s9_pattern_2": {
+      "query_id": "s9_pattern_2",
+      "input_symbol_count": 1117,
+      "mapped_symbol_count": 936,
+      "unique_entrez_count": 936,
+      "tested_term_count": 3520,
+      "significant_term_count_fdr_lt_0p05": 11,
+      "displayed_term_count": 11,
+      "minimum_p_adjust": 2.46010001456902e-06,
+      "top_term": "extracellular region",
+      "top_term_id": "GO:0005576",
+      "top_term_ontology": "CC"
+    },
+    "s10_phase_1": {
+      "query_id": "s10_phase_1",
+      "input_symbol_count": 483,
+      "mapped_symbol_count": 455,
+      "unique_entrez_count": 455,
+      "tested_term_count": 3410,
+      "significant_term_count_fdr_lt_0p05": 328,
+      "displayed_term_count": 20,
+      "minimum_p_adjust": 4.29090409887774e-29,
+      "top_term": "nucleus",
+      "top_term_id": "GO:0005634",
+      "top_term_ontology": "CC"
+    },
+    "s10_phase_2": {
+      "query_id": "s10_phase_2",
+      "input_symbol_count": 299,
+      "mapped_symbol_count": 292,
+      "unique_entrez_count": 292,
+      "tested_term_count": 3327,
+      "significant_term_count_fdr_lt_0p05": 534,
+      "displayed_term_count": 20,
+      "minimum_p_adjust": 3.1783116699247e-10,
+      "top_term": "regulation of system process",
+      "top_term_id": "GO:0044057",
+      "top_term_ontology": "BP"
+    },
+    "s10_phase_3": {
+      "query_id": "s10_phase_3",
+      "input_symbol_count": 218,
+      "mapped_symbol_count": 210,
+      "unique_entrez_count": 210,
+      "tested_term_count": 2896,
+      "significant_term_count_fdr_lt_0p05": 198,
+      "displayed_term_count": 20,
+      "minimum_p_adjust": 1.20662839046057e-09,
+      "top_term": "cell periphery",
+      "top_term_id": "GO:0071944",
+      "top_term_ontology": "CC"
+    }
+  },
+  "software": {
+    "R": "R version 4.3.3 (2024-02-29)",
+    "clusterProfiler": "4.10.0",
+    "org.Mm.eg.db": "3.18.0",
+    "AnnotationDbi": "1.64.1",
+    "DOSE": "3.28.1",
+    "enrichplot": "1.22.0",
+    "orgdb_sqlite": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/workspace/envs/r-clusterprofiler/lib/R/library/org.Mm.eg.db/extdata/org.Mm.eg.sqlite",
+      "size_bytes": 328507392,
+      "sha256": "c52ab0837038b08203f8f40f0b64def3a007b764ddaf2443e653806d6fc80486"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "classifier": "latest accepted 52D cache",
+  "classifier_knn_neighbors": 10,
+  "inputs": {
+    "all_times_manifest": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4c-k10-all-forward-timepairs-global-t0-50k-2b3c79e-seed42-20260825-v5/run_manifest.json",
+    "all_times_manifest_sha256": "ff408ec636c8e01c0e2e193580dcb8489930c980570ebc0bdc9657243558f73d",
+    "all_times_npz": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4c-k10-all-forward-timepairs-global-t0-50k-2b3c79e-seed42-20260825-v5/fixed_lineage_all_times_k10_cap50000.npz",
+    "all_times_npz_sha256": "f0c5378e18b4cce4314e5b3a769ee733caeea1a7433535d1fc8285f427dcf171",
+    "reference_h5ad": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/mosta_aligned.h5ad",
+    "reference_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25"
+  },
+  "outputs": {
+    "render_state": "fig4c_render_state_k10_cap50000.npz",
+    "render_state_sha256": "dfa497ca9053cc37b5e3752c236c852daf36c1ce31f781ad6ff97fa93919f216",
+    "transitions": "transitions.csv",
+    "transitions_sha256": "c1b2174343ebdf0cea153dfce2cfed19f76c1afba699537978b6443d6123308e"
+  },
+  "particle_cap": 50000,
+  "render_only_export": true,
+  "source_count": 1282,
+  "source_time": 2.5,
+  "status": "COMPLETE",
+  "target_time": 3.0,
+  "top3": [
+    {
+      "count": 348,
+      "cumulative_probability": 0.2714508580343214,
+      "probability": 0.2714508580343214,
+      "rank": 1,
+      "target_label": "Cartilage"
+    },
+    {
+      "count": 253,
+      "cumulative_probability": 0.46879875195007803,
+      "probability": 0.19734789391575663,
+      "rank": 2,
+      "target_label": "Cartilage primordium"
+    },
+    {
+      "count": 243,
+      "cumulative_probability": 0.6583463338533542,
+      "probability": 0.18954758190327614,
+      "rank": 3,
+      "target_label": "Connective tissue"
+    }
+  ],
+  "trajectory": "global_t0 fixed particle; no restart; no warp"
+}

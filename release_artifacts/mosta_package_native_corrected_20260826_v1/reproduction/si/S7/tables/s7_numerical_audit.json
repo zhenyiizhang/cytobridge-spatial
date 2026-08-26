@@ -1,0 +1,97 @@
+{
+  "checks": {
+    "interval_totals_all_50000": true,
+    "observed_anchor_restart": false,
+    "particles_per_time": 50000,
+    "persistent_ids_exact_at_all_times": true,
+    "provided_edges_exactly_recomputed": true,
+    "provided_nodes_exactly_recomputed": true,
+    "rows": 350000,
+    "source_node_mass_conserved": true,
+    "spatial_warp": false,
+    "target_node_mass_conserved": true,
+    "times": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5,
+      3.0
+    ]
+  },
+  "errors": [],
+  "inputs": {
+    "fixed_particle_labels": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s7_lineage/fixed_particle_labels.csv.gz",
+      "sha256": "667d19659ffb7cab18caed14e543e5d03dc57c0697f48557728fe0bc9af003cb"
+    },
+    "lineage_contract": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s7_lineage/lineage_contract.json",
+      "sha256": "0633c5b831fe4ae16bdfbe71a9c4acd6bacc1131f43f5984c549b678c4cb1cf3"
+    },
+    "lineage_edges": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s7_lineage/lineage_edges.csv",
+      "sha256": "e3b8e2be6c1a1434d7c841a986ef4182af8e60c555c30c3a9c36aede8a52fb13"
+    },
+    "lineage_nodes": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s7_lineage/lineage_nodes.csv",
+      "sha256": "3aa567a993db4736790b8354ee9035a7a6a9a8f99bdebdcf7bf67acd8536fa7b"
+    },
+    "shared_summary": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/summary.json",
+      "sha256": "355dab8c6adda3271119cc34abedf22856bf1c7882fe5e2696340d36f3fd84a1"
+    }
+  },
+  "interpretability_diagnostics": {
+    "key_source_top_targets_table": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s7_lineage_20260825_v1/tables/s7_key_source_top_targets.csv",
+    "same_label_fraction_by_interval": {
+      "0->0.5": 0.74292,
+      "0.5->1": 0.68268,
+      "1->1.5": 0.67378,
+      "1.5->2": 0.68922,
+      "2->2.5": 0.73264,
+      "2.5->3": 0.73486
+    }
+  },
+  "lineage_contract": {
+    "classifier_k": 10,
+    "n_particles": 50000,
+    "particle_id_persistent": true,
+    "restart_from_observed_anchor": false,
+    "spatial_warp": false,
+    "time_points": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5,
+      3.0
+    ],
+    "trajectory_mode": "global_t0_non_split_fixed_particle"
+  },
+  "panel": "Supplementary Figure S7",
+  "release": {
+    "aligned_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "classifier_accuracy": 0.8960273932851629,
+    "classifier_balanced_accuracy": 0.8503347888243216,
+    "classifier_k": 10,
+    "classifier_sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+    "finetune_sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+    "package_archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+    "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "score_sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a"
+  },
+  "schema_version": 1,
+  "status": "PASS",
+  "submitted_plot_filter": {
+    "algorithm": "minimal descending outgoing prefix per interval/source whose cumulative fraction reaches or exceeds 0.8",
+    "all_sources_meet_coverage": true,
+    "filtered_edges": 343,
+    "keep_source_cumfrac": 0.8,
+    "maximum_kept_fraction": 1.0,
+    "minimum_kept_fraction": 0.8,
+    "unfiltered_edges": 1380
+  }
+}

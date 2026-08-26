@@ -1,0 +1,19 @@
+{
+  "accepted_server_run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta",
+  "accepted_package_runtime": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime",
+  "accepted_package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "reference_h5ad": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/preprocess/mosta_aligned.h5ad",
+  "reference_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+  "style_ai": "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai",
+  "style_ai_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+  "manuscript_pdf": "/Users/zhenyizhang/Desktop/202511/nbme预投稿/投稿/投稿修改/cytobridge_manuscript_latest_clean.pdf",
+  "manuscript_pdf_sha256": "94c26a14500b16706ab9647ce26c628b9b7f642a58faf79421dd17577cae4337",
+  "historical_brain_velocity_notebook": {
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_velocity_communication_focus_brain_t3.ipynb",
+    "sha256": "fadc76e187cd570c85d928dbddefcca514e8a7ca968466c2e8104429e05add97"
+  },
+  "historical_telencephalon_stream_notebook": {
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_telencephalon_velocity_stream_grid.ipynb",
+    "sha256": "ab1ee780f57ac6868804a642e70004d238b36c50a79efed74dbb3df666f6423b"
+  }
+}

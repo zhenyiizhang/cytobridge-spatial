@@ -1,0 +1,37 @@
+{
+  "arista_assets_used": false,
+  "coordinate_bug_detected": false,
+  "definition": {
+    "important_semantics": "Package smoothing is one simultaneous vote from raw classifier labels. The resulting labels are not iteratively re-smoothed, so a final label need not be the majority among final neighboring labels.",
+    "low_final_support": "fewer than 5 Brain labels among the final 10 nearest all-state labels, including self",
+    "self_only": "exactly 1 Brain label among the final 10 nearest all-state labels"
+  },
+  "inputs": {
+    "growth_table": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s5_growth/growth_by_cell_fully_generated.csv",
+      "sha256": "78073f25684bc456b822b7536e81fd3d5d796a73fd3dfc8cdb1371d239147fb9"
+    },
+    "package_classification_source": {
+      "path": "/private/tmp/cytobridge_arista_release_20260825/CytoBridge/tl/downstream/classification.py",
+      "sha256": "cd84b5e14b6f7866aac68570d23784c07eff606e3cb5f6d7df90c22929ab2ecd"
+    }
+  },
+  "panel": "Supplementary Figure S5",
+  "rendering_policy": {
+    "posthoc_spatial_filter": false,
+    "reason": "Submitted S5 plots every classifier-predicted Brain cell. Removing low-support cells would silently change the biological selection and would no longer be an equivalent value replacement.",
+    "retain_every_package_k10_brain_label": true
+  },
+  "results": {
+    "fraction_final_knn10_support_eq1": 0.0014316655042032232,
+    "fraction_final_knn10_support_lt5": 0.01730112697771741,
+    "maximum_absolute_mean_growth_shift_in_exclusion_sensitivity": 0.0014172021717639982,
+    "n_brain_all_times": 272410,
+    "n_final_knn10_support_eq1": 390,
+    "n_final_knn10_support_lt5": 4713,
+    "original_package_brain_mean_monotonically_decreasing": true,
+    "sensitivity_mean_monotonically_decreasing": true
+  },
+  "schema_version": 1,
+  "status": "pass_retained_package_classifier_output"
+}

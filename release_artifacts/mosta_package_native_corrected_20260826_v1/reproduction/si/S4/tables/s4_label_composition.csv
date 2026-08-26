@@ -1,0 +1,206 @@
+display_order,title,time,origin,celltype,count,fraction,color
+1,0.0 (observed),0.0,observed_real,Cavity,6431,0.12520198578798794,#dfdce0ff
+1,0.0 (observed),0.0,observed_real,Brain,11525,0.22437457412635062,#ef833aff
+1,0.0 (observed),0.0,observed_real,Meninges,5353,0.10421493234692884,#dfca43ff
+1,0.0 (observed),0.0,observed_real,Choroid plexus,462,0.00899445147473961,#bd3addff
+1,0.0 (observed),0.0,observed_real,Cartilage primordium,3670,0.0714494305460917,#3cb44bff
+1,0.0 (observed),0.0,observed_real,Jaw and tooth,2651,0.05161101917648204,#f062f9ff
+1,0.0 (observed),0.0,observed_real,Connective tissue,2738,0.053304779519127814,#0bd3b1ff
+1,0.0 (observed),0.0,observed_real,Epidermis,1433,0.027898374379441253,#036df4ff
+1,0.0 (observed),0.0,observed_real,Lung primordium,576,0.011213861578896136,#7ec136ff
+1,0.0 (observed),0.0,observed_real,Sympathetic nerve,185,0.00360167429183296,#cc5a0dff
+1,0.0 (observed),0.0,observed_real,Liver,1429,0.02782050034069892,#c923b1ff
+1,0.0 (observed),0.0,observed_real,Mucosal epithelium,600,0.01168110581135014,#2f7dd1ff
+1,0.0 (observed),0.0,observed_real,GI tract,1497,0.029144358999318602,#5c5ca6ff
+1,0.0 (observed),0.0,observed_real,Mesentery,824,0.01604205198092086,#e71d36ff
+1,0.0 (observed),0.0,observed_real,Dorsal root ganglion,1348,0.02624355105616665,#b74c11ff
+1,0.0 (observed),0.0,observed_real,Muscle,5416,0.10544144845712061,#af1041ff
+1,0.0 (observed),0.0,observed_real,Mesothelium,632,0.012304098121288815,#ff8383ff
+1,0.0 (observed),0.0,observed_real,Blood vessel,1355,0.026379830623965737,#b3a726ff
+1,0.0 (observed),0.0,observed_real,Urogenital ridge,1022,0.019896816898666406,#9e7bffff
+1,0.0 (observed),0.0,observed_real,Heart,1560,0.030370875109510368,#d3245aff
+1,0.0 (observed),0.0,observed_real,Pancreas,65,0.001265453129562932,#739b1eff
+1,0.0 (observed),0.0,observed_real,Kidney,266,0.005178623576365229,#62cfe8ff
+1,0.0 (observed),0.0,observed_real,Ovary,327,0.006366202667185827,#55afd9ff
+2,0.0 (generated),0.0,generated_global_t0,Cartilage primordium,3830,0.0766,#3cb44bff
+2,0.0 (generated),0.0,generated_global_t0,Lung primordium,580,0.0116,#7ec136ff
+2,0.0 (generated),0.0,generated_global_t0,Brain,11397,0.22794,#ef833aff
+2,0.0 (generated),0.0,generated_global_t0,Blood vessel,1424,0.02848,#b3a726ff
+2,0.0 (generated),0.0,generated_global_t0,Cavity,6527,0.13054,#dfdce0ff
+2,0.0 (generated),0.0,generated_global_t0,Liver,1391,0.02782,#c923b1ff
+2,0.0 (generated),0.0,generated_global_t0,Meninges,4868,0.09736,#dfca43ff
+2,0.0 (generated),0.0,generated_global_t0,Jaw and tooth,2587,0.05174,#f062f9ff
+2,0.0 (generated),0.0,generated_global_t0,Mesentery,778,0.01556,#e71d36ff
+2,0.0 (generated),0.0,generated_global_t0,Kidney,266,0.00532,#62cfe8ff
+2,0.0 (generated),0.0,generated_global_t0,Choroid plexus,432,0.00864,#bd3addff
+2,0.0 (generated),0.0,generated_global_t0,Mucosal epithelium,554,0.01108,#2f7dd1ff
+2,0.0 (generated),0.0,generated_global_t0,Mesothelium,579,0.01158,#ff8383ff
+2,0.0 (generated),0.0,generated_global_t0,Connective tissue,2567,0.05134,#0bd3b1ff
+2,0.0 (generated),0.0,generated_global_t0,Muscle,5285,0.1057,#af1041ff
+2,0.0 (generated),0.0,generated_global_t0,Epidermis,1180,0.0236,#036df4ff
+2,0.0 (generated),0.0,generated_global_t0,Heart,1541,0.03082,#d3245aff
+2,0.0 (generated),0.0,generated_global_t0,GI tract,1461,0.02922,#5c5ca6ff
+2,0.0 (generated),0.0,generated_global_t0,Dorsal root ganglion,1330,0.0266,#b74c11ff
+2,0.0 (generated),0.0,generated_global_t0,Ovary,322,0.00644,#55afd9ff
+2,0.0 (generated),0.0,generated_global_t0,Urogenital ridge,895,0.0179,#9e7bffff
+2,0.0 (generated),0.0,generated_global_t0,Sympathetic nerve,162,0.00324,#cc5a0dff
+2,0.0 (generated),0.0,generated_global_t0,Pancreas,44,0.00088,#739b1eff
+3,0.5,0.5,generated_global_t0,Cartilage primordium,3705,0.05853635415679211,#3cb44bff
+3,0.5,0.5,generated_global_t0,Lung primordium,606,0.009574367238600815,#7ec136ff
+3,0.5,0.5,generated_global_t0,Brain,15055,0.23785824880715392,#ef833aff
+3,0.5,0.5,generated_global_t0,Connective tissue,2936,0.046386703321009894,#0bd3b1ff
+3,0.5,0.5,generated_global_t0,Mesothelium,838,0.013239801560969443,#ff8383ff
+3,0.5,0.5,generated_global_t0,Epidermis,1842,0.029102284576737133,#036df4ff
+3,0.5,0.5,generated_global_t0,Liver,2223,0.03512181249407527,#c923b1ff
+3,0.5,0.5,generated_global_t0,Meninges,4791,0.07569437861408665,#dfca43ff
+3,0.5,0.5,generated_global_t0,Jaw and tooth,3643,0.05755679843271084,#f062f9ff
+3,0.5,0.5,generated_global_t0,GI tract,2408,0.0380446803804468,#5c5ca6ff
+3,0.5,0.5,generated_global_t0,Kidney,371,0.005861535058615351,#62cfe8ff
+3,0.5,0.5,generated_global_t0,Choroid plexus,292,0.004613391474705343,#bd3addff
+3,0.5,0.5,generated_global_t0,Cavity,7998,0.12636268840648401,#dfdce0ff
+3,0.5,0.5,generated_global_t0,Mesentery,654,0.010332732960470187,#e71d36ff
+3,0.5,0.5,generated_global_t0,Muscle,9335,0.14748633361772048,#af1041ff
+3,0.5,0.5,generated_global_t0,Blood vessel,1272,0.020096691629538345,#b3a726ff
+3,0.5,0.5,generated_global_t0,Heart,2056,0.032483331753404746,#d3245aff
+3,0.5,0.5,generated_global_t0,Dorsal root ganglion,1647,0.02602142383164281,#b74c11ff
+3,0.5,0.5,generated_global_t0,Ovary,384,0.006066925774954972,#55afd9ff
+3,0.5,0.5,generated_global_t0,Sympathetic nerve,208,0.003286251461433943,#cc5a0dff
+3,0.5,0.5,generated_global_t0,Mucosal epithelium,665,0.01050652510506525,#2f7dd1ff
+3,0.5,0.5,generated_global_t0,Urogenital ridge,318,0.005024172907384586,#9e7bffff
+3,0.5,0.5,generated_global_t0,Pancreas,8,0.00012639428697822858,#739b1eff
+3,0.5,0.5,generated_global_t0,Spinal cord,13,0.00020539071633962145,#f9d5baff
+3,0.5,0.5,generated_global_t0,Lung,26,0.0004107814326792429,#7ec136ff
+4,1.0 (generated),1.0,generated_global_t0,Cavity,11792,0.15511095326414376,#dfdce0ff
+4,1.0 (generated),1.0,generated_global_t0,Lung,818,0.010759901608723676,#7ec136ff
+4,1.0 (generated),1.0,generated_global_t0,Brain,18429,0.242413480131013,#ef833aff
+4,1.0 (generated),1.0,generated_global_t0,Connective tissue,4506,0.05927153624560988,#0bd3b1ff
+4,1.0 (generated),1.0,generated_global_t0,Epidermis,3781,0.049734948633966033,#036df4ff
+4,1.0 (generated),1.0,generated_global_t0,Liver,3257,0.04284229772568828,#c923b1ff
+4,1.0 (generated),1.0,generated_global_t0,Jaw and tooth,4821,0.06341501913894479,#f062f9ff
+4,1.0 (generated),1.0,generated_global_t0,GI tract,3059,0.040237822764163475,#5c5ca6ff
+4,1.0 (generated),1.0,generated_global_t0,Kidney,312,0.004104021151493627,#62cfe8ff
+4,1.0 (generated),1.0,generated_global_t0,Choroid plexus,219,0.0028807071544137957,#bd3addff
+4,1.0 (generated),1.0,generated_global_t0,Meninges,4330,0.05695644739092117,#dfca43ff
+4,1.0 (generated),1.0,generated_global_t0,Muscle,11384,0.149744156373729,#af1041ff
+4,1.0 (generated),1.0,generated_global_t0,Mesentery,268,0.003525248937821449,#e71d36ff
+4,1.0 (generated),1.0,generated_global_t0,Mesothelium,371,0.00488010207437223,#ff8383ff
+4,1.0 (generated),1.0,generated_global_t0,Heart,2205,0.029004380253344383,#d3245aff
+4,1.0 (generated),1.0,generated_global_t0,Cartilage primordium,3257,0.04284229772568828,#3cb44bff
+4,1.0 (generated),1.0,generated_global_t0,Spinal cord,368,0.004840640332530945,#f9d5baff
+4,1.0 (generated),1.0,generated_global_t0,Dorsal root ganglion,2028,0.026676137484708574,#b74c11ff
+4,1.0 (generated),1.0,generated_global_t0,Sympathetic nerve,124,0.0016310853294397747,#cc5a0dff
+4,1.0 (generated),1.0,generated_global_t0,Mucosal epithelium,545,0.007168883101166752,#2f7dd1ff
+4,1.0 (generated),1.0,generated_global_t0,Ovary,101,0.0013285453086565907,#55afd9ff
+4,1.0 (generated),1.0,generated_global_t0,Smooth muscle,8,0.00010523131157675967,#fc5151ff
+4,1.0 (generated),1.0,generated_global_t0,Pancreas,38,0.0004998487299896084,#739b1eff
+4,1.0 (generated),1.0,generated_global_t0,Blood vessel,1,1.3153913947094959e-05,#b3a726ff
+4,1.0 (generated),1.0,generated_global_t0,Adipose tissue,1,1.3153913947094959e-05,#bf024fff
+5,1.5,1.5,generated_global_t0,Cartilage primordium,3454,0.03986473229227981,#3cb44bff
+5,1.5,1.5,generated_global_t0,Lung,1273,0.014692473713975739,#7ec136ff
+5,1.5,1.5,generated_global_t0,Brain,21568,0.2489295153676581,#ef833aff
+5,1.5,1.5,generated_global_t0,Spinal cord,2418,0.027907620927253213,#f9d5baff
+5,1.5,1.5,generated_global_t0,Cavity,13504,0.15585794582366724,#dfdce0ff
+5,1.5,1.5,generated_global_t0,Epidermis,4320,0.04985976939856653,#036df4ff
+5,1.5,1.5,generated_global_t0,Liver,4223,0.048740232909756126,#c923b1ff
+5,1.5,1.5,generated_global_t0,Jaw and tooth,5877,0.06783006128596655,#f062f9ff
+5,1.5,1.5,generated_global_t0,GI tract,2710,0.031277772006971134,#5c5ca6ff
+5,1.5,1.5,generated_global_t0,Kidney,243,0.0028046120286693674,#62cfe8ff
+5,1.5,1.5,generated_global_t0,Meninges,4111,0.04744757222164514,#dfca43ff
+5,1.5,1.5,generated_global_t0,Muscle,7786,0.08986300105028681,#af1041ff
+5,1.5,1.5,generated_global_t0,Connective tissue,9045,0.10439389217824868,#0bd3b1ff
+5,1.5,1.5,generated_global_t0,Heart,2598,0.029985111318860152,#d3245aff
+5,1.5,1.5,generated_global_t0,Adipose tissue,121,0.0013965352076913311,#bf024fff
+5,1.5,1.5,generated_global_t0,Dorsal root ganglion,2278,0.02629179506711448,#b74c11ff
+5,1.5,1.5,generated_global_t0,Sympathetic nerve,75,0.0008656209965028912,#cc5a0dff
+5,1.5,1.5,generated_global_t0,Mucosal epithelium,423,0.004882102420276306,#2f7dd1ff
+5,1.5,1.5,generated_global_t0,Pancreas,87,0.0010041203559433538,#739b1eff
+5,1.5,1.5,generated_global_t0,Mesothelium,92,0.00106182842237688,#ff8383ff
+5,1.5,1.5,generated_global_t0,Choroid plexus,150,0.0017312419930057823,#bd3addff
+5,1.5,1.5,generated_global_t0,Mesentery,173,0.0019966990986000025,#e71d36ff
+5,1.5,1.5,generated_global_t0,Blood vessel,11,0.00012695774615375738,#b3a726ff
+5,1.5,1.5,generated_global_t0,Smooth muscle,98,0.0011310781020971111,#fc5151ff
+5,1.5,1.5,generated_global_t0,Ovary,3,3.462483986011565e-05,#55afd9ff
+5,1.5,1.5,generated_global_t0,Cartilage,2,2.308322657341043e-05,#35586dff
+6,2.0 (generated),2.0,generated_global_t0,Cartilage primordium,3503,0.036913706439613475,#3cb44bff
+6,2.0 (generated),2.0,generated_global_t0,Lung,1511,0.015922526528762766,#7ec136ff
+6,2.0 (generated),2.0,generated_global_t0,Brain,24684,0.26011359684710794,#ef833aff
+6,2.0 (generated),2.0,generated_global_t0,Spinal cord,5272,0.0555549701255045,#f9d5baff
+6,2.0 (generated),2.0,generated_global_t0,Cavity,12080,0.1272959103027493,#dfdce0ff
+6,2.0 (generated),2.0,generated_global_t0,Epidermis,3557,0.03748274444924497,#036df4ff
+6,2.0 (generated),2.0,generated_global_t0,Liver,5026,0.05296268585940546,#c923b1ff
+6,2.0 (generated),2.0,generated_global_t0,Jaw and tooth,6364,0.06706218320916361,#f062f9ff
+6,2.0 (generated),2.0,generated_global_t0,GI tract,1504,0.015848762342329053,#5c5ca6ff
+6,2.0 (generated),2.0,generated_global_t0,Kidney,214,0.0022550765566877774,#62cfe8ff
+6,2.0 (generated),2.0,generated_global_t0,Muscle,3510,0.03698747062604719,#af1041ff
+6,2.0 (generated),2.0,generated_global_t0,Connective tissue,15873,0.1672655616089023,#0bd3b1ff
+6,2.0 (generated),2.0,generated_global_t0,Meninges,4110,0.04331011517750825,#dfca43ff
+6,2.0 (generated),2.0,generated_global_t0,Heart,3430,0.03614445135251905,#d3245aff
+6,2.0 (generated),2.0,generated_global_t0,Adipose tissue,550,0.00579575750550597,#bf024fff
+6,2.0 (generated),2.0,generated_global_t0,Dorsal root ganglion,2385,0.025132512092057704,#b74c11ff
+6,2.0 (generated),2.0,generated_global_t0,Mucosal epithelium,388,0.004088643476611484,#2f7dd1ff
+6,2.0 (generated),2.0,generated_global_t0,Choroid plexus,111,0.0011696892420202957,#bd3addff
+6,2.0 (generated),2.0,generated_global_t0,Mesothelium,49,0.0005163493050359864,#ff8383ff
+6,2.0 (generated),2.0,generated_global_t0,Adrenal gland,12,0.00012645289102922115,#d147a3ff
+6,2.0 (generated),2.0,generated_global_t0,Smooth muscle,566,0.005964361360211598,#fc5151ff
+6,2.0 (generated),2.0,generated_global_t0,Blood vessel,15,0.00015806611378652645,#b3a726ff
+6,2.0 (generated),2.0,generated_global_t0,Mesentery,37,0.0003898964140067652,#e71d36ff
+6,2.0 (generated),2.0,generated_global_t0,Pancreas,76,0.0008008683098517339,#739b1eff
+6,2.0 (generated),2.0,generated_global_t0,Cartilage,25,0.00026344352297754406,#35586dff
+6,2.0 (generated),2.0,generated_global_t0,Facial nerve,20,0.00021075481838203527,#dd7936ff
+6,2.0 (generated),2.0,generated_global_t0,Sympathetic nerve,24,0.0002529057820584423,#cc5a0dff
+6,2.0 (generated),2.0,generated_global_t0,Inner ear,1,1.0537740919101763e-05,#03fff4ff
+7,2.5,2.5,generated_global_t0,Lung,1541,0.01526952041220769,#7ec136ff
+7,2.5,2.5,generated_global_t0,Brain,26952,0.2670630202140309,#ef833aff
+7,2.5,2.5,generated_global_t0,Spinal cord,6591,0.06530915576694411,#f9d5baff
+7,2.5,2.5,generated_global_t0,Epidermis,2940,0.029131985731272295,#036df4ff
+7,2.5,2.5,generated_global_t0,Liver,5803,0.05750099088386841,#c923b1ff
+7,2.5,2.5,generated_global_t0,Jaw and tooth,6416,0.06357510899722553,#f062f9ff
+7,2.5,2.5,generated_global_t0,Cavity,11798,0.11690447879508521,#dfdce0ff
+7,2.5,2.5,generated_global_t0,Smooth muscle,1274,0.012623860483551328,#fc5151ff
+7,2.5,2.5,generated_global_t0,Connective tissue,19612,0.19433214427269124,#0bd3b1ff
+7,2.5,2.5,generated_global_t0,Meninges,4086,0.04048751486325802,#dfca43ff
+7,2.5,2.5,generated_global_t0,Adipose tissue,1035,0.01025564803804994,#bf024fff
+7,2.5,2.5,generated_global_t0,Heart,4121,0.04083432421720174,#d3245aff
+7,2.5,2.5,generated_global_t0,Blood vessel,97,0.0009611573523583036,#b3a726ff
+7,2.5,2.5,generated_global_t0,Cartilage primordium,2604,0.025802615933412605,#3cb44bff
+7,2.5,2.5,generated_global_t0,GI tract,792,0.007847800237812128,#5c5ca6ff
+7,2.5,2.5,generated_global_t0,Muscle,1523,0.015091161315893777,#af1041ff
+7,2.5,2.5,generated_global_t0,Dorsal root ganglion,2287,0.02266151407055093,#b74c11ff
+7,2.5,2.5,generated_global_t0,Mucosal epithelium,510,0.005053507728894174,#2f7dd1ff
+7,2.5,2.5,generated_global_t0,Choroid plexus,264,0.002615933412604043,#bd3addff
+7,2.5,2.5,generated_global_t0,Sympathetic nerve,25,0.00024772096710265555,#cc5a0dff
+7,2.5,2.5,generated_global_t0,Adrenal gland,34,0.00033690051525961157,#d147a3ff
+7,2.5,2.5,generated_global_t0,Cartilage,254,0.0025168450257629805,#35586dff
+7,2.5,2.5,generated_global_t0,Kidney,261,0.002586206896551724,#62cfe8ff
+7,2.5,2.5,generated_global_t0,Facial nerve,23,0.00022790328973444312,#dd7936ff
+7,2.5,2.5,generated_global_t0,Pancreas,48,0.0004756242568370987,#739b1eff
+7,2.5,2.5,generated_global_t0,Inner ear,22,0.0002179944510503369,#03fff4ff
+7,2.5,2.5,generated_global_t0,Mesentery,2,1.9817677368212444e-05,#e71d36ff
+7,2.5,2.5,generated_global_t0,Mesothelium,5,4.9544193420531116e-05,#ff8383ff
+8,3.0 (generated),3.0,generated_global_t0,Connective tissue,18703,0.17784433984690723,#0bd3b1ff
+8,3.0 (generated),3.0,generated_global_t0,Lung,1686,0.01603194979318214,#7ec136ff
+8,3.0 (generated),3.0,generated_global_t0,Brain,27595,0.26239718537536255,#ef833aff
+8,3.0 (generated),3.0,generated_global_t0,Cavity,12866,0.1223410830599534,#dfdce0ff
+8,3.0 (generated),3.0,generated_global_t0,Epidermis,2710,0.025769029620120763,#036df4ff
+8,3.0 (generated),3.0,generated_global_t0,Liver,6404,0.06089478438644035,#c923b1ff
+8,3.0 (generated),3.0,generated_global_t0,Smooth muscle,2167,0.020605714829078116,#fc5151ff
+8,3.0 (generated),3.0,generated_global_t0,Mucosal epithelium,623,0.005924024152522227,#2f7dd1ff
+8,3.0 (generated),3.0,generated_global_t0,Jaw and tooth,6450,0.06133219226929111,#f062f9ff
+8,3.0 (generated),3.0,generated_global_t0,Kidney,342,0.0032520325203252032,#62cfe8ff
+8,3.0 (generated),3.0,generated_global_t0,Olfactory epithelium,15,0.0001426330052774212,#60a9eaff
+8,3.0 (generated),3.0,generated_global_t0,GI tract,396,0.0037655113393239197,#5c5ca6ff
+8,3.0 (generated),3.0,generated_global_t0,Spinal cord,7526,0.07156373318119146,#f9d5baff
+8,3.0 (generated),3.0,generated_global_t0,Meninges,4441,0.04222887842913517,#dfca43ff
+8,3.0 (generated),3.0,generated_global_t0,Blood vessel,130,0.001236152712404317,#b3a726ff
+8,3.0 (generated),3.0,generated_global_t0,Adipose tissue,1520,0.014453477868112014,#bf024fff
+8,3.0 (generated),3.0,generated_global_t0,Heart,4956,0.047125944943659966,#d3245aff
+8,3.0 (generated),3.0,generated_global_t0,Cartilage,1805,0.017163504968383016,#35586dff
+8,3.0 (generated),3.0,generated_global_t0,Muscle,581,0.005524651737745447,#af1041ff
+8,3.0 (generated),3.0,generated_global_t0,Dorsal root ganglion,2083,0.019806969999524558,#b74c11ff
+8,3.0 (generated),3.0,generated_global_t0,Pancreas,60,0.0005705320211096848,#739b1eff
+8,3.0 (generated),3.0,generated_global_t0,Cartilage primordium,1239,0.011781486235914991,#3cb44bff
+8,3.0 (generated),3.0,generated_global_t0,Choroid plexus,703,0.006684733514001806,#bd3addff
+8,3.0 (generated),3.0,generated_global_t0,Sympathetic nerve,4,3.803546807397899e-05,#cc5a0dff
+8,3.0 (generated),3.0,generated_global_t0,Facial nerve,11,0.00010459753720344221,#dd7936ff
+8,3.0 (generated),3.0,generated_global_t0,Adrenal gland,76,0.0007226738934056008,#d147a3ff
+8,3.0 (generated),3.0,generated_global_t0,Inner ear,73,0.0006941472923501164,#03fff4ff
