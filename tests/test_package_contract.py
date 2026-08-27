@@ -409,6 +409,8 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "Pillow": "PIL",
         "plotly": "plotly",
         "POT": "ot",
+        "PyMuPDF": "fitz",
+        "pypdf": "pypdf",
         "PyYAML": "yaml",
         "qnorm": "qnorm",
         "scanpy": "scanpy",
