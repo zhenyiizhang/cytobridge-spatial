@@ -157,8 +157,30 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
+    assert "describe_figure_workflow" in source
+    assert "reproduction route" in lowered
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
+
+
+@pytest.mark.parametrize(
+    "notebook_name",
+    tuple(name for name in COMPLETED_NOTEBOOK_OUTPUTS if name != "compute_cost.ipynb"),
+)
+def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
+    notebook_name: str,
+) -> None:
+    path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
+    source = _notebook_source(path)
+    assert "display(Image(filename" in source
+    preview_position = source.index("display(Image(filename")
+    producer_positions = [
+        source.find(token)
+        for token in ("plot_", "assemble_", "export_")
+        if source.find(token) >= 0
+    ]
+    assert producer_positions
+    assert min(producer_positions) < preview_position
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,7 @@
 # Paper reproduction index
 
-The registry maps every figure, table, and video to its reader-facing notebook
-or script. The `reproduction_mode` column says what the entry actually does:
+The registry maps every figure, table, and video to a notebook or script. Start
+with the mode instead of assuming that every page retrains a model:
 
 - `numeric-redraw` recalculates plotted values from packaged numeric inputs.
 - `result-summary-redraw` plots prepared result summaries without rerunning the
@@ -18,16 +18,31 @@ wheel after installing the dependency listed in the next column.
 
 {download}`Download the registry <data/paper_reproduction_registry.csv>`
 
+## Check a figure route
+
+```bash
+cytobridge figure list
+cytobridge figure explain zebrafish-si
+cytobridge figure explain nonspatial --json
+```
+
+`figure explain` prints the starting input, upstream analysis entry, upstream
+command when one is available, figure command, and the boundary of that
+command. This is also shown at the top of every paper notebook.
+
 ## Entry points
 
-- Dataset notebooks cover preprocessing, optional training, model loading, and
-  downstream calculations.
+- [Run CytoBridge on your data](tutorials/your_data.ipynb) is the shortest route
+  from a custom AnnData file to preprocessing, training, downstream output, and
+  standard figures.
+- Dataset notebooks cover the five packaged presets and name the aligned H5AD,
+  model directory, and downstream output passed between steps.
 - Paper-figure notebooks state whether they redraw numbers, assemble existing
   panels, or export a reference page. They write only the files supported by
   that mode.
 - The zebrafish video page provides the final videos and the commands used to
   render them from trajectory arrays.
 
-The S1 row remains on hold because the historical result state needed to
+The S1 row remains on hold because the earlier result state needed to
 recalculate the displayed values is not available. The published image is not
 silently replaced by a different simulation run.

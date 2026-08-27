@@ -250,6 +250,12 @@ def _parser() -> argparse.ArgumentParser:
     )
     figure_commands = figure.add_subparsers(dest="figure_command")
     figure_commands.add_parser("list", help="list figure workflows")
+    figure_explain = figure_commands.add_parser(
+        "explain",
+        help="show the inputs and upstream route for one figure command",
+    )
+    figure_explain.add_argument("name", choices=tuple(_FIGURE_COMMAND_HELP))
+    figure_explain.add_argument("--json", action="store_true", dest="as_json")
     for name, help_text in _FIGURE_COMMAND_HELP.items():
         figure_parser = figure_commands.add_parser(name, help=help_text)
         figure_parser.add_argument(
@@ -378,6 +384,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     nonspatial_fate.add_argument("--bootstrap", type=int, default=5000)
     workflow.add_argument("--list-configs", action="store_true")
+    workflow.add_argument(
+        "--export-config",
+        type=Path,
+        help="copy the selected packaged preset to a new JSON file for editing",
+    )
     workflow.add_argument("--dry-run", action="store_true")
     workflow.add_argument("--json", action="store_true", dest="as_json")
     workflow.add_argument(
@@ -536,8 +547,27 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
     )
     try:
         config, source = load_workflow_config(args.config)
+        if args.export_config is not None:
+            destination = args.export_config.expanduser().resolve()
+            if destination.exists():
+                raise FileExistsError(
+                    f"Refusing to replace an existing config: {destination}"
+                )
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(
+                json.dumps(config, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            print(f"Wrote editable workflow config: {destination}")
+            print(f"Starting preset: {source}")
+            return 0
         plan = build_workflow_plan(config, source=source, options=options)
-    except (FileNotFoundError, ModuleNotFoundError, ValueError) as error:
+    except (
+        FileExistsError,
+        FileNotFoundError,
+        ModuleNotFoundError,
+        ValueError,
+    ) as error:
         print(f"CytoBridge workflow config error: {error}", file=sys.stderr)
         return 2
 
@@ -584,6 +614,27 @@ def _run_figure_command(args: argparse.Namespace) -> int:
                 f"{workflow['name']}\t{workflow['mode']}\t{wheel}\t"
                 f"{workflow['paper_location']}"
             )
+        return 0
+    if args.figure_command == "explain":
+        from .results.figure_workflows import describe_figure_workflow
+
+        route = describe_figure_workflow(args.name)
+        if args.as_json:
+            print(json.dumps(route, indent=2, sort_keys=True))
+        else:
+            labels = (
+                ("Paper location", "paper_location"),
+                ("Mode", "mode"),
+                ("Starts from", "starts_from"),
+                ("Upstream entry", "upstream_entry"),
+                ("Upstream command", "upstream_command"),
+                ("Figure command", "figure_command"),
+                ("Scope", "scope"),
+            )
+            for label, key in labels:
+                value = route[key]
+                if value:
+                    print(f"{label}: {value}")
         return 0
     if args.figure_command not in _FIGURE_COMMAND_HELP:
         print("cytobridge figure requires a subcommand; use --help", file=sys.stderr)

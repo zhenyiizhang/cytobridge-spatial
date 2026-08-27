@@ -23,6 +23,11 @@ class FigureWorkflow:
     mode: str
     wheel_runnable: bool
     description: str
+    starts_from: str
+    upstream_entry: str
+    upstream_command: str | None
+    figure_command: str
+    scope: str
 
 
 FIGURE_WORKFLOWS = (
@@ -32,6 +37,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate AGIST panel values and draw both figures.",
+        "Packaged cell-level summaries, processed simulation arrays, and tables.",
+        "package resource: agist_figures/full_recompute_inputs.csv",
+        None,
+        "cytobridge figure agist --output-dir outputs/agist",
+        "Redraws S2-S3. Simulation generation, model fitting, and rollout are external to the wheel.",
     ),
     FigureWorkflow(
         "nonspatial",
@@ -39,6 +49,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate the grouped Weinreb and scNT panels and draw both figures.",
+        "Packaged Weinreb and scNT panel arrays and tables.",
+        "docs/nonspatial_workflows.md",
+        "cytobridge nonspatial plan --dataset weinreb",
+        "cytobridge figure nonspatial --output-dir outputs/nonspatial",
+        "Redraws S4-S5. The full analysis commands write new model results; they do not recreate the released compact panel bundle automatically.",
     ),
     FigureWorkflow(
         "classifier-smoothing",
@@ -46,6 +61,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Summarize the released sensitivity results and draw the figure.",
+        "Packaged classifier metrics and generated-frame sensitivity tables.",
+        "package resource: classifier_smoothing/manifest.json",
+        None,
+        "cytobridge figure classifier-smoothing --output-dir outputs/classifier_smoothing",
+        "Redraws S6. Classifier fits and generated-frame labels are not rerun by this command.",
     ),
     FigureWorkflow(
         "arista-lr",
@@ -53,6 +73,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recluster all 531 ARISTA LR profiles and draw the corrected figures.",
+        "Packaged all-pair ARISTA ligand-receptor time courses.",
+        "docs/tutorials/dataset_workflows/arista.ipynb",
+        "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
+        "cytobridge figure arista-lr --output-dir outputs/arista_lr",
+        "Recalculates clustering and redraws S23-S24; it does not rerun ARISTA training.",
     ),
     FigureWorkflow(
         "lr-complex",
@@ -60,6 +85,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate LR-complex sensitivity summaries and draw the figure.",
+        "Packaged paired minimum-subunit and geometric-mean LR scores.",
+        "scripts/run_lr_complex_aggregation_sensitivity.py",
+        "python scripts/run_lr_complex_aggregation_sensitivity.py --workflow-summary <downstream-summary.json> --output-dir <sensitivity-dir>",
+        "cytobridge figure lr-complex --output-dir outputs/lr_complex",
+        "Redraws S25. Fresh sensitivity tables require completed spatial downstream runs.",
     ),
     FigureWorkflow(
         "zebrafish-si",
@@ -67,6 +97,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate the released zebrafish panel values and draw eight figures.",
+        "Packaged zebrafish panel arrays and result tables.",
+        "scripts/run_zebrafish_paper_downstream.py",
+        "python scripts/run_zebrafish_paper_downstream.py --help",
+        "cytobridge figure zebrafish-si --output-dir outputs/zebrafish_si",
+        "Redraws S31-S38 from the released compact schema. The upstream command creates a full paper-downstream run, not this compact bundle.",
     ),
     FigureWorkflow(
         "interaction-evidence",
@@ -74,6 +109,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Summarize the matched No-LR and stVCR results and draw the figure.",
+        "Packaged paired target-level error tables.",
+        "scripts/spatiotemporal_benchmark/README.md",
+        "python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --help",
+        "cytobridge figure interaction-evidence --output-dir outputs/interaction_evidence",
+        "Redraws S39. Model fitting and projection-level benchmark runs remain upstream.",
     ),
     FigureWorkflow(
         "loto-benchmark",
@@ -81,6 +121,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate matched benchmark ratios and draw the figure.",
+        "Packaged target-level LOTO means and native-support records.",
+        "scripts/spatiotemporal_benchmark/README.md",
+        "python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --help",
+        "cytobridge figure loto-benchmark --output-dir outputs/loto_benchmark",
+        "Redraws S40. Method fitting and projection evaluation are not rerun by the figure command.",
     ),
     FigureWorkflow(
         "training-histories",
@@ -88,6 +133,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Smooth the released per-epoch losses and draw the training histories.",
+        "Packaged per-epoch histories and checkpoint summaries.",
+        "scripts/summarize_training_history.py",
+        "python scripts/summarize_training_history.py --help",
+        "cytobridge figure training-histories --output-dir outputs/training_histories",
+        "Redraws S41. Training histories come from completed model directories.",
     ),
     FigureWorkflow(
         "arista-local-domains",
@@ -95,6 +145,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate the displayed domain summaries and draw the figure.",
+        "Packaged ARISTA ROI, domain, pathway, and null tables.",
+        "docs/tutorials/dataset_workflows/arista.ipynb",
+        "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
+        "cytobridge figure arista-local-domains --output-dir outputs/arista_local_domains",
+        "Redraws S42. ROI selection and permutation-table generation are upstream of the compact inputs.",
     ),
     FigureWorkflow(
         "zebrafish-attention",
@@ -102,6 +157,11 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate the released attention summaries and draw the figure.",
+        "Packaged directed-pair, expression, and spatial-null tables.",
+        "scripts/run_zebrafish_attention_validation.py",
+        "python scripts/run_zebrafish_attention_validation.py --help",
+        "cytobridge figure zebrafish-attention --output-dir outputs/zebrafish_attention",
+        "Redraws S43. Building the numerical bundle requires model and external-method outputs.",
     ),
     FigureWorkflow(
         "compute-cost",
@@ -109,6 +169,11 @@ FIGURE_WORKFLOWS = (
         "table-only",
         True,
         "Format the released runtime and memory measurements.",
+        "Packaged one-run-per-dataset timing and memory table.",
+        "docs/training_compute.md",
+        None,
+        "cytobridge figure compute-cost --output-dir outputs/compute_cost",
+        "Formats Supplementary Table 2; it does not benchmark hardware during the command.",
     ),
     FigureWorkflow(
         "main-figure-2",
@@ -116,6 +181,11 @@ FIGURE_WORKFLOWS = (
         "result-summary-redraw + external-assembly",
         True,
         "Draw panel e and place it over the packaged frozen panels a-d.",
+        "Packaged panel-e replicate tables and frozen vector panels a-d.",
+        "package resource: main_figure_2/manifest.json",
+        None,
+        "cytobridge figure main-figure-2 --output-dir outputs/main_figure_2",
+        "Redraws panel e and assembles the page. Panels a-d and their upstream calculations remain frozen.",
     ),
     FigureWorkflow(
         "main-figure-5-reference",
@@ -123,6 +193,11 @@ FIGURE_WORKFLOWS = (
         "reference-export",
         True,
         "Validate and export the released compact reference page.",
+        "Packaged Main Figure 5 page raster and panel index.",
+        "docs/tutorials/dataset_workflows/arista.ipynb",
+        "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
+        "cytobridge figure main-figure-5-reference --output-dir outputs/main_figure_5",
+        "Exports the reference page; it does not recalculate panel values or reconstruct vector objects.",
     ),
     FigureWorkflow(
         "main-figure-4",
@@ -130,6 +205,11 @@ FIGURE_WORKFLOWS = (
         "external-assembly",
         False,
         "Assemble five vector panels from a separately downloaded MOSTA release.",
+        "Five vector panel PDFs in the external MOSTA figure release.",
+        "docs/tutorials/dataset_workflows/mosta.ipynb",
+        "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
+        "cytobridge figure main-figure-4 --results-dir <mosta-release> --output-dir outputs/main_figure_4",
+        "Assembles Main Figure 4; it does not redraw the five source panels.",
     ),
     FigureWorkflow(
         "mosta-reference-pages",
@@ -137,6 +217,11 @@ FIGURE_WORKFLOWS = (
         "reference-export",
         False,
         "Export released vector pages from a separately downloaded MOSTA release.",
+        "Vector PDF and SVG pages in the external MOSTA figure release.",
+        "docs/tutorials/dataset_workflows/mosta.ipynb",
+        "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
+        "cytobridge figure mosta-reference-pages --results-dir <mosta-release> --output-dir outputs/mosta_si",
+        "Exports S11-S18 reference pages; it does not rerun their numerical calculations.",
     ),
 )
 
@@ -147,6 +232,16 @@ def list_figure_workflows() -> list[dict[str, object]]:
     """Return the public figure commands and their execution modes."""
 
     return [asdict(workflow) for workflow in FIGURE_WORKFLOWS]
+
+
+def describe_figure_workflow(name: str) -> dict[str, object]:
+    """Return the complete input-to-figure route for one public command."""
+
+    try:
+        workflow = _WORKFLOW_BY_NAME[name]
+    except KeyError as error:
+        raise ValueError(f"Unknown figure workflow: {name}") from error
+    return asdict(workflow)
 
 
 def _paths(value: Any) -> Any:
@@ -493,9 +588,8 @@ def run_figure_workflow(
     details = _RUNNERS[name](source, output)
     workflow = _WORKFLOW_BY_NAME[name]
     summary = {
+        **describe_figure_workflow(name),
         "workflow": workflow.name,
-        "paper_location": workflow.paper_location,
-        "mode": workflow.mode,
         **details,
     }
     write_run_summary(output, summary)
@@ -505,6 +599,7 @@ def run_figure_workflow(
 __all__ = [
     "FIGURE_WORKFLOWS",
     "FigureWorkflow",
+    "describe_figure_workflow",
     "list_figure_workflows",
     "run_figure_workflow",
 ]

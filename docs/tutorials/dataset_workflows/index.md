@@ -1,9 +1,13 @@
 # Dataset tutorials
 
-Each notebook starts with editable paths and a compact summary of the packaged
-dataset preset. The preparation, training, and downstream sections can be run
-independently. Long-running steps are off in the published copy; their plans
-and expected output paths are still shown.
+Use [Run CytoBridge on your data](../your_data.ipynb) for the shortest route to
+a custom config. The notebooks below show the exact presets used for the five
+paper datasets. Each page keeps preparation, training, and downstream analysis
+in that order and names the files passed between them.
+
+Long runs are disabled in the published notebooks. Their resolved plans,
+commands, expected model directory, downstream folder, and paper-figure routes
+remain visible in the saved output.
 
 ## Spatial datasets
 
@@ -18,5 +22,7 @@ chicken_heart
 ```
 
 The [data preparation guide](../../data_checkpoints.md) lists the external
-inputs needed for a full run. Paper-specific plotting code is collected under
-[paper figure notebooks](../paper_figures/index.md).
+inputs needed for a full run. Paper plotting is kept under
+[paper figure notebooks](../paper_figures/index.md), because most paper
+commands consume a compact release rather than an arbitrary new downstream
+directory.

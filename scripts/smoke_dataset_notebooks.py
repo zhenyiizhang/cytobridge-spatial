@@ -14,6 +14,7 @@ from nbclient import NotebookClient
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "dataset_workflows"
 NOTEBOOKS = (
+    ROOT / "docs" / "tutorials" / "your_data.ipynb",
     ROOT / "docs" / "tutorials" / "data_preparation" / "synthetic_preprocessing.ipynb",
     NOTEBOOK_DIR / "zebrafish.ipynb",
     NOTEBOOK_DIR / "mosta.ipynb",

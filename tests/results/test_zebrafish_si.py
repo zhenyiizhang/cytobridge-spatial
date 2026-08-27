@@ -108,10 +108,7 @@ def test_zebrafish_si_package_resources_are_safe_and_compact() -> None:
     assert results.celltype_colors["Adaxial Cell"] == "#1f77b4"
     assert results.celltype_colors["Spinal Cord Ventral Region"] == "#9edae5"
     assert results.observed_generated_colors["Adaxial Cell"] == "#9467bd"
-    assert (
-        results.observed_generated_colors["Spinal Cord Ventral Region"]
-        == "#1f77b4"
-    )
+    assert results.observed_generated_colors["Spinal Cord Ventral Region"] == "#1f77b4"
 
     for path in root.glob("*.npz"):
         with np.load(path, allow_pickle=False) as payload:
@@ -133,9 +130,7 @@ def test_zebrafish_si_recalculates_panel_values() -> None:
     centroid = panels.ablation_centroid_summary.set_index("variant")
     assert np.isclose(centroid.loc["remove_YSL", "mean"], 0.07971487111444378)
     assert np.isclose(centroid.loc["remove_EVL", "mean"], 0.1744942608704382)
-    assert np.isclose(
-        centroid.loc["remove_EVL", "ci95_high"], 0.2453010333311179
-    )
+    assert np.isclose(centroid.loc["remove_EVL", "ci95_high"], 0.2453010333311179)
 
     assert panels.gene_zscores.shape == (250, 9)
     assert panels.gene_zscores.index[:5].tolist() == [
@@ -152,15 +147,19 @@ def test_zebrafish_si_recalculates_panel_values() -> None:
         "pvalb2",
         "ttn.2",
     ]
-    assert np.allclose(
-        panels.gene_zscores.to_numpy(float).mean(axis=1), 0, atol=2e-14
-    )
+    assert np.allclose(panels.gene_zscores.to_numpy(float).mean(axis=1), 0, atol=2e-14)
 
     loss = panels.loss_weight_summary.set_index(["condition", "space"])
-    assert np.isclose(loss.loc[("formal_alpha_control", "spatial"), "mean_w1"], 0.06807612909022664)
-    assert np.isclose(loss.loc[("alpha_expr_005", "spatial"), "mean_w1"], 0.08529207710374524)
+    assert np.isclose(
+        loss.loc[("formal_alpha_control", "spatial"), "mean_w1"], 0.06807612909022664
+    )
+    assert np.isclose(
+        loss.loc[("alpha_expr_005", "spatial"), "mean_w1"], 0.08529207710374524
+    )
     assert np.isclose(loss.loc[("formal", "joint"), "mean_w1"], 4.127925992208147)
-    assert np.isclose(loss.loc[("ot_mass_1_to_10", "pca"), "mean_w1"], 4.355810628542722)
+    assert np.isclose(
+        loss.loc[("ot_mass_1_to_10", "pca"), "mean_w1"], 4.355810628542722
+    )
 
     assert panels.daughter_top_celltypes == (
         "Segmental Plate, Tail Bud",
@@ -172,12 +171,14 @@ def test_zebrafish_si_recalculates_panel_values() -> None:
     )
     endpoint = panels.daughter_sensitivity_summary.loc[
         np.isclose(panels.daughter_sensitivity_summary["time"], 4.0)
-        & np.isclose(
-            panels.daughter_sensitivity_summary["daughter_noise_std"], 0.06
-        )
+        & np.isclose(panels.daughter_sensitivity_summary["daughter_noise_std"], 0.06)
     ].iloc[0]
-    assert np.isclose(endpoint["composition_tv_from_reference_mean"], 0.2839330886226318)
-    assert np.isclose(endpoint["lineage_weighted_tv_from_reference_mean"], 0.348301333749273)
+    assert np.isclose(
+        endpoint["composition_tv_from_reference_mean"], 0.2839330886226318
+    )
+    assert np.isclose(
+        endpoint["lineage_weighted_tv_from_reference_mean"], 0.348301333749273
+    )
 
     inverse = panels.inverse_pca_metrics.set_index("time")
     assert np.isclose(inverse.loc[0.0, "pearson_r"], 0.8898811016835869)
@@ -287,32 +288,32 @@ def test_zebrafish_si_cli_supports_a_figure_subset(tmp_path: Path) -> None:
     assert json.loads((output / "run_summary.json").read_text()) == summary
 
 
-def test_zebrafish_si_notebook_is_minimal_and_executed() -> None:
-    path = (
-        REPOSITORY_ROOT
-        / "docs/tutorials/paper_figures/zebrafish_si_s31_s38.ipynb"
-    )
+def test_zebrafish_si_notebook_documents_the_route_and_shows_outputs() -> None:
+    path = REPOSITORY_ROOT / "docs/tutorials/paper_figures/zebrafish_si_s31_s38.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
-    assert [cell["cell_type"] for cell in notebook["cells"]] == [
-        "markdown",
-        "markdown",
-        "code",
-        "markdown",
-        "code",
-        "markdown",
-        "code",
-    ]
     markdown = [
         "".join(cell["source"]).strip()
         for cell in notebook["cells"]
         if cell["cell_type"] == "markdown"
     ]
-    assert markdown[1:] == ["## Load", "## Calculate", "## Plot and save"]
-    code_cells = [
-        cell for cell in notebook["cells"] if cell["cell_type"] == "code"
-    ]
+    assert any(text.startswith("## Reproduction route") for text in markdown)
+    assert "## Load figure inputs" in markdown
+    assert any(
+        text.startswith("### Continue from a trained zebrafish model")
+        for text in markdown
+    )
+    assert "## Recalculate panel values" in markdown
+    assert "## Draw and save the figure" in markdown
+    assert any(text.startswith("## Preview the generated figures") for text in markdown)
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
-    assert sum(len(cell["outputs"]) for cell in code_cells) > 0
+    image_outputs = [
+        output
+        for cell in code_cells
+        for output in cell["outputs"]
+        if "image/png" in output.get("data", {})
+    ]
+    assert len(image_outputs) == 8
 
 
 def test_zebrafish_si_rejects_an_object_array(tmp_path: Path) -> None:

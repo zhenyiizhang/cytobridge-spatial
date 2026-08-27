@@ -11,6 +11,7 @@ import nbformat
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "dataset_workflows"
+OWN_DATA_NOTEBOOK = ROOT / "docs" / "tutorials" / "your_data.ipynb"
 
 
 @dataclass(frozen=True)
@@ -18,7 +19,7 @@ class Tutorial:
     preset: str
     title: str
     raw_filename: str
-    figure_links: tuple[tuple[str, str], ...]
+    figure_links: tuple[tuple[str, str, str], ...]
 
 
 TUTORIALS = (
@@ -27,8 +28,16 @@ TUTORIALS = (
         "Zebrafish embryogenesis",
         "zebrafish_raw.h5ad",
         (
-            ("Supplementary Figures S31–S38", "zebrafish_si_s31_s38.ipynb"),
-            ("Supplementary Figure S43", "zebrafish_attention.ipynb"),
+            (
+                "Supplementary Figures S31–S38",
+                "zebrafish_si_s31_s38.ipynb",
+                "zebrafish-si",
+            ),
+            (
+                "Supplementary Figure S43",
+                "zebrafish_attention.ipynb",
+                "zebrafish-attention",
+            ),
         ),
     ),
     Tutorial(
@@ -36,8 +45,12 @@ TUTORIALS = (
         "MOSTA mouse organogenesis",
         "mosta_raw.h5ad",
         (
-            ("Main Figure 4", "main_figure_4.ipynb"),
-            ("Supplementary Figures S11–S18", "mosta_figures.ipynb"),
+            ("Main Figure 4", "main_figure_4.ipynb", "main-figure-4"),
+            (
+                "Supplementary Figures S11–S18",
+                "mosta_figures.ipynb",
+                "mosta-reference-pages",
+            ),
         ),
     ),
     Tutorial(
@@ -45,9 +58,21 @@ TUTORIALS = (
         "ARISTA salamander brain regeneration",
         "arista_raw.h5ad",
         (
-            ("Main Figure 5", "main_figure_5.ipynb"),
-            ("Supplementary Figures S19–S24", "arista_figures.ipynb"),
-            ("Supplementary Figure S42", "arista_local_domains.ipynb"),
+            (
+                "Main Figure 5",
+                "main_figure_5.ipynb",
+                "main-figure-5-reference",
+            ),
+            (
+                "Supplementary Figures S19–S24",
+                "arista_figures.ipynb",
+                "arista-lr",
+            ),
+            (
+                "Supplementary Figure S42",
+                "arista_local_domains.ipynb",
+                "arista-local-domains",
+            ),
         ),
     ),
     Tutorial(
@@ -55,9 +80,17 @@ TUTORIALS = (
         "AD mouse brain",
         "admouse_raw.h5ad",
         (
-            ("Interaction-prior ablation", "lr_prior_ablation_stvcr.ipynb"),
-            ("Five-dataset benchmark", "loto_benchmark.ipynb"),
-            ("Training histories", "training_histories.ipynb"),
+            (
+                "Interaction-prior ablation",
+                "lr_prior_ablation_stvcr.ipynb",
+                "interaction-evidence",
+            ),
+            ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),
+            (
+                "Training histories",
+                "training_histories.ipynb",
+                "training-histories",
+            ),
         ),
     ),
     Tutorial(
@@ -65,9 +98,17 @@ TUTORIALS = (
         "Developing chicken heart",
         "chicken_heart_raw.h5ad",
         (
-            ("Interaction-prior ablation", "lr_prior_ablation_stvcr.ipynb"),
-            ("Five-dataset benchmark", "loto_benchmark.ipynb"),
-            ("Training histories", "training_histories.ipynb"),
+            (
+                "Interaction-prior ablation",
+                "lr_prior_ablation_stvcr.ipynb",
+                "interaction-evidence",
+            ),
+            ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),
+            (
+                "Training histories",
+                "training_histories.ipynb",
+                "training-histories",
+            ),
         ),
     ),
 )
@@ -135,7 +176,10 @@ else:
         ]
     figure_lines = "\n".join(
         f"- [{label}](../paper_figures/{target})"
-        for label, target in tutorial.figure_links
+        for label, target, _workflow in tutorial.figure_links
+    )
+    figure_workflows = tuple(
+        workflow for _label, _target, workflow in tutorial.figure_links
     )
     cells = [
         markdown(
@@ -162,6 +206,7 @@ from CytoBridge.workflow import (
     render_workflow_plan,
     run_workflow,
 )
+from CytoBridge.results import describe_figure_workflow
 
 PRESET = {preset!r}
 RAW_H5AD = Path("data/{tutorial.raw_filename}")
@@ -317,10 +362,31 @@ else:
             f"""
 ## Paper figures
 
-The figure notebooks load the corresponding packaged result tables and save
-the paper PDFs and PNGs:
+The paper notebooks below do not automatically consume `OUTPUT_DIR`. Each one
+states whether it starts from a released compact result bundle, an external
+figure release, or a complete upstream analysis. Check that route before using
+the paper command with results from a new run.
 
 {figure_lines}
+"""
+        ),
+        code(
+            f"""
+figure_routes = [
+    describe_figure_workflow(name)
+    for name in {figure_workflows!r}
+]
+pd.DataFrame(
+    [
+        {{
+            "paper location": route["paper_location"],
+            "mode": route["mode"],
+            "starts from": route["starts_from"],
+            "command": route["figure_command"],
+        }}
+        for route in figure_routes
+    ]
+)
 """
         ),
         markdown("## Saved files"),
@@ -356,12 +422,174 @@ pd.DataFrame(
     )
 
 
+def build_own_data_notebook():
+    """Build the short route from an AnnData file to a complete package run."""
+
+    cells = [
+        markdown(
+            """
+# Run CytoBridge on your data
+
+Start with the packaged dataset closest to your experiment, export its config,
+and edit the data fields and analysis settings. The same config is then used
+for preprocessing, training, downstream calculations, and standard figures.
+"""
+        ),
+        markdown("## Check the input fields"),
+        code(
+            """
+import pandas as pd
+
+pd.DataFrame(
+    [
+        ("expression", "AnnData X or the count layer named in the config"),
+        ("time", "one obs column with a value for every cell"),
+        ("cell type", "one obs column used to label generated cells"),
+        ("spatial coordinates", "two obs columns or one obsm matrix"),
+    ],
+    columns=["input", "location"],
+)
+"""
+        ),
+        markdown(
+            """
+The raw count layer, time mapping, cell-type column, and spatial coordinate
+columns must agree with the workflow config. Do not rename fields after model
+training; the aligned H5AD and model directory are one matched pair.
+"""
+        ),
+        markdown("## Export a starting config"),
+        code(
+            """
+from pathlib import Path
+
+BASE_PRESET = "zebrafish"
+CONFIG_PATH = Path("configs/my_dataset.json")
+RAW_H5AD = Path("inputs/my_dataset_raw.h5ad")
+RUN_ROOT = Path("outputs/my_dataset")
+
+print(
+    f"cytobridge workflow --config {BASE_PRESET} "
+    f"--export-config {CONFIG_PATH}"
+)
+"""
+        ),
+        markdown(
+            """
+Run the printed command once. In the exported JSON, change these entries before
+starting a fit:
+
+- `dataset.name`, `display_name`, and `annotation_key`;
+- `preprocess.time_key`, `annotation_source`, count layer, coordinates, and
+  `align.time_mapping`;
+- `scientific.classifier_k` and the spatial/expression loss weights;
+- the training profile, interaction distance, LR database, and predictor
+  settings; and
+- downstream observed/intermediate times and species tag.
+
+The dataset notebooks show the settings used for the five paper datasets.
+"""
+        ),
+        markdown("## Inspect the run before starting"),
+        code(
+            """
+print(
+    "cytobridge workflow "
+    f"--config {CONFIG_PATH} --train --input-h5ad {RAW_H5AD} "
+    f"--output-dir {RUN_ROOT} --device cuda --dry-run"
+)
+"""
+        ),
+        markdown(
+            """
+The dry run prints the data keys, training profile, preprocessing outputs,
+model directory, downstream time grid, and enabled analyses. Fix missing or
+incorrect fields in the JSON before removing `--dry-run`.
+"""
+        ),
+        markdown("## Preprocess, train, and run downstream analysis"),
+        code(
+            """
+print(
+    "cytobridge workflow "
+    f"--config {CONFIG_PATH} --train --input-h5ad {RAW_H5AD} "
+    f"--output-dir {RUN_ROOT} --device cuda"
+)
+"""
+        ),
+        markdown(
+            """
+Training is enabled only by `--train`. The command writes the aligned H5AD,
+the six-stage model directory, the downstream result folders, a summary file,
+and standard PNG/PDF figures under the run root.
+"""
+        ),
+        markdown("## Continue from an existing model"),
+        code(
+            """
+ALIGNED_H5AD = RUN_ROOT / "preprocess" / "my_dataset_aligned.h5ad"
+MODEL_DIR = RUN_ROOT / "training"
+NEW_DOWNSTREAM = Path("outputs/my_dataset_downstream_rerun")
+
+print(
+    "cytobridge workflow "
+    f"--config {CONFIG_PATH} --step downstream "
+    f"--aligned-h5ad {ALIGNED_H5AD} --model-dir {MODEL_DIR} "
+    f"--output-dir {NEW_DOWNSTREAM} --device cuda"
+)
+"""
+        ),
+        markdown(
+            """
+Use a new output directory for a second downstream run. Paper-figure commands
+consume their documented compact schemas; they are not a shortcut for turning
+an arbitrary new downstream directory into a manuscript page. Use
+`cytobridge figure explain <name>` to check that boundary before reusing one.
+"""
+        ),
+        markdown("## Expected output locations"),
+        code(
+            """
+pd.DataFrame(
+    {
+        "output": [
+            "aligned data",
+            "model directory",
+            "downstream summary",
+            "standard figures",
+        ],
+        "path": [
+            RUN_ROOT / "preprocess" / "my_dataset_aligned.h5ad",
+            RUN_ROOT / "training",
+            RUN_ROOT / "downstream" / "summary.json",
+            RUN_ROOT / "downstream" / "figures",
+        ],
+    }
+)
+"""
+        ),
+    ]
+    return nbformat.v4.new_notebook(
+        cells=cells,
+        metadata={
+            "kernelspec": {
+                "display_name": "Python 3",
+                "language": "python",
+                "name": "python3",
+            },
+            "language_info": {"name": "python", "version": "3.11"},
+        },
+    )
+
+
 def main() -> None:
     NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
     for tutorial in TUTORIALS:
         path = NOTEBOOK_DIR / f"{tutorial.preset}.ipynb"
         nbformat.write(build_notebook(tutorial), path)
         print(path.relative_to(ROOT))
+    nbformat.write(build_own_data_notebook(), OWN_DATA_NOTEBOOK)
+    print(OWN_DATA_NOTEBOOK.relative_to(ROOT))
 
 
 if __name__ == "__main__":

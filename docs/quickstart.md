@@ -11,6 +11,24 @@ cytobridge workflow --config chicken_heart --dry-run
 A dry run resolves the preset, prints the planned steps, and reports missing
 inputs. It does not preprocess data, train a model, or write analysis outputs.
 
+## Start from your own AnnData
+
+Export the closest packaged preset, edit its data keys and analysis settings,
+then inspect the edited config before starting a fit:
+
+```bash
+cytobridge workflow --config zebrafish \
+  --export-config configs/my_dataset.json
+
+cytobridge workflow --config configs/my_dataset.json --train \
+  --input-h5ad inputs/my_dataset.h5ad \
+  --output-dir outputs/my_dataset \
+  --device cuda --dry-run
+```
+
+The [own-data tutorial](tutorials/your_data.ipynb) lists the fields to change
+and the output folders passed to downstream analysis.
+
 ## Analyze an existing model
 
 ```bash

@@ -17,6 +17,9 @@
 - Added leave-one-timepoint-out protocol readers and full-model compute-cost
   readers.
 - Added dataset tutorials and paper-figure notebooks to the documentation.
+- Added a notebook for configuring and running CytoBridge on a new dataset.
+- Added explicit upstream and plotting routes for every paper-figure notebook,
+  with executed figure previews in the published documentation.
 - Improved bounded-memory interaction inference and optional-dependency
   handling for package and documentation imports.
 

@@ -1,8 +1,9 @@
 Command-line interface
 ======================
 
-The installed ``cytobridge`` command exposes read-only environment diagnostics
-and the package-native dataset workflow. See :doc:`../quickstart` for complete
+The installed ``cytobridge`` command exposes environment diagnostics, dataset
+workflows, editable config export, non-spatial workflows, and paper-figure
+routes. See :doc:`../quickstart` and :doc:`../paper_reproduction` for complete
 commands.
 
 .. automodule:: CytoBridge.cli

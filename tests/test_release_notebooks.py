@@ -9,6 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET_NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "dataset_workflows"
+OWN_DATA_NOTEBOOK = ROOT / "docs" / "tutorials" / "your_data.ipynb"
 NOTEBOOKS = {
     "zebrafish.ipynb": "zebrafish",
     "mosta.ipynb": "mosta",
@@ -50,9 +51,7 @@ def test_dataset_notebook_is_executed_and_portable(
     cell_ids = [cell["id"] for cell in notebook["cells"]]
     assert len(cell_ids) == len(set(cell_ids))
 
-    code_cells = [
-        cell for cell in notebook["cells"] if cell["cell_type"] == "code"
-    ]
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert code_cells
     assert all(cell["execution_count"] is not None for cell in code_cells)
     assert sum(len(cell.get("outputs", ())) for cell in code_cells) >= 4
@@ -73,9 +72,7 @@ def test_dataset_notebook_is_executed_and_portable(
         "hash-verified",
         "sha256",
     }
-    assert not {
-        phrase for phrase in forbidden_public_phrases if phrase in public_text
-    }
+    assert not {phrase for phrase in forbidden_public_phrases if phrase in public_text}
     for machine_path in ("/Users/", "/home/", "/tmp/", "/private/tmp/"):
         assert machine_path not in serialized
 
@@ -117,6 +114,7 @@ def test_notebook_runner_executes_the_published_sources() -> None:
     ast.parse(source)
     assert all(filename in source for filename in NOTEBOOKS)
     assert "synthetic_preprocessing.ipynb" in source
+    assert "your_data.ipynb" in source
     assert "NotebookClient" in source
     assert "--save-outputs" in source
     assert "client.execute()" in source
@@ -134,6 +132,19 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
     assert "Learning goals" not in source
     assert "Notes and interpretation" not in source
     assert "run_workflow" in source
+    assert "build_own_data_notebook" in source
+
+
+def test_own_data_notebook_is_executed_and_has_complete_commands() -> None:
+    notebook = json.loads(OWN_DATA_NOTEBOOK.read_text(encoding="utf-8"))
+    code, markdown = _notebook_text(notebook)
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
+    assert all(cell["execution_count"] is not None for cell in code_cells)
+    assert "--export-config" in code
+    assert "--dry-run" in code
+    assert "--train" in code
+    assert "--step downstream" in code
+    assert "## Expected output locations" in markdown
 
 
 def test_tutorial_navigation_has_one_dataset_section() -> None:
@@ -145,10 +156,10 @@ def test_tutorial_navigation_has_one_dataset_section() -> None:
         ROOT / "docs" / "tutorials" / "paper_figures" / "index.md"
     ).read_text(encoding="utf-8")
 
-    assert tutorial_index.count("## Dataset tutorials") == 1
-    assert "Dataset workflows" not in tutorial_index
+    assert tutorial_index.count("## Reuse a paper dataset workflow") == 1
     assert "Dataset notebooks" not in tutorial_index
-    assert "dataset_workflows/index" in tutorial_index
+    assert tutorial_index.count("dataset_workflows/index") == 2
+    assert tutorial_index.count("your_data") == 2
     assert "paper_figures/index" in tutorial_index
     for preset in NOTEBOOKS.values():
         assert preset in dataset_index

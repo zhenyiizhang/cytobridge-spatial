@@ -1,65 +1,45 @@
 # Tutorials
 
-The tutorials cover data preparation, complete dataset workflows, and the code
-used for the paper figures. The notebooks are stored with their outputs so the
-generated tables and plots can be read before running them locally.
+There are two separate routes: run CytoBridge on a dataset, or reproduce a
+paper figure from its released inputs. The paper pages always state which route
+they use. Notebook outputs are saved, so figures and tables are visible on the
+site before the code is run locally.
 
-## Data preparation
+## Start with your own data
 
-Start with the input checklist for real datasets, or run the compact synthetic
-example to inspect the expected AnnData fields.
+[Run CytoBridge on your data](your_data.ipynb) covers the AnnData fields,
+editable config, dry run, training command, downstream continuation, and output
+folders.
+
+## Reuse a paper dataset workflow
+
+The [dataset workflows](dataset_workflows/index.md) contain the preprocessing,
+training, and downstream calls for Zebrafish, MOSTA, ARISTA, AD mouse, and
+chicken heart.
+
+## Reproduce a paper figure
+
+The [paper figure index](paper_figures/index.md) separates numerical redraws
+from result-summary plots, page assembly, and reference export. Run
+`cytobridge figure explain <name>` to see the upstream entry and limits of any
+figure command.
+
+## Input and analysis references
 
 - [Data and checkpoints](../data_checkpoints.md)
-- [Synthetic preprocessing](data_preparation/synthetic_preprocessing.ipynb)
-
-```{toctree}
-:hidden:
-:maxdepth: 1
-
-../data_checkpoints
-data_preparation/synthetic_preprocessing
-```
-
-## Dataset tutorials
-
-Each dataset has one notebook. The same page covers setup, preprocessing,
-training, downstream analysis, paper figures, and saved files.
-
-[Browse the dataset tutorials](dataset_workflows/index.md).
-
-```{toctree}
-:hidden:
-:maxdepth: 1
-
-dataset_workflows/index
-```
-
-## Paper figures
-
-Each notebook says whether it recalculates plotted values, redraws prepared
-summaries, assembles panel files, or exports a reference page.
-
-[Browse the paper figure notebooks](paper_figures/index.md).
-
-```{toctree}
-:hidden:
-:maxdepth: 1
-
-paper_figures/index
-```
-
-## Benchmarks and compute
-
-The benchmark pages describe the package interfaces and the compute table used
-in the supplementary material.
-
+- [Small synthetic preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
 - [Benchmarks](../benchmarks.md)
 - [Training time and memory](../training_compute.md)
 
 ```{toctree}
 :hidden:
-:maxdepth: 1
+:maxdepth: 2
 
+your_data
+dataset_workflows/index
+paper_figures/index
+data_preparation/synthetic_preprocessing
+../data_checkpoints
 ../benchmarks
 ../training_compute
 ```

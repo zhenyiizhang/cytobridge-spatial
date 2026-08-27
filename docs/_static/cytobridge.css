@@ -20,9 +20,34 @@ table.docutils th {
   white-space: normal;
 }
 
+/* Pandas' notebook HTML uses fixed black text and a light zebra stripe. Match
+   those tables to Furo so every row remains readable in dark and light mode. */
+div.nboutput.container div.output_area.rendered_html table.dataframe {
+  color: var(--color-foreground-primary);
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe th,
+div.nboutput.container div.output_area.rendered_html table.dataframe td {
+  color: var(--color-foreground-primary);
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr {
+  background: var(--color-background-primary) !important;
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr:nth-child(odd) {
+  background: var(--color-background-secondary) !important;
+}
+
 /* Furo normally moves the page outline into a drawer below 82rem. Keep it on
    screen on ordinary laptop displays while leaving the mobile layout intact. */
 @media (min-width: 72em) and (max-width: 82em) {
+  .main,
+  .article-container,
+  article {
+    min-width: 0;
+  }
+
   .toc-content-icon {
     display: none;
   }
@@ -47,5 +72,11 @@ table.docutils th {
     padding-left: 1.5em;
     padding-right: 1.5em;
     width: auto;
+  }
+
+  .nbinput.container,
+  .nboutput.container {
+    max-width: 100%;
+    overflow-x: auto;
   }
 }

@@ -1003,6 +1003,38 @@ def test_dry_run_json_is_machine_readable(capsys):
     assert plan["scientific"]["alpha_spatial"] == 10.0
 
 
+def test_export_config_writes_an_editable_preset(tmp_path, capsys):
+    destination = tmp_path / "my_dataset.json"
+    assert (
+        main(
+            [
+                "workflow",
+                "--config",
+                "zebrafish",
+                "--export-config",
+                str(destination),
+            ]
+        )
+        == 0
+    )
+    exported = json.loads(destination.read_text(encoding="utf-8"))
+    assert exported["dataset"]["name"] == "zebrafish"
+    assert "Wrote editable workflow config" in capsys.readouterr().out
+
+    assert (
+        main(
+            [
+                "workflow",
+                "--config",
+                "zebrafish",
+                "--export-config",
+                str(destination),
+            ]
+        )
+        == 2
+    )
+
+
 @pytest.mark.parametrize(
     "name", ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
 )

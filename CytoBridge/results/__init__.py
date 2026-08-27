@@ -52,6 +52,7 @@ from .compute_cost import (
 from .figure_workflows import (
     FIGURE_WORKFLOWS,
     FigureWorkflow,
+    describe_figure_workflow,
     list_figure_workflows,
     run_figure_workflow,
 )
@@ -194,6 +195,7 @@ __all__ = [
     "centered_moving_mean",
     "classifier_smoothing_statistics",
     "compute_paired_loto_ratios",
+    "describe_figure_workflow",
     "format_full_model_compute_cost",
     "interaction_evidence_statistics",
     "export_main_figure_5_reference_page",

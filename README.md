@@ -56,6 +56,19 @@ cytobridge workflow --list-configs
 cytobridge workflow --config zebrafish --dry-run
 ```
 
+For another dataset, export the closest preset, edit the data columns and
+analysis settings, and dry-run the edited JSON:
+
+```bash
+cytobridge workflow --config zebrafish --export-config configs/my_dataset.json
+cytobridge workflow --config configs/my_dataset.json --train \
+  --input-h5ad inputs/my_dataset.h5ad \
+  --output-dir outputs/my_dataset --device cuda --dry-run
+```
+
+The [own-data tutorial](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/your_data.html)
+lists the fields that must be changed before training.
+
 Run downstream analysis from an aligned AnnData file and a trained model:
 
 ```bash
@@ -92,11 +105,14 @@ Installed figure commands use the same public result APIs as the notebooks:
 
 ```bash
 cytobridge figure list
+cytobridge figure explain zebrafish-si
 cytobridge figure arista-lr --output-dir outputs/arista_lr
 ```
 
-The command list reports which entries run from packaged numerical results and
-which require a separate figure release.
+The explanation reports the input level, upstream entry, plotting command, and
+limit of the selected figure workflow. Numerical-redraw notebooks preview the
+PNG created by their own plotting cell. Assembly and reference-export pages
+identify the PDF or image used as a source.
 
 Complete dataset runs use external AnnData files and checkpoints; their names,
 formats, and expected locations are documented in the input guide.

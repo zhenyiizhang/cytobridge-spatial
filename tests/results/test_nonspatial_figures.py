@@ -79,8 +79,7 @@ def test_packaged_nonspatial_contract() -> None:
         29_679,
     ]
     assert [
-        len(results.scnt.cells.frame(time)[0])
-        for time in (0, 0.25, 0.5, 1, 2)
+        len(results.scnt.cells.frame(time)[0]) for time in (0, 0.25, 0.5, 1, 2)
     ] == [2_232, 4_031, 4_470, 6_814, 3_000]
     assert results.weinreb.fields["day6_lr_interaction_u"].shape == (50, 50)
     assert results.scnt.fields["interaction_u"].shape == (42, 42)
@@ -118,8 +117,12 @@ def test_nonspatial_package_resources_are_safe_compact_and_registered() -> None:
     assert registered_paths
     assert all(not Path(value).is_absolute() for value in registered_paths)
     assert all(".." not in Path(value).parts for value in registered_paths)
-    assert any(value.endswith("cytobridge_pathway_scores.csv") for value in registered_paths)
-    assert any(value.endswith("full_paired_dense_trajectory.npz") for value in registered_paths)
+    assert any(
+        value.endswith("cytobridge_pathway_scores.csv") for value in registered_paths
+    )
+    assert any(
+        value.endswith("full_paired_dense_trajectory.npz") for value in registered_paths
+    )
     assert "cytobridge_pathway_scores.csv" not in RESOURCE_NAMES
     assert "full_paired_dense_trajectory.npz" not in RESOURCE_NAMES
 
@@ -261,28 +264,29 @@ def test_nonspatial_cli_supports_a_figure_subset(tmp_path: Path) -> None:
     assert json.loads((output / "run_summary.json").read_text()) == summary
 
 
-def test_nonspatial_notebook_is_minimal_and_executed() -> None:
+def test_nonspatial_notebook_documents_the_route_and_shows_outputs() -> None:
     path = REPOSITORY_ROOT / "docs/tutorials/paper_figures/nonspatial_figures.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
-    assert [cell["cell_type"] for cell in notebook["cells"]] == [
-        "markdown",
-        "markdown",
-        "code",
-        "markdown",
-        "code",
-        "markdown",
-        "code",
-    ]
     markdown = [
         "".join(cell["source"]).strip()
         for cell in notebook["cells"]
         if cell["cell_type"] == "markdown"
     ]
-    assert markdown[1:] == ["## Load", "## Calculate", "## Plot and save"]
-    code_cells = [
-        cell for cell in notebook["cells"] if cell["cell_type"] == "code"
-    ]
+    assert any(text.startswith("## Reproduction route") for text in markdown)
+    assert "## Load figure inputs" in markdown
+    assert any(text.startswith("### Full-analysis continuation") for text in markdown)
+    assert "## Recalculate panel values" in markdown
+    assert "## Draw and save the figure" in markdown
+    assert any(text.startswith("## Preview the generated figures") for text in markdown)
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
+    image_outputs = [
+        output
+        for cell in code_cells
+        for output in cell["outputs"]
+        if "image/png" in output.get("data", {})
+    ]
+    assert len(image_outputs) == 2
     assert sum(len(cell["outputs"]) for cell in code_cells) > 0
 
 
