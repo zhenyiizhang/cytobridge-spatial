@@ -157,8 +157,12 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
-    assert "describe_figure_workflow" in source
     assert "reproduction route" in lowered
+    assert "### step 1:" in lowered
+    assert "**reads:**" in lowered
+    assert "**writes:**" in lowered
+    assert "**next:**" in lowered
+    assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
 

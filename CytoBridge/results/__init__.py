@@ -56,6 +56,13 @@ from .figure_workflows import (
     list_figure_workflows,
     run_figure_workflow,
 )
+from .reproduction_chains import (
+    DATASET_PAPER_CHAINS,
+    FIGURE_REPRODUCTION_CHAINS,
+    describe_dataset_artifact_chain,
+    describe_dataset_paper_chain,
+    describe_figure_reproduction_chain,
+)
 from .interaction_evidence import (
     InteractionEvidenceResults,
     build_interaction_evidence_panel_summary,
@@ -159,6 +166,8 @@ __all__ = [
     "ClassifierSmoothingResults",
     "FullModelComputeCostResults",
     "FIGURE_WORKFLOWS",
+    "DATASET_PAPER_CHAINS",
+    "FIGURE_REPRODUCTION_CHAINS",
     "FIGURE_IDS",
     "FigureWorkflow",
     "InteractionEvidenceResults",
@@ -196,6 +205,9 @@ __all__ = [
     "classifier_smoothing_statistics",
     "compute_paired_loto_ratios",
     "describe_figure_workflow",
+    "describe_dataset_artifact_chain",
+    "describe_dataset_paper_chain",
+    "describe_figure_reproduction_chain",
     "format_full_model_compute_cost",
     "interaction_evidence_statistics",
     "export_main_figure_5_reference_page",

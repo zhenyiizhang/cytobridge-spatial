@@ -7,6 +7,10 @@ from pathlib import Path
 
 import nbformat
 
+from CytoBridge.results.reproduction_chains import (
+    describe_figure_reproduction_chain,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "paper_figures"
@@ -56,37 +60,60 @@ def _remove_generated_cells(notebook) -> None:
     ]
 
 
+def _configure_dataframe_display(notebook) -> None:
+    settings = """import pandas as pd
+
+pd.set_option("display.max_colwidth", None)
+pd.set_option("display.max_columns", None)
+
+"""
+    for cell in notebook.cells:
+        if cell.cell_type == "code":
+            source = "".join(cell.source)
+            if 'pd.set_option("display.max_colwidth", None)' not in source:
+                cell.source = settings + source
+            return
+
+
+def _step_markdown(row: dict[str, str], number: int) -> str:
+    return f"""
+### Step {number}: {row['step']}
+
+**Paper:** {row['paper_part']}
+
+```text
+{row['code_or_command']}
+```
+
+**Reads:** `{row['reads']}`
+
+**Writes:** `{row['writes']}`
+
+**Next:** `{row['next_step']}`
+
+**Availability:** {row['availability']}
+"""
+
+
 def _insert_route(notebook, workflow: str) -> None:
     route_markdown = _markdown(
         """
-## Reproduction route
+## Reproduction route: files passed between analysis steps
 
-This route states where the plotted values begin, how the upstream analysis is
-run when it is available, and what this notebook does not recalculate.
+Read the steps from top to bottom. Each one names the code that runs, the files
+it reads, the files it writes, and the next command that consumes those files.
+Steps marked `manuscript result bundle` record the files used for the paper;
+public steps can be run from this checkout.
 """,
         ROUTE_CELL_TAG,
     )
-    route_code = _code(
-        f"""
-from CytoBridge.results import describe_figure_workflow
-
-route = describe_figure_workflow({workflow!r})
-{{
-    key: route[key]
-    for key in (
-        "paper_location",
-        "mode",
-        "starts_from",
-        "upstream_entry",
-        "upstream_command",
-        "figure_command",
-        "scope",
-    )
-}}
-""",
-        ROUTE_CELL_TAG,
-    )
-    notebook.cells[1:1] = [route_markdown, route_code]
+    route_steps = [
+        _markdown(_step_markdown(row, number), ROUTE_CELL_TAG)
+        for number, row in enumerate(
+            describe_figure_reproduction_chain(workflow), start=1
+        )
+    ]
+    notebook.cells[1:1] = [route_markdown, *route_steps]
 
 
 def _insert_after_source(notebook, marker: str, cells: list) -> None:
@@ -95,27 +122,6 @@ def _insert_after_source(notebook, marker: str, cells: list) -> None:
             notebook.cells[index + 1 : index + 1] = cells
             return
     raise ValueError(f"Notebook cell marker not found: {marker}")
-
-
-def _add_agist_input_registry(notebook) -> None:
-    _insert_after_source(
-        notebook,
-        "data = load_agist_figures()",
-        [
-            _markdown(
-                """
-### Inputs needed before the S2–S3 redraw
-
-The compact package contains the numerical values used by the plotting cells.
-The table below lists the simulation data, model configuration, checkpoint,
-and rollout files needed to rebuild those compact values. Those external files
-are not generated in this notebook.
-""",
-                DETAIL_CELL_TAG,
-            ),
-            _code("display(data.full_recompute_inputs)", DETAIL_CELL_TAG),
-        ],
-    )
 
 
 def _add_nonspatial_route(notebook) -> None:
@@ -132,37 +138,6 @@ def _add_nonspatial_route(notebook) -> None:
                 cell.source = source
             break
 
-    _insert_after_source(
-        notebook,
-        "results = load_nonspatial_figures()",
-        [
-            _markdown(
-                """
-### Full-analysis continuation
-
-The complete Weinreb and scNT workflows are separate from the compact figure
-bundle. They prepare the H5AD, train the full and no-interaction models, run
-distribution and dataset-specific evaluations, and calculate interaction
-attribution. Use the commands in
-[Non-spatial workflows](../../nonspatial_workflows.md). The cell below shows
-which archived analysis files were condensed into the released S4–S5 inputs.
-""",
-                DETAIL_CELL_TAG,
-            ),
-            _code(
-                """
-{
-    dataset: {
-        "upstream_files": len(details["full_rerun_inputs"]),
-        "figure_builder": details["renderer"],
-    }
-    for dataset, details in results.external_inputs["datasets"].items()
-}
-""",
-                DETAIL_CELL_TAG,
-            ),
-        ],
-    )
     notebook.cells.extend(
         [
             _markdown(
@@ -200,38 +175,6 @@ def _add_zebrafish_route(notebook) -> None:
                 cell.source = source
             break
 
-    _insert_after_source(
-        notebook,
-        "results = load_zebrafish_si_results()",
-        [
-            _markdown(
-                """
-### Continue from a trained zebrafish model
-
-For a new run, first use the
-[zebrafish dataset workflow](../dataset_workflows/zebrafish.ipynb) to create
-the aligned H5AD, training directory, and standard downstream outputs. The
-paper-specific continuation is `scripts/run_zebrafish_paper_downstream.py`;
-its live `--help` lists the required model, database, and run-record inputs.
-The compact arrays loaded here are the released plotting form of those larger
-outputs.
-""",
-                DETAIL_CELL_TAG,
-            ),
-            _code(
-                """
-{
-    "source_directory": str(results.source_dir),
-    "figure_mapping": {
-        current: details["source_figure"]
-        for current, details in results.manifest["figures"].items()
-    },
-}
-""",
-                DETAIL_CELL_TAG,
-            ),
-        ],
-    )
     notebook.cells.extend(
         [
             _markdown(
@@ -274,10 +217,9 @@ def _rename_short_headings(notebook) -> None:
 def update(path: Path, workflow: str) -> None:
     notebook = nbformat.read(path, as_version=4)
     _remove_generated_cells(notebook)
+    _configure_dataframe_display(notebook)
     _insert_route(notebook, workflow)
-    if path.name == "agist_figures.ipynb":
-        _add_agist_input_registry(notebook)
-    elif path.name == "nonspatial_figures.ipynb":
+    if path.name == "nonspatial_figures.ipynb":
         _add_nonspatial_route(notebook)
     elif path.name == "zebrafish_si_s31_s38.ipynb":
         _add_zebrafish_route(notebook)

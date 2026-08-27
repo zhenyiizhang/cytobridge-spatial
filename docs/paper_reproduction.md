@@ -26,9 +26,9 @@ cytobridge figure explain zebrafish-si
 cytobridge figure explain nonspatial --json
 ```
 
-`figure explain` prints the starting input, upstream analysis entry, upstream
-command when one is available, figure command, and the boundary of that
-command. This is also shown at the top of every paper notebook.
+`figure explain` prints the complete handoff: the code for each step, what it
+reads, what it writes, and which next step consumes those files. This is also
+shown at the top of every paper notebook.
 
 ## Entry points
 
@@ -36,7 +36,8 @@ command. This is also shown at the top of every paper notebook.
   from a custom AnnData file to preprocessing, training, downstream output, and
   standard figures.
 - Dataset notebooks cover the five packaged presets and name the aligned H5AD,
-  model directory, and downstream output passed between steps.
+  model directory, downstream output, and dataset-specific paper continuation
+  passed between steps.
 - Paper-figure notebooks state whether they redraw numbers, assemble existing
   panels, or export a reference page. They write only the files supported by
   that mode.
@@ -46,3 +47,8 @@ command. This is also shown at the top of every paper notebook.
 The S1 row remains on hold because the earlier result state needed to
 recalculate the displayed values is not available. The published image is not
 silently replaced by a different simulation run.
+
+The manuscript chicken-heart S7–S10 PNGs and AD S26–S30 PDFs remain visible in
+the registry, but the documentation does not present a related script as their
+exact generator. Their dataset pages name the available calculations and the
+precise missing handoff.

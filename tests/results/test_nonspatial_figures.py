@@ -274,7 +274,8 @@ def test_nonspatial_notebook_documents_the_route_and_shows_outputs() -> None:
     ]
     assert any(text.startswith("## Reproduction route") for text in markdown)
     assert "## Load figure inputs" in markdown
-    assert any(text.startswith("### Full-analysis continuation") for text in markdown)
+    assert any(text.startswith("### Step 1:") for text in markdown)
+    assert any("**Reads:**" in text and "**Writes:**" in text for text in markdown)
     assert "## Recalculate panel values" in markdown
     assert "## Draw and save the figure" in markdown
     assert any(text.startswith("## Preview the generated figures") for text in markdown)

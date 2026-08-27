@@ -617,10 +617,12 @@ def _run_figure_command(args: argparse.Namespace) -> int:
         return 0
     if args.figure_command == "explain":
         from .results.figure_workflows import describe_figure_workflow
+        from .results.reproduction_chains import describe_figure_reproduction_chain
 
         route = describe_figure_workflow(args.name)
+        chain = describe_figure_reproduction_chain(args.name)
         if args.as_json:
-            print(json.dumps(route, indent=2, sort_keys=True))
+            print(json.dumps({**route, "artifact_chain": chain}, indent=2, sort_keys=True))
         else:
             labels = (
                 ("Paper location", "paper_location"),
@@ -635,6 +637,15 @@ def _run_figure_command(args: argparse.Namespace) -> int:
                 value = route[key]
                 if value:
                     print(f"{label}: {value}")
+            print("Artifact chain:")
+            for index, row in enumerate(chain, start=1):
+                print(f"  {index}. {row['paper_part']} — {row['step']}")
+                print(f"     code: {row['code_or_command']}")
+                print(f"     reads: {row['reads']}")
+                print(f"     writes: {row['writes']}")
+                print(f"     next: {row['next_step']}")
+                if row["availability"] != "public":
+                    print(f"     availability: {row['availability']}")
         return 0
     if args.figure_command not in _FIGURE_COMMAND_HELP:
         print("cytobridge figure requires a subcommand; use --help", file=sys.stderr)

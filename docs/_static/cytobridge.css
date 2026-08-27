@@ -20,6 +20,11 @@ table.docutils th {
   white-space: normal;
 }
 
+.highlight-text pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* Pandas' notebook HTML uses fixed black text and a light zebra stripe. Match
    those tables to Furo so every row remains readable in dark and light mode. */
 div.nboutput.container div.output_area.rendered_html table.dataframe {
@@ -29,6 +34,9 @@ div.nboutput.container div.output_area.rendered_html table.dataframe {
 div.nboutput.container div.output_area.rendered_html table.dataframe th,
 div.nboutput.container div.output_area.rendered_html table.dataframe td {
   color: var(--color-foreground-primary);
+  min-width: 10rem;
+  vertical-align: top;
+  white-space: normal;
 }
 
 div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr {

@@ -11,6 +11,11 @@ from CytoBridge.results.figure_workflows import (
     list_figure_workflows,
     run_figure_workflow,
 )
+from CytoBridge.results.reproduction_chains import (
+    describe_dataset_artifact_chain,
+    describe_dataset_paper_chain,
+    describe_figure_reproduction_chain,
+)
 
 
 def test_figure_workflow_registry_is_complete_and_explicit() -> None:
@@ -52,6 +57,52 @@ def test_figure_workflow_explanation_has_complete_route() -> None:
     assert route["figure_command"].startswith("cytobridge figure zebrafish-si")
 
 
+def test_every_figure_workflow_has_an_ordered_artifact_chain() -> None:
+    for workflow in FIGURE_WORKFLOWS:
+        chain = describe_figure_reproduction_chain(workflow.name)
+        assert len(chain) >= 2
+        for row in chain:
+            assert set(row) == {
+                "paper_part",
+                "step",
+                "code_or_command",
+                "reads",
+                "writes",
+                "next_step",
+                "availability",
+            }
+            assert all(str(value).strip() for value in row.values())
+            assert "..." not in row["code_or_command"]
+
+
+def test_dataset_artifact_chain_names_each_handoff() -> None:
+    chain = describe_dataset_artifact_chain("chicken_heart")
+    assert [row["step"] for row in chain] == [
+        "preprocess",
+        "preprocess and train",
+        "downstream",
+    ]
+    assert "chicken_heart_aligned.h5ad" in chain[0]["writes"]
+    assert "training_run_summary.json" in chain[1]["writes"]
+    assert "velocity_components.npz" in chain[2]["writes"]
+
+
+def test_every_dataset_names_its_paper_continuation_and_known_breaks() -> None:
+    for preset in ("zebrafish", "mosta", "arista", "admouse", "chicken_heart"):
+        rows = describe_dataset_paper_chain(preset)
+        assert rows
+        assert all(row["paper_part"] and row["code_or_command"] for row in rows)
+        assert all("..." not in row["code_or_command"] for row in rows)
+    assert any(
+        "provenance break" in row["availability"]
+        for row in describe_dataset_paper_chain("admouse")
+    )
+    assert any(
+        "provenance break" in row["availability"]
+        for row in describe_dataset_paper_chain("chicken_heart")
+    )
+
+
 def test_compute_cost_installed_workflow(tmp_path: Path) -> None:
     output = tmp_path / "compute"
     summary = run_figure_workflow("compute-cost", output)
@@ -85,3 +136,7 @@ def test_installed_figure_cli_explains_upstream_route(capsys) -> None:
     assert "Starts from: Packaged Weinreb and scNT" in output
     assert "Upstream command: cytobridge nonspatial plan --dataset weinreb" in output
     assert "Figure command: cytobridge figure nonspatial" in output
+    assert "Artifact chain:" in output
+    assert "code:" in output
+    assert "reads:" in output
+    assert "writes:" in output

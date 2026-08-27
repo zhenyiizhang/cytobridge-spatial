@@ -8,6 +8,11 @@ from pathlib import Path
 
 import nbformat
 
+from CytoBridge.results.reproduction_chains import (
+    describe_dataset_artifact_chain,
+    describe_dataset_paper_chain,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "dataset_workflows"
@@ -122,6 +127,32 @@ def code(text: str):
     return nbformat.v4.new_code_cell(text.strip())
 
 
+def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
+    cells = []
+    for number, row in enumerate(rows, start=1):
+        paper = f"\n**Paper:** {row['paper_part']}\n" if include_paper else ""
+        cells.append(
+            markdown(
+                f"""
+### Step {number}: {row['step']}
+{paper}
+```text
+{row['code_or_command']}
+```
+
+**Reads:** `{row['reads']}`
+
+**Writes:** `{row['writes']}`
+
+**Next:** `{row['next_step']}`
+
+**Availability:** {row['availability']}
+"""
+            )
+        )
+    return cells
+
+
 def build_notebook(tutorial: Tutorial):
     preset = tutorial.preset
     aligned_name = f"{preset}_aligned.h5ad"
@@ -178,8 +209,11 @@ else:
         f"- [{label}](../paper_figures/{target})"
         for label, target, _workflow in tutorial.figure_links
     )
-    figure_workflows = tuple(
-        workflow for _label, _target, workflow in tutorial.figure_links
+    artifact_route_cells = route_cells(
+        describe_dataset_artifact_chain(preset), include_paper=False
+    )
+    paper_route_cells = route_cells(
+        describe_dataset_paper_chain(preset), include_paper=True
     )
     cells = [
         markdown(
@@ -198,6 +232,7 @@ preset and do not require the external dataset.
 from pathlib import Path
 
 import pandas as pd
+from IPython.display import display
 
 from CytoBridge.workflow import (
     WorkflowOptions,
@@ -206,8 +241,6 @@ from CytoBridge.workflow import (
     render_workflow_plan,
     run_workflow,
 )
-from CytoBridge.results import describe_figure_workflow
-
 PRESET = {preset!r}
 RAW_H5AD = Path("data/{tutorial.raw_filename}")
 OUTPUT_DIR = Path("tutorial_outputs/{preset}")
@@ -249,6 +282,16 @@ pd.DataFrame(
 )
 """
         ),
+        markdown(
+            """
+## Files passed from one step to the next
+
+These are the handoffs used below. Training reads the aligned H5AD and edge
+predictor written by preprocessing. Downstream analysis then reads that same
+aligned H5AD together with the complete training directory.
+"""
+        ),
+        *artifact_route_cells,
         markdown(
             """
 ## Data preparation
@@ -335,7 +378,7 @@ settings, trajectory simulation, growth analysis, and ligand–receptor options.
 downstream_options = WorkflowOptions(
     aligned_h5ad=ALIGNED_H5AD,
     model_dir=MODEL_DIR,
-    output_dir=OUTPUT_DIR / "downstream",
+    output_dir=OUTPUT_DIR,
     steps=("downstream",),
 )
 downstream_plan = build_workflow_plan(
@@ -362,50 +405,21 @@ else:
             f"""
 ## Paper figures
 
-The paper notebooks below do not automatically consume `OUTPUT_DIR`. Each one
-states whether it starts from a released compact result bundle, an external
-figure release, or a complete upstream analysis. Check that route before using
-the paper command with results from a new run.
+The steps below show exactly where this dataset's standard downstream output
+continues into manuscript calculations. A step marked `provenance break` means
+that a related calculation exists but the manuscript page cannot yet be traced
+to one exact command and input set.
 
 {figure_lines}
 """
         ),
-        code(
-            f"""
-figure_routes = [
-    describe_figure_workflow(name)
-    for name in {figure_workflows!r}
-]
-pd.DataFrame(
-    [
-        {{
-            "paper location": route["paper_location"],
-            "mode": route["mode"],
-            "starts from": route["starts_from"],
-            "command": route["figure_command"],
-        }}
-        for route in figure_routes
-    ]
-)
-"""
-        ),
+        *paper_route_cells,
         markdown("## Saved files"),
-        code(
-            """
-pd.DataFrame(
-    {
-        "file or directory": [
-            "aligned data",
-            "training directory",
-            "downstream directory",
-        ],
-        "path": [
-            str(ALIGNED_H5AD),
-            str(MODEL_DIR),
-            str(OUTPUT_DIR / "downstream"),
-        ],
-    }
-)
+        markdown(
+            f"""
+- Aligned data: `tutorial_outputs/{preset}/preprocess/{aligned_name}`
+- Training directory: `tutorial_outputs/{preset}/training`
+- Downstream directory: `tutorial_outputs/{preset}/downstream`
 """
         ),
     ]
@@ -439,6 +453,7 @@ for preprocessing, training, downstream calculations, and standard figures.
         code(
             """
 import pandas as pd
+from IPython.display import display
 
 pd.DataFrame(
     [
@@ -550,22 +565,25 @@ an arbitrary new downstream directory into a manuscript page. Use
         markdown("## Expected output locations"),
         code(
             """
-pd.DataFrame(
-    {
-        "output": [
-            "aligned data",
-            "model directory",
-            "downstream summary",
-            "standard figures",
-        ],
-        "path": [
-            RUN_ROOT / "preprocess" / "my_dataset_aligned.h5ad",
-            RUN_ROOT / "training",
-            RUN_ROOT / "downstream" / "summary.json",
-            RUN_ROOT / "downstream" / "figures",
-        ],
-    }
-)
+with pd.option_context("display.max_colwidth", None):
+    display(
+        pd.DataFrame(
+            {
+                "output": [
+                    "aligned data",
+                    "model directory",
+                    "downstream summary",
+                    "standard figures",
+                ],
+                "path": [
+                    RUN_ROOT / "preprocess" / "my_dataset_aligned.h5ad",
+                    RUN_ROOT / "training",
+                    RUN_ROOT / "downstream" / "summary.json",
+                    RUN_ROOT / "downstream" / "figures",
+                ],
+            }
+        )
+    )
 """
         ),
     ]
