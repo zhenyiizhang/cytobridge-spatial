@@ -26,6 +26,14 @@ if TYPE_CHECKING:
 _S21_COLORS = {1: "#66c2a5", 2: "#fc8d62"}
 _S22_COLORS = {1: "#1f77b4", 2: "#ff7f0e"}
 _TIME_POINTS = np.arange(0.0, 4.0 + 0.5, 0.5)
+_FORMAL_PAGE_SIZE_POINTS = {
+    "S21": (569.192, 317.15225),
+    "S22": (1288.692187, 1542.593706),
+}
+
+
+def _page_size_inches(figure: str) -> tuple[float, float]:
+    return tuple(value / 72.0 for value in _FORMAL_PAGE_SIZE_POINTS[figure])
 
 
 def _require_columns(table: pd.DataFrame, columns: set[str], name: str) -> None:
@@ -47,7 +55,6 @@ def _save_plot(figure: plt.Figure, stem: Path, *, dpi: int) -> tuple[Path, Path]
     figure.savefig(
         pdf_path,
         format="pdf",
-        bbox_inches="tight",
         facecolor="white",
         metadata=metadata,
     )
@@ -55,7 +62,6 @@ def _save_plot(figure: plt.Figure, stem: Path, *, dpi: int) -> tuple[Path, Path]
         png_path,
         format="png",
         dpi=dpi,
-        bbox_inches="tight",
         facecolor="white",
     )
     plt.close(figure)
@@ -76,7 +82,11 @@ def _plot_s21(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     if prototypes.groupby("cluster").size().to_dict() != {1: 9, 2: 9}:
         raise ValueError("Each corrected ARISTA prototype must contain nine time points")
 
-    figure, axis = plt.subplots(figsize=(8.0, 4.5))
+    page_size = _page_size_inches("S21")
+    figure, axis = plt.subplots(figsize=page_size)
+    # GUI/Agg managers can quantize the initial size to whole screen pixels.
+    # Restore the exact physical size used by the formal vector page.
+    figure.set_size_inches(page_size, forward=False)
     for cluster, subset in prototypes.groupby("cluster", sort=True):
         subset = subset.sort_values("time")
         x = subset["time"].to_numpy(dtype=float)
@@ -130,12 +140,15 @@ def _plot_s22(
 
     columns = 5
     rows = int(math.ceil(len(roster) / columns))
+    page_size = _page_size_inches("S22")
     figure, axes = plt.subplots(
         rows,
         columns,
-        figsize=(3.6 * columns, 2.15 * rows),
+        figsize=page_size,
         squeeze=False,
     )
+    # Keep the saved vector and raster canvases independent of backend rounding.
+    figure.set_size_inches(page_size, forward=False)
     for axis in axes.flat:
         axis.axis("off")
     for axis, record in zip(axes.flat, roster.itertuples(index=False)):
@@ -176,8 +189,8 @@ def render_arista_ligand_receptor_figures(
         "axes.spines.top": False,
         "axes.spines.right": False,
         "axes.linewidth": 0.8,
-        "font.family": "Arial",
-        "font.sans-serif": ["Arial"],
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial", "Liberation Sans", "DejaVu Sans"],
         "font.size": 10,
         "pdf.fonttype": 42,
         "ps.fonttype": 42,

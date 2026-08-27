@@ -270,9 +270,13 @@ def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> No
     panels = calculate_arista_ligand_receptor_panels(data)
     written = plot_arista_ligand_receptor_figures(data, tmp_path, panels)
     assert set(written) == {"S21", "S22"}
-    accepted_geometry = {
+    formal_geometry = {
         "S21": (569.192, 317.15225),
         "S22": (1288.692187, 1542.593706),
+    }
+    formal_png_geometry = {
+        "S21": (2371, 1321),
+        "S22": (3221, 3856),
     }
     for figure, (pdf_path, png_path) in written.items():
         assert pdf_path.is_file()
@@ -281,15 +285,19 @@ def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> No
             assert document.page_count == 1
             page = document[0]
             assert page.rect.width == pytest.approx(
-                accepted_geometry[figure][0], abs=2.0
+                formal_geometry[figure][0], abs=0.01
             )
             assert page.rect.height == pytest.approx(
-                accepted_geometry[figure][1], abs=2.0
+                formal_geometry[figure][1], abs=0.01
             )
-            assert any("Arial" in font[3] for font in page.get_fonts(full=True))
+            embedded_fonts = {font[3] for font in page.get_fonts(full=True)}
+            assert any(
+                family in font_name
+                for font_name in embedded_fonts
+                for family in ("Arial", "LiberationSans", "DejaVuSans")
+            )
         with Image.open(png_path) as image:
-            assert image.width > 1000
-            assert image.height > 600
+            assert image.size == formal_png_geometry[figure]
     assert written["S21"][0].name == "FigureS21_ARISTA_redrawn.pdf"
     assert written["S22"][0].name == "FigureS22_ARISTA_redrawn.pdf"
     assert written["S21"][1].read_bytes() != data.raster_paths["S21"].read_bytes()
