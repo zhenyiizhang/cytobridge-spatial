@@ -5,10 +5,10 @@ Zebrafish,matched no-interaction,not_applicable,11999,26628,5252,5252,805.898230
 MOSTA,matched full,learned,344603,23761,5252,5252,1997.504037,training_run_summary.run_wall_time_seconds,17023.750000,1051.018066,complete,PASS
 MOSTA,matched no-LR-prior,all_spatial,344603,23761,5252,5252,2009.665109,training_run_summary.run_wall_time_seconds,17010.667969,1143.737305,complete,PASS
 MOSTA,matched no-interaction,not_applicable,344603,23761,5252,5252,1529.481580,training_run_summary.run_wall_time_seconds,16912.468750,458.738770,complete,PASS
-ARISTA,matched full,learned,46209,16379,5252,5252,1310.566260,training_run_summary.run_wall_time_seconds,3310.750000,919.288086,complete,PASS
+ARISTA,matched full,learned,46199,16379,5252,5252,1324.537501,training_run_summary.run_wall_time_seconds,9262.132812,870.358398,complete,PASS
 ARISTA,matched no-LR-prior,all_spatial,46209,16379,5252,5252,1289.640850,training_run_summary.run_wall_time_seconds,3295.882812,3040.396484,complete,PASS
 ARISTA,matched no-interaction,not_applicable,46209,16379,5252,5252,829.865793,training_run_summary.run_wall_time_seconds,3180.742188,321.406250,complete,PASS
 AD,matched full,learned,172092,347,7252,7252,696.454413,training_run_summary.run_wall_time_seconds,2446.660156,708.554199,complete,PASS
 AD,matched no-LR-prior,all_spatial,172092,347,7252,7252,771.601305,training_run_summary.run_wall_time_seconds,2429.703125,964.205078,complete,PASS
 AD,matched no-interaction,not_applicable,172092,347,7252,7252,503.420531,training_run_summary.run_wall_time_seconds,2318.640625,340.933105,complete,PASS
-Chicken heart,full learned single profile,learned,3550,52,5252,5252,738.557428,training_run_summary.run_wall_time_seconds,2115.500000,1435.501953,complete,single-profile contract
+Chicken heart,full learned single profile,learned,3550,52,5252,5252,761.157402,training_run_summary.run_wall_time_seconds,2833.042969,1922.019043,complete,single-profile contract
