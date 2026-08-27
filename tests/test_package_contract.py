@@ -396,6 +396,7 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "anndata": "anndata",
         "cellrank": "cellrank",
         "geomloss": "geomloss",
+        "ipython": "IPython",
         "ipywidgets": "ipywidgets",
         "jupyterlab": "jupyterlab",
         "joblib": "joblib",
