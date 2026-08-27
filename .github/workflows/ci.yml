@@ -23,11 +23,16 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: pytest -q
-      - name: Smoke the four dataset notebook APIs
+      - name: Smoke the dataset notebook APIs
         env:
           NUMBA_DISABLE_JIT: "1"
           PYTHONPATH: ${{ github.workspace }}
         run: python scripts/smoke_dataset_notebooks.py
+      - name: Execute the compact paper-figure notebooks
+        env:
+          MPLBACKEND: Agg
+          PYTHONPATH: ${{ github.workspace }}
+        run: python scripts/execute_paper_notebooks.py
       - name: Build distributions
         run: python -m build
       - name: Check distribution metadata

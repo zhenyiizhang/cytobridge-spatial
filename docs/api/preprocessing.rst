@@ -14,6 +14,12 @@ Spatial alignment
    :members: AlignConfig, align_spatial, preprocess_and_align, preprocess_align_to_files
    :show-inheritance:
 
+Chicken-heart input preparation
+-------------------------------
+
+.. automodule:: CytoBridge.pp.chicken_heart_input
+   :members: assemble_chicken_heart_reference_counts, prepare_chicken_heart_input, prepare_chicken_heart_ot_adata, prepare_chicken_heart_ot_input, validate_chicken_heart_ot_input
+
 Interaction graph and edge prediction
 -------------------------------------
 

@@ -1,7 +1,6 @@
 # Quickstart
 
-Start by inspecting the built-in workflow. A dry run reads parameters and
-missing inputs but performs no computation.
+Inspect a built-in workflow before providing data or starting a fit:
 
 ```bash
 cytobridge workflow --config zebrafish --dry-run
@@ -9,93 +8,94 @@ cytobridge workflow --config admouse --dry-run --json
 cytobridge workflow --config chicken_heart --dry-run
 ```
 
+A dry run resolves the preset, prints the planned steps, and reports missing
+inputs. It does not preprocess data, train a model, or write analysis outputs.
+
 ## Analyze an existing model
 
 ```bash
 cytobridge workflow --config zebrafish --step downstream \
-  --aligned-h5ad /data/zebrafish_aligned.h5ad \
-  --model-dir /models/zebrafish_alpha0015 \
-  --output-dir /results/zebrafish \
+  --aligned-h5ad inputs/zebrafish_aligned.h5ad \
+  --model-dir models/zebrafish \
+  --output-dir outputs/zebrafish \
   --device cuda
 ```
 
-The shared downstream step produces interpolated slices, classifier metrics,
-time-slice velocity, growth, composition, sparse spatial-attention summaries, readable
-tables, and standard figures. It does not silently train a model.
+The downstream step loads the aligned AnnData and checkpoint, generates the
+requested intermediate slices, and writes classifier, velocity, growth,
+composition, sparse communication, and figure outputs. It does not train a
+model.
 
-Current predictor-gated checkpoints embed the edge predictor and can be copied
-between machines. Older predictor-gated current-format checkpoints without
-embedded weights also need `--edge-predictor-path /path/to/edge_model.pt`.
+Predictor-gated checkpoints normally contain the edge predictor. For a
+checkpoint that stores it separately, add:
 
-## Optional gene and ligand–receptor analyses
+```text
+--edge-predictor-path models/zebrafish/edge_predictor.pt
+```
+
+## Add gene and ligand--receptor analyses
 
 ```bash
 cytobridge workflow --config zebrafish --step downstream \
-  --aligned-h5ad /data/zebrafish_aligned.h5ad \
-  --model-dir /models/zebrafish_alpha0015 \
-  --output-dir /results/zebrafish \
-  --reference-h5ad /data/zebrafish_aligned.h5ad \
+  --aligned-h5ad inputs/zebrafish_aligned.h5ad \
+  --model-dir models/zebrafish \
+  --output-dir outputs/zebrafish_gene_lr \
+  --reference-h5ad inputs/zebrafish_aligned.h5ad \
   --gene-dynamics \
-  --lr-database /data/CellChatDB.ligrec.csv \
+  --lr-database inputs/CellChatDB.ligrec.csv \
   --lr-complex-mode min \
   --device cuda
 ```
 
-The reference H5AD must retain the fitted PCA loadings in `varm['PCs']`.
-Current preprocessing also persists the exact center in `var['pca_center']`;
-historical files without it fail closed by default. If and only if the file is
-the complete original PCA-fit population, pass
-`--allow-complete-reference-pca-center-fallback`; its `X` column mean is then
-accepted only after reproducing the saved PCA coordinates.
-Ligand–receptor complexes require every subunit;
-the minimum subunit is the formal rule. The geometric mean is available only as
-an explicit sensitivity analysis.
+The reference AnnData must contain the fitted PCA loadings in `.varm['PCs']`,
+the matching gene order, and the PCA center in `.var['pca_center']`. For a
+complete older PCA-fit object without the center, use
+`--allow-complete-reference-pca-center-fallback`; the loader checks that the
+inferred center reconstructs the stored latent coordinates.
 
-## Deliberately start a corrected raw-H5AD training run
+Ligand--receptor complexes require every subunit. `min` uses the least-
+expressed subunit. `geometric_mean` is available as a zero-preserving
+alternative.
+
+## Train from raw AnnData
+
+Training starts only when `--train` is present:
 
 ```bash
 cytobridge workflow --config mosta --train \
-  --input-h5ad /data/mosta_raw_counts.h5ad \
-  --output-dir /results/mosta \
+  --input-h5ad inputs/mosta_raw_counts.h5ad \
+  --output-dir outputs/mosta \
   --device cuda
 ```
 
-Training requires `--train`; it is never inferred from a missing model. This
-command preprocesses and aligns the raw input, constructs interaction graphs
-with the bundled mouse CellChatDB, trains a new edge predictor in that same
-feature space, fits the six-stage dynamical model, and runs the shared
-downstream chain. Supplying an old edge predictor to a raw-H5AD run is rejected.
+The workflow preprocesses and aligns the raw input, builds interaction graphs,
+fits an edge predictor in the prepared feature space, trains the six-stage
+dynamical model, and runs downstream analysis. A missing model directory does
+not enable training automatically.
 
-Chicken heart first uses the two deterministic adapters shown in its dataset
-tutorial to recover raw counts and construct `spatial_ot_input`. The same
-package workflow then fits spatial alignment, the graph and predictor, trains,
-and runs downstream:
+Chicken heart uses the two preparation scripts described in its dataset
+tutorial before the workflow command:
 
 ```bash
 cytobridge workflow --config chicken_heart --train \
-  --input-h5ad /runs/chicken-input/chicken_heart_ot_input.h5ad \
-  --output-dir /results/chicken-heart \
+  --input-h5ad inputs/chicken_heart_ot_input.h5ad \
+  --output-dir outputs/chicken_heart \
   --device cuda:0
 ```
 
-The AD command uses the same graph-label, edge-predictor, six-stage training,
-and downstream chain. Its targeted panel contains seven strict complete pairs;
-those labels fit the corrected main predictor, whose validation-selected
-threshold is `0.9956824779510498`. This is explicitly panel-limited evidence,
-not a global CCI screen.
+## Select another training profile
 
-## Run the matched AD no-LR-prior ablation
-
-The corrected predictor-gated artifact is the main. The radius-only condition
-is an explicit matched ablation and must select its own packaged contract:
+Pass `--training-config` when a workflow should use a profile other than the
+preset default. For example, the AD `all_spatial` profile removes the learned
+LR-informed edge gate while retaining the interaction model:
 
 ```bash
 cytobridge workflow --config admouse --step downstream \
   --training-config admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml \
-  --aligned-h5ad /runs/admouse-no-lr/preprocess/admouse_aligned.h5ad \
-  --model-dir /runs/admouse-no-lr/training \
-  --output-dir /results/admouse-no-lr-reuse \
+  --aligned-h5ad inputs/admouse_no_lr/aligned.h5ad \
+  --model-dir models/admouse_no_lr \
+  --output-dir outputs/admouse_no_lr \
   --device cuda
 ```
 
-This all-spatial profile intentionally contains no predictor path or threshold.
+The aligned input and model directory must come from the same training profile.

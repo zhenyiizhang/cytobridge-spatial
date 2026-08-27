@@ -5,67 +5,27 @@ include Makefile
 include README.md
 include requirements.txt
 
-recursive-include docs *.css *.csv *.md *.py *.rst
-recursive-include notebooks *.ipynb *.md
+recursive-include docs *.css *.csv *.ipynb *.json *.md *.png *.py *.rst *.svg
 recursive-include requirements *.txt
-recursive-include tests *.py
-# The sdist is the complete source release and carries every tracked scientific
-# profile, including the four-dataset matched no-interaction/no-LR matrix.  The
-# wheel remains intentionally narrower through pyproject package-data.
+recursive-include CytoBridge/results/data *.csv *.csv.gz *.json *.npz *.pdf *.png
+recursive-include scripts/results *.py
+include scripts/execute_paper_notebooks.py
+include scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py
+include scripts/run_matched_ablation_benchmark_evaluation.py
+include scripts/run_matched_ablation_matrix.py
+include scripts/run_zebrafish_interval_daughter_noise_sensitivity.py
+prune tests
+recursive-include tests/results *.py
 recursive-include CytoBridge/configs *.yaml
+recursive-include CytoBridge/workflow_configs *.json
+recursive-include CytoBridge/workflow_databases *.csv *.md
 recursive-include configs *.yaml
 
-# Ship the maintained source-release entry points. Historical machine-specific
-# research scripts remain in Git but are not presented as supported package
-# interfaces.
-include scripts/README.md
-include scripts/README_downstream_workflow.md
-include scripts/compare_zebrafish_conditions.py
-include scripts/complete_downstream.py
-include scripts/convert_legacy_model_input_csv.py
-include scripts/convert_legacy_weights_to_ckpt.py
-include scripts/historical_artifact_compatibility.example.json
-include scripts/launch_mosta_alignment_sensitivity.sh
-include scripts/launch_mosta_formal_full_alignment.sh
-include scripts/launch_mosta_paired_alpha.sh
-include scripts/preprocess_pipeline.py
-include scripts/prepare_chicken_heart_input.py
-include scripts/refresh_velocity_outputs.py
-include scripts/run_chicken_heart_paper_downstream.py
-include scripts/run_five_dataset_virtual_interaction_ablation.py
-include scripts/run_five_dataset_weighted_interaction_ablation.py
-include scripts/run_arista_end_to_end.py
-include scripts/run_downstream_workflow_example.py
-include scripts/run_mosta_alignment_sensitivity.py
-include scripts/run_mosta_end_to_end.py
-include scripts/run_matched_ablation_matrix.py
-include scripts/run_matched_ablation_benchmark_evaluation.py
-include scripts/run_lr_complex_aggregation_sensitivity.py
-include scripts/run_nonspatial_communication_consistency.py
-include scripts/run_nonspatial_nichenet.R
-include scripts/run_spatial_communication_consistency.py
-recursive-include configs/spatial_communication_consistency *.json
-include scripts/run_spatial_training.py
-include scripts/run_spatiotemporal_downstream.py
-include scripts/run_zebrafish_end_to_end.py
-include scripts/run_zebrafish_interval_daughter_noise_sensitivity.py
-include scripts/run_zebrafish_classic_s24.py
-include scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py
-include scripts/plot_lr_complex_aggregation_reviewer_response.py
-include scripts/plot_zebrafish_s22_article_style.py
-include scripts/run_zebrafish_paper_downstream.py
-include scripts/run_zebrafish_attention_validation.py
-include scripts/smoke_dataset_notebooks.py
-include scripts/smoke_installed_wheel.py
-include scripts/summarize_release_evidence.py
-include scripts/summarize_training_history.py
-include scripts/validate_corrected_de_novo_run.py
-include scripts/verify_historical_artifact_compatibility.py
-recursive-include scripts/reviewer_zebrafish_ccc *.R *.csv *.md *.py
-recursive-include scripts/reviewer_zebrafish_response *.py
-recursive-include scripts/spatiotemporal_benchmark *.json *.md *.py
-
 prune docs/_build
+prune docs/tutorials/paper_figures/outputs
+prune internal
+prune outputs
+prune results
 global-exclude .DS_Store
 global-exclude *.py[cod]
 global-exclude __pycache__

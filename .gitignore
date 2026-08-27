@@ -39,7 +39,9 @@ spatial.ipynb
 
 # Data / training outputs
 /data/
-results/
+/results/
+/outputs/
+**/outputs/
 logs/
 input_graph/
 metadata/

@@ -14,6 +14,8 @@ phate>=1,<2
 Pillow>=10,<13
 plotly==6.5.2
 POT>=0.9,<0.10
+PyMuPDF>=1.24,<2
+pypdf>=5,<7
 qnorm>=0.8,<1
 scanpy>=1.9.8,<2
 scvelo>=0.3,<0.4

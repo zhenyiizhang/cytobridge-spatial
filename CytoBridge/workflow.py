@@ -1572,7 +1572,6 @@ def _run_preprocess(
             shutil.copy2(input_h5ad, aligned_h5ad)
         print(
             "Validated fixed chicken-heart alignment: "
-            f"coordinate_sha256={fixed_contract['coordinate_sha256']}, "
             f"policy={fixed_contract['coordinate_policy']}."
         )
         return aligned_h5ad

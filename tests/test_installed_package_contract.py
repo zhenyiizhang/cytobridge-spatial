@@ -67,6 +67,12 @@ class InstalledPackageContractTests(unittest.TestCase):
         )
         self.assertFalse(any("torchvision" in item for item in normalized_requirements))
         self.assertFalse(any("torchaudio" in item for item in normalized_requirements))
+        self.assertTrue(
+            any(
+                item.startswith("pypdf<7,>=5") and "extra=='plot'" in item
+                for item in normalized_requirements
+            )
+        )
 
         entry_points = {
             entry_point.name: entry_point.value
@@ -169,6 +175,48 @@ class InstalledPackageContractTests(unittest.TestCase):
                 "chicken_heart.json",
             },
         )
+
+    def test_compact_result_data_is_present(self) -> None:
+        result_data = resources.files("CytoBridge").joinpath("results", "data")
+        expected = {
+            "agist_figures",
+            "arista_local_domains",
+            "arista_supplementary_figures",
+            "classifier_smoothing",
+            "full_model_compute_cost",
+            "interaction_evidence",
+            "loto_benchmark",
+            "lr_complex_aggregation",
+            "main_figure_2",
+            "main_figure_5",
+            "training_histories",
+            "zebrafish_attention",
+        }
+        packaged = {path.name for path in result_data.iterdir() if path.is_dir()}
+        self.assertTrue(
+            expected.issubset(packaged),
+            f"missing packaged result directories: {sorted(expected - packaged)}",
+        )
+        for slug in expected:
+            analysis_directory = result_data.joinpath(slug)
+            manifest_path = analysis_directory.joinpath("manifest.json")
+            self.assertTrue(manifest_path.is_file())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            payloads = list(manifest.get("files", {}))
+            for section in ("history", "checkpoint_summary"):
+                filename = manifest.get(section, {}).get("file")
+                if filename:
+                    payloads.append(filename)
+            self.assertTrue(payloads)
+            for relative_path in payloads:
+                self.assertTrue(
+                    analysis_directory.joinpath(relative_path).is_file(),
+                    f"missing packaged result file: {slug}/{relative_path}",
+                )
+
+    def test_mosta_reader_module_is_present(self) -> None:
+        results_package = resources.files("CytoBridge").joinpath("results")
+        self.assertTrue(results_package.joinpath("mosta_figures.py").is_file())
 
     def test_installed_workflow_dry_run_uses_packaged_resources(self) -> None:
         executable = Path(sys.executable).with_name("cytobridge")

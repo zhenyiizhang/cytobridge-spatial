@@ -5,7 +5,7 @@ The published notebooks need external aligned data and fitted checkpoints. This
 runner copies each notebook to a temporary directory, supplies a tiny synthetic
 AnnData object, and replaces only checkpoint-dependent cells with calls to public
 CytoBridge data, graph, summary, and plotting APIs. It verifies notebook wiring;
-it does not train or load a model and is not a formal dataset execution.
+it does not train or load a model and is not a full dataset execution.
 """
 
 from __future__ import annotations
@@ -15,12 +15,11 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+DATASET_NOTEBOOK_DIR = ROOT / "docs" / "tutorials" / "dataset_workflows"
 
 import anndata as ad
 import nbformat
@@ -32,12 +31,12 @@ import pandas as pd
 from CytoBridge.workflow import load_workflow_config
 
 NOTEBOOKS = {
-    "zebrafish": ROOT / "notebooks" / "01_zebrafish.ipynb",
-    "mosta": ROOT / "notebooks" / "02_mosta.ipynb",
-    "arista": ROOT / "notebooks" / "03_arista.ipynb",
-    "admouse": ROOT / "notebooks" / "04_admouse.ipynb",
+    "zebrafish": DATASET_NOTEBOOK_DIR / "zebrafish.ipynb",
+    "mosta": DATASET_NOTEBOOK_DIR / "mosta.ipynb",
+    "arista": DATASET_NOTEBOOK_DIR / "arista.ipynb",
+    "admouse": DATASET_NOTEBOOK_DIR / "admouse.ipynb",
 }
-CHICKEN_NOTEBOOK = ROOT / "notebooks" / "05_chicken_heart.ipynb"
+CHICKEN_NOTEBOOK = DATASET_NOTEBOOK_DIR / "chicken_heart.ipynb"
 
 
 def _source(cell: dict) -> str:
@@ -51,7 +50,7 @@ def _replace_source(cell: dict, text: str) -> None:
 
 
 def _make_fixture(dataset: str, directory: Path) -> tuple[Path, Path, Path]:
-    """Create a small input with the schema and formal anchors of one preset."""
+    """Create a small input with the schema and preset anchors of one preset."""
     preset, _ = load_workflow_config(dataset)
     dataset_config = preset["dataset"]
     observed = [float(value) for value in preset["downstream"]["observed"]]
@@ -117,7 +116,7 @@ pd.Series(
         "dataset": {dataset!r},
         "workflow_preset": workflow_preset_source,
         "run_training": RUN_TRAINING,
-        "formal_scope": RUN_FORMAL_SCOPE,
+        "full_scope": RUN_FULL_SCOPE,
         "classifier_k": K_NEIGHBORS,
     }}
 )
@@ -161,15 +160,15 @@ cutoff, _, neighbor_stats, used_spatial_key = (
 )
 assert used_spatial_key == SPATIAL_KEY
 assert np.isfinite(cutoff) and cutoff > 0.0
-assert len(neighbor_stats) == len(FORMAL_OBSERVED_TIMES)
+assert len(neighbor_stats) == len(PRESET_OBSERVED_TIMES)
 
 labels_by_time = [
     adata.obs.loc[np.isclose(adata.obs[TIME_KEY], time), ANNOTATION_KEY].to_numpy()
-    for time in FORMAL_OBSERVED_TIMES
+    for time in PRESET_OBSERVED_TIMES
 ]
 composition = cb.tl.summarize_label_composition(
     labels_by_time,
-    FORMAL_OBSERVED_TIMES,
+    PRESET_OBSERVED_TIMES,
 )
 fractions = composition.groupby("time", sort=True)["fraction"].sum().to_numpy()
 assert np.allclose(fractions, 1.0)
@@ -187,7 +186,7 @@ pd.Series(
         "smoke_scope": "synthetic API wiring only",
         "training_or_checkpoint_load": False,
         "aligned_rows": len(aligned_table),
-        "formal_time_anchors": len(FORMAL_OBSERVED_TIMES),
+        "preset_time_anchors": len(PRESET_OBSERVED_TIMES),
         "classifier_k": K_NEIGHBORS,
         "graph_cutoff": float(cutoff),
         "figure": str(figure_path),
@@ -325,7 +324,7 @@ def _run(work_dir: Path) -> dict:
     )
 
     summary = {
-        "scope": "synthetic public-API wiring; not checkpoint or formal execution",
+        "scope": "synthetic public-API wiring; not checkpoint or full-data execution",
         "notebooks": rows,
     }
     (work_dir / "smoke_summary.json").write_text(

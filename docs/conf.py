@@ -77,10 +77,12 @@ nbsphinx_allow_errors = False
 myst_enable_extensions = ["colon_fence", "deflist", "fieldlist"]
 exclude_patterns = [
     "_build",
+    "tutorials/paper_figures/outputs/**",
     "Thumbs.db",
     ".DS_Store",
-    # Historical developer audit retained in the repository, but not part of
-    # the supported user guide or strict Read the Docs source tree.
+    # Retained project records that are not part of the public documentation.
+    "historical_artifact_compatibility.md",
+    "scientific_contract.md",
     "zebrafish_clean_counts_workflow.md",
 ]
 

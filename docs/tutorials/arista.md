@@ -1,41 +1,59 @@
 # ARISTA salamander brain regeneration
 
-**Notebook:** {download}`notebooks/03_arista.ipynb <../../notebooks/03_arista.ipynb>`
+**Notebook:** {download}`arista.ipynb <dataset_workflows/arista.ipynb>`
 
-The notebook is an inspectable walkthrough of interpolation, classification,
-composition, velocity, growth, sparse communication, strict ligand-receptor
-projection, and unwarped distribution evaluation. It expects the aligned H5AD,
-a trained checkpoint unless training is explicitly enabled, and an LR table.
+## Inputs
 
-## Compact and formal scope
+- `inputs/arista_aligned.h5ad`, with the observation columns and embeddings
+  named by the `arista` workflow preset
+- `inputs/arista_model/`, containing an existing model checkpoint
+- an edge-predictor checkpoint when `RUN_TRAINING=True`
+- the ligand--receptor table returned by
+  `cb.pp.bundled_graph_database_path("arista")`, or a file set with
+  `LR_DATABASE_OVERRIDE`
 
-The default compact run uses at most 5,000 generated particles and inserts one midpoint
-per observed interval. `RUN_FORMAL_SCOPE=True` reads the formal scope directly
-from the packaged preset:
+The notebook writes under `tutorial_outputs/arista/`. Change the input and
+output paths in its first section before running it.
 
-- observed model times `0, 1, 2, 3, 4` and interpolated times
-  `0.5, 1.5, 2.5, 3.5`;
-- 7,668 particles;
-- classifier `k=10`, seed 42, `alpha_express=0.015`, and
-  `alpha_spatial=10`;
-- `sde_dt=0.05`, split `dt=0.01`, split `sigma=0.03`, and growth
-  exponent 1.0.
+## Package calls
+
+The notebook reads settings with `load_workflow_config("arista")`. It can run
+`cb.tl.fit` when training is enabled; otherwise it loads the checkpoint with
+`cb.tl.load_dynamical_model_from_dir` and prepares the runtime with
+`cb.tl.build_dynamical_runtime`.
+
+The analysis then calls:
+
+1. `cb.tl.adata_to_aligned_dataframe`
+2. `cb.tl.run_interpolation_workflow`
+3. `cb.tl.summarize_label_composition`
+4. `cb.tl.compute_velocity_components_from_adata`
+5. `cb.tl.evaluate_growth_by_timepoint`
+6. `cb.tl.compute_timepoint_communications`
+7. `cb.tl.project_communication_to_lr_timecourses`
+8. `cb.tl.evaluate_model_distributions`
+
+Set `RUN_FULL_SCOPE=True` to use the time grid and particle setting stored in
+the preset. The default uses interval midpoints and a particle cap.
 
 ```bash
 cytobridge workflow --config arista --dry-run
-jupyter lab notebooks/03_arista.ipynb
+jupyter lab docs/tutorials/dataset_workflows/arista.ipynb
 ```
 
-The notebook does not itself reproduce the selected LR count or the paper's
-Figure 5e panel. The split frames do not retain persistent particle identifiers,
-so formal lineage is omitted and row order must not be interpreted as ancestry.
+## Figure reproduction
 
-For a corrected de novo run, pass the complete 16,379-gene
-`Regeneration.h5ad` to `cytobridge workflow --config arista --train`. The
-preset selects the five named 2/5/10/15/20-DPI batches by label, not category
-position; uses all eight batches for batch-aware HVG selection followed by
-pooled PCA fitting; retains
-species-matched LR subunits; and constructs a stable `Batch` + `CellID`
-observation identity. It retains 46,209 cells because the undocumented extra
-20-cell crop in the historical 46,189-cell prepared file cannot be reproduced
-without guessing.
+Main Figure 5 and Supplementary Figures S17–S22 have separate notebooks under
+`docs/tutorials/paper_figures/`. The full training record, downstream outputs,
+figure-building scripts, and figure pages are stored in
+`release_artifacts/arista_package_native_spatialqc_z50_retrain_20260824_r1/`.
+The compact figure notebooks do not repeat model training.
+
+## Outputs
+
+- interpolated AnnData objects and trajectory metadata under
+  `tutorial_outputs/arista/interpolation/`
+- the classifier cache at `tutorial_outputs/arista/classifier_resmlp.pt`
+- sparse communication files under `tutorial_outputs/arista/communication/`
+- composition, velocity, growth, ligand--receptor, and distribution-metric
+  tables displayed by the notebook

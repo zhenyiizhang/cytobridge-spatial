@@ -32,7 +32,7 @@ classifiers = [
 dynamic = ["dependencies", "optional-dependencies", "version"]
 
 [project.urls]
-Documentation = "https://cytobridge.readthedocs.io/"
+Documentation = "https://cytobridge-spatial.readthedocs.io/"
 Issues = "https://github.com/zhenyiizhang/cytobridge-spatial/issues"
 Repository = "https://github.com/zhenyiizhang/cytobridge-spatial"
 
@@ -82,4 +82,11 @@ CytoBridge = [
   "workflow_configs/*.json",
   "workflow_databases/*.csv",
   "workflow_databases/README.md",
+  "results/data/*/*.csv",
+  "results/data/*/*/*.csv",
+  "results/data/*/*.csv.gz",
+  "results/data/*/*.json",
+  "results/data/*/*.npz",
+  "results/data/*/*.pdf",
+  "results/data/*/*.png",
 ]

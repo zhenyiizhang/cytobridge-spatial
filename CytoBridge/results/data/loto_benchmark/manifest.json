@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "analysis": "loto_benchmark",
+  "manuscript_figure": "Supplementary Figure S36",
+  "files": {
+    "loto_target_stage_means.csv": "target-level Sliced-W2 means across five projection repeats",
+    "native_output_support.csv": "method-native output support used for evaluation",
+    "protocol.json": "dataset, method, projection, and support settings"
+  },
+  "calculation": {
+    "paired_ratio": "method Sliced-W2 divided by CytoBridge-0.015 Sliced-W2 in the same dataset-target-space cell",
+    "dataset_summary": "arithmetic mean of matched cell ratios with equal weight for every available target-space cell"
+  }
+}

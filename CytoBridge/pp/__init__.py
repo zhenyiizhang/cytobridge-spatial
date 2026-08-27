@@ -18,10 +18,16 @@ from .spatial_align import (
     preprocess_and_align,
 )
 from .chicken_heart import (
-    ChickenHeartContractError,
-    apply_chicken_heart_coordinate_contract,
+    apply_chicken_heart_coordinate_validation,
     chicken_heart_anatomical_orientation_qc,
     validate_prepared_chicken_heart_input,
+)
+from .chicken_heart_input import (
+    assemble_chicken_heart_reference_counts,
+    prepare_chicken_heart_input,
+    prepare_chicken_heart_ot_adata,
+    prepare_chicken_heart_ot_input,
+    validate_chicken_heart_ot_input,
 )
 from .legacy_model_input import (
     legacy_model_input_csv_to_adata,
@@ -35,9 +41,13 @@ __all__ = [
     "preprocess_fixed_spatial",
     "preprocess_and_align",
     "preprocess_align_to_files",
-    "ChickenHeartContractError",
-    "apply_chicken_heart_coordinate_contract",
+    "apply_chicken_heart_coordinate_validation",
+    "assemble_chicken_heart_reference_counts",
     "chicken_heart_anatomical_orientation_qc",
+    "prepare_chicken_heart_input",
+    "prepare_chicken_heart_ot_adata",
+    "prepare_chicken_heart_ot_input",
+    "validate_chicken_heart_ot_input",
     "validate_prepared_chicken_heart_input",
     "estimate_neighborhood_threshold_from_aligned_spatial",
     "generate_interaction_graph",

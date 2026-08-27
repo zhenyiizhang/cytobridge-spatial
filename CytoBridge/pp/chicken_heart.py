@@ -180,35 +180,92 @@ def apply_chicken_heart_coordinate_contract(
     }
 
 
+def apply_chicken_heart_coordinate_validation(
+    adata, *, repair_legacy_d7_left_right: bool = False
+) -> dict[str, Any]:
+    """Validate the reference coordinates and optionally fix the legacy D7 mirror."""
+
+    record = apply_chicken_heart_coordinate_contract(
+        adata,
+        repair_legacy_d7_left_right=repair_legacy_d7_left_right,
+    )
+    if not record["applied"]:
+        return {
+            "applied": False,
+            "policy": "reference_coordinates_validated",
+            "before_anatomical_qc": record["before_anatomical_qc"],
+            "after_anatomical_qc": record["after_anatomical_qc"],
+        }
+    return {
+        "applied": True,
+        "policy": "legacy_d7_horizontal_reflection",
+        "timepoint": record["timepoint"],
+        "operation": record["operation"],
+        "center_x": record["center_x"],
+        "linear_matrix": record["linear_matrix"],
+        "translation": record["translation"],
+        "pairwise_distance_max_abs_error": record[
+            "pairwise_distance_max_abs_error"
+        ],
+        "before_anatomical_qc": record["before_anatomical_qc"],
+        "after_anatomical_qc": record["after_anatomical_qc"],
+    }
+
+
+def _remove_legacy_chicken_heart_validation_metadata(adata) -> None:
+    adata.uns.pop("chicken_heart_input_contract_json", None)
+
+
 def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
     """Validate a prepared H5AD before workflow graph fitting or training."""
 
-    raw_contract = adata.uns.get("chicken_heart_input_contract_json")
-    if not isinstance(raw_contract, str):
-        raise ChickenHeartContractError(
-            "Prepared chicken-heart H5AD lacks chicken_heart_input_contract_json."
-        )
-    try:
-        contract = __import__("json").loads(raw_contract)
-    except (TypeError, ValueError) as exc:
-        raise ChickenHeartContractError(
-            "Prepared chicken-heart input contract is not valid JSON."
-        ) from exc
-    schema_version = contract.get("schema_version")
-    if schema_version not in {2, 3}:
-        raise ChickenHeartContractError(
-            "Prepared chicken-heart input requires contract schema_version 2 or 3."
-        )
-    repair = contract.get("coordinate_repair")
-    if not isinstance(repair, dict):
-        raise ChickenHeartContractError(
-            "Prepared chicken-heart input lacks coordinate_repair provenance."
-        )
-    observed_hash = _coordinate_sha256(adata.obsm["spatial_aligned"])
-    if repair.get("after_coordinate_sha256") != observed_hash:
-        raise ChickenHeartContractError(
-            "Prepared chicken-heart spatial coordinates do not match their contract."
-        )
+    raw_validation = adata.uns.get("chicken_heart_input_validation_json")
+    legacy_metadata = False
+    if isinstance(raw_validation, str):
+        try:
+            metadata = __import__("json").loads(raw_validation)
+        except (TypeError, ValueError) as exc:
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input validation is not valid JSON."
+            ) from exc
+        schema_version = metadata.get("schema_version")
+        if schema_version != 4:
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input validation requires schema_version 4."
+            )
+        coordinate_record = metadata.get("coordinate_adjustment")
+        if not isinstance(coordinate_record, dict):
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input lacks coordinate adjustment metadata."
+            )
+    else:
+        legacy_metadata = True
+        raw_contract = adata.uns.get("chicken_heart_input_contract_json")
+        if not isinstance(raw_contract, str):
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart H5AD lacks input validation metadata."
+            )
+        try:
+            metadata = __import__("json").loads(raw_contract)
+        except (TypeError, ValueError) as exc:
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input metadata is not valid JSON."
+            ) from exc
+        schema_version = metadata.get("schema_version")
+        if schema_version not in {2, 3}:
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart legacy metadata requires schema_version 2 or 3."
+            )
+        coordinate_record = metadata.get("coordinate_repair")
+        if not isinstance(coordinate_record, dict):
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart input lacks coordinate metadata."
+            )
+        observed_digest = _coordinate_sha256(adata.obsm["spatial_aligned"])
+        if coordinate_record.get("after_coordinate_sha256") != observed_digest:
+            raise ChickenHeartContractError(
+                "Prepared chicken-heart spatial coordinates do not match legacy metadata."
+            )
     anatomical = chicken_heart_anatomical_orientation_qc(adata)
     if anatomical["status"] != "pass":
         raise ChickenHeartContractError(
@@ -238,7 +295,7 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
                 f"Prepared chicken-heart obs[{key!r}] contains missing labels."
             )
     if (
-        schema_version == 3
+        schema_version in {3, 4}
         and "Annotation" in adata.obs
         and not np.array_equal(
             adata.obs["Annotation"].astype(str).to_numpy(),
@@ -251,27 +308,39 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
             "anatomical orientation QC."
         )
     labels = adata.obs["celltype_prediction"].astype(str).tolist()
-    if schema_version == 3:
-        annotation_contract = contract.get("downstream_annotation")
+    if schema_version in {3, 4}:
+        annotation_metadata = metadata.get("downstream_annotation")
         if (
-            not isinstance(annotation_contract, dict)
-            or annotation_contract.get("key") != "celltype_prediction"
+            not isinstance(annotation_metadata, dict)
+            or annotation_metadata.get("key") != "celltype_prediction"
         ):
             raise ChickenHeartContractError(
-                "Prepared chicken-heart input lacks the cell-type annotation contract."
+                "Prepared chicken-heart input lacks cell-type annotation metadata."
             )
-        label_digest = hashlib.sha256()
-        for value in labels:
-            encoded = value.encode("utf-8")
-            label_digest.update(len(encoded).to_bytes(8, "little"))
-            label_digest.update(encoded)
-        if annotation_contract.get("ordered_label_sha256") != label_digest.hexdigest():
+        if schema_version == 3:
+            label_digest = hashlib.sha256()
+            for value in labels:
+                encoded = value.encode("utf-8")
+                label_digest.update(len(encoded).to_bytes(8, "little"))
+                label_digest.update(encoded)
+            if annotation_metadata.get("ordered_label_sha256") != label_digest.hexdigest():
+                raise ChickenHeartContractError(
+                    "Prepared chicken-heart cell-type labels do not match legacy metadata."
+                )
+        if annotation_metadata.get("n_classes") != len(set(labels)):
             raise ChickenHeartContractError(
-                "Prepared chicken-heart cell-type labels do not match their contract."
+                "Prepared chicken-heart cell-type class count does not match metadata."
             )
-        if annotation_contract.get("n_classes") != len(set(labels)):
+    if schema_version == 4:
+        reference = metadata.get("reference", {})
+        time_counts = (
+            adata.obs["timepoint"].astype(str).value_counts(sort=False).to_dict()
+        )
+        if reference.get("n_obs") != adata.n_obs or reference.get(
+            "timepoint_counts"
+        ) != time_counts:
             raise ChickenHeartContractError(
-                "Prepared chicken-heart cell-type class count does not match its contract."
+                "Prepared chicken-heart spot counts do not match reference metadata."
             )
     observed_times = sorted(
         np.unique(adata.obs["time_point_processed"].to_numpy(dtype=np.float64)).tolist()
@@ -282,11 +351,11 @@ def validate_prepared_chicken_heart_input(adata) -> dict[str, Any]:
         )
     return {
         "schema_version": int(schema_version),
-        "coordinate_sha256": observed_hash,
-        "coordinate_policy": repair.get("policy"),
+        "coordinate_policy": coordinate_record.get("policy"),
         "downstream_annotation_key": "celltype_prediction",
         "legacy_annotation_alias_ignored": bool(
-            schema_version == 2
+            legacy_metadata
+            and schema_version == 2
             and "Annotation" in adata.obs
             and not np.array_equal(
                 adata.obs["Annotation"].astype(str).to_numpy(),
@@ -301,6 +370,7 @@ __all__ = [
     "CHICKEN_HEART_TIMEPOINTS",
     "ChickenHeartContractError",
     "apply_chicken_heart_coordinate_contract",
+    "apply_chicken_heart_coordinate_validation",
     "chicken_heart_anatomical_orientation_qc",
     "validate_prepared_chicken_heart_input",
 ]

@@ -1,0 +1,71 @@
+{
+  "conditions": {
+    "full": "existing frozen Full checkpoint with interaction + score/noise",
+    "no_interaction": "corrected retrained without interaction, score/noise retained",
+    "strict_crn_retraining": false,
+    "training_seed": 42
+  },
+  "dataset": {
+    "cell_types": [
+      "Ex",
+      "EX-NP1",
+      "EX-NP2",
+      "RG",
+      "Inh-NP",
+      "Inh1",
+      "Inh2",
+      "Inh3",
+      "Inh4"
+    ],
+    "cells": 20547,
+    "perturbation": "KCl stimulation",
+    "system": "primary mouse cortical culture",
+    "times_minutes": [
+      0,
+      15,
+      30,
+      60,
+      120
+    ]
+  },
+  "direction_evaluation": {
+    "endpoint_wins_full": {
+      "mean": 3,
+      "median": 3,
+      "out_of": 4
+    },
+    "equal_endpoint_average": {
+      "mean_cellwise_cosine_full": 0.009149566935620523,
+      "mean_cellwise_cosine_no_interaction": 0.005569640007819425,
+      "median_cellwise_cosine_full": 0.011724176992502972,
+      "median_cellwise_cosine_no_interaction": 0.009072096589338247
+    },
+    "higher_is_better": true,
+    "inferential_scope": "one paired computational training seed; descriptive, not a significance test",
+    "metric": [
+      "cell_cosine_mean",
+      "cell_cosine_median"
+    ],
+    "new_rna_used_for_training": false,
+    "reference": "sealed post-training one-shot scNT new-RNA direction projected through the exact HVG2000 PCA loadings",
+    "training_seed": 42
+  },
+  "model_field": {
+    "full_drift": "finite-difference conditional mean from saved paired full-model trajectory in PC1-PC2",
+    "interaction_component": "sum of exact sender-specific GNN interaction drift by receiver type, smoothly displayed in PC1-PC2",
+    "is_model_subtraction": false,
+    "is_rna_velocity": false
+  },
+  "network": {
+    "cellchat_score": "cellchat_native_significant",
+    "display": "independent top-24 positive heterotypic directed edges within each method; widths are within-method ranks",
+    "score": "D_AB_mean",
+    "spearman_rho_all_81_pairs": 0.7523959827780977,
+    "time_minutes": 120
+  },
+  "pathway": {
+    "display": "top eight pathways by summed positive heterotypic S; bar is share of total positive heterotypic S",
+    "score": "S_AB_pathway = D_AB_mean * Q_AB_pathway",
+    "time_minutes": 120
+  }
+}

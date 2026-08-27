@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "analysis": "arista_supplementary_figures",
+  "dataset": "ARISTA",
+  "figure_set": ["S17", "S18", "S19", "S20", "S21", "S22"],
+  "files": {
+    "FigureS17_ARISTA_interpolation.png": "spatial interpolation page",
+    "FigureS18_ARISTA_growth.png": "growth page",
+    "FigureS19_ARISTA_lineage_composition.png": "lineage and composition page",
+    "FigureS20_ARISTA_gene_programs_GO.png": "gene-program and GO page",
+    "FigureS21_ARISTA_ligand_receptor_clusters.png": "ligand-receptor cluster page",
+    "FigureS22_ARISTA_ligand_receptor_small_multiples.png": "ligand-receptor small-multiple page",
+    "figure_index.csv": "page properties and source-table mapping",
+    "full_recompute_inputs.csv": "relative-path inputs for full calculations",
+    "interpolation_panel_inventory.csv": "interpolation panel counts",
+    "growth_panel_scale.csv": "growth panel counts and display ranges",
+    "lineage_composition_counts.csv": "fixed-particle cell-state counts",
+    "lineage_composition_fractions.csv": "fixed-particle cell-state fractions",
+    "lineage_composition_display_percent.csv": "displayed composition percentages",
+    "gene_trajectories.csv": "displayed gene time courses",
+    "gene_program_prototypes.csv": "gene-program mean and standard deviation",
+    "gene_display_roster.csv": "displayed gene roster",
+    "gene_program_1_GO_terms.csv": "GO terms shown for gene program 1",
+    "gene_program_2_GO_terms.csv": "GO terms shown for gene program 2",
+    "ligand_receptor_cluster_prototypes.csv": "ligand-receptor cluster prototypes",
+    "ligand_receptor_display_roster.csv": "ligand-receptor display roster",
+    "ligand_receptor_pair_timecourse.csv": "ligand-receptor time courses"
+  },
+  "tables": {
+    "interpolation_panel_inventory": {"figure": "S17", "file": "interpolation_panel_inventory.csv"},
+    "growth_panel_scale": {"figure": "S18", "file": "growth_panel_scale.csv"},
+    "lineage_composition_counts": {"figure": "S19", "file": "lineage_composition_counts.csv"},
+    "lineage_composition_fractions": {"figure": "S19", "file": "lineage_composition_fractions.csv"},
+    "lineage_composition_display_percent": {"figure": "S19", "file": "lineage_composition_display_percent.csv"},
+    "gene_trajectories": {"figure": "S20", "file": "gene_trajectories.csv"},
+    "gene_program_prototypes": {"figure": "S20", "file": "gene_program_prototypes.csv"},
+    "gene_display_roster": {"figure": "S20", "file": "gene_display_roster.csv"},
+    "gene_program_1_GO_terms": {"figure": "S20", "file": "gene_program_1_GO_terms.csv"},
+    "gene_program_2_GO_terms": {"figure": "S20", "file": "gene_program_2_GO_terms.csv"},
+    "ligand_receptor_cluster_prototypes": {"figure": "S21", "file": "ligand_receptor_cluster_prototypes.csv"},
+    "ligand_receptor_display_roster": {"figure": "S22", "file": "ligand_receptor_display_roster.csv"},
+    "ligand_receptor_pair_timecourse": {"figure": "S22", "file": "ligand_receptor_pair_timecourse.csv"}
+  },
+  "equivalence": {
+    "png": "The packaged rasters are the formal ARISTA release page payloads under the current figure numbering.",
+    "pdf": "Generated PDFs place each raster on the corresponding release page geometry. They preserve page appearance but not source vector objects or selectable text."
+  }
+}

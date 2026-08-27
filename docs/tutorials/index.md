@@ -1,16 +1,20 @@
-# Dataset tutorials
+# Tutorials
 
-The checked-in notebooks use the installed package and wheel-bundled presets.
-They are committed without outputs so readers can inspect every step and run
-them against their own explicit inputs. By default, each notebook uses up to
-5,000 generated particles and one midpoint per observed interval. Observed
-slices, classifier fitting, and observed-slice velocity still use the supplied
-AnnData; the cap is not a whole-workflow downsample. Set
-`RUN_FORMAL_SCOPE=True` to select the preset's full time grid and population
-policy; this does not turn the notebook into every manuscript-specific analysis.
+The dataset tutorials use the installed package and its bundled workflow
+presets. Each dataset page lists the external inputs, the public package calls,
+and the files or Python objects produced by the notebook.
 
 ```{toctree}
 :maxdepth: 1
+:caption: Data preparation
+
+../data_checkpoints
+data_preparation/synthetic_preprocessing
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Dataset workflows
 
 zebrafish
 mosta
@@ -19,21 +23,34 @@ admouse
 chicken_heart
 ```
 
-Release checks parse every notebook and run a small synthetic API-wiring smoke
-with training disabled. They verify that the tutorial calls remain
-compatible with the installed package; they do not execute a trained checkpoint
-or reproduce full-data results.
+```{toctree}
+:maxdepth: 1
+:caption: Dataset notebooks
 
-The notebook links on the dataset pages are direct downloads. The shell paths
-shown there assume a Git source checkout; a wheel install provides the runtime
-dependencies and package presets, not a new `notebooks/` directory in the
-user's current working directory.
+dataset_workflows/zebrafish
+dataset_workflows/mosta
+dataset_workflows/arista
+dataset_workflows/admouse
+dataset_workflows/chicken_heart
+```
 
-The first four notebooks implement the same compact downstream sequence. The
-chicken-heart notebook adds the required raw-count and fixed-anatomy preparation
-before entering the same package workflow. Together they load the preset,
-optionally fit or load a model, interpolate and classify, summarize composition,
-velocity, growth and sparse spatial attention, project strict ligand-receptor
-trajectories, and evaluate unwarped distributions. Dataset-specific paper
-panels, gene-program selections, perturbations, and cross-method benchmark runs
-remain explicit analyses rather than hidden notebook side effects.
+```{toctree}
+:maxdepth: 1
+:caption: Paper figures
+:glob:
+
+paper_figures/*
+zebrafish_videos
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Benchmarks
+
+../benchmarks
+../training_compute
+```
+
+The documentation build does not execute notebooks. Notebooks are stored
+without outputs and require the packaged result tables or repository release
+artifacts named on their page.

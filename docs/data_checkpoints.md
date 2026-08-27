@@ -1,155 +1,106 @@
 # Data and checkpoints
 
-CytoBridge does not bundle multi-gigabyte datasets or trained checkpoints in
-the wheel. It does bundle the small species-matched CellChatDB tables used by
-the packaged default strict LR projection and by the predictor-gated graph
-workflows. In AD main, seven strict complete panel-covered pairs from this table
-label the learned edge predictor and define the downstream projection. This is
-panel-limited evidence, not a global CCI screen. `--lr-database` remains an
-explicit downstream override. Raw study data are public:
+CytoBridge does not include large study datasets or trained model directories
+in the wheel. Provide those files explicitly when running a workflow. The
+package does include small species-specific CellChatDB tables under
+`CytoBridge/workflow_databases/`; `--lr-database` can select another compatible
+table for downstream analysis.
 
-| Application | Raw-data source | Raw time / label keys | Raw expression / coordinates |
+## Raw inputs
+
+| Application | Source | Time and label keys | Expression and coordinates |
 | --- | --- | --- | --- |
-| Zebrafish | [CNGB STDS0000057](https://db.cngb.org/stomics/datasets/STDS0000057/data) | `time` / `bin_annotation` | `layers['counts']` / `obs[['spatial_x', 'spatial_y']]` |
-| MOSTA | [MOSTA download portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint` / `annotation` | `layers['count']` / `obsm['spatial']` |
-| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch` / `Annotation` | `layers['counts']` / `obsm['spatial']` |
-| AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint` / `major_annotation` | `layers['counts']` / `obsm['spatial']` |
-| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint` / `celltype_prediction` (`region` retained for anatomy QC) | four raw 10x matrices / `obsm['spatial_original']`, then D7-preoriented `obsm['spatial_ot_input']` |
+| Zebrafish | [CNGB STDS0000057](https://db.cngb.org/stomics/datasets/STDS0000057/data) | `time`, `bin_annotation` | `layers['counts']`, `obs[['spatial_x', 'spatial_y']]` |
+| MOSTA | [MOSTA portal](https://db.cngb.org/stomics/mosta/download/) | `timepoint`, `annotation` | `layers['count']`, `obsm['spatial']` |
+| ARISTA axolotl | [CNGB STDS0000056](https://db.cngb.org/stomics/datasets/STDS0000056/data) | `Batch`, `Annotation` | `layers['counts']`, `obsm['spatial']` |
+| AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint`, `major_annotation` | `layers['counts']`, `obsm['spatial']` |
+| Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint`, `celltype_prediction` | four raw 10x matrices, `obsm['spatial_original']` |
 
-These are the raw-input keys consumed by the five packaged presets. The
-preprocessing output standardizes them to `time_point_processed`, the preset's
-public annotation key, `obsm['X_latent']`, and `obsm['spatial_aligned']` for the
-shared training and downstream APIs. Raw observation names must be unique unless
-the preset declares stable identity columns. ARISTA reuses local `CellID` values
-across batches, so its preset constructs a reversible `Batch` + `CellID`
-identity; it does not assign identities from row order.
-AD mouse similarly uses `sample` plus `cell_id`, so the original and the
-notebook-deduplicated handoff H5ADs resolve to the same stable identity scheme.
-Chicken heart first uses `scripts/prepare_chicken_heart_input.py` to recover
-the exact reviewed spot roster, annotations, and matching raw counts. The
-deterministic `scripts/prepare_chicken_heart_ot_input.py` then rotates only raw
-D7 by 180 degrees around its stage centroid and writes
-`obsm['spatial_ot_input']`. The packaged preset fits expression-guided OT from
-that coordinate input. The reviewed alignment is retained only for post-hoc
-comparison and is not an OT fitting target.
+The preset maps these source keys to a common package representation during
+preprocessing.
 
-The ARISTA preset accepts the complete 16,379-gene `Regeneration.h5ad`. It maps
-the five named injury batches at 2/5/10/15/20 DPI to model times 0–4, uses all
-eight study batches for batch-aware HVG selection and pooled PCA fitting, and then restricts
-alignment/training to those five named batches (46,209 cells). The historical
-fixed-2,000-gene file contains 46,189 of those cells, but no complete executable
-rule survives for its additional 20 spatial exclusions. The corrected workflow
-therefore retains all 46,209 provable cells and records this 0.043% historical
-scope difference; it does not hard-code cell IDs or infer a crop from the
-desired count. The raw H5AD also contains eight batch-keyed dense segmentation
-rasters in `uns` (about 1.9 GiB total). They are imaging attachments, not model
-inputs; the preset removes only those named keys before preprocessing and
-records the removal while retaining annotations, colors, coordinates, and
-expression data.
+## Repository figure releases
 
-The processed aligned H5ADs and completed 0.015 checkpoints are currently
-project artifacts and do not yet have a public archive DOI. The authoritative
-matched matrix contains 12 completed training and package-downstream profiles: the
-full learned-prior, no-LR-prior (`all_spatial`), and no-interaction arms for
-each of the four datasets. All 12 profiles and all four matched three-arm
-families pass acceptance SHA-256
-`c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df`.
-Developing chicken heart adds one separately completed full learned-prior
-profile and package-downstream chain. It uses the D7-preoriented raw-coordinate
-OT workflow and is not represented as a matched no-LR/no-interaction family.
-These artifacts must be deposited and linked here before the 1.5 stable
-release. Until then, the release candidate is fully installable and supports
-user-provided inputs, but outside the MOSTA exception below, a new reader cannot
-download the exact manuscript artifacts from the package documentation alone.
+The source checkout contains two larger, versioned figure releases under
+`release_artifacts/`:
 
-The accepted corrected MOSTA Finetune, Score, and generated-cell classifier
-checkpoints used for main Figure 4 and Supplementary Figures S4-S11 are an
-exception: they are versioned in the
-[MOSTA manuscript-figure reader release](../release_artifacts/mosta_package_native_corrected_20260826_v1/README.md),
-together with their SHA-256 identities, resolved configuration, plotting code,
-compact downstream inputs, and final vector figures. The approximately 15 GB
-aligned MOSTA H5AD remains outside Git; the release documents its public raw-data
-source, package-native reconstruction procedure, required AnnData contract, and
-expected SHA-256 identity.
+- `mosta_package_native_corrected_20260826_v1/` contains the model files,
+  compact numerical inputs, calculation scripts, renderers, and vector pages
+  used by the MOSTA figure notebooks.
+- `arista_package_native_spatialqc_z50_retrain_20260824_r1/` contains the
+  ARISTA training record, downstream outputs, figure-building scripts, and
+  figure pages.
 
-## Aligned AnnData contract
+These directories are available from a source checkout but are not installed
+with the wheel. The full aligned MOSTA H5AD remains an external input because
+of its size.
 
-Every downstream workflow requires:
+## Prepared AnnData
 
-- `.obs[time_point_processed]`: numeric model time with every preset-observed
-  anchor present;
-- the dataset label column from the table above;
-- `.obsm['X_latent']`: fitted latent state, in the checkpoint's feature order;
-- `.obsm['spatial_aligned']`: aligned two-dimensional coordinates;
-- finite arrays and the same row order across `.obs` and both `.obsm` arrays.
+Downstream workflows require:
 
-Gene dynamics and LR projection additionally require the fitted gene-space
-reference: `.varm['PCs']` and matching `.var_names`. Current preprocessing
-persists `.var['pca_center']`; complete historical aligned H5AD objects that
-predate it fail closed by default. Only when the file is known to be the
-complete original PCA-fit population may the workflow use its `.X` column
-mean via `--allow-complete-reference-pca-center-fallback`; the inferred center
-must still reproduce the saved PCA coordinates.
-Formal expression summaries clip inverse-PCA log1p values to non-negative
-values per cell.
+- `.obs['time_point_processed']`, with every observed time used by the preset;
+- the annotation column named by the preset;
+- `.obsm['X_latent']`, in the feature order used to fit the checkpoint;
+- `.obsm['spatial_aligned']`, with two aligned spatial dimensions; and
+- finite arrays with the same observation order across `.obs` and `.obsm`.
 
-## Checkpoint directory contract
+Gene reconstruction and ligand--receptor projection also use `.varm['PCs']`,
+matching `.var_names`, and `.var['pca_center']`. The
+`--allow-complete-reference-pca-center-fallback` option is available only for a
+complete PCA-fit reference object whose stored latent coordinates can be
+reconstructed from its inferred center.
 
-Current checkpoints use:
+Observation names must be unique unless a preset defines identity columns.
+The ARISTA preset combines `Batch` and `CellID`; the AD preset combines
+`sample` and `cell_id`.
+
+Chicken-heart preparation uses:
+
+```text
+scripts/prepare_chicken_heart_input.py
+scripts/prepare_chicken_heart_ot_input.py
+```
+
+The first script matches raw counts to the reference spot roster and
+annotations. The second writes `obsm['spatial_ot_input']` and applies the
+preset's D7 pre-orientation before package spatial alignment.
+
+## Checkpoint directory
+
+Current checkpoints use this layout:
 
 ```text
 model_dir/
 ├── config.yaml
 ├── Finetune/
-│   └── last_model.pth        # or best_model.pth, according to config
+│   └── last_model.pth
 └── Score_Refine/
-    └── score_model.pth       # optional final score stage
+    └── score_model.pth
 ```
 
-The workflow loader follows the training plan in `config.yaml`. Current
-predictor-gated checkpoints, including AD main, embed learned edge-predictor
-weights and are portable between machines. Older predictor-gated current-format checkpoints without embedded
-weights need an explicit `--edge-predictor-path`. Legacy ST-1104 checkpoints use `params.yml`,
-`model_final`, and `score_model`; load those through
-`cb.tl.load_legacy_dynamical_model_from_dir` for an explicitly labelled
-historical analysis. The formal package workflow does not relabel them as the
-current resolved six-stage run.
+The selected dynamical checkpoint may be `last_model.pth` or
+`best_model.pth`, according to `config.yaml`. Predictor-gated checkpoints can
+store the edge predictor with the model. If a checkpoint does not include it,
+pass `--edge-predictor-path`.
 
-## Ligand–receptor input
+Older ST-1104 directories use `params.yml`, `model_final`, and `score_model`.
+Load them with `cb.tl.load_legacy_dynamical_model_from_dir`.
 
-Supply a species-appropriate CSV with `ligand` and `receptor` columns. Common
-aliases such as `ligand_symbol`/`receptor_symbol` and two-column tables are
-accepted. Join complex subunits with underscores. Formal scoring requires all
-subunits and uses their minimum expression; geometric mean is an explicit
-sensitivity setting. The graph-building CellChatDB resources bundled with
-CytoBridge are GPL-3.0 and documented under `CytoBridge/workflow_databases/`;
-licensing of a custom downstream database remains the user's responsibility.
-The AD expression panel fully represents seven pairs under this strict rule.
-They label the main learned edge predictor and its downstream projection;
-report both as panel-limited, not as a global CCI screen.
+## Ligand--receptor table
 
-The formal minimum-versus-geometric-mean sensitivity reuses saved expression
-states and communication matrices, and first reproduces the primary minimum
-table before changing the aggregation rule. Its server root is:
+Provide a CSV with `ligand` and `receptor` columns. The aliases
+`ligand_symbol` and `receptor_symbol`, and a two-column table, are also
+supported. Join complex subunits with underscores.
 
-```text
-/data/cytobridge/projects/CytoBridge-ST-1104/runs/
-  lr-complex-sensitivity-20260815-1f8ac66-r1/
-```
+All complex subunits must be present. `min` uses the least-expressed subunit;
+`geometric_mean` uses a zero-preserving geometric mean while keeping the
+complete-subunit requirement. The licensing terms of a custom database remain
+the user's responsibility.
 
-The signed dataset manifest SHA-256 values are:
+## Downstream files
 
-| Dataset | `run_manifest.json` SHA-256 |
-| --- | --- |
-| Zebrafish | `7c1a8247a30878a5467f29690fa92162311e2be8cdecb7dadbff55db649dc234` |
-| MOSTA | `0b26ecc8b44837718aa3ac5ec6e301f2a2e82c86939dfc175178a78a753b62f9` |
-| ARISTA | `0ec09548be8f587dd297b56f320fa6d4580ff51919605cc962e4c7963fa4c08e` |
-| Chicken Heart | `b1a22a138b13c6547d0467d70bc99a2d89233086d1cf785c8cf9fac8a232a7dd` |
-
-AD mouse is recorded as mathematically invariant rather than rerun because all
-seven scored pairs are single-subunit on both sides.
-
-## Main downstream output tree
+The workflow writes a directory with this structure:
 
 ```text
 downstream/
@@ -162,26 +113,19 @@ downstream/
 ├── communication/communication_by_celltype.csv
 ├── communication/sparse_attention/
 ├── figures/
-├── gene_dynamics/             # default for the five packaged presets
-├── ligand_receptor/           # default, using the preset species database
-└── reconstruction_diagnostic/ # only when requested; not a holdout benchmark
+├── gene_dynamics/
+├── ligand_receptor/
+└── reconstruction_diagnostic/
 ```
 
-`summary.json` exposes per-time communication selection provenance at
-`analyses.communication.edge_selection_by_time`. Each normalized time key
-contains `candidate_count`, `selected_count`, `selected_fraction`, and
-`status`, with the scientific boundary recorded in
-`structural_zero_interpretation`. A valid empty time point has
-`edge_index.shape == (2, 0)` and `attn_mean.shape == (0,)`; it is not a missing
-artifact. Acceptance still requires selected edges and nonzero cell-type
-communication somewhere across the full trajectory.
+`reconstruction_diagnostic/` is created only when requested. Communication
+selection counts are recorded in
+`summary.json` at `analyses.communication.edge_selection_by_time`. Each time
+entry includes `candidate_count`, `selected_count`, `selected_fraction`, and
+`status`.
 
-Manuscript-specific perturbations, matched cross-method benchmarks, and final
-panel assembly are separate analyses built on these outputs; the workflow does
-not run them implicitly.
-
-For the no-interaction arm, communication and ligand–receptor outputs are
-scientifically not applicable and are intentionally absent. Acceptance treats
-their absence as the arm's contract, not as a failed downstream run. The
-no-LR-prior arm retains interaction and uses `all_spatial` instead of a learned
-edge gate.
+When a time point contains no retained communication edges, its sparse arrays
+have shapes `(2, 0)` for `edge_index` and `(0,)` for `attn_mean`. The
+no-interaction training profile omits communication and ligand--receptor
+directories. The no-LR-prior profile retains interaction and uses
+`all_spatial` in place of a learned edge gate.

@@ -1,108 +1,103 @@
-# Downstream analyses
+# Downstream analysis
 
-## Zebrafish interval-local simulation scope
+The downstream API works from an aligned AnnData object and a fitted model.
+The packaged workflow presets call the same public functions described below.
 
-The formal Zebrafish preset uses observed-anchored piecewise split-SDE. Real
-observed slices remain unchanged, and each generated midpoint is a one-sided
-forward simulation starting from the immediately preceding observed slice. It
-is not conditioned on the following observed endpoint and therefore is not a
-two-endpoint bridge. Communication and ligand–receptor tables combine real
-observed stages with these interval-local generated stages; they do not
-describe one lineage-continuous rollout or global t0 extrapolation.
+## Interpolated states and labels
 
-The paper-specific S22 reproduction is deliberately different: it generates
-one continuous global-t0 fixed-population state transport through `t=4` and
-exports observed integer slices only as a separate reference figure. Velocity
-drift, score-gradient correction, interaction forces, and stochastic diffusion
-remain active. Learned growth-driven birth/extinction is disabled, so N remains
-equal to the sampled t=0 cohort. The panel is not a cell-abundance forecast,
-adjacent-anchor interpolation, or reconstruction of observed stages. S25 and
-communication continue to use the interval-local contract above with learned
-growth enabled; a global-t0 S22 bundle cannot be silently reused for those
-analyses.
+`cb.tl.run_interpolation_workflow` generates requested intermediate time
+points, assigns cell labels, and returns an `InterpolationResult`. Its
+`adata_dict`, `communication_adata_dict`, `ts_points`, and `time_keys` fields
+are used by later steps.
+
+The dataset tutorials keep supplied observed slices unchanged and simulate
+intermediate points from the preceding observed slice. With this setting, an
+intermediate state is a forward simulation within one observed interval; it is
+not conditioned on the following endpoint. Enable lineage output only when the
+simulation stores persistent particle identifiers.
 
 ## Velocity
 
-Interaction velocity is recomputed independently within each real time slice.
-The workflow does not reuse historical cross-time interaction caches.
-The plotted arrows are model-derived state derivatives. Direct 2D derivatives
-are interpolated in their existing coordinates; only higher-dimensional state
-derivatives pass through scVelo's transition projection. Unsupported grid
-locations receive a common two-component mask so finite vector streamlines are
-preserved in vector PDF output.
+`cb.tl.compute_velocity_components_from_adata` calculates intrinsic,
+interaction, score, and combined model derivatives for observed cells.
+Interaction velocity is recomputed within each time slice.
+
+Direct two-dimensional spatial derivatives are plotted in their fitted
+coordinates. Higher-dimensional expression-state derivatives can be projected
+onto a two-dimensional embedding with scVelo. The two paths should not be
+applied to the same vector field.
 
 ## Growth
 
-Growth values use the pre-warp joint state. `growth_alpha=1.0` remains explicit
-for the standard/interval-local workflows and is applied consistently to
-AnnData and dataframe simulation paths. Paper S22 is the documented exception:
-it hard-codes `growth_alpha=0.0` for fixed-population state transport, while S23
-reports the trained growth head separately on observed states.
+`cb.tl.evaluate_growth_by_timepoint` evaluates the fitted growth head for each
+time point. Standard split-SDE workflows use the pre-warp joint state and read
+`growth_alpha` from the preset. A value of `1.0` enables the configured growth
+effect; `0.0` produces a fixed-population simulation.
 
-## S24 preterminal spatial sensitivity
-
-S24 uses the hard-coded `preterminal_t3_sigma0` protocol independently for YSL
-and EVL exclusion. Equal-N cohorts are propagated once from `t=0` through
-observed `t=3` with `sigma=0`, `dt=resample_dt=0.005`, growth disabled, and the
-learned drift, score-gradient correction, and interaction retained. All four
-baseline/exclusion branches must pass the unchanged support gate before plots
-are written. The preterminal protocol is defined through observed `t=3`;
-terminal `t=4` is not evaluated or claimed. The result is a conditional spatial
-sensitivity, not a stochastic forecast, causal knockout, or full joint-state
-terminal result.
+Growth summaries are written per cell and can be grouped by time or cell type.
 
 ## Sparse communication
 
-Spatial radius pairs are constructed without a dense cell-by-cell matrix.
-Edges retain sender/source to receiver/target direction, and attention is
-aggregated into cell-type tables without changing the underlying model output.
+`cb.tl.compute_timepoint_communications` constructs spatial-radius candidates
+without materializing a dense cell-by-cell matrix. Edges retain sender-to-
+receiver direction. The function can write sparse edge arrays and aggregated
+cell-type tables.
 
-Each time point records the number of within-cutoff candidates, the number
-retained by the configured edge prior, and their fraction. Under a learned
-prior, `candidate_count > 0` with zero retained edges is a valid structural zero
-when no candidate passes the frozen LR-informed learned edge-predictor
-threshold. If `candidate_count == 0`, the status instead records that there
-were no within-cutoff candidates. Neither case establishes the absence of all
-biological communication. The formal acceptance check permits such individual
-time points only when the sparse arrays are canonically empty and the
-trajectory-wide communication output remains non-degenerate. A structural
-zero also makes that time point's LR projection zero by construction; edges
-must not be added and the frozen threshold must not be changed after the fact.
+Each time point records:
 
-For AD main, distinguish the downstream reporting graph from the stochastic
-interaction groups used by the dynamical model. Downstream constructs the full
-radius candidate graph for the analyzed time-slice cohort, or for an explicit
-seeded subsample, and applies the learned edge predictor in memory batches. The
-predictor is supported by seven strict panel-covered LR pairs, so the result is
-a panel-limited spatial-attention summary rather than global CCI inference.
+- `candidate_count`: pairs within the spatial cutoff;
+- `selected_count`: pairs retained by the configured edge gate;
+- `selected_fraction`: retained pairs divided by candidates; and
+- `status`: the selection state for that time point.
 
-## Ligand–receptor projection
+If candidates exist but none pass a learned gate, the sparse result is empty
+and the status records that selection outcome. If there are no candidates, the
+status records that case separately. Empty sparse arrays use shapes `(2, 0)`
+for `edge_index` and `(0,)` for `attn_mean`.
 
-Generated inverse-PCA log1p expression is clipped to non-negative values per
-cell before scoring. A complex is eligible only when every required subunit is
-present. The formal score uses the minimum across subunits; geometric mean is a
-sensitivity option. The geometric-mean implementation is zero preserving: if
-any required subunit has zero expression in a cell type, the complex remains
-zero; otherwise the geometric mean replaces only the minimum aggregation.
-It does not relax the complete-subunit requirement. Formal five-dataset
-sensitivity results show high overall rank agreement but non-negligible
-top-pair changes in ARISTA and Chicken Heart; see
-{doc}`benchmarks` and its downloadable result table.
+`cb.tl.analyze_attention_by_celltype` aggregates retained edges into cell-type
+tables. The scope of those tables is determined by the input cohort, radius
+cutoff, and selected edge gate.
 
-The AD panel contains seven complete pairs under this rule. The main workflow
-uses their database-derived graph labels to fit its learned edge predictor and
-also reports their downstream projection. The separately packaged all-spatial
-condition removes this LR-informed gate as a no-LR-prior ablation.
+## Ligand--receptor projection
+
+`cb.tl.project_communication_to_lr_timecourses` combines communication weights
+with expression and a ligand--receptor table. Generated inverse-PCA `log1p`
+expression is clipped to non-negative values before scoring.
+
+Complex scoring requires every ligand and receptor subunit:
+
+- `complex_mode="min"` uses the least-expressed required subunit;
+- `complex_mode="geometric_mean"` uses a zero-preserving geometric mean; and
+- `require_all_subunits=True` keeps incomplete complexes out of both modes.
+
+The returned result contains pair-level time courses and optional cell-type
+matrices. Its coverage follows the genes and complexes present in the supplied
+database and reference AnnData.
 
 ## Gene and module dynamics
 
-Gene reconstruction uses the fitted PCA loadings and center. Genes with
-inactive PCA loadings are reported separately instead of diluting module means.
-Both non-negative expression and signed reconstruction diagnostics can be
-retained, but formal expression summaries use the non-negative values.
+Gene reconstruction uses the fitted PCA loadings, gene order, and center.
+`cb.tl.inverse_pca_states` reconstructs gene-space values, while the temporal
+helpers cluster profiles and summarize gene programs. Genes with inactive PCA
+loadings can be reported separately from module means.
 
-## Figures
+## Distribution metrics
 
-Computation produces tables first. Plotting helpers then apply the paper panel
-order, palette, typography, legends, and optional display warp. Scientific
-values are never recovered by reading rendered images.
+`cb.tl.evaluate_model_distributions` calculates model-versus-observed metrics
+for requested time points. The output separates joint, spatial, and state
+spaces. `cb.tl.save_distribution_evaluation` writes the metric and local-
+structure tables.
+
+These fitted-model diagnostics are distinct from the leave-one-timepoint-out
+protocol described in {doc}`benchmarks`.
+
+## Figures and files
+
+Downstream calculations write tables before plotting. Plotting helpers under
+`cb.pl` read those tables or AnnData objects and write static or interactive
+figures. Numerical values remain available in the corresponding CSV, NPZ,
+JSON, and H5AD outputs.
+
+See {doc}`data_checkpoints` for the standard output directory and
+{doc}`api/tools` for function signatures.

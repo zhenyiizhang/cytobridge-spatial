@@ -2,7 +2,7 @@ API reference
 =============
 
 The reference is generated from the public preprocessing, tools, plotting,
-workflow, and command-line modules used by the tutorials. Optional scientific
+workflow, results, and command-line modules used by the tutorials. Optional
 dependencies are mocked only while Read the Docs imports signatures; examples
 still require the corresponding installation extra.
 
@@ -13,4 +13,5 @@ still require the corresponding installation extra.
    tools
    plotting
    workflow
+   results
    cli

@@ -1,0 +1,30 @@
+{
+  "analysis": "main_figure_2",
+  "figure": "Main Figure 2",
+  "dataset": "AGIST simulation",
+  "source_version": "word-current-2026-08-26",
+  "reproduction_scope": "figure_from_processed_panel_data",
+  "files": {
+    "frozen_panels_a_to_d.pdf": "vector artwork for panels a through d with the panel-e area cleared",
+    "w2_mean_sd_ci.csv": "CytoBridge W2 summary for panel e",
+    "w2_replicates_long.csv": "fixed-checkpoint inference replicates for panel e",
+    "baseline_w2.csv": "STORIES and stVCR reference values for panel e"
+  },
+  "panel_e": {
+    "times": [1, 2, 3],
+    "spaces": ["gene", "physical"],
+    "replicates_per_time_and_space": 10,
+    "uncertainty": "sample standard deviation",
+    "replicate_scope": "split-SDE inference from one fixed model checkpoint"
+  },
+  "full_rerun": {
+    "included": false,
+    "external_dependencies": [
+      "AGIST simulation inputs",
+      "the trained model checkpoint",
+      "the split-SDE inference environment used to regenerate the processed W2 tables",
+      "the growth-correlation result state used for panel d"
+    ],
+    "statement": "This compact bundle rebuilds the paper figure from processed panel data. It does not run model training or regenerate the processed tables."
+  }
+}

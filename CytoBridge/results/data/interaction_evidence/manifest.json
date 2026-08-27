@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "analysis": "interaction_evidence",
+  "manuscript_figure": "Supplementary Figure S35",
+  "files": {
+    "no_lr_paired_target_deltas.csv": "paired Full and No-LR reconstruction errors",
+    "stvcr_paired_target_deltas.csv": "paired CytoBridge and stVCR LOTO reconstruction errors"
+  },
+  "calculation": {
+    "projection_summary": "five projection sets averaged within each target-space cell",
+    "error_bars": "s.e.m. across target stages",
+    "ablation_runs": "independently fitted matched Full and No-LR models",
+    "external_runs": "separately fitted LOTO models with method-native output support"
+  }
+}

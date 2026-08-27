@@ -11,8 +11,8 @@ from types import ModuleType
 from ._version import __version__
 
 
-_PUBLIC_MODULES = frozenset({"pl", "pp", "tl", "utils"})
-__all__ = ["pp", "tl", "pl", "utils", "__version__"]
+_PUBLIC_MODULES = frozenset({"pl", "pp", "results", "tl", "utils"})
+__all__ = ["pp", "tl", "pl", "results", "utils", "__version__"]
 
 
 def __getattr__(name: str) -> ModuleType:
