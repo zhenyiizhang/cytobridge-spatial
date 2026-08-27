@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "analysis": "lr_complex_aggregation",
-  "manuscript_figure": "Supplementary Figure S23",
+  "manuscript_figure": "Supplementary Figure S25",
   "files": {
     "zebrafish/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores",
     "mosta/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores",

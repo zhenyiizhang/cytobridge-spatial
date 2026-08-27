@@ -1,4 +1,4 @@
-"""Shared Matplotlib renderer for zebrafish S27--S34."""
+"""Shared Matplotlib renderer for zebrafish S31--S38."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 
 A4_PORTRAIT = (8.27, 11.69)
-S27_GROUPS = ("observed", "generated")
-S29_CONDITIONS = ("Baseline", "YSL removal", "EVL removal")
+OBSERVED_GENERATED_GROUPS = ("observed", "generated")
+VIRTUAL_REMOVAL_CONDITIONS = ("Baseline", "YSL removal", "EVL removal")
 ABLATION_SPECS = (
     ("remove_YSL", "YSL removal", "#0072B2", "o"),
     ("remove_EVL", "EVL removal", "#D55E00", "s"),
@@ -62,14 +62,14 @@ LOSS_SPACES = (
     ("spatial", "Physical space"),
 )
 STEMS = {
-    "s27": "zebrafish_s27_observed_generated",
-    "s28": "zebrafish_s28_growth_observed",
-    "s29": "zebrafish_s29_virtual_removal_morphology",
-    "s30": "zebrafish_s30_virtual_removal_quantitative",
-    "s31": "zebrafish_s31_gene_dynamics",
-    "s32": "zebrafish_s32_loss_weight_sensitivity",
-    "s33": "zebrafish_s33_daughter_noise",
-    "s34": "zebrafish_s34_inverse_pca_sanity",
+    "s31": "zebrafish_s31_observed_generated",
+    "s32": "zebrafish_s32_growth_observed",
+    "s33": "zebrafish_s33_virtual_removal_morphology",
+    "s34": "zebrafish_s34_virtual_removal_quantitative",
+    "s35": "zebrafish_s35_gene_dynamics",
+    "s36": "zebrafish_s36_loss_weight_sensitivity",
+    "s37": "zebrafish_s37_daughter_noise",
+    "s38": "zebrafish_s38_inverse_pca_sanity",
 }
 _RC = {
     "font.family": "sans-serif",
@@ -148,7 +148,7 @@ def _limits(arrays: list[np.ndarray], pad: float = 0.04):
     )
 
 
-def _render_s27(results: "ZebrafishSIResults", output: Path):
+def _render_observed_generated(results: "ZebrafishSIResults", output: Path):
     packed = results.observed_generated
     points = packed.xy
     lower = points.min(axis=0)
@@ -235,10 +235,10 @@ def _render_s27(results: "ZebrafishSIResults", output: Path):
         fontweight="bold",
         va="top",
     )
-    return _save(figure, output, "s27")
+    return _save(figure, output, "s31")
 
 
-def _render_s28(
+def _render_growth(
     results: "ZebrafishSIResults", panels: "ZebrafishSIPanels", output: Path
 ):
     figure, axes = plt.subplots(3, 2, figsize=A4_PORTRAIT)
@@ -281,10 +281,12 @@ def _render_s28(
         wspace=0.06,
         hspace=0.11,
     )
-    return _save(figure, output, "s28")
+    return _save(figure, output, "s32")
 
 
-def _render_s29(results: "ZebrafishSIResults", output: Path):
+def _render_virtual_removal_morphology(
+    results: "ZebrafishSIResults", output: Path
+):
     packed = results.virtual_removal
     arrays = [xy for _, _, xy, _ in packed.iter_frames()]
     xlim, ylim = _limits(arrays)
@@ -293,7 +295,7 @@ def _render_s29(results: "ZebrafishSIResults", output: Path):
     grid = figure.add_gridspec(
         5, 4, width_ratios=[1, 1, 1, 1.12], wspace=0.02, hspace=0.05
     )
-    for column, condition in enumerate(S29_CONDITIONS):
+    for column, condition in enumerate(VIRTUAL_REMOVAL_CONDITIONS):
         for row, time in enumerate(range(5)):
             axis = figure.add_subplot(grid[row, column])
             xy, labels = packed.frame(condition, float(time))
@@ -358,7 +360,7 @@ def _render_s29(results: "ZebrafishSIResults", output: Path):
         va="top",
     )
     figure.subplots_adjust(left=0.055, right=0.985, top=0.945, bottom=0.025)
-    return _save(figure, output, "s29")
+    return _save(figure, output, "s33")
 
 
 def _clean_axis(axis: plt.Axes, *, grid: bool = True) -> None:
@@ -369,7 +371,7 @@ def _clean_axis(axis: plt.Axes, *, grid: bool = True) -> None:
     axis.set_axisbelow(True)
 
 
-def _render_s30(
+def _render_virtual_removal_quantitative(
     results: "ZebrafishSIResults", panels: "ZebrafishSIPanels", output: Path
 ):
     figure = plt.figure(figsize=(8.19, 5.7))
@@ -513,10 +515,10 @@ def _render_s30(
     centroid_axis.set_xticks([0, 1], ["YSL removal", "EVL removal"])
     centroid_axis.set_ylabel("Centroid shift from baseline")
     _clean_axis(centroid_axis)
-    return _save(figure, output, "s30")
+    return _save(figure, output, "s34")
 
 
-def _render_s31(panels: "ZebrafishSIPanels", output: Path):
+def _render_gene_dynamics(panels: "ZebrafishSIPanels", output: Path):
     matrix = panels.gene_zscores
     split = len(matrix) // 2
     blocks = (matrix.iloc[:split], matrix.iloc[split:])
@@ -564,7 +566,7 @@ def _render_s31(panels: "ZebrafishSIPanels", output: Path):
     colorbar.solids.set_rasterized(False)
     colorbar.set_label("Within-gene temporal z score")
     figure.suptitle("YSL-lineage gene dynamics", fontsize=14, fontweight="bold", y=0.985)
-    return _save(figure, output, "s31")
+    return _save(figure, output, "s35")
 
 
 def _loss_legend(conditions: list[str], key: str):
@@ -580,7 +582,7 @@ def _loss_legend(conditions: list[str], key: str):
     ]
 
 
-def _render_s32(results: "ZebrafishSIResults", output: Path):
+def _render_loss_weight(results: "ZebrafishSIResults", output: Path):
     frame = results.loss_weight_metrics
     figure, axes = plt.subplots(2, 3, figsize=(11.69, 8.27), sharex=True)
     figure.subplots_adjust(
@@ -640,7 +642,7 @@ def _render_s32(results: "ZebrafishSIResults", output: Path):
         handles=_loss_legend(*row_specs[1]), loc="center right",
         bbox_to_anchor=(0.985, 0.516), ncol=3, frameon=False,
     )
-    return _save(figure, output, "s32", dpi=480)
+    return _save(figure, output, "s36", dpi=480)
 
 
 def _wrapped(value: str, width: int) -> str:
@@ -654,7 +656,7 @@ def _panel_label(axis: plt.Axes, label: str, *, x: float, y: float) -> None:
     )
 
 
-def _render_s33(
+def _render_daughter_noise(
     results: "ZebrafishSIResults", panels: "ZebrafishSIPanels", output: Path
 ):
     composition = results.daughter_composition
@@ -858,10 +860,10 @@ def _render_s33(
     particle_axis.spines[["top", "right"]].set_visible(False)
     particle_axis.grid(axis="y", color="#E8E8E8", linewidth=0.6)
     _panel_label(particle_axis, "d", x=-0.28, y=1.18)
-    return _save(figure, output, "s33", tight=True)
+    return _save(figure, output, "s37", tight=True)
 
 
-def _render_s34(
+def _render_inverse_pca(
     results: "ZebrafishSIResults", panels: "ZebrafishSIPanels", output: Path
 ):
     observed = results.observed_expression
@@ -925,7 +927,7 @@ def _render_s34(
     figure.subplots_adjust(
         left=0.09, right=0.97, top=0.93, bottom=0.06, wspace=0.28, hspace=0.28
     )
-    return _save(figure, output, "s34")
+    return _save(figure, output, "s38")
 
 
 def render_zebrafish_si(
@@ -939,14 +941,16 @@ def render_zebrafish_si(
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     renderers = {
-        "s27": lambda: _render_s27(results, output),
-        "s28": lambda: _render_s28(results, panels, output),
-        "s29": lambda: _render_s29(results, output),
-        "s30": lambda: _render_s30(results, panels, output),
-        "s31": lambda: _render_s31(panels, output),
-        "s32": lambda: _render_s32(results, output),
-        "s33": lambda: _render_s33(results, panels, output),
-        "s34": lambda: _render_s34(results, panels, output),
+        "s31": lambda: _render_observed_generated(results, output),
+        "s32": lambda: _render_growth(results, panels, output),
+        "s33": lambda: _render_virtual_removal_morphology(results, output),
+        "s34": lambda: _render_virtual_removal_quantitative(
+            results, panels, output
+        ),
+        "s35": lambda: _render_gene_dynamics(panels, output),
+        "s36": lambda: _render_loss_weight(results, output),
+        "s37": lambda: _render_daughter_noise(results, panels, output),
+        "s38": lambda: _render_inverse_pca(results, panels, output),
     }
     with mpl.rc_context(_RC):
         return {figure_id: renderers[figure_id]() for figure_id in figures}

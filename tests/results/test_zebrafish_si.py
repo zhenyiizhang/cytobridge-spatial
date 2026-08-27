@@ -235,13 +235,13 @@ def test_zebrafish_si_all_plots_are_agg_safe_and_rc_local(tmp_path: Path) -> Non
     assert len(list(tmp_path.glob("*.png"))) == 8
 
     expected_sizes = {
-        "s27": (2646, 3740),
-        "s28": (2646, 3740),
-        "s29": (2646, 3740),
-        "s30": (2620, 1824),
         "s31": (2646, 3740),
-        "s32": (5611, 3969),
-        "s34": (2646, 3740),
+        "s32": (2646, 3740),
+        "s33": (2646, 3740),
+        "s34": (2620, 1824),
+        "s35": (2646, 3740),
+        "s36": (5611, 3969),
+        "s38": (2646, 3740),
     }
     for figure_id, (pdf, png) in rendered.items():
         assert pdf.is_file() and pdf.stat().st_size > 20_000
@@ -264,8 +264,8 @@ def test_zebrafish_si_cli_supports_a_figure_subset(tmp_path: Path) -> None:
             "--output-dir",
             str(output),
             "--figures",
-            "s30",
             "s34",
+            "s38",
         ],
         cwd=tmp_path,
         check=True,
@@ -279,9 +279,9 @@ def test_zebrafish_si_cli_supports_a_figure_subset(tmp_path: Path) -> None:
         },
     )
     summary = json.loads(completed.stdout)
-    assert summary["analysis"] == "zebrafish_si_s27_s34"
+    assert summary["analysis"] == "zebrafish_si_s31_s38"
     assert summary["source"] == "packaged"
-    assert tuple(summary["figures"]) == ("s30", "s34")
+    assert tuple(summary["figures"]) == ("s34", "s38")
     assert summary["statistics"]["figure_ids"] == list(FIGURE_IDS)
     assert str(tmp_path) not in completed.stdout
     assert json.loads((output / "run_summary.json").read_text()) == summary
@@ -290,7 +290,7 @@ def test_zebrafish_si_cli_supports_a_figure_subset(tmp_path: Path) -> None:
 def test_zebrafish_si_notebook_is_minimal_and_executed() -> None:
     path = (
         REPOSITORY_ROOT
-        / "docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb"
+        / "docs/tutorials/paper_figures/zebrafish_si_s31_s38.ipynb"
     )
     notebook = json.loads(path.read_text(encoding="utf-8"))
     assert [cell["cell_type"] for cell in notebook["cells"]] == [
@@ -342,5 +342,5 @@ def test_zebrafish_si_statistics_are_json_ready() -> None:
     summary = zebrafish_si_statistics(results)
     assert summary["bundle_bytes"] < 900 * 1024
     assert summary["figure_ids"] == list(FIGURE_IDS)
-    assert np.isclose(summary["s34_t4_pearson_r"], 0.9933663612658927)
+    assert np.isclose(summary["s38_t4_pearson_r"], 0.9933663612658927)
     json.dumps(summary)

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "analysis": "training_histories",
+  "manuscript_figure": "Supplementary Figure S41",
   "displayed_dataset": "arista",
   "displayed_dataset_label": "ARISTA",
   "dataset_order": [

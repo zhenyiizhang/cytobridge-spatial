@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export released ARISTA S17--S22 pages as reference assets."""
+"""Export released ARISTA S19--S24 pages as reference assets."""
 
 from __future__ import annotations
 

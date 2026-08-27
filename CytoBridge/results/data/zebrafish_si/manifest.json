@@ -1,14 +1,15 @@
 {
-  "analysis": "zebrafish_si_s27_s34",
+  "analysis": "zebrafish_si_s31_s38",
+  "source_analysis": "zebrafish_si_s27_s34",
   "figures": {
-    "s27": "Observed and generated states",
-    "s28": "Growth across observed stages",
-    "s29": "Virtual-removal morphology",
-    "s30": "Virtual-removal quantitative comparison",
-    "s31": "YSL-lineage gene dynamics",
-    "s32": "Loss-weight sensitivity",
-    "s33": "Daughter-state perturbation sensitivity",
-    "s34": "Inverse-PCA expression reconstruction"
+    "s31": {"title": "Observed and generated states", "source_figure": "s27"},
+    "s32": {"title": "Growth across observed stages", "source_figure": "s28"},
+    "s33": {"title": "Virtual-removal morphology", "source_figure": "s29"},
+    "s34": {"title": "Virtual-removal quantitative comparison", "source_figure": "s30"},
+    "s35": {"title": "YSL-lineage gene dynamics", "source_figure": "s31"},
+    "s36": {"title": "Loss-weight sensitivity", "source_figure": "s32"},
+    "s37": {"title": "Daughter-state perturbation sensitivity", "source_figure": "s33"},
+    "s38": {"title": "Inverse-PCA expression reconstruction", "source_figure": "s34"}
   },
   "files": {
     "celltype_colors.json": {

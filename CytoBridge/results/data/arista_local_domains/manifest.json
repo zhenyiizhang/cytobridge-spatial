@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "analysis": "arista_local_domains",
-  "manuscript_figure": "Supplementary Figure S38",
+  "manuscript_figure": "Supplementary Figure S42",
   "files": {
     "roi_assignments.csv": "5-DPI region coordinates, cosine values, and domain assignments",
     "domain_metadata.csv": "domain cell counts and selected-attention totals",

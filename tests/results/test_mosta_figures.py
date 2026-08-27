@@ -27,7 +27,7 @@ from CytoBridge.results.mosta_figures import (  # noqa: E402
 )
 
 
-CURRENT_SUPPLEMENTARY = tuple(f"S{number}" for number in range(9, 17))
+CURRENT_SUPPLEMENTARY = tuple(f"S{number}" for number in range(11, 19))
 RELEASE_SUPPLEMENTARY = tuple(f"S{number}" for number in range(4, 12))
 PAGE_POINTS = (595.2760009765625, 841.8900146484375)
 PANEL_SPECS = (
@@ -237,7 +237,7 @@ def test_mosta_figure_index_writer(tmp_path: Path) -> None:
     release = load_mosta_figure_release(_minimal_release(tmp_path))
     path = write_mosta_figure_index(release, tmp_path / "index")
     assert path.name == "mosta_figure_index.csv"
-    assert "Supplementary Figure S16" in path.read_text(encoding="utf-8")
+    assert "Supplementary Figure S18" in path.read_text(encoding="utf-8")
 
 
 def test_mosta_cli_uses_current_numbers(tmp_path: Path) -> None:
@@ -329,7 +329,7 @@ def test_main_figure_4_legacy_name_remains_available() -> None:
     ("notebook_name", "output_slug", "title"),
     (
         ("main_figure_4.ipynb", "main_figure_4", "Main Figure 4: MOSTA"),
-        ("mosta_figures.ipynb", "mosta_figures", "Supplementary Figures S9–S16"),
+        ("mosta_figures.ipynb", "mosta_figures", "Supplementary Figures S11–S18"),
     ),
 )
 def test_mosta_notebooks_use_public_reader_api(

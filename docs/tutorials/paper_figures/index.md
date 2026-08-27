@@ -17,18 +17,18 @@ Run `cytobridge figure list` to see the execution mode for every command.
 | Supplementary Figures S2–S3 | `cytobridge figure agist --output-dir outputs/agist` |
 | Supplementary Figures S4–S5 | `cytobridge figure nonspatial --output-dir outputs/nonspatial` |
 | Supplementary Figure S6 | `cytobridge figure classifier-smoothing --output-dir outputs/classifier_smoothing` |
-| Supplementary Figures S9–S16 | `cytobridge figure mosta-reference-pages --results-dir /path/to/mosta-release --output-dir outputs/mosta_si` |
-| Supplementary Figures S21–S22 | `cytobridge figure arista-lr --output-dir outputs/arista_lr` |
-| Supplementary Figure S23 | `cytobridge figure lr-complex --output-dir outputs/lr_complex` |
-| Supplementary Figures S27–S34 | `cytobridge figure zebrafish-si --output-dir outputs/zebrafish_si` |
-| Supplementary Figure S35 | `cytobridge figure interaction-evidence --output-dir outputs/interaction_evidence` |
-| Supplementary Figure S36 | `cytobridge figure loto-benchmark --output-dir outputs/loto_benchmark` |
-| Supplementary Figure S37 | `cytobridge figure training-histories --output-dir outputs/training_histories` |
-| Supplementary Figure S38 | `cytobridge figure arista-local-domains --output-dir outputs/arista_local_domains` |
-| Supplementary Figure S39 | `cytobridge figure zebrafish-attention --output-dir outputs/zebrafish_attention` |
+| Supplementary Figures S11–S18 | `cytobridge figure mosta-reference-pages --results-dir /path/to/mosta-release --output-dir outputs/mosta_si` |
+| Supplementary Figures S23–S24 | `cytobridge figure arista-lr --output-dir outputs/arista_lr` |
+| Supplementary Figure S25 | `cytobridge figure lr-complex --output-dir outputs/lr_complex` |
+| Supplementary Figures S31–S38 | `cytobridge figure zebrafish-si --output-dir outputs/zebrafish_si` |
+| Supplementary Figure S39 | `cytobridge figure interaction-evidence --output-dir outputs/interaction_evidence` |
+| Supplementary Figure S40 | `cytobridge figure loto-benchmark --output-dir outputs/loto_benchmark` |
+| Supplementary Figure S41 | `cytobridge figure training-histories --output-dir outputs/training_histories` |
+| Supplementary Figure S42 | `cytobridge figure arista-local-domains --output-dir outputs/arista_local_domains` |
+| Supplementary Figure S43 | `cytobridge figure zebrafish-attention --output-dir outputs/zebrafish_attention` |
 | Supplementary Table 2 | `cytobridge figure compute-cost --output-dir outputs/compute_cost` |
 
-ARISTA S17–S20 are released reference pages rather than numerical redraws; the
+ARISTA S19–S22 are released reference pages rather than numerical redraws; the
 ARISTA notebook labels that section separately. Dataset notebooks contain the
 preprocessing, training, and downstream commands that precede these compact
 figure workflows.
@@ -43,19 +43,19 @@ figure workflows.
 
 - [AGIST, Supplementary Figures S2–S3](agist_figures.ipynb)
 - [Grouped non-spatial analyses, Supplementary Figures S4–S5](nonspatial_figures.ipynb)
-- [MOSTA, Supplementary Figures S9–S16](mosta_figures.ipynb) (reference-page export)
-- [ARISTA, Supplementary Figures S17–S22](arista_figures.ipynb)
-- [Zebrafish, Supplementary Figures S27–S34](zebrafish_si_s27_s34.ipynb)
+- [MOSTA, Supplementary Figures S11–S18](mosta_figures.ipynb) (reference-page export)
+- [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
+- [Zebrafish, Supplementary Figures S31–S38](zebrafish_si_s31_s38.ipynb)
 
 ## Revision analyses
 
 - [Classifier smoothing, Supplementary Figure S6](classifier_smoothing.ipynb)
-- [LR-complex aggregation, Supplementary Figure S23](lr_complex_aggregation.ipynb)
-- [Interaction-prior ablation, Supplementary Figure S35](lr_prior_ablation_stvcr.ipynb)
-- [Five-dataset benchmark, Supplementary Figure S36](loto_benchmark.ipynb)
-- [ARISTA local domains, Supplementary Figure S38](arista_local_domains.ipynb)
-- [Zebrafish attention validation, Supplementary Figure S39](zebrafish_attention.ipynb)
-- [Training histories](training_histories.ipynb)
+- [LR-complex aggregation, Supplementary Figure S25](lr_complex_aggregation.ipynb)
+- [Interaction-prior ablation, Supplementary Figure S39](lr_prior_ablation_stvcr.ipynb)
+- [Five-dataset benchmark, Supplementary Figure S40](loto_benchmark.ipynb)
+- [Training histories, Supplementary Figure S41](training_histories.ipynb)
+- [ARISTA local domains, Supplementary Figure S42](arista_local_domains.ipynb)
+- [Zebrafish attention validation, Supplementary Figure S43](zebrafish_attention.ipynb)
 - [Compute-cost table](compute_cost.ipynb)
 
 ## Videos
@@ -73,7 +73,7 @@ agist_figures
 nonspatial_figures
 mosta_figures
 arista_figures
-zebrafish_si_s27_s34
+zebrafish_si_s31_s38
 classifier_smoothing
 lr_complex_aggregation
 lr_prior_ablation_stvcr

@@ -27,8 +27,8 @@ TUTORIALS = (
         "Zebrafish embryogenesis",
         "zebrafish_raw.h5ad",
         (
-            ("Supplementary Figures S27–S34", "zebrafish_si_s27_s34.ipynb"),
-            ("Supplementary Figure S39", "zebrafish_attention.ipynb"),
+            ("Supplementary Figures S31–S38", "zebrafish_si_s31_s38.ipynb"),
+            ("Supplementary Figure S43", "zebrafish_attention.ipynb"),
         ),
     ),
     Tutorial(
@@ -37,7 +37,7 @@ TUTORIALS = (
         "mosta_raw.h5ad",
         (
             ("Main Figure 4", "main_figure_4.ipynb"),
-            ("Supplementary Figures S9–S16", "mosta_figures.ipynb"),
+            ("Supplementary Figures S11–S18", "mosta_figures.ipynb"),
         ),
     ),
     Tutorial(
@@ -46,8 +46,8 @@ TUTORIALS = (
         "arista_raw.h5ad",
         (
             ("Main Figure 5", "main_figure_5.ipynb"),
-            ("Supplementary Figures S17–S22", "arista_figures.ipynb"),
-            ("Supplementary Figure S38", "arista_local_domains.ipynb"),
+            ("Supplementary Figures S19–S24", "arista_figures.ipynb"),
+            ("Supplementary Figure S42", "arista_local_domains.ipynb"),
         ),
     ),
     Tutorial(

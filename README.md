@@ -102,7 +102,7 @@ Complete dataset runs use external AnnData files and checkpoints; their names,
 formats, and expected locations are documented in the input guide.
 
 The [paper reproduction index](docs/paper_reproduction.md) maps Main Figures
-1–6, Supplementary Figures S1–S39, Supplementary Tables 1–2, and the zebrafish
+1–6, Supplementary Figures S1–S43, Supplementary Tables 1–2, and the zebrafish
 videos to their notebooks, scripts, processed inputs, and external-data
 requirements. The source checkout also contains the complete MOSTA and ARISTA
 figure releases under `release_artifacts/`; these larger releases are not

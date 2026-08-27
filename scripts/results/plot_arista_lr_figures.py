@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce corrected ARISTA Supplementary Figures S21 and S22 from CSV tables."""
+"""Reproduce corrected ARISTA Supplementary Figures S23 and S24 from CSV tables."""
 
 from __future__ import annotations
 

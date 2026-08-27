@@ -23,12 +23,12 @@ if TYPE_CHECKING:
     )
 
 
-_S21_COLORS = {1: "#66c2a5", 2: "#fc8d62"}
-_S22_COLORS = {1: "#1f77b4", 2: "#ff7f0e"}
+_PROTOTYPE_COLORS = {1: "#66c2a5", 2: "#fc8d62"}
+_PROFILE_COLORS = {1: "#1f77b4", 2: "#ff7f0e"}
 _TIME_POINTS = np.arange(0.0, 4.0 + 0.5, 0.5)
 _FORMAL_PAGE_SIZE_POINTS = {
-    "S21": (569.192, 317.15225),
-    "S22": (1288.692187, 1542.593706),
+    "S23": (569.192, 317.15225),
+    "S24": (1288.692187, 1542.593706),
 }
 
 
@@ -68,7 +68,7 @@ def _save_plot(figure: plt.Figure, stem: Path, *, dpi: int) -> tuple[Path, Path]
     return pdf_path, png_path
 
 
-def _plot_s21(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
+def _plot_s23(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     _require_columns(
         prototypes,
         {"cluster", "time", "mean_normalized_score", "n_pairs"},
@@ -82,7 +82,7 @@ def _plot_s21(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     if prototypes.groupby("cluster").size().to_dict() != {1: 9, 2: 9}:
         raise ValueError("Each corrected ARISTA prototype must contain nine time points")
 
-    page_size = _page_size_inches("S21")
+    page_size = _page_size_inches("S23")
     figure, axis = plt.subplots(figsize=page_size)
     # GUI/Agg managers can quantize the initial size to whole screen pixels.
     # Restore the exact physical size used by the formal vector page.
@@ -93,7 +93,7 @@ def _plot_s21(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
         if not np.allclose(x, _TIME_POINTS, rtol=0.0, atol=1e-12):
             raise ValueError(f"Cluster {cluster} has an unexpected time grid")
         mean = subset["mean_normalized_score"].to_numpy(dtype=float)
-        color = _S21_COLORS[int(cluster)]
+        color = _PROTOTYPE_COLORS[int(cluster)]
         axis.plot(
             x,
             mean,
@@ -111,10 +111,10 @@ def _plot_s21(prototypes: pd.DataFrame, output: Path) -> tuple[Path, Path]:
     axis.grid(True, axis="y", alpha=0.2)
     axis.legend(frameon=False)
     figure.tight_layout()
-    return _save_plot(figure, output / "FigureS21_ARISTA_redrawn", dpi=300)
+    return _save_plot(figure, output / "FigureS23_ARISTA_redrawn", dpi=300)
 
 
-def _plot_s22(
+def _plot_s24(
     roster: pd.DataFrame,
     timecourse: pd.DataFrame,
     output: Path,
@@ -133,14 +133,14 @@ def _plot_s22(
     counts = roster.groupby("cluster").size().astype(int).to_dict()
     if len(roster) != 50 or counts != {1: 25, 2: 25}:
         raise ValueError(
-            "Corrected ARISTA S22 requires 50 pairs, with 25 from each cluster"
+            "Corrected ARISTA S24 requires 50 pairs, with 25 from each cluster"
         )
     if roster["pair"].nunique() != 50 or len(timecourse) != 450:
-        raise ValueError("Corrected ARISTA S22 requires 50 unique pairs and 450 rows")
+        raise ValueError("Corrected ARISTA S24 requires 50 unique pairs and 450 rows")
 
     columns = 5
     rows = int(math.ceil(len(roster) / columns))
-    page_size = _page_size_inches("S22")
+    page_size = _page_size_inches("S24")
     figure, axes = plt.subplots(
         rows,
         columns,
@@ -165,7 +165,7 @@ def _plot_s22(
         axis.set_xlabel("Time", fontsize=8)
         axis.set_ylabel("Score", fontsize=8)
         axis.tick_params(axis="both", labelsize=7)
-        color = _S22_COLORS[int(record.cluster)]
+        color = _PROFILE_COLORS[int(record.cluster)]
         dense_x = np.linspace(x.min(), x.max(), 300)
         axis.plot(dense_x, np.interp(dense_x, x, y), color=color, linewidth=1.8)
         axis.scatter(x, y, color=color, s=12)
@@ -175,14 +175,14 @@ def _plot_s22(
         y=0.995,
     )
     figure.tight_layout()
-    return _save_plot(figure, output / "FigureS22_ARISTA_redrawn", dpi=180)
+    return _save_plot(figure, output / "FigureS24_ARISTA_redrawn", dpi=180)
 
 
 def render_arista_ligand_receptor_figures(
     panels: "AristaLigandReceptorPanels",
     output_dir: str | Path,
 ) -> dict[str, tuple[Path, Path]]:
-    """Draw corrected S21 and S22 from tables calculated during this run."""
+    """Draw corrected S23 and S24 from tables calculated during this run."""
 
     output = prepare_output_dir(output_dir)
     style = {
@@ -196,13 +196,13 @@ def render_arista_ligand_receptor_figures(
         "ps.fonttype": 42,
     }
     with mpl.rc_context(style):
-        s21 = _plot_s21(panels.prototypes, output)
-        s22 = _plot_s22(
+        s23 = _plot_s23(panels.prototypes, output)
+        s24 = _plot_s24(
             panels.display_roster,
             panels.display_timecourse,
             output,
         )
-    return {"S21": s21, "S22": s22}
+    return {"S23": s23, "S24": s24}
 
 
 def render_arista_supplementary_figures(
@@ -215,8 +215,8 @@ def render_arista_supplementary_figures(
     output = prepare_output_dir(output_dir)
     written: dict[str, tuple[Path, Path]] = {}
     for page in pages:
-        png_path = output / page.compact_source
-        pdf_path = output / f"{Path(page.compact_source).stem}.pdf"
+        png_path = output / page.output_filename
+        pdf_path = output / f"{Path(page.output_filename).stem}.pdf"
         shutil.copyfile(data.raster_paths[page.figure], png_path)
         with Image.open(data.raster_paths[page.figure]) as image:
             raster = image.convert("RGB")

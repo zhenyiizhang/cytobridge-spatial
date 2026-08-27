@@ -1,4 +1,4 @@
-"""Compact inputs for zebrafish Supplementary Figures S27--S34."""
+"""Compact inputs for zebrafish Supplementary Figures S31--S38."""
 
 from __future__ import annotations
 
@@ -13,9 +13,11 @@ import pandas as pd
 from ._io import read_json, require_files, resolve_results_dir
 
 
-FIGURE_IDS = tuple(f"s{number}" for number in range(27, 35))
-S27_GROUPS = ("observed", "generated")
-S29_CONDITIONS = ("Baseline", "YSL removal", "EVL removal")
+FIGURE_IDS = tuple(f"s{number}" for number in range(31, 39))
+SOURCE_FIGURE_IDS = tuple(f"s{number}" for number in range(27, 35))
+SOURCE_FIGURE_BY_ID = dict(zip(FIGURE_IDS, SOURCE_FIGURE_IDS, strict=True))
+OBSERVED_GENERATED_GROUPS = ("observed", "generated")
+VIRTUAL_REMOVAL_CONDITIONS = ("Baseline", "YSL removal", "EVL removal")
 ABLATION_VARIANTS = ("remove_YSL", "remove_EVL")
 LOSS_CONDITIONS = (
     "formal_alpha_control",
@@ -101,7 +103,7 @@ class PackedSpatialFrames:
 
 @dataclass(frozen=True)
 class ZebrafishSIResults:
-    """Processed inputs used by Supplementary Figures S27--S34."""
+    """Processed inputs used by Supplementary Figures S31--S38."""
 
     source_dir: Path
     manifest: dict[str, Any]
@@ -245,10 +247,17 @@ def _table(
 def _validate_manifest(manifest: dict[str, Any], path: Path) -> None:
     if manifest.get("schema_version") != 1:
         raise ValueError(f"{path} has an unsupported schema version")
-    if manifest.get("analysis") != "zebrafish_si_s27_s34":
-        raise ValueError(f"{path} does not describe zebrafish S27--S34")
+    if manifest.get("analysis") != "zebrafish_si_s31_s38":
+        raise ValueError(f"{path} does not describe zebrafish S31--S38")
     if tuple(manifest.get("figures", {})) != FIGURE_IDS:
         raise ValueError(f"{path} has an unexpected figure roster")
+    source_figures = tuple(
+        specification.get("source_figure")
+        for specification in manifest.get("figures", {}).values()
+        if isinstance(specification, dict)
+    )
+    if source_figures != SOURCE_FIGURE_IDS:
+        raise ValueError(f"{path} has an unexpected source-figure mapping")
     if set(manifest.get("files", {})) != set(_FILES).difference({"manifest.json"}):
         raise ValueError(f"{path} has an unexpected file roster")
     grids = manifest.get("time_grids", {})
@@ -265,9 +274,12 @@ def _validate_frame_contracts(
     virtual_removal_colors: Mapping[str, str],
 ) -> None:
     if observed_generated.n_frames != 14 or len(observed_generated.xy) != 17_066:
-        raise ValueError("S27 must contain 14 frames and 17,066 points")
-    if tuple(dict.fromkeys(observed_generated.groups.astype(str))) != S27_GROUPS:
-        raise ValueError("S27 has an unexpected group order")
+        raise ValueError("S31 must contain 14 frames and 17,066 points")
+    if (
+        tuple(dict.fromkeys(observed_generated.groups.astype(str)))
+        != OBSERVED_GENERATED_GROUPS
+    ):
+        raise ValueError("S31 has an unexpected group order")
     expected_s27 = {
         *(('observed', float(value)) for value in range(5)),
         *(('generated', float(value)) for value in np.arange(0, 4.5, 0.5)),
@@ -279,14 +291,17 @@ def _validate_frame_contracts(
             strict=True,
         )
     ) != expected_s27:
-        raise ValueError("S27 has an unexpected frame grid")
+        raise ValueError("S31 has an unexpected frame grid")
     if virtual_removal.n_frames != 15 or len(virtual_removal.xy) != 29_214:
-        raise ValueError("S29 must contain 15 frames and 29,214 points")
-    if tuple(dict.fromkeys(virtual_removal.groups.astype(str))) != S29_CONDITIONS:
-        raise ValueError("S29 has an unexpected condition order")
+        raise ValueError("S33 must contain 15 frames and 29,214 points")
+    if (
+        tuple(dict.fromkeys(virtual_removal.groups.astype(str)))
+        != VIRTUAL_REMOVAL_CONDITIONS
+    ):
+        raise ValueError("S33 has an unexpected condition order")
     expected_s29 = {
         (condition, float(time))
-        for condition in S29_CONDITIONS
+        for condition in VIRTUAL_REMOVAL_CONDITIONS
         for time in range(5)
     }
     if set(
@@ -296,20 +311,20 @@ def _validate_frame_contracts(
             strict=True,
         )
     ) != expected_s29:
-        raise ValueError("S29 has an unexpected frame grid")
+        raise ValueError("S33 has an unexpected frame grid")
     if set(observed_generated.label_names.astype(str)) != set(observed_colors):
-        raise ValueError("The S27 frames and color map use different labels")
+        raise ValueError("The S31 frames and color map use different labels")
     if set(virtual_removal.label_names.astype(str)) != set(virtual_removal_colors):
-        raise ValueError("The S29 frames and color map use different labels")
+        raise ValueError("The S33 frames and color map use different labels")
 
 
 def _validate_tables(results: ZebrafishSIResults) -> None:
     growth = results.growth
     if len(growth) != 11_999 or set(growth["time"].astype(float)) != set(range(5)):
-        raise ValueError("S28 has an unexpected row count or time grid")
+        raise ValueError("S32 has an unexpected row count or time grid")
     expected_counts = {0.0: 563, 1.0: 1036, 2.0: 2081, 3.0: 3048, 4.0: 5271}
     if growth.groupby("time").size().to_dict() != expected_counts:
-        raise ValueError("S28 has unexpected cells per observed stage")
+        raise ValueError("S32 has unexpected cells per observed stage")
 
     w1 = results.ablation_w1_curve
     if (
@@ -319,12 +334,12 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
         or not w1["n"].astype(int).eq(5).all()
         or (w1[["mean", "sem"]].to_numpy(float) < 0).any()
     ):
-        raise ValueError("S30 has an unexpected W1 summary")
+        raise ValueError("S34 has an unexpected W1 summary")
     for _, part in w1.groupby("variant"):
         if not np.allclose(
             np.sort(part["time"].to_numpy(float)), np.arange(0, 4.05, 0.05)
         ):
-            raise ValueError("S30 has an unexpected W1 time grid")
+            raise ValueError("S34 has an unexpected W1 time grid")
     centroid = results.ablation_centroid_by_seed
     if (
         len(centroid) != 10
@@ -332,7 +347,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
         or set(centroid["seed"].astype(int)) != set(range(42, 47))
         or not np.isclose(centroid["time"].to_numpy(float), 4.0).all()
     ):
-        raise ValueError("S30 has an unexpected centroid table")
+        raise ValueError("S34 has an unexpected centroid table")
 
     genes = results.gene_dynamics
     if (
@@ -343,7 +358,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
             np.sort(genes["time"].unique().astype(float)), np.arange(0, 4.5, 0.5)
         )
     ):
-        raise ValueError("S31 has an unexpected gene-time matrix")
+        raise ValueError("S35 has an unexpected gene-time matrix")
 
     loss = results.loss_weight_metrics
     if (
@@ -354,7 +369,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
         or loss.duplicated(["condition", "space", "time"]).any()
         or (loss["w1"].to_numpy(float) < 0).any()
     ):
-        raise ValueError("S32 has an unexpected metric grid")
+        raise ValueError("S36 has an unexpected metric grid")
 
     composition = results.daughter_composition
     comp_keys = ["daughter_noise_std", "seed", "time", "celltype"]
@@ -375,7 +390,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
             atol=2e-9,
         )
     ):
-        raise ValueError("S33 has an unexpected composition table")
+        raise ValueError("S37 has an unexpected composition table")
     observed = results.daughter_observed_composition
     if (
         len(observed) != 58
@@ -384,7 +399,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
             observed.groupby("time")["fraction"].sum().to_numpy(float), 1.0
         )
     ):
-        raise ValueError("S33 has an unexpected observed-composition table")
+        raise ValueError("S37 has an unexpected observed-composition table")
     lineage = results.daughter_lineage_values
     if (
         len(lineage) != 120
@@ -398,13 +413,13 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
         ).any()
         or ((lineage["fraction"] < 0) | (lineage["fraction"] > 1)).any()
     ):
-        raise ValueError("S33 has an unexpected lineage table")
+        raise ValueError("S37 has an unexpected lineage table")
     pairs = results.daughter_lineage_pairs
     pair_set = set(zip(pairs["source_celltype"], pairs["target_celltype"], strict=True))
     if len(pairs) != 6 or len(pair_set) != 6 or pair_set != set(
         zip(lineage["source_celltype"], lineage["target_celltype"], strict=True)
     ):
-        raise ValueError("S33 has an unexpected lineage-pair roster")
+        raise ValueError("S37 has an unexpected lineage-pair roster")
     for table, name in (
         (results.daughter_sensitivity, "sensitivity"),
         (results.daughter_particle_counts, "particle-count"),
@@ -413,7 +428,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
             len(table) != 180
             or table.duplicated(["daughter_noise_std", "seed", "time"]).any()
         ):
-            raise ValueError(f"S33 has an unexpected {name} table")
+            raise ValueError(f"S37 has an unexpected {name} table")
 
     observed_expression = results.observed_expression
     reconstructed = results.reconstructed_expression
@@ -426,7 +441,7 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
             observed_expression.columns.astype(float), [0, 1, 2, 3, 4]
         )
     ):
-        raise ValueError("S34 has unexpected expression matrices")
+        raise ValueError("S38 has unexpected expression matrices")
     reported = results.inverse_pca_reported_metrics
     if (
         len(reported) != 5
@@ -436,13 +451,13 @@ def _validate_tables(results: ZebrafishSIResults) -> None:
         or len(results.top_variable_genes) != 250
         or not set(results.top_variable_genes).issubset(observed_expression.index)
     ):
-        raise ValueError("S34 has an unexpected reconstruction scope")
+        raise ValueError("S38 has an unexpected reconstruction scope")
 
 
 def load_zebrafish_si_results(
     results_dir: str | Path | None = None,
 ) -> ZebrafishSIResults:
-    """Load and validate the compact S27--S34 result bundle."""
+    """Load and validate the compact S31--S38 result bundle."""
 
     source_dir = resolve_results_dir(results_dir, slug="zebrafish_si")
     paths = require_files(source_dir, _FILES)
@@ -471,7 +486,7 @@ def load_zebrafish_si_results(
     )
     baseline, ysl, evl = _load_endpoint(paths["s30_endpoint_spatial.npz"])
     if (baseline.shape, ysl.shape, evl.shape) != ((5177, 2), (4546, 2), (3306, 2)):
-        raise ValueError("S30 has unexpected endpoint point counts")
+        raise ValueError("S34 has unexpected endpoint point counts")
 
     growth = _table(
         paths["s28_growth_per_cell.csv.gz"],
@@ -708,7 +723,7 @@ def _inverse_pca_metrics(results: ZebrafishSIResults) -> pd.DataFrame:
 def calculate_zebrafish_si_panels(
     results: ZebrafishSIResults,
 ) -> ZebrafishSIPanels:
-    """Recalculate every transformed quantity displayed in S27--S34."""
+    """Recalculate every transformed quantity displayed in S31--S38."""
 
     growth = results.growth.copy()
     quantiles = (
@@ -885,19 +900,19 @@ def zebrafish_si_statistics(
         "bundle_bytes": int(
             sum(path.stat().st_size for path in results.source_dir.iterdir())
         ),
-        "s27_points": int(len(results.observed_generated.xy)),
-        "s28_cells": int(len(results.growth)),
-        "s29_points": int(len(results.virtual_removal.xy)),
-        "s30_endpoint_centroid_mean": {
+        "s31_points": int(len(results.observed_generated.xy)),
+        "s32_cells": int(len(results.growth)),
+        "s33_points": int(len(results.virtual_removal.xy)),
+        "s34_endpoint_centroid_mean": {
             variant: float(centroid.loc[variant, "mean"])
             for variant in ABLATION_VARIANTS
         },
-        "s31_genes": int(len(calculated.gene_zscores)),
-        "s32_metric_rows": int(len(results.loss_weight_metrics)),
-        "s33_noise_006_t4_composition_tv_percent": float(
+        "s35_genes": int(len(calculated.gene_zscores)),
+        "s36_metric_rows": int(len(results.loss_weight_metrics)),
+        "s37_noise_006_t4_composition_tv_percent": float(
             100 * endpoint["composition_tv_from_reference_mean"]
         ),
-        "s34_t4_pearson_r": float(inverse.loc[4.0, "pearson_r"]),
+        "s38_t4_pearson_r": float(inverse.loc[4.0, "pearson_r"]),
     }
 
 
@@ -907,7 +922,7 @@ def plot_zebrafish_si(
     panels: ZebrafishSIPanels | None = None,
     figures: tuple[str, ...] | list[str] | None = None,
 ) -> dict[str, tuple[Path, Path]]:
-    """Render any subset of S27--S34 while keeping Matplotlib optional."""
+    """Render any subset of S31--S38 while keeping Matplotlib optional."""
 
     from ._zebrafish_si_plot import render_zebrafish_si
 

@@ -20,7 +20,7 @@ def test_registry_covers_every_paper_location() -> None:
 
     for figure in range(1, 7):
         assert f"Main Figure {figure}" in locations
-    for figure in range(1, 40):
+    for figure in range(1, 44):
         assert f"Supplementary Figure S{figure}" in locations
     assert "Supplementary Table 1" in locations
     assert "Supplementary Table 2" in locations

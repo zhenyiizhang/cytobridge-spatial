@@ -121,7 +121,7 @@ def test_formal_arista_release_uses_current_numbers_and_checkout_sources() -> No
     release = load_arista_figure_release(FORMAL_RELEASE_ROOT)
     index = release.source_index
     assert index["paper_location"].tolist() == [
-        f"Supplementary Figure S{number}" for number in range(17, 23)
+        f"Supplementary Figure S{number}" for number in range(19, 25)
     ]
     assert index["release_location"].tolist() == [
         f"Supplementary Figure S{number}" for number in range(12, 18)
@@ -170,28 +170,28 @@ def test_formal_arista_release_records_vector_boundaries() -> None:
     index = load_arista_figure_release(FORMAL_RELEASE_ROOT).source_index.set_index(
         "paper_location"
     )
-    assert index.loc["Supplementary Figure S20", "vector_scope"] == (
+    assert index.loc["Supplementary Figure S22", "vector_scope"] == (
         "raster composite PDF; four retained panel SVGs, two with an embedded "
         "raster layer"
     )
-    assert len(index.loc["Supplementary Figure S20", "formal_svg"].split(";")) == 4
-    assert index.loc["Supplementary Figure S18", "vector_scope"] == (
+    assert len(index.loc["Supplementary Figure S22", "formal_svg"].split(";")) == 4
+    assert index.loc["Supplementary Figure S20", "vector_scope"] == (
         "full-page PDF and SVG with nine embedded raster layers"
     )
-    assert index.loc["Supplementary Figure S21", "release_build_snapshot"].endswith(
+    assert index.loc["Supplementary Figure S23", "release_build_snapshot"].endswith(
         "build_s16_kmeans_legacy_style.py"
     )
     assert "recluster_arista_lr_patterns.py" in index.loc[
-        "Supplementary Figure S21", "canonical_scripts"
+        "Supplementary Figure S23", "canonical_scripts"
     ]
-    assert index.loc["Supplementary Figure S22", "release_build_snapshot"].endswith(
+    assert index.loc["Supplementary Figure S24", "release_build_snapshot"].endswith(
         "build_s17_balanced_representative_legacy_style.py"
     )
-    assert index.loc["Supplementary Figure S18", "build_scope"] == (
+    assert index.loc["Supplementary Figure S20", "build_scope"] == (
         "release snapshot is the exact page builder; repository script adds "
         "optional display settings"
     )
-    assert index.loc["Supplementary Figure S19", "input_scope"] == (
+    assert index.loc["Supplementary Figure S21", "input_scope"] == (
         "release retains derived fixed-particle tables; the upstream "
         "fixed-particle file is external"
     )
@@ -258,7 +258,7 @@ def test_arista_supplementary_pages_render_with_release_geometry(
             )
         with Image.open(png_path) as source:
             source_rgb = source.convert("RGB")
-        if page.figure == "S19":
+        if page.figure == "S21":
             assert rendered.size == (source_rgb.width + 1, source_rgb.height)
         else:
             assert rendered.size == source_rgb.size
@@ -269,14 +269,14 @@ def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> No
     data = load_arista_supplementary_figures()
     panels = calculate_arista_ligand_receptor_panels(data)
     written = plot_arista_ligand_receptor_figures(data, tmp_path, panels)
-    assert set(written) == {"S21", "S22"}
+    assert set(written) == {"S23", "S24"}
     formal_geometry = {
-        "S21": (569.192, 317.15225),
-        "S22": (1288.692187, 1542.593706),
+        "S23": (569.192, 317.15225),
+        "S24": (1288.692187, 1542.593706),
     }
     formal_png_geometry = {
-        "S21": (2371, 1321),
-        "S22": (3221, 3856),
+        "S23": (2371, 1321),
+        "S24": (3221, 3856),
     }
     for figure, (pdf_path, png_path) in written.items():
         assert pdf_path.is_file()
@@ -298,10 +298,10 @@ def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> No
             )
         with Image.open(png_path) as image:
             assert image.size == formal_png_geometry[figure]
-    assert written["S21"][0].name == "FigureS21_ARISTA_redrawn.pdf"
-    assert written["S22"][0].name == "FigureS22_ARISTA_redrawn.pdf"
-    assert written["S21"][1].read_bytes() != data.raster_paths["S21"].read_bytes()
-    assert written["S22"][1].read_bytes() != data.raster_paths["S22"].read_bytes()
+    assert written["S23"][0].name == "FigureS23_ARISTA_redrawn.pdf"
+    assert written["S24"][0].name == "FigureS24_ARISTA_redrawn.pdf"
+    assert written["S23"][1].read_bytes() != data.raster_paths["S23"].read_bytes()
+    assert written["S24"][1].read_bytes() != data.raster_paths["S24"].read_bytes()
 
 
 def test_arista_lr_calculation_matches_formal_figure_tables() -> None:
@@ -379,13 +379,13 @@ def test_arista_supplementary_selection_is_current_and_unique() -> None:
         page.figure
         for page in select_arista_supplementary_pages(
             pages,
-            ("S22", "S17"),
+            ("S24", "S19"),
         )
-    ] == ["S17", "S22"]
+    ] == ["S19", "S24"]
     with pytest.raises(ValueError, match="duplicates"):
-        select_arista_supplementary_pages(pages, ("S17", "S17"))
+        select_arista_supplementary_pages(pages, ("S19", "S19"))
     with pytest.raises(ValueError, match="Unknown"):
-        select_arista_supplementary_pages(pages, ("S16",))
+        select_arista_supplementary_pages(pages, ("S18",))
 
 
 def test_arista_supplementary_module_import_is_matplotlib_lazy() -> None:
@@ -417,8 +417,8 @@ def test_arista_supplementary_cli_exports_selected_pages(tmp_path: Path) -> None
             "--output-dir",
             str(output),
             "--figures",
-            "S17",
-            "S22",
+            "S19",
+            "S24",
         ],
         cwd=PACKAGE_ROOT,
         check=True,
@@ -434,8 +434,8 @@ def test_arista_supplementary_cli_exports_selected_pages(tmp_path: Path) -> None
     summary = json.loads(completed.stdout)
     assert summary["analysis"] == "arista_supplementary_figures"
     assert summary["source"] == "packaged"
-    assert summary["figures"] == ["S17", "S22"]
-    assert set(summary["files"]) == {"S17", "S22"}
+    assert summary["figures"] == ["S19", "S24"]
+    assert set(summary["files"]) == {"S19", "S24"}
     assert summary["formal_source_index"] == "arista_formal_source_index.csv"
     assert (output / summary["formal_source_index"]).is_file()
     assert str(tmp_path) not in completed.stdout
@@ -453,7 +453,7 @@ def test_arista_cli_keeps_compact_fallback_without_repository_release(
             "--output-dir",
             str(output),
             "--figures",
-            "S17",
+            "S19",
         ],
         cwd=PACKAGE_ROOT,
         check=True,
@@ -468,10 +468,10 @@ def test_arista_cli_keeps_compact_fallback_without_repository_release(
         },
     )
     summary = json.loads(completed.stdout)
-    assert summary["figures"] == ["S17"]
+    assert summary["figures"] == ["S19"]
     assert summary["formal_source_index"] is None
-    assert (output / summary["files"]["S17"]["pdf"]).is_file()
-    assert (output / summary["files"]["S17"]["png"]).is_file()
+    assert (output / summary["files"]["S19"]["pdf"]).is_file()
+    assert (output / summary["files"]["S19"]["png"]).is_file()
 
 
 def test_changed_arista_raster_is_rejected(tmp_path: Path) -> None:
@@ -565,7 +565,7 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     path = PACKAGE_ROOT / "docs/tutorials/paper_figures/arista_figures.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
     source = "\n".join("".join(cell.get("source", ())) for cell in notebook["cells"])
-    assert "Supplementary Figures S17–S22" in source
+    assert "Supplementary Figures S19–S24" in source
     assert "from CytoBridge.results import" in source
     assert 'output_dir = Path("outputs") / "arista_supplementary_figures"' in source
     assert "load_arista_figure_release()" in source
@@ -582,12 +582,12 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     assert "plot_arista_ligand_receptor_figures" in source
     assert "calculate_arista_ligand_receptor_panels" in source
     assert "table-driven scientific redraw" in source.lower()
-    assert "Draw S21 and S22 from the calculated tables" in source
+    assert "Draw S23 and S24 from the calculated tables" in source
     assert "released reference pages" in source.lower()
     assert "export_arista_reference_pages" in source
     assert "plot_arista_supplementary_figures" not in source
     assert "write_arista_ligand_receptor_tables(data, output_dir, panels)" in source
-    assert 'figures=("S17", "S18", "S19", "S20")' in source
+    assert 'figures=("S19", "S20", "S21", "S22")' in source
     assert "full_recompute_inputs" in source
     assert "217" not in source
     assert "314" not in source

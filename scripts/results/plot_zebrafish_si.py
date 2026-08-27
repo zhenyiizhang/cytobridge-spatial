@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce zebrafish Supplementary Figures S27--S34."""
+"""Reproduce zebrafish Supplementary Figures S31--S38."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def run(
     tables = write_zebrafish_si_tables(panels, output)
     rendered = plot_zebrafish_si(results, output, panels, figures)
     summary: dict[str, object] = {
-        "analysis": "zebrafish_si_s27_s34",
+        "analysis": "zebrafish_si_s31_s38",
         "source": "packaged" if results_dir is None else "results directory",
         "figures": {
             figure_id: {"pdf": paths[0].name, "png": paths[1].name}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble MOSTA Main Figure 4 and export Supplementary Figures S9--S16."""
+"""Assemble MOSTA Main Figure 4 and export Supplementary Figures S11--S18."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def run(
             }
             for figure_id, files in supplementary.items()
         },
-        "current_supplementary_numbers": [f"S{number}" for number in range(9, 17)],
+        "current_supplementary_numbers": [f"S{number}" for number in range(11, 19)],
         "supplementary_content": "released vector PDF and SVG pages",
     }
     write_run_summary(output, summary)

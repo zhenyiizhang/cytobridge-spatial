@@ -1,14 +1,14 @@
 input_id,relative_path,kind,stage,figures,public_source,description
-raw_h5ad,external/arista/Regeneration.h5ad,file,download,S17;S18;S19;S20;S21;S22,https://db.cngb.org/stomics/datasets/STDS0000056/data,Complete ARISTA source AnnData
-aligned_h5ad,external/arista/preprocess/arista_aligned.h5ad,file,generated,S17;S18;S19;S20;S21;S22,,Aligned package workflow output
-model_dir,external/arista/training,directory,generated,S17;S18;S19;S20;S21;S22,,Package workflow checkpoint directory
-slice_dir,external/arista/downstream/slice_data,directory,generated,S17;S18,,Observed and generated slice AnnData files
-growth_by_cell,external/arista/downstream/growth/growth_by_cell.csv,file,generated,S18,,Per-cell growth values
-fixed_particle_composition,external/arista/downstream/composition/fixed_particle_composition.csv,file,generated,S19,,Fixed-particle lineage and composition table
-gene_mean_expression,external/arista/downstream/gene_dynamics/mean_expression.csv,file,generated,S20,,Gene-expression time course
-gene_reconstruction_diagnostics,external/arista/downstream/gene_dynamics/reconstruction_diagnostics.csv,file,generated,S20,,Gene reconstruction diagnostics
-go_biological_process_gmt,external/databases/go_biological_process_2023.gmt,file,download,S20,,GO biological-process collection
-lr_pair_timecourse,external/arista/downstream/ligand_receptor/pair_timecourse.csv,file,generated,S21;S22,,Complete-complex ligand-receptor time course
-lr_pattern_summary,external/arista/downstream/ligand_receptor/pattern_summary.csv,file,generated,S21;S22,,Ligand-receptor pattern assignments
-lr_trajectory_coverage,external/arista/downstream/ligand_receptor/trajectory_coverage.csv,file,generated,S21;S22,,Ligand-receptor feature coverage
-label_palette,external/arista/labels/label_to_color.json,file,provided,S17;S19,,Cell-state color mapping
+raw_h5ad,external/arista/Regeneration.h5ad,file,download,S19;S20;S21;S22;S23;S24,https://db.cngb.org/stomics/datasets/STDS0000056/data,Complete ARISTA source AnnData
+aligned_h5ad,external/arista/preprocess/arista_aligned.h5ad,file,generated,S19;S20;S21;S22;S23;S24,,Aligned package workflow output
+model_dir,external/arista/training,directory,generated,S19;S20;S21;S22;S23;S24,,Package workflow checkpoint directory
+slice_dir,external/arista/downstream/slice_data,directory,generated,S19;S20,,Observed and generated slice AnnData files
+growth_by_cell,external/arista/downstream/growth/growth_by_cell.csv,file,generated,S20,,Per-cell growth values
+fixed_particle_composition,external/arista/downstream/composition/fixed_particle_composition.csv,file,generated,S21,,Fixed-particle lineage and composition table
+gene_mean_expression,external/arista/downstream/gene_dynamics/mean_expression.csv,file,generated,S22,,Gene-expression time course
+gene_reconstruction_diagnostics,external/arista/downstream/gene_dynamics/reconstruction_diagnostics.csv,file,generated,S22,,Gene reconstruction diagnostics
+go_biological_process_gmt,external/databases/go_biological_process_2023.gmt,file,download,S22,,GO biological-process collection
+lr_pair_timecourse,external/arista/downstream/ligand_receptor/pair_timecourse.csv,file,generated,S23;S24,,Complete-complex ligand-receptor time course
+lr_pattern_summary,external/arista/downstream/ligand_receptor/pattern_summary.csv,file,generated,S23;S24,,Ligand-receptor pattern assignments
+lr_trajectory_coverage,external/arista/downstream/ligand_receptor/trajectory_coverage.csv,file,generated,S23;S24,,Ligand-receptor feature coverage
+label_palette,external/arista/labels/label_to_color.json,file,provided,S19;S21,,Cell-state color mapping

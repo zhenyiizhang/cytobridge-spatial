@@ -62,7 +62,7 @@ _CONNECTORS = (
 
 _SI_RELEASE_MAP = (
     (
-        "S9",
+        "S11",
         "S4",
         "MOSTA spatial trajectory",
         "figures/si/Figure_S4.pdf",
@@ -74,7 +74,7 @@ _SI_RELEASE_MAP = (
         "reproduction/si/S4/source/render_s4_exact_old_style.py",
     ),
     (
-        "S10",
+        "S12",
         "S5",
         "MOSTA growth",
         "figures/si/Figure_S5.pdf",
@@ -86,7 +86,7 @@ _SI_RELEASE_MAP = (
         "reproduction/si/S5/source/render_s5_corrected_exact_submitted_style.py",
     ),
     (
-        "S11",
+        "S13",
         "S6",
         "MOSTA composition",
         "figures/si/Figure_S6.pdf",
@@ -98,7 +98,7 @@ _SI_RELEASE_MAP = (
         "reproduction/si/S6/source/render_s6_corrected_exact_submitted_style.py",
     ),
     (
-        "S12",
+        "S14",
         "S7",
         "MOSTA lineage",
         "figures/si/Figure_S7.pdf",
@@ -111,7 +111,7 @@ _SI_RELEASE_MAP = (
         "reproduction/si/S7/source/server_render_s7_exact_old_plotly_style_arial.py",
     ),
     (
-        "S13",
+        "S15",
         "S8",
         "MOSTA gene programs",
         "figures/si/Figure_S8.pdf",
@@ -123,7 +123,7 @@ _SI_RELEASE_MAP = (
         "reproduction/si/S8/source/render_s8_corrected_exact_submitted_style.py",
     ),
     (
-        "S14",
+        "S16",
         "S9",
         "MOSTA GO enrichment",
         "figures/si/Figure_S9.pdf",
@@ -138,7 +138,7 @@ _SI_RELEASE_MAP = (
         "render_mosta_s9_s10_clusterprofiler_exact_submitted_style.py",
     ),
     (
-        "S15",
+        "S17",
         "S10",
         "MOSTA developmental waves",
         "figures/si/Figure_S10.pdf",
@@ -153,7 +153,7 @@ _SI_RELEASE_MAP = (
         "render_mosta_s9_s10_clusterprofiler_exact_submitted_style.py",
     ),
     (
-        "S16",
+        "S18",
         "S11",
         "MOSTA ligand-receptor patterns",
         "figures/si/Figure_S11.pdf",
@@ -434,7 +434,7 @@ def export_mosta_supplementary_figures(
     *,
     preview_dpi: int = 160,
 ) -> dict[str, dict[str, Path]]:
-    """Export S9--S16 vector pages under their current manuscript numbers."""
+    """Export S11--S18 vector pages under their current manuscript numbers."""
 
     if preview_dpi <= 0:
         raise ValueError("Preview DPI must be positive")

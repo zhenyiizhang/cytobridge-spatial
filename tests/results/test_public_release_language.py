@@ -95,7 +95,7 @@ COMPLETED_NOTEBOOK_OUTPUTS = {
     "compute_cost.ipynb": "full_model_compute_cost_notebook",
     "arista_local_domains.ipynb": "arista_local_domains",
     "zebrafish_attention.ipynb": "zebrafish_attention",
-    "zebrafish_si_s27_s34.ipynb": "zebrafish_si_s27_s34",
+    "zebrafish_si_s31_s38.ipynb": "zebrafish_si_s31_s38",
     "nonspatial_figures.ipynb": "nonspatial_figures",
 }
 

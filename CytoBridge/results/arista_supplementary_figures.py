@@ -1,4 +1,4 @@
-"""Compact reader reproduction for ARISTA Supplementary Figures S17--S22."""
+"""Compact reader reproduction for ARISTA Supplementary Figures S19--S24."""
 
 from __future__ import annotations
 
@@ -16,14 +16,16 @@ import pandas as pd
 from ._io import prepare_output_dir, read_json, require_files, resolve_results_dir
 
 
-FIGURE_ORDER = ("S17", "S18", "S19", "S20", "S21", "S22")
+FIGURE_ORDER = ("S19", "S20", "S21", "S22", "S23", "S24")
 ARISTA_RELEASE_DIRECTORY = "arista_package_native_spatialqc_z50_retrain_20260824_r1"
 ARISTA_RELEASE_ENVIRONMENT_VARIABLE = "CYTOBRIDGE_ARISTA_RELEASE_DIR"
 _CORE_FILES = ("manifest.json", "figure_index.csv", "full_recompute_inputs.csv")
 _INDEX_COLUMNS = (
     "figure",
+    "source_figure",
     "topic",
     "compact_source",
+    "output_filename",
     "width_pixels",
     "height_pixels",
     "width_points",
@@ -76,7 +78,7 @@ _S16_KMEANS_DIRECTORY = "S16_package_native_kmeans_oldstyle_v1_finalqa"
 _S17_BALANCED_DIRECTORY = "S17_package_native_balanced25_oldstyle_v1"
 _FORMAL_SOURCE_SPECS = (
     {
-        "figure": "S17",
+        "figure": "S19",
         "release_figure": "S12",
         "topic": "Spatial interpolation",
         "formal_pdf": (
@@ -121,7 +123,7 @@ _FORMAL_SOURCE_SPECS = (
         ),
     },
     {
-        "figure": "S18",
+        "figure": "S20",
         "release_figure": "S13",
         "topic": "Growth",
         "formal_pdf": (
@@ -168,7 +170,7 @@ _FORMAL_SOURCE_SPECS = (
         ),
     },
     {
-        "figure": "S19",
+        "figure": "S21",
         "release_figure": "S14",
         "topic": "Lineage and composition",
         "formal_pdf": (
@@ -214,7 +216,7 @@ _FORMAL_SOURCE_SPECS = (
         ),
     },
     {
-        "figure": "S20",
+        "figure": "S22",
         "release_figure": "S15",
         "topic": "Gene programs and GO enrichment",
         "formal_pdf": (
@@ -255,7 +257,7 @@ _FORMAL_SOURCE_SPECS = (
         "input_scope": "release retains the builder source snapshots",
     },
     {
-        "figure": "S21",
+        "figure": "S23",
         "release_figure": "S16",
         "topic": "Ligand-receptor clusters",
         "formal_pdf": (
@@ -297,7 +299,7 @@ _FORMAL_SOURCE_SPECS = (
         ),
     },
     {
-        "figure": "S22",
+        "figure": "S24",
         "release_figure": "S17",
         "topic": "Ligand-receptor small multiples",
         "formal_pdf": (
@@ -363,8 +365,10 @@ class AristaSupplementaryPage:
     """Validated page properties used by the compact renderer."""
 
     figure: str
+    source_figure: str
     topic: str
     compact_source: str
+    output_filename: str
     width_pixels: int
     height_pixels: int
     width_points: float
@@ -375,7 +379,7 @@ class AristaSupplementaryPage:
 
 @dataclass(frozen=True)
 class AristaLigandReceptorPanels:
-    """Recalculated tables used to draw corrected ARISTA S21 and S22."""
+    """Recalculated tables used to draw corrected ARISTA S23 and S24."""
 
     prototypes: pd.DataFrame
     assignments: pd.DataFrame
@@ -511,7 +515,7 @@ def _arista_formal_source_index(root: Path) -> pd.DataFrame:
 def load_arista_figure_release(
     release_dir: str | Path | None = None,
 ) -> AristaFigureRelease:
-    """Load formal S17--S22 sources under the current manuscript numbering."""
+    """Load formal release sources under the current S19--S24 numbering."""
 
     root = resolve_arista_release_dir(release_dir)
     for filename in ("README.md", "PROVENANCE.md", "FINAL_RELEASE_QA.md"):
@@ -568,8 +572,10 @@ def _validated_page(row: pd.Series, raster_path: Path) -> AristaSupplementaryPag
         raise ValueError(f"{raster_path} has invalid page properties")
     return AristaSupplementaryPage(
         figure=str(row["figure"]),
+        source_figure=str(row["source_figure"]),
         topic=str(row["topic"]),
         compact_source=str(row["compact_source"]),
+        output_filename=str(row["output_filename"]),
         width_pixels=width,
         height_pixels=height,
         width_points=width_points,
@@ -597,7 +603,7 @@ def load_arista_supplementary_figures(
     figure_index = pd.read_csv(paths["figure_index.csv"], keep_default_na=False)
     _require_columns(figure_index, _INDEX_COLUMNS, paths["figure_index.csv"])
     if tuple(figure_index["figure"].astype(str)) != FIGURE_ORDER:
-        raise ValueError("ARISTA supplementary figure order must be S17 through S22")
+        raise ValueError("ARISTA supplementary figure order must be S19 through S24")
     if figure_index["figure"].duplicated().any():
         raise ValueError("ARISTA supplementary figure identifiers must be unique")
 
@@ -893,7 +899,7 @@ def write_arista_ligand_receptor_tables(
     output_dir: str | Path,
     panels: AristaLigandReceptorPanels | None = None,
 ) -> dict[str, Path]:
-    """Write the all-pair input and tables recalculated for S21 and S22."""
+    """Write the all-pair input and tables recalculated for S23 and S24."""
 
     output = prepare_output_dir(output_dir)
     calculated = (
@@ -933,7 +939,7 @@ def export_arista_reference_pages(
 
     This export preserves the released page appearance but does not recalculate
     the analyses or rebuild their vector layouts.  Use
-    :func:`plot_arista_ligand_receptor_figures` to redraw S21 and S22 from the
+    :func:`plot_arista_ligand_receptor_figures` to redraw S23 and S24 from the
     released numerical tables.
     """
 
@@ -964,7 +970,7 @@ def plot_arista_ligand_receptor_figures(
     output_dir: str | Path,
     panels: AristaLigandReceptorPanels | None = None,
 ) -> dict[str, tuple[Path, Path]]:
-    """Redraw corrected ARISTA S21 and S22 from all 531 strict LR profiles."""
+    """Redraw corrected ARISTA S23 and S24 from all 531 strict LR profiles."""
 
     from ._arista_supplementary_figures_plot import (
         render_arista_ligand_receptor_figures,
