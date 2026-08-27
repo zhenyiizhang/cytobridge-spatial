@@ -19,12 +19,16 @@ from .arista_local_domains import (
     write_arista_local_domain_tables,
 )
 from .arista_supplementary_figures import (
+    AristaFigureRelease,
     AristaSupplementaryData,
     AristaSupplementaryPage,
     calculate_arista_supplementary_pages,
+    load_arista_figure_release,
     load_arista_supplementary_figures,
     plot_arista_supplementary_figures,
+    resolve_arista_release_dir,
     select_arista_supplementary_pages,
+    write_arista_source_index,
     write_arista_supplementary_tables,
 )
 from .classifier_smoothing import (
@@ -130,6 +134,7 @@ from .zebrafish_si import (
 __all__ = [
     "AgistFigureData",
     "AgistFigurePanels",
+    "AristaFigureRelease",
     "AristaLocalDomainData",
     "AristaLocalDomainPanels",
     "AristaSupplementaryData",
@@ -172,6 +177,7 @@ __all__ = [
     "interaction_evidence_statistics",
     "export_mosta_supplementary_figures",
     "load_agist_figures",
+    "load_arista_figure_release",
     "load_arista_local_domains",
     "load_arista_supplementary_figures",
     "load_classifier_smoothing_results",
@@ -197,6 +203,7 @@ __all__ = [
     "plot_main_figure_5",
     "plot_nonspatial_figures",
     "rebuild_main_figure_4",
+    "resolve_arista_release_dir",
     "resolve_mosta_release_dir",
     "plot_training_histories",
     "plot_zebrafish_attention",
@@ -209,6 +216,7 @@ __all__ = [
     "select_arista_supplementary_pages",
     "write_arista_local_domain_tables",
     "write_agist_figure_tables",
+    "write_arista_source_index",
     "write_arista_supplementary_tables",
     "write_classifier_smoothing_tables",
     "write_full_model_compute_cost_tables",

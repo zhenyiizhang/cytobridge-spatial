@@ -21,12 +21,12 @@ Supplementary Figure S13,MOSTA gene programs,docs/tutorials/paper_figures/mosta_
 Supplementary Figure S14,MOSTA GO enrichment,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
 Supplementary Figure S15,MOSTA developmental waves,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
 Supplementary Figure S16,MOSTA ligand-receptor patterns,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S17,ARISTA interpolation,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
-Supplementary Figure S18,ARISTA growth,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
-Supplementary Figure S19,ARISTA lineage and composition,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
-Supplementary Figure S20,ARISTA gene programs and GO enrichment,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
-Supplementary Figure S21,ARISTA ligand-receptor clusters,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
-Supplementary Figure S22,ARISTA ligand-receptor small multiples,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results arista_supplementary_figures,ready
+Supplementary Figure S17,ARISTA interpolation,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
+Supplementary Figure S18,ARISTA growth,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
+Supplementary Figure S19,ARISTA lineage and composition,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
+Supplementary Figure S20,ARISTA gene programs and GO enrichment,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
+Supplementary Figure S21,ARISTA ligand-receptor clusters,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
+Supplementary Figure S22,ARISTA ligand-receptor small multiples,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
 Supplementary Figure S23,Ligand-receptor complex aggregation,docs/tutorials/paper_figures/lr_complex_aggregation.ipynb,CytoBridge.results lr_complex_aggregation,ready
 Supplementary Figure S24,AD mouse overview,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly
 Supplementary Figure S25,AD mouse GO enrichment,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly

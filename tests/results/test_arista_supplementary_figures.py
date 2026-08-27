@@ -19,13 +19,21 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 from CytoBridge.results.arista_supplementary_figures import (  # noqa: E402
+    ARISTA_RELEASE_DIRECTORY,
+    ARISTA_RELEASE_ENVIRONMENT_VARIABLE,
     FIGURE_ORDER,
     calculate_arista_supplementary_pages,
+    load_arista_figure_release,
     load_arista_supplementary_figures,
     plot_arista_supplementary_figures,
+    resolve_arista_release_dir,
     select_arista_supplementary_pages,
+    write_arista_source_index,
     write_arista_supplementary_tables,
 )
+
+
+FORMAL_RELEASE_ROOT = PACKAGE_ROOT / "release_artifacts" / ARISTA_RELEASE_DIRECTORY
 
 
 def _fixture_copy(tmp_path: Path) -> Path:
@@ -98,6 +106,99 @@ def test_full_recompute_registry_uses_relative_paths() -> None:
         assert not str(value).startswith(("/Users/", "/home/", "/data/"))
 
 
+def test_formal_arista_release_uses_current_numbers_and_checkout_sources() -> None:
+    release = load_arista_figure_release(FORMAL_RELEASE_ROOT)
+    index = release.source_index
+    assert index["paper_location"].tolist() == [
+        f"Supplementary Figure S{number}" for number in range(17, 23)
+    ]
+    assert index["release_location"].tolist() == [
+        f"Supplementary Figure S{number}" for number in range(12, 18)
+    ]
+    assert index["content"].tolist() == [
+        "Spatial interpolation",
+        "Growth",
+        "Lineage and composition",
+        "Gene programs and GO enrichment",
+        "Ligand-receptor clusters",
+        "Ligand-receptor small multiples",
+    ]
+    for column in (
+        "formal_pdf",
+        "formal_svg",
+        "formal_png",
+        "release_build_snapshot",
+        "release_manifest",
+        "downstream_inputs",
+        "checkpoint_inputs",
+    ):
+        for value in index[column]:
+            for relative_path in filter(None, str(value).split(";")):
+                path = PurePosixPath(relative_path)
+                assert not path.is_absolute()
+                assert ".." not in path.parts
+                assert (release.root / relative_path).is_file()
+    for column in ("canonical_scripts", "calculation_entrypoints"):
+        for value in index[column]:
+            for relative_path in str(value).split(";"):
+                path = PurePosixPath(relative_path)
+                assert not path.is_absolute()
+                assert ".." not in path.parts
+                assert (PACKAGE_ROOT / relative_path).is_file()
+
+    compact = load_arista_supplementary_figures()
+    by_figure = index.set_index("paper_location")
+    for figure in FIGURE_ORDER:
+        formal_png = (
+            release.root / by_figure.loc[f"Supplementary Figure {figure}", "formal_png"]
+        )
+        assert compact.raster_paths[figure].read_bytes() == formal_png.read_bytes()
+
+
+def test_formal_arista_release_records_vector_boundaries() -> None:
+    index = load_arista_figure_release(FORMAL_RELEASE_ROOT).source_index.set_index(
+        "paper_location"
+    )
+    assert index.loc["Supplementary Figure S20", "vector_scope"] == (
+        "raster composite PDF; four retained panel SVGs, two with an embedded "
+        "raster layer"
+    )
+    assert len(index.loc["Supplementary Figure S20", "formal_svg"].split(";")) == 4
+    assert index.loc["Supplementary Figure S18", "vector_scope"] == (
+        "full-page PDF and SVG with nine embedded raster layers"
+    )
+    assert index.loc["Supplementary Figure S21", "release_build_snapshot"] == ""
+    assert index.loc["Supplementary Figure S21", "canonical_scripts"].endswith(
+        "build_s15_s17_strict_legacy_style.py"
+    )
+    assert index.loc["Supplementary Figure S18", "build_scope"] == (
+        "release snapshot is the exact page builder; repository script adds "
+        "optional display settings"
+    )
+    assert index.loc["Supplementary Figure S19", "input_scope"] == (
+        "release retains derived fixed-particle tables; the upstream "
+        "fixed-particle file is external"
+    )
+
+
+def test_formal_arista_release_resolution_and_index_writer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        ARISTA_RELEASE_ENVIRONMENT_VARIABLE,
+        str(FORMAL_RELEASE_ROOT),
+    )
+    assert resolve_arista_release_dir() == FORMAL_RELEASE_ROOT.resolve()
+    release = load_arista_figure_release()
+    output = write_arista_source_index(release, tmp_path)
+    written = pd.read_csv(output, keep_default_na=False)
+    assert (
+        written["paper_location"].tolist()
+        == release.source_index["paper_location"].tolist()
+    )
+
+
 def test_arista_supplementary_tables_are_written(tmp_path: Path) -> None:
     data = load_arista_supplementary_figures()
     pages = calculate_arista_supplementary_pages(data)
@@ -124,7 +225,9 @@ def test_arista_supplementary_pages_render_with_release_geometry(
         with fitz.open(pdf_path) as document:
             assert document.page_count == 1
             assert document[0].rect.width == pytest.approx(page.width_points, abs=0.01)
-            assert document[0].rect.height == pytest.approx(page.height_points, abs=0.01)
+            assert document[0].rect.height == pytest.approx(
+                page.height_points, abs=0.01
+            )
             pixmap = document[0].get_pixmap(
                 matrix=fitz.Matrix(
                     page.reference_dpi / 72.0,
@@ -147,13 +250,14 @@ def test_arista_supplementary_pages_render_with_release_geometry(
 
 
 def test_arista_supplementary_selection_is_current_and_unique() -> None:
-    pages = calculate_arista_supplementary_pages(
-        load_arista_supplementary_figures()
-    )
-    assert [page.figure for page in select_arista_supplementary_pages(
-        pages,
-        ("S22", "S17"),
-    )] == ["S17", "S22"]
+    pages = calculate_arista_supplementary_pages(load_arista_supplementary_figures())
+    assert [
+        page.figure
+        for page in select_arista_supplementary_pages(
+            pages,
+            ("S22", "S17"),
+        )
+    ] == ["S17", "S22"]
     with pytest.raises(ValueError, match="duplicates"):
         select_arista_supplementary_pages(pages, ("S17", "S17"))
     with pytest.raises(ValueError, match="Unknown"):
@@ -208,7 +312,42 @@ def test_arista_supplementary_cli_exports_selected_pages(tmp_path: Path) -> None
     assert summary["source"] == "packaged"
     assert summary["figures"] == ["S17", "S22"]
     assert set(summary["files"]) == {"S17", "S22"}
+    assert summary["formal_source_index"] == "arista_formal_source_index.csv"
+    assert (output / summary["formal_source_index"]).is_file()
     assert str(tmp_path) not in completed.stdout
+
+
+def test_arista_cli_keeps_compact_fallback_without_repository_release(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "compact-cli"
+    missing_release = tmp_path / "release-not-installed"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(PACKAGE_ROOT / "scripts/results/plot_arista_figures.py"),
+            "--output-dir",
+            str(output),
+            "--figures",
+            "S17",
+        ],
+        cwd=PACKAGE_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            ARISTA_RELEASE_ENVIRONMENT_VARIABLE: str(missing_release),
+            "MPLBACKEND": "Agg",
+            "MPLCONFIGDIR": str(tmp_path / "compact-mpl"),
+            "PYTHONPATH": str(PACKAGE_ROOT),
+        },
+    )
+    summary = json.loads(completed.stdout)
+    assert summary["figures"] == ["S17"]
+    assert summary["formal_source_index"] is None
+    assert (output / summary["files"]["S17"]["pdf"]).is_file()
+    assert (output / summary["files"]["S17"]["png"]).is_file()
 
 
 def test_changed_arista_raster_is_rejected(tmp_path: Path) -> None:
@@ -299,17 +438,23 @@ def test_main_figure_5_vector_script_is_portable(tmp_path: Path) -> None:
 
 
 def test_arista_supplementary_notebook_uses_current_numbering() -> None:
-    path = (
-        PACKAGE_ROOT
-        / "docs/tutorials/paper_figures/arista_figures.ipynb"
-    )
+    path = PACKAGE_ROOT / "docs/tutorials/paper_figures/arista_figures.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
-    source = "\n".join(
-        "".join(cell.get("source", ())) for cell in notebook["cells"]
-    )
+    source = "\n".join("".join(cell.get("source", ())) for cell in notebook["cells"])
     assert "Supplementary Figures S17–S22" in source
     assert "from CytoBridge.results import" in source
     assert 'output_dir = Path("outputs") / "arista_supplementary_figures"' in source
+    assert "load_arista_figure_release()" in source
+    assert "formal_release.source_index" in source
+    assert "formal_pdf" in source
+    assert "formal_svg" in source
+    assert "canonical_scripts" in source
+    assert "release_build_snapshot" in source
+    assert "build_scope" in source
+    assert "calculation_entrypoints" in source
+    assert "downstream_inputs" in source
+    assert "input_scope" in source
+    assert "checkpoint_inputs" in source
     assert "plot_arista_supplementary_figures" in source
     assert "full_recompute_inputs" in source
     for cell in notebook["cells"]:

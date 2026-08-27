@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import struct
@@ -15,6 +16,8 @@ from ._io import prepare_output_dir, read_json, require_files, resolve_results_d
 
 
 FIGURE_ORDER = ("S17", "S18", "S19", "S20", "S21", "S22")
+ARISTA_RELEASE_DIRECTORY = "arista_package_native_spatialqc_z50_retrain_20260824_r1"
+ARISTA_RELEASE_ENVIRONMENT_VARIABLE = "CYTOBRIDGE_ARISTA_RELEASE_DIR"
 _CORE_FILES = ("manifest.json", "figure_index.csv", "full_recompute_inputs.csv")
 _INDEX_COLUMNS = (
     "figure",
@@ -37,6 +40,277 @@ _REGISTRY_COLUMNS = (
     "figures",
     "public_source",
     "description",
+)
+
+_CANONICAL_SCRIPT_DIRECTORY = "scripts/reviewer_arista_20260824"
+_CALCULATION_ENTRYPOINTS = (
+    "scripts/run_spatiotemporal_downstream.py",
+    "CytoBridge/configs/arista_downstream.yaml",
+)
+_CHECKPOINT_INPUTS = (
+    "main_run/provenance/config.yaml",
+    "main_run/provenance/training_run_summary.json",
+    "main_run/training/Finetune/best_model.pth",
+    "main_run/training/Score_Refine/score_model.pth",
+)
+_SLICE_INPUTS = tuple(
+    f"main_run/downstream/slice_data/time_{token}.h5ad"
+    for token in ("0", "0p5", "1", "1p5", "2", "2p5", "3", "3p5", "4")
+)
+_S12_DIRECTORY = "S12_package_native_warpk1_oldstyle_v3_legacy_palette"
+_S13_S14_DIRECTORY = "S13_S14_package_native_oldstyle_v3_legacy_palette"
+_S15_S17_DIRECTORY = "S15_S17_package_native_strict_oldstyle_v1"
+_FORMAL_SOURCE_SPECS = (
+    {
+        "figure": "S17",
+        "release_figure": "S12",
+        "topic": "Spatial interpolation",
+        "formal_pdf": (
+            f"{_S12_DIRECTORY}/figures/pdf/"
+            "FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.pdf"
+        ),
+        "formal_svg": (
+            f"{_S12_DIRECTORY}/figures/vector/"
+            "FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.svg"
+        ),
+        "formal_png": (
+            f"{_S12_DIRECTORY}/figures/png/"
+            "FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.png"
+        ),
+        "vector_scope": "full-page PDF and SVG",
+        "canonical_scripts": ";".join(
+            (
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s12_package_native_warpk1_oldstyle.py",
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s12_s14_legacy_style_corrected.py",
+            )
+        ),
+        "release_build_snapshot": (
+            f"{_S12_DIRECTORY}/scripts/build_s12_package_native_warpk1_oldstyle.py"
+        ),
+        "build_scope": (
+            "release snapshot is the exact page builder; repository copy matches it"
+        ),
+        "release_manifest": f"{_S12_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            (
+                *_SLICE_INPUTS,
+                "main_run/preprocess/aligned_cell_identity.csv",
+                "main_run/downstream/label_to_color.json",
+                f"{_S12_DIRECTORY}/tables/s12_panel_inventory_complete_display.csv",
+            )
+        ),
+        "input_scope": (
+            "release retains page slices and a derived table; spatial-warp "
+            "intermediates are external"
+        ),
+    },
+    {
+        "figure": "S18",
+        "release_figure": "S13",
+        "topic": "Growth",
+        "formal_pdf": (
+            f"{_S13_S14_DIRECTORY}/figures/pdf/"
+            "FigureS13_ARISTA_package_native_oldstyle_FINAL.pdf"
+        ),
+        "formal_svg": (
+            f"{_S13_S14_DIRECTORY}/figures/vector/"
+            "FigureS13_ARISTA_package_native_oldstyle_FINAL.svg"
+        ),
+        "formal_png": (
+            f"{_S13_S14_DIRECTORY}/figures/png/"
+            "FigureS13_ARISTA_package_native_oldstyle_FINAL.png"
+        ),
+        "vector_scope": "full-page PDF and SVG with nine embedded raster layers",
+        "canonical_scripts": ";".join(
+            (
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s13_s14_package_native_oldstyle.py",
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s12_s14_legacy_style_corrected.py",
+            )
+        ),
+        "release_build_snapshot": (
+            f"{_S13_S14_DIRECTORY}/scripts/build_s13_s14_package_native_oldstyle.py"
+        ),
+        "build_scope": (
+            "release snapshot is the exact page builder; repository script adds "
+            "optional display settings"
+        ),
+        "release_manifest": f"{_S13_S14_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            (
+                "main_run/downstream/growth/growth_by_cell.csv",
+                "main_run/downstream/label_to_color.json",
+                f"{_S13_S14_DIRECTORY}/tables/"
+                "s13_scale_and_display_counts_A_all_valid.csv",
+                f"{_S13_S14_DIRECTORY}/tables/s13_seed42_display_sample.csv",
+            )
+        ),
+        "input_scope": (
+            "release retains growth and display tables; spatial-warp "
+            "intermediates are external"
+        ),
+    },
+    {
+        "figure": "S19",
+        "release_figure": "S14",
+        "topic": "Lineage and composition",
+        "formal_pdf": (
+            f"{_S13_S14_DIRECTORY}/figures/pdf/"
+            "FigureS14_ARISTA_package_native_oldstyle_FINAL.pdf"
+        ),
+        "formal_svg": (
+            f"{_S13_S14_DIRECTORY}/figures/vector/"
+            "FigureS14_ARISTA_package_native_oldstyle_FINAL.svg"
+        ),
+        "formal_png": (
+            f"{_S13_S14_DIRECTORY}/figures/png/"
+            "FigureS14_ARISTA_package_native_oldstyle_FINAL.png"
+        ),
+        "vector_scope": "full-page PDF and SVG",
+        "canonical_scripts": ";".join(
+            (
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s13_s14_package_native_oldstyle.py",
+                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
+                "build_s12_s14_legacy_style_corrected.py",
+            )
+        ),
+        "release_build_snapshot": (
+            f"{_S13_S14_DIRECTORY}/scripts/build_s13_s14_package_native_oldstyle.py"
+        ),
+        "build_scope": (
+            "release snapshot is the exact page builder; repository script adds "
+            "optional display settings"
+        ),
+        "release_manifest": f"{_S13_S14_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            (
+                f"{_S13_S14_DIRECTORY}/tables/s14_fixed_particle_counts.csv",
+                f"{_S13_S14_DIRECTORY}/tables/s14_fixed_particle_fractions.csv",
+                f"{_S13_S14_DIRECTORY}/tables/"
+                "s14b_corrected_top15_other_percent.csv",
+            )
+        ),
+        "input_scope": (
+            "release retains derived fixed-particle tables; the upstream "
+            "fixed-particle file is external"
+        ),
+    },
+    {
+        "figure": "S20",
+        "release_figure": "S15",
+        "topic": "Gene programs and GO enrichment",
+        "formal_pdf": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS15_ARISTA_strict_corrected_legacy_style.pdf"
+        ),
+        "formal_svg": ";".join(
+            f"{_S15_S17_DIRECTORY}/figures/panels/{name}"
+            for name in (
+                "S15a_top_variable_gene_trajectories.svg",
+                "S15b_gene_pattern_curves.svg",
+                "S15c_pattern_1_GO_barplot.svg",
+                "S15d_pattern_2_GO_dotplot.svg",
+            )
+        ),
+        "formal_png": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS15_ARISTA_strict_corrected_legacy_style.png"
+        ),
+        "vector_scope": (
+            "raster composite PDF; four retained panel SVGs, two with an "
+            "embedded raster layer"
+        ),
+        "canonical_scripts": (
+            f"{_CANONICAL_SCRIPT_DIRECTORY}/build_s15_s17_strict_legacy_style.py"
+        ),
+        "release_build_snapshot": "",
+        "build_scope": "repository builder; no duplicate builder in the release",
+        "release_manifest": f"{_S15_S17_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            f"{_S15_S17_DIRECTORY}/provenance/source_snapshots/{name}"
+            for name in (
+                "bank_summary.json",
+                "gene_mean_expression.csv",
+                "gene_reconstruction_diagnostics.csv",
+            )
+        ),
+        "input_scope": "release retains the builder source snapshots",
+    },
+    {
+        "figure": "S21",
+        "release_figure": "S16",
+        "topic": "Ligand-receptor clusters",
+        "formal_pdf": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS16_ARISTA_strict_corrected_legacy_style.pdf"
+        ),
+        "formal_svg": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS16_ARISTA_strict_corrected_legacy_style.svg"
+        ),
+        "formal_png": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS16_ARISTA_strict_corrected_legacy_style.png"
+        ),
+        "vector_scope": "full-page PDF and SVG",
+        "canonical_scripts": (
+            f"{_CANONICAL_SCRIPT_DIRECTORY}/build_s15_s17_strict_legacy_style.py"
+        ),
+        "release_build_snapshot": "",
+        "build_scope": "repository builder; no duplicate builder in the release",
+        "release_manifest": f"{_S15_S17_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            f"{_S15_S17_DIRECTORY}/provenance/source_snapshots/{name}"
+            for name in (
+                "bank_summary.json",
+                "lr_pair_timecourse.csv",
+                "lr_pattern_summary.csv",
+                "lr_coverage.csv",
+                "lr_trajectory_coverage.csv",
+            )
+        ),
+        "input_scope": "release retains the builder source snapshots",
+    },
+    {
+        "figure": "S22",
+        "release_figure": "S17",
+        "topic": "Ligand-receptor small multiples",
+        "formal_pdf": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS17_ARISTA_strict_corrected_legacy_style.pdf"
+        ),
+        "formal_svg": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS17_ARISTA_strict_corrected_legacy_style.svg"
+        ),
+        "formal_png": (
+            f"{_S15_S17_DIRECTORY}/figures/"
+            "FigureS17_ARISTA_strict_corrected_legacy_style.png"
+        ),
+        "vector_scope": "full-page PDF and SVG",
+        "canonical_scripts": (
+            f"{_CANONICAL_SCRIPT_DIRECTORY}/build_s15_s17_strict_legacy_style.py"
+        ),
+        "release_build_snapshot": "",
+        "build_scope": "repository builder; no duplicate builder in the release",
+        "release_manifest": f"{_S15_S17_DIRECTORY}/MANIFEST.json",
+        "downstream_inputs": ";".join(
+            f"{_S15_S17_DIRECTORY}/provenance/source_snapshots/{name}"
+            for name in (
+                "bank_summary.json",
+                "lr_pair_timecourse.csv",
+                "lr_pattern_summary.csv",
+                "lr_coverage.csv",
+                "lr_trajectory_coverage.csv",
+                "legacy_s17_roster.csv",
+            )
+        ),
+        "input_scope": "release retains the builder source snapshots",
+    },
 )
 
 
@@ -67,6 +341,14 @@ class AristaSupplementaryPage:
     raster_crc32: str
 
 
+@dataclass(frozen=True)
+class AristaFigureRelease:
+    """Formal ARISTA page sources retained in the repository release."""
+
+    root: Path
+    source_index: pd.DataFrame
+
+
 def _png_size(path: Path) -> tuple[int, int]:
     with path.open("rb") as handle:
         header = handle.read(24)
@@ -85,7 +367,9 @@ def _crc32(path: Path) -> str:
     return f"{value & 0xFFFFFFFF:08x}"
 
 
-def _require_columns(table: pd.DataFrame, columns: tuple[str, ...], source: Path) -> None:
+def _require_columns(
+    table: pd.DataFrame, columns: tuple[str, ...], source: Path
+) -> None:
     missing = sorted(set(columns).difference(table.columns))
     if missing:
         raise ValueError(f"{source} is missing columns: {missing}")
@@ -105,6 +389,104 @@ def _validate_relative_path(value: str, source: Path) -> None:
 
 def _split_items(value: object) -> tuple[str, ...]:
     return tuple(item for item in str(value).split(";") if item)
+
+
+def _release_path(root: Path, value: str, source: str) -> Path:
+    _validate_relative_path(value, Path(source))
+    path = root / value
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    return path
+
+
+def resolve_arista_release_dir(release_dir: str | Path | None = None) -> Path:
+    """Resolve the formal ARISTA release from an argument, environment, or checkout."""
+
+    if release_dir is not None:
+        selected: str | Path = release_dir
+    else:
+        environment_value = os.environ.get(ARISTA_RELEASE_ENVIRONMENT_VARIABLE)
+        selected = (
+            environment_value
+            if environment_value
+            else Path(__file__).resolve().parents[2]
+            / "release_artifacts"
+            / ARISTA_RELEASE_DIRECTORY
+        )
+    root = Path(selected).expanduser().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(
+            f"ARISTA formal release not found at {root}. Supply release_dir or set "
+            f"{ARISTA_RELEASE_ENVIRONMENT_VARIABLE}."
+        )
+    return root
+
+
+def _arista_formal_source_index(root: Path) -> pd.DataFrame:
+    rows = []
+    for specification in _FORMAL_SOURCE_SPECS:
+        row = {
+            "paper_location": f"Supplementary Figure {specification['figure']}",
+            "release_location": (
+                f"Supplementary Figure {specification['release_figure']}"
+            ),
+            "content": specification["topic"],
+            "formal_pdf": specification["formal_pdf"],
+            "formal_svg": specification["formal_svg"],
+            "formal_png": specification["formal_png"],
+            "vector_scope": specification["vector_scope"],
+            "canonical_scripts": specification["canonical_scripts"],
+            "calculation_entrypoints": ";".join(_CALCULATION_ENTRYPOINTS),
+            "release_build_snapshot": specification["release_build_snapshot"],
+            "build_scope": specification["build_scope"],
+            "release_manifest": specification["release_manifest"],
+            "downstream_inputs": specification["downstream_inputs"],
+            "input_scope": specification["input_scope"],
+            "checkpoint_inputs": ";".join(_CHECKPOINT_INPUTS),
+            "compact_output": "formal PNG plus raster-equivalent PDF",
+        }
+        for column in (
+            "formal_pdf",
+            "formal_svg",
+            "formal_png",
+            "release_build_snapshot",
+            "release_manifest",
+            "downstream_inputs",
+            "checkpoint_inputs",
+        ):
+            for relative_path in _split_items(row[column]):
+                _release_path(root, relative_path, column)
+        for column in ("canonical_scripts", "calculation_entrypoints"):
+            for relative_path in _split_items(row[column]):
+                _validate_relative_path(relative_path, Path(column))
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def load_arista_figure_release(
+    release_dir: str | Path | None = None,
+) -> AristaFigureRelease:
+    """Load formal S17--S22 sources under the current manuscript numbering."""
+
+    root = resolve_arista_release_dir(release_dir)
+    for filename in ("README.md", "PROVENANCE.md", "FINAL_RELEASE_QA.md"):
+        _release_path(root, filename, "release root")
+    return AristaFigureRelease(
+        root=root,
+        source_index=_arista_formal_source_index(root),
+    )
+
+
+def write_arista_source_index(
+    release: AristaFigureRelease,
+    output_dir: str | Path,
+) -> Path:
+    """Write the current-number mapping to formal pages, code, and inputs."""
+
+    output = prepare_output_dir(output_dir)
+    path = output / "arista_formal_source_index.csv"
+    release.source_index.to_csv(path, index=False)
+    return path
 
 
 def _validate_manifest(manifest: dict[str, Any], source: Path) -> None:
@@ -189,7 +571,9 @@ def load_arista_supplementary_figures(
         }
     )
     if invalid_figures:
-        raise ValueError(f"ARISTA input registry contains unknown figures: {invalid_figures}")
+        raise ValueError(
+            f"ARISTA input registry contains unknown figures: {invalid_figures}"
+        )
     sources = registry.loc[
         registry["public_source"].astype(str).str.strip().ne(""),
         "public_source",
@@ -208,7 +592,9 @@ def load_arista_supplementary_figures(
             raise ValueError(f"{figure} has an invalid compact page source")
         raster_paths[figure] = paths[source_name]
         _validated_page(row, paths[source_name])
-        unknown_tables = sorted(set(_split_items(row["table_ids"])).difference(table_ids))
+        unknown_tables = sorted(
+            set(_split_items(row["table_ids"])).difference(table_ids)
+        )
         if unknown_tables:
             raise ValueError(f"{figure} references unknown tables: {unknown_tables}")
         unknown_inputs = sorted(
@@ -223,7 +609,11 @@ def load_arista_supplementary_figures(
             raise ValueError(f"ARISTA table {table_id} has an invalid specification")
         figure = str(specification.get("figure", ""))
         filename = str(specification.get("file", ""))
-        if figure not in FIGURE_ORDER or filename not in paths or not filename.endswith(".csv"):
+        if (
+            figure not in FIGURE_ORDER
+            or filename not in paths
+            or not filename.endswith(".csv")
+        ):
             raise ValueError(f"ARISTA table {table_id} has an invalid source")
         tables[str(table_id)] = pd.read_csv(paths[filename], keep_default_na=False)
 
@@ -255,7 +645,9 @@ def select_arista_supplementary_pages(
     """Select current ARISTA figure identifiers while preserving page order."""
 
     page_map = {page.figure: page for page in pages}
-    requested = FIGURE_ORDER if figures is None else tuple(str(value) for value in figures)
+    requested = (
+        FIGURE_ORDER if figures is None else tuple(str(value) for value in figures)
+    )
     if len(requested) != len(set(requested)):
         raise ValueError("ARISTA figure selection contains duplicates")
     unknown = sorted(set(requested).difference(FIGURE_ORDER))
@@ -319,21 +711,25 @@ def plot_arista_supplementary_figures(
     )
 
     calculated = (
-        calculate_arista_supplementary_pages(data)
-        if pages is None
-        else tuple(pages)
+        calculate_arista_supplementary_pages(data) if pages is None else tuple(pages)
     )
     selected = select_arista_supplementary_pages(calculated, figures)
     return render_arista_supplementary_figures(data, selected, output_dir)
 
 
 __all__ = [
+    "ARISTA_RELEASE_DIRECTORY",
+    "ARISTA_RELEASE_ENVIRONMENT_VARIABLE",
+    "AristaFigureRelease",
     "AristaSupplementaryData",
     "AristaSupplementaryPage",
     "FIGURE_ORDER",
     "calculate_arista_supplementary_pages",
+    "load_arista_figure_release",
     "load_arista_supplementary_figures",
     "plot_arista_supplementary_figures",
+    "resolve_arista_release_dir",
     "select_arista_supplementary_pages",
+    "write_arista_source_index",
     "write_arista_supplementary_tables",
 ]

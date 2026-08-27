@@ -52,7 +52,6 @@ LOCAL_OR_AUDIT_MARKERS = (
     "sha256",
     "sha-256",
     "hash",
-    "reviewer",
     "accepted",
     "immutable",
     "reviewed",

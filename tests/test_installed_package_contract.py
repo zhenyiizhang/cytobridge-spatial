@@ -218,6 +218,19 @@ class InstalledPackageContractTests(unittest.TestCase):
         results_package = resources.files("CytoBridge").joinpath("results")
         self.assertTrue(results_package.joinpath("mosta_figures.py").is_file())
 
+    def test_arista_compact_reader_does_not_package_the_formal_release(self) -> None:
+        package_root = resources.files("CytoBridge")
+        results_package = package_root.joinpath("results")
+        self.assertTrue(
+            results_package.joinpath("arista_supplementary_figures.py").is_file()
+        )
+        self.assertTrue(
+            results_package.joinpath(
+                "data", "arista_supplementary_figures", "manifest.json"
+            ).is_file()
+        )
+        self.assertFalse(package_root.joinpath("release_artifacts").is_dir())
+
     def test_installed_workflow_dry_run_uses_packaged_resources(self) -> None:
         executable = Path(sys.executable).with_name("cytobridge")
         with tempfile.TemporaryDirectory() as temporary_directory:

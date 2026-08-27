@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce ARISTA Supplementary Figures S17--S22 from compact package data."""
+"""Export compact ARISTA S17--S22 pages and their formal source index."""
 
 from __future__ import annotations
 
@@ -11,9 +11,12 @@ from CytoBridge.results._cli import new_output_dir, write_run_summary
 from CytoBridge.results.arista_supplementary_figures import (
     FIGURE_ORDER,
     calculate_arista_supplementary_pages,
+    load_arista_figure_release,
     load_arista_supplementary_figures,
     plot_arista_supplementary_figures,
+    resolve_arista_release_dir,
     select_arista_supplementary_pages,
+    write_arista_source_index,
     write_arista_supplementary_tables,
 )
 
@@ -25,6 +28,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Directory containing compact ARISTA files. Defaults to packaged data.",
+    )
+    parser.add_argument(
+        "--release-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Repository ARISTA release directory. When unavailable, the compact "
+            "package export remains usable."
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -44,6 +56,7 @@ def parse_args() -> argparse.Namespace:
 
 def run(
     results_dir: Path | None,
+    release_dir: Path | None,
     output_dir: Path,
     figures: tuple[str, ...],
 ) -> dict[str, object]:
@@ -58,6 +71,19 @@ def run(
         selected,
         figures,
     )
+    try:
+        formal_root = resolve_arista_release_dir(release_dir)
+    except FileNotFoundError:
+        if release_dir is not None:
+            raise
+        formal_release = None
+    else:
+        formal_release = load_arista_figure_release(formal_root)
+    formal_index = (
+        write_arista_source_index(formal_release, output)
+        if formal_release is not None
+        else None
+    )
     summary: dict[str, object] = {
         "analysis": "arista_supplementary_figures",
         "source": "packaged" if results_dir is None else data.source_dir.name,
@@ -68,6 +94,7 @@ def run(
         },
         "table_count": len(tables),
         "pdf_equivalence": "same page appearance and geometry; raster-only PDFs",
+        "formal_source_index": None if formal_index is None else formal_index.name,
     }
     write_run_summary(output, summary)
     return summary
@@ -77,7 +104,12 @@ def main() -> None:
     args = parse_args()
     print(
         json.dumps(
-            run(args.results_dir, args.output_dir, tuple(args.figures)),
+            run(
+                args.results_dir,
+                args.release_dir,
+                args.output_dir,
+                tuple(args.figures),
+            ),
             indent=2,
             sort_keys=True,
         )
