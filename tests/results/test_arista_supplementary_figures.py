@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-import fitz
+import pymupdf as fitz
 import matplotlib as mpl
 from matplotlib import font_manager
 import pandas as pd
@@ -22,13 +22,17 @@ from CytoBridge.results.arista_supplementary_figures import (  # noqa: E402
     ARISTA_RELEASE_DIRECTORY,
     ARISTA_RELEASE_ENVIRONMENT_VARIABLE,
     FIGURE_ORDER,
+    calculate_arista_ligand_receptor_panels,
     calculate_arista_supplementary_pages,
+    export_arista_reference_pages,
     load_arista_figure_release,
     load_arista_supplementary_figures,
+    plot_arista_ligand_receptor_figures,
     plot_arista_supplementary_figures,
     resolve_arista_release_dir,
     select_arista_supplementary_pages,
     write_arista_source_index,
+    write_arista_ligand_receptor_tables,
     write_arista_supplementary_tables,
 )
 
@@ -52,19 +56,19 @@ def test_packaged_arista_supplementary_contract() -> None:
         "b3d4f41c",
         "d48a9fbf",
         "1893c30e",
-        "bd12e84e",
-        "6e978c28",
+        "8d4787c1",
+        "e36de1fc",
     ]
     assert [(page.width_pixels, page.height_pixels) for page in pages] == [
         (2106, 2093),
         (3751, 3606),
         (2333, 2400),
         (2400, 1554),
-        (1582, 881),
-        (1790, 3000),
+        (2372, 1322),
+        (3222, 3857),
     ]
     assert set(data.tables) == set(data.manifest["tables"])
-    assert len(data.tables) == 13
+    assert len(data.tables) == 18
 
 
 def test_formal_release_tables_retain_display_values() -> None:
@@ -81,11 +85,18 @@ def test_formal_release_tables_retain_display_values() -> None:
         sort=True,
     )
     assert clusters.size().to_dict() == {1: 9, 2: 9}
-    assert clusters["n_pairs"].first().to_dict() == {1: 1, 2: 530}
+    assert clusters["n_pairs"].first().to_dict() == {1: 217, 2: 314}
+    assert len(tables["ligand_receptor_cluster_assignments"]) == 531
+    assert len(tables["ligand_receptor_normalized_profiles"]) == 531
+    assert len(tables["ligand_receptor_all_pair_timecourse"]) == 531 * 9
+    k_selection = tables["ligand_receptor_k_selection"].sort_values(
+        ["silhouette", "k"], ascending=[False, True]
+    )
+    assert int(k_selection.iloc[0]["k"]) == 2
     roster = tables["ligand_receptor_display_roster"]
-    assert len(roster) == 68
-    assert roster["estimable"].value_counts().to_dict() == {True: 51, False: 17}
-    assert len(tables["ligand_receptor_pair_timecourse"]) == 612
+    assert len(roster) == 50
+    assert roster.groupby("cluster").size().to_dict() == {1: 25, 2: 25}
+    assert len(tables["ligand_receptor_pair_timecourse"]) == 450
 
 
 def test_full_recompute_registry_uses_relative_paths() -> None:
@@ -167,9 +178,14 @@ def test_formal_arista_release_records_vector_boundaries() -> None:
     assert index.loc["Supplementary Figure S18", "vector_scope"] == (
         "full-page PDF and SVG with nine embedded raster layers"
     )
-    assert index.loc["Supplementary Figure S21", "release_build_snapshot"] == ""
-    assert index.loc["Supplementary Figure S21", "canonical_scripts"].endswith(
-        "build_s15_s17_strict_legacy_style.py"
+    assert index.loc["Supplementary Figure S21", "release_build_snapshot"].endswith(
+        "build_s16_kmeans_legacy_style.py"
+    )
+    assert "recluster_arista_lr_patterns.py" in index.loc[
+        "Supplementary Figure S21", "canonical_scripts"
+    ]
+    assert index.loc["Supplementary Figure S22", "release_build_snapshot"].endswith(
+        "build_s17_balanced_representative_legacy_style.py"
     )
     assert index.loc["Supplementary Figure S18", "build_scope"] == (
         "release snapshot is the exact page builder; repository script adds "
@@ -203,7 +219,7 @@ def test_arista_supplementary_tables_are_written(tmp_path: Path) -> None:
     data = load_arista_supplementary_figures()
     pages = calculate_arista_supplementary_pages(data)
     written = write_arista_supplementary_tables(data, pages, tmp_path)
-    assert len(written) == 16
+    assert len(written) == 21
     summary = pd.read_csv(written["page_summary"])
     assert summary["figure"].tolist() == list(FIGURE_ORDER)
     for table_id, table in data.tables.items():
@@ -247,6 +263,106 @@ def test_arista_supplementary_pages_render_with_release_geometry(
         else:
             assert rendered.size == source_rgb.size
             assert ImageChops.difference(source_rgb, rendered).getbbox() is None
+
+
+def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> None:
+    data = load_arista_supplementary_figures()
+    panels = calculate_arista_ligand_receptor_panels(data)
+    written = plot_arista_ligand_receptor_figures(data, tmp_path, panels)
+    assert set(written) == {"S21", "S22"}
+    accepted_geometry = {
+        "S21": (569.192, 317.15225),
+        "S22": (1288.692187, 1542.593706),
+    }
+    for figure, (pdf_path, png_path) in written.items():
+        assert pdf_path.is_file()
+        assert png_path.is_file()
+        with fitz.open(pdf_path) as document:
+            assert document.page_count == 1
+            page = document[0]
+            assert page.rect.width == pytest.approx(
+                accepted_geometry[figure][0], abs=2.0
+            )
+            assert page.rect.height == pytest.approx(
+                accepted_geometry[figure][1], abs=2.0
+            )
+            assert any("Arial" in font[3] for font in page.get_fonts(full=True))
+        with Image.open(png_path) as image:
+            assert image.width > 1000
+            assert image.height > 600
+    assert written["S21"][0].name == "FigureS21_ARISTA_redrawn.pdf"
+    assert written["S22"][0].name == "FigureS22_ARISTA_redrawn.pdf"
+    assert written["S21"][1].read_bytes() != data.raster_paths["S21"].read_bytes()
+    assert written["S22"][1].read_bytes() != data.raster_paths["S22"].read_bytes()
+
+
+def test_arista_lr_calculation_matches_formal_figure_tables() -> None:
+    data = load_arista_supplementary_figures()
+    panels = calculate_arista_ligand_receptor_panels(data)
+
+    assert panels.assignments.groupby("cluster").size().to_dict() == {1: 217, 2: 314}
+    assert panels.display_roster.groupby("cluster").size().to_dict() == {1: 25, 2: 25}
+    assert len(panels.display_timecourse) == 450
+    for actual, table_id in (
+        (panels.prototypes, "ligand_receptor_cluster_prototypes"),
+        (panels.assignments, "ligand_receptor_cluster_assignments"),
+        (panels.normalized_profiles, "ligand_receptor_normalized_profiles"),
+        (panels.diagnostics, "ligand_receptor_cluster_diagnostics"),
+        (panels.display_roster, "ligand_receptor_display_roster"),
+        (panels.display_timecourse, "ligand_receptor_pair_timecourse"),
+    ):
+        pd.testing.assert_frame_equal(
+            actual,
+            data.tables[table_id],
+            check_exact=False,
+            rtol=1e-12,
+            atol=1e-12,
+        )
+
+    # Secondary k>2 solutions can change across scikit-learn releases.  The
+    # scientific contract is that k=2 remains best and its result is identical.
+    calculated_k = panels.k_selection.sort_values(
+        ["silhouette", "k"], ascending=[False, True]
+    )
+    formal_k = data.tables["ligand_receptor_k_selection"].sort_values(
+        ["silhouette", "k"], ascending=[False, True]
+    )
+    assert int(calculated_k.iloc[0]["k"]) == 2
+    assert int(formal_k.iloc[0]["k"]) == 2
+    pd.testing.assert_series_equal(
+        panels.k_selection.set_index("k").loc[2],
+        data.tables["ligand_receptor_k_selection"].set_index("k").loc[2],
+        check_exact=False,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_arista_lr_writer_uses_calculated_panels(tmp_path: Path) -> None:
+    data = load_arista_supplementary_figures()
+    panels = calculate_arista_ligand_receptor_panels(data)
+    written = write_arista_ligand_receptor_tables(data, tmp_path, panels)
+    assert set(written) == {
+        "ligand_receptor_all_pair_timecourse",
+        "ligand_receptor_cluster_prototypes",
+        "ligand_receptor_cluster_assignments",
+        "ligand_receptor_normalized_profiles",
+        "ligand_receptor_k_selection",
+        "ligand_receptor_cluster_diagnostics",
+        "ligand_receptor_display_roster",
+        "ligand_receptor_pair_timecourse",
+    }
+    pd.testing.assert_frame_equal(
+        pd.read_csv(written["ligand_receptor_cluster_assignments"]),
+        panels.assignments,
+    )
+    pd.testing.assert_frame_equal(
+        pd.read_csv(written["ligand_receptor_display_roster"]),
+        panels.display_roster,
+        check_exact=False,
+        rtol=1e-12,
+        atol=1e-12,
+    )
 
 
 def test_arista_supplementary_selection_is_current_and_unique() -> None:
@@ -455,9 +571,15 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     assert "downstream_inputs" in source
     assert "input_scope" in source
     assert "checkpoint_inputs" in source
-    assert "plot_arista_supplementary_figures" in source
+    assert "plot_arista_ligand_receptor_figures" in source
+    assert "calculate_arista_ligand_receptor_panels" in source
+    assert "table-driven scientific redraw" in source.lower()
+    assert "Draw S21 and S22 from the calculated tables" in source
+    assert "released reference pages" in source.lower()
+    assert "export_arista_reference_pages" in source
+    assert "plot_arista_supplementary_figures" not in source
+    assert "write_arista_ligand_receptor_tables(data, output_dir, panels)" in source
+    assert 'figures=("S17", "S18", "S19", "S20")' in source
     assert "full_recompute_inputs" in source
-    for cell in notebook["cells"]:
-        if cell["cell_type"] == "code":
-            assert cell["execution_count"] is None
-            assert cell["outputs"] == []
+    assert "217" not in source
+    assert "314" not in source

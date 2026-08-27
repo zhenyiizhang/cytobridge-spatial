@@ -22,9 +22,14 @@
     "gene_display_roster.csv": "displayed gene roster",
     "gene_program_1_GO_terms.csv": "GO terms shown for gene program 1",
     "gene_program_2_GO_terms.csv": "GO terms shown for gene program 2",
-    "ligand_receptor_cluster_prototypes.csv": "ligand-receptor cluster prototypes",
-    "ligand_receptor_display_roster.csv": "ligand-receptor display roster",
-    "ligand_receptor_pair_timecourse.csv": "ligand-receptor time courses"
+    "ligand_receptor_cluster_prototypes.csv": "corrected deterministic k-means prototypes",
+    "ligand_receptor_cluster_assignments.csv": "corrected cluster assignment for all 531 strict pairs",
+    "ligand_receptor_normalized_profiles.csv": "row-wise min-max profiles used for clustering and representative selection",
+    "ligand_receptor_k_selection.csv": "silhouette comparison for k=2 through k=8",
+    "ligand_receptor_cluster_diagnostics.csv": "diagnostics for the selected k=2 solution",
+    "ligand_receptor_all_pair_timecourse.csv": "strict scores for all 531 pairs at all nine time points",
+    "ligand_receptor_display_roster.csv": "balanced 25-per-cluster representative roster",
+    "ligand_receptor_pair_timecourse.csv": "450 displayed strict ligand-receptor time-course rows"
   },
   "tables": {
     "interpolation_panel_inventory": {"figure": "S17", "file": "interpolation_panel_inventory.csv"},
@@ -38,11 +43,16 @@
     "gene_program_1_GO_terms": {"figure": "S20", "file": "gene_program_1_GO_terms.csv"},
     "gene_program_2_GO_terms": {"figure": "S20", "file": "gene_program_2_GO_terms.csv"},
     "ligand_receptor_cluster_prototypes": {"figure": "S21", "file": "ligand_receptor_cluster_prototypes.csv"},
+    "ligand_receptor_cluster_assignments": {"figure": "S21", "file": "ligand_receptor_cluster_assignments.csv"},
+    "ligand_receptor_normalized_profiles": {"figure": "S22", "file": "ligand_receptor_normalized_profiles.csv"},
+    "ligand_receptor_k_selection": {"figure": "S21", "file": "ligand_receptor_k_selection.csv"},
+    "ligand_receptor_cluster_diagnostics": {"figure": "S21", "file": "ligand_receptor_cluster_diagnostics.csv"},
+    "ligand_receptor_all_pair_timecourse": {"figure": "S21", "file": "ligand_receptor_all_pair_timecourse.csv"},
     "ligand_receptor_display_roster": {"figure": "S22", "file": "ligand_receptor_display_roster.csv"},
     "ligand_receptor_pair_timecourse": {"figure": "S22", "file": "ligand_receptor_pair_timecourse.csv"}
   },
   "equivalence": {
-    "png": "The packaged rasters are the formal ARISTA release page payloads under the current figure numbering.",
-    "pdf": "Generated PDFs place each raster on the corresponding release page geometry. They preserve page appearance but not source vector objects or selectable text."
+    "png": "The packaged rasters are the released ARISTA pages under the current figure numbering. S21 and S22 use the corrected deterministic k-means and balanced representative release.",
+    "pdf": "Reference exports place each released raster on its page geometry. The public table-driven plotting function independently redraws S21 and S22 as vector PDFs and PNGs."
   }
 }

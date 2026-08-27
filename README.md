@@ -10,8 +10,8 @@ downstream analysis through one package API.
 [API reference](https://cytobridge-spatial.readthedocs.io/en/latest/api/index.html) ·
 [Issues](https://github.com/zhenyiizhang/cytobridge-spatial/issues)
 
-The repository contains the installable package, dataset workflows, paper
-figure notebooks, tests, and the source used to build ReadTheDocs. Large input
+The repository contains the installable package, dataset tutorials, paper
+figure notebooks, tests, and the source used to build Read the Docs. Large input
 datasets and model checkpoints are distributed separately; their expected
 formats are listed in the
 [data and checkpoint guide](https://cytobridge-spatial.readthedocs.io/en/latest/data_checkpoints.html).
@@ -82,17 +82,24 @@ the input keys and optional ligand–receptor and gene-dynamics steps.
 
 ## Tutorials and paper figures
 
-The documentation separates runnable material into four groups:
+The tutorial index covers data preparation, five dataset tutorials, paper
+figures, and benchmarks. Each dataset notebook follows the same path from setup
+through preprocessing, training, downstream analysis, figure code, and saved
+files. Paper-figure notebooks state whether they recalculate values, redraw
+prepared summaries, assemble panel files, or export a reference page.
 
-- data preparation;
-- dataset workflows;
-- paper figure reproduction;
-- benchmarks.
+Installed figure commands use the same public result APIs as the notebooks:
 
-Dataset workflows show the package calls needed for a complete analysis and
-expect external AnnData files and checkpoints. Paper figure notebooks use
-small processed tables included with the package, recalculate panel data, and
-write the corresponding PDF, PNG, and CSV files. They do not retrain a model.
+```bash
+cytobridge figure list
+cytobridge figure arista-lr --output-dir outputs/arista_lr
+```
+
+The command list reports which entries run from packaged numerical results and
+which require a separate figure release.
+
+Complete dataset runs use external AnnData files and checkpoints; their names,
+formats, and expected locations are documented in the input guide.
 
 The [paper reproduction index](docs/paper_reproduction.md) maps Main Figures
 1–6, Supplementary Figures S1–S39, Supplementary Tables 1–2, and the zebrafish
@@ -136,7 +143,7 @@ not part of the source distribution.
 
 ## Documentation
 
-ReadTheDocs builds the documentation from this repository. To build the same
+Read the Docs builds the documentation from this repository. To build the same
 pages locally:
 
 ```bash
@@ -144,8 +151,8 @@ python -m pip install -e '.[docs]'
 sphinx-build -W --keep-going -E -b html docs docs/_build/html
 ```
 
-ReadTheDocs renders the committed notebook outputs; CI executes the compact
-notebooks separately.
+Read the Docs renders the committed notebook outputs. CI also runs every
+published notebook from top to bottom.
 
 ## Development
 

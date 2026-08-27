@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Rebuild MOSTA Main Figure 4 and export Supplementary Figures S9--S16."""
+"""Assemble MOSTA Main Figure 4 and export Supplementary Figures S9--S16."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from CytoBridge.results._cli import new_output_dir, write_run_summary
 from CytoBridge.results.mosta_figures import (
+    assemble_main_figure_4,
     export_mosta_supplementary_figures,
     load_mosta_figure_release,
-    rebuild_main_figure_4,
 )
 
 
@@ -41,7 +46,7 @@ def run(
 ) -> dict[str, object]:
     output = new_output_dir(output_dir)
     release = load_mosta_figure_release(release_dir)
-    main_pdf, main_png = rebuild_main_figure_4(
+    main_pdf, main_png = assemble_main_figure_4(
         release,
         output / "main_figure_4",
         dpi=dpi,
@@ -53,6 +58,7 @@ def run(
     )
     summary: dict[str, object] = {
         "analysis": "mosta_manuscript_figures",
+        "figure_action": "external-assembly + reference-export",
         "figure_index": (
             "supplementary_figures/mosta_figure_index.csv"
         ),

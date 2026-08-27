@@ -52,7 +52,7 @@
         "3": 2.0
       }
     },
-    "note": "De novo corrected raw-H5AD workflow. The AD production model fits a learned edge predictor from the seven strict complete ligand-receptor pairs represented by the targeted panel and uses the validation-selected threshold 0.9956824779510498. The seven-pair support is an explicit panel limitation, not a global CCI claim. The packaged all-spatial configuration is a separate no-LR-prior ablation.",
+    "note": "The AD raw-H5AD workflow fits a learned edge predictor from the seven complete ligand-receptor pairs represented by the targeted panel and uses the validation-selected threshold 0.9956824779510498. Broader CCI analyses require a more complete panel. The packaged all-spatial configuration is the corresponding no-LR-prior ablation.",
     "edge_predictor": {
       "split": 0,
       "epochs": 100,

@@ -1,0 +1,82 @@
+{
+  "schema": "cytobridge.arista.figureS16.strict-lr-kmeans.legacy-style.v1",
+  "created_utc": "2026-08-25T04:44:39.334128+00:00",
+  "scientific_contract": {
+    "source": "package-native strict all-subunit LR scores",
+    "clustering": "deterministic package kmeans on row-minmax nine-time-point profiles",
+    "cluster_counts": {
+      "1": 217,
+      "2": 314
+    },
+    "silhouette": 0.2285126415768658,
+    "k2_best_silhouette_among_k2_to_k8": true,
+    "median_noise_ari_sigma_0p05": 0.9042341287578106,
+    "minimum_leave_one_time_ari": 0.5457176279356412
+  },
+  "display_contract": {
+    "style": "submitted S16 line/marker/fill/legend grammar",
+    "palette": "legacy seaborn Set2",
+    "font": "Arial",
+    "page_pt": [
+      569.192,
+      317.15225
+    ]
+  },
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_kmeans_prototypes.csv": "e93be89f85548ee81be8106096e19cb80d5a61c7b6fcffe0a276c3629e2087aa",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_kmeans_diagnostics.csv": "27f92acc2fc8908069768dff18b7b619d7340e92c7fbb6e596f281387fc2fb66",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_k_selection.csv": "df5e046afa892f315991168e26809479b40b799fbbc8bc79f6e1571703177dbe",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_noise_stability_summary.csv": "1f5cabb2c28d53b28bfc701e390c63b841f47daf6f875b6062e92ddaf17d26a8",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_leave_one_time_stability.csv": "700926e4f6f95e549a2e9aca75c4cf9c33c178e314434f96a8a6154340e91e4a"
+  },
+  "outputs": {
+    "build_s16_kmeans_legacy_style.py": {
+      "sha256": "0347917a75ca8affce157b21e2b810a847317cb3295658cff3ea38a6ffa10c04",
+      "size_bytes": 5790
+    },
+    "figures/FigureS16_ARISTA_package_native_kmeans_legacy_style.pdf": {
+      "sha256": "f8f33277eb5ddde02ddb487bd9a4cddda24f8d4adc750814f864c4950b792af3",
+      "size_bytes": 38277
+    },
+    "figures/FigureS16_ARISTA_package_native_kmeans_legacy_style.png": {
+      "sha256": "ab63a4580c47b5690413cef5787a0a662abcd4375c48fd8b2b35cebf7bc63542",
+      "size_bytes": 141003
+    },
+    "figures/FigureS16_ARISTA_package_native_kmeans_legacy_style.svg": {
+      "sha256": "22d34a2c3149db11acb7ff559e5306ceb52362f26344aa4d966099d4d35a6295",
+      "size_bytes": 13527
+    },
+    "tables/S16_lr_k_selection.csv": {
+      "sha256": "df5e046afa892f315991168e26809479b40b799fbbc8bc79f6e1571703177dbe",
+      "size_bytes": 462
+    },
+    "tables/S16_lr_kmeans_diagnostics.csv": {
+      "sha256": "27f92acc2fc8908069768dff18b7b619d7340e92c7fbb6e596f281387fc2fb66",
+      "size_bytes": 278
+    },
+    "tables/S16_lr_kmeans_prototypes.csv": {
+      "sha256": "e93be89f85548ee81be8106096e19cb80d5a61c7b6fcffe0a276c3629e2087aa",
+      "size_bytes": 942
+    },
+    "tables/S16_lr_leave_one_time_stability.csv": {
+      "sha256": "700926e4f6f95e549a2e9aca75c4cf9c33c178e314434f96a8a6154340e91e4a",
+      "size_bytes": 362
+    },
+    "tables/S16_lr_noise_stability_summary.csv": {
+      "sha256": "1f5cabb2c28d53b28bfc701e390c63b841f47daf6f875b6062e92ddaf17d26a8",
+      "size_bytes": 320
+    }
+  },
+  "qa": {
+    "passed": true,
+    "rendered_png_px": [
+      2372,
+      1322
+    ],
+    "page_pt": [
+      569.1920166015625,
+      317.1522521972656
+    ],
+    "singleton_cluster_absent": true
+  }
+}

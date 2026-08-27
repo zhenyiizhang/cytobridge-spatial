@@ -1,56 +1,65 @@
 # Tutorials
 
-The dataset tutorials use the installed package and its bundled workflow
-presets. Each dataset page lists the external inputs, the public package calls,
-and the files or Python objects produced by the notebook.
+The tutorials cover data preparation, complete dataset workflows, and the code
+used for the paper figures. The notebooks are stored with their outputs so the
+generated tables and plots can be read before running them locally.
+
+## Data preparation
+
+Start with the input checklist for real datasets, or run the compact synthetic
+example to inspect the expected AnnData fields.
+
+- [Data and checkpoints](../data_checkpoints.md)
+- [Synthetic preprocessing](data_preparation/synthetic_preprocessing.ipynb)
 
 ```{toctree}
+:hidden:
 :maxdepth: 1
-:caption: Data preparation
 
 ../data_checkpoints
 data_preparation/synthetic_preprocessing
 ```
 
-```{toctree}
-:maxdepth: 1
-:caption: Dataset workflows
+## Dataset tutorials
 
-zebrafish
-mosta
-arista
-admouse
-chicken_heart
+Each dataset has one notebook. The same page covers setup, preprocessing,
+training, downstream analysis, paper figures, and saved files.
+
+[Browse the dataset tutorials](dataset_workflows/index.md).
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+dataset_workflows/index
 ```
 
-```{toctree}
-:maxdepth: 1
-:caption: Dataset notebooks
+## Paper figures
 
-dataset_workflows/zebrafish
-dataset_workflows/mosta
-dataset_workflows/arista
-dataset_workflows/admouse
-dataset_workflows/chicken_heart
+Each notebook says whether it recalculates plotted values, redraws prepared
+summaries, assembles panel files, or exports a reference page.
+
+[Browse the paper figure notebooks](paper_figures/index.md).
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+paper_figures/index
 ```
 
-```{toctree}
-:maxdepth: 1
-:caption: Paper figures
-:glob:
+## Benchmarks and compute
 
-paper_figures/*
-zebrafish_videos
-```
+The benchmark pages describe the package interfaces and the compute table used
+in the supplementary material.
+
+- [Benchmarks](../benchmarks.md)
+- [Training time and memory](../training_compute.md)
 
 ```{toctree}
+:hidden:
 :maxdepth: 1
-:caption: Benchmarks
 
 ../benchmarks
 ../training_compute
 ```
-
-The documentation build does not execute notebooks. Notebooks are stored
-without outputs and require the packaged result tables or repository release
-artifacts named on their page.

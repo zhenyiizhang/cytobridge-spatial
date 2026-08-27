@@ -15,7 +15,7 @@ def _load_notebook() -> dict:
     return json.loads(NOTEBOOK.read_text(encoding="utf-8"))
 
 
-def test_synthetic_preprocessing_notebook_is_clean_and_stable() -> None:
+def test_synthetic_preprocessing_notebook_is_executed_and_stable() -> None:
     notebook = _load_notebook()
     cells = notebook["cells"]
     expected_ids = [
@@ -37,10 +37,9 @@ def test_synthetic_preprocessing_notebook_is_clean_and_stable() -> None:
     assert [cell["id"] for cell in cells] == expected_ids
     assert len(set(expected_ids)) == len(expected_ids)
 
-    for cell in cells:
-        if cell["cell_type"] == "code":
-            assert cell["execution_count"] is None
-            assert cell["outputs"] == []
+    code_cells = [cell for cell in cells if cell["cell_type"] == "code"]
+    assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
+    assert sum(len(cell["outputs"]) for cell in code_cells) > 0
 
 
 def test_synthetic_preprocessing_notebook_uses_public_api_and_checks_outputs() -> None:

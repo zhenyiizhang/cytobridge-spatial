@@ -1,4 +1,4 @@
-"""Compact reader reproduction for ARISTA Main Figure 5."""
+"""Validate and export the packaged reference page for ARISTA Main Figure 5."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ _REGISTRY_COLUMNS = (
 
 @dataclass(frozen=True)
 class MainFigure5Data:
-    """Packaged page payload and calculation registry for Main Figure 5."""
+    """Packaged reference page and full-calculation input registry."""
 
     source_dir: Path
     manifest: dict[str, Any]
@@ -52,7 +52,7 @@ class MainFigure5Data:
 
 @dataclass(frozen=True)
 class MainFigure5Page:
-    """Calculated page properties used by the compact renderer."""
+    """Validated properties of the packaged reference page."""
 
     width_pixels: int
     height_pixels: int
@@ -106,6 +106,10 @@ def _validate_manifest(
         raise ValueError("Main Figure 5 uses an unsupported schema version")
     if manifest.get("analysis") != "main_figure_5":
         raise ValueError("The packaged manifest does not describe Main Figure 5")
+    if manifest.get("reader_action") != "reference-export":
+        raise ValueError("Main Figure 5 must be marked as a reference export")
+    if manifest.get("numerical_recalculation") is not False:
+        raise ValueError("Main Figure 5 must not claim numerical recalculation")
     if manifest.get("scientific_label_release") != "v5":
         raise ValueError("Main Figure 5 does not use the scientific-label v5 release")
     render = manifest.get("render", {})
@@ -180,8 +184,10 @@ def load_main_figure_5(results_dir: str | Path | None = None) -> MainFigure5Data
     )
 
 
-def calculate_main_figure_5(data: MainFigure5Data) -> MainFigure5Page:
-    """Calculate and validate the page properties used for compact rendering."""
+def validate_main_figure_5_reference_page(
+    data: MainFigure5Data,
+) -> MainFigure5Page:
+    """Validate the packaged page and return its recorded dimensions."""
 
     width, height, width_pt, height_pt, dpi, raster_crc = _validate_manifest(
         data.manifest, data.raster_path
@@ -235,20 +241,36 @@ def write_main_figure_5_tables(
     return {"panels": panel_path, "inputs": registry_path, "page": page_path}
 
 
-def plot_main_figure_5(
+def export_main_figure_5_reference_page(
     data: MainFigure5Data,
     output_dir: str | Path,
     page: MainFigure5Page | None = None,
 ) -> tuple[Path, Path]:
-    """Write an exact compact PNG and an A4 raster-equivalent PDF."""
+    """Export the packaged PNG and a raster-equivalent A4 PDF."""
 
     from ._main_figure_5_plot import render_main_figure_5
 
     return render_main_figure_5(
         data,
-        page or calculate_main_figure_5(data),
+        page or validate_main_figure_5_reference_page(data),
         output_dir,
     )
+
+
+def calculate_main_figure_5(data: MainFigure5Data) -> MainFigure5Page:
+    """Compatibility alias for :func:`validate_main_figure_5_reference_page`."""
+
+    return validate_main_figure_5_reference_page(data)
+
+
+def plot_main_figure_5(
+    data: MainFigure5Data,
+    output_dir: str | Path,
+    page: MainFigure5Page | None = None,
+) -> tuple[Path, Path]:
+    """Compatibility alias for :func:`export_main_figure_5_reference_page`."""
+
+    return export_main_figure_5_reference_page(data, output_dir, page)
 
 
 __all__ = [
@@ -256,7 +278,9 @@ __all__ = [
     "MainFigure5Page",
     "PANEL_ORDER",
     "calculate_main_figure_5",
+    "export_main_figure_5_reference_page",
     "load_main_figure_5",
     "plot_main_figure_5",
+    "validate_main_figure_5_reference_page",
     "write_main_figure_5_tables",
 ]

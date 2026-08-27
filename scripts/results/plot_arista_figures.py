@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export compact ARISTA S17--S22 pages and their formal source index."""
+"""Export released ARISTA S17--S22 pages as reference assets."""
 
 from __future__ import annotations
 
@@ -93,6 +93,7 @@ def run(
             for figure, paths in rendered.items()
         },
         "table_count": len(tables),
+        "export_type": "released reference pages; no analysis is recalculated",
         "pdf_equivalence": "same page appearance and geometry; raster-only PDFs",
         "formal_source_index": None if formal_index is None else formal_index.name,
     }

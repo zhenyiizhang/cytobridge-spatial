@@ -48,6 +48,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pandoc
       - name: Install the Read the Docs dependency set
         run: |
           python -m pip install -r requirements/docs.txt

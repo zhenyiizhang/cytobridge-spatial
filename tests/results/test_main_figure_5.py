@@ -8,7 +8,7 @@ import subprocess
 import sys
 import zlib
 
-import fitz
+import pymupdf as fitz
 import matplotlib as mpl
 import pandas as pd
 from PIL import Image, ImageChops
@@ -21,8 +21,10 @@ sys.path.insert(0, str(PACKAGE_ROOT))
 from CytoBridge.results.main_figure_5 import (  # noqa: E402
     PANEL_ORDER,
     calculate_main_figure_5,
+    export_main_figure_5_reference_page,
     load_main_figure_5,
     plot_main_figure_5,
+    validate_main_figure_5_reference_page,
     write_main_figure_5_tables,
 )
 
@@ -40,7 +42,7 @@ def _crc32(path: Path) -> str:
 
 def test_packaged_main_figure_5_contract() -> None:
     data = load_main_figure_5()
-    page = calculate_main_figure_5(data)
+    page = validate_main_figure_5_reference_page(data)
     assert tuple(data.panel_index["panel"]) == PANEL_ORDER
     assert page.width_pixels == 2481
     assert page.height_pixels == 3508
@@ -50,6 +52,8 @@ def test_packaged_main_figure_5_contract() -> None:
     assert page.raster_crc32 == "1331a768"
     assert page.panel_count == 5
     assert data.manifest["scientific_label_release"] == "v5"
+    assert data.manifest["reader_action"] == "reference-export"
+    assert data.manifest["numerical_recalculation"] is False
     assert data.manifest["scientific_labels"] == {
         "Spatial migration velocity": "Spatial velocity",
         "Spatial velocity cosine simlarity": "Spatial velocity cosine similarity",
@@ -79,7 +83,7 @@ def test_full_recompute_registry_uses_relative_paths() -> None:
 
 def test_main_figure_5_tables_are_written(tmp_path: Path) -> None:
     data = load_main_figure_5()
-    page = calculate_main_figure_5(data)
+    page = validate_main_figure_5_reference_page(data)
     paths = write_main_figure_5_tables(data, page, tmp_path)
     assert {name: path.name for name, path in paths.items()} == {
         "panels": "main_figure_5_panel_index.csv",
@@ -90,12 +94,12 @@ def test_main_figure_5_tables_are_written(tmp_path: Path) -> None:
     assert pd.read_csv(paths["page"]).loc[0, "panel_count"] == 5
 
 
-def test_main_figure_5_plot_is_png_exact_and_a4(tmp_path: Path) -> None:
+def test_main_figure_5_reference_export_is_png_exact_and_a4(tmp_path: Path) -> None:
     mpl.use("Agg", force=True)
     before = mpl.rcParams.copy()
     data = load_main_figure_5()
-    page = calculate_main_figure_5(data)
-    pdf, png = plot_main_figure_5(data, tmp_path, page)
+    page = validate_main_figure_5_reference_page(data)
+    pdf, png = export_main_figure_5_reference_page(data, tmp_path, page)
     assert png.read_bytes() == data.raster_path.read_bytes()
     assert _crc32(png) == "1331a768"
     with Image.open(png) as image:
@@ -142,7 +146,10 @@ def test_main_figure_5_cli_has_sanitized_summary(tmp_path: Path) -> None:
     completed = subprocess.run(
         [
             sys.executable,
-            str(PACKAGE_ROOT / "scripts/results/plot_main_figure_5.py"),
+            str(
+                PACKAGE_ROOT
+                / "scripts/results/export_main_figure_5_reference_page.py"
+            ),
             "--output-dir",
             str(output),
         ],
@@ -159,12 +166,21 @@ def test_main_figure_5_cli_has_sanitized_summary(tmp_path: Path) -> None:
     )
     summary = json.loads(completed.stdout)
     assert summary["analysis"] == "main_figure_5"
+    assert summary["figure_action"] == "reference-export"
+    assert summary["numerical_recalculation"] is False
     assert summary["scientific_label_release"] == "v5"
     assert summary["source"] == "packaged"
     assert summary["panel_count"] == 5
     assert summary["canvas_pixels"] == [2481, 3508]
     assert str(tmp_path) not in completed.stdout
     assert json.loads((output / "run_summary.json").read_text()) == summary
+
+
+def test_main_figure_5_legacy_names_remain_available() -> None:
+    data = load_main_figure_5()
+    assert calculate_main_figure_5(data) == validate_main_figure_5_reference_page(data)
+    assert callable(plot_main_figure_5)
+    assert "Compatibility alias" in (plot_main_figure_5.__doc__ or "")
 
 
 def test_changed_raster_is_rejected(tmp_path: Path) -> None:

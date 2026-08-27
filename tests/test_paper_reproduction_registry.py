@@ -37,6 +37,58 @@ def test_ready_entries_have_existing_reader_entry_points() -> None:
         assert entry.exists(), f"Missing reader entry for {row['paper_location']}: {entry}"
 
 
+def test_registry_states_what_each_entry_can_do() -> None:
+    rows = load_rows()
+    required_columns = {
+        "paper_location",
+        "dataset_or_topic",
+        "reproduction_entry",
+        "processed_input",
+        "reproduction_mode",
+        "wheel_runnable",
+        "dependencies",
+        "availability",
+    }
+    assert set(rows[0]) == required_columns
+
+    allowed_modes = {
+        "numeric-redraw",
+        "result-summary-redraw",
+        "reference-export",
+        "external-assembly",
+        "table-only",
+        "static-artwork",
+        "provenance-hold",
+        "video-render",
+    }
+    observed_modes: set[str] = set()
+    for row in rows:
+        modes = set(row["reproduction_mode"].split(" + "))
+        assert modes <= allowed_modes
+        observed_modes.update(modes)
+        assert row["wheel_runnable"] in {"true", "false"}
+        assert row["dependencies"].strip()
+
+    assert {
+        "numeric-redraw",
+        "result-summary-redraw",
+        "reference-export",
+        "external-assembly",
+        "table-only",
+    } <= observed_modes
+
+    by_location = {row["paper_location"]: row for row in rows}
+    assert (
+        by_location["Main Figure 2"]["reproduction_mode"]
+        == "result-summary-redraw + external-assembly"
+    )
+    assert by_location["Main Figure 4"]["reproduction_mode"] == "external-assembly"
+    assert by_location["Main Figure 4"]["wheel_runnable"] == "false"
+    assert by_location["Main Figure 5"]["reproduction_mode"] == "reference-export"
+    assert by_location["Main Figure 5"]["wheel_runnable"] == "true"
+    assert by_location["Supplementary Table 2"]["reproduction_mode"] == "table-only"
+
+
 def test_zebrafish_release_media_are_archived() -> None:
     expected = {
         "Supplementary_Video_4_Zebrafish_YSL_Ablation.mp4": 4_393_527,

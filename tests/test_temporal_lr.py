@@ -216,6 +216,53 @@ def test_ward_dendrogram_cluster_order_is_recorded() -> None:
     assert sorted(result.assignments["dendrogram_rank"].tolist()) == [0, 1, 2, 3]
 
 
+def test_kmeans_temporal_clustering_is_deterministic() -> None:
+    profiles = pd.DataFrame(
+        [
+            [0.0, 0.8, 1.0, 0.2],
+            [0.0, 0.7, 0.9, 0.3],
+            [1.0, 0.8, 0.1, 0.0],
+            [0.9, 1.0, 0.2, 0.0],
+        ],
+        index=["late_a", "late_b", "early_a", "early_b"],
+        columns=[0.0, 0.5, 1.0, 1.5],
+    )
+    first = cluster_temporal_profiles(
+        profiles,
+        n_clusters=2,
+        normalization="minmax",
+        method="kmeans",
+        cluster_order="peak_time",
+    )
+    second = cluster_temporal_profiles(
+        profiles,
+        n_clusters=2,
+        normalization="minmax",
+        method="kmeans",
+        cluster_order="peak_time",
+    )
+
+    pd.testing.assert_frame_equal(first.assignments, second.assignments)
+    pd.testing.assert_frame_equal(first.prototypes, second.prototypes)
+    assignments = first.assignments.set_index("profile")["cluster"]
+    assert assignments["early_a"] == assignments["early_b"] == 1
+    assert assignments["late_a"] == assignments["late_b"] == 2
+    diagnostics = first.diagnostics.iloc[0]
+    assert diagnostics["linkage_method"] == "kmeans"
+    assert diagnostics["cut_strategy"] == "sklearn_kmeans_pp_n_init_100_seed_0"
+    assert diagnostics["minimum_cluster_size"] == 2
+    assert diagnostics["maximum_cluster_size"] == 2
+
+    with pytest.raises(ValueError, match="unavailable"):
+        cluster_temporal_profiles(
+            profiles,
+            n_clusters=2,
+            normalization="minmax",
+            method="kmeans",
+            cluster_order="dendrogram",
+        )
+
+
 def test_temporal_clustering_zero_distance_ties_still_cut_to_exact_k() -> None:
     profiles = pd.DataFrame(
         np.zeros((6, 4), dtype=np.float64),

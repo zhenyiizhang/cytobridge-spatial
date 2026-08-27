@@ -14,6 +14,24 @@ from ._version import __version__
 
 
 _DISTRIBUTION_NAME = "CytoBridge"
+_FIGURE_COMMAND_HELP = {
+    "agist": "redraw Supplementary Figures S2-S3",
+    "nonspatial": "redraw Supplementary Figures S4-S5",
+    "classifier-smoothing": "redraw Supplementary Figure S6 summaries",
+    "arista-lr": "recalculate and redraw corrected Figures S21-S22",
+    "lr-complex": "redraw Supplementary Figure S23",
+    "zebrafish-si": "redraw Supplementary Figures S27-S34",
+    "interaction-evidence": "redraw Supplementary Figure S35 summaries",
+    "loto-benchmark": "redraw Supplementary Figure S36 summaries",
+    "training-histories": "redraw Supplementary Figure S37",
+    "arista-local-domains": "redraw Supplementary Figure S38 summaries",
+    "zebrafish-attention": "redraw Supplementary Figure S39 summaries",
+    "compute-cost": "write Supplementary Table 2",
+    "main-figure-2": "assemble Main Figure 2 from packaged inputs",
+    "main-figure-5-reference": "export the accepted Main Figure 5 reference page",
+    "main-figure-4": "assemble Main Figure 4 from an external MOSTA release",
+    "mosta-reference-pages": "export S9-S16 from an external MOSTA release",
+}
 _DEPENDENCY_PROFILES = {
     "core": ("anndata", "numpy", "pandas", "scipy", "sklearn", "tqdm", "yaml"),
     "preprocess": ("ot", "qnorm", "scanpy", "torch"),
@@ -226,6 +244,29 @@ def _parser() -> argparse.ArgumentParser:
             "or JSON/YAML path"
         ),
     )
+    figure = commands.add_parser(
+        "figure",
+        help="run a paper-figure redraw, table, export, or assembly workflow",
+    )
+    figure_commands = figure.add_subparsers(dest="figure_command")
+    figure_commands.add_parser("list", help="list figure workflows")
+    for name, help_text in _FIGURE_COMMAND_HELP.items():
+        figure_parser = figure_commands.add_parser(name, help=help_text)
+        figure_parser.add_argument(
+            "--results-dir",
+            type=Path,
+            default=None,
+            help=(
+                "compact result directory; defaults to package data. For MOSTA "
+                "commands, supply the downloaded release directory"
+            ),
+        )
+        figure_parser.add_argument(
+            "--output-dir",
+            type=Path,
+            required=True,
+            help="new or empty output directory",
+        )
     nonspatial = commands.add_parser(
         "nonspatial",
         help="run the package-owned Weinreb or scNT non-spatial workflow",
@@ -530,6 +571,47 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_figure_command(args: argparse.Namespace) -> int:
+    """Run a public paper-figure workflow."""
+
+    if args.figure_command == "list":
+        from .results.figure_workflows import list_figure_workflows
+
+        print("command\tmode\twheel\tpaper location")
+        for workflow in list_figure_workflows():
+            wheel = "yes" if workflow["wheel_runnable"] else "external input"
+            print(
+                f"{workflow['name']}\t{workflow['mode']}\t{wheel}\t"
+                f"{workflow['paper_location']}"
+            )
+        return 0
+    if args.figure_command not in _FIGURE_COMMAND_HELP:
+        print("cytobridge figure requires a subcommand; use --help", file=sys.stderr)
+        return 2
+
+    try:
+        from .results.figure_workflows import run_figure_workflow
+
+        summary = run_figure_workflow(
+            args.figure_command,
+            args.output_dir,
+            results_dir=args.results_dir,
+        )
+    except ModuleNotFoundError as error:
+        print(
+            f"Figure dependencies are missing ({error.name}). "
+            "Install them with: pip install 'CytoBridge[plot]'",
+            file=sys.stderr,
+        )
+        return 2
+    except (FileExistsError, FileNotFoundError, KeyError, ValueError) as error:
+        print(f"CytoBridge figure input error: {error}", file=sys.stderr)
+        return 2
+
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
 def _run_nonspatial_command(args: argparse.Namespace) -> int:
     """Dispatch the package-owned non-spatial workflow lazily."""
 
@@ -695,6 +777,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "workflow":
         return _run_workflow_command(args)
+    if args.command == "figure":
+        return _run_figure_command(args)
     if args.command == "nonspatial":
         return _run_nonspatial_command(args)
     if args.command != "doctor":

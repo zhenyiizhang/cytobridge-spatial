@@ -287,7 +287,7 @@ def test_zebrafish_si_cli_supports_a_figure_subset(tmp_path: Path) -> None:
     assert json.loads((output / "run_summary.json").read_text()) == summary
 
 
-def test_zebrafish_si_notebook_is_minimal_and_clean() -> None:
+def test_zebrafish_si_notebook_is_minimal_and_executed() -> None:
     path = (
         REPOSITORY_ROOT
         / "docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb"
@@ -308,10 +308,11 @@ def test_zebrafish_si_notebook_is_minimal_and_clean() -> None:
         if cell["cell_type"] == "markdown"
     ]
     assert markdown[1:] == ["## Load", "## Calculate", "## Plot and save"]
-    for cell in notebook["cells"]:
-        if cell["cell_type"] == "code":
-            assert cell["execution_count"] is None
-            assert cell["outputs"] == []
+    code_cells = [
+        cell for cell in notebook["cells"] if cell["cell_type"] == "code"
+    ]
+    assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
+    assert sum(len(cell["outputs"]) for cell in code_cells) > 0
 
 
 def test_zebrafish_si_rejects_an_object_array(tmp_path: Path) -> None:

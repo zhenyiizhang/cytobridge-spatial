@@ -1,0 +1,81 @@
+{
+  "schema": "cytobridge.arista.figureS17.strict-balanced-representative.legacy-style.v1",
+  "created_utc": "2026-08-25T05:26:08.227785+00:00",
+  "scientific_contract": {
+    "score_source": "unchanged package-native strict all-subunit LR pair_timecourse",
+    "pattern_source": "corrected deterministic S16 kmeans assignments",
+    "eligible_pair_universe": 531,
+    "selection": "within each corrected pattern, select the 25 pairs with minimum Euclidean distance to the pattern mean in row-minmax nine-time-point profile space",
+    "displayed_pairs": 50,
+    "displayed_per_pattern": {
+      "1": 25,
+      "2": 25
+    },
+    "balanced_display_represents_prevalence": false
+  },
+  "display_contract": {
+    "style": "submitted S17 five-column small-multiple line grammar",
+    "font": "Arial",
+    "grid": {
+      "rows": 10,
+      "columns": 5
+    },
+    "page_pt": [
+      1288.692187,
+      1542.5937057142855
+    ],
+    "empty_panels": 0
+  },
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S15_S17_package_native_strict_oldstyle_v1/provenance/source_snapshots/lr_pair_timecourse.csv": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_kmeans_normalized_profiles.csv": "7b48050895b5b80b1e926968344e5e35050ad49fed015f1a9598fb372fffe75d",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S16_lr_kmeans_recluster_v1/S16_lr_kmeans_assignments.csv": "153d59d2684daf927f9b7f4e8983d454f2d03564b7182bb7d29c5cf6d5f36af7"
+  },
+  "outputs": {
+    "build_s17_balanced_representative_legacy_style.py": {
+      "sha256": "3e806f3b40af29e7ebd2026036d0322ac4148a06b5b43ce9da9625fffe9c7440",
+      "size_bytes": 11579
+    },
+    "figures/FigureS17_ARISTA_package_native_balanced_representative_legacy_style.pdf": {
+      "sha256": "ad4125ca2710c152ce65d27124457ac1695ce5af1f0881503e0d11cdbb1fafff",
+      "size_bytes": 123234
+    },
+    "figures/FigureS17_ARISTA_package_native_balanced_representative_legacy_style.png": {
+      "sha256": "82595e5c344a725770d597454242ca4a82729f0711277fc1c4cb83a2ba732ed2",
+      "size_bytes": 898684
+    },
+    "figures/FigureS17_ARISTA_package_native_balanced_representative_legacy_style.svg": {
+      "sha256": "d949120951196f2c561b6937a60c6cb87fdb09509294cbb92f54b01b18138a22",
+      "size_bytes": 376141
+    },
+    "tables/S17_all_pair_representativeness_ranking.csv": {
+      "sha256": "334489bfc278bb1611b0347d427572c90cdeb2baec6436849fa628e74e0340ae",
+      "size_bytes": 95435
+    },
+    "tables/S17_balanced_representative_roster.csv": {
+      "sha256": "7e3aad16b828880dc2c4584351639a210c9456fe6a5e7d6ba0dd844801a9a60e",
+      "size_bytes": 9260
+    },
+    "tables/S17_balanced_representative_timecourse.csv": {
+      "sha256": "54200be2ed6fbc0e18f0cf79243575d969942201efadf2b017638cf947a83895",
+      "size_bytes": 70080
+    }
+  },
+  "qa": {
+    "passed": true,
+    "displayed_pairs": 50,
+    "displayed_per_pattern": {
+      "1": 25,
+      "2": 25
+    },
+    "curve_rows": 450,
+    "rendered_png_px": [
+      3222,
+      3857
+    ],
+    "page_pt": [
+      1288.692138671875,
+      1542.59375
+    ]
+  }
+}

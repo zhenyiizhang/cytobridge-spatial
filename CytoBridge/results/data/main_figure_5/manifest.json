@@ -3,6 +3,8 @@
   "analysis": "main_figure_5",
   "manuscript_figure": "Main Figure 5",
   "dataset": "ARISTA",
+  "reader_action": "reference-export",
+  "numerical_recalculation": false,
   "scientific_label_release": "v5",
   "files": {
     "main_figure_5_compact.png": "scientific-label page raster",

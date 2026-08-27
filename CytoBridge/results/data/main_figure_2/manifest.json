@@ -3,7 +3,8 @@
   "figure": "Main Figure 2",
   "dataset": "AGIST simulation",
   "source_version": "word-current-2026-08-26",
-  "reproduction_scope": "figure_from_processed_panel_data",
+  "reader_action": "result-summary-redraw + external-assembly",
+  "reproduction_scope": "panel_e_redraw_plus_frozen_page_assembly",
   "files": {
     "frozen_panels_a_to_d.pdf": "vector artwork for panels a through d with the panel-e area cleared",
     "w2_mean_sd_ci.csv": "CytoBridge W2 summary for panel e",
@@ -25,6 +26,6 @@
       "the split-SDE inference environment used to regenerate the processed W2 tables",
       "the growth-correlation result state used for panel d"
     ],
-    "statement": "This compact bundle rebuilds the paper figure from processed panel data. It does not run model training or regenerate the processed tables."
+    "statement": "This bundle recalculates and redraws panel e from processed tables, then places it over the frozen vector page for panels a through d. It does not run model training, regenerate the processed tables, or redraw panels a through d."
   }
 }

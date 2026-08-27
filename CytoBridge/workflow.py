@@ -296,7 +296,7 @@ def _training_uses_learned_edge_prior(
 
 
 def _validate_builtin_training_contract(config: Mapping[str, Any]) -> None:
-    """Fail closed when duplicated workflow JSON and training YAML fields drift."""
+    """Check matching fields in the workflow JSON and training YAML."""
 
     train_config = config.get("train", {})
     resolved = _read_training_config(str(train_config["config"]))
@@ -1258,10 +1258,10 @@ def build_workflow_plan(
                 "preferred_species_tag": downstream_analyses["preferred_species_tag"],
                 "note": (
                     "requires PCA loadings in varm['PCs']; new preprocessing "
-                    "persists var['pca_center']; missing centers fail closed unless "
-                    "--allow-complete-reference-pca-center-fallback explicitly "
-                    "declares a complete original PCA-fit reference, whose mean "
-                    "must still reproduce saved PCA coordinates"
+                    "saves var['pca_center']; for an older complete PCA-fit "
+                    "reference without that field, use "
+                    "--allow-complete-reference-pca-center-fallback; the inferred "
+                    "center must reproduce the saved PCA coordinates"
                 ),
             },
             {
@@ -1323,8 +1323,7 @@ def build_workflow_plan(
                     "to themselves is not a fitted global-t0 reconstruction "
                     "diagnostic"
                     if trajectory["split_sde_piecewise"]
-                    else "descriptive W2 diagnostic; not a training holdout or "
-                    "cross-method benchmark"
+                    else "descriptive W2 comparison using the fitted data"
                 ),
             },
         ]
@@ -1414,6 +1413,17 @@ def build_workflow_plan(
 def render_workflow_plan(plan: Mapping[str, Any]) -> str:
     """Render a workflow plan as readable terminal text."""
 
+    def display_path(value: object) -> str:
+        text = str(value)
+        parts = Path(text).parts
+        try:
+            package_index = parts.index("CytoBridge")
+        except ValueError:
+            return text
+        if parts[package_index + 1 : package_index + 2] == ("workflow_databases",):
+            return "package: " + "/".join(parts[package_index:])
+        return text
+
     dataset = plan["dataset"]
     scientific = plan["scientific"]
     lines = [
@@ -1478,7 +1488,9 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
             edge = step["edge_predictor"]
             lines.append(f"    edge predictor: {edge['status']}")
             if edge.get("graph_database"):
-                lines.append(f"      graph database: {edge['graph_database']}")
+                lines.append(
+                    f"      graph database: {display_path(edge['graph_database'])}"
+                )
             if edge.get("database_source"):
                 lines.append(f"      database source: {edge['database_source']}")
             if edge.get("interaction_cutoff") is not None:
@@ -1495,7 +1507,7 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
         for analysis in step.get("analyses", []):
             lines.append(f"    {analysis['name']}: {analysis['status']}")
             if analysis.get("database"):
-                lines.append(f"      database: {analysis['database']}")
+                lines.append(f"      database: {display_path(analysis['database'])}")
             if analysis.get("source"):
                 lines.append(f"      source: {analysis['source']}")
             if analysis.get("preferred_species_tag"):
@@ -2516,7 +2528,7 @@ def _write_reconstruction_diagnostic(
     output_dir: Path,
     downstream: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Compare fitted-model reconstructions to observed slices without a holdout claim."""
+    """Compare fitted-model reconstructions with observed slices."""
 
     import numpy as np
     import pandas as pd

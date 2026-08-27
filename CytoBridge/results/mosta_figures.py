@@ -178,12 +178,12 @@ class MostaFigureRelease:
 
 def _fitz():
     try:
-        import fitz
+        import pymupdf
     except ImportError as error:  # pragma: no cover - optional dependency
         raise ImportError(
             "MOSTA vector assembly requires PyMuPDF. Install CytoBridge[plot]."
         ) from error
-    return fitz
+    return pymupdf
 
 
 def _pypdf():
@@ -265,7 +265,7 @@ def _figure_index(root: Path) -> pd.DataFrame:
             "calculation_scripts": main_calculation_scripts,
             "renderer": "reproduction/main_figure4_complete/source/assemble_complete_figure4.py",
             "model_assets": model_assets,
-            "reader_action": "rebuild from five released panel PDFs",
+            "reader_action": "assemble five released panel PDFs",
         }
     ]
     rows.extend(
@@ -340,7 +340,7 @@ def write_mosta_figure_index(
     return path
 
 
-def rebuild_main_figure_4(
+def assemble_main_figure_4(
     release: MostaFigureRelease,
     output_dir: str | Path,
     *,
@@ -417,6 +417,17 @@ def rebuild_main_figure_4(
     return pdf_path, png_path
 
 
+def rebuild_main_figure_4(
+    release: MostaFigureRelease,
+    output_dir: str | Path,
+    *,
+    dpi: int = 300,
+) -> tuple[Path, Path]:
+    """Compatibility alias for :func:`assemble_main_figure_4`."""
+
+    return assemble_main_figure_4(release, output_dir, dpi=dpi)
+
+
 def export_mosta_supplementary_figures(
     release: MostaFigureRelease,
     output_dir: str | Path,
@@ -462,6 +473,7 @@ __all__ = [
     "MostaFigureRelease",
     "RELEASE_DIRECTORY",
     "RELEASE_ENVIRONMENT_VARIABLE",
+    "assemble_main_figure_4",
     "export_mosta_supplementary_figures",
     "load_mosta_figure_release",
     "rebuild_main_figure_4",

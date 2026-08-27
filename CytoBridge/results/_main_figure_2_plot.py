@@ -1,4 +1,4 @@
-"""Renderer for Main Figure 2."""
+"""Assembler for Main Figure 2."""
 
 from __future__ import annotations
 
@@ -197,18 +197,18 @@ def _write_panel_e_overlay(data: MainFigure2Data, path: Path) -> None:
 
 def _fitz():
     try:
-        import fitz
+        import pymupdf
     except ImportError as error:  # pragma: no cover - optional dependency
         raise ImportError(
             "Main Figure 2 plotting requires PyMuPDF. Install CytoBridge[plot]."
         ) from error
-    return fitz
+    return pymupdf
 
 
-def plot_main_figure_2(
+def assemble_main_figure_2(
     data: MainFigure2Data, output_dir: str | Path, *, dpi: int = 300
 ) -> tuple[Path, Path]:
-    """Render the frozen panels and recalculated panel e."""
+    """Combine frozen panels a--d with a redrawn panel e."""
 
     if dpi <= 0:
         raise ValueError("dpi must be positive")
@@ -250,3 +250,11 @@ def plot_main_figure_2(
     finally:
         document.close()
     return pdf_path, png_path
+
+
+def plot_main_figure_2(
+    data: MainFigure2Data, output_dir: str | Path, *, dpi: int = 300
+) -> tuple[Path, Path]:
+    """Compatibility alias for :func:`assemble_main_figure_2`."""
+
+    return assemble_main_figure_2(data, output_dir, dpi=dpi)

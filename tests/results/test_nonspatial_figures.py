@@ -261,7 +261,7 @@ def test_nonspatial_cli_supports_a_figure_subset(tmp_path: Path) -> None:
     assert json.loads((output / "run_summary.json").read_text()) == summary
 
 
-def test_nonspatial_notebook_is_minimal_and_clean() -> None:
+def test_nonspatial_notebook_is_minimal_and_executed() -> None:
     path = REPOSITORY_ROOT / "docs/tutorials/paper_figures/nonspatial_figures.ipynb"
     notebook = json.loads(path.read_text(encoding="utf-8"))
     assert [cell["cell_type"] for cell in notebook["cells"]] == [
@@ -279,10 +279,11 @@ def test_nonspatial_notebook_is_minimal_and_clean() -> None:
         if cell["cell_type"] == "markdown"
     ]
     assert markdown[1:] == ["## Load", "## Calculate", "## Plot and save"]
-    for cell in notebook["cells"]:
-        if cell["cell_type"] == "code":
-            assert cell["execution_count"] is None
-            assert cell["outputs"] == []
+    code_cells = [
+        cell for cell in notebook["cells"] if cell["cell_type"] == "code"
+    ]
+    assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
+    assert sum(len(cell["outputs"]) for cell in code_cells) > 0
 
 
 def test_nonspatial_rejects_an_object_array(tmp_path: Path) -> None:

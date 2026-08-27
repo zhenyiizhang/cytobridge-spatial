@@ -36,7 +36,7 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/cytobridge_arista_s15_s17_mpl")
 os.environ.setdefault("SOURCE_DATE_EPOCH", "946684800")
 
-import fitz
+import pymupdf as fitz
 import matplotlib as mpl
 
 mpl.use("Agg")

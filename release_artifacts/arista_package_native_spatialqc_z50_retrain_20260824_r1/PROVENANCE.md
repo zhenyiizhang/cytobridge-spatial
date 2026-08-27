@@ -51,7 +51,9 @@ distinct LR programs.
 | 5d | Gene velocity | `main_run/downstream/velocity/velocity_components.npz`, `main_run/preprocess/aligned_cell_identity.csv` | Corrected full velocity projected through the fresh raw package-native PCA and rendered with the historical scVelo stream style |
 | 5e | Growth and interaction | `main_run/downstream/growth/`, `main_run/downstream/communication/` | Fresh package-native cell and cell-type summaries in the submitted layout |
 | S12--S14 | Interpolation, growth, lineage and composition | `main_run/downstream/slice_data/`, `main_run/downstream/growth/`, `main_run/downstream/composition/` | Generated and observed slices use `spatial_warp_k=1`; lineage/composition use persistent fixed-particle identities |
-| S15--S17 | Gene and LR dynamics | `main_run/downstream/gene_dynamics/`, `main_run/downstream/ligand_receptor/` | Fresh reconstruction-derived gene dynamics and complete-complex LR trajectories; non-estimable historical LR slots remain explicitly N/E |
+| S15 | Gene dynamics | `main_run/downstream/gene_dynamics/` | Fresh reconstruction-derived gene dynamics |
+| S16 | LR temporal patterns | `main_run/downstream/ligand_receptor/pair_timecourse.csv`, `S16_lr_kmeans_recluster_v1/` | Row-wise min-max normalization followed by deterministic k-means (`k=2`, k-means++, 100 initializations, seed 0); the two patterns contain 217 and 314 pairs |
+| S17 | Representative LR trajectories | `S16_lr_kmeans_recluster_v1/`, `S17_package_native_balanced25_oldstyle_v1/tables/` | The 25 profiles nearest each pattern mean are shown, giving 50 displayed pairs and 450 time-course rows; the balanced display is not a prevalence estimate |
 
 ## Evaluation protocol
 
@@ -84,8 +86,11 @@ run log, and selected checkpoints are retained for scientific reruns.
 
 ## Interpretation
 
-The archive supports equivalent replacement of the ARISTA paper figures using
-corrected calculations. It does not claim that spatial interaction is uniformly
+The archive supports replacement of the ARISTA paper figures using corrected
+calculations. The hierarchical S16/S17 pages retained in
+`S15_S17_package_native_strict_oldstyle_v1/` are superseded diagnostics; the
+accepted LR pattern pages are the deterministic k-means S16 and balanced S17
+listed above. It does not claim that spatial interaction is uniformly
 aligned with the injury contour. The Figure 5c follow-up instead supports two
 localized organized interaction niches with distinct repair-associated LR
 programs. The analysis is observational and model-derived, so it supports a

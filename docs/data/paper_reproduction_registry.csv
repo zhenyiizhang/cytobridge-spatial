@@ -1,51 +1,51 @@
-paper_location,dataset_or_topic,reproduction_entry,processed_input,availability
-Main Figure 1,Model overview,Static diagram; no computational plotting entry required,Published vector artwork,static
-Main Figure 2,AGIST benchmark,docs/tutorials/paper_figures/main_figure_2.ipynb,CytoBridge.results main_figure_2,ready
-Main Figure 3,Chicken heart,docs/tutorials/dataset_workflows/chicken_heart.ipynb,External aligned data and model directory,external figure assembly
-Main Figure 4,MOSTA,docs/tutorials/paper_figures/main_figure_4.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Main Figure 5,ARISTA,docs/tutorials/paper_figures/main_figure_5.ipynb,CytoBridge.results main_figure_5 compact page and input registry,ready
-Main Figure 6,AD mouse,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S1,Synthetic simulation,No public plotting entry,Historical result state unavailable,provenance hold
-Supplementary Figure S2,AGIST velocity,docs/tutorials/paper_figures/agist_figures.ipynb,CytoBridge.results agist_figures,ready
-Supplementary Figure S3,Synthetic attraction,docs/tutorials/paper_figures/agist_figures.ipynb,CytoBridge.results agist_figures,ready
-Supplementary Figure S4,Weinreb non-spatial,docs/tutorials/paper_figures/nonspatial_figures.ipynb,CytoBridge.results Weinreb compact panel data,ready
-Supplementary Figure S5,scNT-seq non-spatial,docs/tutorials/paper_figures/nonspatial_figures.ipynb,CytoBridge.results scNT-seq compact panel data,ready
-Supplementary Figure S6,Classifier smoothing,docs/tutorials/paper_figures/classifier_smoothing.ipynb,CytoBridge.results classifier_smoothing,ready
-Supplementary Figure S7,Chicken heart alignment and growth,docs/tutorials/dataset_workflows/chicken_heart.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S8,Chicken heart velocity and growth,docs/tutorials/dataset_workflows/chicken_heart.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S9,MOSTA spatial trajectory,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S10,MOSTA growth,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S11,MOSTA composition,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S12,MOSTA lineage,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S13,MOSTA gene programs,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S14,MOSTA GO enrichment,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S15,MOSTA developmental waves,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S16,MOSTA ligand-receptor patterns,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository release artifact,ready
-Supplementary Figure S17,ARISTA interpolation,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S18,ARISTA growth,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S19,ARISTA lineage and composition,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S20,ARISTA gene programs and GO enrichment,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S21,ARISTA ligand-receptor clusters,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S22,ARISTA ligand-receptor small multiples,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page and repository release source,ready
-Supplementary Figure S23,Ligand-receptor complex aggregation,docs/tutorials/paper_figures/lr_complex_aggregation.ipynb,CytoBridge.results lr_complex_aggregation,ready
-Supplementary Figure S24,AD mouse overview,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S25,AD mouse GO enrichment,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S26,AD mouse GO enrichment,docs/tutorials/dataset_workflows/admouse.ipynb,External aligned data and model directory,external figure assembly
-Supplementary Figure S27,Zebrafish observed and generated states,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S28,Zebrafish growth,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S29,Zebrafish virtual-removal morphology,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S30,Zebrafish virtual-removal metrics,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S31,Zebrafish YSL gene dynamics,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S32,Zebrafish loss-weight sensitivity,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish loss-weight tables,ready
-Supplementary Figure S33,Zebrafish daughter-noise sensitivity,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S34,Zebrafish inverse-PCA evaluation,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,ready
-Supplementary Figure S35,No-LR and stVCR comparison,docs/tutorials/paper_figures/lr_prior_ablation_stvcr.ipynb,CytoBridge.results interaction_evidence,ready
-Supplementary Figure S36,Five-dataset benchmark,docs/tutorials/paper_figures/loto_benchmark.ipynb,CytoBridge.results loto_benchmark,ready
-Supplementary Figure S37,Training histories,docs/tutorials/paper_figures/training_histories.ipynb,CytoBridge.results training_histories,ready
-Supplementary Figure S38,ARISTA local interaction domains,docs/tutorials/paper_figures/arista_local_domains.ipynb,CytoBridge.results arista_local_domains,ready
-Supplementary Figure S39,Zebrafish attention,docs/tutorials/paper_figures/zebrafish_attention.ipynb,CytoBridge.results zebrafish_attention,ready
-Supplementary Table 1,Dataset settings,CytoBridge/workflow_configs,Packaged workflow configuration,ready
-Supplementary Table 2,Training compute,docs/tutorials/paper_figures/compute_cost.ipynb,CytoBridge.results full_model_compute_cost,ready
-Zebrafish baseline video,Zebrafish tissue dynamics,docs/tutorials/zebrafish_videos.md,External trajectory arrays plus archived code and derived inputs,release placement pending
-Supplementary Video 4,Zebrafish YSL virtual removal,docs/tutorials/zebrafish_videos.md,External trajectory arrays plus archived code and derived inputs,ready
-Supplementary Video 5,Zebrafish EVL virtual removal,docs/tutorials/zebrafish_videos.md,External trajectory arrays plus archived code and derived inputs,ready
+paper_location,dataset_or_topic,reproduction_entry,processed_input,reproduction_mode,wheel_runnable,dependencies,availability
+Main Figure 1,Model overview,Static diagram; no computational entry,Published vector artwork,static-artwork,false,Manuscript artwork,static
+Main Figure 2,AGIST benchmark,docs/tutorials/paper_figures/main_figure_2.ipynb,CytoBridge.results main_figure_2,result-summary-redraw + external-assembly,true,CytoBridge[plot]; packaged tables and frozen panels,ready
+Main Figure 3,Chicken heart,docs/tutorials/dataset_workflows/chicken_heart.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Main Figure 4,MOSTA,docs/tutorials/paper_figures/main_figure_4.ipynb,CytoBridge.results mosta_figures and repository figure release,external-assembly,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Main Figure 5,ARISTA,docs/tutorials/paper_figures/main_figure_5.ipynb,CytoBridge.results main_figure_5 compact page and input registry,reference-export,true,CytoBridge[plot]; packaged reference page,ready
+Main Figure 6,AD mouse,docs/tutorials/dataset_workflows/admouse.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S1,Synthetic simulation,No public plotting entry,Historical result state unavailable,provenance-hold,false,Historical result state,provenance hold
+Supplementary Figure S2,AGIST velocity,docs/tutorials/paper_figures/agist_figures.ipynb,CytoBridge.results agist_figures,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S3,Synthetic attraction,docs/tutorials/paper_figures/agist_figures.ipynb,CytoBridge.results agist_figures,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S4,Weinreb non-spatial,docs/tutorials/paper_figures/nonspatial_figures.ipynb,CytoBridge.results Weinreb compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S5,scNT-seq non-spatial,docs/tutorials/paper_figures/nonspatial_figures.ipynb,CytoBridge.results scNT-seq compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S6,Classifier smoothing,docs/tutorials/paper_figures/classifier_smoothing.ipynb,CytoBridge.results classifier_smoothing,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S7,Chicken heart alignment and growth,docs/tutorials/dataset_workflows/chicken_heart.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S8,Chicken heart velocity and growth,docs/tutorials/dataset_workflows/chicken_heart.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S9,MOSTA spatial trajectory,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S10,MOSTA growth,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S11,MOSTA composition,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S12,MOSTA lineage,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S13,MOSTA gene programs,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S14,MOSTA GO enrichment,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S15,MOSTA developmental waves,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S16,MOSTA ligand-receptor patterns,docs/tutorials/paper_figures/mosta_figures.ipynb,CytoBridge.results mosta_figures and repository figure release,reference-export,false,CytoBridge[plot]; repository MOSTA figure release,ready
+Supplementary Figure S17,ARISTA interpolation,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page,reference-export,true,CytoBridge[plot]; packaged reference page,ready
+Supplementary Figure S18,ARISTA growth,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page,reference-export,true,CytoBridge[plot]; packaged reference page,ready
+Supplementary Figure S19,ARISTA lineage and composition,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page,reference-export,true,CytoBridge[plot]; packaged reference page,ready
+Supplementary Figure S20,ARISTA gene programs and GO enrichment,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results compact ARISTA page,reference-export,true,CytoBridge[plot]; packaged reference page,ready
+Supplementary Figure S21,ARISTA ligand-receptor clusters,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results ARISTA ligand-receptor tables,numeric-redraw,true,CytoBridge[plot]; packaged all-pair time course,ready
+Supplementary Figure S22,ARISTA ligand-receptor small multiples,docs/tutorials/paper_figures/arista_figures.ipynb,CytoBridge.results ARISTA ligand-receptor tables,numeric-redraw,true,CytoBridge[plot]; packaged all-pair time course,ready
+Supplementary Figure S23,Ligand-receptor complex aggregation,docs/tutorials/paper_figures/lr_complex_aggregation.ipynb,CytoBridge.results lr_complex_aggregation,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S24,AD mouse overview,docs/tutorials/dataset_workflows/admouse.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S25,AD mouse GO enrichment,docs/tutorials/dataset_workflows/admouse.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S26,AD mouse GO enrichment,docs/tutorials/dataset_workflows/admouse.ipynb,Aligned data and model directory,external-assembly,false,External aligned H5AD; trained model; panel files,external inputs
+Supplementary Figure S27,Zebrafish observed and generated states,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S28,Zebrafish growth,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S29,Zebrafish virtual-removal morphology,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S30,Zebrafish virtual-removal metrics,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S31,Zebrafish YSL gene dynamics,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S32,Zebrafish loss-weight sensitivity,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish loss-weight tables,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S33,Zebrafish daughter-noise sensitivity,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S34,Zebrafish inverse-PCA evaluation,docs/tutorials/paper_figures/zebrafish_si_s27_s34.ipynb,CytoBridge.results zebrafish compact panel data,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S35,No-LR and stVCR comparison,docs/tutorials/paper_figures/lr_prior_ablation_stvcr.ipynb,CytoBridge.results interaction_evidence,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S36,Five-dataset benchmark,docs/tutorials/paper_figures/loto_benchmark.ipynb,CytoBridge.results loto_benchmark,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S37,Training histories,docs/tutorials/paper_figures/training_histories.ipynb,CytoBridge.results training_histories,numeric-redraw,true,CytoBridge[plot]; packaged training histories,ready
+Supplementary Figure S38,ARISTA local interaction domains,docs/tutorials/paper_figures/arista_local_domains.ipynb,CytoBridge.results arista_local_domains,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Figure S39,Zebrafish attention,docs/tutorials/paper_figures/zebrafish_attention.ipynb,CytoBridge.results zebrafish_attention,numeric-redraw,true,CytoBridge[plot]; packaged numeric inputs,ready
+Supplementary Table 1,Dataset settings,CytoBridge/workflow_configs,Packaged workflow configuration,table-only,true,Base package,ready
+Supplementary Table 2,Training compute,docs/tutorials/paper_figures/compute_cost.ipynb,CytoBridge.results full_model_compute_cost,table-only,true,Base package; packaged compute table,ready
+Zebrafish baseline video,Zebrafish tissue dynamics,docs/tutorials/zebrafish_videos.md,Trajectory arrays and archived renderer,video-render,false,External trajectory arrays; source checkout,placement pending
+Supplementary Video 4,Zebrafish YSL virtual removal,docs/tutorials/zebrafish_videos.md,Trajectory arrays and archived renderer,video-render,false,External trajectory arrays; source checkout,ready
+Supplementary Video 5,Zebrafish EVL virtual removal,docs/tutorials/zebrafish_videos.md,Trajectory arrays and archived renderer,video-render,false,External trajectory arrays; source checkout,ready

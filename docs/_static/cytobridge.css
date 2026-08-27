@@ -19,3 +19,33 @@ table.docutils td,
 table.docutils th {
   white-space: normal;
 }
+
+/* Furo normally moves the page outline into a drawer below 82rem. Keep it on
+   screen on ordinary laptop displays while leaving the mobile layout intact. */
+@media (min-width: 72em) and (max-width: 82em) {
+  .toc-content-icon {
+    display: none;
+  }
+
+  .toc-drawer {
+    border-left: 0;
+    height: auto;
+    min-width: 13em;
+    padding-right: 0.5rem;
+    position: static;
+    width: 13em;
+  }
+
+  .toc-tree {
+    border-left: 1px solid var(--color-background-border);
+    font-size: var(--toc-font-size);
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
+    width: auto;
+  }
+}

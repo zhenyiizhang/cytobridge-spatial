@@ -1,4 +1,4 @@
-"""Compact processed data for Main Figure 2."""
+"""Processed panel-e data and frozen panels for Main Figure 2 assembly."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ _FILES = (
 
 @dataclass(frozen=True)
 class MainFigure2Data:
-    """Processed tables and the frozen vector template for Main Figure 2."""
+    """Panel-e tables and the frozen vector page containing panels a--d."""
 
     source_dir: Path
     manifest: dict[str, Any]
@@ -77,7 +77,9 @@ def _integer_column(frame: pd.DataFrame, column: str, *, source: Path) -> None:
 def _validate_manifest(manifest: dict[str, Any], source: Path) -> None:
     if manifest.get("analysis") != "main_figure_2":
         raise ValueError(f"{source} must describe main_figure_2")
-    if manifest.get("reproduction_scope") != "figure_from_processed_panel_data":
+    if manifest.get("reader_action") != "result-summary-redraw + external-assembly":
+        raise ValueError(f"{source} contains an unexpected reader action")
+    if manifest.get("reproduction_scope") != "panel_e_redraw_plus_frozen_page_assembly":
         raise ValueError(f"{source} contains an unexpected reproduction scope")
     expected_files = set(_FILES).difference({"manifest.json"})
     if not isinstance(manifest.get("files"), dict) or set(manifest["files"]) != expected_files:
@@ -233,11 +235,29 @@ def write_main_figure_2_tables(
     return paths
 
 
+def assemble_main_figure_2(
+    data: MainFigure2Data, output_dir: str | Path, *, dpi: int = 300
+) -> tuple[Path, Path]:
+    """Assemble frozen panels a--d with a redrawn panel e."""
+
+    from ._main_figure_2_plot import assemble_main_figure_2 as _assemble
+
+    return _assemble(data, output_dir, dpi=dpi)
+
+
 def plot_main_figure_2(
     data: MainFigure2Data, output_dir: str | Path, *, dpi: int = 300
 ) -> tuple[Path, Path]:
-    """Render Main Figure 2 as PDF and PNG."""
+    """Compatibility alias for :func:`assemble_main_figure_2`."""
 
-    from ._main_figure_2_plot import plot_main_figure_2 as _plot
+    return assemble_main_figure_2(data, output_dir, dpi=dpi)
 
-    return _plot(data, output_dir, dpi=dpi)
+
+__all__ = [
+    "MainFigure2Data",
+    "assemble_main_figure_2",
+    "load_main_figure_2",
+    "plot_main_figure_2",
+    "summarize_main_figure_2_replicates",
+    "write_main_figure_2_tables",
+]

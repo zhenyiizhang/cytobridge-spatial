@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-import fitz
+import pymupdf as fitz
 import numpy as np
 from pypdf import PdfReader
 import pytest
@@ -18,6 +18,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 from CytoBridge.results.mosta_figures import (  # noqa: E402
     RELEASE_DIRECTORY,
     RELEASE_ENVIRONMENT_VARIABLE,
+    assemble_main_figure_4,
     export_mosta_supplementary_figures,
     load_mosta_figure_release,
     rebuild_main_figure_4,
@@ -189,10 +190,10 @@ def test_default_release_resolution_uses_environment(
     assert load_mosta_figure_release().root == root.resolve()
 
 
-def test_main_figure_4_rebuild_uses_panels_and_connectors(tmp_path: Path) -> None:
+def test_main_figure_4_assembly_uses_panels_and_connectors(tmp_path: Path) -> None:
     release = load_mosta_figure_release(_minimal_release(tmp_path))
     output = tmp_path / "main-output"
-    pdf, png = rebuild_main_figure_4(release, output, dpi=72)
+    pdf, png = assemble_main_figure_4(release, output, dpi=72)
     assert pdf.is_file()
     assert png.is_file()
     with fitz.open(pdf) as document:
@@ -263,6 +264,7 @@ def test_mosta_cli_uses_current_numbers(tmp_path: Path) -> None:
     )
     summary = json.loads(completed.stdout)
     assert summary["analysis"] == "mosta_manuscript_figures"
+    assert summary["figure_action"] == "external-assembly + reference-export"
     assert summary["current_supplementary_numbers"] == list(CURRENT_SUPPLEMENTARY)
     assert set(summary["supplementary_figures"]) == set(CURRENT_SUPPLEMENTARY)
     assert summary["main_figure"]["pdf"].endswith("main_figure_4.pdf")
@@ -285,7 +287,7 @@ def test_main_figure_4_matches_full_release_render(tmp_path: Path) -> None:
     if root is None:
         pytest.skip("repository MOSTA release is not present yet")
     release = load_mosta_figure_release(root)
-    rebuilt_pdf, _ = rebuild_main_figure_4(
+    rebuilt_pdf, _ = assemble_main_figure_4(
         release,
         tmp_path / "full-release-rebuild",
         dpi=300,
@@ -318,6 +320,11 @@ def test_mosta_module_keeps_vector_dependencies_lazy() -> None:
     assert completed.stdout == ""
 
 
+def test_main_figure_4_legacy_name_remains_available() -> None:
+    assert callable(rebuild_main_figure_4)
+    assert "Compatibility alias" in (rebuild_main_figure_4.__doc__ or "")
+
+
 @pytest.mark.parametrize(
     ("notebook_name", "output_slug", "title"),
     (
@@ -339,7 +346,12 @@ def test_mosta_notebooks_use_public_reader_api(
     assert "from CytoBridge.results import" in source
     assert "load_mosta_figure_release()" in source
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
-    for cell in notebook["cells"]:
-        if cell["cell_type"] == "code":
-            assert cell["execution_count"] is None
-            assert cell["outputs"] == []
+    if notebook_name == "main_figure_4.ipynb":
+        assert "assemble_main_figure_4" in source
+    else:
+        assert "export_mosta_supplementary_figures" in source
+    assert any(
+        cell.get("outputs")
+        for cell in notebook["cells"]
+        if cell["cell_type"] == "code"
+    )

@@ -1,0 +1,39 @@
+{
+  "schema": "cytobridge.arista.S16.strict-lr-kmeans.v1",
+  "created_utc": "2026-08-25T04:41:58.455526+00:00",
+  "scientific_contract": {
+    "scores": "unchanged package-native strict all-subunit LR pair_timecourse",
+    "n_pairs": 531,
+    "time_points": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5,
+      3.0,
+      3.5,
+      4.0
+    ],
+    "clustering": "CytoBridge.tl.downstream.temporal.cluster_temporal_profiles",
+    "normalization": "row-wise minmax",
+    "method": "deterministic kmeans++ n_init=100 seed=0",
+    "n_clusters": 2,
+    "cluster_order": "prototype peak time",
+    "reason": "avoid average-linkage singleton artifact while preserving corrected scores"
+  },
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pair_timecourse.csv": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/ligand_receptor/pattern_summary.csv": "26e7b3ec4b6785a3383f165a84c8b260ec2d232d47311baf4904bb3d008fbbad",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cytobridge-spatial/worktrees/arista-pca-root-fix-20260824/CytoBridge/tl/downstream/temporal.py": "409666e089fcd16fe9a63d631d79f4c7a523cde6f5608f51300757ac3beec4b1"
+  },
+  "qa": {
+    "passed": true,
+    "cluster_counts": "1:217;2:314",
+    "silhouette": 0.22851264157686588,
+    "k2_best_silhouette_among_k2_to_k8": true,
+    "minimum_cluster_size": 217,
+    "noise_median_ari_at_sigma_0p05": 0.9042341287578106,
+    "minimum_leave_one_time_ari": 0.5457176279356412
+  }
+}

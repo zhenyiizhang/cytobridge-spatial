@@ -33,9 +33,16 @@ Status: PASS
 - Figure 5 stale old-marker/Form calls: 0
 - Figure 5 stale historical Figure 5d white-arrow objects: 0
 - S12--S17 Poppler render and visual inspection: PASS
-- S15--S17 strict numerical QA: PASS
-- S16 complete strict LR roster: 531 pairs; cluster counts reflect the new computation (`1`, `530`) and were not forced to historical counts
-- S17 fixed historical slots: 68; estimable 51; non-estimable 17, shown as `N/E` without fabricated scores
+- S15 strict numerical QA: PASS
+- S16 corrected LR-pattern calculation: PASS. All 531 strict complete-complex
+  trajectories were normalized row-wise and clustered by deterministic k-means
+  (`k=2`, k-means++, 100 initializations, seed 0), producing 217 and 314 pairs.
+- S16 model-selection check: PASS. `k=2` has the best silhouette score among
+  `k=2` through `k=8`; no singleton cluster remains.
+- S17 representative-profile selection: PASS. The 25 profiles nearest each
+  corrected pattern mean are displayed (50 pairs, 450 time-course rows).
+- The earlier hierarchical S16 (`1` and `530`) and fixed-slot S17 (68 slots,
+  51 estimable) remain archived as superseded diagnostics, not current figures.
 
 ## Primary PDFs
 
@@ -44,5 +51,5 @@ Status: PASS
 - `S13_S14_package_native_oldstyle_v3_legacy_palette/figures/pdf/FigureS13_ARISTA_package_native_oldstyle_FINAL.pdf`
 - `S13_S14_package_native_oldstyle_v3_legacy_palette/figures/pdf/FigureS14_ARISTA_package_native_oldstyle_FINAL.pdf`
 - `S15_S17_package_native_strict_oldstyle_v1/figures/FigureS15_ARISTA_strict_corrected_legacy_style.pdf`
-- `S15_S17_package_native_strict_oldstyle_v1/figures/FigureS16_ARISTA_strict_corrected_legacy_style.pdf`
-- `S15_S17_package_native_strict_oldstyle_v1/figures/FigureS17_ARISTA_strict_corrected_legacy_style.pdf`
+- `S16_package_native_kmeans_oldstyle_v1_finalqa/figures/FigureS16_ARISTA_package_native_kmeans_legacy_style.pdf`
+- `S17_package_native_balanced25_oldstyle_v1/figures/FigureS17_ARISTA_package_native_balanced_representative_legacy_style.pdf`

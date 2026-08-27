@@ -1,9 +1,20 @@
 # Paper reproduction index
 
-The reproduction registry maps every computational figure, table, and video to
-its reader-facing notebook or script. It also separates entries that can run
-from compact packaged tables from entries that require external data or model
-files.
+The registry maps every figure, table, and video to its reader-facing notebook
+or script. The `reproduction_mode` column says what the entry actually does:
+
+- `numeric-redraw` recalculates plotted values from packaged numeric inputs.
+- `result-summary-redraw` plots prepared result summaries without rerunning the
+  original analysis.
+- `reference-export` copies a packaged figure page and makes a preview when
+  needed.
+- `external-assembly` combines panel files from a repository release or an
+  external run.
+- `table-only` writes or displays a table and does not draw a figure.
+
+Some rows use two modes because one page contains both redrawn and frozen
+panels. `wheel_runnable` is `true` when the entry can run from an installed
+wheel after installing the dependency listed in the next column.
 
 {download}`Download the registry <data/paper_reproduction_registry.csv>`
 
@@ -11,10 +22,9 @@ files.
 
 - Dataset notebooks cover preprocessing, optional training, model loading, and
   downstream calculations.
-- Paper-figure notebooks recalculate plotted summaries from compact result
-  tables and write PDF and PNG outputs. Each compact bundle or repository
-  release states whether the PDF preserves vector objects or places a compact
-  raster on the page.
+- Paper-figure notebooks state whether they redraw numbers, assemble existing
+  panels, or export a reference page. They write only the files supported by
+  that mode.
 - The zebrafish video page provides the final videos and the commands used to
   render them from trajectory arrays.
 

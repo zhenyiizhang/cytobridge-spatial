@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 
-import fitz
+import pymupdf as fitz
 import numpy as np
 import pandas as pd
 from PIL import Image

@@ -31,8 +31,16 @@ on `cytobridge-gpu`.
 - `S12_package_native_warpk1_oldstyle_v3_legacy_palette/`: accepted S12 with
   `spatial_warp_k=1`, including observed and integer-time generated slices.
 - `S13_S14_package_native_oldstyle_v3_legacy_palette/`: accepted S13 and S14.
-- `S15_S17_package_native_strict_oldstyle_v1/`: accepted S15--S17, strict
-  tables, source snapshots, and visual/numerical QA.
+- `S15_S17_package_native_strict_oldstyle_v1/`: retained strict source bundle.
+  Its S15 page remains accepted; its hierarchical S16/S17 pages are preserved
+  as superseded diagnostics and are not the current paper figures.
+- `S16_lr_kmeans_recluster_v1/`: corrected deterministic k-means calculation
+  from the 531 strict complete-complex LR trajectories. The two patterns contain
+  217 and 314 pairs.
+- `S16_package_native_kmeans_oldstyle_v1_finalqa/`: accepted corrected S16
+  vector page and the tables used to draw it.
+- `S17_package_native_balanced25_oldstyle_v1/`: accepted corrected S17 vector
+  page, showing 25 representative pairs from each pattern (50 pairs total).
 - `figure5c_two_niche_timecourse_v1/` and
   `figure5c_two_niche_lr_axes_v1/`: fixed-domain, matched-null, time-course,
   pathway, and pair-level LR evidence used for the reviewer response.
@@ -53,7 +61,7 @@ scripts are in `scripts/reviewer_arista_20260824/`. Exact fitted parameters and
 runtime information are in `main_run/provenance/`; the primary acceptance report
 is `FINAL_RELEASE_QA.md`.
 
-From this directory, verify the seven primary paper PDFs with:
+From this directory, verify the seven current paper PDFs with:
 
 ```bash
 sha256sum -c FINAL_RELEASE_SHA256SUMS.txt
@@ -63,4 +71,3 @@ The full Figure 5 assembler accepts explicit panel paths. The frozen output was
 built with the command recorded in its manifest. Rebuilding the original page
 also requires the submitted `Arista.ai` template whose SHA-256 is recorded in
 that manifest; the template is not duplicated in this repository.
-

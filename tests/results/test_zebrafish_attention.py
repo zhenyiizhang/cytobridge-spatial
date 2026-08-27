@@ -12,6 +12,7 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from PIL import Image
+import pymupdf
 import pytest
 
 
@@ -126,7 +127,13 @@ def test_zebrafish_attention_plot_is_agg_safe_and_local(tmp_path: Path) -> None:
         load_zebrafish_attention_results(),
         tmp_path,
     )
-    assert pdf.is_file() and pdf.stat().st_size > 100_000
+    assert pdf.is_file() and pdf.stat().st_size > 0
+    with pymupdf.open(pdf) as document:
+        assert document.page_count == 1
+        page = document[0]
+        assert np.isclose(page.rect.width, 595.276, atol=1.0)
+        assert np.isclose(page.rect.height, 841.89, atol=1.0)
+        assert page.get_drawings()
     with Image.open(png) as image:
         assert image.size == (2646, 3740)
         image.verify()

@@ -1,4 +1,4 @@
-"""Raster-preserving PDF and PNG writer for ARISTA Main Figure 5."""
+"""Raster-preserving reference-page exporter for ARISTA Main Figure 5."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def render_main_figure_5(
     page: "MainFigure5Page",
     output_dir: str | Path,
 ) -> tuple[Path, Path]:
-    """Write the compact page without requiring an external layout program."""
+    """Write the packaged page without requiring an external layout program."""
 
     output = prepare_output_dir(output_dir)
     pdf_path = output / f"{OUTPUT_STEM}.pdf"
@@ -45,7 +45,7 @@ def render_main_figure_5(
             edgecolor="none",
             metadata={
                 "Title": "ARISTA Main Figure 5",
-                "Subject": "Compact scientific-label page reproduction",
+                "Subject": "Packaged scientific-label reference page",
                 "Creator": "CytoBridge",
                 "Producer": "CytoBridge",
                 "CreationDate": None,

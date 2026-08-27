@@ -1180,7 +1180,9 @@ def cluster_temporal_profiles(
 ) -> TemporalProfileClusteringResult:
     """Cluster rows of a time-indexed profile matrix and summarize prototypes."""
     from scipy.cluster.hierarchy import cut_tree, leaves_list, linkage
+    from sklearn.cluster import KMeans
     from sklearn.metrics import silhouette_score
+    from threadpoolctl import threadpool_limits
 
     table = pd.DataFrame(profiles).copy()
     if table.empty or table.shape[1] < 2:
@@ -1198,10 +1200,42 @@ def cluster_temporal_profiles(
         raise ValueError("cluster_order must be 'peak_time', 'dendrogram', or 'raw'.")
     chosen_k = min(requested_k, int(table.shape[0]))
     hierarchy = None
+    cut_strategy = "single_cluster"
     if chosen_k == 1:
         raw_labels = np.ones(table.shape[0], dtype=int)
         silhouette = np.nan
         n_zero_distance_merges = 0
+    elif method == "kmeans":
+        if cluster_order == "dendrogram":
+            raise ValueError(
+                "cluster_order='dendrogram' is unavailable for method='kmeans'."
+            )
+        estimator = KMeans(
+            n_clusters=chosen_k,
+            init="k-means++",
+            n_init=100,
+            random_state=0,
+            algorithm="lloyd",
+        )
+        # PyTorch and scikit-learn can load different OpenMP runtimes in the
+        # same process on macOS.  Keeping this small calculation to one native
+        # thread avoids that runtime conflict and makes the result independent
+        # of the caller's machine-level thread settings.
+        with threadpool_limits(limits=1):
+            raw_labels = estimator.fit_predict(normalized).astype(int) + 1
+        found = len(np.unique(raw_labels))
+        if found != chosen_k:
+            raise RuntimeError(
+                "Deterministic k-means failed to produce the requested number "
+                f"of clusters: expected {chosen_k}, found {found}."
+            )
+        n_zero_distance_merges = 0
+        silhouette = (
+            float(silhouette_score(normalized, raw_labels))
+            if 1 < found < table.shape[0]
+            else np.nan
+        )
+        cut_strategy = "sklearn_kmeans_pp_n_init_100_seed_0"
     else:
         hierarchy = linkage(normalized, method=method, metric="euclidean")
         # fcluster(..., criterion="maxclust") treats tied merge distances as one
@@ -1226,10 +1260,13 @@ def cluster_temporal_profiles(
             if 1 < found < table.shape[0]
             else np.nan
         )
+        cut_strategy = "scipy_cut_tree_exact_n_clusters"
 
     if cluster_order == "raw" or chosen_k == 1:
         labels = raw_labels.astype(int, copy=True)
     elif cluster_order == "dendrogram":
+        if hierarchy is None:
+            raise RuntimeError("Dendrogram ordering requires hierarchical clustering.")
         leaf_order = leaves_list(hierarchy)
         ordered_raw_labels = []
         for row_idx in leaf_order:
@@ -1285,8 +1322,20 @@ def cluster_temporal_profiles(
                 "normalization": normalization,
                 "linkage_method": method,
                 "cluster_order": cluster_order,
-                "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+                "cut_strategy": cut_strategy,
                 "n_zero_distance_merges": n_zero_distance_merges,
+                "minimum_cluster_size": int(
+                    min(
+                        np.count_nonzero(labels == cluster)
+                        for cluster in np.unique(labels)
+                    )
+                ),
+                "maximum_cluster_size": int(
+                    max(
+                        np.count_nonzero(labels == cluster)
+                        for cluster in np.unique(labels)
+                    )
+                ),
             }
         ]
     )

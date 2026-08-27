@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 
-import fitz
+import pymupdf as fitz
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -20,6 +20,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from CytoBridge.results.main_figure_2 import (  # noqa: E402
+    assemble_main_figure_2,
     load_main_figure_2,
     plot_main_figure_2,
     summarize_main_figure_2_replicates,
@@ -48,6 +49,9 @@ def test_packaged_main_figure_2_contract() -> None:
     assert len(data.replicates) == 60
     assert len(data.baselines) == 9
     assert data.manifest["analysis"] == "main_figure_2"
+    assert data.manifest["reader_action"] == (
+        "result-summary-redraw + external-assembly"
+    )
     assert data.manifest["full_rerun"]["included"] is False
     assert data.manifest["full_rerun"]["external_dependencies"]
     calculated = summarize_main_figure_2_replicates(data.replicates)
@@ -80,9 +84,9 @@ def test_main_figure_2_plot_dependency_is_declared() -> None:
         assert "PyMuPDF>=1.24,<2" in text
 
 
-def test_main_figure_2_plot_changes_only_panel_e(tmp_path: Path) -> None:
+def test_main_figure_2_assembly_changes_only_panel_e(tmp_path: Path) -> None:
     data = load_main_figure_2()
-    pdf, png = plot_main_figure_2(data, tmp_path)
+    pdf, png = assemble_main_figure_2(data, tmp_path)
     assert pdf.is_file() and png.is_file()
     with Image.open(png) as image:
         assert image.size == (2481, 3508)
@@ -125,7 +129,7 @@ def test_main_figure_2_cli(tmp_path: Path) -> None:
     completed = subprocess.run(
         [
             sys.executable,
-            str(REPOSITORY_ROOT / "scripts/results/plot_main_figure_2.py"),
+            str(REPOSITORY_ROOT / "scripts/results/assemble_main_figure_2.py"),
             "--output-dir",
             str(output),
         ],
@@ -141,7 +145,15 @@ def test_main_figure_2_cli(tmp_path: Path) -> None:
     )
     summary = json.loads(completed.stdout)
     assert summary["analysis"] == "main_figure_2"
+    assert summary["figure_action"] == "result-summary-redraw + external-assembly"
+    assert summary["frozen_panels"] == ["a", "b", "c", "d"]
+    assert summary["redrawn_panels"] == ["e"]
     assert Path(summary["pdf"]).is_file()
     assert Path(summary["png"]).is_file()
     assert set(summary["tables"]) == {"baselines", "replicates", "summary"}
     assert json.loads((output / "run_summary.json").read_text()) == summary
+
+
+def test_main_figure_2_legacy_plot_name_remains_available() -> None:
+    assert callable(plot_main_figure_2)
+    assert "Compatibility alias" in (plot_main_figure_2.__doc__ or "")
