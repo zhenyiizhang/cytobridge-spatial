@@ -104,6 +104,10 @@ Read the steps from top to bottom. Each one names the code that runs, the files
 it reads, the files it writes, and the next command that consumes those files.
 Steps marked `manuscript result bundle` record the files used for the paper;
 public steps can be run from this checkout.
+
+Replace text inside angle brackets with your own path or value; do not type the
+brackets. A choice such as `<weinreb|scnt_cortex>` means run the command with
+one of those two values, not the text containing the vertical bar.
 """,
         ROUTE_CELL_TAG,
     )
