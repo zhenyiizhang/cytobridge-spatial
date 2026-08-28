@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
         "--results-dir",
         type=Path,
         default=None,
-        help="Directory containing the compact result files. Defaults to packaged data.",
+        help="Directory containing the required result tables. Defaults to the paper data included with the package.",
     )
     parser.add_argument(
         "--output-dir",
