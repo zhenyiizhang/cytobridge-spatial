@@ -10,7 +10,14 @@ recursive-include requirements *.txt
 recursive-include CytoBridge/results/data *.csv *.csv.gz *.json *.npz *.pdf *.png
 recursive-include scripts/results *.py
 include scripts/execute_paper_notebooks.py
+include scripts/build_agist_velocity_time_cluster_breakdown.py
+include scripts/compare_cytobridge_to_temporal_nichenet.py
+include scripts/evaluate_and_plot_agist_w2_replicates.py
+include scripts/prepare_temporal_nichenet_inputs.py
 include scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py
+include scripts/plot_chicken_heart_alignment.py
+include scripts/run_temporal_nichenet_reference.R
+include scripts/run_agist_split_sde_replicates.py
 include scripts/run_matched_ablation_benchmark_evaluation.py
 include scripts/run_matched_ablation_matrix.py
 include scripts/run_zebrafish_interval_daughter_noise_sensitivity.py

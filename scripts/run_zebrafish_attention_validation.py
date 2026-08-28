@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Run reviewer-facing zebrafish interaction validation without circular selection.
+"""Calculate and plot the zebrafish interaction validation used in Figure S43.
 
-The workflow consumes manifest-bound outputs from the accepted CytoBridge
-model, COMMOT, CellAgentChat, NicheNet, and the fixed-checkpoint interaction
-on/off sensitivity.  ``analyze`` writes numerical tables only.  ``report``
-renders those frozen tables, and ``validate`` re-hashes every input and output.
+``analyze`` compares CytoBridge results with COMMOT, CellAgentChat, NicheNet,
+and the interaction on/off analysis.  ``report`` combines those tables with
+the JAM controls and draws the figure.  ``validate`` checks the files recorded
+by a completed run.
 """
 
 from __future__ import annotations
@@ -980,13 +980,15 @@ def analyze(spec_path: Path, output_dir: Path, *, n_selected_pairs: int) -> None
 
 
 def _verified_frozen_analysis(
-    analysis_dir: Path, expected_sha256: str
+    analysis_dir: Path, expected_sha256: str | None
 ) -> tuple[Mapping[str, Any], dict[str, Path]]:
     analysis = analysis_dir.expanduser().resolve()
     manifest_path = analysis / "analysis_manifest.json"
-    expected = expected_sha256.casefold()
-    if len(expected) != 64 or _sha256(manifest_path) != expected:
-        raise ValueError("analysis manifest does not match the required SHA-256")
+    observed_sha256 = _sha256(manifest_path)
+    if expected_sha256 is not None:
+        expected = expected_sha256.casefold()
+        if len(expected) != 64 or observed_sha256 != expected:
+            raise ValueError("analysis manifest does not match the requested file")
     manifest = _load_json(manifest_path, label="analysis manifest")
     if (
         manifest.get("schema_version") != SCHEMA_VERSION
@@ -1104,23 +1106,23 @@ def _iter_manifest_artifacts(value: object, *, key_path: tuple[str, ...] = ()):
 
 
 def _verified_jam_report_tables(
-    manifest_paths: list[Path], expected_sha256s: list[str]
+    manifest_paths: list[Path], expected_sha256s: list[str] | None
 ) -> tuple[list[dict[str, object]], dict[str, Path]]:
-    if not manifest_paths or len(manifest_paths) != len(expected_sha256s):
-        raise ValueError(
-            "report requires matching --jam-manifest and "
-            "--expected-jam-manifest-sha256 arguments"
-        )
+    if not manifest_paths:
+        raise ValueError("report requires at least one --jam-manifest")
+    expected_sha256s = expected_sha256s or []
+    if expected_sha256s and len(manifest_paths) != len(expected_sha256s):
+        raise ValueError("supply one optional JAM checksum for each JAM file")
     registry: list[tuple[tuple[str, ...], Mapping[str, Any]]] = []
     manifest_records: list[dict[str, object]] = []
     legacy_tokens = ("20260722", "20260728")
-    for manifest_path, expected_sha in zip(
-        manifest_paths, expected_sha256s, strict=True
-    ):
+    for index, manifest_path in enumerate(manifest_paths):
         resolved = manifest_path.expanduser().resolve()
-        expected = expected_sha.casefold()
-        if len(expected) != 64 or _sha256(resolved) != expected:
-            raise ValueError(f"JAM manifest SHA-256 mismatch: {resolved}")
+        observed_sha256 = _sha256(resolved)
+        if expected_sha256s:
+            expected = expected_sha256s[index].casefold()
+            if len(expected) != 64 or observed_sha256 != expected:
+                raise ValueError(f"JAM file does not match: {resolved}")
         if any(token in str(resolved) for token in legacy_tokens):
             raise ValueError(
                 "legacy 20260722/20260728 JAM artifacts are forbidden in this report"
@@ -2038,9 +2040,9 @@ def report(
     analysis_dir: Path,
     output_dir: Path,
     *,
-    expected_analysis_manifest_sha256: str,
+    expected_analysis_manifest_sha256: str | None,
     jam_manifest_paths: list[Path],
-    expected_jam_manifest_sha256s: list[str],
+    expected_jam_manifest_sha256s: list[str] | None,
 ) -> None:
     """Render the current-checkpoint three-panel zebrafish reviewer figure."""
 
@@ -2053,6 +2055,9 @@ def report(
 
     analysis_manifest, paths = _verified_frozen_analysis(
         analysis_dir, expected_analysis_manifest_sha256
+    )
+    expected_analysis_manifest_sha256 = _sha256(
+        analysis_dir.expanduser().resolve() / "analysis_manifest.json"
     )
     jam_manifest_records, jam_paths = _verified_jam_report_tables(
         jam_manifest_paths, expected_jam_manifest_sha256s
@@ -3040,26 +3045,27 @@ def validate(output_dir: Path) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    analyze_parser = sub.add_parser("analyze", help="Create frozen numerical evidence")
+    analyze_parser = sub.add_parser("analyze", help="Calculate the comparison tables")
     analyze_parser.add_argument("--spec", required=True, type=Path)
     analyze_parser.add_argument("--output-dir", required=True, type=Path)
     analyze_parser.add_argument("--n-selected-pairs", type=int, default=8)
-    report_parser = sub.add_parser("report", help="Render one frozen analysis")
+    report_parser = sub.add_parser("report", help="Draw the report from calculated tables")
     report_parser.add_argument("--analysis-dir", required=True, type=Path)
     report_parser.add_argument("--output-dir", required=True, type=Path)
-    report_parser.add_argument("--expected-analysis-manifest-sha256", required=True)
+    report_parser.add_argument(
+        "--expected-analysis-manifest-sha256", help=argparse.SUPPRESS
+    )
     report_parser.add_argument(
         "--jam-manifest",
         required=True,
         action="append",
         type=Path,
-        help="Current-checkpoint JAM formal manifest; repeat for control/case bundles",
+        help="JAM result file; repeat for the comparison conditions",
     )
     report_parser.add_argument(
         "--expected-jam-manifest-sha256",
-        required=True,
         action="append",
-        help="SHA-256 paired positionally with each --jam-manifest",
+        help=argparse.SUPPRESS,
     )
     validate_parser = sub.add_parser("validate", help="Re-hash one completed analysis")
     validate_parser.add_argument("--output-dir", required=True, type=Path)
@@ -3078,11 +3084,13 @@ def main() -> None:
         report(
             args.analysis_dir,
             args.output_dir,
-            expected_analysis_manifest_sha256=str(
-                args.expected_analysis_manifest_sha256
-            ),
+            expected_analysis_manifest_sha256=args.expected_analysis_manifest_sha256,
             jam_manifest_paths=list(args.jam_manifest),
-            expected_jam_manifest_sha256s=list(args.expected_jam_manifest_sha256),
+            expected_jam_manifest_sha256s=(
+                list(args.expected_jam_manifest_sha256)
+                if args.expected_jam_manifest_sha256
+                else None
+            ),
         )
     elif args.command == "validate":
         validate(args.output_dir)

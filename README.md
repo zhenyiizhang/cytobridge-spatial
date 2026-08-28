@@ -26,8 +26,8 @@ cd cytobridge-spatial
 python -m pip install -e '.[all]'
 ```
 
-Smaller dependency profiles are available when the full scientific stack is
-not needed:
+If you only need part of the package, install the matching optional
+dependencies:
 
 ```bash
 python -m pip install -e '.[preprocess]'
@@ -48,8 +48,9 @@ cytobridge doctor
 
 ## Quick start
 
-Five spatial dataset presets are included: Zebrafish, MOSTA, ARISTA, AD mouse,
-and developing chicken heart. Check a dataset configuration before supplying data:
+Five example dataset configurations are included: Zebrafish, MOSTA, ARISTA,
+AD mouse, and developing chicken heart. Check a configuration before supplying
+data:
 
 ```bash
 cytobridge workflow --list-configs

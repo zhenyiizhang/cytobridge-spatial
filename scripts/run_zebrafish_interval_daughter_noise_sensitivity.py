@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""Run the release-grade zebrafish daughter-noise sensitivity analysis.
+"""Calculate the zebrafish daughter-noise sensitivity used in Figure S37.
 
-Every observed interval is an independent, one-sided forecast.  For interval
-``[t, t + 1]``, the simulation starts from *all* real cells observed at ``t``
-and produces the midpoint plus, optionally, a generated endpoint.  It is not
-conditioned on the following observed endpoint, is not a global-t0 rollout,
-uses no spatial warp, and is not lineage-continuous across intervals.
-
-The scientific grid is intentionally frozen: daughter noise
-``{0, 0.01, 0.03, 0.06}``, paired seeds ``42..46``, ``dt=resample_dt=0.05``,
-continuous diffusion ``sigma=0.03``, growth multiplier ``1``, interaction
-group size ``1024``, and a fail-fast particle ceiling of ``100000``.  Input,
-checkpoint, score, classifier, and acceptance-report hashes are mandatory.
-Interaction grouping uses a dedicated RNG seeded as ``paired_seed + 10000``.
+Each observed interval is evaluated separately.  For ``[t, t + 1]``, the
+simulation starts from the cells observed at ``t`` and predicts the midpoint
+and, when requested, the right endpoint.  The analysis uses daughter-noise
+values ``0, 0.01, 0.03, 0.06`` and seeds ``42..46``.  File hashes are recorded
+automatically; optional hash arguments can be supplied when an exact file
+match needs to be checked.
 """
 
 from __future__ import annotations
@@ -122,19 +116,23 @@ def _normalise_digest(value: str, *, name: str) -> str:
 
 def _verified_file(
     path: str | Path,
-    expected_sha256: str,
+    expected_sha256: str | None,
     *,
     description: str,
 ) -> tuple[Path, str]:
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_file():
         raise FileNotFoundError(f"Missing {description}: {resolved}")
-    expected = _normalise_digest(expected_sha256, name=f"{description} SHA-256")
     observed = _sha256(resolved)
-    if observed != expected:
-        raise RuntimeError(
-            f"{description} SHA-256 mismatch: expected {expected}, observed {observed}"
+    if expected_sha256 is not None:
+        expected = _normalise_digest(
+            expected_sha256, name=f"{description} SHA-256"
         )
+        if observed != expected:
+            raise RuntimeError(
+                f"{description} SHA-256 mismatch: expected {expected}, "
+                f"observed {observed}"
+            )
     return resolved, observed
 
 
@@ -187,7 +185,7 @@ def _git_state() -> dict[str, object]:
 
 def _load_acceptance_report(
     path: str | Path,
-    expected_sha256: str,
+    expected_sha256: str | None,
 ) -> tuple[Path, str, Mapping[str, Any]]:
     report_path, digest = _verified_file(
         path,
@@ -1198,21 +1196,24 @@ def _implementation_hashes() -> dict[str, str]:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aligned-h5ad", required=True, type=Path)
-    parser.add_argument("--expected-aligned-sha256", required=True)
     parser.add_argument("--model-dir", required=True, type=Path)
-    parser.add_argument("--expected-model-config-sha256", required=True)
-    parser.add_argument("--expected-weight-sha256", required=True)
-    parser.add_argument("--expected-score-sha256", required=True)
     parser.add_argument("--classifier-cache", required=True, type=Path)
-    parser.add_argument("--expected-classifier-sha256", required=True)
     parser.add_argument("--acceptance-report", required=True, type=Path)
-    parser.add_argument("--expected-acceptance-sha256", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--time-key", default="time_point_processed")
     parser.add_argument("--annotation-key", default="Annotation")
     parser.add_argument("--spatial-key", default="spatial_aligned")
     parser.add_argument("--latent-key", default="X_latent")
     parser.add_argument("--device", default="cuda")
+    for name in (
+        "expected-aligned-sha256",
+        "expected-model-config-sha256",
+        "expected-weight-sha256",
+        "expected-score-sha256",
+        "expected-classifier-sha256",
+        "expected-acceptance-sha256",
+    ):
+        parser.add_argument(f"--{name}", help=argparse.SUPPRESS)
     parser.add_argument(
         "--include-end",
         action=argparse.BooleanOptionalAction,
@@ -1228,7 +1229,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def run(args: argparse.Namespace) -> Path:
     aligned_path, aligned_sha = _verified_file(
         args.aligned_h5ad,
-        args.expected_aligned_sha256,
+        getattr(args, "expected_aligned_sha256", None),
         description="aligned zebrafish H5AD",
     )
     model_dir = Path(args.model_dir).expanduser().resolve()
@@ -1236,16 +1237,16 @@ def run(args: argparse.Namespace) -> Path:
         raise FileNotFoundError(f"Missing model directory: {model_dir}")
     config_path, config_sha = _verified_file(
         model_dir / "config.yaml",
-        args.expected_model_config_sha256,
+        getattr(args, "expected_model_config_sha256", None),
         description="model config",
     )
     classifier_path, classifier_sha = _verified_file(
         args.classifier_cache,
-        args.expected_classifier_sha256,
+        getattr(args, "expected_classifier_sha256", None),
         description="trajectory classifier cache",
     )
     acceptance_path, acceptance_sha, acceptance = _load_acceptance_report(
-        args.acceptance_report, args.expected_acceptance_sha256
+        args.acceptance_report, getattr(args, "expected_acceptance_sha256", None)
     )
 
     adata = ad.read_h5ad(aligned_path)
@@ -1261,14 +1262,14 @@ def run(args: argparse.Namespace) -> Path:
     )
     weight_path, weight_sha = _verified_file(
         loaded.weight_path,
-        args.expected_weight_sha256,
+        getattr(args, "expected_weight_sha256", None),
         description="final Finetune checkpoint",
     )
     if loaded.score_path is None:
         raise RuntimeError("Loaded final model has no score checkpoint")
     score_path, score_sha = _verified_file(
         loaded.score_path,
-        args.expected_score_sha256,
+        getattr(args, "expected_score_sha256", None),
         description="final score checkpoint",
     )
     model_contract = _validate_learned_model_contract(

@@ -1,6 +1,6 @@
 dataset,accuracy_best_k,formal_analysis_k,rationale
-zebrafish,1,10,Spatially regularized tissue-domain labels; use the same k in every formal label-dependent analysis and figure
-mosta,1,10,Spatially regularized tissue-domain labels; use the same k in every formal label-dependent analysis and figure
-arista,1,10,Spatially regularized tissue-domain labels; use the same k in every formal label-dependent analysis and figure
+zebrafish,1,10,Spatially regularized tissue-domain labels; use the same k in every analysis and figure that uses these labels
+mosta,1,10,Spatially regularized tissue-domain labels; use the same k in every analysis and figure that uses these labels
+arista,1,10,Spatially regularized tissue-domain labels; use the same k in every analysis and figure that uses these labels
 admouse,1,1,Heterogeneous and rare populations are strongly suppressed by larger-k smoothing; retain raw MLP labels
 chicken_heart,1,1,Developing-heart cell types include spatially restricted populations; retain the validation-selected unsmoothed MLP labels

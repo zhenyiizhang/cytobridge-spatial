@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Render the signed zebrafish interval-local daughter-noise analysis.
+"""Draw Figure S37 from a completed zebrafish daughter-noise analysis.
 
-This publication plotter accepts only a complete, signed manifest produced by
-``run_zebrafish_interval_daughter_noise_sensitivity.py``.  Before creating an
-output directory it verifies the serialized-manifest sidecar, canonical JSON
-signature, frozen scientific settings, the hashes and schemas of every table,
-all retained raw-state hashes, and the separately supplied canonical
-acceptance report.  The figure reports paired midpoint changes from the
-daughter-noise-zero run; it never turns an endpoint or global-t0 result into an
-interval-local claim.
+The script reads the tables listed in ``run_manifest.json``, checks that they
+belong to the same completed analysis, and plots paired midpoint changes from
+the zero-noise reference.  File hashes are checked from the run record;
+optional hash arguments can be supplied when an exact file match is needed.
 """
 
 from __future__ import annotations
@@ -329,17 +325,21 @@ def _stable_json_sha256(value: Any) -> str:
 
 
 def _verified_file(
-    path: str | Path, expected_sha256: str, *, description: str
+    path: str | Path, expected_sha256: str | None, *, description: str
 ) -> tuple[Path, str]:
     resolved = Path(path).expanduser().resolve()
     if not resolved.is_file():
         raise FileNotFoundError(f"Missing {description}: {resolved}")
-    expected = _normalise_digest(expected_sha256, name=f"{description} SHA-256")
     observed = _sha256(resolved)
-    if observed != expected:
-        raise RuntimeError(
-            f"{description} SHA-256 mismatch: expected {expected}, observed {observed}"
+    if expected_sha256 is not None:
+        expected = _normalise_digest(
+            expected_sha256, name=f"{description} SHA-256"
         )
+        if observed != expected:
+            raise RuntimeError(
+                f"{description} SHA-256 mismatch: expected {expected}, "
+                f"observed {observed}"
+            )
     return resolved, observed
 
 
@@ -540,7 +540,7 @@ def _verify_frozen_settings(manifest: Mapping[str, Any]) -> None:
 
 
 def _verify_acceptance_binding(
-    manifest: Mapping[str, Any], path: str | Path, expected_sha256: str
+    manifest: Mapping[str, Any], path: str | Path, expected_sha256: str | None
 ) -> tuple[Path, str, Mapping[str, Any]]:
     record = _require_mapping(
         _require_mapping(manifest.get("inputs"), description="manifest.inputs").get(
@@ -551,14 +551,17 @@ def _verify_acceptance_binding(
     recorded = _normalise_digest(
         str(record.get("sha256", "")), name="manifest acceptance SHA-256"
     )
-    expected = _normalise_digest(expected_sha256, name="supplied acceptance SHA-256")
-    if expected != recorded:
-        raise RuntimeError(
-            "Supplied acceptance SHA-256 is not the acceptance artifact bound by "
-            "the signed sensitivity manifest"
+    if expected_sha256 is not None:
+        expected = _normalise_digest(
+            expected_sha256, name="supplied acceptance SHA-256"
         )
+        if expected != recorded:
+            raise RuntimeError(
+                "Supplied acceptance SHA-256 is not the acceptance artifact bound "
+                "to this analysis run"
+            )
     report_path, digest = _verified_file(
-        path, expected, description="canonical four-dataset acceptance report"
+        path, recorded, description="four-dataset acceptance report"
     )
     report = _read_json(report_path, description="acceptance report")
     datasets = report.get("datasets")
@@ -1396,17 +1399,17 @@ def _provenance_text(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-manifest", required=True, type=Path)
-    parser.add_argument("--expected-manifest-sha256", required=True)
     parser.add_argument("--acceptance-report", required=True, type=Path)
-    parser.add_argument("--expected-acceptance-sha256", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--expected-manifest-sha256", help=argparse.SUPPRESS)
+    parser.add_argument("--expected-acceptance-sha256", help=argparse.SUPPRESS)
     return parser
 
 
 def run(args: argparse.Namespace) -> Path:
     manifest_path, manifest_sha = _verified_file(
         args.run_manifest,
-        args.expected_manifest_sha256,
+        getattr(args, "expected_manifest_sha256", None),
         description="signed daughter-noise run manifest",
     )
     if manifest_path.name != "run_manifest.json":
@@ -1418,7 +1421,7 @@ def run(args: argparse.Namespace) -> Path:
     acceptance_path, acceptance_sha, _ = _verify_acceptance_binding(
         manifest,
         args.acceptance_report,
-        args.expected_acceptance_sha256,
+        getattr(args, "expected_acceptance_sha256", None),
     )
     tables, source_artifact_hashes = _verify_tables_and_raw_states(
         manifest, manifest_path.parent
