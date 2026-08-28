@@ -18,7 +18,7 @@
 - Persistent particle identifiers are required for lineage summaries. They are
   unavailable for the current ARISTA trajectory files.
 - Classifier smoothing changes the balance between local spatial consistency
-  and pointwise labels. The packaged presets use `k=10` for Zebrafish, MOSTA,
+  and pointwise labels. The example dataset configurations use `k=10` for Zebrafish, MOSTA,
   and ARISTA, and `k=1` for AD mouse and chicken heart.
 
 ## Communication
@@ -27,8 +27,8 @@
   edge gate. A time point may contain candidates but no retained edges.
 - Attention and LR tables are model-derived summaries. They are not direct
   measurements of molecular transport.
-- The no-interaction profile does not produce communication or LR outputs. The
-  no-LR-prior profile uses all spatial candidates instead of a learned LR-
+- The No-interaction model does not produce communication or LR outputs. The
+  No-LR model uses all spatial candidates instead of a learned LR-
   informed gate.
 
 ## Evaluation

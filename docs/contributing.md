@@ -17,13 +17,13 @@ python -m pip install -e '.[all,docs]'
 
 1. Reuse the public preprocessing, fitting, downstream, evaluation, and
    plotting APIs.
-2. Add a small preset under `CytoBridge/workflow_configs/` for input keys,
+2. Add a small dataset configuration under `CytoBridge/workflow_configs/` for input keys,
    time points, cutoffs, particle settings, and enabled analyses.
 3. Add a training YAML only when the shared model needs dataset-specific
    values.
 4. Add a notebook and a page under `docs/tutorials/` that list inputs, package
    calls, and outputs.
-5. Add focused tests for the preset and for any new adapter behavior.
+5. Add focused tests for the configuration and for any new data adapter.
 
 Avoid copying the full training or downstream pipeline into a dataset script.
 Reusable behavior belongs in the package API.
@@ -43,7 +43,6 @@ Reusable behavior belongs in the package API.
 
 ```bash
 pytest -q
-python scripts/smoke_installed_wheel.py
 sphinx-build -W --keep-going -E -b html docs docs/_build/html
 ```
 

@@ -1,19 +1,19 @@
 # Quickstart
 
-Inspect a built-in workflow before providing data or starting a fit:
+Check the inputs and output paths before providing data or starting a fit:
 
 ```bash
-cytobridge workflow --config zebrafish --dry-run
-cytobridge workflow --config admouse --dry-run --json
-cytobridge workflow --config chicken_heart --dry-run
+cytobridge workflow --config zebrafish --check
+cytobridge workflow --config admouse --check --json
+cytobridge workflow --config chicken_heart --check
 ```
 
-A dry run resolves the preset, prints the planned steps, and reports missing
-inputs. It does not preprocess data, train a model, or write analysis outputs.
+The check prints the selected configuration, the analysis steps, and any
+missing inputs. It does not preprocess data, train a model, or write outputs.
 
 ## Start from your own AnnData
 
-Export the closest packaged preset, edit its data keys and analysis settings,
+Export the closest example configuration, edit its data keys and analysis settings,
 then inspect the edited config before starting a fit:
 
 ```bash
@@ -23,7 +23,7 @@ cytobridge workflow --config zebrafish \
 cytobridge workflow --config configs/my_dataset.json --train \
   --input-h5ad inputs/my_dataset.h5ad \
   --output-dir outputs/my_dataset \
-  --device cuda --dry-run
+  --device cuda --check
 ```
 
 The [own-data tutorial](tutorials/your_data.ipynb) lists the fields to change
@@ -101,10 +101,10 @@ cytobridge workflow --config chicken_heart --train \
   --device cuda:0
 ```
 
-## Select another training profile
+## Use another training configuration
 
-Pass `--training-config` when a workflow should use a profile other than the
-preset default. For example, the AD `all_spatial` profile removes the learned
+Pass `--training-config` when a workflow should use settings other than the
+dataset default. For example, the AD `all_spatial` configuration removes the learned
 LR-informed edge gate while retaining the interaction model:
 
 ```bash
@@ -116,4 +116,4 @@ cytobridge workflow --config admouse --step downstream \
   --device cuda
 ```
 
-The aligned input and model directory must come from the same training profile.
+The aligned input and model directory must come from the same training run.

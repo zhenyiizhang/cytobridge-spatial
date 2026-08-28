@@ -4,7 +4,7 @@ CytoBridge requires Python 3.10 or 3.11. The base install contains stable data,
 configuration, and metric dependencies; heavier scientific stacks are selected
 with extras.
 
-## Release candidate from GitHub
+## Install from GitHub
 
 ```bash
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
@@ -19,7 +19,7 @@ Once version 1.5 is published, the normal installation will be:
 python -m pip install 'CytoBridge[all]>=1.5,<1.6'
 ```
 
-## Dependency profiles
+## Installation options
 
 | Extra | Use it for |
 | --- | --- |
@@ -46,8 +46,8 @@ cytobridge doctor
 cytobridge workflow --list-configs
 ```
 
-`cytobridge doctor` is read-only. It reports dependency availability without
-importing the scientific stacks or modifying data.
+`cytobridge doctor` checks which optional libraries are installed without
+importing them or modifying data.
 
 ## Build the documentation locally
 
@@ -57,5 +57,5 @@ sphinx-build -W --keep-going -E -b html docs docs/_build/html
 ```
 
 The documentation build mocks optional scientific imports only while reading
-API signatures. Running an analysis still requires its matching dependency
-profile.
+API signatures. Running an analysis still requires the corresponding
+installation option.

@@ -61,6 +61,9 @@ from .reproduction_chains import (
     FIGURE_REPRODUCTION_CHAINS,
     describe_dataset_artifact_chain,
     describe_dataset_paper_chain,
+    describe_dataset_paper_steps,
+    describe_dataset_run_steps,
+    describe_figure_steps,
     describe_figure_reproduction_chain,
 )
 from .interaction_evidence import (
@@ -207,6 +210,9 @@ __all__ = [
     "describe_figure_workflow",
     "describe_dataset_artifact_chain",
     "describe_dataset_paper_chain",
+    "describe_dataset_paper_steps",
+    "describe_dataset_run_steps",
+    "describe_figure_steps",
     "describe_figure_reproduction_chain",
     "format_full_model_compute_cost",
     "interaction_evidence_statistics",

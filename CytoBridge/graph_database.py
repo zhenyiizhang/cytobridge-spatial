@@ -37,7 +37,7 @@ def bundled_graph_database_path(
     *,
     filename: str | None = None,
 ) -> Path:
-    """Return the wheel-bundled formal graph database for a dataset."""
+    """Return the interaction database included for a dataset."""
 
     selected = filename or FORMAL_GRAPH_DATABASES.get(str(dataset_name))
     if selected is None:
@@ -60,7 +60,7 @@ def resolve_graph_database(
     *,
     bundled_filename: str | None = None,
 ) -> Path:
-    """Return a custom database override or the dataset's bundled formal one."""
+    """Return a custom database override or the included dataset database."""
 
     if database_path is not None:
         resolved = Path(database_path).expanduser().resolve()
@@ -73,7 +73,7 @@ def resolve_graph_database(
         dataset_name,
         filename=bundled_filename,
     )
-    print(f"Using bundled formal interaction-graph database: {bundled}")
+    print(f"Using included interaction-graph database: {bundled}")
     return bundled
 
 

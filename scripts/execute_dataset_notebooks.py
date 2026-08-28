@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import nbformat
@@ -22,6 +23,12 @@ NOTEBOOKS = (
     NOTEBOOK_DIR / "admouse.ipynb",
     NOTEBOOK_DIR / "chicken_heart.ipynb",
 )
+
+_pythonpath = os.environ.get("PYTHONPATH")
+os.environ["PYTHONPATH"] = (
+    str(ROOT) if not _pythonpath else os.pathsep.join((str(ROOT), _pythonpath))
+)
+os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
 
 
 def execute_notebook(
@@ -58,11 +65,7 @@ def execute_notebook(
 
 def run(*, timeout: int, save_outputs: bool) -> list[dict[str, object]]:
     return [
-        execute_notebook(
-            path,
-            timeout=timeout,
-            save_outputs=save_outputs,
-        )
+        execute_notebook(path, timeout=timeout, save_outputs=save_outputs)
         for path in NOTEBOOKS
     ]
 
@@ -76,12 +79,7 @@ def main() -> None:
         help="Store the executed cells in the published notebooks.",
     )
     args = parser.parse_args()
-    print(
-        json.dumps(
-            run(timeout=args.timeout, save_outputs=args.save_outputs),
-            indent=2,
-        )
-    )
+    print(json.dumps(run(timeout=args.timeout, save_outputs=args.save_outputs), indent=2))
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ NOTEBOOKS = {
     "admouse.ipynb": "admouse",
     "chicken_heart.ipynb": "chicken_heart",
 }
-SMOKE_RUNNER = ROOT / "scripts" / "smoke_dataset_notebooks.py"
+NOTEBOOK_RUNNER = ROOT / "scripts" / "execute_dataset_notebooks.py"
 
 
 def _notebook_text(notebook: dict) -> tuple[str, str]:
@@ -87,8 +87,8 @@ def test_dataset_notebook_is_executed_and_portable(
     positions = [markdown.index(heading) for heading in headings]
     assert positions == sorted(positions)
 
-    assert f"PRESET = '{preset}'" in code
-    assert "load_workflow_config(PRESET)" in code
+    assert f"DATASET_CONFIG = '{preset}'" in code
+    assert "load_workflow_config(DATASET_CONFIG)" in code
     assert "WorkflowOptions" in code
     assert "build_workflow_plan" in code
     assert "render_workflow_plan" in code
@@ -110,7 +110,7 @@ def test_dataset_notebook_is_executed_and_portable(
 
 
 def test_notebook_runner_executes_the_published_sources() -> None:
-    source = SMOKE_RUNNER.read_text(encoding="utf-8")
+    source = NOTEBOOK_RUNNER.read_text(encoding="utf-8")
     ast.parse(source)
     assert all(filename in source for filename in NOTEBOOKS)
     assert "synthetic_preprocessing.ipynb" in source
@@ -141,7 +141,7 @@ def test_own_data_notebook_is_executed_and_has_complete_commands() -> None:
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(cell["execution_count"] is not None for cell in code_cells)
     assert "--export-config" in code
-    assert "--dry-run" in code
+    assert "--check" in code
     assert "--train" in code
     assert "--step downstream" in code
     assert "## Expected output locations" in markdown
@@ -156,9 +156,9 @@ def test_tutorial_navigation_has_one_dataset_section() -> None:
         ROOT / "docs" / "tutorials" / "paper_figures" / "index.md"
     ).read_text(encoding="utf-8")
 
-    assert tutorial_index.count("## Reuse a paper dataset workflow") == 1
+    assert tutorial_index.count("## Paper datasets") == 1
     assert "Dataset notebooks" not in tutorial_index
-    assert tutorial_index.count("dataset_workflows/index") == 2
+    assert tutorial_index.count("dataset_workflows/") >= 5
     assert tutorial_index.count("your_data") == 2
     assert "paper_figures/index" in tutorial_index
     for preset in NOTEBOOKS.values():

@@ -202,13 +202,13 @@ def _render_doctor_text(report: dict[str, object]) -> str:
         f"package source: {package['source']}",
         f"python: {python['implementation']} {python['version']}",
         f"python executable: {python['executable']}",
-        "dependency availability (modules are not imported):",
+        "optional libraries (modules are not imported):",
     ]
     lines.extend(
         f"  {name}: {'available' if available else 'missing'}"
         for name, available in dependencies.items()
     )
-    lines.append("dependency profiles:")
+    lines.append("installation options:")
     for name, profile in profiles.items():
         assert isinstance(profile, dict)
         if profile["available"]:
@@ -235,12 +235,12 @@ def _parser() -> argparse.ArgumentParser:
     doctor.add_argument("--json", action="store_true", dest="as_json")
     workflow = commands.add_parser(
         "workflow",
-        help="plan or run a package-native dataset workflow",
+        help="preprocess, train, and analyze a dataset",
     )
     workflow.add_argument(
         "--config",
         help=(
-            "packaged preset (zebrafish, mosta, arista, admouse, chicken_heart) "
+            "example dataset name (zebrafish, mosta, arista, admouse, chicken_heart) "
             "or JSON/YAML path"
         ),
     )
@@ -252,7 +252,7 @@ def _parser() -> argparse.ArgumentParser:
     figure_commands.add_parser("list", help="list figure workflows")
     figure_explain = figure_commands.add_parser(
         "explain",
-        help="show the inputs and upstream route for one figure command",
+        help="show how the inputs, calculations, and figure command connect",
     )
     figure_explain.add_argument("name", choices=tuple(_FIGURE_COMMAND_HELP))
     figure_explain.add_argument("--json", action="store_true", dest="as_json")
@@ -275,12 +275,12 @@ def _parser() -> argparse.ArgumentParser:
         )
     nonspatial = commands.add_parser(
         "nonspatial",
-        help="run the package-owned Weinreb or scNT non-spatial workflow",
+        help="run the Weinreb or scNT non-spatial analysis",
     )
     nonspatial_commands = nonspatial.add_subparsers(dest="nonspatial_command")
-    nonspatial_commands.add_parser("list-presets", help="list supported datasets")
+    nonspatial_commands.add_parser("list-datasets", help="list supported datasets")
     nonspatial_plan = nonspatial_commands.add_parser(
-        "plan", help="show the audited end-to-end workflow"
+        "plan", help="show the steps for one dataset"
     )
     nonspatial_plan.add_argument("--dataset", required=True)
     nonspatial_plan.add_argument("--json", action="store_true", dest="as_json")
@@ -305,7 +305,7 @@ def _parser() -> argparse.ArgumentParser:
     nonspatial_prior.add_argument("--overwrite", action="store_true")
 
     nonspatial_train = nonspatial_commands.add_parser(
-        "train", help="train one corrected matched Full/No-interaction arm"
+        "train", help="train either the Full or No-interaction model"
     )
     nonspatial_train.add_argument("--dataset", required=True)
     nonspatial_train.add_argument(
@@ -335,7 +335,7 @@ def _parser() -> argparse.ArgumentParser:
     nonspatial_evaluate.add_argument("--max-ot-points", type=int, default=1024)
     nonspatial_direction = nonspatial_commands.add_parser(
         "scnt-direction",
-        help="evaluate sealed scNT new-RNA direction after both models finish",
+        help="compare scNT new-RNA direction after both models finish",
     )
     nonspatial_direction.add_argument("--source-h5ad", required=True, type=Path)
     nonspatial_direction.add_argument("--prepared-h5ad", required=True, type=Path)
@@ -364,7 +364,7 @@ def _parser() -> argparse.ArgumentParser:
     nonspatial_attribution.add_argument("--overwrite", action="store_true")
     nonspatial_figure = nonspatial_commands.add_parser(
         "figure",
-        help="replay an accepted Weinreb/scNT A4 panel-data bundle",
+        help="draw the Weinreb or scNT figure from calculated panel data",
     )
     nonspatial_figure.add_argument("--dataset", required=True)
     nonspatial_figure.add_argument("--bundle-dir", required=True, type=Path)
@@ -387,9 +387,17 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--export-config",
         type=Path,
-        help="copy the selected packaged preset to a new JSON file for editing",
+        help="copy the selected example configuration to a new JSON file",
     )
-    workflow.add_argument("--dry-run", action="store_true")
+    workflow.add_argument(
+        "--check",
+        action="store_true",
+        dest="dry_run",
+        help="show the inputs and output paths without starting the calculation",
+    )
+    workflow.add_argument(
+        "--dry-run", action="store_true", dest="dry_run", help=argparse.SUPPRESS
+    )
     workflow.add_argument("--json", action="store_true", dest="as_json")
     workflow.add_argument(
         "--step",
@@ -410,7 +418,7 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--interaction-cutoff",
         type=float,
-        help="override the packaged formal spatial interaction cutoff",
+        help="override the spatial interaction cutoff in the configuration",
     )
     workflow.add_argument(
         "--graph-database",
@@ -418,7 +426,7 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "ligand-receptor database used to build interaction graphs when "
             "preprocessing automatically trains an edge predictor; overrides "
-            "the species-matched formal database bundled with each preset"
+            "the species-matched database included with each example dataset"
         ),
     )
     workflow.add_argument("--edge-predictor-path", type=Path)
@@ -429,7 +437,7 @@ def _parser() -> argparse.ArgumentParser:
         "--model-format",
         choices=("current",),
         help=(
-            "formal workflows use the current six-stage checkpoint format; "
+            "the current workflows use the six-stage checkpoint format; "
             "use the dedicated legacy loader API for historical models"
         ),
     )
@@ -445,27 +453,27 @@ def _parser() -> argparse.ArgumentParser:
         "--gene-dynamics",
         action="store_true",
         help=(
-            "enable temporal gene reconstruction for a custom config; packaged "
-            "dataset presets already enable it"
+            "enable temporal gene reconstruction for a custom config; the "
+            "example dataset configurations already enable it"
         ),
     )
     workflow.add_argument(
         "--skip-gene-dynamics",
         action="store_true",
-        help="skip preset gene dynamics, for example when inspecting an old artifact without its PCA reference",
+        help="skip gene dynamics, for example when an older model has no PCA reference",
     )
     workflow.add_argument(
         "--lr-database",
         type=Path,
         help=(
-            "override the species-matched database used by packaged presets for "
+            "override the species-matched database used by example datasets for "
             "strict ligand-receptor projection"
         ),
     )
     workflow.add_argument(
         "--skip-lr",
         action="store_true",
-        help="skip preset ligand-receptor projection while retaining graph attention outputs",
+        help="skip ligand-receptor projection while retaining graph attention outputs",
     )
     workflow.add_argument(
         "--lr-complex-mode",
@@ -559,7 +567,7 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
                 encoding="utf-8",
             )
             print(f"Wrote editable workflow config: {destination}")
-            print(f"Starting preset: {source}")
+            print(f"Starting configuration: {source}")
             return 0
         plan = build_workflow_plan(config, source=source, options=options)
     except (
@@ -576,7 +584,7 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
             print(json.dumps(plan, indent=2))
         else:
             print(render_workflow_plan(plan))
-            print("dry-run: no work executed")
+            print("Check complete: no calculation was started.")
         return 0
 
     missing = plan_missing_inputs(plan)
@@ -607,29 +615,25 @@ def _run_figure_command(args: argparse.Namespace) -> int:
     if args.figure_command == "list":
         from .results.figure_workflows import list_figure_workflows
 
-        print("command\tmode\twheel\tpaper location")
+        print("command\tpaper location\tinput")
         for workflow in list_figure_workflows():
-            wheel = "yes" if workflow["wheel_runnable"] else "external input"
+            source = "included example data" if workflow["wheel_runnable"] else "separate result directory"
             print(
-                f"{workflow['name']}\t{workflow['mode']}\t{wheel}\t"
-                f"{workflow['paper_location']}"
+                f"{workflow['name']}\t{workflow['paper_location']}\t{source}"
             )
         return 0
     if args.figure_command == "explain":
         from .results.figure_workflows import describe_figure_workflow
-        from .results.reproduction_chains import describe_figure_reproduction_chain
+        from .results.reproduction_chains import describe_figure_steps
 
         route = describe_figure_workflow(args.name)
-        chain = describe_figure_reproduction_chain(args.name)
+        chain = describe_figure_steps(args.name)
         if args.as_json:
-            print(json.dumps({**route, "artifact_chain": chain}, indent=2, sort_keys=True))
+            print(json.dumps({**route, "steps": chain}, indent=2, sort_keys=True))
         else:
             labels = (
                 ("Paper location", "paper_location"),
-                ("Mode", "mode"),
-                ("Starts from", "starts_from"),
-                ("Upstream entry", "upstream_entry"),
-                ("Upstream command", "upstream_command"),
+                ("Input", "starts_from"),
                 ("Figure command", "figure_command"),
                 ("Scope", "scope"),
             )
@@ -637,15 +641,15 @@ def _run_figure_command(args: argparse.Namespace) -> int:
                 value = route[key]
                 if value:
                     print(f"{label}: {value}")
-            print("Artifact chain:")
+            print("How the files connect:")
             for index, row in enumerate(chain, start=1):
                 print(f"  {index}. {row['paper_part']} — {row['step']}")
-                print(f"     code: {row['code_or_command']}")
-                print(f"     reads: {row['reads']}")
-                print(f"     writes: {row['writes']}")
-                print(f"     next: {row['next_step']}")
-                if row["availability"] != "public":
-                    print(f"     availability: {row['availability']}")
+                print(f"     command: {row['code_or_command']}")
+                print(f"     input: {row['reads']}")
+                print(f"     creates: {row['writes']}")
+                print(f"     continue with: {row['next_step']}")
+                if row.get("note"):
+                    print(f"     note: {row['note']}")
         return 0
     if args.figure_command not in _FIGURE_COMMAND_HELP:
         print("cytobridge figure requires a subcommand; use --help", file=sys.stderr)
@@ -688,7 +692,7 @@ def _run_nonspatial_command(args: argparse.Namespace) -> int:
     )
 
     command = args.nonspatial_command
-    if command == "list-presets":
+    if command == "list-datasets":
         print("\n".join(available_nonspatial_presets()))
         return 0
     if command == "plan":
@@ -696,7 +700,7 @@ def _run_nonspatial_command(args: argparse.Namespace) -> int:
         if args.as_json:
             print(json.dumps(plan, indent=2, sort_keys=True))
         else:
-            print(f"CytoBridge non-spatial preset: {plan['preset']['display_name']}")
+            print(f"CytoBridge non-spatial dataset: {plan['preset']['display_name']}")
             for index, step in enumerate(plan["steps"], start=1):
                 print(f"  {index}. {step}")
             print(plan["historical_replay_note"])

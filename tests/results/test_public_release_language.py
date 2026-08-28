@@ -112,6 +112,15 @@ def _notebook_source(path: Path) -> str:
     )
 
 
+def _notebook_markdown(path: Path) -> str:
+    notebook = json.loads(path.read_text(encoding="utf-8"))
+    return "\n".join(
+        "".join(cell.get("source", ()))
+        for cell in notebook.get("cells", ())
+        if cell.get("cell_type") == "markdown"
+    )
+
+
 def _public_text(path: Path) -> str:
     if path.name.endswith(".gz"):
         with gzip.open(path, mode="rt", encoding="utf-8") as handle:
@@ -132,7 +141,7 @@ def test_public_files_do_not_expose_local_or_audit_markers(path: Path) -> None:
     ids=lambda path: str(path.name),
 )
 def test_notebooks_use_reproduction_only_prose(path: Path) -> None:
-    text = _notebook_source(path).lower()
+    text = _notebook_markdown(path).lower()
     found = [
         marker
         for marker in (
@@ -157,11 +166,11 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
-    assert "reproduction route" in lowered
-    assert "### step 1:" in lowered
-    assert "**reads:**" in lowered
-    assert "**writes:**" in lowered
-    assert "**next:**" in lowered
+    assert "how this figure is made" in lowered
+    assert "### 1." in lowered
+    assert "input:" in lowered
+    assert "creates:" in lowered
+    assert "continue with:" in lowered
     assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
@@ -196,3 +205,25 @@ def test_public_docs_avoid_internal_revision_language(path: Path) -> None:
     text = path.read_text(encoding="utf-8").lower()
     found = [marker for marker in PUBLIC_PROSE_MARKERS if marker in text]
     assert not found, f"{path} contains internal revision language: {found}"
+
+
+@pytest.mark.parametrize(
+    "path",
+    PUBLIC_DOCS,
+    ids=lambda path: str(path.name),
+)
+def test_public_docs_avoid_maintenance_jargon(path: Path) -> None:
+    text = path.read_text(encoding="utf-8").lower()
+    markers = (
+        "public smoke",
+        "smoke command",
+        "dry run",
+        "availability:",
+        "artifact chain",
+        "reproduction route",
+        "provenance break",
+        "manuscript result bundle",
+        "package-native",
+    )
+    found = [marker for marker in markers if marker in text]
+    assert not found, f"{path} contains maintenance jargon: {found}"

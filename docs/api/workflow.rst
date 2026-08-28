@@ -1,8 +1,8 @@
 Workflow API
 ============
 
-The workflow API reads the same wheel-bundled presets as ``cytobridge
-workflow``. Building a plan is read-only; fitting occurs only when training is
+The workflow API reads the same example dataset configurations as ``cytobridge
+workflow``. Inspecting the steps does not start a calculation; fitting occurs only when training is
 explicitly enabled.
 
 .. automodule:: CytoBridge.workflow

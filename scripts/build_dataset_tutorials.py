@@ -9,8 +9,8 @@ from pathlib import Path
 import nbformat
 
 from CytoBridge.results.reproduction_chains import (
-    describe_dataset_artifact_chain,
-    describe_dataset_paper_chain,
+    describe_dataset_paper_steps,
+    describe_dataset_run_steps,
 )
 
 
@@ -21,7 +21,7 @@ OWN_DATA_NOTEBOOK = ROOT / "docs" / "tutorials" / "your_data.ipynb"
 
 @dataclass(frozen=True)
 class Tutorial:
-    preset: str
+    dataset: str
     title: str
     raw_filename: str
     figure_links: tuple[tuple[str, str, str], ...]
@@ -130,23 +130,23 @@ def code(text: str):
 def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
     cells = []
     for number, row in enumerate(rows, start=1):
-        paper = f"\n**Paper:** {row['paper_part']}\n" if include_paper else ""
+        paper = f"\nUsed for: {row['paper_part']}\n" if include_paper else ""
+        note = f"\n{row['note']}\n" if row.get("note") else ""
         cells.append(
             markdown(
                 f"""
-### Step {number}: {row['step']}
+### {number}. {row['step']}
 {paper}
 ```text
 {row['code_or_command']}
 ```
 
-**Reads:** `{row['reads']}`
+Input: `{row['reads']}`
 
-**Writes:** `{row['writes']}`
+Creates: `{row['writes']}`
 
-**Next:** `{row['next_step']}`
-
-**Availability:** {row['availability']}
+Continue with: `{row['next_step']}`
+{note}
 """
             )
         )
@@ -154,11 +154,11 @@ def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
 
 
 def build_notebook(tutorial: Tutorial):
-    preset = tutorial.preset
-    aligned_name = f"{preset}_aligned.h5ad"
+    dataset_name = tutorial.dataset
+    aligned_name = f"{dataset_name}_aligned.h5ad"
     chicken_setup = ""
     chicken_preparation = []
-    if preset == "chicken_heart":
+    if dataset_name == "chicken_heart":
         chicken_setup = """
 
 import CytoBridge as cb
@@ -175,8 +175,7 @@ RUN_RAW_DATA_ASSEMBLY = False
 ### Assemble the chicken-heart H5AD
 
 The downloaded 10x matrices are first matched to the reference spot roster.
-The second call writes the `spatial_ot_input` coordinates expected by the
-alignment preset.
+The second call writes the `spatial_ot_input` coordinates used by alignment.
 """
             ),
             code(
@@ -191,7 +190,7 @@ if RUN_RAW_DATA_ASSEMBLY:
         output_h5ad=reference_input,
         output_table=PREPARATION_DIR / "model_input.csv",
         manifest_path=PREPARATION_DIR / "preparation.json",
-        graph_database=cb.pp.bundled_graph_database_path(PRESET),
+        graph_database=cb.pp.bundled_graph_database_path(DATASET_CONFIG),
         repair_legacy_d7_left_right=False,
     )
     cb.pp.prepare_chicken_heart_ot_input(
@@ -209,21 +208,18 @@ else:
         f"- [{label}](../paper_figures/{target})"
         for label, target, _workflow in tutorial.figure_links
     )
-    artifact_route_cells = route_cells(
-        describe_dataset_artifact_chain(preset), include_paper=False
-    )
+    run_rows = describe_dataset_run_steps(dataset_name)
     paper_route_cells = route_cells(
-        describe_dataset_paper_chain(preset), include_paper=True
+        describe_dataset_paper_steps(dataset_name), include_paper=True
     )
     cells = [
         markdown(
             f"""
 # {tutorial.title}
 
-This notebook runs the packaged `{preset}` workflow from data preparation
-through downstream analysis. Edit the paths in **Setup**, then enable the run
-switches for the steps you need. The saved outputs below come from the packaged
-preset and do not require the external dataset.
+This notebook shows the complete `{dataset_name}` analysis: data preparation,
+model training, downstream analysis, and the commands used for the paper
+figures. Edit the paths in **Setup** before starting a run.
 """
         ),
         markdown("## Setup"),
@@ -241,9 +237,9 @@ from CytoBridge.workflow import (
     render_workflow_plan,
     run_workflow,
 )
-PRESET = {preset!r}
+DATASET_CONFIG = {dataset_name!r}
 RAW_H5AD = Path("data/{tutorial.raw_filename}")
-OUTPUT_DIR = Path("tutorial_outputs/{preset}")
+OUTPUT_DIR = Path("tutorial_outputs/{dataset_name}")
 ALIGNED_H5AD = OUTPUT_DIR / "preprocess" / {aligned_name!r}
 MODEL_DIR = OUTPUT_DIR / "training"
 {chicken_setup}
@@ -255,7 +251,7 @@ RUN_DOWNSTREAM = False
         ),
         code(
             """
-config, preset_source = load_workflow_config(PRESET)
+config, config_source = load_workflow_config(DATASET_CONFIG)
 dataset = config["dataset"]
 scientific = config["scientific"]
 downstream = config["downstream"]
@@ -264,7 +260,7 @@ pd.DataFrame(
     {
         "setting": [
             "dataset",
-            "preset",
+            "configuration",
             "raw time column",
             "cell annotation",
             "observed training times",
@@ -272,7 +268,7 @@ pd.DataFrame(
         ],
         "value": [
             dataset["display_name"],
-            preset_source,
+            config_source,
             config["preprocess"]["time_key"],
             dataset["annotation_key"],
             ", ".join(map(str, downstream["observed"])),
@@ -284,23 +280,14 @@ pd.DataFrame(
         ),
         markdown(
             """
-## Files passed from one step to the next
-
-These are the handoffs used below. Training reads the aligned H5AD and edge
-predictor written by preprocessing. Downstream analysis then reads that same
-aligned H5AD together with the complete training directory.
-"""
-        ),
-        *artifact_route_cells,
-        markdown(
-            """
 ## Data preparation
 
-The preset records the count layer, time mapping, spatial coordinates, and
-alignment settings used for this dataset. The plan below shows the input and
-output paths before any long-running work starts.
+The dataset configuration records the count layer, time mapping, spatial
+coordinates, and alignment settings. The command below reads the raw H5AD and
+writes the aligned H5AD and edge model used for training.
 """
         ),
+        route_cells([run_rows[0]], include_paper=False)[0],
         *chicken_preparation,
         code(
             """
@@ -311,7 +298,7 @@ preparation_options = WorkflowOptions(
 )
 preparation_plan = build_workflow_plan(
     config,
-    source=preset_source,
+    source=config_source,
     options=preparation_options,
 )
 print(render_workflow_plan(preparation_plan))
@@ -332,11 +319,12 @@ else:
             """
 ## Training
 
-The full training run starts from the raw H5AD, writes the aligned data, fits
-the interaction edge predictor when the preset requires one, and trains the
-CytoBridge model. A production run requires a CUDA-capable environment.
+The full run starts from the raw H5AD, writes the aligned data, fits the
+interaction edge model when needed, and trains CytoBridge. Training requires a
+CUDA-capable environment.
 """
         ),
+        route_cells([run_rows[1]], include_paper=False)[0],
         code(
             """
 training_options = WorkflowOptions(
@@ -347,7 +335,7 @@ training_options = WorkflowOptions(
 )
 training_plan = build_workflow_plan(
     config,
-    source=preset_source,
+    source=config_source,
     options=training_options,
 )
 print(render_workflow_plan(training_plan))
@@ -368,11 +356,12 @@ else:
             """
 ## Downstream analysis
 
-Downstream analysis uses the aligned H5AD and fitted model from the training
-directory. The dataset preset supplies the interpolation times, classifier
-settings, trajectory simulation, growth analysis, and ligand–receptor options.
+Downstream analysis reads the aligned H5AD and fitted model from the training
+directory. It writes generated states, velocity, growth, composition,
+communication, ligand–receptor tables, and standard figures.
 """
         ),
+        route_cells([run_rows[2]], include_paper=False)[0],
         code(
             """
 downstream_options = WorkflowOptions(
@@ -383,7 +372,7 @@ downstream_options = WorkflowOptions(
 )
 downstream_plan = build_workflow_plan(
     config,
-    source=preset_source,
+    source=config_source,
     options=downstream_options,
 )
 print(render_workflow_plan(downstream_plan))
@@ -394,7 +383,7 @@ print(render_workflow_plan(downstream_plan))
 if RUN_DOWNSTREAM:
     missing = [path for path in (ALIGNED_H5AD, MODEL_DIR) if not path.exists()]
     if missing:
-        raise FileNotFoundError(f"Missing trained artifacts: {missing}")
+        raise FileNotFoundError(f"Missing aligned data or model directory: {missing}")
     downstream_result = run_workflow(config, options=downstream_options)
     downstream_result
 else:
@@ -405,10 +394,9 @@ else:
             f"""
 ## Paper figures
 
-The steps below show exactly where this dataset's standard downstream output
-continues into manuscript calculations. A step marked `provenance break` means
-that a related calculation exists but the manuscript page cannot yet be traced
-to one exact command and input set.
+Continue with these commands to calculate the values used in the paper. Each
+step states which downstream files it reads and which paper notebook uses its
+output.
 
 {figure_lines}
 """
@@ -417,9 +405,9 @@ to one exact command and input set.
         markdown("## Saved files"),
         markdown(
             f"""
-- Aligned data: `tutorial_outputs/{preset}/preprocess/{aligned_name}`
-- Training directory: `tutorial_outputs/{preset}/training`
-- Downstream directory: `tutorial_outputs/{preset}/downstream`
+- Aligned data: `tutorial_outputs/{dataset_name}/preprocess/{aligned_name}`
+- Training directory: `tutorial_outputs/{dataset_name}/training`
+- Downstream directory: `tutorial_outputs/{dataset_name}/downstream`
 """
         ),
     ]
@@ -444,7 +432,7 @@ def build_own_data_notebook():
             """
 # Run CytoBridge on your data
 
-Start with the packaged dataset closest to your experiment, export its config,
+Start with the example dataset closest to your experiment, export its config,
 and edit the data fields and analysis settings. The same config is then used
 for preprocessing, training, downstream calculations, and standard figures.
 """
@@ -478,13 +466,13 @@ training; the aligned H5AD and model directory are one matched pair.
             """
 from pathlib import Path
 
-BASE_PRESET = "zebrafish"
+STARTING_CONFIG = "zebrafish"
 CONFIG_PATH = Path("configs/my_dataset.json")
 RAW_H5AD = Path("inputs/my_dataset_raw.h5ad")
 RUN_ROOT = Path("outputs/my_dataset")
 
 print(
-    f"cytobridge workflow --config {BASE_PRESET} "
+    f"cytobridge workflow --config {STARTING_CONFIG} "
     f"--export-config {CONFIG_PATH}"
 )
 """
@@ -498,7 +486,7 @@ starting a fit:
 - `preprocess.time_key`, `annotation_source`, count layer, coordinates, and
   `align.time_mapping`;
 - `scientific.classifier_k` and the spatial/expression loss weights;
-- the training profile, interaction distance, LR database, and predictor
+- the training settings, interaction distance, LR database, and edge model
   settings; and
 - downstream observed/intermediate times and species tag.
 
@@ -511,15 +499,15 @@ The dataset notebooks show the settings used for the five paper datasets.
 print(
     "cytobridge workflow "
     f"--config {CONFIG_PATH} --train --input-h5ad {RAW_H5AD} "
-    f"--output-dir {RUN_ROOT} --device cuda --dry-run"
+    f"--output-dir {RUN_ROOT} --device cuda --check"
 )
 """
         ),
         markdown(
             """
-The dry run prints the data keys, training profile, preprocessing outputs,
-model directory, downstream time grid, and enabled analyses. Fix missing or
-incorrect fields in the JSON before removing `--dry-run`.
+The check prints the data keys, training settings, preprocessing outputs,
+model directory, downstream time grid, and enabled analyses without starting
+the calculation. Fix missing or incorrect fields before removing `--check`.
 """
         ),
         markdown("## Preprocess, train, and run downstream analysis"),
@@ -603,7 +591,7 @@ with pd.option_context("display.max_colwidth", None):
 def main() -> None:
     NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
     for tutorial in TUTORIALS:
-        path = NOTEBOOK_DIR / f"{tutorial.preset}.ipynb"
+        path = NOTEBOOK_DIR / f"{tutorial.dataset}.ipynb"
         nbformat.write(build_notebook(tutorial), path)
         print(path.relative_to(ROOT))
     nbformat.write(build_own_data_notebook(), OWN_DATA_NOTEBOOK)

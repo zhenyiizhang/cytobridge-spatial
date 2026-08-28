@@ -88,9 +88,15 @@ exclude_patterns = [
 
 html_theme = "furo"
 html_title = f"CytoBridge {release}"
+html_logo = "_static/cytobridge_logo.svg"
 html_static_path = ["_static"]
 html_css_files = ["cytobridge.css"]
 html_theme_options = {
+    "sidebar_hide_name": True,
+    "navigation_with_keys": True,
+    "source_repository": "https://github.com/zhenyiizhang/cytobridge-spatial/",
+    "source_branch": "release/cytobridge-reproducible-20260812",
+    "source_directory": "docs/",
     "light_css_variables": {
         "color-brand-primary": "#08786b",
         "color-brand-content": "#07584f",

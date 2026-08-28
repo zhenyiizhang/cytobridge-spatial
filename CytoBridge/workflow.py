@@ -1,8 +1,7 @@
-"""Package-native execution of the standard CytoBridge workflow.
+"""Run data preparation, model training, and downstream analysis.
 
-The command-line workflow deliberately stays small.  Dataset presets describe
-scientific parameters and dataset schema, while numerical work is delegated to
-the public preprocessing, training, and downstream APIs.
+The command-line workflow reads a dataset configuration and calls the public
+preprocessing, training, and downstream APIs in order.
 """
 
 from __future__ import annotations
@@ -80,7 +79,7 @@ def _resolve_workflow_options(
 
 
 def available_workflow_configs() -> tuple[str, ...]:
-    """Return the names of dataset presets shipped in the wheel."""
+    """Return the names of the included dataset configurations."""
 
     return WORKFLOW_PRESETS
 
@@ -107,11 +106,7 @@ def _parse_config_text(text: str, *, source: str) -> dict[str, Any]:
 
 
 def load_workflow_config(config: str | Path) -> tuple[dict[str, Any], str]:
-    """Load a custom config path or a packaged dataset preset.
-
-    Packaged presets are resolved with :mod:`importlib.resources`, so this works
-    from an installed wheel and does not depend on a source checkout.
-    """
+    """Load a custom config path or one of the included dataset configs."""
 
     path = Path(config).expanduser()
     if path.is_file():
@@ -127,13 +122,13 @@ def load_workflow_config(config: str | Path) -> tuple[dict[str, Any], str]:
     if name not in WORKFLOW_PRESETS:
         choices = ", ".join(WORKFLOW_PRESETS)
         raise FileNotFoundError(
-            f"Workflow config {config!r} is not a file or packaged preset. "
-            f"Available presets: {choices}."
+            f"Workflow config {config!r} is not a file or known dataset name. "
+            f"Available datasets: {choices}."
         )
     resource = _package_file("workflow_configs", f"{name}.json")
     return (
         _parse_config_text(resource.read_text(encoding="utf-8"), source=name),
-        f"packaged preset: {name}",
+        f"example configuration: {name}",
     )
 
 
@@ -204,7 +199,7 @@ def _selected_steps(
         ):
             raise ValueError(
                 "A custom training config changes the interaction cutoff while "
-                "preprocessing is selected. Supply the matching workflow preset or "
+                "preprocessing is selected. Supply the matching dataset configuration or "
                 "an explicit --interaction-cutoff so graph construction, negative "
                 "sampling, training, and downstream use one cutoff."
             )
@@ -213,7 +208,7 @@ def _selected_steps(
             "Preprocessing and downstream inference cannot share one command "
             "without --train: a newly fitted PCA/alignment must not be paired "
             "with an existing checkpoint. Run preprocessing alone, add --train "
-            "for a de novo workflow, or run downstream from matched artifacts."
+            "for a new workflow, or run downstream from its matching aligned data and model."
         )
     return tuple(dict.fromkeys(str(step) for step in selected))
 
@@ -311,7 +306,7 @@ def _validate_builtin_training_contract(config: Mapping[str, Any]) -> None:
     json_learned = bool(train_config.get("requires_edge_predictor", False))
     if json_learned != yaml_learned:
         raise ValueError(
-            "Workflow preset train.requires_edge_predictor does not match its "
+            "Dataset configuration train.requires_edge_predictor does not match its "
             f"training YAML edge-prior mode: JSON={json_learned}, YAML={yaml_mode!r}."
         )
     pairs = (
@@ -349,7 +344,7 @@ def _validate_builtin_training_contract(config: Mapping[str, Any]) -> None:
             )
         ):
             raise ValueError(
-                f"Workflow preset {label} does not match its training YAML: "
+                f"Dataset configuration {label} does not match its training YAML: "
                 f"JSON={json_value!r}, YAML={yaml_value!r}."
             )
 
@@ -413,7 +408,7 @@ def _effective_downstream_analyses(
     if options.gene_dynamics:
         gene_source = "explicit --gene-dynamics"
     elif gene_default:
-        gene_source = "packaged preset default"
+        gene_source = "dataset configuration"
 
     lr_default = bool(downstream.get("lr_enabled", False))
     lr_enabled = bool(
@@ -634,7 +629,7 @@ def _loaded_model_scientific_contract(
         raise ValueError(
             "Legacy params.yml does not record the resolved alpha=0.015 "
             "six-stage contract. Use a dedicated historical compatibility "
-            "comparison; do not label a legacy checkpoint as a formal packaged run."
+            "comparison; do not label an older checkpoint as a current dataset run."
         )
     source = deepcopy(loaded_config)
     expected_config = deepcopy(
@@ -875,7 +870,7 @@ def _loaded_model_scientific_contract(
     ]
     if expected_score_stages and str(loaded.score_stage) != expected_score_stages[-1]:
         raise ValueError(
-            f"Loaded score stage {loaded.score_stage!r} does not match the formal "
+            f"Loaded score stage {loaded.score_stage!r} does not match the requested "
             f"final score stage {expected_score_stages[-1]!r}."
         )
 
@@ -896,7 +891,7 @@ def _loaded_model_scientific_contract(
         else None
     )
     return {
-        "status": "matches requested preset",
+        "status": "matches requested configuration",
         "alpha_express": alpha_express,
         "alpha_spatial": alpha_spatial,
         "seed": int(seed),
@@ -972,7 +967,7 @@ def build_workflow_plan(
     source: str,
     options: WorkflowOptions,
 ) -> dict[str, Any]:
-    """Build the concise execution plan shown by ``--dry-run``."""
+    """Build the concise execution plan shown by ``--check``."""
 
     options = _resolve_workflow_options(config, options)
     if options.train and options.training_config is None:
@@ -1001,7 +996,7 @@ def build_workflow_plan(
         steps.append(
             {
                 "name": "preprocess",
-                "status": "unavailable in this preset",
+                "status": "not enabled in this configuration",
                 "compute": "not scheduled",
                 "note": preprocess_config.get("note", "Use an aligned H5AD input."),
             }
@@ -1056,7 +1051,7 @@ def build_workflow_plan(
                         "database_source": (
                             "custom --graph-database override"
                             if options.graph_database is not None
-                            else "bundled formal CellChatDB resource"
+                            else "included CellChatDB resource"
                         ),
                         "interaction_cutoff": (
                             float(options.interaction_cutoff)
@@ -1091,7 +1086,7 @@ def build_workflow_plan(
             {
                 "name": "train",
                 "status": "skipped; add --train to run",
-                "compute": "GPU required for production training",
+                "compute": "GPU required for training",
             }
         )
     else:
@@ -1149,14 +1144,14 @@ def build_workflow_plan(
                 "edge_predictor_thre",
                 train_config.get("edge_predictor_threshold"),
             )
-            threshold_source = "packaged corrected artifact threshold"
+            threshold_source = "threshold recorded by preprocessing"
         else:
             threshold_source = None
         steps.append(
             {
                 "name": "train",
                 "status": "ready" if not missing else "missing input",
-                "compute": "GPU required for production training",
+                "compute": "GPU required for training",
                 "missing": missing,
                 "training_config": training_preset,
                 "interaction_cutoff": planned_interaction_cutoff,
@@ -1186,7 +1181,7 @@ def build_workflow_plan(
         steps.append(
             {
                 "name": "downstream",
-                "status": "unavailable in this preset",
+                "status": "not enabled in this configuration",
                 "compute": "not scheduled",
                 "note": downstream_config.get(
                     "note", "No downstream recipe is defined."
@@ -1431,7 +1426,7 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
         f"dataset: {dataset['display_name']} ({dataset['name']})",
         f"config: {plan['config']}",
         (
-            "scientific parameters: "
+            "model settings: "
             f"alpha_spatial={scientific['alpha_spatial']:g}, "
             f"alpha_express={scientific['alpha_express']:g}, "
             f"seed={scientific['seed']}, classifier_k={scientific['classifier_k']}"
@@ -1468,22 +1463,20 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
         if step.get("simulation"):
             simulation = step["simulation"]
             lines.append(
-                "    simulation: "
-                f"observed={simulation['observed_time_points']}, "
-                f"interpolated={simulation['interpolated_time_points']}, "
-                f"initial particles={simulation['initial_particles']}, "
+                "    generated states: "
+                f"observed times={simulation['observed_time_points']}, "
+                f"additional times={simulation['interpolated_time_points']}"
+            )
+            lines.append(
+                "      simulation settings: "
                 f"dt={simulation['split_dt']:g}, sigma={simulation['sigma']:g}, "
                 f"daughter noise={simulation['daughter_noise_std']:g}, "
-                f"growth alpha={simulation['growth_alpha']:g}, "
-                f"trajectory mode={simulation['trajectory_mode']}"
+                f"growth alpha={simulation['growth_alpha']:g}"
             )
             if simulation["piecewise_observed_sample_mode"] is not None:
                 lines.append(
-                    "      piecewise observed anchors: "
-                    f"sample mode={simulation['piecewise_observed_sample_mode']}, "
-                    f"include end={simulation['piecewise_include_end']}"
+                    "      each additional time starts from the preceding observed time point"
                 )
-            lines.append(f"      scope: {simulation['trajectory_scope']}")
         if step.get("edge_predictor"):
             edge = step["edge_predictor"]
             lines.append(f"    edge predictor: {edge['status']}")
@@ -1570,7 +1563,7 @@ def _run_preprocess(
         if str(config["dataset"]["name"]) != "chicken_heart":
             raise ValueError(
                 "preprocess.mode='fixed_aligned_input' is currently defined only "
-                "for the anatomy-reviewed chicken_heart preset."
+                "for the chicken_heart dataset configuration."
             )
         assert options.input_h5ad is not None
         input_h5ad = options.input_h5ad.expanduser().resolve()
@@ -1635,7 +1628,7 @@ def _run_preprocess(
         lr_feature_coverage["database_source"] = (
             "custom --graph-database override"
             if options.graph_database is not None
-            else "bundled formal CellChatDB resource"
+            else "included CellChatDB resource"
         )
         print(
             "LR latent-feature coverage before HVG/PCA: "
@@ -1804,7 +1797,7 @@ def _run_edge_predictor(
         "graph_database_source": (
             "custom --graph-database override"
             if options.graph_database is not None
-            else "bundled formal CellChatDB resource"
+            else "included CellChatDB resource"
         ),
         "time_points": [float(value) for value in time_points],
         "graph_slices": graph_results,
@@ -3066,7 +3059,7 @@ def run_workflow(
     *,
     options: WorkflowOptions,
 ) -> dict[str, Any]:
-    """Execute selected steps after the caller has checked the dry-run plan."""
+    """Execute selected steps after the caller has checked the input plan."""
 
     options = _resolve_workflow_options(config, options)
     if options.training_config is None:

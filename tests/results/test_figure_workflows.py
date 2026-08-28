@@ -12,9 +12,9 @@ from CytoBridge.results.figure_workflows import (
     run_figure_workflow,
 )
 from CytoBridge.results.reproduction_chains import (
-    describe_dataset_artifact_chain,
-    describe_dataset_paper_chain,
-    describe_figure_reproduction_chain,
+    describe_dataset_paper_steps,
+    describe_dataset_run_steps,
+    describe_figure_steps,
 )
 
 
@@ -51,15 +51,15 @@ def test_figure_workflow_registry_is_complete_and_explicit() -> None:
 
 def test_figure_workflow_explanation_has_complete_route() -> None:
     route = describe_figure_workflow("zebrafish-si")
-    assert route["starts_from"].startswith("Packaged zebrafish")
+    assert route["starts_from"].startswith("Included zebrafish")
     assert route["upstream_entry"] == "scripts/run_zebrafish_paper_downstream.py"
     assert route["upstream_command"].endswith("--help")
     assert route["figure_command"].startswith("cytobridge figure zebrafish-si")
 
 
-def test_every_figure_workflow_has_an_ordered_artifact_chain() -> None:
+def test_every_figure_workflow_has_ordered_calculation_steps() -> None:
     for workflow in FIGURE_WORKFLOWS:
-        chain = describe_figure_reproduction_chain(workflow.name)
+        chain = describe_figure_steps(workflow.name)
         assert len(chain) >= 2
         for row in chain:
             assert set(row) == {
@@ -69,14 +69,15 @@ def test_every_figure_workflow_has_an_ordered_artifact_chain() -> None:
                 "reads",
                 "writes",
                 "next_step",
-                "availability",
+                "note",
             }
-            assert all(str(value).strip() for value in row.values())
+            assert all(str(row[key]).strip() for key in row if key != "note")
             assert "..." not in row["code_or_command"]
+            assert "; " not in row["code_or_command"]
 
 
-def test_dataset_artifact_chain_names_each_handoff() -> None:
-    chain = describe_dataset_artifact_chain("chicken_heart")
+def test_dataset_run_steps_name_each_handoff() -> None:
+    chain = describe_dataset_run_steps("chicken_heart")
     assert [row["step"] for row in chain] == [
         "preprocess",
         "preprocess and train",
@@ -89,17 +90,17 @@ def test_dataset_artifact_chain_names_each_handoff() -> None:
 
 def test_every_dataset_names_its_paper_continuation_and_known_breaks() -> None:
     for preset in ("zebrafish", "mosta", "arista", "admouse", "chicken_heart"):
-        rows = describe_dataset_paper_chain(preset)
+        rows = describe_dataset_paper_steps(preset)
         assert rows
         assert all(row["paper_part"] and row["code_or_command"] for row in rows)
         assert all("..." not in row["code_or_command"] for row in rows)
     assert any(
-        "provenance break" in row["availability"]
-        for row in describe_dataset_paper_chain("admouse")
+        "have not been identified" in row["note"]
+        for row in describe_dataset_paper_steps("admouse")
     )
     assert any(
-        "provenance break" in row["availability"]
-        for row in describe_dataset_paper_chain("chicken_heart")
+        "have not been identified" in row["note"]
+        for row in describe_dataset_paper_steps("chicken_heart")
     )
 
 
@@ -122,21 +123,20 @@ def test_figure_workflow_rejects_unknown_name(tmp_path: Path) -> None:
         raise AssertionError("Unknown workflow was accepted")
 
 
-def test_installed_figure_cli_lists_execution_modes(capsys) -> None:
+def test_installed_figure_cli_lists_paper_location_and_input(capsys) -> None:
     assert cli_main(["figure", "list"]) == 0
     output = capsys.readouterr().out
-    assert "arista-lr\tnumeric-redraw\tyes" in output
-    assert "main-figure-5-reference\treference-export\tyes" in output
-    assert "main-figure-4\texternal-assembly\texternal input" in output
+    assert "arista-lr\tSupplementary Figures S23-S24\tincluded example data" in output
+    assert "main-figure-5-reference\tMain Figure 5\tincluded example data" in output
+    assert "main-figure-4\tMain Figure 4\tseparate result directory" in output
 
 
-def test_installed_figure_cli_explains_upstream_route(capsys) -> None:
+def test_installed_figure_cli_explains_calculation_steps(capsys) -> None:
     assert cli_main(["figure", "explain", "nonspatial"]) == 0
     output = capsys.readouterr().out
-    assert "Starts from: Packaged Weinreb and scNT" in output
-    assert "Upstream command: cytobridge nonspatial plan --dataset weinreb" in output
+    assert "Input: Included Weinreb and scNT" in output
     assert "Figure command: cytobridge figure nonspatial" in output
-    assert "Artifact chain:" in output
-    assert "code:" in output
-    assert "reads:" in output
-    assert "writes:" in output
+    assert "How the files connect:" in output
+    assert "command:" in output
+    assert "input:" in output
+    assert "creates:" in output

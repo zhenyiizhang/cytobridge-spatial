@@ -1956,10 +1956,25 @@ def evaluate(name, cfg, args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--datasets", nargs="+", choices=DATASETS, default=list(DATASETS))
-    parser.add_argument("--formal-root", type=Path, default=DEFAULT_FORMAL_ROOT)
+    parser.add_argument(
+        "--formal-root",
+        "--model-runs",
+        dest="formal_root",
+        type=Path,
+        default=DEFAULT_FORMAL_ROOT,
+        help="directory containing the matched CytoBridge model runs",
+    )
     parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
     parser.add_argument("--software-root", type=Path, default=REPO / "software")
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--check",
+        dest="dry_run",
+        action="store_true",
+        help="print the commands without running them",
+    )
+    parser.add_argument(
+        "--dry-run", dest="dry_run", action="store_true", help=argparse.SUPPRESS
+    )
     sub = parser.add_subparsers(dest="action", required=True)
     prep = sub.add_parser("prepare"); prep.add_argument("--overwrite", action="store_true")
     run = sub.add_parser("run"); run.add_argument("--methods", nargs="+", choices=METHODS, default=list(PRIMARY_METHODS))

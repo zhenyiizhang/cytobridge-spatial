@@ -1,7 +1,7 @@
 # Downstream analysis
 
 The downstream API works from an aligned AnnData object and a fitted model.
-The packaged workflow presets call the same public functions described below.
+The example dataset workflows call the same public functions described below.
 
 ## Interpolated states and labels
 
@@ -31,7 +31,7 @@ applied to the same vector field.
 
 `cb.tl.evaluate_growth_by_timepoint` evaluates the fitted growth head for each
 time point. Standard split-SDE workflows use the pre-warp joint state and read
-`growth_alpha` from the preset. A value of `1.0` enables the configured growth
+`growth_alpha` from the dataset configuration. A value of `1.0` enables the configured growth
 effect; `0.0` produces a fixed-population simulation.
 
 Growth summaries are written per cell and can be grouped by time or cell type.

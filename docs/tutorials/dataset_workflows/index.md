@@ -1,15 +1,12 @@
-# Dataset tutorials
+# Paper datasets
 
-Use [Run CytoBridge on your data](../your_data.ipynb) for the shortest route to
-a custom config. The notebooks below show the exact presets used for the five
-paper datasets. Each page keeps preparation, training, and downstream analysis
-in that order and names the files passed between them.
+These notebooks follow the five spatial datasets used in the paper. Each one
+contains data preparation, model training, downstream analysis, and the next
+commands used to calculate its paper figures.
 
-Long runs are disabled in the published notebooks. Their resolved plans,
-commands, expected model directory, downstream folder, and paper-figure routes
-remain visible in the saved output.
-
-## Spatial datasets
+The time-consuming cells are switched off on the documentation site. Their
+commands, paths, and saved output remain visible; set the corresponding
+`RUN_...` variable to `True` after adding the data locally.
 
 ```{toctree}
 :maxdepth: 1
@@ -21,8 +18,6 @@ admouse
 chicken_heart
 ```
 
-The [data preparation guide](../../data_checkpoints.md) lists the external
-inputs needed for a full run. Paper plotting is kept under
-[paper figure notebooks](../paper_figures/index.md), because most paper
-commands consume a compact release rather than an arbitrary new downstream
-directory.
+For a new experiment, begin with [Run CytoBridge on your
+data](../your_data.ipynb). For the final plotting steps, use the [paper figure
+notebooks](../paper_figures/index.md).

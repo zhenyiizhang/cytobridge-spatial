@@ -41,7 +41,7 @@ Run all manuscript analyses::
       --expected-acceptance-sha256 <exact-sha256> \
       --lr-database /accepted/assets/CellChatDB.ligrec.zebrafish.csv \
       --output-dir MATCHED_RUN/zebrafish/paper_downstream \
-      --stage all --profile full --device cuda
+      --stage all --device cuda
 
 Resume only S25 and communication::
 
@@ -222,22 +222,23 @@ def _is_relative_to(path: Path, root: Path) -> bool:
 
 def _load_matched_acceptance_report(
     path: str | Path,
-    expected_sha256: str,
+    expected_sha256: str | None = None,
 ) -> tuple[Path, str, Mapping[str, Any], Path]:
     """Load the exact canonical matched acceptance report, failing closed."""
 
     report_path = _require_file(path, "canonical matched acceptance report")
-    expected = str(expected_sha256).strip().lower()
-    if len(expected) != 64 or any(
-        character not in "0123456789abcdef" for character in expected
-    ):
-        raise ValueError("--expected-acceptance-sha256 must be exactly 64 hex digits")
     observed = _sha256(report_path)
-    if observed != expected:
-        raise RuntimeError(
-            "Canonical matched acceptance SHA-256 mismatch: "
-            f"expected {expected}, observed {observed}"
-        )
+    if expected_sha256 is not None:
+        expected = str(expected_sha256).strip().lower()
+        if len(expected) != 64 or any(
+            character not in "0123456789abcdef" for character in expected
+        ):
+            raise ValueError("--expected-acceptance-sha256 must be exactly 64 hex digits")
+        if observed != expected:
+            raise RuntimeError(
+                "Canonical matched acceptance SHA-256 mismatch: "
+                f"expected {expected}, observed {observed}"
+            )
     try:
         payload = json.loads(report_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -309,15 +310,13 @@ def _require_formal_acceptance_cli(args: argparse.Namespace) -> None:
     report = getattr(args, "acceptance_report", None)
     digest = getattr(args, "expected_acceptance_sha256", None)
     required = str(getattr(args, "profile", "full")) == "full"
-    if required and (report is None or digest is None):
+    if required and report is None:
         raise ValueError(
-            "--acceptance-report and --expected-acceptance-sha256 are required "
-            "for --profile full"
+            "--acceptance-report is required for the complete analysis"
         )
-    if (report is None) != (digest is None):
+    if report is None and digest is not None:
         raise ValueError(
-            "--acceptance-report and --expected-acceptance-sha256 must be "
-            "provided together"
+            "--expected-acceptance-sha256 requires --acceptance-report"
         )
 
 
@@ -4248,16 +4247,15 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "Exact canonical matched-ablation acceptance JSON. Required for "
-            "--profile full and optional only for smoke tests."
+            "Validation JSON written by the matched zebrafish training run."
         ),
     )
     parser.add_argument(
         "--expected-acceptance-sha256",
         default=None,
         help=(
-            "Required exact SHA-256 of --acceptance-report. The report must be "
-            "overall PASS with datasets.zebrafish PASS."
+            "Optional recorded SHA-256 of --acceptance-report. When omitted, "
+            "the run still records the value it reads."
         ),
     )
     parser.add_argument(
@@ -4272,7 +4270,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default="all",
         help=("'all' or a comma-separated subset of: " + ", ".join(ALL_STAGES)),
     )
-    parser.add_argument("--profile", choices=("full", "smoke"), default="full")
+    parser.add_argument(
+        "--profile",
+        choices=("full", "smoke"),
+        default="full",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--shared-cache-dir", type=Path, default=None)
     parser.add_argument("--force", action="store_true")

@@ -81,11 +81,8 @@ def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     )
     assert "not a fitted global-t0 reconstruction" in reconstruction["note"]
     rendered = render_workflow_plan(plan)
-    assert (
-        "trajectory mode=piecewise_observed_anchored_interval_forward_simulation"
-        in rendered
-    )
-    assert "sample mode=per_timepoint, include end=False" in rendered
+    assert "each additional time starts from the preceding observed time point" in rendered
+    assert "sample mode=" not in rendered
     assert plan_missing_inputs(plan) == [
         f"strict ligand-receptor projection: LR database file not found: {missing_lr}"
     ]
@@ -121,7 +118,7 @@ def test_packaged_downstream_defaults_share_the_graph_database():
         assert effective["preferred_species_tag"] == species_tag
         assert Path(effective["lr_database"]).name == config["train"]["graph_database"]
         assert analyses["gene dynamics"]["status"] == "enabled"
-        assert analyses["gene dynamics"]["source"] == "packaged preset default"
+        assert analyses["gene dynamics"]["source"] == "dataset configuration"
         assert analyses["strict ligand-receptor projection"]["status"] == "enabled"
         assert analyses["strict ligand-receptor projection"]["database"].endswith(
             config["train"]["graph_database"]
@@ -381,7 +378,7 @@ def test_canonical_current_checkpoint_configs_match_requested_preset(name):
         options=WorkflowOptions(),
     )
 
-    assert contract["status"] == "matches requested preset"
+    assert contract["status"] == "matches requested configuration"
     assert contract["alpha_express"] == 0.015
     expected_threshold = config["train"].get("edge_predictor_threshold")
     assert contract["edge_predictor_threshold"] == expected_threshold
@@ -576,7 +573,7 @@ def test_all_spatial_artifact_reuse_rejects_inert_predictor_settings():
         config=config,
         options=WorkflowOptions(training_config=no_lr_config),
     )
-    assert contract["status"] == "matches requested preset"
+    assert contract["status"] == "matches requested configuration"
 
     altered["model"]["interaction_net"]["edge_predictor_path"] = "/copied/edge.pt"
     loaded.config = altered
@@ -651,7 +648,7 @@ def test_artifact_reuse_validates_derived_nondefault_spatial_dimension(tmp_path)
             config=config,
             options=options,
         )["status"]
-        == "matches requested preset"
+        == "matches requested configuration"
     )
 
     loaded.config["spatial_dim"] = 2

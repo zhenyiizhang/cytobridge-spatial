@@ -16,7 +16,7 @@ table for downstream analysis.
 | AD mouse | [10x Genomics TgCRND8 Xenium time course](https://www.10xgenomics.com/datasets/xenium-in-situ-analysis-of-alzheimers-disease-mouse-model-brain-coronal-sections-from-one-hemisphere-over-a-time-course-1-standard) | `Timepoint`, `major_annotation` | `layers['counts']`, `obsm['spatial']` |
 | Chicken heart | [GEO GSE149457](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149457) | `timepoint`, `celltype_prediction` | four raw 10x matrices, `obsm['spatial_original']` |
 
-The preset maps these source keys to a common package representation during
+The dataset configuration maps these source keys to a common representation during
 preprocessing.
 
 ## Repository figure releases
@@ -39,8 +39,8 @@ of its size.
 
 Downstream workflows require:
 
-- `.obs['time_point_processed']`, with every observed time used by the preset;
-- the annotation column named by the preset;
+- `.obs['time_point_processed']`, with every observed time used by the configuration;
+- the annotation column named by the configuration;
 - `.obsm['X_latent']`, in the feature order used to fit the checkpoint;
 - `.obsm['spatial_aligned']`, with two aligned spatial dimensions; and
 - finite arrays with the same observation order across `.obs` and `.obsm`.
@@ -51,8 +51,8 @@ matching `.var_names`, and `.var['pca_center']`. The
 complete PCA-fit reference object whose stored latent coordinates can be
 reconstructed from its inferred center.
 
-Observation names must be unique unless a preset defines identity columns.
-The ARISTA preset combines `Batch` and `CellID`; the AD preset combines
+Observation names must be unique unless a configuration defines identity columns.
+The ARISTA configuration combines `Batch` and `CellID`; the AD configuration combines
 `sample` and `cell_id`.
 
 Chicken-heart preparation uses:
@@ -64,7 +64,7 @@ scripts/prepare_chicken_heart_ot_input.py
 
 The first script matches raw counts to the reference spot roster and
 annotations. The second writes `obsm['spatial_ot_input']` and applies the
-preset's D7 pre-orientation before package spatial alignment.
+configuration's D7 pre-orientation before spatial alignment.
 
 ## Checkpoint directory
 
@@ -126,6 +126,6 @@ entry includes `candidate_count`, `selected_count`, `selected_fraction`, and
 
 When a time point contains no retained communication edges, its sparse arrays
 have shapes `(2, 0)` for `edge_index` and `(0,)` for `attn_mean`. The
-no-interaction training profile omits communication and ligand--receptor
-directories. The no-LR-prior profile retains interaction and uses
+No-interaction model omits communication and ligand--receptor directories. The
+No-LR model retains interaction and uses
 `all_spatial` in place of a learned edge gate.

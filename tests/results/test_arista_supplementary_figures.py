@@ -568,20 +568,11 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     assert "Supplementary Figures S19–S24" in source
     assert "from CytoBridge.results import" in source
     assert 'output_dir = Path("outputs") / "arista_supplementary_figures"' in source
-    assert "load_arista_figure_release()" in source
-    assert "formal_release.source_index" in source
-    assert "formal_pdf" in source
-    assert "formal_svg" in source
-    assert "canonical_scripts" in source
-    assert "release_build_snapshot" in source
-    assert "build_scope" in source
-    assert "calculation_entrypoints" in source
-    assert "downstream_inputs" in source
-    assert "input_scope" in source
-    assert "checkpoint_inputs" in source
+    assert 'data.full_recompute_inputs[["input_id", "stage", "figures"]]' in source
+    assert "formal_release.source_index" not in source
     assert "plot_arista_ligand_receptor_figures" in source
     assert "calculate_arista_ligand_receptor_panels" in source
-    assert "table-driven scientific redraw" in source.lower()
+    assert "recalculates S23 and S24" in source
     assert "Draw S23 and S24 from the calculated tables" in source
     assert "released reference pages" in source.lower()
     assert "export_arista_reference_pages" in source

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep paper notebooks explicit about inputs, upstream work, and outputs."""
+"""Add the calculation steps and saved previews to every paper notebook."""
 
 from __future__ import annotations
 
@@ -7,9 +7,7 @@ from pathlib import Path
 
 import nbformat
 
-from CytoBridge.results.reproduction_chains import (
-    describe_figure_reproduction_chain,
-)
+from CytoBridge.results.reproduction_chains import describe_figure_steps
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,45 +74,42 @@ pd.set_option("display.max_columns", None)
 
 
 def _step_markdown(row: dict[str, str], number: int) -> str:
+    note = f"\n{row['note']}\n" if row.get("note") else ""
     return f"""
-### Step {number}: {row['step']}
+### {number}. {row['step']}
 
-**Paper:** {row['paper_part']}
+Used for: {row['paper_part']}
 
 ```text
 {row['code_or_command']}
 ```
 
-**Reads:** `{row['reads']}`
+Input: `{row['reads']}`
 
-**Writes:** `{row['writes']}`
+Creates: `{row['writes']}`
 
-**Next:** `{row['next_step']}`
-
-**Availability:** {row['availability']}
+Continue with: `{row['next_step']}`
+{note}
 """
 
 
 def _insert_route(notebook, workflow: str) -> None:
     route_markdown = _markdown(
         """
-## Reproduction route: files passed between analysis steps
+## How this figure is made
 
-Read the steps from top to bottom. Each one names the code that runs, the files
-it reads, the files it writes, and the next command that consumes those files.
-Steps marked `manuscript result bundle` record the files used for the paper;
-public steps can be run from this checkout.
+Follow the steps from top to bottom. Each command names its input, the files it
+creates, and the calculation that uses those files next.
 
-Replace text inside angle brackets with your own path or value; do not type the
-brackets. A choice such as `<weinreb|scnt_cortex>` means run the command with
-one of those two values, not the text containing the vertical bar.
+Replace text inside angle brackets with your path or value. For example,
+`<output-dir>` means the directory where you want the files to be written.
 """,
         ROUTE_CELL_TAG,
     )
     route_steps = [
         _markdown(_step_markdown(row, number), ROUTE_CELL_TAG)
         for number, row in enumerate(
-            describe_figure_reproduction_chain(workflow), start=1
+            describe_figure_steps(workflow), start=1
         )
     ]
     notebook.cells[1:1] = [route_markdown, *route_steps]
@@ -218,6 +213,59 @@ def _rename_short_headings(notebook) -> None:
                 break
 
 
+def _humanize_existing_markdown(notebook) -> None:
+    replacements = {
+        "Recalculate the plotted summaries and rebuild both figures from the packaged processed inputs. This compact workflow does not run model training or regenerate the processed inputs.": "The calculation cells read the included per-cell velocity and synthetic-benchmark files, recalculate the displayed summaries, and draw S2 and S3. The steps above show how to generate the simulation, train the model, and evaluate the rollout.",
+        "Supplementary Figures S23 and S24 are table-driven scientific redraws: the notebook clusters all 531 released ligand–receptor time courses, selects 25 representative pairs per cluster, and draws both figures from the tables calculated in this run. The complete PDF pages remain available as separate references. Figures S19–S22 are included only as released reference pages because their complete layout inputs are not all distributed with the wheel.": "This notebook recalculates S23 and S24 from all 531 ligand–receptor time courses, selects 25 representative pairs per cluster, and draws both figures. For S19–S22, it lists the original calculation and rendering files and shows the completed pages because some layout inputs are stored with the paper results rather than the installed package.",
+        "Load the packaged tables, recalculate the panel values, and save the figure.": "Read the included domain, null-model, pathway, and ligand–receptor tables; recalculate the displayed values; and draw the figure.",
+        "Load the compact processed results and reproduce the three figure panels.": "Read the per-dataset neighbor-sweep and generated-state sensitivity tables, recalculate the panel summaries, and draw all three panels.",
+        "Load the packaged measurements, apply manuscript units, and save the table.": "Read the timing and memory measurements from the five training runs, convert the units used in the paper, and write the table.",
+        "Load the compact target-level results, recalculate the matched ratios, and reproduce the manuscript figure.": "Read the target-level benchmark results, recalculate each matched ratio, and draw the figure.",
+        "Load paired LR scores, recalculate the panel tables, and reproduce the manuscript figure.": "Read the paired ligand–receptor scores, recalculate the panel tables, and draw the figure.",
+        "Load the two compact paired-error tables and reproduce the four figure panels.": "Read the paired No-LR and stVCR error tables, recalculate the displayed comparisons, and draw all four panels.",
+        "This page assembles two kinds of input. Panels a–d come from the existing vector page. Panel e is redrawn from included W2 summary tables. Loading also recalculates the CytoBridge mean and sample SD from the replicate table and requires an exact match. The notebook does not rerun model training, simulations, or baseline methods.": "This notebook recalculates panel e from the included replicate-level W2 table, checks the mean and sample SD, and combines it with the existing vector panels a–d. The steps above identify the simulation, model evaluation, and baseline results used for the complete figure.",
+        "This notebook assembles the complete page from five released vector panel PDFs and two stored page-space connectors. It does not recalculate the five panels. The figure index records the calculation and rendering scripts in the repository release.": "This notebook assembles Main Figure 4 from its five completed vector panels. The steps above show the MOSTA downstream command and the calculation and rendering files for each panel; those panel-building files are stored with the paper results.",
+        "This notebook validates and exports the packaged scientific-label reference page. It copies the PNG without changing its pixels and places the same raster on an A4 PDF page. It does not recalculate panel values or rebuild vector objects.": "This page checks the assembled Main Figure 5 image and writes viewable PDF and PNG copies. The steps above show the ARISTA downstream run and the panel-building files used before page assembly.",
+        "Export the released vector PDF and SVG pages under the current supplementary numbering and render PNG previews. This notebook does not rerun the numerical analyses or redraw the pages. The figure index points to the calculation and rendering scripts in the repository release.": "This notebook indexes the calculation and rendering files for S11–S18, then writes viewable copies of the completed vector pages under the current supplementary numbering. The numerical panel-building files are stored with the paper results.",
+        "The final cells redraw S4 and S5 from the released numerical bundle. The route below shows the earlier data-preparation, Full-model training, No-interaction training, and downstream commands that produced that bundle. Those long-running training commands are documented here but are not executed during the documentation build.": "The calculation cells read the included cell arrays and result tables, recalculate every displayed summary, and draw S4 and S5. The steps above show how raw data proceeds through Full and No-interaction training, evaluation, attribution, and dataset-specific panel preparation.",
+        "Load the compact history, calculate stage-specific centered moving means, and save the figure and panel tables.": "Read the per-epoch training histories, calculate stage-specific centered moving means, and draw the figure and panel tables.",
+        "This notebook loads the packaged panel data, recalculates the displayed summaries, and saves the PDF and PNG. It does not run model training or download external data.": "The calculation cells read the directed-pair, expression, JAM-control, and spatial-null tables, recalculate the displayed summaries, and draw S43. The steps above show how those tables are produced from model and comparison-method outputs.",
+        "This notebook loads the compact packaged inputs, recalculates the plotted quantities, and saves all eight PDF and PNG figure pairs. It does not train a model or download external data.": "The calculation cells read the included state arrays and analysis tables, recalculate every displayed value, and draw S31–S38. The steps above show how training, downstream analysis, and the two sensitivity analyses produce those inputs.",
+        "The formal PDFs remain separate references.": "The complete PDF pages remain available as separate references.",
+        "## Formal sources and full-recalculation inputs": "## Source files for the complete pages",
+        "packaged frozen vector page": "existing vector page",
+        "packaged W2 summaries": "included W2 summary tables",
+        "The formal page archive is available": "The complete page files are available",
+    }
+    for cell in notebook.cells:
+        if cell.cell_type != "markdown":
+            continue
+        source = "".join(cell.source)
+        for old, new in replacements.items():
+            source = source.replace(old, new)
+        cell.source = source
+
+
+def _simplify_arista_source_table(notebook) -> None:
+    """Keep the useful S19-S22 source map without exposing archive bookkeeping."""
+
+    for cell in notebook.cells:
+        if cell.cell_type == "code" and "formal_release =" in "".join(cell.source):
+            cell.source = """display(
+    data.full_recompute_inputs[["input_id", "stage", "figures"]]
+)"""
+            cell.outputs = []
+            cell.execution_count = None
+        elif cell.cell_type == "code" and "load_arista_figure_release," in "".join(
+            cell.source
+        ):
+            cell.source = "".join(cell.source).replace(
+                "    load_arista_figure_release,\n", ""
+            ).replace(
+                "    write_arista_source_index,\n", ""
+            )
+
+
 def update(path: Path, workflow: str) -> None:
     notebook = nbformat.read(path, as_version=4)
     _remove_generated_cells(notebook)
@@ -228,6 +276,9 @@ def update(path: Path, workflow: str) -> None:
     elif path.name == "zebrafish_si_s31_s38.ipynb":
         _add_zebrafish_route(notebook)
     _rename_short_headings(notebook)
+    _humanize_existing_markdown(notebook)
+    if path.name == "arista_figures.ipynb":
+        _simplify_arista_source_table(notebook)
     nbformat.write(notebook, path)
 
 

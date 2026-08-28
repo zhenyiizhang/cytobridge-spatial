@@ -1,33 +1,36 @@
 # Tutorials
 
-There are two separate routes: run CytoBridge on a dataset, or reproduce a
-paper figure from its released inputs. The paper pages always state which route
-they use. Notebook outputs are saved, so figures and tables are visible on the
-site before the code is run locally.
+The notebooks are organized in the same order as a CytoBridge analysis. Start
+with your own data, follow a paper dataset from preprocessing through downstream
+analysis, or open a figure notebook to reproduce one paper figure.
 
-## Start with your own data
+## Your data
 
-[Run CytoBridge on your data](your_data.ipynb) covers the AnnData fields,
-editable config, dry run, training command, downstream continuation, and output
-folders.
+[Run CytoBridge on your data](your_data.ipynb) shows the AnnData fields,
+configuration file, training command, downstream command, and output folders.
 
-## Reuse a paper dataset workflow
+## Paper datasets
 
-The [dataset workflows](dataset_workflows/index.md) contain the preprocessing,
-training, and downstream calls for Zebrafish, MOSTA, ARISTA, AD mouse, and
-chicken heart.
+- [Zebrafish embryogenesis](dataset_workflows/zebrafish.ipynb)
+- [MOSTA mouse organogenesis](dataset_workflows/mosta.ipynb)
+- [ARISTA salamander brain regeneration](dataset_workflows/arista.ipynb)
+- [AD mouse brain](dataset_workflows/admouse.ipynb)
+- [Developing chicken heart](dataset_workflows/chicken_heart.ipynb)
 
-## Reproduce a paper figure
+Each dataset notebook states which file is passed from preprocessing to
+training, from training to downstream analysis, and from downstream analysis
+to the paper-figure code.
 
-The [paper figure index](paper_figures/index.md) separates numerical redraws
-from result-summary plots, page assembly, and reference export. Run
-`cytobridge figure explain <name>` to see the upstream entry and limits of any
-figure command.
+## Paper figures
 
-## Input and analysis references
+[Browse the paper figure notebooks](paper_figures/index.md). The calculated
+tables and figures are saved in the notebooks, so they are visible on this
+site without running the code again.
 
+## Examples and reference
+
+- [Small preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
 - [Data and checkpoints](../data_checkpoints.md)
-- [Small synthetic preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
 - [Benchmarks](../benchmarks.md)
 - [Training time and memory](../training_compute.md)
 
@@ -39,7 +42,4 @@ your_data
 dataset_workflows/index
 paper_figures/index
 data_preparation/synthetic_preprocessing
-../data_checkpoints
-../benchmarks
-../training_compute
 ```

@@ -70,7 +70,7 @@ def test_species_override_governs_lr_subunits_retained_before_pca(
     assert coverage["matching_policy"] == (
         "selected_symbol_exact_case_insensitive_unique"
     )
-    assert coverage["database_source"] == "bundled formal CellChatDB resource"
+    assert coverage["database_source"] == "included CellChatDB resource"
     assert coverage["preferred_species_tag"] == "nr"
     assert int(coverage["n_matched_features"]) == 3
     assert int(coverage["n_missing_database_subunits"]) > 0

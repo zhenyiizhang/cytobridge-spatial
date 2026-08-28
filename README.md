@@ -49,21 +49,21 @@ cytobridge doctor
 ## Quick start
 
 Five spatial dataset presets are included: Zebrafish, MOSTA, ARISTA, AD mouse,
-and developing chicken heart. Inspect a preset before supplying data:
+and developing chicken heart. Check a dataset configuration before supplying data:
 
 ```bash
 cytobridge workflow --list-configs
-cytobridge workflow --config zebrafish --dry-run
+cytobridge workflow --config zebrafish --check
 ```
 
-For another dataset, export the closest preset, edit the data columns and
-analysis settings, and dry-run the edited JSON:
+For another dataset, export the closest example configuration, edit the data
+columns and analysis settings, and check the edited JSON:
 
 ```bash
 cytobridge workflow --config zebrafish --export-config configs/my_dataset.json
 cytobridge workflow --config configs/my_dataset.json --train \
   --input-h5ad inputs/my_dataset.h5ad \
-  --output-dir outputs/my_dataset --device cuda --dry-run
+  --output-dir outputs/my_dataset --device cuda --check
 ```
 
 The [own-data tutorial](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/your_data.html)
