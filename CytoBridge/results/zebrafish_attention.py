@@ -541,7 +541,7 @@ def calculate_zebrafish_attention_panels(
     spatial_null_iterations: pd.DataFrame,
     myog_association: pd.DataFrame,
 ) -> ZebrafishAttentionPanels:
-    """Calculate the compact tables drawn in the figure."""
+    """Calculate the values drawn in the figure."""
 
     external = directed_pair_concordance.loc[
         directed_pair_concordance["cytobridge_view"].eq("attention")

@@ -75,14 +75,19 @@ pd.set_option("display.max_columns", None)
 
 def _step_markdown(row: dict[str, str], number: int) -> str:
     note = f"\n{row['note']}\n" if row.get("note") else ""
+    if row.get("entry_type") == "source":
+        entry = f"Original files: `{row['code_or_command']}`"
+    else:
+        language = "python" if row["code_or_command"].startswith("from ") else "text"
+        entry = f"""```{language}
+{row['code_or_command']}
+```"""
     return f"""
 ### {number}. {row['step']}
 
 Used for: {row['paper_part']}
 
-```text
-{row['code_or_command']}
-```
+{entry}
 
 Input: `{row['reads']}`
 

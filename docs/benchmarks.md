@@ -1,9 +1,9 @@
 # Benchmarks
 
-CytoBridge provides readers for the compact tables bundled with the package.
-The readers validate file schemas and calculate the tables used by the plotting
-functions. Pass a directory to a reader to use another table set; omit it to
-use the packaged data.
+CytoBridge includes the result tables used in the paper figures and functions
+that read them. The functions check the required columns and calculate the
+values passed to the plotting code. Pass a directory to read another completed
+run, or omit it to reproduce the paper from the included tables.
 
 ## Leave-one-timepoint-out benchmark
 

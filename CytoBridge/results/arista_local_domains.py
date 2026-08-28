@@ -360,7 +360,7 @@ def _validate_null_table(
 def load_arista_local_domains(
     results_dir: str | Path | None = None,
 ) -> AristaLocalDomainData:
-    """Load the compact tables used for the ARISTA local-domain figure."""
+    """Load the result tables used for the ARISTA local-domain figure."""
 
     source_dir = resolve_results_dir(results_dir, slug="arista_local_domains")
     paths = require_files(source_dir, _FILES)
@@ -509,7 +509,7 @@ def _displayed_lr_axes(pairs: pd.DataFrame) -> pd.DataFrame:
 def calculate_arista_local_domain_panels(
     data: AristaLocalDomainData,
 ) -> AristaLocalDomainPanels:
-    """Calculate the compact tables drawn in panels b, c, and d."""
+    """Calculate the values drawn in panels b, c, and d."""
 
     attention = data.attention_null.loc[
         :,

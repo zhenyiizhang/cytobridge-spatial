@@ -25,7 +25,8 @@ The source checkout contains two larger, versioned figure releases under
 `release_artifacts/`:
 
 - `mosta_package_native_corrected_20260826_v1/` contains the model files,
-  compact numerical inputs, calculation scripts, renderers, and vector pages
+  numerical inputs used by the figures, calculation scripts, plotting code,
+  and vector pages
   used by the MOSTA figure notebooks.
 - `arista_package_native_spatialqc_z50_retrain_20260824_r1/` contains the
   ARISTA training record, downstream outputs, figure-building scripts, and

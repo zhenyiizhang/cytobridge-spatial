@@ -1,4 +1,4 @@
-"""Small, read-only command-line interface for package diagnostics."""
+"""Command-line interface for CytoBridge workflows and paper figures."""
 
 from __future__ import annotations
 
@@ -263,7 +263,7 @@ def _parser() -> argparse.ArgumentParser:
             type=Path,
             default=None,
             help=(
-                "compact result directory; defaults to package data. For MOSTA "
+                "result directory; defaults to the example data included with the package. For MOSTA "
                 "commands, supply the downloaded release directory"
             ),
         )
@@ -644,7 +644,14 @@ def _run_figure_command(args: argparse.Namespace) -> int:
             print("How the files connect:")
             for index, row in enumerate(chain, start=1):
                 print(f"  {index}. {row['paper_part']} — {row['step']}")
-                print(f"     command: {row['code_or_command']}")
+                entry_label = (
+                    "original files"
+                    if row.get("entry_type") == "source"
+                    else "command"
+                )
+                print(f"     {entry_label}:")
+                for line in str(row["code_or_command"]).splitlines():
+                    print(f"       {line}")
                 print(f"     input: {row['reads']}")
                 print(f"     creates: {row['writes']}")
                 print(f"     continue with: {row['next_step']}")

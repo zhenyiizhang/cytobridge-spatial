@@ -1,8 +1,8 @@
 # Zebrafish videos
 
 The release-assets directory contains the two virtual-removal videos, the
-baseline tissue-dynamics export, poster images, rendering scripts, and compact
-derived inputs:
+baseline tissue-dynamics export, poster images, rendering scripts, and the
+derived inputs used by those scripts:
 
 `release_assets/zebrafish_videos/`
 
@@ -27,8 +27,8 @@ python release_assets/zebrafish_videos/source/render_latest_ablation_videos.py \
 ## Baseline tissue dynamics
 
 The baseline renderer has two commands. `extract` evaluates learned directed
-interactions on the stored trajectory. `render` uses that compact interaction
-bundle to create MP4, GIF, and poster outputs.
+interactions on the stored trajectory and saves them. `render` reads those
+saved interactions to create MP4, GIF, and poster outputs.
 
 ```bash
 python release_assets/zebrafish_videos/source/render_zebrafish_baseline_virtual_tissue_dynamics.py extract \
@@ -47,4 +47,3 @@ python release_assets/zebrafish_videos/source/render_zebrafish_baseline_virtual_
 
 The baseline export is archived with the code and derived inputs. Its final
 supplementary-video number will be added when the paper files assign one.
-

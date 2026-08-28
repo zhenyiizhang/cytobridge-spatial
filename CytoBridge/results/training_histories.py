@@ -280,7 +280,7 @@ def _validate_checkpoint_summary(frame: pd.DataFrame, source: Path) -> pd.DataFr
 def load_training_history_results(
     results_dir: str | Path | None = None,
 ) -> TrainingHistoryResults:
-    """Load the compact history and retained-checkpoint table.
+    """Load the saved training history and retained-checkpoint table.
 
     Parameters
     ----------

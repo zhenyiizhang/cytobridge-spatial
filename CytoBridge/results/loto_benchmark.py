@@ -378,7 +378,7 @@ def summarize_loto_ratios(paired_ratios: pd.DataFrame) -> pd.DataFrame:
 def load_loto_benchmark(
     results_dir: str | Path | None = None,
 ) -> LotoBenchmarkData:
-    """Load compact LOTO results and calculate the figure tables.
+    """Load LOTO result files and calculate the figure tables.
 
     Parameters
     ----------

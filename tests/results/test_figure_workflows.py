@@ -53,7 +53,7 @@ def test_figure_workflow_explanation_has_complete_route() -> None:
     route = describe_figure_workflow("zebrafish-si")
     assert route["starts_from"].startswith("Included zebrafish")
     assert route["upstream_entry"] == "scripts/run_zebrafish_paper_downstream.py"
-    assert route["upstream_command"].endswith("--help")
+    assert "--aligned-h5ad" in route["upstream_command"]
     assert route["figure_command"].startswith("cytobridge figure zebrafish-si")
 
 
@@ -70,8 +70,10 @@ def test_every_figure_workflow_has_ordered_calculation_steps() -> None:
                 "writes",
                 "next_step",
                 "note",
+                "entry_type",
             }
             assert all(str(row[key]).strip() for key in row if key != "note")
+            assert row["entry_type"] in {"command", "source"}
             assert "..." not in row["code_or_command"]
             assert "; " not in row["code_or_command"]
 
@@ -138,5 +140,6 @@ def test_installed_figure_cli_explains_calculation_steps(capsys) -> None:
     assert "Figure command: cytobridge figure nonspatial" in output
     assert "How the files connect:" in output
     assert "command:" in output
+    assert "source:" not in output
     assert "input:" in output
     assert "creates:" in output

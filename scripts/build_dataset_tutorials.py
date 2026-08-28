@@ -132,14 +132,19 @@ def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
     for number, row in enumerate(rows, start=1):
         paper = f"\nUsed for: {row['paper_part']}\n" if include_paper else ""
         note = f"\n{row['note']}\n" if row.get("note") else ""
+    if row.get("entry_type") == "source":
+        entry = f"Original files: `{row['code_or_command']}`"
+    else:
+        language = "python" if row["code_or_command"].startswith("from ") else "text"
+        entry = f"""```{language}
+{row['code_or_command']}
+```"""
         cells.append(
             markdown(
                 f"""
 ### {number}. {row['step']}
 {paper}
-```text
-{row['code_or_command']}
-```
+{entry}
 
 Input: `{row['reads']}`
 
@@ -545,9 +550,9 @@ print(
         markdown(
             """
 Use a new output directory for a second downstream run. Paper-figure commands
-consume their documented compact schemas; they are not a shortcut for turning
-an arbitrary new downstream directory into a manuscript page. Use
-`cytobridge figure explain <name>` to check that boundary before reusing one.
+expect the result files listed in each figure notebook. They do not turn every
+downstream folder into a manuscript figure automatically. Run
+`cytobridge figure explain <name>` to see the exact files required for a figure.
 """
         ),
         markdown("## Expected output locations"),
