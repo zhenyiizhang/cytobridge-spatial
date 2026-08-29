@@ -218,7 +218,7 @@ def prepare_chicken_heart_input(
     graph_database: str | Path | None = None,
     repair_legacy_d7_left_right: bool = False,
 ) -> dict[str, Any]:
-    """Prepare counts and reference coordinates for the chicken-heart preset."""
+    """Prepare counts and reference coordinates for the chicken-heart workflow."""
 
     raw_dir = Path(raw_dir).expanduser().resolve()
     metadata_h5ad = Path(metadata_h5ad).expanduser().resolve()
@@ -406,7 +406,7 @@ def _validate_ot_source(adata: ad.AnnData) -> dict[str, Any]:
 def prepare_chicken_heart_ot_adata(
     adata: ad.AnnData,
 ) -> tuple[ad.AnnData, dict[str, Any]]:
-    """Return raw counts with the preset's deterministic OT coordinates."""
+    """Return raw counts with the workflow's deterministic OT coordinates."""
 
     input_summary = _validate_ot_source(adata)
     prepared = adata.copy()
@@ -538,7 +538,7 @@ def prepare_chicken_heart_ot_input(
     output_table: str | Path,
     manifest_path: str | Path,
 ) -> dict[str, Any]:
-    """Write the raw-coordinate input used by the chicken-heart preset."""
+    """Write the raw-coordinate input used by the chicken-heart workflow."""
 
     input_h5ad = Path(input_h5ad).expanduser().resolve()
     output_h5ad = Path(output_h5ad).expanduser().resolve()

@@ -159,7 +159,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "included numerical files under nonspatial_figures/*",
             "Supplementary_Figure_S4.pdf/.png; Supplementary_Figure_S5.pdf/.png; derived CSV tables",
             "finished figure",
-            "The numerical files included with the package are the saved results of steps 1–8. This notebook does not load finished figure pages: it recalculates their displayed values and draws new PDF and PNG files. To draw a completed run of your own, pass its panel-data directory to load_nonspatial_figures in the first calculation cell.",
+            "The included numerical files reproduce the paper figure. They use the paper's saved Full checkpoint and the corrected No-interaction run; they are not the output of a new matched two-arm run. Steps 1–8 show the public route for producing both arms in a new run. The notebook recalculates the displayed values and draws new PDF and PNG files rather than loading finished figure pages.",
         ),
     ),
     "classifier-smoothing": (
@@ -248,11 +248,11 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
         _row(
             "S36",
             "train one loss setting",
-            "cytobridge workflow --config zebrafish --step train --train --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --training-config <loss-setting.yaml> --edge-predictor-path <run>/preprocess/edge_classifier/zebrafish_edge_model.pt --edge-predictor-threshold <value-written-by-preprocessing> --output-dir <loss-setting-run> --device cuda:0",
+            "cytobridge workflow --config zebrafish --step train --train --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --training-config <loss-setting.yaml> --edge-predictor-path <run>/preprocess/edge_classifier/zebrafish_edge_model.pt --output-dir <loss-setting-run> --device cuda:0",
             "aligned zebrafish H5AD, one loss-setting YAML, and its matched edge model",
             "<loss-setting-run>/training with model checkpoints and training history",
             "evaluate this trained model",
-            "Run this command once for each YAML written in the preceding step.",
+            "Run this command once for each YAML written in the preceding step. CytoBridge reads the fitted threshold from the edge model's matching .meta.json file; provide --edge-predictor-threshold only when that metadata file is unavailable.",
         ),
         _row(
             "S36",
@@ -466,17 +466,25 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "Supplementary Table 2",
             "measure each manuscript full-model run",
             "cytobridge workflow --config <dataset> --step preprocess --step train --train --input-h5ad <raw.h5ad> --output-dir <run> --device cuda:0",
-            "one manuscript model configuration and aligned H5AD per dataset",
+            "one raw H5AD and manuscript model configuration per dataset",
             "training_run_summary.json with elapsed seconds, peak host RSS and peak PyTorch allocation",
-            "collect five rows",
+            "collect the five measured runs",
         ),
         _row(
             "Supplementary Table 2",
-            "collect and validate",
-            "python -m scripts.results.build_full_model_compute_cost_table --results-dir <compute-cost-results> --output-dir <formatted-table-run>",
+            "collect the five training summaries",
+            "python scripts/collect_full_model_compute_cost.py --run admouse=<admouse-training>/training_run_summary.json --run arista=<arista-training>/training_run_summary.json --run chicken_heart=<heart-training>/training_run_summary.json --run mosta=<mosta-training>/training_run_summary.json --run zebrafish=<zebrafish-training>/training_run_summary.json --output-dir <compute-cost-results>",
             "five manuscript training_run_summary.json files",
-            "full_model_compute_cost.csv and a table of the collected source values",
-            "format table",
+            "full_model_compute_cost.csv and manifest.json",
+            "check and format the table",
+        ),
+        _row(
+            "Supplementary Table 2",
+            "check and format the collected table",
+            "python -m scripts.results.build_full_model_compute_cost_table --results-dir <compute-cost-results> --output-dir <formatted-table-run>",
+            "full_model_compute_cost.csv and manifest.json",
+            "checked raw table plus formatted CSV and Markdown files",
+            "format the display values in the notebook",
         ),
         _row(
             "Supplementary Table 2",
@@ -484,7 +492,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "python scripts/execute_paper_notebooks.py --notebook compute_cost --output-dir <notebook-run>",
             "full_model_compute_cost.csv",
             "full_model_compute_cost_formatted.csv/.md",
-            "copy values to the TeX-native table",
+            "copy the displayed values to the TeX-native table",
         ),
     ),
     "main-figure-2": (
@@ -516,20 +524,20 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     "main-figure-5-reference": (
         _row(
             "Main Figure 5a-e",
-            "run corrected ARISTA model and downstream",
-            "cytobridge workflow --config arista --step downstream --aligned-h5ad <run>/preprocess/arista_aligned.h5ad --model-dir <run>/training --output-dir <run> --device cuda:0",
+            "run the corrected ARISTA downstream analysis",
+            "cytobridge workflow --config arista --step downstream --aligned-h5ad <run>/preprocess/arista_aligned.h5ad --model-dir <run>/training --output-dir <arista-downstream-rerun> --device cuda:0",
             "manuscript aligned H5AD; retrained checkpoint; downstream states and interaction tables",
-            "manuscript vector panels and panel-specific manifests",
-            "assemble vector page",
+            "<arista-downstream-rerun>/downstream with spatial states; growth and composition summaries; gene-dynamics and ligand-receptor tables",
+            "build the final panels",
         ),
         _row(
             "Main Figure 5a-e",
-            "assemble the vector page",
+            "build the final panels and assemble the vector page",
             "release_artifacts/arista_package_native_spatialqc_z50_retrain_20260824_r1/Figure5_fullpage_original_style_v2_final",
-            "manuscript panel PDFs and manifests",
-            "Main Figure 5 vector PDF and its file record",
-            "apply registered label corrections",
-            "For reference, the original page builder and panel files are kept in this directory. Do not paste this directory name into a terminal.",
+            "panel-specific results and final panel PDFs retained in the ARISTA release",
+            "Main Figure 5 vector PDF, PNG, QA report, and file record",
+            "write a viewable notebook copy",
+            "This release directory contains the panel records and the page-building script. It is a source directory, not a terminal command. The notebook below checks and copies the final page; it does not recalculate its panel values.",
             "source",
         ),
         _row(
@@ -544,19 +552,30 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     "main-figure-4": (
         _row(
             "Main Figure 4a-e",
-            "run MOSTA downstream and panel calculations",
-            "cytobridge workflow --config mosta --step downstream --aligned-h5ad <run>/preprocess/mosta_aligned.h5ad --model-dir <run>/training --output-dir <run> --device cuda:0",
+            "run the corrected MOSTA downstream analysis",
+            "cytobridge workflow --config mosta --step downstream --aligned-h5ad <run>/preprocess/mosta_aligned.h5ad --model-dir <run>/training --output-dir <mosta-downstream-rerun> --device cuda:0",
             "manuscript aligned H5AD; full checkpoint; corrected global-t0 trajectory",
-            "five vector panel PDFs and their source records",
-            "assemble page",
+            "<mosta-downstream-rerun>/downstream with corrected states; growth, composition, and lineage summaries; gene and ligand-receptor tables",
+            "build the five panels",
         ),
         _row(
             "Main Figure 4a-e",
-            "assemble vector page",
+            "build the five vector panels",
+            "release_artifacts/mosta_package_native_corrected_20260826_v1/reproduction/main_fig4_panels",
+            "corrected downstream outputs and the panel-specific numerical inputs recorded in the MOSTA release",
+            "five vector panel PDFs plus calculation, rendering, and provenance records",
+            "assemble the page",
+            "This directory contains the calculation and rendering source for panels a-e. It is a source directory, not a terminal command.",
+            "source",
+        ),
+        _row(
+            "Main Figure 4a-e",
+            "assemble the vector page and write a notebook copy",
             "python scripts/execute_paper_notebooks.py --notebook main_figure_4 --output-dir <notebook-run>",
             "five vector panel PDFs from the MOSTA release",
             "Main_Figure_4.pdf/.png and figure index",
             "finished figure",
+            "The notebook assembles the final vector panels. The preceding release directory contains the code that calculated and rendered those panels.",
         ),
     ),
     "mosta-reference-pages": (
@@ -723,16 +742,13 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     "mosta": (
         _row(
             "Main Figure 4; S11-S18",
-            "Continue from the model run above: calculate the MOSTA outputs",
-            (
-                "cytobridge workflow --config mosta --step downstream \\\n"
-                "  --aligned-h5ad <run>/preprocess/mosta_aligned.h5ad \\\n"
-                "  --model-dir <run>/training --output-dir <run>"
-            ),
-            "aligned MOSTA H5AD and its matching trained model",
-            "generated states; growth; composition; lineage when requested; gene-dynamics and LR tables when their inputs are supplied; standard figures",
+            "Use the MOSTA outputs from the model run above",
+            "<run>/downstream",
+            "the downstream directory written by the complete raw-data run",
+            "generated states; growth; composition; lineage when requested; gene-dynamics and LR tables when their inputs are supplied; standard figures already stored under <run>/downstream",
             "inspect <run>/downstream, or write a new plotting script for the question being studied",
-            "The standard downstream command does not calculate GO-enrichment tables or assemble the paper pages.",
+            "No second downstream command is required. To repeat the downstream analysis, use the optional rerun command above with <downstream-rerun> as a new output directory. The standard downstream analysis does not calculate GO-enrichment tables or assemble the paper pages.",
+            "source",
         ),
         _row(
             "Main Figure 4; S11-S18",
@@ -751,16 +767,13 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     "arista": (
         _row(
             "Main Figure 5; S19-S24; S42",
-            "Continue from the model run above: calculate the ARISTA outputs",
-            (
-                "cytobridge workflow --config arista --step downstream \\\n"
-                "  --aligned-h5ad <run>/preprocess/arista_aligned.h5ad \\\n"
-                "  --model-dir <run>/training --output-dir <run>"
-            ),
-            "aligned ARISTA H5AD and its matching trained model",
-            "slice H5ADs; growth; composition; velocity; sparse interaction scores; gene and LR tables",
+            "Use the ARISTA outputs from the model run above",
+            "<run>/downstream",
+            "the downstream directory written by the complete raw-data run",
+            "slice H5ADs; growth; composition; velocity; sparse interaction scores; gene and LR tables already stored under <run>/downstream",
             "inspect <run>/downstream, or write a new plotting script for the question being studied",
-            "The paper pages below use the saved ARISTA paper result directory rather than the current <run> directory.",
+            "No second downstream command is required. To repeat the downstream analysis, use the optional rerun command above with <downstream-rerun> as a new output directory. The paper pages below use the saved ARISTA paper result directory rather than the current <run> directory.",
+            "source",
         ),
         _row(
             "Main Figure 5; S19-S22",
@@ -877,29 +890,23 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
         ),
         _row(
             "S9",
-            "Continue from the model run above: calculate growth",
-            (
-                "cytobridge workflow --config chicken_heart --step downstream \\\n"
-                "  --aligned-h5ad <run>/preprocess/chicken_heart_aligned.h5ad \\\n"
-                "  --model-dir <run>/training --output-dir <run>"
-            ),
-            "aligned H5AD and retrained model used for the paper",
+            "Use the growth results from the model run above",
+            "<run>/downstream/growth",
+            "the growth directory written by the complete raw-data run",
             "<run>/downstream/growth/growth_by_cell.csv and growth_timepoint_grid.pdf",
             "use the table and standard plot in a new analysis, or compare them with S9",
-            "The standard growth output is reproducible; the exact S9 page-assembly command is not included.",
+            "No second downstream command is required. The exact S9 page-assembly command is not included.",
+            "source",
         ),
         _row(
             "S10",
-            "Continue from the model run above: calculate velocity components",
-            (
-                "cytobridge workflow --config chicken_heart --step downstream \\\n"
-                "  --aligned-h5ad <run>/preprocess/chicken_heart_aligned.h5ad \\\n"
-                "  --model-dir <run>/training --output-dir <run>"
-            ),
-            "aligned H5AD and retrained model used for the paper",
+            "Use the velocity results from the model run above",
+            "<run>/downstream/velocity",
+            "the velocity directory written by the complete raw-data run",
             "<run>/downstream/velocity/velocity_components.npz and full/drift/interaction vector PDFs",
             "use the arrays and standard plots in a new analysis, or compare them with S10",
-            "The standard velocity output is reproducible; the exact S10 page assembly and its comparison-method input are not included.",
+            "No second downstream command is required. The exact S10 page assembly and its comparison-method input are not included.",
+            "source",
         ),
     ),
 }

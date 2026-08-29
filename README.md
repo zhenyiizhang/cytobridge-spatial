@@ -23,6 +23,7 @@ CytoBridge supports Python 3.10 and 3.11.
 ```bash
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
+git switch release/cytobridge-reproducible-20260812
 python -m pip install -e '.[spatial,velocity]'
 ```
 
@@ -75,22 +76,24 @@ lists the fields that must be changed before training. The
 [small generated-data example](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/data_preparation/synthetic_preprocessing.html)
 runs preprocessing and plots the result.
 
-Run downstream analysis from an aligned AnnData file and a trained model:
+Start a complete run from raw data with `--train`. This one command performs
+preprocessing, training, and downstream analysis in order:
+
+```bash
+cytobridge workflow --config mosta --train \
+  --input-h5ad /path/to/mosta_raw_counts.h5ad \
+  --output-dir /path/to/mosta_run \
+  --device cuda
+```
+
+If preprocessing and training are already complete, run downstream analysis
+from the aligned AnnData file and the matching model directory:
 
 ```bash
 cytobridge workflow --config zebrafish --step downstream \
   --aligned-h5ad /path/to/zebrafish_aligned.h5ad \
   --model-dir /path/to/zebrafish_model \
   --output-dir /path/to/zebrafish_results \
-  --device cuda
-```
-
-Start a complete run from raw data with `--train`:
-
-```bash
-cytobridge workflow --config mosta --train \
-  --input-h5ad /path/to/mosta_raw_counts.h5ad \
-  --output-dir /path/to/mosta_run \
   --device cuda
 ```
 

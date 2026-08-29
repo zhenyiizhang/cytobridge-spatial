@@ -250,3 +250,56 @@ def test_full_model_compute_cost_cli(tmp_path: Path) -> None:
     }
     assert json.loads((output / "run_summary.json").read_text()) == summary
     assert all(not Path(name).is_absolute() for name in summary["outputs"].values())
+
+
+def test_collect_full_model_compute_cost_from_training_summaries(
+    tmp_path: Path,
+) -> None:
+    command = [
+        sys.executable,
+        str(REPOSITORY_ROOT / "scripts/collect_full_model_compute_cost.py"),
+    ]
+    for row in EXPECTED_RAW.itertuples(index=False):
+        source = tmp_path / row.dataset / "training_run_summary.json"
+        source.parent.mkdir()
+        source.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "data": {
+                        "n_timepoints": row.time_points_used_for_training,
+                        "n_observations": row.observed_cells_or_spots,
+                    },
+                    "timing": {
+                        "run_wall_time_seconds": row.training_time_seconds,
+                    },
+                    "resources": {
+                        "cpu_max_rss_mib": row.peak_host_memory_mib,
+                        "cuda_peak_allocated_mib": row.peak_gpu_allocation_mib,
+                    },
+                    "environment": {
+                        "cuda_device_name": "NVIDIA GeForce RTX 4090 D",
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        command.extend(["--run", f"{row.dataset}={source}"])
+
+    output = tmp_path / "collected"
+    command.extend(["--output-dir", str(output)])
+    completed = subprocess.run(
+        command,
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(REPOSITORY_ROOT)},
+    )
+    paths = json.loads(completed.stdout)
+    assert Path(paths["table"]) == output / "full_model_compute_cost.csv"
+    assert Path(paths["manifest"]) == output / "manifest.json"
+    pd.testing.assert_frame_equal(
+        load_full_model_compute_cost(output).measurements,
+        EXPECTED_RAW,
+        check_exact=True,
+    )

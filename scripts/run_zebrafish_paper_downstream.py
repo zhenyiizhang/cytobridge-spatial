@@ -1,31 +1,19 @@
 #!/usr/bin/env python3
-"""Reproduce the zebrafish manuscript downstream analyses from a native model.
+"""Run the zebrafish analyses used for the supplementary figures.
 
-This runner consumes the clean-counts aligned AnnData and a *current* CytoBridge
-six-stage training directory.  It intentionally does not read historical
-interpolated H5AD files, cached communication pickles, or copied manuscript
-PDFs.  Every biological result is regenerated through public CytoBridge APIs.
+Provide the aligned AnnData file and its matching six-stage model directory.
+The command calculates the selected analyses and writes their tables, figures,
+and run records to one output directory. It does not read copied manuscript
+pages.
 
-The manuscript stages use two explicitly separated state contracts:
+The stages use two kinds of generated states:
 
-* S22 is a single unwarped global-t0 fixed-population state transport on a
-  fixed dense grid.  One real t=0 cohort evolves continuously through t=4
-  under drift, score, interaction, and diffusion; learned growth-driven
-  birth/extinction is disabled.  Real integer-time slices are exported only as
-  a separate reference series and never replace generated trajectory frames.
-* S25 and communication retain their historical hybrid reconstruction contract
-  for now: observed cells at integer times and interval-local generated cells
-  at intermediate times.  They do not implicitly consume the S22 global-t0
-  bundle, because doing so would silently change their scientific estimand.
-* S24 uses separate YSL- and EVL-excluded, equal-N, deterministic
-  fixed-population global-t0 cohorts through observed t=3.  Diffusion and
-  learned growth are disabled while drift, score, and interaction remain
-  active.  It is a preterminal spatial model-sensitivity analysis, not
-  terminal t=4 evidence, total-mass deletion, a causal knockout, canonical
-  reconstruction evidence, or a lineage analysis.
-* Communication uses a hybrid state population: observed cells at integer
-  times and interval-local generated cells at intermediate times. This
-  state-source choice is separate from the LR expression measurement policy.
+* S22 follows one fixed set of cells from t=0 through t=4. Drift, score,
+  interaction, and diffusion remain active; birth and extinction are off.
+* S24 repeats a fixed-population simulation through t=3 after excluding either
+  YSL or EVL cells. Diffusion, birth, and extinction are off.
+* S25 and the communication analysis use observed cells at measured times and
+  interval-specific generated cells between them.
 
 Stages are resumable.  A completed stage is skipped when its input/settings
 signature and every recorded output still match; pass ``--force`` to rerun it.
@@ -39,7 +27,7 @@ Run all manuscript analyses::
       --model-dir MATCHED_RUN/zebrafish/training \
       --acceptance-report MATCHED_RUN/matched_ablation_acceptance.json \
       --expected-acceptance-sha256 <exact-sha256> \
-      --lr-database /accepted/assets/CellChatDB.ligrec.zebrafish.csv \
+      --lr-database /path/to/zebrafish_ligand_receptor.csv \
       --output-dir MATCHED_RUN/zebrafish/paper_downstream \
       --stage all --device cuda
 
@@ -4293,18 +4281,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--growth-alpha",
         type=float,
         default=1.0,
-        help=(
-            "Split-SDE growth multiplier; 1.0 is the recovered historical "
-            "zebrafish workflow value."
-        ),
+        help="Split-SDE growth multiplier. The paper analysis uses 1.0.",
     )
     parser.add_argument(
         "--sde-n-samples",
         type=int,
         default=None,
         help=(
-            "Optional per-observed-anchor cap for canonical interpolation; "
-            "default uses every cell at each observed anchor."
+            "Optional cell limit at each observed time point. By default, all "
+            "cells are used."
         ),
     )
     parser.add_argument(
@@ -4316,7 +4301,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "safety guard, not a downsampling target."
         ),
     )
-    parser.add_argument("--smoke-n-samples", type=int, default=64)
+    parser.add_argument(
+        "--smoke-n-samples", type=int, default=64, help=argparse.SUPPRESS
+    )
     parser.add_argument("--point-size", type=float, default=2.0)
 
     parser.add_argument("--classifier-epochs", type=int, default=500)
@@ -4343,15 +4330,22 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--s25-top-genes", type=int, default=250)
     parser.add_argument("--s25-n-clusters", type=int, default=4)
     parser.add_argument(
-        "--s25-canonical-state-bundle",
+        "--s25-state-bundle",
+        dest="s25_canonical_state_bundle",
         type=Path,
         default=None,
+        metavar="S25_STATE_BUNDLE",
         help=(
-            "Optional historical interval-local state bundle for S25 only (the "
-            "legacy directory name is canonical_prewarp_states). The index, frame "
-            "hashes, and adjacent complete historical S22 manifest are validated. "
-            "The current global-t0 S22 bundle is intentionally incompatible."
+            "Optional saved interval-specific state bundle for S25. The command "
+            "checks its index, frame hashes, and adjacent S22 run record before "
+            "using it."
         ),
+    )
+    parser.add_argument(
+        "--s25-canonical-state-bundle",
+        dest="s25_canonical_state_bundle",
+        type=Path,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--s25-classifier-knn-neighbors",
@@ -4390,8 +4384,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default="min",
         help=(
             "Aggregation across subunits of a heteromeric ligand or receptor. "
-            "Use geometric_mean for the reviewer sensitivity run; min preserves "
-            "the manuscript AND-gate definition."
+            "Use geometric_mean for the sensitivity analysis; min uses the "
+            "paper's AND-gate definition."
         ),
     )
     parser.add_argument(
@@ -4401,7 +4395,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Expression measurement used by the primary LR time course. The "
             "default all_inverse_pca applies one comparable decoder at every time; "
-            "hybrid_exact_observed is retained only for legacy manuscript parity. "
+            "hybrid_exact_observed reproduces the earlier mixed-source analysis. "
             "Both projections are exported regardless of this selection."
         ),
     )

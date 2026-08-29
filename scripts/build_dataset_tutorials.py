@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 
 import nbformat
 
@@ -136,13 +137,28 @@ def code(text: str, *, cell_id: str | None = None):
     return cell
 
 
-def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
+def _show_placeholders(text: str) -> str:
+    """Keep angle-bracket path placeholders visible in rendered Markdown."""
+
+    return re.sub(r"(?<!`)(<[^<>\n]+>)(?!`)", r"`\1`", text)
+
+
+def route_cells(
+    rows: list[dict[str, str]],
+    *,
+    include_paper: bool,
+    include_heading: bool = True,
+) -> list:
     cells = []
     for row in rows:
         paper = f" ({row['paper_part']})" if include_paper else ""
-        note = f"\n{row['note']}\n" if row.get("note") else ""
+        note_text = _show_placeholders(row.get("note", ""))
+        note = f"\n{note_text}\n" if note_text else ""
         if row.get("entry_type") == "source":
-            entry = f"External files (not a command): `{row['code_or_command']}`"
+            entry = (
+                "File or directory to use (not a command): "
+                f"`{row['code_or_command']}`"
+            )
         else:
             language = (
                 "python" if row["code_or_command"].startswith("from ") else "bash"
@@ -150,17 +166,18 @@ def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
             entry = f"""```{language}
 {row['code_or_command']}
 ```"""
+        heading = f"### {row['step']}{paper}\n" if include_heading else ""
         cells.append(
             markdown(
                 f"""
-### {row['step']}{paper}
+{heading}
 {entry}
 
-**Input:** {row['reads']}
+**Input:** {_show_placeholders(row['reads'])}
 
-**Output:** {row['writes']}
+**Output:** {_show_placeholders(row['writes'])}
 
-**Continue with:** {row['next_step']}
+**Continue with:** {_show_placeholders(row['next_step'])}
 {note}
 """
             )
@@ -415,7 +432,9 @@ an edge predictor or a CytoBridge model. It is not an earlier step in the model
 run above; when you are ready to train, use the first command from the raw H5AD.
 """
         ),
-        route_cells([run_rows[1]], include_paper=False)[0],
+        route_cells(
+            [run_rows[1]], include_paper=False, include_heading=False
+        )[0],
         code(
             """
 preprocess_only_options = WorkflowOptions(
@@ -466,7 +485,9 @@ you want to repeat it from the same aligned H5AD and fitted model. The rerun
 writes to `DOWNSTREAM_RERUN_DIR`, leaving the original results unchanged.
 """
         ),
-        route_cells([run_rows[2]], include_paper=False)[0],
+        route_cells(
+            [run_rows[2]], include_paper=False, include_heading=False
+        )[0],
         code(
             """
 downstream_options = WorkflowOptions(
@@ -555,6 +576,10 @@ def build_own_data_notebook():
             """
 # Run CytoBridge on your data
 
+If you are fitting a model from raw data, use the single `--train` command in
+this notebook. It performs preprocessing first, then training and downstream
+analysis. You do not need to run a separate preprocessing command.
+
 Choose the included dataset that uses the most similar species, count layer,
 time layout, and spatial coordinates. Export its configuration, then change the
 field names and analysis settings for your AnnData object. The same edited file
@@ -578,6 +603,8 @@ STARTING_CONFIG = "zebrafish"
 CONFIG_PATH = Path("configs/my_dataset.json")
 RAW_H5AD = Path("inputs/my_dataset_raw.h5ad")
 RUN_ROOT = Path("outputs/my_dataset")
+CUSTOM_LR_DATABASE = None  # or Path("inputs/my_ligand_receptor_table.csv")
+RUN_WORKFLOW = False
 
 CONFIG_TO_REVIEW = CONFIG_PATH if CONFIG_PATH.is_file() else STARTING_CONFIG
 config, config_source = load_workflow_config(CONFIG_TO_REVIEW)
@@ -658,14 +685,16 @@ In the exported JSON, change these exact fields:
 - `preprocess.align.expression_layer`, `spatial_obs_keys` or
   `input_spatial_key`, and `time_mapping`;
 - `scientific.classifier_k`, `alpha_spatial`, and `alpha_express`;
-- `train.graph_database`, `train.interaction_cutoff`, and the training
-  configuration when your model settings differ; and
+- `train.interaction_cutoff` and the training configuration when your model
+  settings differ; and
 - `downstream.observed`, `downstream.interpolated`, and
   `downstream.preferred_species_tag`.
 
-The LR CSV must contain `ligand` and `receptor` columns. The training graph uses
-the file named by `train.graph_database`; pass `--lr-database` when downstream
-analysis should use a different compatible table.
+The example configuration selects an LR database included with CytoBridge. To
+use your own CSV instead, do not put its local path in `train.graph_database`.
+Pass the file with `--graph-database` when fitting the edge predictor and with
+`--lr-database` for downstream ligand--receptor analysis. The CSV must contain
+`ligand` and `receptor` columns.
 
 The five dataset notebooks display the exact raw and aligned fields used by
 their included configurations.
@@ -705,6 +734,45 @@ Training starts only when `--train` is present. With the exported configuration
 unchanged, this command runs preprocessing, training, and downstream analysis
 in order. It writes the aligned H5AD, model directory, result folders, summary
 file, and PNG/PDF figures under `outputs/my_dataset`.
+
+If you need your own LR table, use this complete version of the same command:
+
+```bash
+cytobridge workflow --config configs/my_dataset.json --train \\
+  --input-h5ad inputs/my_dataset_raw.h5ad \\
+  --graph-database inputs/my_ligand_receptor_table.csv \\
+  --lr-database inputs/my_ligand_receptor_table.csv \\
+  --output-dir outputs/my_dataset --device cuda
+```
+"""
+        ),
+        code(
+            """
+from CytoBridge.workflow import WorkflowOptions, run_workflow
+
+if RUN_WORKFLOW:
+    if not CONFIG_PATH.is_file():
+        raise FileNotFoundError(
+            f"Export and edit the configuration before starting: {CONFIG_PATH}"
+        )
+    if not RAW_H5AD.is_file():
+        raise FileNotFoundError(f"Update RAW_H5AD before starting: {RAW_H5AD}")
+    run_config, _ = load_workflow_config(CONFIG_PATH)
+    run_options = WorkflowOptions(
+        input_h5ad=RAW_H5AD,
+        output_dir=RUN_ROOT,
+        graph_database=CUSTOM_LR_DATABASE,
+        lr_database=CUSTOM_LR_DATABASE,
+        device="cuda",
+        train=True,
+    )
+    run_result = run_workflow(run_config, options=run_options)
+    run_result
+else:
+    print(
+        "The full run is off. Update the paths, then set RUN_WORKFLOW = True "
+        "to preprocess, train, and run downstream analysis."
+    )
 """
         ),
         markdown(

@@ -1,7 +1,7 @@
 """Package-owned non-spatial preprocessing, prior, training, and evaluation.
 
-The two supported presets intentionally model expression state only.  Clone,
-cell-type, SPRING, and metabolic-label annotations are downstream evidence and
+The two supported configurations intentionally model expression state only. Clone,
+cell-type, SPRING, and metabolic-label annotations are downstream metadata and
 never enter model fitting.
 """
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class NonSpatialPreset:
-    """Frozen scientific choices for one supported non-spatial dataset."""
+    """Settings for one supported non-spatial dataset."""
 
     name: str
     display_name: str
@@ -66,13 +66,13 @@ _PRESETS = {
 
 
 def available_nonspatial_presets() -> tuple[str, ...]:
-    """Return the stable names accepted by the non-spatial workflow."""
+    """Return the dataset names supported by the non-spatial workflow."""
 
     return tuple(sorted(_PRESETS))
 
 
 def nonspatial_preset(name: str) -> NonSpatialPreset:
-    """Resolve one preset, accepting ``scnt`` as a convenience alias."""
+    """Return one dataset configuration; ``scnt`` is a convenience alias."""
 
     normalized = str(name).strip().lower().replace("-", "_")
     if normalized == "scnt":
@@ -81,7 +81,7 @@ def nonspatial_preset(name: str) -> NonSpatialPreset:
         return _PRESETS[normalized]
     except KeyError as exc:
         raise KeyError(
-            f"Unknown non-spatial preset {name!r}; choose from "
+            f"Unknown non-spatial dataset {name!r}; choose from "
             + ", ".join(available_nonspatial_presets())
         ) from exc
 
@@ -219,7 +219,7 @@ def build_nonspatial_lr_prior(
     overwrite: bool = False,
     epochs: int = 50,
 ) -> dict[str, Any]:
-    """Train the accepted directed LR edge prior from frozen preprocessing."""
+    """Train a directed LR edge prior from the processed expression data."""
 
     import numpy as np
 

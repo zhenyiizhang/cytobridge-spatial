@@ -1,5 +1,9 @@
 # Quickstart
 
+If you have a raw H5AD and want to fit a model, run one command with `--train`.
+That command performs preprocessing, training, and downstream analysis in
+order. You do not need to run preprocessing first.
+
 Review the planned steps before providing data or starting a fit:
 
 ```bash
