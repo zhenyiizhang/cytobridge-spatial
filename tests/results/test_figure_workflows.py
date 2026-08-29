@@ -81,13 +81,16 @@ def test_every_figure_workflow_has_ordered_calculation_steps() -> None:
 def test_dataset_run_steps_name_each_handoff() -> None:
     chain = describe_dataset_run_steps("chicken_heart")
     assert [row["step"] for row in chain] == [
-        "preprocess",
-        "preprocess and train",
-        "downstream",
+        "Run a new dataset from raw counts",
+        "Inspect the aligned data without training (optional)",
+        "Run downstream analysis again (optional)",
     ]
     assert "chicken_heart_aligned.h5ad" in chain[0]["writes"]
-    assert "training_run_summary.json" in chain[1]["writes"]
+    assert "training_run_summary.json" in chain[0]["writes"]
+    assert "<run>/downstream/summary.json" in chain[0]["writes"]
+    assert "no edge predictor or CytoBridge model" in chain[1]["writes"]
     assert "velocity_components.npz" in chain[2]["writes"]
+    assert "<downstream-rerun>/downstream" in chain[2]["writes"]
 
 
 def test_every_dataset_names_its_paper_continuation_and_known_breaks() -> None:
@@ -96,14 +99,12 @@ def test_every_dataset_names_its_paper_continuation_and_known_breaks() -> None:
         assert rows
         assert all(row["paper_part"] and row["code_or_command"] for row in rows)
         assert all("..." not in row["code_or_command"] for row in rows)
-    assert any(
-        "have not been identified" in row["note"]
-        for row in describe_dataset_paper_steps("admouse")
-    )
-    assert any(
-        "have not been identified" in row["note"]
-        for row in describe_dataset_paper_steps("chicken_heart")
-    )
+    ad_rows = describe_dataset_paper_steps("admouse")
+    heart_rows = describe_dataset_paper_steps("chicken_heart")
+    assert any("not currently contain" in row["note"] for row in ad_rows)
+    assert any("not included" in row["note"] for row in heart_rows)
+    assert all("pca_artifacts.npz" not in row["code_or_command"] for row in ad_rows)
+    assert all("alignment_manifest.json" not in row["code_or_command"] for row in heart_rows)
 
 
 def test_compute_cost_installed_workflow(tmp_path: Path) -> None:

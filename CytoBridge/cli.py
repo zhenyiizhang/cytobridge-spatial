@@ -225,7 +225,10 @@ def _render_doctor_text(report: dict[str, object]) -> str:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cytobridge",
-        description="CytoBridge package diagnostics and scientific workflows.",
+        description=(
+            "CytoBridge commands for checking the installation, running analyses, "
+            "and reproducing paper figures."
+        ),
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
@@ -233,12 +236,18 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command")
     doctor = commands.add_parser(
         "doctor",
-        help="report package and dependency availability without importing them",
+        help="show which optional dependencies are installed without importing them",
     )
     doctor.add_argument("--json", action="store_true", dest="as_json")
     workflow = commands.add_parser(
         "workflow",
-        help="preprocess, train, and analyze a dataset",
+        help="fit a new spatial model or analyze a saved model",
+        description=(
+            "Fit a new model from a raw H5AD, or continue from saved aligned data "
+            "and a trained model. Use --train with --input-h5ad for a complete new "
+            "run. Use --step preprocess only when you want to inspect the aligned "
+            "H5AD without fitting a model."
+        ),
     )
     workflow.add_argument(
         "--config",
@@ -389,7 +398,11 @@ def _parser() -> argparse.ArgumentParser:
         "--simulation-seed", action="append", type=int, dest="simulation_seeds"
     )
     nonspatial_fate.add_argument("--bootstrap", type=int, default=5000)
-    workflow.add_argument("--list-configs", action="store_true")
+    workflow.add_argument(
+        "--list-configs",
+        action="store_true",
+        help="list the included dataset configurations and exit",
+    )
     workflow.add_argument(
         "--export-config",
         type=Path,
@@ -404,23 +417,59 @@ def _parser() -> argparse.ArgumentParser:
     workflow.add_argument(
         "--dry-run", action="store_true", dest="dry_run", help=argparse.SUPPRESS
     )
-    workflow.add_argument("--json", action="store_true", dest="as_json")
+    workflow.add_argument(
+        "--json",
+        action="store_true",
+        dest="as_json",
+        help="print the check or configuration list as JSON",
+    )
     workflow.add_argument(
         "--step",
         action="append",
         choices=("preprocess", "train", "downstream"),
-        help="run only this step; repeat to select multiple steps",
+        help=(
+            "select a stage: preprocess writes an aligned H5AD, train fits a model "
+            "from aligned data and its matching edge predictor, and downstream "
+            "analyzes a fitted model; repeat to combine stages"
+        ),
     )
     workflow.add_argument(
         "--train",
         action="store_true",
-        help="explicitly enable model training between preprocessing and downstream",
+        help=(
+            "allow model fitting; with raw --input-h5ad and no --step, a "
+            "configuration that includes downstream by default runs preprocessing, "
+            "training, and downstream analysis in order; --step train selects only "
+            "training and still requires this flag"
+        ),
     )
-    workflow.add_argument("--input-h5ad", type=Path)
-    workflow.add_argument("--aligned-h5ad", type=Path)
-    workflow.add_argument("--model-dir", type=Path)
-    workflow.add_argument("--output-dir", type=Path)
-    workflow.add_argument("--training-config")
+    workflow.add_argument(
+        "--input-h5ad",
+        type=Path,
+        help="raw AnnData read by the preprocessing stage",
+    )
+    workflow.add_argument(
+        "--aligned-h5ad",
+        type=Path,
+        help="aligned AnnData read when training or downstream starts from saved data",
+    )
+    workflow.add_argument(
+        "--model-dir",
+        type=Path,
+        help="trained model read by downstream analysis",
+    )
+    workflow.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "run directory; stages write preprocess/, training/, and downstream/ "
+            "subdirectories"
+        ),
+    )
+    workflow.add_argument(
+        "--training-config",
+        help="training YAML path or the name of an included training configuration",
+    )
     workflow.add_argument(
         "--interaction-cutoff",
         type=float,
@@ -430,22 +479,42 @@ def _parser() -> argparse.ArgumentParser:
         "--graph-database",
         type=Path,
         help=(
-            "ligand-receptor database used to build interaction graphs when "
-            "preprocessing automatically trains an edge predictor; overrides "
-            "the species-matched database included with each example dataset"
+            "ligand-receptor database used when a raw-data training run builds "
+            "interaction graphs and fits an edge predictor; overrides the "
+            "species-matched database included with each example dataset"
         ),
     )
-    workflow.add_argument("--edge-predictor-path", type=Path)
-    workflow.add_argument("--edge-predictor-threshold", type=float)
-    workflow.add_argument("--edge-predictor-root", type=Path)
-    workflow.add_argument("--device", default="cuda")
+    workflow.add_argument(
+        "--edge-predictor-path",
+        type=Path,
+        help=(
+            "matching saved edge predictor when training starts from --aligned-h5ad; "
+            "a new raw-data run fits one automatically when required"
+        ),
+    )
+    workflow.add_argument(
+        "--edge-predictor-threshold",
+        type=float,
+        help=(
+            "decision threshold for a separately supplied edge predictor; when "
+            "training from --aligned-h5ad, provide this unless the matching "
+            "<predictor>.meta.json file records the threshold"
+        ),
+    )
+    workflow.add_argument(
+        "--edge-predictor-root",
+        type=Path,
+        help=argparse.SUPPRESS,
+    )
+    workflow.add_argument(
+        "--device",
+        default="cuda",
+        help="PyTorch device, for example cuda, cuda:0, or cpu",
+    )
     workflow.add_argument(
         "--model-format",
         choices=("current",),
-        help=(
-            "the current workflows use the six-stage checkpoint format; "
-            "use the dedicated legacy loader API for historical models"
-        ),
+        help=argparse.SUPPRESS,
     )
     workflow.add_argument(
         "--reference-h5ad",
@@ -601,7 +670,11 @@ def _run_workflow_command(args: argparse.Namespace) -> int:
             print(f"  {item}", file=sys.stderr)
         return 2
 
-    result = run_workflow(config, options=options)
+    try:
+        result = run_workflow(config, options=options)
+    except (FileExistsError, FileNotFoundError, ValueError) as error:
+        print(f"CytoBridge workflow error: {error}", file=sys.stderr)
+        return 2
     if args.as_json:
         print(json.dumps(result, indent=2))
     else:

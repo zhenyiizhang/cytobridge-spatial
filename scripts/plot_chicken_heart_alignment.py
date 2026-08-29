@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Plot raw, package-OT, and reviewed chicken-heart spatial coordinates."""
+"""Plot the three coordinate systems stored by the chicken-heart workflow."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 import anndata as ad
@@ -24,8 +25,8 @@ COLORS = {
 }
 PANELS = [
     ("spatial_original", "Raw spatial coordinates"),
-    ("spatial_aligned", "Package OT alignment"),
-    ("spatial_reviewed_reference", "Reviewed alignment"),
+    ("spatial_ot_input", "Coordinates used for alignment"),
+    ("spatial_aligned", "CytoBridge alignment"),
 ]
 
 
@@ -63,29 +64,42 @@ def padded_limits(coords: np.ndarray) -> tuple[tuple[float, float], tuple[float,
     return (xmin - xpad, xmax + xpad), (ymin - ypad, ymax + ypad)
 
 
+def json_safe(value):
+    """Convert AnnData metadata into values accepted by ``json.dumps``."""
+
+    if isinstance(value, Mapping):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    return value
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-h5ad", type=Path, required=True)
-    parser.add_argument(
-        "--alignment-record",
-        type=Path,
-        help="Alignment JSON; defaults to alignment_manifest.json beside the H5AD",
-    )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
 
     input_path = args.input_h5ad.expanduser().resolve()
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_stem = output_dir / "chicken_heart_raw_ot_reviewed_alignment"
-    alignment_record = (
-        args.alignment_record.expanduser().resolve()
-        if args.alignment_record is not None
-        else input_path.parent / "alignment_manifest.json"
-    )
+    out_stem = output_dir / "chicken_heart_coordinate_alignment"
 
     set_style()
-    adata = ad.read_h5ad(input_path, backed="r")
+    adata = ad.read_h5ad(input_path)
+    missing_coordinates = [key for key, _ in PANELS if key not in adata.obsm]
+    if missing_coordinates:
+        raise ValueError(
+            f"Input H5AD lacks coordinate arrays: {missing_coordinates}."
+        )
+    if "timepoint" not in adata.obs:
+        raise ValueError("Input H5AD lacks obs['timepoint'].")
+    if "spatial_alignment_info" not in adata.uns:
+        raise ValueError("Input H5AD lacks uns['spatial_alignment_info'].")
     timepoint = adata.obs["timepoint"].astype(str).to_numpy()
 
     fig, axes = plt.subplots(1, 3, figsize=(7.35, 3.05), constrained_layout=False)
@@ -178,15 +192,23 @@ def main() -> None:
     pd.concat(source_rows, ignore_index=True).to_csv(source_csv, index=False)
 
     caption = (
-        "Chicken heart spatial-coordinate alignment audit. (a) Raw coordinates from the "
-        "four observed stages. (b) Coordinates produced by the CytoBridge package OT "
-        "alignment after a predefined 180-degree correction of the D7 raw section. "
-        "(c) Previously reviewed aligned coordinates shown only as an external visual "
-        "reference; they were not used to fit the OT alignment."
+        "Chicken heart spatial-coordinate comparison. (a) Raw coordinates from the "
+        "four observed stages. (b) Coordinates passed to alignment; D7 includes the "
+        "recorded 180-degree pre-orientation. (c) Coordinates fitted by the "
+        "CytoBridge expression-guided alignment."
     )
-    out_stem.with_name(out_stem.name + "_caption.txt").write_text(caption + "\n")
+    out_stem.with_name(out_stem.name + "_caption.txt").write_text(
+        caption + "\n", encoding="utf-8"
+    )
 
-    manifest = json.loads(alignment_record.read_text())
+    raw_ot_validation = adata.uns.get("chicken_heart_ot_input_validation_json")
+    if isinstance(raw_ot_validation, str):
+        try:
+            ot_validation = json.loads(raw_ot_validation)
+        except ValueError:
+            ot_validation = {"unparsed_value": raw_ot_validation}
+    else:
+        ot_validation = json_safe(raw_ot_validation)
     provenance = {
         "figure": out_stem.name,
         "created_by": str(Path(__file__).resolve()),
@@ -196,20 +218,11 @@ def main() -> None:
         "coordinate_panels": {letter: key for letter, (key, _) in zip(panel_letters, PANELS)},
         "stage_order": STAGES,
         "stage_colors": COLORS,
-        "package_commit": "f5550e1",
-        "fit_note": (
-            "spatial_reviewed_reference was retained for post-hoc display only and was "
-            "not passed to align_spatial."
-        ),
-        "d7_preorientation": manifest["d7_raw_orientation_correction"],
-        "alignment_config": manifest["alignment_config"],
-        "alignment_qc": {
-            "anatomical_orientation": manifest["anatomical_orientation_qc"]["status"],
-            "distance_preservation": manifest["distance_preservation"],
-        },
+        "alignment_info": json_safe(adata.uns["spatial_alignment_info"]),
+        "ot_input_validation": ot_validation,
     }
     out_stem.with_name(out_stem.name + "_provenance.json").write_text(
-        json.dumps(provenance, indent=2) + "\n"
+        json.dumps(provenance, indent=2) + "\n", encoding="utf-8"
     )
 
     print(out_stem.with_suffix(".pdf"))

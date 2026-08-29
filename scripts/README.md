@@ -6,11 +6,12 @@ added to the package rather than by copying a full pipeline into another
 script.
 
 The source distribution also includes maintained helpers for preprocessing,
-training, checkpoint conversion, notebook and wheel smoke tests, training-cost
-summaries, the matched spatiotemporal benchmark, and the reviewer analyses
+training, checkpoint conversion, quick notebook and installation tests,
+training-cost summaries, the matched spatiotemporal benchmark, and the
+supplementary analyses
 documented in this repository. `complete_downstream.py` is a compatibility
 alias for `cytobridge workflow`; `run_arista_end_to_end.py` is the same kind of
-thin alias with the packaged `arista` preset already selected.
+short wrapper with the included `arista` configuration already selected.
 
 `verify_historical_artifact_compatibility.py` is a read-only maintainer check
 for comparing a checkpoint through its original source loader and the current
@@ -47,12 +48,13 @@ python scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py \
   --output-dir <new-publication-bundle-dir>
 ```
 
-`prepare_chicken_heart_ot_input.py` converts the count-recovered, fixed-roster
-GSE149457 handoff into the coordinate input consumed by the current
-`chicken_heart` preset. It uses `spatial_original`, rotates only D7 by 180
-degrees around its raw-stage centroid, removes fitted PCA/alignment state, and
-writes `spatial_ot_input` plus a hash manifest. Reviewed coordinates are kept
-only as `spatial_reviewed_reference` and are not used by OT.
+`prepare_chicken_heart_ot_input.py` converts the GSE149457 count matrix, paper
+spot roster, and paper annotations into the coordinate input used by the
+included `chicken_heart` configuration. It starts from `spatial_original`,
+rotates only D7 by 180 degrees around its raw-stage centroid, removes fitted
+PCA/alignment state, and writes `spatial_ot_input` plus a run record. Any
+`spatial_reference` coordinates retained from the paper preparation are not
+passed to the new CytoBridge alignment.
 
 `run_chicken_heart_paper_downstream.py` adds the formal chicken-heart
 perturbation bank after the standard `cytobridge workflow --config

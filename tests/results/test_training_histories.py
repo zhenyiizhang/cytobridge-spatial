@@ -17,6 +17,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from CytoBridge.results.training_histories import (  # noqa: E402
+    DATASET_ORDER,
     STAGES,
     calculate_smoothed_training_history,
     centered_moving_mean,
@@ -182,6 +183,66 @@ def test_training_history_cli(tmp_path: Path) -> None:
         "panel_metrics.csv",
     ):
         assert (output / name).is_file()
+
+
+def test_collect_training_history_inputs_from_five_runs(tmp_path: Path) -> None:
+    slugs = ("zebrafish", "mosta", "arista", "admouse", "chicken_heart")
+    run_arguments = []
+    for slug in slugs:
+        training = tmp_path / slug / "training"
+        training.mkdir(parents=True)
+        rows = []
+        for stage in STAGES:
+            epochs = (
+                3001
+                if slug == "admouse"
+                and stage.stage in {"Train_Score", "Score_Refine"}
+                else stage.configured_epochs
+            )
+            for epoch in range(1, epochs + 1):
+                checkpoint = 10.0 - 5.0 * (epoch - 1) / max(epochs - 1, 1)
+                rows.append(
+                    {
+                        "stage_index": stage.stage_index,
+                        "stage": stage.stage,
+                        "mode": stage.mode,
+                        "epoch": epoch,
+                        "epochs": epochs,
+                        "loss": checkpoint,
+                        "checkpoint_metric": "test_metric",
+                        "checkpoint_value": checkpoint,
+                        "is_best": epoch == epochs,
+                        "is_selected_checkpoint": epoch == epochs,
+                        "save_strategy": "last",
+                    }
+                )
+        pd.DataFrame(rows).to_csv(training / "training_history.csv", index=False)
+        run_arguments.extend(["--run", f"{slug}={training}"])
+
+    output = tmp_path / "s41_inputs"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "scripts/collect_training_history_inputs.py"),
+            *run_arguments,
+            "--output-dir",
+            str(output),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(REPOSITORY_ROOT)},
+    )
+    written = json.loads(completed.stdout)
+    assert set(written) == {"history", "checkpoint_summary", "manifest"}
+
+    results = load_training_history_results(output)
+    assert results.history.shape == (5252, 4)
+    assert results.checkpoint_summary.shape == (30, 7)
+    assert results.checkpoint_summary["dataset"].drop_duplicates().tolist() == list(
+        DATASET_ORDER
+    )
+    assert np.allclose(results.checkpoint_summary["percent_reduction"], 50.0)
 
 
 def test_training_history_missing_column(tmp_path: Path) -> None:

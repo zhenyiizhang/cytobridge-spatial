@@ -85,6 +85,13 @@ The selected dynamical checkpoint may be `last_model.pth` or
 store the edge predictor with the model. If a checkpoint does not include it,
 pass `--edge-predictor-path`.
 
+For the normal workflow, pass the complete `training/` directory rather than a
+checkpoint file. The loader reads `config.yaml` to select the recorded final
+dynamical and score stages. Current training runs also record the aligned H5AD
+identity in `training_run_summary.json`; downstream analysis checks that record
+before opening the H5AD. Edge-predictor metadata records
+the matching aligned H5AD and selected threshold for the same reason.
+
 Older ST-1104 directories use `params.yml`, `model_final`, and `score_model`.
 Load them with `cb.tl.load_legacy_dynamical_model_from_dir`.
 

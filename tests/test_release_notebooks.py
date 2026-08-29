@@ -21,7 +21,7 @@ PAPER_STEP_COUNTS = {
     "zebrafish.ipynb": 4,
     "mosta.ipynb": 2,
     "arista.ipynb": 4,
-    "admouse.ipynb": 5,
+    "admouse.ipynb": 4,
     "chicken_heart.ipynb": 4,
 }
 NOTEBOOK_RUNNER = ROOT / "scripts" / "execute_dataset_notebooks.py"
@@ -85,9 +85,9 @@ def test_dataset_notebook_is_executed_and_portable(
 
     headings = (
         "## Setup",
-        "## Data preparation",
-        "## Training",
-        "## Downstream analysis",
+        "## Start a new model run",
+        "## Inspect the aligned data without training (optional)",
+        "## Run downstream analysis again (optional)",
         "## Paper figures",
         "## Saved files",
     )
@@ -104,15 +104,27 @@ def test_dataset_notebook_is_executed_and_portable(
     assert "build_workflow_plan" in code
     assert "render_workflow_plan" in code
     assert "run_workflow" in code
-    assert "RUN_PREPARATION = False" in code
-    assert "RUN_PREPROCESS_AND_TRAIN = False" in code
+    assert "RUN_TRAINING = False" in code
+    assert "RUN_PREPROCESS_ONLY = False" in code
     assert "RUN_DOWNSTREAM = False" in code
     assert 'scientific["classifier_k"]' in code
-    assert 'steps=("preprocess", "train")' in code
+    assert 'preprocess["annotation_source"]' in code
+    assert 'align.get("expression_layer", "X")' in code
+    assert "spatial_source" in code
+    assert 'steps=("preprocess",)' in code
     assert 'steps=("downstream",)' in code
     assert "train=True" in code
+    assert '"output": DOWNSTREAM_RERUN_DIR / "downstream"' in code
     assert "sys.path" not in code
     assert "Path(__file__)" not in code
+    assert "### 1." not in markdown
+    assert "pca_artifacts.npz" not in markdown
+    assert "alignment_manifest.json" not in markdown
+    assert "make_admouse_article_figures.py" not in markdown
+    assert (
+        "Continue from the model run above" in paper_section
+        or "Start from the paper's saved files" in paper_section
+    )
 
     if preset == "chicken_heart":
         assert "prepare_chicken_heart_input" in code
@@ -144,17 +156,23 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
     assert "Notes and interpretation" not in source
     assert "run_workflow" in source
     assert "build_own_data_notebook" in source
+    assert "build_synthetic_preprocessing_notebook" in source
 
 
 def test_own_data_notebook_is_executed_and_has_complete_commands() -> None:
     notebook = json.loads(OWN_DATA_NOTEBOOK.read_text(encoding="utf-8"))
     code, markdown = _notebook_text(notebook)
+    public_text = f"{code}\n{markdown}"
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(cell["execution_count"] is not None for cell in code_cells)
-    assert "--export-config" in code
-    assert "--check" in code
-    assert "--train" in code
-    assert "--step downstream" in code
+    assert "--export-config" in public_text
+    assert "--check" in public_text
+    assert "--train" in public_text
+    assert "--step downstream" in public_text
+    assert "preprocess['annotation_source']" in code
+    assert "CONFIG_TO_REVIEW = CONFIG_PATH if CONFIG_PATH.is_file()" in code
+    assert "does **not** open the H5AD" in markdown
+    assert 'print("cytobridge workflow' not in code
     assert "## Expected output locations" in markdown
 
 

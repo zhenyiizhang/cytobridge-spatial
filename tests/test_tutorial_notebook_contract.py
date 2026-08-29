@@ -27,6 +27,8 @@ def test_synthetic_preprocessing_notebook_is_executed_and_stable() -> None:
         "run-preprocess",
         "metadata",
         "inspect-metadata",
+        "plot-result",
+        "plot-processed",
         "input-validation",
         "double-transform-check",
         "outputs",
@@ -40,6 +42,12 @@ def test_synthetic_preprocessing_notebook_is_executed_and_stable() -> None:
     code_cells = [cell for cell in cells if cell["cell_type"] == "code"]
     assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
     assert sum(len(cell["outputs"]) for cell in code_cells) > 0
+    plot_cell = next(cell for cell in cells if cell["id"] == "plot-processed")
+    assert any(
+        "image/png" in output.get("data", {})
+        for output in plot_cell["outputs"]
+        if output.get("output_type") in {"display_data", "execute_result"}
+    )
 
 
 def test_synthetic_preprocessing_notebook_uses_public_api_and_checks_outputs() -> None:
@@ -65,7 +73,10 @@ def test_synthetic_preprocessing_notebook_uses_public_api_and_checks_outputs() -
         '"required_features_in_pca"',
         'np.isfinite(processed.obsm["X_latent"]).all()',
         'processed.obsm["X_latent"].mean(axis=0)',
-        "The example uses synthetic data",
+        "The example uses generated data",
+        "Input spatial coordinates",
+        "Processed latent coordinates",
+        "matplotlib.pyplot",
     }
     missing = {fragment for fragment in required_fragments if fragment not in text}
     assert not missing
@@ -96,7 +107,8 @@ def test_synthetic_preprocessing_notebook_uses_public_api_and_checks_outputs() -
         "## 1. Create the input AnnData object",
         "## 2. Run preprocessing",
         "## 3. Check preprocessing metadata and arrays",
-        "## 4. Validate reuse of a processed object",
+        "## 4. Plot the processed coordinates",
+        "## 5. Validate reuse of a processed object",
         "## Outputs",
     ]
     section_positions = [text.index(heading) for heading in section_order]

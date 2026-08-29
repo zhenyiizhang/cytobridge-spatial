@@ -1,8 +1,14 @@
 # Paper datasets
 
 These notebooks follow the five spatial datasets used in the paper. Each one
-contains data preparation, model training, downstream analysis, and the next
-commands used to calculate its paper figures.
+starts with the command that prepares the raw H5AD and trains a new model, then
+shows downstream analysis. Later entries are labelled **Continue from the
+model run above** when they read that output, and **Start from the paper's saved
+files** when they read the exact tables, arrays, or models retained for the
+paper. **Required paper files not included** names an input without pretending
+that the new run creates it.
+An optional preprocessing-only section is provided for inspecting the aligned
+H5AD; it is an alternative check, not a step that must be run before training.
 
 The time-consuming cells are switched off on the documentation site. Their
 commands, paths, and saved output remain visible; set the corresponding

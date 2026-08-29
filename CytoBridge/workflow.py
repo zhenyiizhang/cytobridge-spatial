@@ -9,12 +9,14 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from importlib import resources
+import hashlib
 import json
 import math
 from numbers import Real
 from pathlib import Path
 import shutil
 from typing import Any, Mapping
+import warnings
 
 from .graph_database import (
     FORMAL_GRAPH_DATABASES,
@@ -139,6 +141,16 @@ def _selected_steps(
         raise ValueError(
             "Selecting --step train also requires the explicit --train flag."
         )
+    if (
+        options.train
+        and options.input_h5ad is not None
+        and options.aligned_h5ad is not None
+    ):
+        raise ValueError(
+            "Training received both --input-h5ad and --aligned-h5ad. Start a new "
+            "model from raw data with --input-h5ad, or continue from prepared data "
+            "with --aligned-h5ad and its matching edge predictor, but not both."
+        )
     if options.steps:
         selected = list(options.steps)
     else:
@@ -168,11 +180,10 @@ def _selected_steps(
         and options.edge_predictor_path is not None
     ):
         raise ValueError(
-            "A preprocess+train run must fit a new edge predictor from the newly "
-            "aligned PCA features and interaction graphs. Do not pass "
-            "--edge-predictor-path for a raw-data run. Reuse an existing edge "
-            "predictor only with its matched --aligned-h5ad and without the "
-            "preprocess step."
+            "When preprocessing and training from raw data in one run, CytoBridge "
+            "fits a new edge predictor from the newly aligned features and graphs. "
+            "Do not pass --edge-predictor-path. Reuse an existing edge predictor "
+            "only with its matching --aligned-h5ad and without --step preprocess."
         )
     if (
         options.train
@@ -384,6 +395,392 @@ def _output_paths(
         "aligned_h5ad": aligned,
         "model_dir": model_dir,
         "edge_predictor_path": edge_predictor,
+    }
+
+
+def _required_file_problems(
+    path: Path | None,
+    *,
+    option: str,
+    label: str,
+    suffix: str | None = None,
+) -> list[str]:
+    """Describe a missing or wrong-type file input without opening it."""
+
+    if path is None:
+        return [option]
+    expanded = path.expanduser()
+    if suffix is not None and expanded.suffix.lower() != suffix.lower():
+        return [f"{label} must use the {suffix} suffix: {path}"]
+    if not expanded.exists():
+        return [f"{label} not found: {path}"]
+    if not expanded.is_file():
+        return [f"{label} is not a file: {path}"]
+    return []
+
+
+def _stage_output_problems(path: Path | None, *, label: str) -> list[str]:
+    """Require a selected stage to start from a new or empty directory."""
+
+    if path is None:
+        return []
+    expanded = path.expanduser()
+    if not expanded.exists():
+        return []
+    if not expanded.is_dir():
+        return [f"{label} output path is not a directory: {path}"]
+    if any(expanded.iterdir()):
+        return [f"{label} output directory must be empty: {path}"]
+    return []
+
+
+def _selected_stage_output_directories(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+    *,
+    selected: tuple[str, ...],
+    paths: Mapping[str, Path | None],
+) -> tuple[tuple[str, Path], ...]:
+    """Return only the directories written by the stages selected in this run."""
+
+    targets: list[tuple[str, Path]] = []
+    if "preprocess" in selected and config.get("preprocess", {}).get("enabled", True):
+        aligned_h5ad = paths["aligned_h5ad"]
+        if aligned_h5ad is not None:
+            targets.append(("preprocess", aligned_h5ad.expanduser().parent))
+    if options.train and "train" in selected:
+        model_dir = paths["model_dir"]
+        if model_dir is not None:
+            targets.append(("training", model_dir.expanduser()))
+    if "downstream" in selected and config.get("downstream", {}).get("enabled", True):
+        output_dir = paths["output_dir"]
+        if output_dir is not None:
+            targets.append(("downstream", output_dir.expanduser() / "downstream"))
+    return tuple(targets)
+
+
+def _assert_selected_stage_outputs_empty(
+    config: Mapping[str, Any],
+    options: WorkflowOptions,
+    *,
+    selected: tuple[str, ...],
+    paths: Mapping[str, Path | None],
+) -> None:
+    """Fail before a workflow writes into any selected stage directory."""
+
+    problems: list[str] = []
+    for label, path in _selected_stage_output_directories(
+        config,
+        options,
+        selected=selected,
+        paths=paths,
+    ):
+        problems.extend(_stage_output_problems(path, label=label))
+    if problems:
+        raise FileExistsError("; ".join(problems))
+
+
+def _sha256_file(path: Path, *, chunk_size: int = 8 * 1024 * 1024) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while block := handle.read(chunk_size):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _file_identity(path: Path, *, label: str) -> dict[str, Any]:
+    """Return the exact byte identity used to pair workflow artifacts."""
+
+    expanded = path.expanduser()
+    problems = _required_file_problems(
+        expanded,
+        option=str(expanded),
+        label=label,
+        suffix=".h5ad",
+    )
+    if problems:
+        problem = problems[0]
+        if "not found:" in problem:
+            raise FileNotFoundError(problem)
+        raise ValueError(problem)
+    resolved = expanded.resolve()
+    return {
+        "path": str(resolved),
+        "size_bytes": int(resolved.stat().st_size),
+        "sha256": _sha256_file(resolved),
+    }
+
+
+def _read_json_object(path: Path, *, label: str) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} not found: {path}")
+    if not path.is_file():
+        raise ValueError(f"{label} is not a file: {path}")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"could not read {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must contain a JSON object: {path}")
+    return value
+
+
+def _expected_h5ad_identity(
+    value: object,
+    *,
+    source: str,
+) -> tuple[int, str] | None:
+    """Validate an optional stored H5AD size/SHA pair."""
+
+    if not isinstance(value, Mapping):
+        return None
+    size = value.get("size_bytes")
+    sha256 = value.get("sha256")
+    if size is None and sha256 is None:
+        return None
+    if (
+        isinstance(size, bool)
+        or not isinstance(size, int)
+        or size < 0
+        or not isinstance(sha256, str)
+        or len(sha256) != 64
+        or any(character not in "0123456789abcdefABCDEF" for character in sha256)
+    ):
+        raise ValueError(
+            f"{source} must record a non-negative size_bytes and a 64-character "
+            "SHA-256 digest."
+        )
+    return int(size), sha256.lower()
+
+
+def _verify_h5ad_identity(
+    path: Path,
+    *,
+    expected: tuple[int, str],
+    source: str,
+    label: str,
+) -> dict[str, Any]:
+    """Match an H5AD against stored byte size first, then its SHA-256 digest."""
+
+    expanded = path.expanduser()
+    problems = _required_file_problems(
+        expanded,
+        option=str(expanded),
+        label=label,
+        suffix=".h5ad",
+    )
+    if problems:
+        problem = problems[0]
+        if "not found:" in problem:
+            raise FileNotFoundError(problem)
+        raise ValueError(problem)
+    resolved = expanded.resolve()
+    expected_size, expected_sha256 = expected
+    actual_size = int(resolved.stat().st_size)
+    if actual_size != expected_size:
+        raise ValueError(
+            f"{label} does not match {source}: expected {expected_size} bytes, "
+            f"found {actual_size} bytes at {resolved}."
+        )
+    actual_sha256 = _sha256_file(resolved)
+    if actual_sha256 != expected_sha256:
+        raise ValueError(
+            f"{label} does not match {source}: SHA-256 differs for {resolved}."
+        )
+    return {
+        "path": str(resolved),
+        "size_bytes": actual_size,
+        "sha256": actual_sha256,
+    }
+
+
+def _required_directory_problems(
+    path: Path | None,
+    *,
+    option: str,
+    label: str,
+) -> list[str]:
+    """Describe a missing or wrong-type directory input without opening it."""
+
+    if path is None:
+        return [option]
+    expanded = path.expanduser()
+    if not expanded.exists():
+        return [f"{label} not found: {path}"]
+    if not expanded.is_dir():
+        return [f"{label} is not a directory: {path}"]
+    return []
+
+
+def _validated_edge_predictor_threshold(value: object, *, source: str) -> float:
+    """Return one finite predictor threshold strictly between zero and one."""
+
+    if isinstance(value, bool):
+        raise ValueError(f"{source} must be a number strictly between 0 and 1.")
+    try:
+        threshold = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            f"{source} must be a number strictly between 0 and 1."
+        ) from error
+    if not math.isfinite(threshold) or not 0 < threshold < 1:
+        raise ValueError(
+            f"{source} must be strictly between 0 and 1; got {value!r}."
+        )
+    return threshold
+
+
+def _recorded_edge_predictor_threshold(
+    predictor_path: Path,
+) -> tuple[float | None, Path, str | None]:
+    """Read the threshold from the metadata saved beside one predictor file."""
+
+    metadata_path = Path(f"{predictor_path.expanduser()}.meta.json")
+    if not metadata_path.exists():
+        return None, metadata_path, None
+    if not metadata_path.is_file():
+        return (
+            None,
+            metadata_path,
+            f"edge predictor metadata is not a file: {metadata_path}",
+        )
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return (
+            None,
+            metadata_path,
+            f"could not read edge predictor metadata {metadata_path}: {error}",
+        )
+    if not isinstance(metadata, Mapping):
+        return (
+            None,
+            metadata_path,
+            f"edge predictor metadata must contain a JSON object: {metadata_path}",
+        )
+    if metadata.get("edge_predictor_threshold") is None:
+        return (
+            None,
+            metadata_path,
+            "edge predictor metadata does not record edge_predictor_threshold: "
+            f"{metadata_path}",
+        )
+    try:
+        threshold = _validated_edge_predictor_threshold(
+            metadata["edge_predictor_threshold"],
+            source=f"edge_predictor_threshold in {metadata_path}",
+        )
+    except ValueError as error:
+        return None, metadata_path, str(error)
+    return threshold, metadata_path, None
+
+
+def _edge_predictor_aligned_h5ad_check(
+    predictor_path: Path,
+    aligned_h5ad: Path,
+    *,
+    explicit_threshold_supplied: bool,
+    warn_unverified: bool,
+) -> dict[str, Any]:
+    """Verify that a learned edge predictor was fitted for this aligned H5AD."""
+
+    metadata_path = Path(f"{predictor_path.expanduser()}.meta.json")
+    if not metadata_path.exists():
+        reason = f"edge predictor metadata is absent: {metadata_path}"
+        metadata = None
+    else:
+        metadata = _read_json_object(metadata_path, label="edge predictor metadata")
+        provenance = metadata.get("aligned_h5ad")
+        expected = _expected_h5ad_identity(
+            provenance,
+            source=f"aligned_h5ad in {metadata_path}",
+        )
+        if expected is not None:
+            actual = _verify_h5ad_identity(
+                aligned_h5ad,
+                expected=expected,
+                source=f"edge predictor metadata {metadata_path}",
+                label="aligned H5AD",
+            )
+            return {
+                "status": "verified",
+                "metadata": str(metadata_path.resolve()),
+                "aligned_h5ad": actual,
+            }
+        reason = (
+            "edge predictor metadata does not record the final aligned H5AD "
+            f"size and SHA-256: {metadata_path}"
+        )
+
+    if not explicit_threshold_supplied:
+        raise ValueError(
+            f"{reason}. Training with historical predictor metadata requires "
+            "--edge-predictor-threshold explicitly; the aligned input cannot "
+            "otherwise be verified."
+        )
+    message = (
+        f"{reason}. Continuing with the explicit edge predictor threshold, but the "
+        "predictor-to-aligned-H5AD pairing is unverified."
+    )
+    if warn_unverified:
+        warnings.warn(message, UserWarning, stacklevel=3)
+    return {
+        "status": "unverified historical predictor",
+        "metadata": None if metadata is None else str(metadata_path.resolve()),
+        "aligned_h5ad": None,
+        "reason": reason,
+    }
+
+
+def _training_input_h5ad_check(
+    model_dir: Path,
+    aligned_h5ad: Path,
+    *,
+    warn_unverified: bool = True,
+) -> dict[str, Any]:
+    """Verify current-model downstream input against its training run summary."""
+
+    summary_path = model_dir.expanduser() / "training_run_summary.json"
+    if not summary_path.exists():
+        reason = f"training run summary is absent: {summary_path}"
+    else:
+        summary = _read_json_object(summary_path, label="training run summary")
+        data = summary.get("data")
+        provenance = data.get("input_h5ad") if isinstance(data, Mapping) else None
+        expected = _expected_h5ad_identity(
+            provenance,
+            source=f"data.input_h5ad in {summary_path}",
+        )
+        if expected is not None:
+            actual = _verify_h5ad_identity(
+                aligned_h5ad,
+                expected=expected,
+                source=f"training run summary {summary_path}",
+                label="downstream aligned H5AD",
+            )
+            return {
+                "status": "verified",
+                "training_run_summary": str(summary_path.resolve()),
+                "aligned_h5ad": actual,
+            }
+        reason = (
+            "training run summary does not record data.input_h5ad size and SHA-256: "
+            f"{summary_path}"
+        )
+
+    message = (
+        f"{reason}. Continuing for compatibility with historical model directories, "
+        "but the downstream aligned H5AD is unverified."
+    )
+    if warn_unverified:
+        warnings.warn(message, UserWarning, stacklevel=3)
+    return {
+        "status": "unverified historical model",
+        "training_run_summary": (
+            str(summary_path.resolve()) if summary_path.exists() else None
+        ),
+        "aligned_h5ad": None,
+        "reason": reason,
     }
 
 
@@ -627,9 +1024,9 @@ def _loaded_model_scientific_contract(
     loaded_config = loaded.config
     if "legacy" in loaded_config:
         raise ValueError(
-            "Legacy params.yml does not record the resolved alpha=0.015 "
-            "six-stage contract. Use a dedicated historical compatibility "
-            "comparison; do not label an older checkpoint as a current dataset run."
+            "Legacy params.yml does not record all settings needed to verify the "
+            "current alpha=0.015 model. Use the historical-model comparison path; "
+            "do not label an older checkpoint as a current dataset run."
         )
     source = deepcopy(loaded_config)
     expected_config = deepcopy(
@@ -981,8 +1378,14 @@ def build_workflow_plan(
     preprocess_config = config.get("preprocess", {})
     train_config = config.get("train", {})
     downstream_analyses = _effective_downstream_analyses(config, options)
+    preprocess_writes_aligned = bool(
+        "preprocess" in selected and preprocess_config.get("enabled", True)
+    )
+    training_writes_model = bool(options.train and "train" in selected)
 
     steps: list[dict[str, Any]] = []
+    preprocess_blocked = False
+    training_blocked = False
 
     if "preprocess" not in selected:
         steps.append(
@@ -1003,10 +1406,23 @@ def build_workflow_plan(
         )
     else:
         missing = []
-        if options.input_h5ad is None:
-            missing.append("--input-h5ad")
+        missing.extend(
+            _required_file_problems(
+                options.input_h5ad,
+                option="--input-h5ad",
+                label="raw H5AD",
+                suffix=".h5ad",
+            )
+        )
         if options.output_dir is None:
             missing.append("--output-dir")
+        if paths["aligned_h5ad"] is not None:
+            missing.extend(
+                _stage_output_problems(
+                    paths["aligned_h5ad"].expanduser().parent,
+                    label="preprocess",
+                )
+            )
         effective_learned_prior = _training_uses_learned_edge_prior(config, options)
         auto_edge_predictor = (
             effective_learned_prior
@@ -1027,6 +1443,7 @@ def build_workflow_plan(
             and not options.graph_database.expanduser().is_file()
         ):
             missing.append(f"graph database not found: {options.graph_database}")
+        preprocess_blocked = bool(missing)
         steps.append(
             {
                 "name": "preprocess",
@@ -1066,7 +1483,7 @@ def build_workflow_plan(
                         "decision_threshold_source": (
                             "explicit --edge-predictor-threshold"
                             if options.edge_predictor_threshold is not None
-                            else "validation-selected during de novo training"
+                            else "selected while fitting the new edge predictor"
                         ),
                         "output": None
                         if paths["edge_predictor_path"] is None
@@ -1074,7 +1491,10 @@ def build_workflow_plan(
                     }
                     if auto_edge_predictor
                     else {
-                        "status": "not requested during preprocessing",
+                        "status": (
+                            "not fitted in a preprocessing-only run; "
+                            "no model is trained"
+                        ),
                     }
                 ),
                 "note": preprocess_config.get("note"),
@@ -1091,10 +1511,24 @@ def build_workflow_plan(
         )
     else:
         missing = []
-        if paths["aligned_h5ad"] is None:
-            missing.append("--aligned-h5ad (or run preprocess)")
+        if not preprocess_writes_aligned:
+            missing.extend(
+                _required_file_problems(
+                    paths["aligned_h5ad"],
+                    option="--aligned-h5ad (or run preprocess)",
+                    label="aligned H5AD",
+                    suffix=".h5ad",
+                )
+            )
         if options.output_dir is None:
             missing.append("--output-dir")
+        if paths["model_dir"] is not None:
+            missing.extend(
+                _stage_output_problems(
+                    paths["model_dir"],
+                    label="training",
+                )
+            )
         training_preset = options.training_config or train_config.get("config")
         if not training_preset:
             missing.append("--training-config")
@@ -1128,42 +1562,111 @@ def build_workflow_plan(
             options.edge_predictor_path is not None or auto_edge_predictor
         ):
             missing.append("--edge-predictor-path")
+        if options.edge_predictor_path is not None:
+            missing.extend(
+                _required_file_problems(
+                    options.edge_predictor_path,
+                    option="--edge-predictor-path",
+                    label="edge predictor",
+                )
+            )
+        predictor_input_check = None
         if (
-            options.edge_predictor_path is not None
-            and not options.edge_predictor_path.expanduser().is_file()
+            effective_learned_prior
+            and not auto_edge_predictor
+            and options.edge_predictor_path is not None
+            and options.edge_predictor_path.expanduser().is_file()
+            and paths["aligned_h5ad"] is not None
+            and paths["aligned_h5ad"].expanduser().is_file()
         ):
-            missing.append(f"edge predictor not found: {options.edge_predictor_path}")
+            try:
+                predictor_input_check = _edge_predictor_aligned_h5ad_check(
+                    options.edge_predictor_path,
+                    paths["aligned_h5ad"],
+                    explicit_threshold_supplied=(
+                        options.edge_predictor_threshold is not None
+                    ),
+                    warn_unverified=False,
+                )
+            except (FileNotFoundError, ValueError) as error:
+                missing.append(str(error))
         planned_edge_threshold = None
         if options.edge_predictor_threshold is not None:
-            planned_edge_threshold = float(options.edge_predictor_threshold)
+            planned_edge_threshold = _validated_edge_predictor_threshold(
+                options.edge_predictor_threshold,
+                source="--edge-predictor-threshold",
+            )
             threshold_source = "explicit --edge-predictor-threshold"
         elif auto_edge_predictor:
-            threshold_source = "validation-selected during preprocessing"
+            threshold_source = "selected while fitting the new edge predictor"
         elif effective_learned_prior:
-            planned_edge_threshold = effective_interaction.get(
-                "edge_predictor_thre",
-                train_config.get("edge_predictor_threshold"),
-            )
-            threshold_source = "threshold recorded by preprocessing"
+            threshold_source = None
+            metadata_path = None
+            metadata_problem = None
+            if (
+                options.edge_predictor_path is not None
+                and options.edge_predictor_path.expanduser().is_file()
+            ):
+                (
+                    planned_edge_threshold,
+                    metadata_path,
+                    metadata_problem,
+                ) = _recorded_edge_predictor_threshold(
+                    options.edge_predictor_path
+                )
+            if planned_edge_threshold is not None:
+                threshold_source = f"matching predictor metadata: {metadata_path}"
+            else:
+                expected_metadata = (
+                    None
+                    if options.edge_predictor_path is None
+                    else Path(
+                        f"{options.edge_predictor_path.expanduser()}.meta.json"
+                    )
+                )
+                if metadata_problem is not None:
+                    missing.append(
+                        f"{metadata_problem}; pass --edge-predictor-threshold"
+                    )
+                elif expected_metadata is not None:
+                    missing.append(
+                        "--edge-predictor-threshold (or matching metadata at "
+                        f"{expected_metadata})"
+                    )
+                else:
+                    missing.append(
+                        "--edge-predictor-threshold (or matching metadata beside "
+                        "--edge-predictor-path)"
+                    )
         else:
             threshold_source = None
+        if preprocess_writes_aligned and preprocess_blocked:
+            training_status = "blocked by preprocess"
+        elif missing:
+            training_status = "missing input"
+        elif preprocess_writes_aligned:
+            training_status = "runs after preprocess"
+        else:
+            training_status = "ready"
+        training_blocked = bool(missing or preprocess_blocked)
         steps.append(
             {
                 "name": "train",
-                "status": "ready" if not missing else "missing input",
+                "status": training_status,
                 "compute": "GPU required for training",
                 "missing": missing,
                 "training_config": training_preset,
                 "interaction_cutoff": planned_interaction_cutoff,
                 "edge_predictor_threshold": planned_edge_threshold,
                 "edge_predictor_threshold_source": threshold_source,
+                "edge_predictor_input_check": predictor_input_check,
                 "edge_predictor_path": None
                 if paths["edge_predictor_path"] is None
                 else str(paths["edge_predictor_path"]),
                 "edge_predictor_source": (
                     "explicit --edge-predictor-path"
                     if options.edge_predictor_path is not None
-                    else "generated by preprocessing"
+                    else "fitted during this raw-data training run"
                     if auto_edge_predictor
                     else None
                 ),
@@ -1190,12 +1693,32 @@ def build_workflow_plan(
         )
     else:
         missing = []
-        if paths["aligned_h5ad"] is None:
-            missing.append("--aligned-h5ad (or run preprocess)")
-        if paths["model_dir"] is None:
-            missing.append("--model-dir (or add --train)")
+        if not preprocess_writes_aligned:
+            missing.extend(
+                _required_file_problems(
+                    paths["aligned_h5ad"],
+                    option="--aligned-h5ad (or run preprocess)",
+                    label="aligned H5AD",
+                    suffix=".h5ad",
+                )
+            )
+        if not training_writes_model:
+            missing.extend(
+                _required_directory_problems(
+                    paths["model_dir"],
+                    option="--model-dir (or add --train)",
+                    label="model directory",
+                )
+            )
         if options.output_dir is None:
             missing.append("--output-dir")
+        else:
+            missing.extend(
+                _stage_output_problems(
+                    options.output_dir.expanduser() / "downstream",
+                    label="downstream",
+                )
+            )
         if options.training_config is None:
             # Built-in dependency-free dry-runs use the packaged workflow JSON
             # as their lightweight planning contract. Training plans and real
@@ -1322,21 +1845,48 @@ def build_workflow_plan(
                 ),
             },
         ]
-        if (
-            options.reference_h5ad is not None
-            and not options.reference_h5ad.expanduser().is_file()
-        ):
+        reference_problems = (
+            []
+            if options.reference_h5ad is None
+            else _required_file_problems(
+                options.reference_h5ad,
+                option="--reference-h5ad",
+                label="reference H5AD",
+                suffix=".h5ad",
+            )
+        )
+        if reference_problems:
             analyses.append(
                 {
                     "name": "reference data",
                     "status": "missing input",
-                    "missing": [f"reference H5AD not found: {options.reference_h5ad}"],
+                    "missing": reference_problems,
                 }
             )
+        if preprocess_writes_aligned and training_writes_model:
+            if preprocess_blocked:
+                downstream_status = "waiting for preprocess and training"
+            elif training_blocked:
+                downstream_status = "waiting for training"
+            elif missing:
+                downstream_status = "missing input"
+            else:
+                downstream_status = "runs after preprocess and training"
+        elif training_writes_model:
+            if training_blocked:
+                downstream_status = "waiting for training"
+            elif missing:
+                downstream_status = "missing input"
+            else:
+                downstream_status = "runs after training"
+        elif missing:
+            downstream_status = "missing input"
+        else:
+            downstream_status = "ready"
         steps.append(
             {
                 "name": "downstream",
-                "status": "ready" if not missing else "missing input",
+                "status": downstream_status,
                 "compute": "GPU recommended for SDE simulation and classifier fitting",
                 "missing": missing,
                 "model_format": options.model_format
@@ -1516,12 +2066,12 @@ def render_workflow_plan(plan: Mapping[str, Any]) -> str:
 
 
 def plan_missing_inputs(plan: Mapping[str, Any]) -> list[str]:
-    """Return selected steps that cannot run because an input was not supplied."""
+    """Return selected steps whose inputs are absent or have the wrong type."""
 
     missing = [
         f"{step['name']}: {', '.join(step.get('missing', []))}"
         for step in plan["steps"]
-        if step.get("status") == "missing input"
+        if step.get("missing")
     ]
     for step in plan["steps"]:
         for analysis in step.get("analyses", []):
@@ -1788,9 +2338,27 @@ def _run_edge_predictor(
     )
     cb.pp.sanitize_interaction_graph_uns(adata)
     adata.write_h5ad(aligned_h5ad)
+    metadata_path = Path(f"{edge_predictor_path.expanduser()}.meta.json")
+    returned_metadata_path = Path(str(edge_result["meta_path"])).expanduser()
+    if returned_metadata_path.resolve() != metadata_path.resolve():
+        raise ValueError(
+            "Edge predictor training returned metadata at an unexpected path: "
+            f"{returned_metadata_path}; expected {metadata_path}."
+        )
+    metadata = _read_json_object(metadata_path, label="edge predictor metadata")
+    aligned_identity = _file_identity(aligned_h5ad, label="final aligned H5AD")
+    metadata["aligned_h5ad"] = {
+        **aligned_identity,
+        "identity_scope": "final H5AD after interaction-graph sanitization",
+    }
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
     return {
         "model_path": str(edge_predictor_path),
-        "meta_path": str(edge_result["meta_path"]),
+        "meta_path": str(metadata_path),
+        "aligned_h5ad": aligned_identity,
         "graph_input_dir": str(graph_input_dir),
         "metadata_dir": str(metadata_dir),
         "graph_database": str(graph_database),
@@ -1869,16 +2437,41 @@ def _run_train(
                 "Learned edge predictor not found at the explicit run-bound path: "
                 f"{effective_edge_path}"
             )
+        _edge_predictor_aligned_h5ad_check(
+            effective_edge_path,
+            aligned_h5ad,
+            explicit_threshold_supplied=(
+                options.edge_predictor_threshold is not None
+            ),
+            warn_unverified=True,
+        )
         interaction["edge_predictor_path"] = str(effective_edge_path)
     threshold = None
     if uses_learned_edge_prior:
         threshold = edge_predictor_threshold
         if threshold is None:
             threshold = options.edge_predictor_threshold
-        if threshold is None and options.training_config is None:
-            threshold = train_config.get("edge_predictor_threshold")
-    if threshold is not None:
-        interaction["edge_predictor_thre"] = float(threshold)
+        if threshold is None:
+            (
+                threshold,
+                metadata_path,
+                metadata_problem,
+            ) = _recorded_edge_predictor_threshold(effective_edge_path)
+            if metadata_problem is not None:
+                raise ValueError(
+                    f"{metadata_problem}; pass --edge-predictor-threshold"
+                )
+            if threshold is None:
+                raise ValueError(
+                    "Training from an existing aligned H5AD with a learned edge "
+                    "predictor requires --edge-predictor-threshold or matching "
+                    f"metadata at {metadata_path}."
+                )
+        threshold = _validated_edge_predictor_threshold(
+            threshold,
+            source="edge predictor threshold",
+        )
+        interaction["edge_predictor_thre"] = threshold
     cutoff = None
     if uses_interaction:
         cutoff = options.interaction_cutoff
@@ -2662,6 +3255,9 @@ def _run_downstream(
     dataset = config["dataset"]
     scientific = config["scientific"]
     downstream = config["downstream"]
+    model_format = options.model_format or str(
+        downstream.get("model_format", "current")
+    )
     trajectory = _split_trajectory_contract(downstream)
     if options.reconstruction_diagnostic and trajectory["split_sde_piecewise"]:
         raise ValueError(
@@ -2670,6 +3266,17 @@ def _run_downstream(
             "is an input anchor, so the comparison would be self-reconstruction "
             "rather than global-t0 prediction."
         )
+    if model_format == "current":
+        aligned_input_provenance = _training_input_h5ad_check(
+            model_dir,
+            aligned_h5ad,
+            warn_unverified=True,
+        )
+    else:
+        aligned_input_provenance = {
+            "status": "not applicable",
+            "reason": "legacy model format predates training input provenance",
+        }
     downstream_analyses = _effective_downstream_analyses(config, options)
     adata = ad.read_h5ad(aligned_h5ad)
     annotation_key = str(dataset.get("annotation_key", "Annotation"))
@@ -2704,9 +3311,6 @@ def _run_downstream(
     feature_columns = cb.tl.infer_feature_columns(
         dataframe,
         annotation_column=annotation_key,
-    )
-    model_format = options.model_format or str(
-        downstream.get("model_format", "current")
     )
     if model_format == "legacy":
         loaded = cb.tl.load_legacy_dynamical_model_from_dir(
@@ -3007,6 +3611,7 @@ def _run_downstream(
         "alpha_express": float(scientific["alpha_express"]),
         "classifier_k": int(scientific["classifier_k"]),
         "reference_h5ad": str(options.reference_h5ad or aligned_h5ad),
+        "aligned_h5ad_provenance": aligned_input_provenance,
         "model": {
             "format": model_format,
             "directory": str(model_dir),
@@ -3070,6 +3675,23 @@ def run_workflow(
     aligned_h5ad = paths["aligned_h5ad"]
     model_dir = paths["model_dir"]
     edge_predictor_path = paths["edge_predictor_path"]
+    _assert_selected_stage_outputs_empty(
+        config,
+        options,
+        selected=selected,
+        paths=paths,
+    )
+    plan = build_workflow_plan(
+        config,
+        source="direct Python API",
+        options=options,
+    )
+    plan_problems = plan_missing_inputs(plan)
+    if plan_problems:
+        message = "; ".join(plan_problems)
+        if " not found:" in message:
+            raise FileNotFoundError(message)
+        raise ValueError(message)
     completed: list[str] = []
     outputs: dict[str, Any] = {}
     generated_edge_threshold: float | None = None

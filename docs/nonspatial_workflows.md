@@ -25,8 +25,9 @@ dynamical-model training.
 
 The `full` and `no_interaction` arms are trained separately with seed 42,
 `sigma=0.1`, and the `velocity_score_cross_term` score-energy objective. The
-`no_interaction` arm removes interaction construction and interaction force but
-keeps the six-stage schedule and score/noise component.
+`no_interaction` arm removes interaction construction and interaction force
+but keeps the same sequence of training stages and the same score/noise
+component.
 
 Distribution evaluation propagates one source population from the earliest
 observed time. Predicted growth masses are normalized for optimal-transport

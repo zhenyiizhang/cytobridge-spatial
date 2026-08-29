@@ -1,5 +1,6 @@
-# Executable dataset-tutorial environment: Jupyter plus the model, graph, and
-# plotting stack used by the five public workflow notebooks.
+# Jupyter plus the preprocessing, model, graph, and static plotting stack used
+# by the five public workflow notebooks. Install together with the velocity
+# extra to run their default downstream velocity and interactive-figure cells.
 geomloss>=0.2.6,<0.3
 ipywidgets>=7.6,<9
 jupyterlab>=4,<5

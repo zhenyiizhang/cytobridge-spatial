@@ -377,6 +377,21 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
     }
     assert set(spatial) == expected_spatial_names
 
+    # The default spatial command continues into velocity and interactive
+    # downstream figures. Keep those dependencies in their existing focused
+    # extra, while ensuring the documented combination is complete.
+    default_spatial_workflow = {**spatial, **groups["velocity"]}
+    assert {"scvelo", "plotly"} <= set(default_spatial_workflow)
+    assert {"scvelo", "plotly"}.isdisjoint(spatial)
+
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    installation = (PROJECT_ROOT / "docs" / "installation.md").read_text(
+        encoding="utf-8"
+    )
+    assert ".[spatial,velocity]" in readme
+    assert ".[notebook,velocity]" in readme
+    assert "[spatial,velocity]" in installation
+
     compatibility_lines = {
         line.strip()
         for line in (PROJECT_ROOT / "requirements.txt")

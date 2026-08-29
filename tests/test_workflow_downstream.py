@@ -41,6 +41,8 @@ class _Reference:
 def test_plan_describes_core_and_explicit_optional_downstream(tmp_path: Path):
     config, source = load_workflow_config("zebrafish")
     missing_lr = tmp_path / "missing_lr.csv"
+    (tmp_path / "aligned.h5ad").touch()
+    (tmp_path / "model").mkdir()
     plan = build_workflow_plan(
         config,
         source=source,

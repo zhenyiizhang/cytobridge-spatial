@@ -10,9 +10,23 @@ in the paper. Read the steps from top to bottom:
 3. Run the calculation and plotting cells. Their tables and figures are also
    saved in the published notebook.
 
+This page lists figures that have a runnable notebook or a dataset-analysis
+page. The [complete paper index](../../paper_reproduction.md) also lists static
+artwork and figures whose original calculation files are not currently
+available, including Main Figure 1 and Supplementary Figure S1.
+
 Commands that start with `cytobridge` work after installation. Commands that
 start with `python scripts/...` or `python -m scripts...` use files from the
 source repository and should be run from the root of the cloned repository.
+
+When the repository runner is used, for example
+`python scripts/execute_paper_notebooks.py --notebook arista_figures
+--output-dir notebook_runs`, it creates a notebook-specific working directory.
+Files written by that notebook appear under
+`notebook_runs/arista_figures/outputs/arista_supplementary_figures`, not
+directly under `notebook_runs`. Other notebooks use the same
+`<runner output>/<notebook name>/outputs/<notebook-specific folder>` pattern;
+their setup cells show the final folder name.
 
 You can print the same steps in a terminal:
 

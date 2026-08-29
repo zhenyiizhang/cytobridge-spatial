@@ -23,8 +23,11 @@ CytoBridge supports Python 3.10 and 3.11.
 ```bash
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
-python -m pip install -e '.[all]'
+python -m pip install -e '.[spatial,velocity]'
 ```
+
+This combination supports the default spatial workflow from preprocessing and
+training through velocity analysis and interactive downstream figures.
 
 If you only need part of the package, install the matching optional
 dependencies:
@@ -33,7 +36,7 @@ dependencies:
 python -m pip install -e '.[preprocess]'
 python -m pip install -e '.[train]'
 python -m pip install -e '.[plot]'
-python -m pip install -e '.[notebook]'
+python -m pip install -e '.[notebook,velocity]'
 ```
 
 Install a PyTorch build that matches the CUDA version available on the target
@@ -49,8 +52,8 @@ cytobridge doctor
 ## Quick start
 
 Five example dataset configurations are included: Zebrafish, MOSTA, ARISTA,
-AD mouse, and developing chicken heart. Check a configuration before supplying
-data:
+AD mouse, and developing chicken heart. Review a configuration and its planned
+steps before supplying data:
 
 ```bash
 cytobridge workflow --list-configs
@@ -68,7 +71,9 @@ cytobridge workflow --config configs/my_dataset.json --train \
 ```
 
 The [own-data tutorial](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/your_data.html)
-lists the fields that must be changed before training.
+lists the fields that must be changed before training. The
+[small generated-data example](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/data_preparation/synthetic_preprocessing.html)
+runs preprocessing and plots the result.
 
 Run downstream analysis from an aligned AnnData file and a trained model:
 
@@ -80,7 +85,7 @@ cytobridge workflow --config zebrafish --step downstream \
   --device cuda
 ```
 
-Start preprocessing and model training explicitly with `--train`:
+Start a complete run from raw data with `--train`:
 
 ```bash
 cytobridge workflow --config mosta --train \
@@ -97,10 +102,17 @@ the input keys and optional ligand–receptor and gene-dynamics steps.
 ## Tutorials and paper figures
 
 The tutorial index covers data preparation, five dataset tutorials, paper
-figures, and benchmarks. Each dataset notebook follows the same path from setup
-through preprocessing, training, downstream analysis, figure code, and saved
-files. Paper-figure notebooks state whether they recalculate values, redraw
-prepared summaries, assemble panel files, or export an assembled figure.
+figures, and benchmarks. Each dataset notebook starts with one raw-data command
+that preprocesses, trains, and runs the analyses selected in its configuration.
+It then
+shows the saved aligned H5AD, model, result folders, and an optional downstream
+rerun in a new directory. It separately labels
+commands that continue from a new run, commands that use the paper's saved files, and
+paper inputs that are not distributed in this repository. An optional
+preprocessing-only section is clearly marked as an inspection run rather than a
+prerequisite for training. Paper-figure notebooks state whether they recalculate
+values, redraw prepared summaries, assemble panel files, or export an assembled
+figure.
 
 Installed figure commands use the same public result APIs as the notebooks:
 
@@ -168,8 +180,10 @@ python -m pip install -e '.[docs]'
 sphinx-build -W --keep-going -E -b html docs docs/_build/html
 ```
 
-Read the Docs renders the committed notebook outputs. CI also runs every
-published notebook from top to bottom.
+Read the Docs renders the committed notebook outputs. CI executes the public
+notebook cells with the long training and downstream switches left off. It
+checks the examples and saved outputs, but it does not retrain all five paper
+datasets.
 
 ## Development
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,13 +12,17 @@ import CytoBridge as cb
 from CytoBridge.cli import main
 from CytoBridge.workflow import (
     WorkflowOptions,
+    _edge_predictor_aligned_h5ad_check,
     _loaded_model_scientific_contract,
     _read_training_config,
     _run_edge_predictor,
     build_workflow_plan,
     load_workflow_config,
+    plan_missing_inputs,
+    render_workflow_plan,
     run_workflow,
     _run_train,
+    _training_input_h5ad_check,
 )
 
 
@@ -133,7 +138,7 @@ def test_packaged_presets_plan_the_formal_graph_contract(
     assert training["interaction_cutoff"] == cutoff
     assert training["edge_predictor_threshold"] is None
     assert training["edge_predictor_threshold_source"] == (
-        "validation-selected during preprocessing"
+        "selected while fitting the new edge predictor"
     )
 
 
@@ -180,12 +185,14 @@ def test_chicken_heart_lr_scope_is_structured_for_summary_serialization():
 
 def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path):
     config, source = load_workflow_config("admouse")
+    raw_h5ad = tmp_path / "admouse_raw.h5ad"
+    raw_h5ad.touch()
     de_novo = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
             train=True,
-            input_h5ad=tmp_path / "admouse_raw.h5ad",
+            input_h5ad=raw_h5ad,
             output_dir=tmp_path / "run",
         ),
     )
@@ -198,15 +205,16 @@ def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path)
     assert preprocessing["status"] == "ready"
     assert preprocessing["edge_predictor"]["status"] == "will be trained automatically"
     assert training["training_config"] == "admouse_spatial_full_alpha_express_0015.yaml"
-    assert training["status"] == "ready"
+    assert training["status"] == "runs after preprocess"
     assert training["edge_predictor_path"].endswith(
         "/preprocess/edge_classifier/admouse_edge_model.pt"
     )
     assert training["edge_predictor_threshold"] is None
     assert training["edge_predictor_threshold_source"] == (
-        "validation-selected during preprocessing"
+        "selected while fitting the new edge predictor"
     )
     assert downstream["model_format"] == "current"
+    assert downstream["status"] == "runs after preprocess and training"
 
     align = config["preprocess"]["align"]
     assert config["steps"]["default"] == ["downstream"]
@@ -219,13 +227,17 @@ def test_admouse_preset_supports_de_novo_and_historical_artifact_paths(tmp_path)
     assert align["n_pcs"] == 50
     assert align["auto_scale_from_centered_x_max"] is True
 
+    released_aligned = tmp_path / "released_aligned.h5ad"
+    released_aligned.touch()
+    released_model = tmp_path / "released_model"
+    released_model.mkdir()
     historical = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
             steps=("downstream",),
-            aligned_h5ad=tmp_path / "released_aligned.h5ad",
-            model_dir=tmp_path / "released_model",
+            aligned_h5ad=released_aligned,
+            model_dir=released_model,
             output_dir=tmp_path / "historical",
         ),
     )
@@ -393,6 +405,18 @@ def test_explicit_train_step_is_train_only_and_requires_opt_in(
     edge_predictor = tmp_path / "zebrafish_edge_model.pt"
     aligned.write_bytes(b"aligned")
     edge_predictor.write_bytes(b"edge")
+    Path(f"{edge_predictor}.meta.json").write_text(
+        json.dumps(
+            {
+                "edge_predictor_threshold": 0.61,
+                "aligned_h5ad": {
+                    "size_bytes": aligned.stat().st_size,
+                    "sha256": hashlib.sha256(aligned.read_bytes()).hexdigest(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
 
     with pytest.raises(ValueError, match="also requires.*--train"):
         build_workflow_plan(
@@ -510,7 +534,11 @@ def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
     monkeypatch.setattr(cb.tl, "fit", fake_fit)
     _run_train(
         config,
-        WorkflowOptions(edge_predictor_path=edge_predictor, device="cpu"),
+        WorkflowOptions(
+            edge_predictor_path=edge_predictor,
+            edge_predictor_threshold=0.5,
+            device="cpu",
+        ),
         aligned_h5ad=tmp_path / "aligned.h5ad",
         model_dir=tmp_path / "training",
     )
@@ -519,6 +547,74 @@ def test_training_uses_custom_dataset_schema(monkeypatch, tmp_path):
     assert captured["obsm_key"] == "latent_custom"
     assert captured["spatial_key"] == "xy_custom"
     assert captured["is_spatial"] is False
+
+
+def test_direct_training_reads_threshold_from_matching_predictor_metadata(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("chicken_heart")
+    captured = {}
+    aligned_h5ad = tmp_path / "heart_aligned.h5ad"
+    aligned_h5ad.write_bytes(b"aligned heart input")
+    edge_predictor = tmp_path / "heart_edge.pt"
+    edge_predictor.touch()
+    Path(f"{edge_predictor}.meta.json").write_text(
+        json.dumps(
+            {
+                "edge_predictor_threshold": 0.37,
+                "aligned_h5ad": {
+                    "size_bytes": aligned_h5ad.stat().st_size,
+                    "sha256": hashlib.sha256(aligned_h5ad.read_bytes()).hexdigest(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cb.tl,
+        "fit",
+        lambda _aligned_h5ad, **kwargs: captured.update(kwargs),
+    )
+
+    _run_train(
+        config,
+        WorkflowOptions(edge_predictor_path=edge_predictor, device="cpu"),
+        aligned_h5ad=aligned_h5ad,
+        model_dir=tmp_path / "training",
+    )
+
+    assert captured["edge_predictor_threshold"] == pytest.approx(0.37)
+    assert captured["config"]["model"]["interaction_net"][
+        "edge_predictor_thre"
+    ] == pytest.approx(0.37)
+
+
+def test_direct_training_requires_threshold_without_predictor_metadata(
+    monkeypatch,
+    tmp_path,
+):
+    config, _ = load_workflow_config("chicken_heart")
+    edge_predictor = tmp_path / "heart_edge.pt"
+    edge_predictor.touch()
+    called = False
+
+    def fake_fit(*_args, **_kwargs):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(cb.tl, "fit", fake_fit)
+
+    with pytest.raises(ValueError, match="requires --edge-predictor-threshold"):
+        _run_train(
+            config,
+            WorkflowOptions(edge_predictor_path=edge_predictor, device="cpu"),
+            aligned_h5ad=tmp_path / "heart_aligned.h5ad",
+            model_dir=tmp_path / "training",
+        )
+
+    assert called is False
 
 
 def test_direct_learned_training_never_falls_back_to_packaged_relative_predictor(
@@ -675,9 +771,12 @@ def test_training_is_skipped_until_explicitly_enabled():
     )
     assert base_training["status"] == "skipped; add --train to run"
     assert base_preprocessing["status"] == "skipped"
-    assert enabled_training["status"] == "missing input"
+    assert enabled_training["status"] == "blocked by preprocess"
     assert "--edge-predictor-path" not in enabled_training["missing"]
-    assert enabled_training["edge_predictor_source"] == "generated by preprocessing"
+    assert (
+        enabled_training["edge_predictor_source"]
+        == "fitted during this raw-data training run"
+    )
 
 
 def test_preprocess_and_downstream_require_training_or_separate_commands():
@@ -691,14 +790,242 @@ def test_preprocess_and_downstream_require_training_or_separate_commands():
         )
 
 
-def test_raw_training_plan_uses_bundled_formal_database_by_default(tmp_path):
+@pytest.mark.parametrize(
+    ("path_kind", "expected_message"),
+    (
+        ("missing", "raw H5AD not found"),
+        ("directory", "raw H5AD is not a file"),
+    ),
+)
+def test_preprocess_plan_checks_raw_h5ad_path_type(
+    tmp_path,
+    path_kind,
+    expected_message,
+):
     config, source = load_workflow_config("mosta")
+    raw_h5ad = tmp_path / "raw.h5ad"
+    if path_kind == "directory":
+        raw_h5ad.mkdir()
+
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            steps=("preprocess",),
+            input_h5ad=raw_h5ad,
+            output_dir=tmp_path / "run",
+        ),
+    )
+    preprocessing = next(
+        step for step in plan["steps"] if step["name"] == "preprocess"
+    )
+
+    assert preprocessing["status"] == "missing input"
+    assert any(expected_message in item for item in preprocessing["missing"])
+
+
+def test_downstream_plan_checks_external_aligned_h5ad_and_model_dir(tmp_path):
+    config, source = load_workflow_config("zebrafish")
+    aligned_h5ad = tmp_path / "aligned.h5ad"
+    model_dir = tmp_path / "model"
+
+    missing_plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            steps=("downstream",),
+            aligned_h5ad=aligned_h5ad,
+            model_dir=model_dir,
+            output_dir=tmp_path / "missing-output",
+        ),
+    )
+    missing_downstream = next(
+        step for step in missing_plan["steps"] if step["name"] == "downstream"
+    )
+    assert missing_downstream["status"] == "missing input"
+    assert any(
+        "aligned H5AD not found" in item for item in missing_downstream["missing"]
+    )
+    assert any(
+        "model directory not found" in item for item in missing_downstream["missing"]
+    )
+
+    aligned_h5ad.mkdir()
+    model_dir.write_text("not a directory", encoding="utf-8")
+    wrong_type_plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            steps=("downstream",),
+            aligned_h5ad=aligned_h5ad,
+            model_dir=model_dir,
+            output_dir=tmp_path / "wrong-type-output",
+        ),
+    )
+    wrong_type_downstream = next(
+        step for step in wrong_type_plan["steps"] if step["name"] == "downstream"
+    )
+    assert any(
+        "aligned H5AD is not a file" in item
+        for item in wrong_type_downstream["missing"]
+    )
+    assert any(
+        "model directory is not a directory" in item
+        for item in wrong_type_downstream["missing"]
+    )
+
+
+def test_full_raw_plan_does_not_require_outputs_created_by_earlier_steps(tmp_path):
+    config, source = load_workflow_config("zebrafish")
+    raw_h5ad = tmp_path / "raw.h5ad"
+    raw_h5ad.touch()
+    output_dir = tmp_path / "run"
+
     plan = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
             train=True,
-            input_h5ad=tmp_path / "raw.h5ad",
+            input_h5ad=raw_h5ad,
+            output_dir=output_dir,
+        ),
+    )
+
+    statuses = {step["name"]: step["status"] for step in plan["steps"]}
+    assert statuses == {
+        "preprocess": "ready",
+        "train": "runs after preprocess",
+        "downstream": "runs after preprocess and training",
+    }
+    assert not (output_dir / "preprocess" / "zebrafish_aligned.h5ad").exists()
+    assert not (output_dir / "training").exists()
+
+
+def test_training_rejects_raw_and_aligned_h5ad_together(tmp_path):
+    config, source = load_workflow_config("zebrafish")
+
+    with pytest.raises(
+        ValueError,
+        match="both --input-h5ad and --aligned-h5ad",
+    ):
+        build_workflow_plan(
+            config,
+            source=source,
+            options=WorkflowOptions(
+                train=True,
+                input_h5ad=tmp_path / "raw.h5ad",
+                aligned_h5ad=tmp_path / "aligned.h5ad",
+                output_dir=tmp_path / "run",
+            ),
+        )
+
+
+@pytest.mark.parametrize("dataset_name", ("zebrafish", "chicken_heart"))
+def test_train_only_plan_requires_threshold_for_existing_learned_predictor(
+    tmp_path,
+    dataset_name,
+):
+    config, source = load_workflow_config(dataset_name)
+    aligned_h5ad = tmp_path / f"{dataset_name}_aligned.h5ad"
+    aligned_h5ad.touch()
+    edge_predictor = tmp_path / f"{dataset_name}_edge.pt"
+    edge_predictor.touch()
+
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            train=True,
+            steps=("train",),
+            aligned_h5ad=aligned_h5ad,
+            edge_predictor_path=edge_predictor,
+            output_dir=tmp_path / f"{dataset_name}-run",
+        ),
+    )
+    training = next(step for step in plan["steps"] if step["name"] == "train")
+
+    assert training["status"] == "missing input"
+    assert training["edge_predictor_threshold"] is None
+    assert training["edge_predictor_threshold_source"] is None
+    assert any(
+        item.startswith("--edge-predictor-threshold")
+        for item in training["missing"]
+    )
+
+
+def test_train_only_plan_reads_threshold_from_adjacent_predictor_metadata(tmp_path):
+    config, source = load_workflow_config("chicken_heart")
+    aligned_h5ad = tmp_path / "heart_aligned.h5ad"
+    aligned_h5ad.touch()
+    edge_predictor = tmp_path / "heart_edge.pt"
+    edge_predictor.touch()
+    metadata_path = Path(f"{edge_predictor}.meta.json")
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "edge_predictor_threshold": 0.37,
+                "aligned_h5ad": {
+                    "size_bytes": aligned_h5ad.stat().st_size,
+                    "sha256": hashlib.sha256(aligned_h5ad.read_bytes()).hexdigest(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            train=True,
+            steps=("train",),
+            aligned_h5ad=aligned_h5ad,
+            edge_predictor_path=edge_predictor,
+            output_dir=tmp_path / "run",
+        ),
+    )
+    training = next(step for step in plan["steps"] if step["name"] == "train")
+
+    assert training["status"] == "ready"
+    assert training["edge_predictor_threshold"] == pytest.approx(0.37)
+    assert training["edge_predictor_threshold_source"] == (
+        f"matching predictor metadata: {metadata_path}"
+    )
+
+
+@pytest.mark.parametrize("threshold", (0.0, 1.0, float("nan")))
+def test_train_only_plan_rejects_unsafe_predictor_threshold(tmp_path, threshold):
+    config, source = load_workflow_config("chicken_heart")
+    aligned_h5ad = tmp_path / "heart_aligned.h5ad"
+    aligned_h5ad.touch()
+    edge_predictor = tmp_path / "heart_edge.pt"
+    edge_predictor.touch()
+
+    with pytest.raises(ValueError, match="strictly between 0 and 1"):
+        build_workflow_plan(
+            config,
+            source=source,
+            options=WorkflowOptions(
+                train=True,
+                steps=("train",),
+                aligned_h5ad=aligned_h5ad,
+                edge_predictor_path=edge_predictor,
+                edge_predictor_threshold=threshold,
+                output_dir=tmp_path / "run",
+            ),
+        )
+
+
+def test_raw_training_plan_uses_bundled_formal_database_by_default(tmp_path):
+    config, source = load_workflow_config("mosta")
+    raw_h5ad = tmp_path / "raw.h5ad"
+    raw_h5ad.touch()
+    plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            train=True,
+            input_h5ad=raw_h5ad,
             output_dir=tmp_path / "run",
         ),
     )
@@ -711,23 +1038,28 @@ def test_raw_training_plan_uses_bundled_formal_database_by_default(tmp_path):
     assert edge["status"] == "will be trained automatically"
     assert edge["graph_database"].endswith("CellChatDB.ligrec.mouse.csv")
     assert edge["database_source"] == "included CellChatDB resource"
-    assert training["status"] == "ready"
-    assert training["edge_predictor_source"] == "generated by preprocessing"
+    assert training["status"] == "runs after preprocess"
+    assert (
+        training["edge_predictor_source"]
+        == "fitted during this raw-data training run"
+    )
     assert training["edge_predictor_path"].endswith("mosta_edge_model.pt")
     assert training["edge_predictor_threshold"] is None
     assert training["edge_predictor_threshold_source"] == (
-        "validation-selected during preprocessing"
+        "selected while fitting the new edge predictor"
     )
 
 
 def test_raw_training_plan_reports_explicit_graph_overrides(tmp_path):
     config, source = load_workflow_config("arista")
+    raw_h5ad = tmp_path / "raw.h5ad"
+    raw_h5ad.touch()
     plan = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
             train=True,
-            input_h5ad=tmp_path / "raw.h5ad",
+            input_h5ad=raw_h5ad,
             output_dir=tmp_path / "run",
             interaction_cutoff=0.123,
             edge_predictor_threshold=0.42,
@@ -752,7 +1084,7 @@ def test_raw_preprocess_and_train_rejects_existing_edge_predictor(tmp_path):
     config, source = load_workflow_config("zebrafish")
     edge_predictor = tmp_path / "existing_edge.pt"
     edge_predictor.touch()
-    with pytest.raises(ValueError, match="must fit a new edge predictor"):
+    with pytest.raises(ValueError, match="fits a new edge predictor"):
         build_workflow_plan(
             config,
             source=source,
@@ -767,13 +1099,15 @@ def test_raw_preprocess_and_train_rejects_existing_edge_predictor(tmp_path):
 
 def test_admouse_learned_training_from_aligned_data_requires_edge_predictor(tmp_path):
     config, source = load_workflow_config("admouse")
+    aligned_h5ad = tmp_path / "admouse_aligned.h5ad"
+    aligned_h5ad.touch()
     plan = build_workflow_plan(
         config,
         source=source,
         options=WorkflowOptions(
             train=True,
             steps=("downstream",),
-            aligned_h5ad=tmp_path / "admouse_aligned.h5ad",
+            aligned_h5ad=aligned_h5ad,
             output_dir=tmp_path / "run",
         ),
     )
@@ -781,8 +1115,12 @@ def test_admouse_learned_training_from_aligned_data_requires_edge_predictor(tmp_
 
     assert training["status"] == "missing input"
     assert "--edge-predictor-path" in training["missing"]
+    assert any(
+        item.startswith("--edge-predictor-threshold")
+        for item in training["missing"]
+    )
     assert training["edge_predictor_path"] is None
-    assert training["edge_predictor_threshold"] == 0.9956824779510498
+    assert training["edge_predictor_threshold"] is None
 
 
 def test_admouse_raw_workflow_fits_and_passes_edge_predictor(monkeypatch, tmp_path):
@@ -834,6 +1172,7 @@ def test_admouse_raw_workflow_fits_and_passes_edge_predictor(monkeypatch, tmp_pa
     monkeypatch.setattr(workflow, "_run_preprocess", preprocess)
     monkeypatch.setattr(workflow, "_run_edge_predictor", edge_predictor)
     monkeypatch.setattr(workflow, "_run_train", train)
+    (tmp_path / "raw.h5ad").write_bytes(b"raw")
 
     result = run_workflow(
         config,
@@ -889,6 +1228,7 @@ def test_workflow_passes_automatic_edge_model_and_threshold_to_training(
 
     monkeypatch.setattr(workflow, "_run_edge_predictor", edge)
     monkeypatch.setattr(workflow, "_run_train", train)
+    (tmp_path / "raw.h5ad").write_bytes(b"raw")
 
     result = run_workflow(
         config,
@@ -933,6 +1273,7 @@ def test_edge_predictor_uses_formal_graph_and_training_parameters(
 
         def write_h5ad(self, path):
             captured_training["written_h5ad"] = Path(path)
+            Path(path).write_bytes(b"final aligned bytes")
 
     monkeypatch.setattr("anndata.read_h5ad", lambda _path: FakeAdata())
     monkeypatch.setattr(
@@ -947,6 +1288,10 @@ def test_edge_predictor_uses_formal_graph_and_training_parameters(
 
     def train_edge(**kwargs):
         captured_training.update(kwargs)
+        (tmp_path / "edge.pt.meta.json").write_text(
+            json.dumps({"edge_predictor_threshold": 0.47}),
+            encoding="utf-8",
+        )
         return {
             "meta_path": str(tmp_path / "edge.pt.meta.json"),
             "edge_predictor_threshold": 0.47,
@@ -976,6 +1321,297 @@ def test_edge_predictor_uses_formal_graph_and_training_parameters(
     assert captured_training["max_train_edges_per_epoch"] == 2_000_000
     assert output["graph_database"] == str(database_path)
     assert output["edge_predictor_threshold"] == 0.47
+    metadata = json.loads((tmp_path / "edge.pt.meta.json").read_text(encoding="utf-8"))
+    assert metadata["aligned_h5ad"] == {
+        "path": str((tmp_path / "mosta_aligned.h5ad").resolve()),
+        "size_bytes": len(b"final aligned bytes"),
+        "sha256": hashlib.sha256(b"final aligned bytes").hexdigest(),
+        "identity_scope": "final H5AD after interaction-graph sanitization",
+    }
+
+
+def test_plan_refuses_nonempty_output_directory_for_each_selected_stage(tmp_path):
+    config, source = load_workflow_config("mosta")
+    raw = tmp_path / "raw.h5ad"
+    aligned = tmp_path / "aligned.h5ad"
+    model = tmp_path / "model"
+    predictor = tmp_path / "edge.pt"
+    raw.touch()
+    aligned.touch()
+    model.mkdir()
+    predictor.touch()
+
+    preprocess_root = tmp_path / "preprocess-run"
+    (preprocess_root / "preprocess").mkdir(parents=True)
+    (preprocess_root / "preprocess" / "old.txt").touch()
+    preprocess_plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            steps=("preprocess",),
+            input_h5ad=raw,
+            output_dir=preprocess_root,
+        ),
+    )
+    preprocess = next(
+        step for step in preprocess_plan["steps"] if step["name"] == "preprocess"
+    )
+    assert preprocess["status"] == "missing input"
+    assert preprocess["missing"][-1] == (
+        f"preprocess output directory must be empty: {preprocess_root / 'preprocess'}"
+    )
+
+    training_root = tmp_path / "training-run"
+    (training_root / "training").mkdir(parents=True)
+    (training_root / "training" / "old.txt").touch()
+    training_plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            train=True,
+            steps=("train",),
+            aligned_h5ad=aligned,
+            edge_predictor_path=predictor,
+            edge_predictor_threshold=0.5,
+            output_dir=training_root,
+        ),
+    )
+    training = next(
+        step for step in training_plan["steps"] if step["name"] == "train"
+    )
+    assert training["status"] == "missing input"
+    assert f"training output directory must be empty: {training_root / 'training'}" in (
+        training["missing"]
+    )
+
+    downstream_root = tmp_path / "downstream-run"
+    (downstream_root / "downstream").mkdir(parents=True)
+    (downstream_root / "downstream" / "old.txt").touch()
+    downstream_plan = build_workflow_plan(
+        config,
+        source=source,
+        options=WorkflowOptions(
+            steps=("downstream",),
+            aligned_h5ad=aligned,
+            model_dir=model,
+            output_dir=downstream_root,
+        ),
+    )
+    downstream = next(
+        step for step in downstream_plan["steps"] if step["name"] == "downstream"
+    )
+    assert downstream["status"] == "missing input"
+    assert downstream["missing"][-1] == (
+        f"downstream output directory must be empty: {downstream_root / 'downstream'}"
+    )
+
+
+def test_direct_workflow_checks_all_stage_outputs_before_preprocessing(
+    monkeypatch,
+    tmp_path,
+):
+    import CytoBridge.workflow as workflow
+
+    config, _ = load_workflow_config("mosta")
+    raw = tmp_path / "raw.h5ad"
+    raw.touch()
+    output = tmp_path / "run"
+    (output / "downstream").mkdir(parents=True)
+    (output / "downstream" / "old.txt").touch()
+    monkeypatch.setattr(
+        workflow,
+        "_run_preprocess",
+        lambda *_args, **_kwargs: pytest.fail("preprocessing must not start"),
+    )
+
+    with pytest.raises(FileExistsError, match="downstream output directory must be empty"):
+        run_workflow(
+            config,
+            options=WorkflowOptions(train=True, input_h5ad=raw, output_dir=output),
+        )
+
+    assert not (output / "preprocess").exists()
+    assert not (output / "training").exists()
+
+
+def test_later_stage_can_continue_when_only_earlier_stage_directory_is_nonempty(
+    monkeypatch,
+    tmp_path,
+):
+    import CytoBridge.workflow as workflow
+
+    config, _ = load_workflow_config("mosta")
+    output = tmp_path / "run"
+    preprocess_dir = output / "preprocess"
+    preprocess_dir.mkdir(parents=True)
+    aligned = preprocess_dir / "mosta_aligned.h5ad"
+    aligned.write_bytes(b"aligned")
+    predictor = preprocess_dir / "edge.pt"
+    predictor.write_bytes(b"predictor")
+    Path(f"{predictor}.meta.json").write_text(
+        json.dumps(
+            {
+                "edge_predictor_threshold": 0.4,
+                "aligned_h5ad": {
+                    "size_bytes": aligned.stat().st_size,
+                    "sha256": hashlib.sha256(aligned.read_bytes()).hexdigest(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        workflow,
+        "_run_train",
+        lambda _config, _options, **kwargs: kwargs["model_dir"],
+    )
+
+    result = run_workflow(
+        config,
+        options=WorkflowOptions(
+            train=True,
+            steps=("train",),
+            aligned_h5ad=aligned,
+            edge_predictor_path=predictor,
+            output_dir=output,
+        ),
+    )
+
+    assert result["completed"] == ["train"]
+    assert (output / "training").is_dir()
+    assert aligned.is_file()
+
+
+def test_workflow_preflight_rejects_non_h5ad_suffix(tmp_path):
+    config, source = load_workflow_config("mosta")
+    wrong_input = tmp_path / "pyproject.toml"
+    wrong_input.write_text("[project]\n", encoding="utf-8")
+    options = WorkflowOptions(
+        steps=("preprocess",),
+        input_h5ad=wrong_input,
+        output_dir=tmp_path / "run",
+    )
+
+    plan = build_workflow_plan(config, source=source, options=options)
+    preprocess = next(step for step in plan["steps"] if step["name"] == "preprocess")
+    assert preprocess["missing"] == [
+        f"raw H5AD must use the .h5ad suffix: {wrong_input}"
+    ]
+    with pytest.raises(ValueError, match=r"must use the \.h5ad suffix"):
+        run_workflow(config, options=options)
+
+
+def test_predictor_pairing_uses_size_and_sha_and_legacy_requires_threshold(tmp_path):
+    aligned = tmp_path / "aligned.h5ad"
+    aligned.write_bytes(b"AAAA")
+    predictor = tmp_path / "edge.pt"
+    predictor.touch()
+    metadata_path = Path(f"{predictor}.meta.json")
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "edge_predictor_threshold": 0.5,
+                "aligned_h5ad": {
+                    "size_bytes": 4,
+                    "sha256": hashlib.sha256(b"BBBB").hexdigest(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="SHA-256 differs"):
+        _edge_predictor_aligned_h5ad_check(
+            predictor,
+            aligned,
+            explicit_threshold_supplied=True,
+            warn_unverified=True,
+        )
+
+    metadata_path.write_text(
+        json.dumps({"edge_predictor_threshold": 0.5}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="requires --edge-predictor-threshold"):
+        _edge_predictor_aligned_h5ad_check(
+            predictor,
+            aligned,
+            explicit_threshold_supplied=False,
+            warn_unverified=True,
+        )
+    with pytest.warns(UserWarning, match="pairing is unverified"):
+        check = _edge_predictor_aligned_h5ad_check(
+            predictor,
+            aligned,
+            explicit_threshold_supplied=True,
+            warn_unverified=True,
+        )
+    assert check["status"] == "unverified historical predictor"
+
+
+def test_current_downstream_verifies_training_input_or_marks_historical_unverified(
+    tmp_path,
+):
+    aligned = tmp_path / "aligned.h5ad"
+    aligned.write_bytes(b"AAAA")
+    model = tmp_path / "model"
+    model.mkdir()
+    (model / "training_run_summary.json").write_text(
+        json.dumps(
+            {
+                "data": {
+                    "input_h5ad": {
+                        "size_bytes": 4,
+                        "sha256": hashlib.sha256(b"AAAA").hexdigest(),
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    verified = _training_input_h5ad_check(model, aligned)
+    assert verified["status"] == "verified"
+
+    aligned.write_bytes(b"BBBB")
+    with pytest.raises(ValueError, match="SHA-256 differs"):
+        _training_input_h5ad_check(model, aligned)
+
+    historical_model = tmp_path / "historical-model"
+    historical_model.mkdir()
+    with pytest.warns(UserWarning, match="historical model directories"):
+        historical = _training_input_h5ad_check(historical_model, aligned)
+    assert historical["status"] == "unverified historical model"
+
+
+def test_cli_runtime_failure_is_concise_and_has_no_traceback(monkeypatch, tmp_path, capsys):
+    import CytoBridge.workflow as workflow
+
+    raw = tmp_path / "raw.h5ad"
+    raw.touch()
+    monkeypatch.setattr(
+        workflow,
+        "run_workflow",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad pairing")),
+    )
+
+    assert (
+        main(
+            [
+                "workflow",
+                "--config",
+                "mosta",
+                "--step",
+                "preprocess",
+                "--input-h5ad",
+                str(raw),
+                "--output-dir",
+                str(tmp_path / "run"),
+            ]
+        )
+        == 2
+    )
+    stderr = capsys.readouterr().err
+    assert stderr.strip() == "CytoBridge workflow error: bad pairing"
+    assert "Traceback" not in stderr
 
 
 def test_dry_run_is_read_only_and_reports_scientific_parameters(capsys):
@@ -1001,6 +1637,66 @@ def test_dry_run_json_is_machine_readable(capsys):
     assert plan["scientific"]["classifier_k"] == 10
     assert plan["scientific"]["alpha_express"] == 0.015
     assert plan["scientific"]["alpha_spatial"] == 10.0
+
+
+def test_check_reports_a_missing_raw_h5ad_without_starting_work(tmp_path, capsys):
+    missing_raw = tmp_path / "missing.h5ad"
+
+    assert (
+        main(
+            [
+                "workflow",
+                "--config",
+                "mosta",
+                "--check",
+                "--step",
+                "preprocess",
+                "--input-h5ad",
+                str(missing_raw),
+                "--output-dir",
+                str(tmp_path / "run"),
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "preprocess: missing input" in output
+    assert f"raw H5AD not found: {missing_raw}" in output
+    assert "Check complete: no calculation was started." in output
+
+
+def test_full_raw_plan_shows_stage_dependencies_instead_of_false_ready(tmp_path):
+    config, source = load_workflow_config("mosta")
+    missing_raw = tmp_path / "missing.h5ad"
+    options = WorkflowOptions(
+        train=True,
+        input_h5ad=missing_raw,
+        output_dir=tmp_path / "run",
+    )
+
+    blocked = build_workflow_plan(config, source=source, options=options)
+    blocked_steps = {step["name"]: step for step in blocked["steps"]}
+    assert blocked_steps["preprocess"]["status"] == "missing input"
+    assert blocked_steps["train"]["status"] == "blocked by preprocess"
+    assert blocked_steps["downstream"]["status"] == (
+        "waiting for preprocess and training"
+    )
+    assert plan_missing_inputs(blocked) == [
+        f"preprocess: raw H5AD not found: {missing_raw}"
+    ]
+    rendered = render_workflow_plan(blocked)
+    assert "train: blocked by preprocess" in rendered
+    assert "downstream: waiting for preprocess and training" in rendered
+
+    missing_raw.touch()
+    runnable = build_workflow_plan(config, source=source, options=options)
+    runnable_steps = {step["name"]: step for step in runnable["steps"]}
+    assert runnable_steps["preprocess"]["status"] == "ready"
+    assert runnable_steps["train"]["status"] == "runs after preprocess"
+    assert runnable_steps["downstream"]["status"] == (
+        "runs after preprocess and training"
+    )
+    assert plan_missing_inputs(runnable) == []
 
 
 def test_export_config_writes_an_editable_preset(tmp_path, capsys):

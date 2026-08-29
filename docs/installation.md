@@ -10,13 +10,13 @@ with extras.
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
 git switch release/cytobridge-reproducible-20260812
-python -m pip install -e '.[all]'
+python -m pip install -e '.[spatial,velocity]'
 ```
 
 Once version 1.5 is published, the normal installation will be:
 
 ```bash
-python -m pip install 'CytoBridge[all]>=1.5,<1.6'
+python -m pip install 'CytoBridge[spatial,velocity]>=1.5,<1.6'
 ```
 
 ## Installation options
@@ -27,12 +27,17 @@ python -m pip install 'CytoBridge[all]>=1.5,<1.6'
 | `preprocess` | raw-count preprocessing and spatial alignment |
 | `train` | dynamical-model fitting |
 | `graph` | PyTorch Geometric interaction models |
-| `spatial` | preprocessing + training + graph workflow |
+| `spatial` | preprocessing, training, and interaction-graph stages |
 | `plot` | static and interactive figures |
-| `velocity` | velocity/terminal-state analyses |
-| `notebook` | executable JupyterLab dataset tutorials, including model/graph/plot dependencies |
+| `velocity` | velocity analysis plus the scVelo and Plotly dependencies used by the default spatial downstream workflow |
+| `notebook` | JupyterLab dataset tutorials; combine with `velocity` to run their downstream cells |
 | `docs` | local ReadTheDocs build tools |
 | `all` | the complete supported stack |
+
+The default `cytobridge workflow ... --train` command continues through
+downstream analysis, so install `spatial` and `velocity` together. The
+`spatial` extra alone is sufficient when explicitly running only preprocessing,
+training, and interaction-graph APIs.
 
 GPU-specific PyTorch wheels are an environment decision. Install the CPU or
 CUDA build appropriate for your machine before or together with a
