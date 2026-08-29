@@ -9,7 +9,6 @@ with extras.
 ```bash
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
-git switch release/cytobridge-reproducible-20260812
 python -m pip install -e '.[spatial,velocity]'
 ```
 
