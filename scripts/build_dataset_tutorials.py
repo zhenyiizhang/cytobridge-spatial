@@ -373,8 +373,8 @@ command is needed first.
 The next two cells show the same operation through the Python API. Leave
 `RUN_TRAINING = False` when reading the documentation; set it to `True` only
 after the paths above point to your data. The compact table shows the file
-handoff; the complete package plan is stored in `training_plan_text` if you
-want to print it in Jupyter.
+used by each step; the complete package plan is stored in `training_plan_text`
+if you want to print it in Jupyter.
 """
         ),
         code(

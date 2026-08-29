@@ -1,16 +1,25 @@
 # Reproduce the paper figures
 
-Use the [dataset notebooks](tutorials/dataset_workflows/index.md) for data
-preparation, training, and downstream analysis. Then open the [paper figure
-notebooks](tutorials/paper_figures/index.md) for the additional calculation and
-plotting code used by each figure.
+Choose the path that matches what you want to do.
 
-Every figure notebook begins with:
+## Redraw the published result
 
-- the command or Python function that performs each calculation;
-- the input files it reads;
-- the files it creates; and
-- the next calculation that uses those files.
+Open a [paper figure notebook](tutorials/paper_figures/index.md). Most notebooks
+recalculate the displayed values from numerical CSV or NPZ files included with
+CytoBridge, then write new PDF and PNG files. Notebooks described as
+"view/export" open or copy a completed page because the original page-layout
+files are kept with the paper results rather than in the installed package.
+
+## Continue from a new model run
+
+Use a [dataset notebook](tutorials/dataset_workflows/index.md) to prepare the
+data, train CytoBridge, and run its standard analyses. A figure notebook can
+continue from that run when it gives a command that reads the run's output
+directory. Where the conversion to the paper's exact panel files or the final
+page assembly is still missing, the figure index says so.
+
+Each notebook lists the command or source file, what it reads, what it writes,
+and which step comes next. Saved output shows what a completed run looks like.
 
 The same information is available in the command line:
 
@@ -20,13 +29,13 @@ cytobridge figure explain nonspatial
 cytobridge figure explain zebrafish-si
 ```
 
-Most figure notebooks recalculate panel values from CSV or NPZ files and draw
-new PDF and PNG files. A few main figures combine existing vector panels; those
-notebooks state this directly and require the corresponding result directory.
-
 {download}`Download the figure index <data/paper_reproduction_registry.csv>`
 
-The current AD S29–S30 pages and the assembled chicken-heart S7–S10 pages are
-listed, but their exact page-assembly inputs have not yet been identified. The
-documentation therefore links the available analyses without presenting a
-different script as the source of those pages.
+The index distinguishes figures that are ready to redraw, completed pages that
+can be viewed or exported, and analyses whose final page assembly is not yet
+available. For AD S29–S30, the exact numerical inputs and plotting program for
+the current pages have not yet been matched to the archived analyses. S4–S6,
+S31–S38, and S42 can be redrawn from the included numbers, but the conversion
+from a newly trained model to those exact notebook inputs is not yet available.
+S25, S39, S40, and S41 include a command that collects completed analysis
+tables before passing them to the figure command.

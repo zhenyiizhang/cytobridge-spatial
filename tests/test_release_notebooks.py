@@ -78,6 +78,7 @@ def test_dataset_notebook_is_executed_and_portable(
         "reviewer",
         "hash-verified",
         "sha256",
+        "handoff",
     }
     assert not {phrase for phrase in forbidden_public_phrases if phrase in public_text}
     for machine_path in ("/Users/", "/home/", "/tmp/", "/private/tmp/"):
@@ -154,6 +155,7 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
     assert all(preset in source for preset in NOTEBOOKS.values())
     assert "Learning goals" not in source
     assert "Notes and interpretation" not in source
+    assert "handoff" not in source.casefold()
     assert "run_workflow" in source
     assert "build_own_data_notebook" in source
     assert "build_synthetic_preprocessing_notebook" in source

@@ -18,9 +18,7 @@ PUBLIC_GUIDE_NAMES = (
     "benchmarks.md",
     "training_compute.md",
     "paper_reproduction.md",
-    "limitations.md",
     "contributing.md",
-    "release_notes.md",
 )
 
 PUBLIC_DOCS = (
@@ -166,7 +164,7 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
-    assert "reproduce this figure" in lowered
+    assert "## run the notebook" in lowered
     assert "### 1." in lowered
     assert "start with:" in lowered
     assert "writes:" in lowered
@@ -238,6 +236,18 @@ def test_public_docs_avoid_maintenance_jargon(path: Path) -> None:
         "provenance break",
         "manuscript result bundle",
         "package-native",
+        "handoff",
     )
     found = [marker for marker in markers if marker in text]
     assert not found, f"{path} contains maintenance jargon: {found}"
+
+
+def test_home_page_uses_reader_cards_and_hides_project_records() -> None:
+    index = (REPOSITORY_ROOT / "docs" / "index.md").read_text(encoding="utf-8")
+    config = (REPOSITORY_ROOT / "docs" / "conf.py").read_text(encoding="utf-8")
+
+    assert index.count("{grid-item-card}") == 6
+    assert "cytobridge-home-cards" in index
+    assert "limitations" not in index.casefold()
+    assert '"limitations.md"' in config
+    assert '"release_notes.md"' in config

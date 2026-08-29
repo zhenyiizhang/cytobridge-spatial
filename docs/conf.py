@@ -82,6 +82,7 @@ exclude_patterns = [
     ".DS_Store",
     # Retained project records that are not part of the public documentation.
     "historical_artifact_compatibility.md",
+    "limitations.md",
     "release_notes.md",
     "scientific_contract.md",
     "zebrafish_clean_counts_workflow.md",

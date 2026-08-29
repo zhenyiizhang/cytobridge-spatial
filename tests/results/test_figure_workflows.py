@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from CytoBridge.cli import main as cli_main
 from CytoBridge.results.figure_workflows import (
@@ -55,6 +56,17 @@ def test_figure_workflow_explanation_has_complete_route() -> None:
     assert route["upstream_entry"] == "scripts/run_zebrafish_paper_downstream.py"
     assert "--aligned-h5ad" in route["upstream_command"]
     assert route["figure_command"].startswith("cytobridge figure zebrafish-si")
+
+
+@pytest.mark.parametrize(
+    "name", ("lr-complex", "lr-prior-stvcr", "loto-benchmark")
+)
+def test_fresh_result_collectors_end_with_an_explicit_results_directory(
+    name: str,
+) -> None:
+    route = describe_figure_workflow(name)
+    assert "--results-dir" in route["figure_command"]
+    assert "--results-dir" in describe_figure_steps(name)[-1]["code_or_command"]
 
 
 def test_every_figure_workflow_has_ordered_calculation_steps() -> None:

@@ -109,14 +109,18 @@ Writes: `{row['writes']}`
 def _insert_route(notebook, workflow: str) -> None:
     route_markdown = _markdown(
         """
-## Reproduce this figure
+## Run the notebook
 
-The steps below document how the calculation inputs were produced. Each step
-shows what it reads, what it writes, and where to continue.
+The plotting cells use numerical files included with CytoBridge and write new
+PDF and PNG files. The steps below list the commands and source files that
+produced those inputs. Each step names what it reads, what it writes, and what
+comes next.
 
-The executed cells later in this notebook redraw the included paper result.
-They do not automatically use files from a new model run unless the notebook
-explicitly asks for a results directory.
+A command can be repeated when you have the inputs named under **Start with**.
+**Source files** points to calculation code kept with the paper results. The
+plotting cells use a new run only when the final plotting command explicitly
+accepts that run's result directory. The paper figure index marks notebooks
+where this conversion step is not yet available.
 
 Replace text inside angle brackets with your path or value. For example,
 `<output-dir>` means the directory where you want the files to be written.

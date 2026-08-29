@@ -215,14 +215,29 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "calculate both complex rules",
             "python scripts/run_lr_complex_aggregation_sensitivity.py --workflow-summary <downstream/summary.json> --output-dir <sensitivity>",
             "each dataset downstream LR trajectories and strict all-subunit coverage",
-            "<dataset>/paired_scores.csv and run record",
+            "<sensitivity>/comparison/paired_scores.csv and run record",
             "merge four datasets",
         ),
         _row(
             "S25",
+            "collect the four completed sensitivity tables",
+            (
+                "python scripts/collect_figure_inputs.py s25 \\\n"
+                "  --dataset-result zebrafish=<zebrafish-sensitivity> \\\n"
+                "  --dataset-result mosta=<mosta-sensitivity> \\\n"
+                "  --dataset-result arista=<arista-sensitivity> \\\n"
+                "  --dataset-result chicken_heart=<chicken-heart-sensitivity> \\\n"
+                "  --output-dir <s25-inputs>"
+            ),
+            "comparison/paired_scores.csv from each completed sensitivity run",
+            "<s25-inputs>/<dataset>/paired_scores.csv and manifest.json",
+            "draw S25",
+        ),
+        _row(
+            "S25",
             "summarize and draw",
-            "python scripts/execute_paper_notebooks.py --notebook lr_complex_aggregation --output-dir <notebook-run>",
-            "zebrafish/mosta/arista/chicken_heart paired_scores.csv",
+            "cytobridge figure lr-complex --results-dir <s25-inputs> --output-dir <figure-dir>",
+            "the collected S25 input directory",
             "per-time and dataset summary CSVs; Supplementary_Figure_S25.pdf/.png",
             "finished figure",
         ),
@@ -332,9 +347,40 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
         ),
         _row(
             "S39",
-            "draw from paired target rows",
-            "python scripts/execute_paper_notebooks.py --notebook lr_prior_ablation_stvcr --output-dir <notebook-run>",
-            "included no_lr_paired_target_deltas.csv and stvcr_paired_target_deltas.csv",
+            "collect the five completed LOTO target summaries",
+            (
+                "python scripts/collect_figure_inputs.py s40 \\\n"
+                "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
+                "  --protocol <s40-protocol.json> \\\n"
+                "  --output-dir <s40-inputs>"
+            ),
+            "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
+            "<s40-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            "combine the No-LR and stVCR rows",
+            "Use the protocol.json included with the S40 paper results unless the benchmark contract itself has changed.",
+        ),
+        _row(
+            "S39",
+            "combine the matched rows",
+            (
+                "python scripts/collect_figure_inputs.py s39 \\\n"
+                "  --no-lr-table <matched-ablation-report>/paired_target_deltas.csv \\\n"
+                "  --loto-results-dir <s40-inputs> \\\n"
+                "  --output-dir <s39-inputs>"
+            ),
+            "paired_target_deltas.csv from the matched Full/No-LR report and the collected S40 input directory",
+            "<s39-inputs>/no_lr_paired_target_deltas.csv; stvcr_paired_target_deltas.csv; manifest.json",
+            "draw S39",
+        ),
+        _row(
+            "S39",
+            "summarize and draw",
+            "cytobridge figure lr-prior-stvcr --results-dir <s39-inputs> --output-dir <figure-dir>",
+            "the collected S39 input directory",
             "lr_prior_stvcr_comparison.pdf/.png and panel summaries",
             "finished figure",
         ),
@@ -366,9 +412,27 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
         ),
         _row(
             "S40",
+            "collect the five completed target summaries",
+            (
+                "python scripts/collect_figure_inputs.py s40 \\\n"
+                "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
+                "  --protocol <s40-protocol.json> \\\n"
+                "  --output-dir <s40-inputs>"
+            ),
+            "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
+            "<s40-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            "draw S40",
+            "Use the protocol.json included with the S40 paper results unless the benchmark contract itself has changed. Replace the ARISTA or chicken-heart summary path with a retrained run to update that dataset without changing the other three.",
+        ),
+        _row(
+            "S40",
             "calculate paired ratios and draw",
-            "python scripts/execute_paper_notebooks.py --notebook loto_benchmark --output-dir <notebook-run>",
-            "included loto_target_stage_means.csv; native_output_support.csv; protocol.json",
+            "cytobridge figure loto-benchmark --results-dir <s40-inputs> --output-dir <figure-dir>",
+            "the collected S40 input directory",
             "five_dataset_loto_benchmark.pdf/.png and ratio/summary tables",
             "finished figure",
         ),
@@ -627,7 +691,7 @@ def describe_figure_reproduction_chain(name: str) -> list[dict[str, str]]:
 
 
 def describe_dataset_run_steps(dataset: str) -> list[dict[str, str]]:
-    """Return the main training route and its saved-file handoffs."""
+    """Return the main training steps and the files written by each step."""
 
     if dataset not in {"zebrafish", "mosta", "arista", "admouse", "chicken_heart"}:
         raise ValueError(f"Unknown dataset: {dataset}")

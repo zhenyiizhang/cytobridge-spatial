@@ -21,6 +21,31 @@
   width: 100%;
 }
 
+.cytobridge-home-cards {
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+}
+
+.cytobridge-home-cards .sd-card {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.35rem;
+  box-shadow: none;
+  height: 100%;
+}
+
+.cytobridge-home-cards .sd-card:hover {
+  border-color: var(--color-brand-primary);
+}
+
+.cytobridge-home-cards .sd-card-title {
+  font-size: 1rem;
+}
+
+.cytobridge-home-cards .sd-card-body p:last-child {
+  margin-bottom: 0;
+}
+
 .admonition.note {
   border-color: var(--cytobridge-teal);
 }

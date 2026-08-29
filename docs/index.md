@@ -10,38 +10,56 @@ cell-cell interaction analysis in one Python package.
 :class: cytobridge-home-figure
 ```
 
-## Installation
+::::{grid} 1 2 3 3
+:gutter: 2
+:class-container: cytobridge-home-cards
 
-Install CytoBridge and check the optional dependencies needed for your analysis.
+:::{grid-item-card} Installation
+:link: installation
+:link-type: doc
 
-[Installation guide](installation.md)
+Install CytoBridge and choose the optional dependencies needed for plotting or
+spatial analysis.
+:::
 
-## Get started
+:::{grid-item-card} Run CytoBridge on your data
+:link: tutorials/your_data
+:link-type: doc
 
-Run a small example, then move to the notebook for your own AnnData object.
+Start with a counts H5AD. The tutorial prepares the data, trains a model, and
+runs the standard analyses.
+:::
 
-[Quickstart](quickstart.md) · [Run CytoBridge on your data](tutorials/your_data.ipynb)
+:::{grid-item-card} Dataset notebooks
+:link: tutorials/dataset_workflows/index
+:link-type: doc
 
-## Tutorials
+Repeat the standard workflow for each of the five datasets used in the paper.
+:::
 
-The tutorials contain complete preprocessing, training, downstream, and
-paper-figure examples. Code cells are shown with their saved outputs.
+:::{grid-item-card} Paper figures
+:link: tutorials/paper_figures/index
+:link-type: doc
 
-[Browse tutorials](tutorials/index.md)
+Redraw figures from included numerical files, or view completed pages when the
+original layout files are kept separately.
+:::
 
-## API
+:::{grid-item-card} API reference
+:link: api/index
+:link-type: doc
 
-Function and command-line reference for preprocessing, training, downstream
-analysis, plotting, and paper figures.
+Look up the Python functions and command-line options.
+:::
 
-[API reference](api/index.rst)
+:::{grid-item-card} GitHub
+:link: https://github.com/zhenyiizhang/cytobridge-spatial/
+:link-type: url
 
-## Paper figures
+Browse the source code, report a problem, or contribute a change.
+:::
 
-Follow the calculations used for the main and supplementary figures, including
-the files passed from training to downstream analysis and plotting.
-
-[Paper figure notebooks](tutorials/paper_figures/index.md)
+::::
 
 ```{toctree}
 :maxdepth: 1
@@ -71,7 +89,6 @@ nonspatial_workflows
 benchmarks
 training_compute
 paper_reproduction
-limitations
 ```
 
 ```{toctree}
