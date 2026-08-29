@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "comparison": "Original Illustrator crop vs corrected crop outside the seven replaced point-cloud rectangles and updated legend area",
+  "outside_replacement_mean_abs_maxchannel": 0.0,
+  "outside_replacement_fraction_gt_1": 0.0,
+  "outside_replacement_max": 0,
+  "unaltered_style_elements": [
+    "artboard and crop geometry",
+    "panel title and label a",
+    "seven oblique plane frames",
+    "solid/dashed frame strokes",
+    "E-stage labels",
+    "tilted Generated labels",
+    "all relative panel placements"
+  ],
+  "intentional_changes": [
+    "seven point-cloud image objects replaced with accepted package-native states",
+    "legend roster expanded from the legacy subset to all 33 labels present; original one-column marker grammar retained",
+    "E15 point-cloud object expanded symmetrically in x at fixed height so its corrected wider aspect does not create a false contraction",
+    "E15 placement matrix updated inside its original Illustrator Form XObject so the original E15/E15.5 z-order is retained"
+  ],
+  "geometry_contract": {
+    "rotation": false,
+    "anisotropic_stretch": false,
+    "spatial_warp": false,
+    "cropped_cells": false,
+    "replacement_placement_matrices": "exact original Illustrator image bounding boxes except E15 isotropic x expansion within its dashed frame",
+    "z_order": "original Illustrator Form XObject content-stream order retained; no overlay insertion",
+    "within_image_axis": "equal aspect; isotropic fit"
+  },
+  "biological_message_gate": {
+    "status": "PASS",
+    "criterion": "E15 visible point-cloud height must be at least 98% of both E14 and E14.5 after isotropic placement",
+    "visible_content_height_points": {
+      "0.0": 89.52,
+      "0.5": 94.28139284314608,
+      "1.0": 94.79999880604534,
+      "1.5": 91.00190222089888,
+      "2.0": 92.15999940310881,
+      "2.5": 92.41149529617978,
+      "3.0": 96.23999693061728
+    },
+    "ratios": {
+      "E15_over_E14": 1.0154897100047342,
+      "E15_over_E14p5": 1.00272890510742
+    },
+    "numerical_source": "qc/E15_no_contraction_gate.csv proves corrected raw E15 q99/covariance area grows versus E14 and is comparable to E14.5"
+  },
+  "render_version": "n50000_fine_points_isotropic_E15_original_zorder_v3",
+  "point_size_pt2": 0.35
+}

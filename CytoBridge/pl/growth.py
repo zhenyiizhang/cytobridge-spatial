@@ -22,7 +22,290 @@ __all__ = [
     "gene_velocity_embeddings_from_adata",
     "plot_gene_expression_trends",
     "plot_cell_counts_over_time",
+    "plot_growth_interaction_bubble",
+    "plot_growth_timepoint_grid",
 ]
+
+
+def plot_growth_timepoint_grid(
+    adata_dict,
+    *,
+    time_points,
+    time_keys=None,
+    out_path: str,
+    value_key: str = "growth_rate",
+    spatial_key: str = "spatial",
+    source_by_time: dict | None = None,
+    n_cols: int = 3,
+    cmap: str = "viridis",
+    point_size: float = 2.0,
+    lower_quantile: float = 0.05,
+    upper_quantile: float = 0.95,
+    scale_mode: str = "panel_limits",
+    shared_colorbar: bool = False,
+    colorbar_label: str | None = None,
+    title: str | None = None,
+):
+    """Plot spatial growth maps on an observed/interpolated time grid.
+
+    ``scale_mode='panel_limits'`` preserves the historical behavior: raw values
+    are shown with independent robust limits in each panel.  ``'per_time_0_1'``
+    robust-scales every time point to 0--1 before plotting, while
+    ``'global_limits'`` uses one pair of robust raw-value limits across all
+    panels.  The latter two modes can use one genuinely shared colorbar.
+    """
+    from pathlib import Path
+    import math
+
+    import matplotlib.pyplot as plt
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
+
+    times = list(time_points)
+    keys = [str(value) for value in times] if time_keys is None else list(time_keys)
+    if len(times) != len(keys):
+        raise ValueError("time_points and time_keys must have the same length.")
+    if int(n_cols) <= 0:
+        raise ValueError("n_cols must be positive.")
+    scale_mode = str(scale_mode).strip().lower()
+    allowed_scale_modes = {"panel_limits", "per_time_0_1", "global_limits"}
+    if scale_mode not in allowed_scale_modes:
+        raise ValueError(
+            f"scale_mode must be one of {sorted(allowed_scale_modes)}, "
+            f"got {scale_mode!r}."
+        )
+    if not (0.0 <= float(lower_quantile) < float(upper_quantile) <= 1.0):
+        raise ValueError(
+            "lower_quantile and upper_quantile must satisfy "
+            "0 <= lower < upper <= 1."
+        )
+    if bool(shared_colorbar) and scale_mode == "panel_limits" and len(times) > 1:
+        raise ValueError(
+            "shared_colorbar=True is incompatible with per-panel raw limits; "
+            "use scale_mode='per_time_0_1' or 'global_limits'."
+        )
+
+    records = []
+    for time_value, key in zip(times, keys):
+        if key not in adata_dict:
+            raise KeyError(f"Missing timepoint key in adata_dict: {key!r}.")
+        adata_t = adata_dict[key]
+        if value_key not in adata_t.obs:
+            raise KeyError(f"adata_dict[{key!r}].obs is missing {value_key!r}.")
+        values = np.asarray(adata_t.obs[value_key], dtype=float).reshape(-1)
+        if values.size == 0 or not np.isfinite(values).all():
+            raise ValueError(
+                f"adata_dict[{key!r}].obs[{value_key!r}] must be non-empty and finite."
+            )
+        if spatial_key in adata_t.obsm:
+            coords = np.asarray(adata_t.obsm[spatial_key], dtype=float)
+        else:
+            matrix = (
+                adata_t.X.toarray()
+                if hasattr(adata_t.X, "toarray")
+                else np.asarray(adata_t.X)
+            )
+            coords = np.asarray(matrix, dtype=float)[:, :2]
+        if (
+            coords.ndim != 2
+            or coords.shape[0] != values.shape[0]
+            or coords.shape[1] < 2
+        ):
+            raise ValueError(
+                f"Spatial coordinates for {key!r} must have shape "
+                f"({values.shape[0]}, D) with D>=2, got {coords.shape}."
+            )
+        plot_coords = coords[:, :2]
+        if not np.isfinite(plot_coords).all():
+            raise ValueError(f"Spatial coordinates for {key!r} contain non-finite values.")
+        records.append((time_value, key, plot_coords, values))
+
+    global_limits = None
+    if scale_mode == "global_limits":
+        all_values = np.concatenate([record[3] for record in records])
+        global_limits = tuple(
+            float(value)
+            for value in np.quantile(
+                all_values, [float(lower_quantile), float(upper_quantile)]
+            )
+        )
+        if np.isclose(global_limits[0], global_limits[1]):
+            global_limits = (global_limits[0], global_limits[0] + 1e-8)
+
+    n_rows = int(math.ceil(len(times) / int(n_cols)))
+    with plt.rc_context(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "black",
+            "axes.labelcolor": "black",
+        }
+    ):
+        fig, axes = plt.subplots(
+            n_rows,
+            int(n_cols),
+            figsize=(4.2 * int(n_cols), 4.2 * n_rows),
+            squeeze=False,
+            dpi=300,
+        )
+        for ax in axes.flat:
+            ax.axis("off")
+        scatter = None
+        for ax, (time_value, key, coords, raw_values) in zip(axes.flat, records):
+            if scale_mode == "per_time_0_1":
+                low, high = np.quantile(
+                    raw_values, [float(lower_quantile), float(upper_quantile)]
+                )
+                values = np.clip(
+                    (raw_values - float(low)) / max(float(high - low), 1e-8),
+                    0.0,
+                    1.0,
+                )
+                vmin, vmax = 0.0, 1.0
+            elif scale_mode == "global_limits":
+                values = raw_values
+                assert global_limits is not None
+                vmin, vmax = global_limits
+            else:
+                values = raw_values
+                vmin, vmax = (
+                    float(value)
+                    for value in np.quantile(
+                        raw_values,
+                        [float(lower_quantile), float(upper_quantile)],
+                    )
+                )
+                if np.isclose(vmin, vmax):
+                    vmax = vmin + 1e-8
+            scatter = ax.scatter(
+                coords[:, 0],
+                coords[:, 1],
+                c=values,
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                s=float(point_size),
+                linewidths=0,
+                alpha=0.85,
+            )
+            source = source_by_time.get(time_value) if source_by_time else None
+            suffix = f" ({source})" if source else ""
+            ax.set_title(f"t={float(time_value):g}{suffix}", fontsize=10)
+            ax.set_aspect("equal")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.axis("on")
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            if not shared_colorbar:
+                colorbar = fig.colorbar(scatter, ax=ax, fraction=0.046, pad=0.02)
+                colorbar.ax.tick_params(labelsize=7)
+                if colorbar_label:
+                    colorbar.set_label(str(colorbar_label), fontsize=8)
+        if shared_colorbar and scatter is not None:
+            if scale_mode == "per_time_0_1":
+                shared_limits = (0.0, 1.0)
+            else:
+                assert global_limits is not None
+                shared_limits = global_limits
+            colorbar = fig.colorbar(
+                ScalarMappable(
+                    norm=Normalize(vmin=shared_limits[0], vmax=shared_limits[1]),
+                    cmap=cmap,
+                ),
+                ax=list(axes.flat[: len(records)]),
+                fraction=0.025,
+                pad=0.02,
+            )
+            colorbar.ax.tick_params(labelsize=7)
+            colorbar.set_label(
+                str(colorbar_label or value_key),
+                fontsize=8,
+            )
+        if title:
+            fig.suptitle(title, fontsize=13)
+        if shared_colorbar:
+            fig.subplots_adjust(
+                left=0.04,
+                right=0.9,
+                bottom=0.04,
+                top=0.94 if title else 0.98,
+                wspace=0.08,
+                hspace=0.16,
+            )
+        else:
+            fig.tight_layout()
+        path = Path(out_path).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+    return path
+
+
+def plot_growth_interaction_bubble(
+    grouped,
+    *,
+    out_path: str,
+    min_dot_size: float = 20.0,
+    max_dot_size: float = 400.0,
+    cmap: str = "plasma",
+):
+    """Plot one growth/interaction bubble per ``(time, celltype)`` group."""
+    from pathlib import Path
+
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    table = pd.DataFrame(grouped).copy()
+    required = {"time", "celltype", "growth_mean", "interaction_mean", "n"}
+    missing = sorted(required.difference(table.columns))
+    if missing:
+        raise KeyError(f"grouped table is missing columns: {missing}")
+    if table.empty:
+        raise ValueError("grouped table must be non-empty.")
+
+    time_values = sorted(table["time"].astype(float).unique())
+    time_to_index = {value: index for index, value in enumerate(time_values)}
+    colors = table["time"].astype(float).map(time_to_index)
+    sizes = np.clip(
+        table["n"].to_numpy(dtype=float),
+        float(min_dot_size),
+        float(max_dot_size),
+    )
+
+    with plt.rc_context(
+        {
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "text.color": "black",
+            "axes.labelcolor": "black",
+            "axes.edgecolor": "black",
+        }
+    ):
+        fig, ax = plt.subplots(figsize=(7.2, 4.8), dpi=300)
+        scatter = ax.scatter(
+            table["interaction_mean"],
+            table["growth_mean"],
+            s=sizes,
+            c=colors,
+            cmap=cmap,
+            alpha=0.82,
+            edgecolors="white",
+            linewidths=0.35,
+        )
+        ax.set_xlabel("Mean interaction magnitude")
+        ax.set_ylabel("Mean growth (g)")
+        ax.grid(False)
+        colorbar = fig.colorbar(scatter, ax=ax, pad=0.02)
+        colorbar.set_label("Time index")
+        fig.tight_layout()
+        path = Path(out_path).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(path, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+    return path
 
 
 def _coerce_feature_matrix_from_adata(
@@ -518,8 +801,18 @@ def gene_velocity_embeddings_from_adata(
     spatial_key: str = "spatial_aligned",
     concat_spatial: Optional[bool] = None,
     annotation_column: str = "Annotation",
+    bases: Optional[Sequence[str]] = None,
+    color_keys: Optional[Sequence[str]] = None,
+    celltype_on_data: bool = False,
+    output_format: str = "pdf",
+    reuse_velocity_if_present: bool = False,
+    n_neighbors: int = 30,
 ) -> list[str]:
-    """AnnData-first gene-velocity embedding plotter."""
+    """AnnData-first gene-velocity embedding plotter.
+
+    The velocity graph is always built in the full expression-associated
+    latent space. ``bases`` only controls the final 2-D projection(s).
+    """
     import os
 
     import anndata as ad
@@ -531,6 +824,23 @@ def gene_velocity_embeddings_from_adata(
     from CytoBridge.tl.downstream.downstream_data import infer_time_key, parse_time_value
 
     os.makedirs(out_dir, exist_ok=True)
+    selected_bases = tuple(bases or ("umap", "pca"))
+    unknown_bases = sorted(set(selected_bases) - {"umap", "pca"})
+    if unknown_bases:
+        raise ValueError(f"Unsupported gene-velocity bases: {unknown_bases}")
+    selected_color_keys = tuple(
+        color_keys or ("timepoint", "time", "cell_type")
+    )
+    unknown_color_keys = sorted(
+        set(selected_color_keys) - {"timepoint", "time", "cell_type"}
+    )
+    if unknown_color_keys:
+        raise ValueError(f"Unsupported gene-velocity color keys: {unknown_color_keys}")
+    output_format = str(output_format).strip().lower().lstrip(".")
+    if output_format not in {"pdf", "svg", "png"}:
+        raise ValueError("output_format must be one of {'pdf', 'svg', 'png'}.")
+    if int(n_neighbors) <= 0:
+        raise ValueError("n_neighbors must be > 0.")
 
     X, _ = _coerce_feature_matrix_from_adata(
         adata,
@@ -554,26 +864,35 @@ def gene_velocity_embeddings_from_adata(
         spatial_key=spatial_key,
         concat_spatial=concat_spatial,
         write_to_adata=True,
-        reuse_if_present=True,
+        reuse_if_present=bool(reuse_velocity_if_present),
     )
     vel_full_all = comp["full"]
 
     gene_data = np.nan_to_num(X[:, 2:], nan=0.0, posinf=0.0, neginf=0.0)
     gene_vel_full = np.nan_to_num(vel_full_all[:, 2:], nan=0.0, posinf=0.0, neginf=0.0)
 
-    umap_coords, _ = compute_umap_embedding(gene_data, n_neighbors=30, min_dist=0.3, seed=0)
-    if not np.isfinite(umap_coords).all():
-        umap_coords = np.nan_to_num(umap_coords, nan=0.0, posinf=0.0, neginf=0.0)
-
     plot_adata = ad.AnnData(X=gene_data)
     plot_adata.layers["spliced"] = gene_data
     plot_adata.layers["Ms"] = gene_data
     plot_adata.layers["velocity"] = gene_vel_full
-    plot_adata.obsm["X_umap"] = umap_coords
+    if "umap" in selected_bases:
+        umap_coords, _ = compute_umap_embedding(
+            gene_data, n_neighbors=int(n_neighbors), min_dist=0.3, seed=0
+        )
+        if not np.isfinite(umap_coords).all():
+            umap_coords = np.nan_to_num(
+                umap_coords, nan=0.0, posinf=0.0, neginf=0.0
+            )
+        plot_adata.obsm["X_umap"] = umap_coords
 
-    sc.tl.pca(plot_adata, n_comps=2, svd_solver="arpack")
-    if "X_pca" in plot_adata.obsm and not np.isfinite(plot_adata.obsm["X_pca"]).all():
-        plot_adata.obsm["X_pca"] = np.nan_to_num(plot_adata.obsm["X_pca"], nan=0.0, posinf=0.0, neginf=0.0)
+    if "pca" in selected_bases:
+        sc.tl.pca(plot_adata, n_comps=2, svd_solver="arpack")
+        if "X_pca" in plot_adata.obsm and not np.isfinite(
+            plot_adata.obsm["X_pca"]
+        ).all():
+            plot_adata.obsm["X_pca"] = np.nan_to_num(
+                plot_adata.obsm["X_pca"], nan=0.0, posinf=0.0, neginf=0.0
+            )
 
     resolved_time_key = infer_time_key(adata.obs, preferred=time_key)
     plot_adata.obs["timepoint"] = adata.obs[resolved_time_key].astype(str).values
@@ -589,14 +908,21 @@ def gene_velocity_embeddings_from_adata(
         palette = [label_to_color.get(c, "#888888") for c in cats]
         plot_adata.uns["cell_type_colors"] = palette
 
-    sc.pp.neighbors(plot_adata, n_neighbors=30, use_rep="X")
+    sc.pp.neighbors(plot_adata, n_neighbors=int(n_neighbors), use_rep="X")
     scv.tl.velocity_graph(plot_adata, vkey="velocity", xkey="Ms")
     scv.settings.set_figure_params("scvelo")
 
     plots: list[str] = []
-    color_items = [("timepoint", "timepoint", "timepoint"), ("time", "time", "time")]
-    if "cell_type" in plot_adata.obs:
-        color_items.append(("cell_type", "cell type", "celltype"))
+    color_item_map = {
+        "timepoint": ("timepoint", "timepoint", "timepoint"),
+        "time": ("time", "time", "time"),
+        "cell_type": ("cell_type", "cell type", "celltype"),
+    }
+    color_items = [
+        color_item_map[key]
+        for key in selected_color_keys
+        if key != "cell_type" or "cell_type" in plot_adata.obs
+    ]
 
     keep_set = {str(x) for x in keep_cell_types} if keep_cell_types else None
 
@@ -624,7 +950,9 @@ def gene_velocity_embeddings_from_adata(
         inner_adata.uns[f"{plot_key}_colors"] = palette
         return inner_adata, plot_key
 
-    for basis, basis_label in [("umap", "UMAP"), ("pca", "PCA")]:
+    basis_labels = {"umap": "UMAP", "pca": "PCA"}
+    for basis in selected_bases:
+        basis_label = basis_labels[basis]
         scv.tl.velocity_embedding(plot_adata, basis=basis, vkey="velocity")
         vel_key = f"velocity_{basis}"
         if vel_key in plot_adata.obsm:
@@ -636,7 +964,10 @@ def gene_velocity_embeddings_from_adata(
             if key == "cell_type":
                 cur_adata, color_key = _prepare_celltype_plot(plot_adata.copy())
 
-            fname = os.path.join(out_dir, f"velocity_gene_full_{basis}_{fname_label}.pdf")
+            fname = os.path.join(
+                out_dir,
+                f"velocity_gene_full_{basis}_{fname_label}.{output_format}",
+            )
             ax = scv.pl.velocity_embedding_stream(
                 cur_adata,
                 basis=basis,
@@ -660,6 +991,40 @@ def gene_velocity_embeddings_from_adata(
 
                 plt.close("all")
             plots.append(fname)
+
+            if key == "cell_type" and celltype_on_data:
+                ondata_fname = os.path.join(
+                    out_dir,
+                    f"velocity_gene_full_{basis}_{fname_label}_ondata.{output_format}",
+                )
+                ondata_ax = scv.pl.velocity_embedding_stream(
+                    cur_adata,
+                    basis=basis,
+                    color=color_key,
+                    density=2,
+                    figsize=(6, 6),
+                    title=(
+                        f"Gene velocity full ({basis_label}, {title_label}, "
+                        "on-data labels)"
+                    ),
+                    show=False,
+                    legend_loc="on data",
+                )
+                try:
+                    ondata_fig = (
+                        ondata_ax.figure if hasattr(ondata_ax, "figure") else None
+                    )
+                    if ondata_fig is not None:
+                        ondata_fig.savefig(ondata_fname, bbox_inches="tight")
+                    else:
+                        import matplotlib.pyplot as plt
+
+                        plt.savefig(ondata_fname, bbox_inches="tight")
+                finally:
+                    import matplotlib.pyplot as plt
+
+                    plt.close("all")
+                plots.append(ondata_fname)
 
     return plots
 

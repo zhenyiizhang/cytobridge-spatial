@@ -1,0 +1,14 @@
+dataset,run_role,edge_prior_mode,cells,features,total_stage_epochs,retained_stage_epochs,wall_time_seconds,wall_time_evidence,peak_cpu_rss_mib,peak_cuda_allocated_mib,downstream_status,acceptance_status
+Zebrafish,matched full,learned,11999,26628,5252,5252,1239.225866,training_run_summary.run_wall_time_seconds,2174.132812,577.808594,complete,PASS
+Zebrafish,matched no-LR-prior,all_spatial,11999,26628,5252,5252,1300.973010,training_run_summary.run_wall_time_seconds,2153.429688,4726.726074,complete,PASS
+Zebrafish,matched no-interaction,not_applicable,11999,26628,5252,5252,805.898230,training_run_summary.run_wall_time_seconds,2040.410156,207.948730,complete,PASS
+MOSTA,matched full,learned,344603,23761,5252,5252,1997.504037,training_run_summary.run_wall_time_seconds,17023.750000,1051.018066,complete,PASS
+MOSTA,matched no-LR-prior,all_spatial,344603,23761,5252,5252,2009.665109,training_run_summary.run_wall_time_seconds,17010.667969,1143.737305,complete,PASS
+MOSTA,matched no-interaction,not_applicable,344603,23761,5252,5252,1529.481580,training_run_summary.run_wall_time_seconds,16912.468750,458.738770,complete,PASS
+ARISTA,matched full,learned,46199,16379,5252,5252,1324.537501,training_run_summary.run_wall_time_seconds,9262.132812,870.358398,complete,PASS
+ARISTA,matched no-LR-prior,all_spatial,46209,16379,5252,5252,1289.640850,training_run_summary.run_wall_time_seconds,3295.882812,3040.396484,complete,PASS
+ARISTA,matched no-interaction,not_applicable,46209,16379,5252,5252,829.865793,training_run_summary.run_wall_time_seconds,3180.742188,321.406250,complete,PASS
+AD,matched full,learned,172092,347,7252,7252,696.454413,training_run_summary.run_wall_time_seconds,2446.660156,708.554199,complete,PASS
+AD,matched no-LR-prior,all_spatial,172092,347,7252,7252,771.601305,training_run_summary.run_wall_time_seconds,2429.703125,964.205078,complete,PASS
+AD,matched no-interaction,not_applicable,172092,347,7252,7252,503.420531,training_run_summary.run_wall_time_seconds,2318.640625,340.933105,complete,PASS
+Chicken heart,full learned single profile,learned,3550,52,5252,5252,761.157402,training_run_summary.run_wall_time_seconds,2833.042969,1922.019043,complete,single-profile contract

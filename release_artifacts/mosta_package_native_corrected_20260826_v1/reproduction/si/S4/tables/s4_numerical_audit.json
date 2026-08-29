@@ -1,0 +1,78 @@
+{
+  "checks": {
+    "finite_coordinates": true,
+    "native_state_coordinates_equal_saved_spatial": true,
+    "no_generated_adjacent_area_collapse_below_0p75": true,
+    "no_generated_adjacent_area_explosion_above_1p5": true,
+    "no_warp_rotation_or_stretch": true,
+    "palette_complete": true,
+    "t0_span_ratio_within_two_percent": true
+  },
+  "display_titles": [
+    "0.0 (observed)",
+    "0.0 (generated)",
+    "0.5",
+    "1.0 (generated)",
+    "1.5",
+    "2.0 (generated)",
+    "2.5",
+    "3.0 (generated)"
+  ],
+  "generated_geometry": {
+    "adjacent_area_ratios": [
+      1.118690957621822,
+      1.1268919011956167,
+      1.1252470051691668,
+      1.1150864942726844,
+      1.1067348789596692,
+      1.0956235927672022
+    ],
+    "adjacent_aspect_ratios": [
+      0.9988407735099467,
+      1.0033827656133978,
+      0.9994886984346686,
+      1.0041030082661107,
+      1.0030811752977016,
+      1.0016562738769834
+    ],
+    "maximum_adjacent_area_ratio": 1.1268919011956167,
+    "maximum_adjacent_aspect_ratio": 1.0041030082661107,
+    "minimum_adjacent_area_ratio": 1.0956235927672022,
+    "minimum_adjacent_aspect_ratio": 0.9988407735099467,
+    "robust_area_proxy_by_time": {
+      "0.0": 6.277755925712117,
+      "0.5": 7.022868788250955,
+      "1.0": 7.914013960639475,
+      "1.5": 8.905220508076546,
+      "2.0": 9.930091117076289,
+      "2.5": 10.989978190515913,
+      "3.0": 12.040879389526241
+    }
+  },
+  "origin_contract": {
+    "all_generated_source_anchor_time": 0.0,
+    "generated_global_t0_panels": 7,
+    "observed_panels": 1,
+    "spatial_warp": false
+  },
+  "palette": {
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/style_authority/label_to_color.json",
+    "sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71",
+    "unknown_labels": []
+  },
+  "panel": "Supplementary Figure S4",
+  "schema_version": 1,
+  "shared_complete": true,
+  "status": "PASS",
+  "t0_observed_vs_generated": {
+    "median_coordinate_delta": [
+      -0.0009383000433444977,
+      -0.0009386539459228516
+    ],
+    "robust_span_ratio_generated_over_observed": [
+      1.0004363068444966,
+      1.0000829915968792
+    ],
+    "sampling_interpretation": "generated t0 is the 50,000-particle global-t0 initial sample"
+  }
+}

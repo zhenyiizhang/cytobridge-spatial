@@ -1,0 +1,195 @@
+{
+  "created_utc": "2026-08-24T08:42:40.774890+00:00",
+  "diagnostic_only_spatial_isolation_audit": {
+    "affects_display": false,
+    "computation_policy": "all package-QC observed rows and all generated rows are retained in S12",
+    "flagged_rows": 0,
+    "flags_by_panel": {},
+    "label_blind": true,
+    "legacy_20_policy": "not applied; the package cohort was filtered upstream with the declared spatial-QC rule",
+    "n_display_flags": 0,
+    "n_generated_compute_rows": 81986,
+    "n_generated_display_flags": 0,
+    "n_malformed_or_wrong_source": 0,
+    "n_observed_compute_rows": 46199,
+    "n_observed_display_flags": 0,
+    "n_s12_compute_rows": 128185,
+    "rule": "within each of all 14 S12 panels, flag robust 1-NN z > threshold; z=(d-median(d))/(1.4826*MAD(d))",
+    "threshold": 50.0,
+    "threshold_sensitivity_counts": {
+      "100.0": 0,
+      "15.0": 12,
+      "20.0": 3,
+      "30.0": 2,
+      "50.0": 0
+    }
+  },
+  "display_contract": {
+    "alpha": 0.9,
+    "canvas_pt": [
+      505.44,
+      502.262564
+    ],
+    "layout": [
+      {
+        "source": "Observed",
+        "time": 0.0
+      },
+      {
+        "source": "Generated",
+        "time": 0.0
+      },
+      {
+        "source": "Generated",
+        "time": 0.5
+      },
+      {
+        "source": "Observed",
+        "time": 1.0
+      },
+      {
+        "source": "Generated",
+        "time": 1.0
+      },
+      {
+        "source": "Generated",
+        "time": 1.5
+      },
+      {
+        "source": "Observed",
+        "time": 2.0
+      },
+      {
+        "source": "Generated",
+        "time": 2.0
+      },
+      {
+        "source": "Generated",
+        "time": 2.5
+      },
+      {
+        "source": "Observed",
+        "time": 3.0
+      },
+      {
+        "source": "Generated",
+        "time": 3.0
+      },
+      {
+        "source": "Generated",
+        "time": 3.5
+      },
+      {
+        "source": "Observed",
+        "time": 4.0
+      },
+      {
+        "source": "Generated",
+        "time": 4.0
+      },
+      null,
+      null
+    ],
+    "palette_sha256": "983b941fc93efe155511994d1d4b16cba5e11982cd81fb298d9a4a78907fbdd7",
+    "point_area_pt2": 2.5
+  },
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/slice_data/time_0.h5ad": "6a17b0f717b05b0a46af5a14b906eb00d2d8e37d200a7feddcd16ee80669f61b",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/slice_data/time_1.h5ad": "d02c407acdf6519d14de479d8796e70293e4f33a983d407989e6d957b9a206b5",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/slice_data/time_2.h5ad": "71e847a62e709fe76a20677348d244443b6e9ac95eb5fecd9a5c697d8169c196",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/slice_data/time_3.h5ad": "04ff8121f3e9cd3699a073fc439dd411712789da2e1caf4f3fb4725899e4a7c4",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/slice_data/time_4.h5ad": "4799479ca6babfacb3fd0c24cb9dcb66f8336cbc2bd94361d3b2b8667a9b2fd4",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/preprocess/aligned_cell_identity.csv": "143f8ae350579122eb8d0502b8dc0eed901a61ea41502e97840a5df20916a352",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/manifest.json": "cde0df5a3cdbd591badbdd8fc5a79fd148f5c3dff01161856973a2019aca1e31",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_0.0__Generated.svg": "f239b13bad41ad1e42ec809d0f3b905325ff9a5fce035f6c20fd184dad93e52d",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_0.5.svg": "6ac3d2d200b8ce73610be8001a4716c19248f964a3457d6d492a65b7f60b6dfe",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_1.0__Generated.svg": "ea14c017e8e672215e935d9e5865f1ce137e75f1a21a54dbda675d7252a5ae49",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_1.5.svg": "fde775deebd27fae65d2bb99a77a7e966f46a7f2ee9032ae6dccc47594b174aa",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_2.0__Generated.svg": "7ba4fb3dd22aa52e1dd3707e80842b01f68c4b3c9d5507b4c762c9c6947319ef",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_2.5.svg": "ac5764447f8928667bdddd408ab07eee39ab90ffe672f88b96c2b20c17b1799b",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_3.0__Generated.svg": "9bd0475b8c1bc9f97d1d881e74b711307b0d38626b9e3b3bdf79860f61f3e455",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_3.5.svg": "d93edefe1c37f17cf3d6ddb1b542be0cd642a438dbebb446e98ec1d56bbf7a7b",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_legacy_palette_v2/snapshots/time_4.0__Generated.svg": "c69cc7d65f6dd2209611bf28f8638bb5a2c408f310816b7f0b68c54dcd5b7f63",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_paper_equivalent_corrected_20260822_3c87a3e/evidence/observed_display_exclusions_20.csv": "8f5c226e7ec8f0f56755e093923cd8b80b9ab187a6d2c2e0e94ca17f10263d9a",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/assets/arista/label_to_color.json": "983b941fc93efe155511994d1d4b16cba5e11982cd81fb298d9a4a78907fbdd7"
+  },
+  "outputs": {
+    "figures/jpeg/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.jpg": {
+      "sha256": "26c6bdc74380e89d0316fc30d5caf251fffc29e25baff1025c74a8daf2de0913",
+      "size_bytes": 1982994
+    },
+    "figures/pdf/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.pdf": {
+      "sha256": "4e2533327921b8343c4270e9b11de2bc55865f0c697fa23e2a10bfa4dcbabdfb",
+      "size_bytes": 2160254
+    },
+    "figures/png/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.png": {
+      "sha256": "9c379ecb55ec69773b59c59a23cae04b7278bfa4d404613637166bcfb288225e",
+      "size_bytes": 2339357
+    },
+    "figures/vector/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.svg": {
+      "sha256": "297714bcc7385e4186bef0525eff69e3632c044f3560dc8cadd3ecde0bec7e9e",
+      "size_bytes": 20453144
+    },
+    "scripts/build_s12_package_native_warpk1_oldstyle.py": {
+      "sha256": "f1ce56fe2446c643f85cb4c50319b23278d82261b4e0b0e1868559f60d76c124",
+      "size_bytes": 6452
+    },
+    "tables/generated_outlier_flags_nnmad_zgt50.csv": {
+      "sha256": "f68f0a23cfe245141ab71a8e295c678c865696b30438de40bd77f7b7ba66043a",
+      "size_bytes": 381
+    },
+    "tables/observed_outlier_audit_full_46209.csv": {
+      "sha256": "1aef0bd0dc9943467dc139888182d732b62160f78dd8e0f4b9a0eec39fadddf2",
+      "size_bytes": 12147881
+    },
+    "tables/observed_outlier_flags_nnmad_zgt50.csv": {
+      "sha256": "f68f0a23cfe245141ab71a8e295c678c865696b30438de40bd77f7b7ba66043a",
+      "size_bytes": 381
+    },
+    "tables/s12_generated_and_observed_isolation_diagnostic.csv": {
+      "sha256": "f68f0a23cfe245141ab71a8e295c678c865696b30438de40bd77f7b7ba66043a",
+      "size_bytes": 381
+    },
+    "tables/s12_panel_inventory_complete_display.csv": {
+      "sha256": "4fbc017e2a67c21cb898a365ec0acf46a2d528ca2024426926ae6a7aa580b893",
+      "size_bytes": 3528
+    },
+    "tables/s12_spatial_isolation_audit_all_14_panels.csv": {
+      "sha256": "c39fd1663b337142c6013cfe13fa7756798fcf2b462ebc6b3241872511ee055d",
+      "size_bytes": 29501637
+    },
+    "tables/s12_spatial_isolation_audit_summary.json": {
+      "sha256": "deed4389ae9631d6577beb0c5c230e079b96f042b505478ae56c74c37ca73606",
+      "size_bytes": 717
+    },
+    "tables/s12_spatial_isolation_flags_all_panels_nnmad_zgt50.csv": {
+      "sha256": "f68f0a23cfe245141ab71a8e295c678c865696b30438de40bd77f7b7ba66043a",
+      "size_bytes": 381
+    },
+    "tables/s12_spatial_isolation_threshold_sensitivity.csv": {
+      "sha256": "108d5c193499266cbc47177aa79057cb72ff3ffe1dd3e4e1b1de4007002f11af",
+      "size_bytes": 1798
+    },
+    "tables/s12_spatial_isolation_top10_each_panel.csv": {
+      "sha256": "e7eaeb0df10fb4e29746e10a018e93deffdfb06acb733f39fa730a8891fe5fdd",
+      "size_bytes": 32240
+    }
+  },
+  "primary_outputs": {
+    "jpg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S12_package_native_warpk1_oldstyle_v3_legacy_palette/figures/jpeg/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.jpg",
+    "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S12_package_native_warpk1_oldstyle_v3_legacy_palette/figures/pdf/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.pdf",
+    "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S12_package_native_warpk1_oldstyle_v3_legacy_palette/figures/png/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.png",
+    "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S12_package_native_warpk1_oldstyle_v3_legacy_palette/figures/vector/FigureS12_ARISTA_package_native_warpk1_oldstyle_FINAL.svg"
+  },
+  "scientific_contract": {
+    "communication_and_classification_use_prewarp_state": true,
+    "generated_integer_times_included": true,
+    "generated_midpoints_included": true,
+    "observed_cells_removed_upstream_only": true,
+    "secondary_display_filter": false,
+    "spatial_warp_k": 1,
+    "spatial_warp_visualization_only": true,
+    "total_display_rows": 128185
+  },
+  "workflow": "ARISTA package-native S12 with visualization-only k=1 spatial warp and submitted plotting grammar"
+}

@@ -1,0 +1,9 @@
+{
+  "dataset": "chicken_heart",
+  "selected_k": 1,
+  "candidate_k": [1, 5, 10, 20, 50],
+  "selection_metric": "held-out balanced accuracy",
+  "annotation_key": "celltype_prediction",
+  "n_observed": 3550,
+  "n_classes": 13
+}

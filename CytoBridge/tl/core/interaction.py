@@ -1,8 +1,9 @@
 import torch, math
 import torch.nn as nn
 
+
 class ExpNormalSmearing(nn.Module):
-    def __init__(self, cutoff=5.0, cutoff_sr = 0.0, num_rbf=50, trainable=False):
+    def __init__(self, cutoff=5.0, cutoff_sr=0.0, num_rbf=50, trainable=False):
         super(ExpNormalSmearing, self).__init__()
         self.cutoff = cutoff
         self.cutoff_sr = cutoff_sr
@@ -17,32 +18,49 @@ class ExpNormalSmearing(nn.Module):
         else:
             self.register_buffer("means", means)
             self.register_buffer("betas", betas)
+
     def _initial_params(self):
         if self.cutoff == 0:
             return torch.zeros(self.num_rbf), torch.tensor(0.0)
         start_value = torch.exp(torch.scalar_tensor(-self.cutoff))
         end_value = torch.exp(torch.scalar_tensor(-self.cutoff_sr))
         means = torch.linspace(start_value, end_value, self.num_rbf)
-        betas = torch.tensor([(2 / self.num_rbf * (end_value - start_value)) ** -2] * self.num_rbf)
+        betas = torch.tensor(
+            [(2 / self.num_rbf * (end_value - start_value)) ** -2] * self.num_rbf
+        )
         return means, betas
+
     def reset_parameters(self):
         means, betas = self._initial_params()
         self.means.data.copy_(means)
         self.betas.data.copy_(betas)
+
     def forward(self, dist):
         dist = dist.unsqueeze(-1)
-        return self.cutoff_fn(dist) * torch.exp(-self.betas * (torch.exp(self.alpha * (-dist)) - self.means) ** 2)
+        return self.cutoff_fn(dist) * torch.exp(
+            -self.betas * (torch.exp(self.alpha * (-dist)) - self.means) ** 2
+        )
+
 
 class CosineCutoff(nn.Module):
     def __init__(self, cutoff):
         super(CosineCutoff, self).__init__()
         self.cutoff = cutoff
+
     def forward(self, distances):
         cutoffs = 0.5 * (torch.cos(distances * math.pi / self.cutoff) + 1.0)
         cutoffs = cutoffs * (distances < self.cutoff).float()
         return cutoffs
 
-def cal_interaction_gnn(z, lnw, interaction_potential, t, group_size=1024):
+
+def cal_interaction_gnn(
+    z,
+    lnw,
+    interaction_potential,
+    t,
+    group_size=1024,
+    generator=None,
+):
     if t is None:
         raise ValueError("t must be provided for GNN interaction.")
     lnw = lnw.detach()
@@ -55,7 +73,7 @@ def cal_interaction_gnn(z, lnw, interaction_potential, t, group_size=1024):
     if batch_size < 2:
         raise ValueError("Total number of particles must be at least 2.")
 
-    perm = torch.randperm(batch_size, device=device)
+    perm = torch.randperm(batch_size, device=device, generator=generator)
     z_shuffled = z[perm]
     if batch_size % group_size == 0:
         num_full_groups = batch_size // group_size
@@ -69,36 +87,54 @@ def cal_interaction_gnn(z, lnw, interaction_potential, t, group_size=1024):
             remainder = batch_size % group_size + group_size
 
     if remainder == 1:
-        raise ValueError("Remainder group contains only 1 particle, isolated particles not allowed!")
+        raise ValueError(
+            "Remainder group contains only 1 particle, isolated particles not allowed!"
+        )
 
     net_force = torch.zeros_like(z)
     for i in range(num_full_groups):
-        groups_z = z_shuffled[i * group_size:(i + 1) * group_size]
-        groups_w = w[perm[i * group_size:(i + 1) * group_size]]
+        groups_z = z_shuffled[i * group_size : (i + 1) * group_size]
+        groups_w = w[perm[i * group_size : (i + 1) * group_size]]
         groups_lnw = torch.log(groups_w / groups_z.shape[0])
         force_groups = interaction_potential(groups_z, groups_lnw, t)
-        net_force[perm[i * group_size:(i + 1) * group_size]] = force_groups
+        net_force[perm[i * group_size : (i + 1) * group_size]] = force_groups
 
     if remainder > 0:
-        groups_z = z_shuffled[num_full_groups * group_size:]
-        groups_w = w[perm[num_full_groups * group_size:]]
+        groups_z = z_shuffled[num_full_groups * group_size :]
+        groups_w = w[perm[num_full_groups * group_size :]]
         groups_lnw = torch.log(groups_w / groups_z.shape[0])
         force_groups = interaction_potential(groups_z, groups_lnw, t)
-        net_force[perm[num_full_groups * group_size:]] = force_groups
+        net_force[perm[num_full_groups * group_size :]] = force_groups
 
     return net_force
 
 
-def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass = True, t=None):
+def cal_interaction(
+    z,
+    lnw,
+    interaction_potential,
+    m=16,
+    cutoff=1000,
+    use_mass=True,
+    t=None,
+    generator=None,
+):
     lnw = lnw.detach()
     if getattr(interaction_potential, "requires_time", False):
-        return cal_interaction_gnn(z, lnw, interaction_potential, t=t, group_size=m)
+        return cal_interaction_gnn(
+            z,
+            lnw,
+            interaction_potential,
+            t=t,
+            group_size=m,
+            generator=generator,
+        )
     w = torch.exp(lnw)
     n = w.shape[0]
     w = w * n
     batch_size, embed_dim = z.shape
     device = z.device
-    perm = torch.randperm(batch_size, device=device)
+    perm = torch.randperm(batch_size, device=device, generator=generator)
     z_shuffled = z[perm]
     if batch_size % m == 0:
         num_full_groups = batch_size // m
@@ -108,7 +144,7 @@ def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass =
         remainder = batch_size % m + m
     net_force = torch.zeros_like(z)
     if num_full_groups > 0:
-        groups_z = z_shuffled[:num_full_groups * m].view(num_full_groups, m, embed_dim)
+        groups_z = z_shuffled[: num_full_groups * m].view(num_full_groups, m, embed_dim)
         idx = torch.triu_indices(m, m, offset=1, device=device)
         num_pairs = idx.shape[1]
         diffs = groups_z[:, idx[0], :] - groups_z[:, idx[1], :]
@@ -125,7 +161,7 @@ def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass =
         f_pairs_flat = -grad_potentials
         f_pairs = f_pairs_flat.view(num_full_groups, num_pairs, embed_dim)
         f_pairs = f_pairs * mask
-        mass_groups = w[perm[:num_full_groups * m]].view(num_full_groups, m, 1)
+        mass_groups = w[perm[: num_full_groups * m]].view(num_full_groups, m, 1)
         force_groups = torch.zeros(num_full_groups, m, embed_dim, device=device)
         i_idx = idx[0].unsqueeze(0).expand(num_full_groups, -1)
         j_idx = idx[1].unsqueeze(0).expand(num_full_groups, -1)
@@ -134,17 +170,23 @@ def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass =
             contrib_i = f_pairs * mass_j
         else:
             contrib_i = f_pairs
-        force_groups.scatter_add_(1, i_idx.unsqueeze(-1).expand(-1, -1, embed_dim), contrib_i)
+        force_groups.scatter_add_(
+            1, i_idx.unsqueeze(-1).expand(-1, -1, embed_dim), contrib_i
+        )
         mass_i = mass_groups.gather(1, i_idx.unsqueeze(-1))
         if use_mass:
             contrib_j = -f_pairs * mass_i
         else:
             contrib_j = -f_pairs
-        force_groups.scatter_add_(1, j_idx.unsqueeze(-1).expand(-1, -1, embed_dim), contrib_j)
+        force_groups.scatter_add_(
+            1, j_idx.unsqueeze(-1).expand(-1, -1, embed_dim), contrib_j
+        )
         force_groups = force_groups / (m - 1)
-        net_force[perm[:num_full_groups * m]] = force_groups.reshape(num_full_groups * m, embed_dim)
+        net_force[perm[: num_full_groups * m]] = force_groups.reshape(
+            num_full_groups * m, embed_dim
+        )
     if remainder > 0:
-        group_z = z_shuffled[num_full_groups * m:]
+        group_z = z_shuffled[num_full_groups * m :]
         idx_rem = torch.triu_indices(remainder, remainder, offset=1, device=device)
         diffs = group_z[idx_rem[0]] - group_z[idx_rem[1]]
         mask_rem = (diffs.norm(dim=-1) <= cutoff).float().unsqueeze(-1)
@@ -158,7 +200,7 @@ def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass =
         )[0]
         f_pairs = -grad_potentials
         f_pairs = f_pairs * mask_rem
-        mass_group = w[perm[num_full_groups * m:]].view(remainder, 1)
+        mass_group = w[perm[num_full_groups * m :]].view(remainder, 1)
         force_group = torch.zeros(remainder, embed_dim, device=device)
         i_idx_rem = idx_rem[0]
         j_idx_rem = idx_rem[1]
@@ -167,16 +209,21 @@ def cal_interaction(z, lnw, interaction_potential, m=16, cutoff=1000, use_mass =
             contrib_i = f_pairs * mass_j
         else:
             contrib_i = f_pairs
-        force_group.scatter_add_(0, i_idx_rem.unsqueeze(-1).expand(-1, embed_dim), contrib_i)
+        force_group.scatter_add_(
+            0, i_idx_rem.unsqueeze(-1).expand(-1, embed_dim), contrib_i
+        )
         mass_i = mass_group[i_idx_rem]
         if use_mass:
             contrib_j = -f_pairs * mass_i
         else:
             contrib_j = -f_pairs
-        force_group.scatter_add_(0, j_idx_rem.unsqueeze(-1).expand(-1, embed_dim), contrib_j)
+        force_group.scatter_add_(
+            0, j_idx_rem.unsqueeze(-1).expand(-1, embed_dim), contrib_j
+        )
         force_group = force_group / (remainder - 1)
-        net_force[perm[num_full_groups * m:]] = force_group
+        net_force[perm[num_full_groups * m :]] = force_group
     return net_force
+
 
 def euler_sdeint(sde, initial_state, dt, ts):
     device = initial_state[0].device
@@ -198,7 +245,7 @@ def euler_sdeint(sde, initial_state, dt, ts):
         noise_z = torch.randn_like(current_state[0]) * math.sqrt(dt)
         g_z = sde.g(t_tensor, current_state[0])
         new_z = current_state[0] + f_z * dt + g_z * noise_z
-        new_lnw = current_state[1] + f_lnw * dt 
+        new_lnw = current_state[1] + f_lnw * dt
         current_state = (new_z, new_lnw)
         current_time += dt
     while len(output_states) < len(ts_list):

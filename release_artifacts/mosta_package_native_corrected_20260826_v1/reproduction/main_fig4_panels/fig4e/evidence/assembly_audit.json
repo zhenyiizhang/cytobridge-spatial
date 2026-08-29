@@ -1,0 +1,424 @@
+{
+  "calculation_source": {
+    "accepted_latest_model": true,
+    "annotation_semantics_audit": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/annotation_semantics_audit_v1_m1024/annotation_semantics_audit.json",
+    "annotation_semantics_audit_sha256": "ad4fad73c72c311f5efa4fab4bbdebbf56f0975830c5fbe497e5fb39288e7cd5",
+    "exact_old_code_sources_audit": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_notebook_sources_v4_m1024_AI_stroke_parity/render_audit.json",
+    "exact_old_code_sources_audit_sha256": "289e3b180dd58d6ab606644eae806778b63f85ac46356791e389bf2856ed38de",
+    "interaction_m": 1024
+  },
+  "dataset": "MOSTA",
+  "forbidden_transform_gate": {
+    "anisotropic_stretch": false,
+    "rotation": false,
+    "warp": false
+  },
+  "outputs": {
+    "Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout.pdf": {
+      "sha256": "de1ae3596088fb560f2bf0f817c4cca2b3984dcd7d191793c198d097d78083a5",
+      "size_bytes": 8527097
+    },
+    "Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout.svg": {
+      "sha256": "7ec1599860027c5a963389d88ccb0140da4e4324cf3d329fb4fa70311e63b8b5",
+      "size_bytes": 15158441
+    },
+    "Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout_600dpi.png": {
+      "sha256": "1b961fb7cb99c069f9122243b191c675dfa5cb29940282ee52f4376624397d6a",
+      "size_bytes": 1606297
+    },
+    "Fig4e_MOSTA_latest52D_m1024_exact_old_code_full_AI_page.pdf": {
+      "sha256": "3692e6bf7e61b3f3fd342e054a33c67742eeb34730f78f7b3550bf188d192f7f",
+      "size_bytes": 8533911
+    }
+  },
+  "panel": "Fig4e",
+  "placements": {
+    "gene_full": {
+      "anisotropic_stretch": false,
+      "placed_original_AI_points": [
+        293.2336730957031,
+        521.8057403564453,
+        424.50286865234375,
+        614.9645233154297
+      ],
+      "rotation": false,
+      "source_mode": "AI_stroke_parity",
+      "source_page_points": [
+        131.26919555664062,
+        93.15878295898438
+      ],
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_notebook_sources_v4_m1024_AI_stroke_parity/AI_ready_stroke_parity_sources/Fig4e_gene_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf",
+      "source_sha256": "bcd88135d4d568e809e028222283245c60d6b3981c711f03c1d3b1f934a43d45",
+      "target_original_AI_points": [
+        293.2336730957031,
+        518.6785888671875,
+        424.50286865234375,
+        618.0916748046875
+      ],
+      "uniform_scale": 1.0,
+      "warp": false
+    },
+    "gene_interaction": {
+      "anisotropic_stretch": false,
+      "placed_original_AI_points": [
+        450.05767822265625,
+        517.1181983947754,
+        586.3214111328125,
+        613.8214988708496
+      ],
+      "rotation": false,
+      "source_mode": "AI_stroke_parity",
+      "source_page_points": [
+        136.26373291015625,
+        96.70330047607422
+      ],
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_notebook_sources_v4_m1024_AI_stroke_parity/AI_ready_stroke_parity_sources/Fig4e_gene_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf",
+      "source_sha256": "ad0b2725a2f17cb7e0ac8774d5735ad61a104fd8df045306bd611cf640000f99",
+      "target_original_AI_points": [
+        450.05767822265625,
+        513.8720703125,
+        586.3214111328125,
+        617.067626953125
+      ],
+      "uniform_scale": 1.0,
+      "warp": false
+    },
+    "physical_full": {
+      "anisotropic_stretch": false,
+      "placed_original_AI_points": [
+        289.7364807128906,
+        655.7266578674316,
+        429.0517272949219,
+        754.5955467224121
+      ],
+      "rotation": false,
+      "source_mode": "AI_stroke_parity",
+      "source_page_points": [
+        139.31524658203125,
+        98.86888885498047
+      ],
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_notebook_sources_v4_m1024_AI_stroke_parity/AI_ready_stroke_parity_sources/Fig4e_physical_full_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf",
+      "source_sha256": "1fca8168d752b22c47da9b95e69fb4234260bd63d0f97cb913f32f558cfc7401",
+      "target_original_AI_points": [
+        289.7364807128906,
+        652.4078369140625,
+        429.0517272949219,
+        757.9143676757812
+      ],
+      "uniform_scale": 1.0,
+      "warp": false
+    },
+    "physical_interaction": {
+      "anisotropic_stretch": false,
+      "placed_original_AI_points": [
+        451.6594543457031,
+        655.8231964111328,
+        583.97119140625,
+        749.7218475341797
+      ],
+      "rotation": false,
+      "source_mode": "AI_stroke_parity",
+      "source_page_points": [
+        132.31173706054688,
+        93.89865112304688
+      ],
+      "source_pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_notebook_sources_v4_m1024_AI_stroke_parity/AI_ready_stroke_parity_sources/Fig4e_physical_interaction_latest52D_m1024_exact_old_notebook__AI_ready_stroke_parity.pdf",
+      "source_sha256": "a2d40b518898d27f793ac59307500c03d23ff62a41c9e50ce8141d406f01ff26",
+      "target_original_AI_points": [
+        451.6594543457031,
+        652.6712036132812,
+        583.97119140625,
+        752.8738403320312
+      ],
+      "uniform_scale": 1.0,
+      "warp": false
+    }
+  },
+  "schema_version": 1,
+  "status": "PASS",
+  "style_source": {
+    "AI_stroke_parity_behavior": "scatter markers receive exact uniform raster geometry scale; vector stream linewidth retains notebook point width; stream arrow glyph geometry receives the same uniform scale",
+    "labels": [
+      {
+        "alignment": "center",
+        "font": "Arial Bold",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          406.1606,
+          497.5239,
+          473.5286,
+          514.1559
+        ],
+        "text": "Gene space"
+      },
+      {
+        "alignment": "center",
+        "font": "Arial",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          340.9166,
+          618.0519,
+          360.2486,
+          634.0239
+        ],
+        "text": "Full"
+      },
+      {
+        "alignment": "center",
+        "font": "Arial",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          495.7286,
+          618.0519,
+          551.7566,
+          634.0239
+        ],
+        "text": "Interaction"
+      },
+      {
+        "alignment": "center",
+        "font": "Arial Bold",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          396.2487,
+          634.0719,
+          482.3006,
+          650.7039
+        ],
+        "text": "Physical space"
+      },
+      {
+        "alignment": "center",
+        "font": "Arial",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          340.8087,
+          756.6039,
+          360.1407,
+          772.5759
+        ],
+        "text": "Full"
+      },
+      {
+        "alignment": "center",
+        "font": "Arial",
+        "fontsize_points": 12.0,
+        "original_AI_bbox": [
+          484.1487,
+          756.6039,
+          540.1766,
+          772.5759
+        ],
+        "text": "Interaction"
+      }
+    ],
+    "narrative_annotations": {
+      "arrow_policy": "retain exact original glyph when direction-supported; otherwise rigidly reorient the annotation glyph to the corrected local field",
+      "arrows": [
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "gf_1",
+          "original_AI_color": [
+            0.58,
+            0.808,
+            0.898
+          ],
+          "panel": "gene_full",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "gf_2",
+          "original_AI_color": [
+            0.58,
+            0.808,
+            0.898
+          ],
+          "panel": "gene_full",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "gf_3",
+          "original_AI_color": [
+            0.58,
+            0.808,
+            0.898
+          ],
+          "panel": "gene_full",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "rigid_reorientation_at_original_center",
+          "id": "gi_1",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "gene_interaction",
+          "rigid_annotation_rotation_degrees": -221.65088772505226,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "rigid_reorientation_at_original_center",
+          "id": "gi_2",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "gene_interaction",
+          "rigid_annotation_rotation_degrees": -231.28255957784825,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "rigid_reorientation_at_original_center",
+          "id": "gi_3",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "gene_interaction",
+          "rigid_annotation_rotation_degrees": -247.45163700017446,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "pf_1",
+          "original_AI_color": [
+            0.58,
+            0.808,
+            0.898
+          ],
+          "panel": "physical_full",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "pf_2",
+          "original_AI_color": [
+            0.58,
+            0.808,
+            0.898
+          ],
+          "panel": "physical_full",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "pi_1",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "physical_interaction",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "rigid_reorientation_and_minimal_local_translation",
+          "id": "pi_2",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "physical_interaction",
+          "rigid_annotation_rotation_degrees": 181.91738436183152,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "retain_exact_original_AI_geometry",
+          "id": "pi_3",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "physical_interaction",
+          "rigid_annotation_rotation_degrees": 0.0,
+          "stroke_width_points": 5.0
+        },
+        {
+          "data_field_rotated": false,
+          "data_field_stretched": false,
+          "data_field_warped": false,
+          "decision": "rigid_reorientation_at_original_center",
+          "id": "pi_4",
+          "original_AI_color": [
+            0.914,
+            0.635,
+            0.639
+          ],
+          "panel": "physical_interaction",
+          "rigid_annotation_rotation_degrees": 153.9250587345481,
+          "stroke_width_points": 5.0
+        }
+      ],
+      "callout_boxes_text_and_tissue_labels": "exact original Illustrator geometry, Arial family, size, wording, and colors",
+      "status": "restored after biological interpretation PASS"
+    },
+    "numerical_field_knockout_original_AI_points": [
+      286.5,
+      497.4,
+      589.5,
+      773.3
+    ],
+    "numerical_panel_source_mode": "AI_stroke_parity",
+    "original_AI": "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai",
+    "original_AI_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+    "reconstituted_from_original_AI_geometry": [
+      "Gene space heading",
+      "Full/Interaction top column labels",
+      "Physical space heading",
+      "Full/Interaction bottom column labels"
+    ],
+    "retained": [
+      "page geometry",
+      "panel hierarchy",
+      "seven-class two-column legend",
+      "outer border"
+    ]
+  }
+}

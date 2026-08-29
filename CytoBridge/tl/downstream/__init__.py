@@ -1,9 +1,25 @@
 """Downstream analysis utilities."""
 
 from .attention import analyze_attention_by_celltype, save_interpolated_attention
-from .ablation import AblationGifResult, AblationPanelSeriesResult, crop_ablation_panel, export_ablation_gifs, export_ablation_panel_series
-from .checkpoint import LoadedModel, load_dynamical_model_from_dir, load_legacy_dynamical_model_from_dir
+from .ablation import (
+    AblationGifResult,
+    AblationPanelSeriesResult,
+    VirtualAblationResult,
+    VirtualInteractionAblationResult,
+    compute_virtual_ablation_metrics,
+    crop_ablation_panel,
+    export_ablation_gifs,
+    export_ablation_panel_series,
+    run_virtual_cell_type_ablation,
+    run_virtual_interaction_ablation,
+)
+from .checkpoint import (
+    LoadedModel,
+    load_dynamical_model_from_dir,
+    load_legacy_dynamical_model_from_dir,
+)
 from .classification import (
+    analyze_spatial_label_sensitivity,
     build_cached_classifier_inputs_from_adata,
     LoadedClassifierCache,
     MLP,
@@ -11,8 +27,24 @@ from .classification import (
     predict_cached_mlp_classifier_from_adata,
     predict_labels_for_points,
     predict_labels_for_trajectories,
+    select_spatial_smoothing_k,
+    smooth_spatial_labels,
+    SpatialSmoothingSelection,
+    train_cached_mlp_classifier_from_adata,
     train_mlp_classifier,
     train_mlp_classifier_from_adata,
+)
+from .celltype import (
+    GrowthInteractionSummary,
+    evaluate_growth_by_timepoint,
+    summarize_label_composition,
+    summarize_growth_interaction_by_celltype,
+)
+from .benchmark import (
+    FrozenBenchmarkTransform,
+    benchmark_projection_seed,
+    evaluate_spatiotemporal_prediction,
+    fit_frozen_benchmark_transform,
 )
 from .downstream_data import (
     adata_to_aligned_dataframe,
@@ -21,6 +53,24 @@ from .downstream_data import (
     infer_time_key,
     merge_annotation,
     parse_time_value,
+)
+from .evaluation import (
+    compute_generated_vs_observed_plot_limits,
+    DistributionEvaluationResult,
+    DistributionMetricComparison,
+    compare_distribution_metric_tables,
+    compute_distribution_metrics,
+    compute_local_structure_metrics,
+    evaluate_model_distributions,
+    plot_generated_vs_observed,
+    save_distribution_evaluation,
+    save_distribution_metric_comparison,
+)
+from .enrichment import (
+    GeneSetLibrary,
+    load_gmt_gene_sets,
+    make_gene_set_library,
+    overrepresentation_analysis,
 )
 from .pipeline_utils import (
     downsample_xy,
@@ -34,7 +84,21 @@ from .pipeline_utils import (
     set_global_random_seed,
 )
 from .gene_program import GeneProgramPanelResult, collect_top_variable_heatmaps
-from .lr_panels import LRMultipanelSpec, LRPanelResult, copy_if_needed, render_lr_expression_panels, render_lr_incoming_multipanel, render_top_receivers_barplot
+from .lr_panels import (
+    LRMultipanelSpec,
+    LRPanelResult,
+    copy_if_needed,
+    render_lr_expression_panels,
+    render_lr_incoming_multipanel,
+    render_top_receivers_barplot,
+)
+from .lr_projection import (
+    FocalLRTypeHotspotResult,
+    LRTemporalProjectionResult,
+    compute_focal_lr_type_hotspots,
+    load_ligand_receptor_database,
+    project_communication_to_lr_timecourses,
+)
 from .simulation import (
     apply_spatial_warp_to_segments,
     compute_drift,
@@ -49,6 +113,35 @@ from .simulation import (
     simulate_piecewise_spatially_warped_split,
 )
 from .runtime import DynamicalRuntime, build_dynamical_runtime
+from .spatial_interaction_attribution import (
+    SpatialExactDecomposition,
+    SpatialGroupedAttribution,
+    analyze_spatial_gnn_by_celltype,
+    decompose_spatial_gnn_group,
+    make_interaction_groups,
+    validate_spatial_exact_decomposition_model,
+)
+from .temporal import (
+    DevelopmentalWaveResult,
+    PCAAnchorReconstructionQCResult,
+    PCAReconstructionSpec,
+    TemporalGenePatternResult,
+    TemporalProfileClusteringResult,
+    analyze_developmental_wave,
+    cluster_temporal_profiles,
+    evaluate_pca_anchor_reconstruction,
+    infer_pca_center,
+    inverse_pca_states,
+    load_pca_reconstruction_spec,
+    make_pca_reconstruction_spec,
+    pca_reconstruction_feature_coverage,
+    simplify_gene_names,
+    summarize_temporal_gene_patterns,
+)
+from .velocity_projection import (
+    VelocityEmbeddingProjectionResult,
+    project_velocity_to_embedding,
+)
 from .visualization import load_label_to_color, save_timepoint_snapshots
 from .workflows import (
     InterpolationResult,
@@ -62,16 +155,44 @@ __all__ = [
     "DynamicalRuntime",
     "InterpolationResult",
     "LoadedClassifierCache",
+    "SpatialSmoothingSelection",
     "LoadedModel",
     "AblationPanelSeriesResult",
     "AblationGifResult",
+    "VirtualAblationResult",
+    "SpatialExactDecomposition",
+    "SpatialGroupedAttribution",
+    "VirtualInteractionAblationResult",
+    "compute_virtual_ablation_metrics",
     "crop_ablation_panel",
     "export_ablation_gifs",
     "export_ablation_panel_series",
+    "run_virtual_cell_type_ablation",
+    "run_virtual_interaction_ablation",
     "GeneProgramPanelResult",
+    "GeneSetLibrary",
+    "GrowthInteractionSummary",
+    "FrozenBenchmarkTransform",
+    "benchmark_projection_seed",
+    "evaluate_spatiotemporal_prediction",
+    "fit_frozen_benchmark_transform",
+    "evaluate_growth_by_timepoint",
     "collect_top_variable_heatmaps",
     "LRMultipanelSpec",
     "LRPanelResult",
+    "FocalLRTypeHotspotResult",
+    "LRTemporalProjectionResult",
+    "analyze_exact_groupings",
+    "compute_type_lr_scores",
+    "load_edge_prior_manifest",
+    "scaled_lr_activities_from_manifest",
+    "summarize_drift_across_seeds",
+    "DevelopmentalWaveResult",
+    "PCAAnchorReconstructionQCResult",
+    "PCAReconstructionSpec",
+    "TemporalGenePatternResult",
+    "TemporalProfileClusteringResult",
+    "VelocityEmbeddingProjectionResult",
     "render_lr_expression_panels",
     "render_lr_incoming_multipanel",
     "render_top_receivers_barplot",
@@ -79,6 +200,8 @@ __all__ = [
     "MLP",
     "adata_to_aligned_dataframe",
     "analyze_attention_by_celltype",
+    "analyze_spatial_label_sensitivity",
+    "analyze_spatial_gnn_by_celltype",
     "apply_spatial_warp_to_segments",
     "build_dynamical_runtime",
     "build_cached_classifier_inputs_from_adata",
@@ -89,24 +212,32 @@ __all__ = [
     "compute_umap_embedding",
     "compute_velocity_components",
     "compute_velocity_components_from_adata",
+    "decompose_spatial_gnn_group",
+    "project_velocity_to_embedding",
     "downsample_xy",
     "find_single_classifier_cache",
     "infer_feature_columns",
     "infer_time_key",
+    "load_gmt_gene_sets",
     "load_cached_mlp_classifier",
     "load_dynamical_model_from_dir",
     "load_legacy_dynamical_model_from_dir",
     "load_label_to_color",
+    "load_ligand_receptor_database",
     "merge_annotation",
     "parse_boolish",
     "parse_csv_floats",
     "parse_csv_floats_or_all",
     "parse_time_value",
+    "overrepresentation_analysis",
     "predict_cached_mlp_classifier_from_adata",
     "predict_labels_for_points",
     "predict_labels_for_trajectories",
+    "select_spatial_smoothing_k",
     "plot_lineage_sankey",
     "plot_spatiotemporal_3d",
+    "compute_focal_lr_type_hotspots",
+    "project_communication_to_lr_timecourses",
     "require_columns",
     "resolve_split_sigma",
     "run_interpolation_workflow",
@@ -116,9 +247,52 @@ __all__ = [
     "select_evenly_spaced",
     "set_global_random_seed",
     "simulate_sde_points",
+    "smooth_spatial_labels",
     "simulate_sde_points_split",
     "simulate_sde_points_split_from_x0",
     "simulate_piecewise_spatially_warped_split",
+    "summarize_growth_interaction_by_celltype",
+    "summarize_label_composition",
+    "summarize_temporal_gene_patterns",
+    "analyze_developmental_wave",
+    "cluster_temporal_profiles",
+    "evaluate_pca_anchor_reconstruction",
+    "infer_pca_center",
+    "inverse_pca_states",
+    "load_pca_reconstruction_spec",
+    "make_pca_reconstruction_spec",
+    "pca_reconstruction_feature_coverage",
+    "make_gene_set_library",
+    "make_interaction_groups",
+    "simplify_gene_names",
     "train_mlp_classifier",
     "train_mlp_classifier_from_adata",
+    "train_cached_mlp_classifier_from_adata",
+    "validate_spatial_exact_decomposition_model",
+    "DistributionEvaluationResult",
+    "DistributionMetricComparison",
+    "compare_distribution_metric_tables",
+    "compute_distribution_metrics",
+    "compute_generated_vs_observed_plot_limits",
+    "compute_local_structure_metrics",
+    "evaluate_model_distributions",
+    "plot_generated_vs_observed",
+    "save_distribution_evaluation",
+    "save_distribution_metric_comparison",
 ]
+
+
+def __getattr__(name):
+    """Load LR-drift attribution lazily to avoid a pp/tl import cycle."""
+
+    if name in {
+        "analyze_exact_groupings",
+        "compute_type_lr_scores",
+        "load_edge_prior_manifest",
+        "scaled_lr_activities_from_manifest",
+        "summarize_drift_across_seeds",
+    }:
+        from . import lr_drift_attribution
+
+        return getattr(lr_drift_attribution, name)
+    raise AttributeError(name)

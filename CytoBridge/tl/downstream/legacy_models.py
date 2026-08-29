@@ -13,6 +13,8 @@ except ImportError as exc:  # pragma: no cover - handled at runtime
     MessagePassing = None
     _TORCH_GEOMETRIC_ERROR = exc
 
+_MessagePassingBase = MessagePassing if MessagePassing is not None else nn.Module
+
 
 def _legacy_activation(name: str) -> nn.Module:
     key = name.lower()
@@ -255,8 +257,13 @@ class LegacyExpNormalSmearing(nn.Module):
         )
 
 
-class LegacyGraphAttentionLayer(MessagePassing):
+class LegacyGraphAttentionLayer(_MessagePassingBase):
     def __init__(self, hidden_dim, num_heads, activation="Tanh"):
+        if MessagePassing is None:
+            raise ImportError(
+                "torch_geometric is required for legacy GNN interaction loading. "
+                "Install it with: pip install 'CytoBridge[graph]'"
+            ) from _TORCH_GEOMETRIC_ERROR
         super().__init__(node_dim=0)
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
@@ -372,7 +379,8 @@ class LegacyGNNInteraction(nn.Module):
         super().__init__()
         if MessagePassing is None:
             raise ImportError(
-                "torch_geometric is required for legacy GNN interaction loading."
+                "torch_geometric is required for legacy GNN interaction loading. "
+                "Install it with: pip install 'CytoBridge[graph]'"
             ) from _TORCH_GEOMETRIC_ERROR
 
         self.activation = _legacy_activation(activation)

@@ -1,0 +1,296 @@
+{
+  "accepted_input_contract": {
+    "alpha_express": true,
+    "alpha_spatial": true,
+    "dataset": true,
+    "interaction_component": true,
+    "reference_sha256": true,
+    "score_stage": true,
+    "seed": true,
+    "weight_stage": true
+  },
+  "cohort": {
+    "cell_types_full": 26,
+    "cell_types_quantitative": 26,
+    "communication_input_unchanged": true,
+    "full_background_cells": 113350,
+    "quantitative_cells": 8000,
+    "same_interaction_module_object": true,
+    "same_state_signature": {
+      "communication_spatial_matches_aligned": true,
+      "communication_spatial_sha256": "8eac1fdeb18e86afd56c7e2382d532e68e8100a5ff65658d6dd95f7678951b1d",
+      "expression_feature_names_sha256": "71b9938f5e55c6479338109353cc51267253a6a0e720dc4333842ac7fd12add9",
+      "expression_sha256": "5c0a8bb4336f1dad7ed3d848244f7018b986c14fe180b91805210681f4b1183f",
+      "expression_storage": "csr",
+      "labels_sha256": "187fad51082d3ccaf12f3fd3db870aa5dd3e784f5cc508c1758722ddebc79c2e",
+      "latent_sha256": "cd35b08a5cd35ca3e97f62f4726dab4ea9ba55ba03ab49ff6330654d83c6a1a6",
+      "layer_keys": [
+        "count"
+      ],
+      "n_cells": 8000,
+      "n_expression_features": 23761,
+      "obs_columns": [
+        "Annotation",
+        "annotation",
+        "log1p_n_genes_by_counts",
+        "log1p_total_counts",
+        "n_genes_by_counts",
+        "pct_counts_in_top_100_genes",
+        "pct_counts_in_top_200_genes",
+        "pct_counts_in_top_500_genes",
+        "pct_counts_in_top_50_genes",
+        "time_point_processed",
+        "timepoint",
+        "total_counts"
+      ],
+      "obsm_keys": [
+        "X_latent",
+        "X_pca",
+        "spatial",
+        "spatial_aligned",
+        "spatial_original"
+      ],
+      "ordered_cell_ids_sha256": "6cd9de83553aa3d452f9e1529803b82ee7d70c30d434f3d5c15b5669566e0175",
+      "spatial_sha256": "8eac1fdeb18e86afd56c7e2382d532e68e8100a5ff65658d6dd95f7678951b1d"
+    },
+    "sampling": "mandatory one per type plus Hamilton largest remainder",
+    "seed": 42,
+    "velocity_input_unchanged": true
+  },
+  "communication": {
+    "all_type_matrix_rows": 676,
+    "all_values_finite": true,
+    "candidate_rule": "finite positive directed non-same-type edge with both endpoints in focus labels",
+    "candidate_weight_sum": 0.20936515093538946,
+    "cell_self_loops_removed_upstream": true,
+    "focus_labels": [
+      "Brain",
+      "Choroid plexus",
+      "Meninges"
+    ],
+    "hardcoded_identity_used_for_calculation": false,
+    "n_candidates": 6,
+    "n_original_ai_identities_positive": 4,
+    "n_original_ai_identities_present": 4,
+    "ordering": "descending weight_per_source; lexical source/target ties",
+    "original_ai_edge_identities": [
+      [
+        "Choroid plexus",
+        "Brain"
+      ],
+      [
+        "Meninges",
+        "Brain"
+      ],
+      [
+        "Brain",
+        "Meninges"
+      ],
+      [
+        "Brain",
+        "Brain"
+      ]
+    ],
+    "original_ai_identity_rows": [
+      {
+        "is_same_type": true,
+        "source": "Brain",
+        "target": "Brain",
+        "weight_per_source": 0.6642239016299438
+      },
+      {
+        "is_same_type": false,
+        "source": "Brain",
+        "target": "Meninges",
+        "weight_per_source": 0.029264739021882043
+      },
+      {
+        "is_same_type": false,
+        "source": "Choroid plexus",
+        "target": "Brain",
+        "weight_per_source": 0.07725346599306379
+      },
+      {
+        "is_same_type": false,
+        "source": "Meninges",
+        "target": "Brain",
+        "weight_per_source": 0.050519863918922735
+      }
+    ],
+    "same_type_rows_are_type_level_intercell_aggregation": true,
+    "top3_weight_fraction": 0.7741504652329194,
+    "top5_weight_fraction": 0.9750529465094337
+  },
+  "dataset": "mosta",
+  "model_time": 3.0,
+  "panels": [
+    "Fig4d",
+    "Fig4e compute reuse"
+  ],
+  "schema_version": 1,
+  "state": "observed_E15.5",
+  "status": "PASS",
+  "velocity": {
+    "anisotropic_stretch": false,
+    "component_norms": {
+      "drift": {
+        "expression_50d": {
+          "max": 4.616748466554593,
+          "mean": 2.110270194515745,
+          "median": 2.087604946198797,
+          "nonzero_fraction": 1.0,
+          "q01": 0.9888026396562901,
+          "q99": 3.4817986712552345
+        },
+        "model_52d": {
+          "max": 4.61843413812467,
+          "mean": 2.11523260508152,
+          "median": 2.092138101960943,
+          "nonzero_fraction": 1.0,
+          "q01": 0.996733937210126,
+          "q99": 3.4865722737409897
+        },
+        "physical_2d": {
+          "max": 0.3174896319179416,
+          "mean": 0.12608781377891226,
+          "median": 0.12225322733071223,
+          "nonzero_fraction": 1.0,
+          "q01": 0.014737808527472758,
+          "q99": 0.26318527623736826
+        }
+      },
+      "full": {
+        "expression_50d": {
+          "max": 10.284228080363816,
+          "mean": 2.199979782876672,
+          "median": 2.1161425739827053,
+          "nonzero_fraction": 1.0,
+          "q01": 1.0623122687537414,
+          "q99": 4.733672095592827
+        },
+        "model_52d": {
+          "max": 10.28473296684754,
+          "mean": 2.2054235978942454,
+          "median": 2.121139684978934,
+          "nonzero_fraction": 1.0,
+          "q01": 1.0709659302355805,
+          "q99": 4.7352465453893196
+        },
+        "physical_2d": {
+          "max": 0.8006413165032028,
+          "mean": 0.13586829832456174,
+          "median": 0.1307799457956684,
+          "nonzero_fraction": 1.0,
+          "q01": 0.01529448047658685,
+          "q99": 0.30420897656345436
+        }
+      },
+      "interaction": {
+        "expression_50d": {
+          "max": 8.422624615938906,
+          "mean": 0.708402381853769,
+          "median": 0.4934561782589336,
+          "nonzero_fraction": 1.0,
+          "q01": 0.2681091625857035,
+          "q99": 3.753662891052997
+        },
+        "model_52d": {
+          "max": 8.423152695822186,
+          "mean": 0.7095139818388907,
+          "median": 0.49450586688306,
+          "nonzero_fraction": 1.0,
+          "q01": 0.2681091625857035,
+          "q99": 3.772298104821578
+        },
+        "physical_2d": {
+          "max": 0.8286259109874906,
+          "mean": 0.03210713161445276,
+          "median": 0.020171773545256393,
+          "nonzero_fraction": 0.65475,
+          "q01": 0.0,
+          "q99": 0.2752455525682057
+        }
+      },
+      "score": {
+        "expression_50d": {
+          "max": 0.00806219877492228,
+          "mean": 0.004809414212180352,
+          "median": 0.004758575212920977,
+          "nonzero_fraction": 1.0,
+          "q01": 0.00360780671480398,
+          "q99": 0.006588639210003135
+        },
+        "model_52d": {
+          "max": 0.008179550069569382,
+          "mean": 0.004970142225093963,
+          "median": 0.0049146090304720245,
+          "nonzero_fraction": 1.0,
+          "q01": 0.003733164401624647,
+          "q99": 0.006782896483372276
+        },
+        "physical_2d": {
+          "max": 0.0039760912632456225,
+          "mean": 0.001110086962698876,
+          "median": 0.001028101106716042,
+          "nonzero_fraction": 1.0,
+          "q01": 0.00012148476155255713,
+          "q99": 0.0028367199081743974
+        }
+      }
+    },
+    "fig4d_component": "interaction expression-state derivative",
+    "gene_projection": "50D expression state to observed spatial_aligned coordinates",
+    "nonfinite_values": 0,
+    "physical_projection": "direct first two model dimensions",
+    "projection_audits": {
+      "full": {
+        "projection_mode": "model_state_velocity_to_plot_coordinates",
+        "render_mode": "scvelo_stream_vector",
+        "sanitized_linewidths": 0,
+        "streamline_grid_masked_cells": 435,
+        "velocity_norm": {
+          "max": 0.03398052995051067,
+          "mean": 0.010626564061334783,
+          "median": 0.009815569923285807,
+          "nonzero_fraction": 1.0,
+          "q01": 0.001158144430134688,
+          "q99": 0.025962868004938314
+        }
+      },
+      "interaction": {
+        "projection_mode": "model_state_velocity_to_plot_coordinates",
+        "render_mode": "scvelo_stream_vector",
+        "sanitized_linewidths": 0,
+        "streamline_grid_masked_cells": 388,
+        "velocity_norm": {
+          "max": 0.047629948021322345,
+          "mean": 0.008997766720266443,
+          "median": 0.007825195338113818,
+          "nonzero_fraction": 1.0,
+          "q01": 0.0007945129461811288,
+          "q99": 0.027823546134602854
+        }
+      }
+    },
+    "rotation": false,
+    "spatial_y_iqr_full_background": {
+      "iqr": 2.080813467502594,
+      "lower": -2.0950848162174225,
+      "n_outside": 0,
+      "outside_fraction": 0.0,
+      "q1": 1.0261353850364685,
+      "q3": 3.1069488525390625,
+      "upper": 6.2281690537929535
+    },
+    "spatial_y_iqr_quantitative": {
+      "iqr": 2.0434706807136536,
+      "lower": -2.0122919380664825,
+      "n_outside": 0,
+      "outside_fraction": 0.0,
+      "q1": 1.0529140830039978,
+      "q3": 3.0963847637176514,
+      "upper": 6.161590784788132
+    },
+    "warp": false
+  }
+}

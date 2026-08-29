@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "analysis": "loto_benchmark",
+  "datasets": [
+    "zebrafish",
+    "mosta",
+    "arista",
+    "admouse",
+    "chicken_heart"
+  ],
+  "dataset_targets": {
+    "zebrafish": [1, 2, 3],
+    "mosta": [1, 2],
+    "arista": [1, 2, 3],
+    "admouse": [1],
+    "chicken_heart": [1, 2]
+  },
+  "reference_method": "CytoBridge-0.015",
+  "method_order": [
+    "CytoBridge-0.015",
+    "stvcr",
+    "moscot",
+    "paste",
+    "spateo",
+    "random_independent_pairs",
+    "mioflow",
+    "stories",
+    "wot"
+  ],
+  "comparison_method_order": [
+    "stvcr",
+    "moscot",
+    "paste",
+    "spateo",
+    "random_independent_pairs",
+    "mioflow",
+    "stories",
+    "wot"
+  ],
+  "display_names": {
+    "CytoBridge-0.015": "CytoBridge",
+    "stvcr": "stVCR",
+    "moscot": "MOSCOT",
+    "paste": "PASTE",
+    "spateo": "Spateo",
+    "random_independent_pairs": "Random interpolation",
+    "mioflow": "MIOFlow",
+    "stories": "STORIES",
+    "wot": "Waddington-OT"
+  },
+  "spaces_by_method": {
+    "CytoBridge-0.015": ["joint", "spatial", "state"],
+    "stvcr": ["joint", "spatial", "state"],
+    "moscot": ["joint", "spatial", "state"],
+    "paste": ["joint", "spatial", "state"],
+    "spateo": ["joint", "spatial", "state"],
+    "random_independent_pairs": ["joint", "spatial", "state"],
+    "mioflow": ["state"],
+    "stories": ["state"],
+    "wot": ["state"]
+  },
+  "projection": {
+    "repeats_per_dataset_target_space": 5,
+    "directions_per_repeat": 1024,
+    "sharing_scope": "dataset-target-space-repeat",
+    "applicable_methods_share_directions_within_repeat": true,
+    "shared_across_datasets": false,
+    "method_specific_directions": false
+  },
+  "support": {
+    "initial_source_roster_n": 5000,
+    "sliced_w2_support": "all_native_predicted_points",
+    "predicted_weights": "normalized_before_metric",
+    "target_size_resampling": false,
+    "stvcr_support": "growth_enabled_method_native_output"
+  },
+  "output_contract_by_method": {
+    "CytoBridge-0.015": ["native_joint", "native_joint"],
+    "stvcr": ["native_joint", "native_joint"],
+    "moscot": ["hybrid_coupling_adapter", "hybrid_joint"],
+    "paste": ["hybrid_coupling_adapter", "hybrid_joint"],
+    "spateo": ["hybrid_coupling_adapter", "hybrid_joint"],
+    "random_independent_pairs": ["explicit_control", "native_joint"],
+    "mioflow": ["native_state", "native_state"],
+    "stories": ["native_state", "native_state"],
+    "wot": ["hybrid_coupling_adapter", "hybrid_state"]
+  },
+  "output_names": {
+    "pdf": "five_dataset_loto_benchmark.pdf",
+    "png": "five_dataset_loto_benchmark.png",
+    "paired_ratios": "paired_loto_ratios.csv",
+    "dataset_summary": "loto_dataset_summary.csv"
+  }
+}

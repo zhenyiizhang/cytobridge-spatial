@@ -1,0 +1,110 @@
+{
+  "clusterprofiler": {
+    "background_input_symbols": 2000,
+    "background_mapped_symbols": 1725,
+    "background_unique_entrez": 1725,
+    "orgdb_sqlite_sha256": "c52ab0837038b08203f8f40f0b64def3a007b764ddaf2443e653806d6fc80486",
+    "query_metrics": [
+      {
+        "bh_max_abs_error": 1.9984014443252818e-15,
+        "display_ontologies": "BP:12;CC:6;MF:2",
+        "displayed_terms": 20,
+        "hypergeometric_max_abs_error": 1.1657341758564144e-15,
+        "input_symbols": 883,
+        "query_id": "s9_pattern_1",
+        "significant_terms": 305,
+        "tested_terms": 3554,
+        "top_p_adjust": 6.0040543070434304e-24,
+        "top_term": "nucleus"
+      },
+      {
+        "bh_max_abs_error": 2.3904489498960402e-14,
+        "display_ontologies": "BP:3;CC:6;MF:2",
+        "displayed_terms": 11,
+        "hypergeometric_max_abs_error": 1.3322676295501878e-15,
+        "input_symbols": 1117,
+        "query_id": "s9_pattern_2",
+        "significant_terms": 11,
+        "tested_terms": 3520,
+        "top_p_adjust": 2.46010001456902e-06,
+        "top_term": "extracellular region"
+      },
+      {
+        "bh_max_abs_error": 2.06735670249536e-15,
+        "display_ontologies": "BP:10;CC:6;MF:4",
+        "displayed_terms": 20,
+        "hypergeometric_max_abs_error": 9.43689570931383e-16,
+        "input_symbols": 483,
+        "query_id": "s10_phase_1",
+        "significant_terms": 328,
+        "tested_terms": 3410,
+        "top_p_adjust": 4.29090409887774e-29,
+        "top_term": "nucleus"
+      },
+      {
+        "bh_max_abs_error": 1.740795008142726e-15,
+        "display_ontologies": "BP:20",
+        "displayed_terms": 20,
+        "hypergeometric_max_abs_error": 1.1657341758564144e-15,
+        "input_symbols": 299,
+        "query_id": "s10_phase_2",
+        "significant_terms": 534,
+        "tested_terms": 3327,
+        "top_p_adjust": 3.1783116699247e-10,
+        "top_term": "regulation of system process"
+      },
+      {
+        "bh_max_abs_error": 4.217112770099618e-15,
+        "display_ontologies": "BP:8;CC:10;MF:2",
+        "displayed_terms": 20,
+        "hypergeometric_max_abs_error": 1.27675647831893e-15,
+        "input_symbols": 218,
+        "query_id": "s10_phase_3",
+        "significant_terms": 198,
+        "tested_terms": 2896,
+        "top_p_adjust": 1.20662839046057e-09,
+        "top_term": "cell periphery"
+      }
+    ],
+    "server_manifest_sha256": "af1bb4b22e7795b937649279bbfa9aab7f4d46d5070a28151adce9255e3c448b"
+  },
+  "dataset": "MOSTA",
+  "errors": [],
+  "interpretability": {
+    "interpretation": "late phase is statistically enriched for cell-periphery/adhesion/ECM terms; nervous system process remains significant but is not the leading pooled GO-ALL term",
+    "phase3_cell_periphery_p_adjust": 1.20662839046057e-09,
+    "phase3_extracellular_matrix_p_adjust": 9.88544879521122e-05,
+    "phase3_nervous_system_process_p_adjust": 0.0003012730274171
+  },
+  "panels": [
+    "S9a-b",
+    "S10a-d"
+  ],
+  "s10_dp3": {
+    "assignments_exact": true,
+    "independent_boundaries": [
+      [
+        0,
+        483
+      ],
+      [
+        483,
+        782
+      ],
+      [
+        782,
+        1000
+      ]
+    ],
+    "objective": 70.34855609421834,
+    "ordered_zscore_max_abs_error": 3.4468544828358816e-06,
+    "phase_sizes": [
+      483,
+      299,
+      218
+    ],
+    "profile_order_exact": true
+  },
+  "schema_version": 1,
+  "status": "PASS"
+}

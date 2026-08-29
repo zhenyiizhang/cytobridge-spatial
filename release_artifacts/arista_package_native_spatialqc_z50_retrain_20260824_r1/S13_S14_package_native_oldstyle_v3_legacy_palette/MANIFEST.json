@@ -1,0 +1,144 @@
+{
+  "created_utc": "2026-08-24T08:49:35.833456+00:00",
+  "display_contract": {
+    "S13": "submitted 3x3 viridis seed-42 sample/cap with per-panel q05-q95",
+    "S14a": "nature-methods Plotly Sankey in submitted compact crop",
+    "S14b": "submitted 11x4.8-inch top-15-plus-Other stacked-bar grammar",
+    "palette_sha256": "983b941fc93efe155511994d1d4b16cba5e11982cd81fb298d9a4a78907fbdd7"
+  },
+  "inputs": {
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S14a_lineage_legacy_palette_html_v2/lineage_sankey.pdf": "d0a30bee1c4ae5904616054edd400230dd841e80186810ab60b15e6ee203a8c1",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S14a_lineage_legacy_palette_html_v2/lineage_sankey.png": "c8091a822020932e2c9bb6f503bcafa14d8af1b6af202255d848076732e9c873",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S14a_lineage_legacy_palette_html_v2/lineage_sankey.svg": "16776f0567e0e34b31e80b3d8c633c246421aa6d7cc99c7f3970642edc2a9040",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/growth/growth_by_cell.csv": "a60d4b78837e51bc4399ee72ae2afb0d080f59dab4e6e4853a86073a2852a385",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_oldstyle_inputs_v1/fixed_particle_composition.csv": "9c81d15cdb1d1ad3144ca14a35f9e0631373a679b7ad697aea0b5d48329ffadd",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/paper_downstream_warpk1_oldstyle_inputs_v1/manifest.json": "699577a0ceed3647d11258183db7165f213a0fde3be6273dca952e99ab588d15",
+    "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/assets/arista/label_to_color.json": "983b941fc93efe155511994d1d4b16cba5e11982cd81fb298d9a4a78907fbdd7"
+  },
+  "primary_outputs": {
+    "S13": {
+      "jpg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/jpeg/FigureS13_ARISTA_package_native_oldstyle_FINAL.jpg",
+      "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/pdf/FigureS13_ARISTA_package_native_oldstyle_FINAL.pdf",
+      "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/png/FigureS13_ARISTA_package_native_oldstyle_FINAL.png",
+      "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/vector/FigureS13_ARISTA_package_native_oldstyle_FINAL.svg"
+    },
+    "S14": {
+      "jpg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/jpeg/FigureS14_ARISTA_package_native_oldstyle_FINAL.jpg",
+      "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/pdf/FigureS14_ARISTA_package_native_oldstyle_FINAL.pdf",
+      "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/png/FigureS14_ARISTA_package_native_oldstyle_FINAL.png",
+      "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/S13_S14_package_native_oldstyle_v3_legacy_palette/figures/vector/FigureS14_ARISTA_package_native_oldstyle_FINAL.svg"
+    }
+  },
+  "s13_scale_table": [
+    {
+      "n_compute": 7668,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.10497273550000001,
+      "q95_display_sample": 0.14223664449999993,
+      "source": "observed",
+      "time": 0.0
+    },
+    {
+      "n_compute": 7780,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.060135937349999995,
+      "q95_display_sample": 0.19745116749999994,
+      "source": "simulated",
+      "time": 0.5
+    },
+    {
+      "n_compute": 8106,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.04509195625,
+      "q95_display_sample": 0.2053692579999998,
+      "source": "observed",
+      "time": 1.0
+    },
+    {
+      "n_compute": 8608,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.0066749185849999965,
+      "q95_display_sample": 0.3050657024999999,
+      "source": "simulated",
+      "time": 1.5
+    },
+    {
+      "n_compute": 9436,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": 0.0016529703349999999,
+      "q95_display_sample": 0.28683923299999997,
+      "source": "observed",
+      "time": 2.0
+    },
+    {
+      "n_compute": 9684,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.1321777215,
+      "q95_display_sample": 0.23299788999999993,
+      "source": "simulated",
+      "time": 2.5
+    },
+    {
+      "n_compute": 9673,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.128283676,
+      "q95_display_sample": 0.19166186999999968,
+      "source": "observed",
+      "time": 3.0
+    },
+    {
+      "n_compute": 10035,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": -0.07022632570000001,
+      "q95_display_sample": 0.3321054369999997,
+      "source": "simulated",
+      "time": 3.5
+    },
+    {
+      "n_compute": 11316,
+      "n_display": 2500,
+      "n_objective_display_hidden": 0,
+      "n_seed42_sample": 2500,
+      "q05_display_sample": 0.1342489815,
+      "q95_display_sample": 0.47058662149999997,
+      "source": "observed",
+      "time": 4.0
+    }
+  ],
+  "scientific_contract": {
+    "s13_compute_rows": 82306,
+    "s13_display_cap_per_time": 2500,
+    "s13_display_sample_seed": 42,
+    "s13_growth_source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/downstream/growth/growth_by_cell.csv",
+    "s13_secondary_display_filter": false,
+    "s14_identity_source": "non_split_fixed_particles",
+    "s14_particle_counts_by_time": {
+      "0.0": 7668,
+      "0.5": 7668,
+      "1.0": 7668,
+      "1.5": 7668,
+      "2.0": 7668,
+      "2.5": 7668,
+      "3.0": 7668,
+      "3.5": 7668,
+      "4.0": 7668
+    }
+  },
+  "workflow": "ARISTA package-native S13-S14 with submitted plotting grammar"
+}

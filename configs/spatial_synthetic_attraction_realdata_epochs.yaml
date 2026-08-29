@@ -1,0 +1,170 @@
+# Controlled epoch-allocation comparison for the spatial-attraction benchmark.
+#
+# Held constant versus v11_target_background_five_stage:
+#   data, model architecture, nonlinear radius pairwise_radial head,
+#   fixed Gamma = 3 I_2 gene-force map, cutoff, sigma, batch/group size,
+#   OT/flow-matching loss families and their numerical hyperparameters,
+#   and seed.
+#
+# Intended change versus the manuscript v11b run: use the standard real-data
+# six-stage epoch allocation (100, 100, 50, 2001, 1000, 2001). The benchmark
+# retains the same flow-matching score objective, losses, architecture, data,
+# alpha_spatial=1, alpha_express=1, sigma=0.015, and seed as v11b.
+model:
+  components: [velocity, growth, score, interaction]
+  interaction_type: gnn
+  interaction_group_size: 192
+  spatial_dim: 2
+
+  velocity_net:
+    hidden_dim: 400
+    n_layers: 2
+    residual: false
+    activation: relu
+    use_spatial: true
+    condition_on_time: true
+
+  growth_net:
+    hidden_dim: 400
+    n_layers: 2
+    residual: false
+    activation: relu
+    condition_on_time: true
+
+  score_net:
+    hidden_dim: 128
+    n_layers: 4
+    activation: leaky_relu
+    condition_on_time: true
+
+  interaction_net:
+    hidden_dim: 400
+    num_heads: 4
+    num_layers: 2
+    activation: leakyrelu
+    num_rbf: 8
+    cutoff: 0.30
+    use_spatial: true
+    rbf_trainable: false
+    edge_mode: radius
+    force_mode: pairwise_radial
+    aggregation_mode: group_mean
+    radial_basis_mode: gaussian
+    radial_envelope_mode: none
+    radial_structure: unconstrained
+    radial_gene_projection_mode: fixed_matrix
+    radial_gene_projection_matrix:
+      - [3.0, 0.0]
+      - [0.0, 3.0]
+
+ckpt_dir: results/spatial_synthetic_attraction_v11_six_stage_control
+reverse: false
+seed: 42
+spatial_dim: 2
+
+training:
+  defaults:
+    sigma: 0.015
+    batch_size: 192
+    alpha_spatial: 1.0
+    alpha_express: 1.0
+
+  plan:
+    - name: Pretrain
+      mode: neural_ode
+      epochs: 100
+      train_strategy: v+g
+      growth_use: true
+      interaction_use: false
+      score_use: false
+      use_growth_in_ode_inter: true
+      OT_loss: sinkhorn_detach
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: false
+      lr: 0.0001
+      checkpoint_metric: average_loss
+      save_strategy: best
+
+    - name: Refine
+      mode: neural_ode
+      epochs: 100
+      train_strategy: v+g
+      growth_use: true
+      interaction_use: false
+      score_use: false
+      use_growth_in_ode_inter: true
+      OT_loss: sinkhorn_detach
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: false
+      lr: 0.0001
+      checkpoint_metric: average_loss
+      save_strategy: best
+
+    - name: Init_interaction
+      mode: neural_ode
+      epochs: 50
+      train_strategy: v+g+i
+      growth_use: true
+      interaction_use: true
+      score_use: false
+      use_growth_in_ode_inter: true
+      OT_loss: sinkhorn_detach
+      lambda_ot: 1.0
+      lambda_mass: 0.0
+      lambda_energy: 0.0
+      global_mass: false
+      lr: 0.00001
+      checkpoint_metric: average_loss
+      save_strategy: best
+
+    - name: Train_Score
+      mode: flow_matching
+      epochs: 2001
+      train_strategy: s
+      batch_size: 192
+      sigma: 0.015
+      optimizer_type: adam
+      scheduler_type: cosine
+      cosine_epochs: 1000
+      scheduler_eta_min: 0.00001
+      lr: 0.001
+      flow_matching:
+        lambda_penalty: 1.0
+      save_strategy: best
+
+    - name: Finetune
+      mode: neural_ode
+      epochs: 1000
+      train_strategy: v+g+i
+      growth_use: true
+      interaction_use: true
+      score_use: true
+      use_growth_in_ode_inter: true
+      OT_loss: sinkhorn_detach
+      lambda_ot: 10.0
+      lambda_mass: 10.0
+      lambda_energy: 0.01
+      global_mass: true
+      use_pinn_loss: false
+      lr: 0.00001
+      checkpoint_metric: average_loss
+      save_strategy: best
+
+    - name: Score_Refine
+      mode: flow_matching
+      epochs: 2001
+      train_strategy: s
+      batch_size: 192
+      sigma: 0.015
+      optimizer_type: adam
+      scheduler_type: cosine
+      cosine_epochs: 100
+      scheduler_eta_min: 0.00001
+      lr: 0.001
+      flow_matching:
+        lambda_penalty: 1.0
+      save_strategy: best

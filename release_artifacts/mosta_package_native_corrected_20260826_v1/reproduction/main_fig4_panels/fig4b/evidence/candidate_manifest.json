@@ -1,0 +1,291 @@
+{
+  "calculation_gate": "server_run_v4/calculation_gate.json",
+  "colormap": [
+    "#f8fbfd",
+    "#eaf5f4",
+    "#d4ece9",
+    "#b7dedb",
+    "#93c9cb",
+    "#66abb4"
+  ],
+  "complex_mode": "min",
+  "compute_particle_contract": "accepted workflow configured initial cap 12000; t=0.5 realized 15144 cells",
+  "dataset": "mosta",
+  "display_mapping": {
+    "n_available_cells": 192227,
+    "n_display_cells": 192267,
+    "n_dropped_cells": 0,
+    "n_unavailable_cells": 40,
+    "unavailable_policy": "retain and render base grey only; NaN unavailable; no zero imputation",
+    "unavailable_types": [
+      "Pancreas",
+      "Spinal cord"
+    ]
+  },
+  "display_particle_contract": "50k initial-particle global-t0 run; t=0.5 realized 63533 cells",
+  "fullpage_warning": "The full-page QA PDF retains legacy values in panels a,c,d,e and is not a manuscript deliverable.",
+  "generated_annotation_identity": {
+    "Choroid plexus": {
+      "annotation": "two dashed ellipses plus Choroid Plexus label",
+      "component_cell_counts": [
+        237,
+        60
+      ],
+      "component_centers_xy": [
+        [
+          -0.862,
+          3.024
+        ],
+        [
+          0.572,
+          2.996
+        ]
+      ],
+      "per_panel_normalized_score": 1.0,
+      "raw_total_score": 0.0367532946730778
+    },
+    "Meninges": {
+      "n_display_cells": 4902,
+      "per_panel_normalized_score": 0.4758080815859703,
+      "raw_total_score": 0.0175583383217383,
+      "text_policy": "legacy position preserved; sub-point white halo added for legibility"
+    },
+    "other_saturated_region": {
+      "cell_type": "Jaw and tooth",
+      "center_xy": [
+        -0.61721,
+        2.149729
+      ],
+      "n_display_cells": 3607,
+      "per_panel_normalized_score": 1.0,
+      "raw_total_score": 0.0326394759079971,
+      "reason_for_saturation": "raw score is the E13.0 q99 normalization bound"
+    }
+  },
+  "hotspot": "total (incoming + outgoing)",
+  "hybrid_vector_note": "Original AI uses raster embryo maps; typography, arrows, annotations, colorbar, and composition remain vector in PDF/SVG.",
+  "initial_particles": 50000,
+  "ligand": "Wnt3a",
+  "normalization": {
+    "bounds": [
+      {
+        "n_finite_cells": 51365,
+        "q1_low": 0.0003519106580457,
+        "q99_high": 0.315186999721275,
+        "stage": "E12.5",
+        "time": 0.0
+      },
+      {
+        "n_finite_cells": 63493,
+        "q1_low": 0.0038692162826912,
+        "q99_high": 0.0326394759079971,
+        "stage": "E13.0",
+        "time": 0.5
+      },
+      {
+        "n_finite_cells": 77369,
+        "q1_low": 0.0077817663725367,
+        "q99_high": 0.0993182999554036,
+        "stage": "E13.5",
+        "time": 1.0
+      }
+    ],
+    "interpretation": "colors compare relative spatial hotspot intensity within each slice only; they do not encode cross-time absolute magnitude",
+    "mode": "per_panel_q1_q99",
+    "raw_cross_time_pair_scores": {
+      "E12.5": 0.7908472467859028,
+      "E13.0": 0.1499012076559161,
+      "E13.5": 0.2283976323146597
+    },
+    "style_source": "historical MOSTA manifest and original AI panel"
+  },
+  "outputs": {
+    "contact": "qa/original_vs_corrected_ai_contact_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.png",
+    "fullpage_qa_only": "qa/Figure_mouse1_fullpage_Fig4b_replaced_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6_QA_ONLY.pdf",
+    "pdf": "figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.pdf",
+    "png": "figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.png",
+    "style_qa": "qa/ai_style_equivalence_qa_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.json",
+    "svg": "figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.svg"
+  },
+  "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "panel": "Fig4b",
+  "particle_density_sensitivity": {
+    "accepted_candidate_edges": 76414,
+    "accepted_compute_cells": 15144,
+    "accepted_pair_score": 0.1499012076559161,
+    "candidate_edges_per_cell_accepted": 5.045826730058109,
+    "candidate_edges_per_cell_full50k": 20.379204507893537,
+    "candidate_edges_per_cell_ratio": 4.038823685025515,
+    "cell_count_ratio_full_over_accepted": 4.195258848388801,
+    "full50k_candidate_edges": 1294752,
+    "full50k_display_cells": 63533,
+    "full50k_pair_score": 0.6325948517801893,
+    "pair_score_ratio_full_over_accepted": 4.220078421464424,
+    "reason": "Full-radius M_per_source hotspot scales with numerical particle density; 50k is display-only.",
+    "status": "REJECT_FULL50K_AS_PRIMARY_COMPUTE"
+  },
+  "point_style": {
+    "base_alpha": 0.35,
+    "base_color": "#edf2f4",
+    "base_size_pt2": 2.7,
+    "colored_alpha": 0.95,
+    "colored_size_pt2": 3.0,
+    "edgecolors": "none",
+    "source": "historical MOSTA notebook and original AI rasters"
+  },
+  "receptor_complex": "Fzd7_Lrp6",
+  "replacements": [
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.6753536857781087,
+      "canvas_pixel_size": [
+        907,
+        1343
+      ],
+      "coordinate_aspect": 0.6732540161033534,
+      "coordinate_extent": [
+        2.2455286979675293,
+        3.33533650636673
+      ],
+      "illustrator_bbox_points": [
+        2.1388890743,
+        252.8696136475,
+        99.2780151367,
+        396.7040710449
+      ],
+      "illustrator_transform": [
+        97.13912963867188,
+        0.0,
+        -0.0,
+        143.83445739746094,
+        2.1388890743255615,
+        252.86961364746094
+      ],
+      "n_cell_types": 23,
+      "n_cells": 51365,
+      "n_score_available_cells": 51365,
+      "n_score_unavailable_cells": 0,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E12p5_xref37.png",
+      "replacement_sha256": "99f41433a75cdff04b5f7c70fa754f2fdbd14b524939ff30d4aa94cf1c9a3e96",
+      "rotation": false,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "spatial_warp": false,
+      "stage": "E12.5",
+      "time": 0.0,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 142.9776624166262,
+        "width": 96.71072859354709
+      },
+      "xref": 37
+    },
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.6887565152643336,
+      "canvas_pixel_size": [
+        925,
+        1343
+      ],
+      "coordinate_aspect": 0.6873401997254448,
+      "coordinate_extent": [
+        2.4959150552749634,
+        3.631265938282013
+      ],
+      "illustrator_bbox_points": [
+        100.6464157104,
+        249.8218994141,
+        204.339630127,
+        400.373260498
+      ],
+      "illustrator_transform": [
+        103.6932144165039,
+        0.0,
+        -0.0,
+        150.55136108398438,
+        100.64641571044922,
+        249.8218994140625
+      ],
+      "n_cell_types": 25,
+      "n_cells": 63533,
+      "n_score_available_cells": 63493,
+      "n_score_unavailable_cells": 40,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E13p0_xref35.png",
+      "replacement_sha256": "74e2451dbce23fb3ef2a87d4377852346e17be3f272556fa74053876486a7800",
+      "rotation": false,
+      "slice_origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "spatial_warp": false,
+      "stage": "E13.0",
+      "time": 0.5,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 149.6545547632215,
+        "width": 103.2448113272309
+      },
+      "xref": 35
+    },
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.7163067758749069,
+      "canvas_pixel_size": [
+        962,
+        1343
+      ],
+      "coordinate_aspect": 0.6961324024385067,
+      "coordinate_extent": [
+        2.662730574607849,
+        3.82503467053175
+      ],
+      "illustrator_bbox_points": [
+        205.9485015869,
+        249.8938598633,
+        313.2412109375,
+        399.6798400879
+      ],
+      "illustrator_transform": [
+        107.29269409179688,
+        0.0,
+        -0.0,
+        149.78598022460938,
+        205.94850158691406,
+        249.89385986328125
+      ],
+      "n_cell_types": 19,
+      "n_cells": 77369,
+      "n_score_available_cells": 77369,
+      "n_score_unavailable_cells": 0,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E13p5_xref36.png",
+      "replacement_sha256": "af0e302bc9a447312edc58b4f82a5060a7d1268d9f89bc6230774481ce655cc5",
+      "rotation": false,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "spatial_warp": false,
+      "stage": "E13.5",
+      "time": 1.0,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 148.8937331346545,
+        "width": 103.94678286357505
+      },
+      "xref": 36
+    }
+  ],
+  "require_all_subunits": true,
+  "restart_from_preceding_observed_stage": false,
+  "schema_version": 1,
+  "server_manifest_sha256": "c2b6fcc4ac4c610915689fcc5e1d90f84c3d30ac8fd3520dc17d5e86eba13095",
+  "spatial_warp": false,
+  "standalone_crop_cleanup": "Masked only the adjacent Fig. 4c raster spill at page x>=315.8 pt, y=231-416 pt; no Fig. 4b object occupies that region.",
+  "status": "complete",
+  "style_oracle": "provenance/Figure_mouse1_style_oracle.ai",
+  "style_oracle_creator": "Adobe Illustrator 30.2 (Macintosh)",
+  "style_oracle_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+  "trajectory_mode": "global_t0_extrapolation"
+}

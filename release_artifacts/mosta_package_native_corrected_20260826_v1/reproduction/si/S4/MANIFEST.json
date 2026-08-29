@@ -1,0 +1,36 @@
+{
+  "arista_assets_used": false,
+  "dataset": "MOSTA",
+  "forbidden_transforms": {
+    "rotation": false,
+    "stretch": false,
+    "warp": false
+  },
+  "outputs": {
+    "pdf": {
+      "path": "figures/Figure_S4_MOSTA_latest_package_global_t0_50k_exact_old_rasterized_points.pdf",
+      "sha256": "347560a2749ab16950727d9c583cba56fc19cc69637b267c03703caf2b89fd7e"
+    },
+    "svg": {
+      "path": "figures/Figure_S4_MOSTA_latest_package_global_t0_50k_exact_old_rasterized_points.svg",
+      "sha256": "905ff7b14ead941b39a84742955abaffa418b49f565bff3000b1e95a01cc9272"
+    }
+  },
+  "panel": "S4",
+  "schema_version": 1,
+  "source_figure_manifest": {
+    "path": "figures/Figure_S4_MOSTA_latest_package_global_t0_50k_exact_old_rasterized_points_manifest.json",
+    "reported_status": "candidate_pending_visual_QA",
+    "sha256": "a32947c49b3b191332e4d965243143cb5612ff409a2cd0199970585a137ae107"
+  },
+  "status": "ACCEPTED_IMMUTABLE_SI_PANEL",
+  "visual_qa": {
+    "actual_pdf_render_inspected": true,
+    "note": "PASS: 8 embedded rasters are the submitted dense-point rasterization; DejaVu Sans is pinned by the old style; 240-dpi render was visually inspected.",
+    "render": {
+      "path": "qa/s4_candidate_pdf_240dpi.png",
+      "sha256": "735fd83ce9c91bd6a9a2a9e8da5532c7c2a065f799513f7d5f9ddccfe5862990"
+    },
+    "status": "PASS"
+  }
+}

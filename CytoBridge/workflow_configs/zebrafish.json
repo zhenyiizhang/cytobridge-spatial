@@ -1,0 +1,101 @@
+{
+  "dataset": {
+    "name": "zebrafish",
+    "display_name": "Zebrafish embryogenesis",
+    "annotation_key": "Annotation",
+    "time_key": "time_point_processed",
+    "obsm_key": "X_latent",
+    "spatial_key": "spatial_aligned",
+    "concat_spatial": true
+  },
+  "scientific": {
+    "seed": 42,
+    "alpha_spatial": 10.0,
+    "alpha_express": 0.015,
+    "classifier_k": 10
+  },
+  "steps": {
+    "default": ["downstream"]
+  },
+  "preprocess": {
+    "enabled": true,
+    "time_key": "time",
+    "annotation_source": "bin_annotation",
+    "batch_indices": [1, 2, 3, 4, 5],
+    "align": {
+      "n_top_genes": 2000,
+      "n_pcs": 50,
+      "normalization_target_sum": null,
+      "expression_layer": "counts",
+      "counts_layer": "counts",
+      "raw_count_validation": "strict",
+      "spatial_obs_keys": ["spatial_x", "spatial_y"],
+      "spatial_dim": 2,
+      "shared_scale": 500.0,
+      "center_x": true,
+      "center_y": false,
+      "flip_y": false,
+      "phase1_epochs": 10000,
+      "phase2_epochs": 500,
+      "alpha": 5.0,
+      "beta": 0.01,
+      "lambda_local": 100.0,
+      "lambda_ot": 1.0,
+      "batch_size": 1024,
+      "distance_pairs": 10000,
+      "learning_rate": 0.001,
+      "random_seed": 42,
+      "time_mapping": {
+        "3.3hpf": -1.0,
+        "5.25hpf": 0.0,
+        "10hpf": 1.0,
+        "12hpf": 2.0,
+        "18hpf": 3.0,
+        "24hpf": 4.0
+      }
+    },
+    "edge_predictor": {
+      "split": 0,
+      "epochs": 100,
+      "batch_size": 1024,
+      "learning_rate": 0.001,
+      "split_strategy": "node_disjoint",
+      "train_sample_ratio_per_epoch": 1.0,
+      "max_train_edges_per_epoch": null,
+      "num_workers": 4
+    }
+  },
+  "train": {
+    "config": "zebrafish_spatial_full_alpha_express_0015.yaml",
+    "graph_database": "CellChatDB.ligrec.zebrafish.csv",
+    "interaction_cutoff": 0.09606367405591873,
+    "requires_edge_predictor": true,
+    "edge_predictor_threshold": 0.6063615679740906,
+    "evaluate_after_training": false
+  },
+  "downstream": {
+    "enabled": true,
+    "gene_dynamics_enabled": true,
+    "lr_enabled": true,
+    "preferred_species_tag": "zebrafish",
+    "model_format": "current",
+    "observed": [0.0, 1.0, 2.0, 3.0, 4.0],
+    "interpolated": [0.5, 1.5, 2.5, 3.5],
+    "classifier_epochs": 500,
+    "classifier_hidden_size": 128,
+    "classifier_lr": 0.001,
+    "classifier_best_metric": "bacc",
+    "classifier_strict_stratification": true,
+    "sde_n_samples": null,
+    "sde_dt": 0.05,
+    "split_sde_dt": 0.05,
+    "split_resample_dt": 0.05,
+    "split_max_particles": 100000,
+    "split_sde_piecewise": true,
+    "split_sde_piecewise_include_end": false,
+    "piecewise_observed_sample_mode": "per_timepoint",
+    "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
+    "split_growth_alpha": 1.0
+  }
+}

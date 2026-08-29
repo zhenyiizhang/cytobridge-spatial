@@ -1,0 +1,65 @@
+{
+  "arista_assets_used": false,
+  "dataset": "MOSTA",
+  "inputs": {
+    "baseline_seed42_component": {
+      "files_verified": 45,
+      "manifest_sha256": "538f99871abcaec2b85e70fac7081d6f5dd1bd5998200621ffb64b5db2f64893",
+      "root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s11_component_decomposition_audit_20260826_v1/server_download/si-s11-component-decomposition-2b3c79e-20260826-v1"
+    },
+    "seed43_seed44_stability": {
+      "files_verified": 54,
+      "manifest_sha256": "729971c82a240e4336ddaefa6663273df9abf910aefe7d10f7561c2688d6e3ee",
+      "root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s11_msum_seed_stability_20260826_v1/server_download/si-s11-msum-seed-stability-2b3c79e-20260826-v1"
+    }
+  },
+  "output": {
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s11_msum_corrected_20260826_v1/tables/s11_msum_stable_representative31.csv",
+    "sha256": "80486a4d679b1ee2af14f7c7738719bbde52dcdd2d174fc4bc1f1eecfd144b2d"
+  },
+  "panel": "Supplementary Figure S11",
+  "purpose": "Robust representative content selection within corrected package-native M_sum clusters",
+  "schema_version": 1,
+  "selection": {
+    "cluster_quotas": {
+      "1": 12,
+      "2": 11,
+      "3": 8
+    },
+    "does_not_modify_clusters": true,
+    "does_not_modify_curves": true,
+    "effect_size_gate": "geometric mean of seven-time total M_sum LR score at or above the stable-cluster median",
+    "gate_audit": [
+      {
+        "cluster": 1,
+        "geometric_mean_total_score_median_gate": 592.2027226506721,
+        "n_cluster_seed42": 1632,
+        "n_eligible_above_gate": 813,
+        "n_stable_all_three_seeds": 1626,
+        "quota": 12
+      },
+      {
+        "cluster": 2,
+        "geometric_mean_total_score_median_gate": 131.44617825586676,
+        "n_cluster_seed42": 108,
+        "n_eligible_above_gate": 40,
+        "n_stable_all_three_seeds": 80,
+        "quota": 11
+      },
+      {
+        "cluster": 3,
+        "geometric_mean_total_score_median_gate": 4082.9014476244106,
+        "n_cluster_seed42": 17,
+        "n_eligible_above_gate": 9,
+        "n_stable_all_three_seeds": 17,
+        "quota": 8
+      }
+    ],
+    "geometry_reason": "preserve submitted 31-profile 4x8 small-multiple layout; first 12 orange slots retained, remaining slots split 11 blue and 8 green to resolve the submitted caption/figure contradiction",
+    "manual_biological_cherry_picking": false,
+    "n_profiles": 31,
+    "ranking": "ascending mean squared distance to the matching seed-specific prototype; descending strength and pair_id tie breaks",
+    "stability_gate": "same peak-ordered k=3 assignment at seeds 42, 43, and 44"
+  },
+  "status": "complete_selection_not_figure"
+}

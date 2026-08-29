@@ -8,11 +8,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import qnorm
 import scanpy as sc
 from scipy import sparse
 from scipy.spatial import cKDTree
-from sklearn.metrics.pairwise import euclidean_distances
+
+from CytoBridge.graph_database import selected_feature_symbol
 
 try:
     from tqdm.auto import tqdm
@@ -81,13 +81,51 @@ def _progress(iterable, *, desc: str, total: int | None = None, enable: bool = T
     return tqdm(iterable, desc=desc, total=total, leave=False)
 
 
-def _matching_genes(query: str, gene_ids: list[str], cache: dict[str, list[str]]) -> list[str]:
-    query = str(query)
-    if query in cache:
-        return cache[query]
-    matches = [g for g in gene_ids if query in g]
-    cache[query] = matches
-    return matches
+def _complex_subunits(value: Any) -> tuple[str, ...]:
+    """Parse a CellChat/COMMOT underscore-delimited LR complex."""
+    parts = tuple(part.strip() for part in str(value).split("_") if part.strip())
+    if not parts:
+        raise ValueError(f"Empty ligand/receptor identifier: {value!r}")
+    return parts
+
+
+def _gene_name_lookup(
+    gene_ids: list[str],
+    *,
+    preferred_species_tag: str | None = None,
+) -> dict[str, tuple[str, ...]]:
+    """Index selected gene symbols without allowing substring matches."""
+    grouped: dict[str, list[str]] = defaultdict(list)
+    for gene in gene_ids:
+        symbol = selected_feature_symbol(
+            gene,
+            preferred_species_tag=preferred_species_tag,
+        )
+        if symbol is None:
+            continue
+        grouped[symbol.casefold()].append(str(gene))
+    return {key: tuple(values) for key, values in grouped.items()}
+
+
+def _resolve_complex_subunits(
+    value: Any,
+    gene_lookup: dict[str, tuple[str, ...]],
+) -> tuple[tuple[str, ...] | None, str | None]:
+    """Resolve every LR subunit by exact, species-tolerant gene-name equality.
+
+    Gene-symbol capitalization differs across human, mouse and zebrafish
+    resources, so equality is case-insensitive. A case-insensitive collision is
+    treated as ambiguous instead of selecting an arbitrary feature.
+    """
+    resolved: list[str] = []
+    for subunit in _complex_subunits(value):
+        matches = gene_lookup.get(subunit.casefold(), ())
+        if not matches:
+            return None, f"missing:{subunit}"
+        if len(matches) != 1:
+            return None, f"ambiguous:{subunit}"
+        resolved.append(matches[0])
+    return tuple(resolved), None
 
 
 def _read_h5ad(data_from: str | sc.AnnData) -> sc.AnnData:
@@ -116,7 +154,9 @@ def _resolve_spatial_key(adata: sc.AnnData, preferred_key: str) -> str:
     if "spatial" in adata.obsm:
         return "spatial"
     if "spatial_x" in adata.obs and "spatial_y" in adata.obs:
-        adata.obsm["spatial"] = np.column_stack((adata.obs["spatial_x"], adata.obs["spatial_y"]))
+        adata.obsm["spatial"] = np.column_stack(
+            (adata.obs["spatial_x"], adata.obs["spatial_y"])
+        )
         return "spatial"
     raise ValueError(
         "No spatial coordinates found in adata.obsm['spatial_aligned'] or adata.obsm['spatial'] "
@@ -133,6 +173,50 @@ def nn1_distances(xy: np.ndarray) -> np.ndarray:
     tree = cKDTree(xy)
     dist, _ = tree.query(xy, k=2)
     return dist[:, 1]
+
+
+def _radius_neighbors(
+    coordinates: np.ndarray,
+    neighborhood_threshold: float,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
+    """Return directed positive-distance neighbors and cutoff-normalized weights.
+
+    The same radius-graph definition is used at every dataset size.  Edges use
+    the same strict spatial contract as the interaction model,
+    ``1e-6 < distance < neighborhood_threshold``, and the distance weight
+    ``1 - distance / neighborhood_threshold``.
+    """
+    coordinates = np.asarray(coordinates, dtype=np.float64)
+    threshold = float(neighborhood_threshold)
+    tree = cKDTree(coordinates)
+    raw_neighbors = tree.query_ball_point(coordinates, r=threshold)
+    inv_threshold = 1.0 / max(threshold, 1e-8)
+
+    neighbors: list[np.ndarray] = []
+    weights: list[np.ndarray] = []
+    distances: list[np.ndarray] = []
+    for source, candidates in enumerate(raw_neighbors):
+        targets = np.asarray(candidates, dtype=np.int32)
+        targets = targets[targets != source]
+        if targets.size == 0:
+            neighbors.append(np.empty(0, dtype=np.int32))
+            weights.append(np.empty(0, dtype=np.float32))
+            distances.append(np.empty(0, dtype=np.float32))
+            continue
+
+        deltas = coordinates[targets] - coordinates[source]
+        edge_distances = np.sqrt(np.einsum("ij,ij->i", deltas, deltas))
+        keep = (edge_distances > 1e-6) & (edge_distances < threshold)
+        targets = targets[keep]
+        edge_distances = edge_distances[keep].astype(np.float32, copy=False)
+        edge_weights = (1.0 - edge_distances * inv_threshold).astype(
+            np.float32, copy=False
+        )
+        neighbors.append(targets.astype(np.int32, copy=False))
+        weights.append(edge_weights)
+        distances.append(edge_distances)
+
+    return neighbors, weights, distances
 
 
 def sanitize_interaction_graph_uns(adata: sc.AnnData) -> None:
@@ -177,7 +261,11 @@ def estimate_neighborhood_threshold_from_aligned_spatial(
     else:
         batch_names = ["all"]
 
-    nn_col = "nn1_dist_aligned" if spatial_key_used == "spatial_aligned" else f"nn1_dist_{spatial_key_used}"
+    nn_col = (
+        "nn1_dist_aligned"
+        if spatial_key_used == "spatial_aligned"
+        else f"nn1_dist_{spatial_key_used}"
+    )
     nn_values = np.full(adata.n_obs, np.nan, dtype=np.float64)
     rows: list[dict[str, Any]] = []
     recommended_list: list[float] = []
@@ -218,7 +306,9 @@ def estimate_neighborhood_threshold_from_aligned_spatial(
         rows.append(row)
 
     if not recommended_list:
-        raise ValueError("Failed to estimate neighborhood threshold: no valid batches found.")
+        raise ValueError(
+            "Failed to estimate neighborhood threshold: no valid batches found."
+        )
 
     mean_recommended_spot = float(np.mean(recommended_list))
     neighborhood_threshold = float(neighborhood_factor * mean_recommended_spot)
@@ -270,6 +360,7 @@ def generate_interaction_graph(
     save_quantile_matrix: bool = False,
     verbose: bool = True,
     use_tqdm: bool = True,
+    preferred_species_tag: str | None = None,
 ) -> dict[str, Any]:
     """Build cell-cell interaction graph.
 
@@ -277,6 +368,14 @@ def generate_interaction_graph(
     When `neighborhood_threshold <= 0` and `auto_neighborhood_threshold=True`,
     threshold is estimated from aligned NN distance statistics.
     """
+    try:
+        import qnorm
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "generate_interaction_graph requires the optional 'qnorm' package. "
+            "Install it with: pip install 'CytoBridge[preprocess]'"
+        ) from exc
+
     data_to = _resolve_output_dir(data_to, data_name, default_root="input_graph")
     metadata_to = _resolve_output_dir(metadata_to, data_name, default_root="metadata")
 
@@ -284,7 +383,10 @@ def generate_interaction_graph(
     if save_metadata:
         _ensure_dir(metadata_to)
     elif metadata_to:
-        _log("metadata_to is provided but save_metadata=False, metadata files will be skipped.", verbose)
+        _log(
+            "metadata_to is provided but save_metadata=False, metadata files will be skipped.",
+            verbose,
+        )
 
     progress_enabled = bool(verbose and use_tqdm)
 
@@ -305,17 +407,20 @@ def generate_interaction_graph(
         should_auto_spot = spot_diameter is None or float(spot_diameter) <= 0
 
         if should_auto_threshold or should_auto_spot:
-            est_threshold, est_spot, nn_stats_df, spatial_key_used = (
-                estimate_neighborhood_threshold_from_aligned_spatial(
-                    adata_full,
-                    time_key=time_key,
-                    spatial_key=spatial_key,
-                    recommended_spot_scale=recommended_spot_scale,
-                    neighborhood_factor=neighborhood_factor,
-                    store_nn1_in_obs=True,
-                    store_in_uns=True,
-                    verbose=verbose,
-                )
+            (
+                est_threshold,
+                est_spot,
+                nn_stats_df,
+                spatial_key_used,
+            ) = estimate_neighborhood_threshold_from_aligned_spatial(
+                adata_full,
+                time_key=time_key,
+                spatial_key=spatial_key,
+                recommended_spot_scale=recommended_spot_scale,
+                neighborhood_factor=neighborhood_factor,
+                store_nn1_in_obs=True,
+                store_in_uns=True,
+                verbose=verbose,
             )
             if should_auto_threshold:
                 neighborhood_threshold = est_threshold
@@ -328,7 +433,9 @@ def generate_interaction_graph(
 
         time_mask = _resolve_time_mask(adata_full, time_key, time_value)
         if not np.any(time_mask):
-            raise ValueError("No cells selected by time filter. Check time_key/time_value.")
+            raise ValueError(
+                "No cells selected by time filter. Check time_key/time_value."
+            )
 
         expression_source = "X"
         if expression_layer is not None and expression_layer in adata_full.layers:
@@ -367,7 +474,9 @@ def generate_interaction_graph(
         gene_ids = np.asarray(adata_full.var_names)[gene_mask].tolist()
 
         spatial_key_used = _resolve_spatial_key(adata_full, spatial_key_used)
-        coordinates = np.asarray(adata_full.obsm[spatial_key_used], dtype=np.float64)[time_mask]
+        coordinates = np.asarray(adata_full.obsm[spatial_key_used], dtype=np.float64)[
+            time_mask
+        ]
         cell_barcode = np.asarray(adata_full.obs.index)[time_mask]
         _log(f"Number of barcodes: {cell_barcode.shape[0]}", verbose)
         _log("Applying quantile normalization", verbose)
@@ -397,13 +506,18 @@ def generate_interaction_graph(
         del temp
         del dense_expr
         if tissue_position_file is None:
-            raise ValueError("tissue_position_file is required when data_from is not .h5ad")
+            raise ValueError(
+                "tissue_position_file is required when data_from is not .h5ad"
+            )
 
         df_pos = pd.read_csv(tissue_position_file, sep=",", header=None)
         tissue_position = df_pos.values
         barcode_vs_xy = {}
         for i in range(tissue_position.shape[0]):
-            barcode_vs_xy[tissue_position[i][0]] = [tissue_position[i][4], tissue_position[i][5]]
+            barcode_vs_xy[tissue_position[i][0]] = [
+                tissue_position[i][4],
+                tissue_position[i][5],
+            ]
 
         coordinates = np.zeros((cell_barcode.shape[0], 2))
         for i in range(cell_barcode.shape[0]):
@@ -426,14 +540,12 @@ def generate_interaction_graph(
         verbose,
     )
 
-    spatial_dim = coordinates.shape[1]
     barcode_info: list[list[Any]] = []
     if save_metadata:
         for i, cell_code in enumerate(cell_barcode):
             entry = [cell_code] + coordinates[i, :].tolist() + [0]
             barcode_info.append(entry)
 
-    gene_info = {gene: "" for gene in gene_ids}
     gene_index = {gene: i for i, gene in enumerate(gene_ids)}
 
     if split > 0 and save_metadata:
@@ -441,19 +553,35 @@ def generate_interaction_graph(
         for i, _ in enumerate(cell_barcode):
             node_id_sorted_xy.append([i, coordinates[i, 0], coordinates[i, 1]])
         node_id_sorted_xy = sorted(node_id_sorted_xy, key=lambda x: (x[1], x[2]))
-        with gzip.open(os.path.join(metadata_to, f"{data_name}_node_id_sorted_xy"), "wb") as fp:
+        with gzip.open(
+            os.path.join(metadata_to, f"{data_name}_node_id_sorted_xy"), "wb"
+        ) as fp:
             pickle.dump(node_id_sorted_xy, fp)
     elif split > 0 and not save_metadata:
-        _log("split>0 but save_metadata=False, node sorting metadata will not be saved.", verbose)
+        _log(
+            "split>0 but save_metadata=False, node sorting metadata will not be saved.",
+            verbose,
+        )
 
     _log("Ligand-receptor database reading.", verbose)
     df = pd.read_csv(database_path, sep=",")
     lig_col, rec_col, pathway_col, annotation_col = _resolve_lr_columns(df)
-    dataset_pairs = []
-    ligand_dict_dataset = defaultdict(list)
-    cell_cell_contact = {}
-    match_cache: dict[str, list[str]] = {}
-    count_pair = 0
+    gene_lookup = _gene_name_lookup(
+        gene_ids,
+        preferred_species_tag=preferred_species_tag,
+    )
+    interaction_specs: dict[
+        tuple[tuple[str, ...], tuple[str, ...]], dict[str, Any]
+    ] = {}
+    database_stats = {
+        "rows_total": int(df.shape[0]),
+        "rows_matched": 0,
+        "rows_missing_subunit": 0,
+        "rows_ambiguous_gene": 0,
+        "matched_simple_pairs": 0,
+        "matched_complex_pairs": 0,
+        "unique_resolved_pairs": 0,
+    }
     lr_iter = _progress(
         range(df.shape[0]),
         desc="Matching ligand-receptor pairs",
@@ -461,164 +589,134 @@ def generate_interaction_graph(
         enable=progress_enabled,
     )
     for i in lr_iter:
-        ligand = df.loc[i, lig_col]
-        receptor = df.loc[i, rec_col]
-        pathway = df.loc[i, pathway_col]
-        annotation = df.loc[i, annotation_col]
-        ligand_matches = _matching_genes(ligand, gene_ids, match_cache)
-        if not ligand_matches:
+        ligand_token = str(df.loc[i, lig_col]).strip()
+        receptor_token = str(df.loc[i, rec_col]).strip()
+        pathway = str(df.loc[i, pathway_col]).strip()
+        annotation = str(df.loc[i, annotation_col]).strip()
+        ligand_subunits, ligand_error = _resolve_complex_subunits(
+            ligand_token, gene_lookup
+        )
+        receptor_subunits, receptor_error = _resolve_complex_subunits(
+            receptor_token, gene_lookup
+        )
+        errors = tuple(
+            error for error in (ligand_error, receptor_error) if error is not None
+        )
+        if errors:
+            if any(error.startswith("ambiguous:") for error in errors):
+                database_stats["rows_ambiguous_gene"] += 1
+            else:
+                database_stats["rows_missing_subunit"] += 1
             continue
-        receptor_matches = _matching_genes(receptor, gene_ids, match_cache)
-        if not receptor_matches:
-            continue
-        for gene_name in ligand_matches:
-            gene_info[gene_name] = "included"
-        for gene_name in receptor_matches:
-            gene_info[gene_name] = "included"
-        # Keep legacy behavior: use the last matched gene in dataset order.
-        ligand_name = ligand_matches[-1]
-        receptor_name = receptor_matches[-1]
-        ligand_dict_dataset[ligand_name].append(receptor_name)
-        count_pair += 1
-        dataset_pairs.append((ligand_name, receptor_name, pathway))
-        if annotation == "Cell-Cell Contact":
-            cell_cell_contact[receptor] = ""
-    _log("Ligand-receptor database reading done.", verbose)
-    _log(f"number of ligand-receptor pairs in this dataset {count_pair}", verbose)
-    _log(f"number of ligands {len(ligand_dict_dataset.keys())}", verbose)
 
-    included_gene = [gene for gene in gene_info.keys() if gene_info[gene] == "included"]
+        assert ligand_subunits is not None and receptor_subunits is not None
+        database_stats["rows_matched"] += 1
+        if len(ligand_subunits) > 1 or len(receptor_subunits) > 1:
+            database_stats["matched_complex_pairs"] += 1
+        else:
+            database_stats["matched_simple_pairs"] += 1
+
+        pair_key = (ligand_subunits, receptor_subunits)
+        if pair_key not in interaction_specs:
+            interaction_specs[pair_key] = {
+                "ligand_token": ligand_token,
+                "receptor_token": receptor_token,
+                "ligand_subunits": ligand_subunits,
+                "receptor_subunits": receptor_subunits,
+                "pathways": set(),
+                "cell_cell_contact": False,
+            }
+        interaction_specs[pair_key]["pathways"].add(pathway)
+        interaction_specs[pair_key]["cell_cell_contact"] = bool(
+            interaction_specs[pair_key]["cell_cell_contact"]
+            or annotation.casefold() == "cell-cell contact".casefold()
+        )
+
+    database_stats["unique_resolved_pairs"] = int(len(interaction_specs))
+    _log("Ligand-receptor database reading done.", verbose)
+    _log(
+        "LR exact-complex matching: "
+        f"{database_stats['rows_matched']}/{database_stats['rows_total']} rows, "
+        f"{database_stats['unique_resolved_pairs']} unique pairs, "
+        f"{database_stats['matched_complex_pairs']} complex rows",
+        verbose,
+    )
+    if not interaction_specs:
+        raise ValueError(
+            "No ligand-receptor database row could be represented by the input genes. "
+            "LR identifiers are matched by exact gene name (case-insensitive), and "
+            "underscore-delimited complexes require every subunit. Check that the "
+            "database species and H5AD gene identifiers agree."
+        )
+
+    included_gene = sorted(
+        {
+            gene
+            for pair in interaction_specs.values()
+            for gene in (
+                *pair["ligand_subunits"],
+                *pair["receptor_subunits"],
+            )
+        },
+        key=lambda gene: gene_index[gene],
+    )
     _log(
         f"Total genes in this dataset: {len(gene_ids)}, "
         f"number of genes working as ligand and/or receptor: {len(included_gene)}",
         verbose,
     )
 
-    cell_percentile = np.percentile(cell_vs_gene, threshold_gene_exp, axis=1).astype(np.float32, copy=False)
+    cell_percentile = np.percentile(cell_vs_gene, threshold_gene_exp, axis=1).astype(
+        np.float32, copy=False
+    )
     row_min = np.min(cell_vs_gene, axis=1)
     row_max = np.max(cell_vs_gene, axis=1)
     fallback_mask = cell_percentile == row_min
     cell_percentile[fallback_mask] = row_max[fallback_mask]
 
-    required_gene_names = set(ligand_dict_dataset.keys())
-    for receptors in ligand_dict_dataset.values():
-        required_gene_names.update(receptors)
-    if required_gene_names:
-        required_gene_names = sorted(required_gene_names, key=lambda g: gene_index[g])
-    else:
-        required_gene_names = []
+    required_gene_names = included_gene
 
     expr_by_gene: dict[str, np.ndarray] = {}
-    active_mask_by_gene: dict[str, np.ndarray] = {}
     for gene_name in required_gene_names:
         g_idx = gene_index[gene_name]
         gene_expr = np.asarray(cell_vs_gene[:, g_idx], dtype=np.float32).copy()
         expr_by_gene[gene_name] = gene_expr
-        active_mask_by_gene[gene_name] = gene_expr >= cell_percentile
 
+    quantile_matrix_to_save = cell_vs_gene if save_quantile_matrix else None
     del cell_vs_gene
     gc.collect()
 
-    l_r_pair = {}
-    lr_id = 0
-    for gene in list(ligand_dict_dataset.keys()):
-        ligand_dict_dataset[gene] = list(set(ligand_dict_dataset[gene]))
-        l_r_pair[gene] = {}
-        for receptor_gene in ligand_dict_dataset[gene]:
-            l_r_pair[gene][receptor_gene] = lr_id
-            lr_id += 1
+    for relation_id, spec in enumerate(interaction_specs.values()):
+        spec["relation_id"] = int(relation_id)
+        spec["pathway"] = ";".join(sorted(spec.pop("pathways")))
 
-    pathway_dict = {}
-    for lg, rc, pw in dataset_pairs:
-        if lg in l_r_pair and rc in l_r_pair[lg]:
-            rid = l_r_pair[lg][rc]
-            pathway_dict[rid] = pw
+    complex_expression_cache: dict[tuple[str, ...], np.ndarray] = {}
 
-    # Avoid O(N^2) pairwise matrix for large slices.
-    # For small slices, keep exact historical normalization with full distance matrix.
+    def _complex_expression(subunits: tuple[str, ...]) -> np.ndarray:
+        cached = complex_expression_cache.get(subunits)
+        if cached is not None:
+            return cached
+        values = np.vstack([expr_by_gene[gene] for gene in subunits])
+        # A signaling complex is available only to the extent that every
+        # required subunit is available. This is the same strict minimum rule
+        # used by the downstream LR analyses.
+        activity = np.min(values, axis=0).astype(np.float32, copy=False)
+        complex_expression_cache[subunits] = activity
+        return activity
+
+    # One radius-graph definition is used for every dataset size.  This avoids
+    # the former size-dependent distance normalization and O(N^2) matrix.
     n_cells = coordinates.shape[0]
-    use_full_pairwise = n_cells <= 50000
-    if use_full_pairwise:
-        distance_matrix = euclidean_distances(coordinates, coordinates).astype(np.float32, copy=False)
-        max_per_col = np.max(distance_matrix, axis=0)
-        min_per_col = np.min(distance_matrix, axis=0)
-        denom_per_col = max_per_col - min_per_col
-    else:
-        distance_matrix = None
-        max_per_col = None
-        min_per_col = None
-        denom_per_col = None
-        _log(
-            f"Large slice detected (n_cells={n_cells}). "
-            "Switching to cKDTree radius neighbors to avoid O(N^2) memory.",
-            verbose,
-        )
-
-    valid_neighbors: list[np.ndarray] = []
-    valid_neighbor_weights: list[np.ndarray] = []
-    valid_neighbor_distances: list[np.ndarray] = []
-    if use_full_pairwise:
-        for i in _progress(
-            range(n_cells),
-            desc="Building neighbor index",
-            total=n_cells,
-            enable=progress_enabled,
-        ):
-            neighbors_i = np.where(distance_matrix[i] <= neighborhood_threshold)[0]
-            if neighbors_i.size == 0:
-                valid_neighbors.append(np.empty((0,), dtype=np.int32))
-                valid_neighbor_weights.append(np.empty((0,), dtype=np.float32))
-                valid_neighbor_distances.append(np.empty((0,), dtype=np.float32))
-                continue
-            d_ij = distance_matrix[i, neighbors_i]
-            weights_i = np.ones(neighbors_i.shape[0], dtype=np.float32)
-            non_constant = denom_per_col[neighbors_i] != 0
-            if np.any(non_constant):
-                denom = denom_per_col[neighbors_i[non_constant]]
-                min_vals = min_per_col[neighbors_i[non_constant]]
-                weights_i[non_constant] = 1 - ((d_ij[non_constant] - min_vals) / denom)
-            keep = weights_i > 0
-            valid_neighbors.append(neighbors_i[keep].astype(np.int32, copy=False))
-            valid_neighbor_weights.append(weights_i[keep].astype(np.float32, copy=False))
-            valid_neighbor_distances.append(d_ij[keep].astype(np.float32, copy=False))
-    else:
-        tree = cKDTree(np.asarray(coordinates, dtype=np.float64))
-        raw_neighbors = tree.query_ball_point(coordinates, r=float(neighborhood_threshold))
-        inv_thr = 1.0 / max(float(neighborhood_threshold), 1e-8)
-        for i in _progress(
-            range(n_cells),
-            desc="Building neighbor index (kdtree)",
-            total=n_cells,
-            enable=progress_enabled,
-        ):
-            neighbors_i = np.asarray(raw_neighbors[i], dtype=np.int32)
-            if neighbors_i.size == 0:
-                valid_neighbors.append(np.empty((0,), dtype=np.int32))
-                valid_neighbor_weights.append(np.empty((0,), dtype=np.float32))
-                valid_neighbor_distances.append(np.empty((0,), dtype=np.float32))
-                continue
-            deltas = coordinates[neighbors_i] - coordinates[i]
-            d_ij = np.sqrt(np.einsum("ij,ij->i", deltas, deltas)).astype(np.float32, copy=False)
-            keep = d_ij <= float(neighborhood_threshold)
-            if not np.any(keep):
-                valid_neighbors.append(np.empty((0,), dtype=np.int32))
-                valid_neighbor_weights.append(np.empty((0,), dtype=np.float32))
-                valid_neighbor_distances.append(np.empty((0,), dtype=np.float32))
-                continue
-            neighbors_i = neighbors_i[keep]
-            d_ij = d_ij[keep]
-            weights_i = 1.0 - d_ij * inv_thr
-            weights_i = np.clip(weights_i, 0.0, None).astype(np.float32, copy=False)
-            valid_neighbors.append(neighbors_i.astype(np.int32, copy=False))
-            valid_neighbor_weights.append(weights_i)
-            valid_neighbor_distances.append(d_ij)
-
-    if distance_matrix is not None:
-        del distance_matrix
-        del max_per_col
-        del min_per_col
-        del denom_per_col
-        gc.collect()
+    _log(
+        f"Building unified cKDTree radius graph (n_cells={n_cells}, "
+        f"distance < {neighborhood_threshold:.6f})",
+        verbose,
+    )
+    (
+        valid_neighbors,
+        valid_neighbor_weights,
+        valid_neighbor_distances,
+    ) = _radius_neighbors(coordinates, neighborhood_threshold)
 
     row_col = []
     edge_weight = []
@@ -626,34 +724,19 @@ def generate_interaction_graph(
     edge_pathway = []
     self_loop_found = defaultdict(dict) if save_metadata else None
 
-    ligand_list = list(ligand_dict_dataset.keys())
+    interaction_list = list(interaction_specs.values())
     ligand_iter = _progress(
-        ligand_list,
+        interaction_list,
         desc="Scoring ligand-receptor edges",
-        total=len(ligand_list),
+        total=len(interaction_list),
         enable=progress_enabled,
     )
-    for gene in ligand_iter:
-        ligand_expr = expr_by_gene.get(gene)
-        ligand_active = active_mask_by_gene.get(gene)
-        if ligand_expr is None or ligand_active is None:
-            continue
+    for interaction in ligand_iter:
+        ligand_expr = _complex_expression(interaction["ligand_subunits"])
+        receptor_expr = _complex_expression(interaction["receptor_subunits"])
+        ligand_active = ligand_expr >= cell_percentile
+        receptor_active = receptor_expr >= cell_percentile
         source_cells = np.where(ligand_active)[0]
-        receptor_specs = []
-        for gene_rec in ligand_dict_dataset[gene]:
-            rec_expr = expr_by_gene.get(gene_rec)
-            rec_active = active_mask_by_gene.get(gene_rec)
-            if rec_expr is None or rec_active is None:
-                continue
-            receptor_specs.append(
-                (
-                    gene_rec,
-                    l_r_pair[gene][gene_rec],
-                    gene_rec in cell_cell_contact,
-                    rec_active,
-                    rec_expr,
-                )
-            )
         for i in source_cells:
             neighbors_i = valid_neighbors[i]
             if neighbors_i.size == 0:
@@ -661,58 +744,75 @@ def generate_interaction_graph(
             neighbor_weights_i = valid_neighbor_weights[i]
             neighbor_distances_i = valid_neighbor_distances[i]
             ligand_expr_i = float(ligand_expr[i])
-            for gene_rec, relation_id, is_contact, rec_active_mask, rec_expr in receptor_specs:
-                recv_mask = rec_active_mask[neighbors_i]
-                recv_cells = neighbors_i[recv_mask]
-                recv_dist_weights = neighbor_weights_i[recv_mask]
-                recv_distances = neighbor_distances_i[recv_mask]
+            recv_mask = receptor_active[neighbors_i]
+            recv_cells = neighbors_i[recv_mask]
+            recv_dist_weights = neighbor_weights_i[recv_mask]
+            recv_distances = neighbor_distances_i[recv_mask]
+            if recv_cells.size == 0:
+                continue
+            if interaction["cell_cell_contact"]:
+                contact_mask = recv_distances <= spot_diameter
+                recv_cells = recv_cells[contact_mask]
+                recv_dist_weights = recv_dist_weights[contact_mask]
                 if recv_cells.size == 0:
                     continue
-                if is_contact:
-                    contact_mask = recv_distances <= spot_diameter
-                    recv_cells = recv_cells[contact_mask]
-                    recv_dist_weights = recv_dist_weights[contact_mask]
-                    recv_distances = recv_distances[contact_mask]
-                    if recv_cells.size == 0:
-                        continue
-                communication_scores = ligand_expr_i * rec_expr[recv_cells]
-                positive_mask = communication_scores > 0
-                if not np.all(positive_mask):
-                    _log("zero valued ccc score found. Might be a potential ERROR!!", verbose)
-                    recv_cells = recv_cells[positive_mask]
-                    communication_scores = communication_scores[positive_mask]
-                    recv_dist_weights = recv_dist_weights[positive_mask]
-                    recv_distances = recv_distances[positive_mask]
-                if recv_cells.size == 0 or recv_dist_weights.size == 0:
-                    continue
-                for j, score, dist_w in zip(recv_cells, communication_scores, recv_dist_weights):
-                    row_col.append([int(i), int(j)])
-                    edge_weight.append([float(dist_w), float(score), int(relation_id)])
-                    lig_rec.append([gene, gene_rec])
-                    edge_pathway.append(pathway_dict.get(relation_id, "NA"))
-                    if save_metadata and i == j:
-                        self_loop_found[int(i)][int(j)] = ""
+            communication_scores = ligand_expr_i * receptor_expr[recv_cells]
+            positive_mask = communication_scores > 0
+            recv_cells = recv_cells[positive_mask]
+            communication_scores = communication_scores[positive_mask]
+            recv_dist_weights = recv_dist_weights[positive_mask]
+            if recv_cells.size == 0:
+                continue
+            for j, score, dist_w in zip(
+                recv_cells, communication_scores, recv_dist_weights
+            ):
+                row_col.append([int(i), int(j)])
+                edge_weight.append(
+                    [
+                        float(dist_w),
+                        float(score),
+                        int(interaction["relation_id"]),
+                    ]
+                )
+                lig_rec.append(
+                    [interaction["ligand_token"], interaction["receptor_token"]]
+                )
+                edge_pathway.append(interaction["pathway"] or "NA")
+                if save_metadata and i == j:
+                    self_loop_found[int(i)][int(j)] = ""
 
     total_num_cell = int(coordinates.shape[0])
-    _log(f"total number of nodes is {total_num_cell}, and edges is {len(row_col)} in the input graph", verbose)
+    _log(
+        f"total number of nodes is {total_num_cell}, and edges is {len(row_col)} in the input graph",
+        verbose,
+    )
     _log("preprocess done.", verbose)
     _log("writing data ...", verbose)
 
     write_tasks: list[tuple[str, Any]] = []
 
     def _write_adjacency_records() -> None:
-        with gzip.open(os.path.join(data_to, f"{data_name}_adjacency_records"), "wb") as fp:
-            pickle.dump([row_col, edge_weight, lig_rec, total_num_cell, edge_pathway], fp)
+        with gzip.open(
+            os.path.join(data_to, f"{data_name}_adjacency_records"), "wb"
+        ) as fp:
+            pickle.dump(
+                [row_col, edge_weight, lig_rec, total_num_cell, edge_pathway], fp
+            )
 
     write_tasks.append(("adjacency_records", _write_adjacency_records))
 
     if save_metadata:
+
         def _write_self_loop() -> None:
-            with gzip.open(os.path.join(metadata_to, f"{data_name}_self_loop_record"), "wb") as fp:
+            with gzip.open(
+                os.path.join(metadata_to, f"{data_name}_self_loop_record"), "wb"
+            ) as fp:
                 pickle.dump(self_loop_found, fp)
 
         def _write_barcode_info() -> None:
-            with gzip.open(os.path.join(metadata_to, f"{data_name}_barcode_info"), "wb") as fp:
+            with gzip.open(
+                os.path.join(metadata_to, f"{data_name}_barcode_info"), "wb"
+            ) as fp:
                 pickle.dump(barcode_info, fp)
 
         def _write_gene_ids() -> None:
@@ -745,15 +845,27 @@ def generate_interaction_graph(
                         "spot_diameter": spot_diameter,
                         "neighborhood_threshold": neighborhood_threshold,
                         "threshold_gene_exp": threshold_gene_exp,
-                        "expression_layer": expression_layer if expression_layer is not None else "X",
+                        "expression_layer": expression_layer
+                        if expression_layer is not None
+                        else "X",
                         "threshold_source": threshold_source,
                         "spot_source": spot_source,
                         "recommended_spot_scale": recommended_spot_scale,
                         "neighborhood_factor": neighborhood_factor,
+                        "lr_database_path": os.path.abspath(database_path),
+                        "lr_matching_rule": (
+                            "selected_symbol_exact_case_insensitive_"
+                            "all_complex_subunits"
+                        ),
+                        "preferred_species_tag": preferred_species_tag,
+                        "lr_complex_expression_rule": "minimum",
+                        **database_stats,
                     }
                 ]
             )
-            params_df.to_csv(os.path.join(metadata_to, f"{data_name}_graph_params.csv"), index=False)
+            params_df.to_csv(
+                os.path.join(metadata_to, f"{data_name}_graph_params.csv"), index=False
+            )
 
         write_tasks.extend(
             [
@@ -777,9 +889,13 @@ def generate_interaction_graph(
             )
 
     if save_quantile_matrix:
+
         def _write_quantile_matrix() -> None:
-            with gzip.open(os.path.join(data_to, f"{data_name}_cell_vs_gene_quantile_transformed"), "wb") as fp:
-                pickle.dump(cell_vs_gene, fp)
+            with gzip.open(
+                os.path.join(data_to, f"{data_name}_cell_vs_gene_quantile_transformed"),
+                "wb",
+            ) as fp:
+                pickle.dump(quantile_matrix_to_save, fp)
 
         write_tasks.append(
             (
@@ -799,6 +915,25 @@ def generate_interaction_graph(
 
     _log("write data done", verbose)
 
+    if "adata_full" in locals():
+        graph_metadata = dict(adata_full.uns.get("interaction_graph", {}))
+        graph_metadata.update(
+            {
+                "lr_database_path": os.path.abspath(database_path),
+                "lr_matching_rule": (
+                    "selected_symbol_exact_case_insensitive_all_complex_subunits"
+                ),
+                "preferred_species_tag": preferred_species_tag,
+                "lr_complex_expression_rule": "minimum",
+                "lr_database_rows_total": database_stats["rows_total"],
+                "lr_database_rows_matched": database_stats["rows_matched"],
+                "lr_unique_resolved_pairs": database_stats["unique_resolved_pairs"],
+                "lr_matched_complex_rows": database_stats["matched_complex_pairs"],
+            }
+        )
+        adata_full.uns["interaction_graph"] = graph_metadata
+        sanitize_interaction_graph_uns(adata_full)
+
     return {
         "data_name": data_name,
         "spatial_key": spatial_key_used,
@@ -808,6 +943,13 @@ def generate_interaction_graph(
         "spot_source": spot_source,
         "num_cells": int(total_num_cell),
         "num_edges": int(len(row_col)),
+        "lr_database_path": os.path.abspath(database_path),
+        "lr_matching_rule": (
+            "selected_symbol_exact_case_insensitive_all_complex_subunits"
+        ),
+        "preferred_species_tag": preferred_species_tag,
+        "lr_complex_expression_rule": "minimum",
+        "lr_database_stats": database_stats,
         "saved_outputs": [name for name, _ in write_tasks],
     }
 
@@ -834,7 +976,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--spot_diameter", type=float, default=0.0)
     parser.add_argument("--split", type=int, default=0)
     parser.add_argument("--neighborhood_threshold", type=float, default=0.0)
-    parser.add_argument("--database_path", type=str, default="database/CellNEST_database.csv")
+    parser.add_argument(
+        "--database_path", type=str, default="database/CellNEST_database.csv"
+    )
     parser.add_argument("--time_key", type=str, default="time_point_processed")
     parser.add_argument("--time_value", type=str, default=None)
     parser.add_argument("--spatial_key", type=str, default="spatial_aligned")
@@ -844,7 +988,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default="counts",
         help="Expression layer used for LR graph (default: counts; fallback to X if absent).",
     )
-    parser.add_argument("--auto_neighborhood_threshold", type=int, choices=[0, 1], default=1)
+    parser.add_argument(
+        "--auto_neighborhood_threshold", type=int, choices=[0, 1], default=1
+    )
     parser.add_argument("--recommended_spot_scale", type=float, default=1.2)
     parser.add_argument("--neighborhood_factor", type=float, default=4.0)
     parser.add_argument(
@@ -863,6 +1009,12 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--verbose", type=int, choices=[0, 1], default=1)
     parser.add_argument("--use_tqdm", type=int, choices=[0, 1], default=1)
+    parser.add_argument(
+        "--preferred_species_tag",
+        type=str,
+        default=None,
+        help="select this [species] symbol before exact LR matching",
+    )
     return parser
 
 
@@ -892,6 +1044,7 @@ def main() -> None:
         save_quantile_matrix=bool(args.save_quantile_matrix),
         verbose=bool(args.verbose),
         use_tqdm=bool(args.use_tqdm),
+        preferred_species_tag=args.preferred_species_tag,
     )
 
 

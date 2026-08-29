@@ -1,0 +1,116 @@
+{
+  "composition_checks": {
+    "all_13_state_hashes_verified": true,
+    "all_fraction_sums_one": true,
+    "all_h5ad_label_counts_exact": true,
+    "growth_dynamics_crosscheck": {
+      "all_realized_rates_within_endpoint_means": true,
+      "correlation": 0.9994919885238734,
+      "definition": "realized log(total[t+0.25]/total[t])/0.25 versus mean of package growth-net means at interval endpoints",
+      "mae": 0.0043670017726127565,
+      "status": "PASS"
+    },
+    "max_fraction_error": 9.985502008591496e-17,
+    "other_labels": [
+      "Lung",
+      "Mucosal epithelium",
+      "Blood vessel",
+      "Smooth muscle",
+      "Mesothelium",
+      "Mesentery",
+      "Kidney",
+      "Choroid plexus",
+      "Urogenital ridge",
+      "Lung primordium",
+      "Ovary",
+      "Sympathetic nerve",
+      "Pancreas",
+      "Adrenal gland",
+      "Inner ear",
+      "Facial nerve",
+      "Olfactory epithelium"
+    ],
+    "rows": 340,
+    "submitted_display_celltypes": [
+      "Brain",
+      "Connective tissue",
+      "Cavity",
+      "Epidermis",
+      "Muscle",
+      "Jaw and tooth",
+      "Meninges",
+      "Liver",
+      "Cartilage primordium",
+      "Spinal cord",
+      "Heart",
+      "GI tract",
+      "Dorsal root ganglion",
+      "Cartilage",
+      "Adipose tissue"
+    ],
+    "submitted_display_rule": "freeze the 15-category legend/stack order visible in the submitted notebook output and SI; replace values only; collapse every remaining corrected label to Other",
+    "times": 13,
+    "top15_plus_other_fraction_sums_one": true,
+    "totals_strictly_increasing": true
+  },
+  "errors": [],
+  "input": {
+    "composition_path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s6_composition/celltype_composition_fully_generated.csv",
+    "composition_sha256": "35c7118aefbadc2185fbf9ffd7760cdfdcafb93a5d3a7d18172c72525d04a3f3",
+    "growth_path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/s5_growth/growth_by_cell_fully_generated.csv",
+    "growth_sha256": "78073f25684bc456b822b7536e81fd3d5d796a73fd3dfc8cdb1371d239147fb9",
+    "state_inventory_path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/generated_states/state_inventory.csv",
+    "state_inventory_sha256": "da7b066fe59fb1335e7dc42910cb773fcf9dc405f31dc2ac774f694dcc790de4",
+    "summary_path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/summary.json",
+    "summary_sha256": "355dab8c6adda3271119cc34abedf22856bf1c7882fe5e2696340d36f3fd84a1"
+  },
+  "panel": "Supplementary Figure S6a-b",
+  "rejected_old_contract": {
+    "reason": "mixed full observed anchor totals with capped generated intermediate totals",
+    "sha256": "543e07f9775002f7241556d31ceff35c700e2ef91c8d734d95ad569a4886943b",
+    "used_for_rendering": false
+  },
+  "release": {
+    "aligned_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "classifier_accuracy": 0.8960273932851629,
+    "classifier_balanced_accuracy": 0.8503347888243216,
+    "classifier_k": 10,
+    "classifier_sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+    "finetune_sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+    "package_archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+    "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "score_sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a"
+  },
+  "schema_version": 1,
+  "status": "PASS",
+  "trajectory_contract": {
+    "mode": "global_t0_extrapolation",
+    "n_final": 105165,
+    "n_initial": 50000,
+    "origin_all_times": "generated_global_t0",
+    "restart_from_preceding_observed_stage": false,
+    "source_anchor_time_all_times": 0.0,
+    "spatial_warp": false,
+    "split_sde": {
+      "daughter_noise_std": 0.0,
+      "dt": 0.05,
+      "growth_alpha": 1.0,
+      "sigma": 0.03
+    },
+    "time_points": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0,
+      2.25,
+      2.5,
+      2.75,
+      3.0
+    ]
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "checks": [
+    {
+      "name": "strict_all_subunits",
+      "passed": true
+    },
+    {
+      "name": "zero_partial_complexes",
+      "passed": true
+    },
+    {
+      "name": "active_pca_universe",
+      "passed": true
+    },
+    {
+      "name": "persisted_pca_center",
+      "passed": true
+    },
+    {
+      "name": "S15a_no_centering_or_shift",
+      "passed": true
+    },
+    {
+      "name": "S15_canvas_png",
+      "observed": [
+        2400,
+        1554
+      ],
+      "passed": true
+    },
+    {
+      "name": "S15_canvas_jpg",
+      "observed": [
+        2400,
+        1554
+      ],
+      "passed": true
+    },
+    {
+      "name": "S16_page_size",
+      "observed": [
+        569.1920166015625,
+        317.1522521972656
+      ],
+      "passed": true
+    },
+    {
+      "name": "S17_page_size",
+      "observed": [
+        1288.692138671875,
+        2159.631103515625
+      ],
+      "passed": true
+    },
+    {
+      "name": "S16_complete_strict_pair_roster",
+      "observed": 531,
+      "passed": true
+    },
+    {
+      "name": "S16_current_cluster_counts",
+      "observed": {
+        "1": 1,
+        "2": 530
+      },
+      "passed": true
+    },
+    {
+      "name": "S17_68_fixed_slots",
+      "passed": true
+    },
+    {
+      "name": "S17_current_estimable_count",
+      "observed": 51,
+      "passed": true
+    },
+    {
+      "name": "S17_current_non_estimable_count",
+      "observed": 17,
+      "passed": true
+    },
+    {
+      "name": "S17_rendered_NE_labels_match_current_state",
+      "observed": 17,
+      "passed": true
+    },
+    {
+      "name": "S17_no_fabricated_NE_scores",
+      "passed": true
+    },
+    {
+      "name": "S17_estimable_complete_9_time_grid",
+      "passed": true
+    },
+    {
+      "name": "GO_expression_background",
+      "passed": true
+    }
+  ],
+  "determinism": null,
+  "geometry": {
+    "S15_canvas_px": [
+      2400,
+      1554
+    ],
+    "S15_realized_legacy_placements": {
+      "a": {
+        "height": 613,
+        "source_panel": "S15a_top_variable_gene_trajectories.svg",
+        "width": 1158,
+        "x": 19,
+        "y": 20
+      },
+      "b": {
+        "height": 650,
+        "source_panel": "S15b_gene_pattern_curves.svg",
+        "width": 1194,
+        "x": 1201,
+        "y": 12
+      },
+      "c": {
+        "height": 902,
+        "source_panel": "S15c_pattern_1_GO_barplot.png",
+        "width": 1202,
+        "x": 0,
+        "y": 652
+      },
+      "d": {
+        "height": 896,
+        "source_panel": "S15d_pattern_2_GO_dotplot.png",
+        "width": 1194,
+        "x": 1204,
+        "y": 654
+      }
+    },
+    "S16_page_pt": [
+      569.1920166015625,
+      317.1522521972656
+    ],
+    "S17_grid": [
+      14,
+      5
+    ],
+    "S17_page_pt": [
+      1288.692138671875,
+      2159.631103515625
+    ]
+  },
+  "status": "PASS",
+  "visual_qa": {
+    "contact_sheet": "qa/legacy_vs_strict_corrected_contact_sheet.png",
+    "overlay_S15": "qa/S15_legacy_corrected_overlay.png",
+    "overlay_S16": "qa/S16_legacy_corrected_overlay.png",
+    "overlay_S17": "qa/S17_legacy_corrected_overlay.png"
+  }
+}

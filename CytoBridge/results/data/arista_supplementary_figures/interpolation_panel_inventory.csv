@@ -1,0 +1,15 @@
+panel_index,time,state,n_calculation_rows,n_display_rows
+0,0.0,Observed,7668,7668
+1,0.0,Generated,7668,7668
+2,0.5,Generated,7798,7798
+3,1.0,Observed,8106,8106
+4,1.0,Generated,8067,8067
+5,1.5,Generated,8573,8573
+6,2.0,Observed,9436,9436
+7,2.0,Generated,9252,9252
+8,2.5,Generated,9675,9675
+9,3.0,Observed,9673,9673
+10,3.0,Generated,9754,9754
+11,3.5,Generated,10084,10084
+12,4.0,Observed,11316,11316
+13,4.0,Generated,11115,11115

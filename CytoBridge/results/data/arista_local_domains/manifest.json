@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "analysis": "arista_local_domains",
+  "manuscript_figure": "Supplementary Figure S42",
+  "files": {
+    "roi_assignments.csv": "5-DPI region coordinates, cosine values, and domain assignments",
+    "domain_metadata.csv": "domain cell counts and selected-attention totals",
+    "celltype_edges.csv": "selected attention by sender and receiver cell state",
+    "attention_null.csv": "domain attention and cell-type-composition-matched null summaries",
+    "pathway_null.csv": "pathway scores and cell-type-composition-matched null summaries",
+    "lr_pair_null.csv.gz": "ligand-receptor pair scores and matched-null summaries"
+  },
+  "domains": {
+    "order": [
+      "N1_sfrpEGC_VLMC",
+      "N2_reaEGC_wntEGC"
+    ],
+    "labels": {
+      "N1_sfrpEGC_VLMC": "sfrpEGC-VLMC",
+      "N2_reaEGC_wntEGC": "reaEGC-wntEGC"
+    },
+    "cell_counts": {
+      "N1_sfrpEGC_VLMC": 203,
+      "N2_reaEGC_wntEGC": 77
+    }
+  },
+  "calculation": {
+    "spatial_map": {
+      "roi_cells": 1454,
+      "time": "5 DPI",
+      "domain_rule": "upper-quartile cells connected on the physical-radius graph, with a minimum component size of 20"
+    },
+    "attention": {
+      "permutations": 9999,
+      "sampling": "ROI cells sampled without replacement within each cell type"
+    },
+    "pathways": {
+      "permutations": 1999,
+      "multiple_testing": "Benjamini-Hochberg correction within each domain",
+      "display_programs": {
+        "N1_sfrpEGC_VLMC": [
+          "AGRN",
+          "LAMININ",
+          "TENASCIN",
+          "FGF",
+          "THBS"
+        ],
+        "N2_reaEGC_wntEGC": [
+          "GRN",
+          "L1CAM",
+          "NRXN",
+          "SEMA3",
+          "FN1"
+        ]
+      }
+    },
+    "lr_pairs": {
+      "permutations": 1999,
+      "tests_per_domain": 531,
+      "multiple_testing": "Benjamini-Hochberg correction within each domain",
+      "selection": "within each displayed pathway, minimum adjusted p-value, then largest observed score, then largest fold over null"
+    }
+  },
+  "style": {
+    "canvas_inches": [
+      8.27,
+      11.69
+    ],
+    "cosine_colormap": "plasma",
+    "palette": {
+      "N1_sfrpEGC_VLMC": "#CC6677",
+      "N2_reaEGC_wntEGC": "#07838B",
+      "reference": "#214761",
+      "null": "#7FA9C4",
+      "text": "#111111"
+    }
+  }
+}

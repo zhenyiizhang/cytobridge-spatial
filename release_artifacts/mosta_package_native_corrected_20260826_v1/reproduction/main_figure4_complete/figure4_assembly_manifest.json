@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "PASS_IMMUTABLE",
+  "scope": "Complete main-text Figure 4, MOSTA panels a-e",
+  "archived_on": "2026-08-26",
+  "candidate_source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_figure4_assembled_20260826_v1/candidate_v8",
+  "accepted_panel_archive": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1",
+  "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "reference_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+  "canvas_pt": [
+    595.2760009765625,
+    841.8900146484375
+  ],
+  "panels": [
+    "a",
+    "b",
+    "c",
+    "d",
+    "e"
+  ],
+  "primary_outputs": {
+    "figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout.pdf": {
+      "sha256": "45beb12c6314052c4e33ce73255dcd8511a2e9e81e0a765ad858b0961cf80b40"
+    },
+    "figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout.svg": {
+      "sha256": "e4c993d0b73456b83ce933196c5e0e70468a78bf59c93dc1b24665b891c5d73e"
+    },
+    "figures/Figure_4_MOSTA_corrected_complete_exact_AI_layout_300dpi.png": {
+      "sha256": "d3a33f830ac66f343382b54d1b0fed383ee1a6205bdf02eb437138a2759b559a"
+    }
+  },
+  "qa": {
+    "validator_errors": 0,
+    "validator_warning": "67 embedded image objects are intentional dense data layers",
+    "pdf_poppler_render": "qa/corrected_complete_Figure4_240dpi.png",
+    "svg_librsvg_render": "qa/corrected_complete_Figure4_SVG_240dpi.png",
+    "pdf_svg_contact": "qa/pdf_vs_svg_240dpi_contact.png",
+    "original_corrected_contact": "qa/original_vs_corrected_complete_Figure4_contact.png"
+  },
+  "guards": {
+    "panel_scaling": false,
+    "panel_rotation": false,
+    "panel_warp": false,
+    "free_redesign": false,
+    "arista_material_used": false,
+    "corrected_package_native_inputs": true,
+    "original_AI_visual_grammar": true
+  }
+}

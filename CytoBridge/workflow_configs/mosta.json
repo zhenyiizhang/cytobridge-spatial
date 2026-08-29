@@ -1,0 +1,99 @@
+{
+  "dataset": {
+    "name": "mosta",
+    "display_name": "MOSTA mouse organogenesis",
+    "annotation_key": "Annotation",
+    "time_key": "time_point_processed",
+    "obsm_key": "X_latent",
+    "spatial_key": "spatial_aligned",
+    "concat_spatial": true
+  },
+  "scientific": {
+    "seed": 42,
+    "alpha_spatial": 10.0,
+    "alpha_express": 0.015,
+    "classifier_k": 10
+  },
+  "steps": {
+    "default": ["downstream"]
+  },
+  "preprocess": {
+    "enabled": true,
+    "time_key": "timepoint",
+    "annotation_source": "annotation",
+    "batch_indices": [3, 4, 5, 6],
+    "align": {
+      "n_top_genes": 2000,
+      "n_pcs": 50,
+      "normalization_target_sum": 10000.0,
+      "expression_layer": "count",
+      "counts_layer": "count",
+      "raw_count_validation": "strict",
+      "spatial_dim": 2,
+      "auto_scale_from_centered_x_max": false,
+      "center_x": true,
+      "center_y": false,
+      "flip_y": true,
+      "scale_x": 0.01,
+      "scale_y": 0.01,
+      "phase1_epochs": 10000,
+      "phase2_epochs": 500,
+      "alpha": 5.0,
+      "beta": 0.01,
+      "lambda_local": 100.0,
+      "lambda_ot": 1.0,
+      "batch_size": 1024,
+      "distance_pairs": 10000,
+      "learning_rate": 0.001,
+      "random_seed": 42,
+      "time_mapping": {
+        "E9.5": -3.0,
+        "E10.5": -2.0,
+        "E11.5": -1.0,
+        "E12.5": 0.0,
+        "E13.5": 1.0,
+        "E14.5": 2.0,
+        "E15.5": 3.0,
+        "E16.5": 4.0
+      }
+    },
+    "edge_predictor": {
+      "split": 0,
+      "epochs": 100,
+      "batch_size": 1024,
+      "learning_rate": 0.001,
+      "split_strategy": "node_disjoint",
+      "train_sample_ratio_per_epoch": 1.0,
+      "max_train_edges_per_epoch": 2000000,
+      "num_workers": 4
+    }
+  },
+  "train": {
+    "config": "mosta_spatial_full_alpha_express_0015.yaml",
+    "graph_database": "CellChatDB.ligrec.mouse.csv",
+    "interaction_cutoff": 0.02400244047956264,
+    "requires_edge_predictor": true,
+    "edge_predictor_threshold": 0.1192110925912857,
+    "evaluate_after_training": false
+  },
+  "downstream": {
+    "enabled": true,
+    "gene_dynamics_enabled": true,
+    "lr_enabled": true,
+    "preferred_species_tag": "mouse",
+    "model_format": "current",
+    "observed": [0.0, 1.0, 2.0, 3.0],
+    "interpolated": [0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2.25, 2.5, 2.75],
+    "classifier_epochs": 500,
+    "classifier_hidden_size": 128,
+    "classifier_lr": 0.001,
+    "classifier_best_metric": "bacc",
+    "classifier_strict_stratification": true,
+    "sde_n_samples": 12000,
+    "sde_dt": 0.05,
+    "split_sde_dt": 0.05,
+    "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
+    "split_growth_alpha": 1.0
+  }
+}

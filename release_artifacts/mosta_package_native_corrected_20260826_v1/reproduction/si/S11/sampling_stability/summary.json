@@ -1,0 +1,191 @@
+{
+  "baseline_component_run": {
+    "files_verified": 45,
+    "manifest": "SHA256SUMS.txt",
+    "manifest_sha256": "538f99871abcaec2b85e70fac7081d6f5dd1bd5998200621ffb64b5db2f64893",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s11-component-decomposition-2b3c79e-20260826-v1"
+  },
+  "comparisons": [
+    {
+      "adjusted_rand_index": 0.8700536485346524,
+      "fraction_same_peak_ordered_cluster": 0.9852020489470689,
+      "left": "seed42",
+      "median_pair_profile_pearson": 0.9996173555841907,
+      "median_pair_profile_rmsd": 0.011029158406251379,
+      "q10_pair_profile_pearson": 0.9968428875037746,
+      "q90_pair_profile_rmsd": 0.032040194976922634,
+      "right": "seed43"
+    },
+    {
+      "adjusted_rand_index": 0.9315394921015561,
+      "fraction_same_peak_ordered_cluster": 0.9914627205463858,
+      "left": "seed42",
+      "median_pair_profile_pearson": 0.9993058774517317,
+      "median_pair_profile_rmsd": 0.014024381395231442,
+      "q10_pair_profile_pearson": 0.9949764224721982,
+      "q90_pair_profile_rmsd": 0.03951497535438385,
+      "right": "seed44"
+    },
+    {
+      "adjusted_rand_index": 0.8592431994908182,
+      "fraction_same_peak_ordered_cluster": 0.9846328969834945,
+      "left": "seed43",
+      "median_pair_profile_pearson": 0.9996249808452733,
+      "median_pair_profile_rmsd": 0.011013050634784437,
+      "q10_pair_profile_pearson": 0.9973632977399178,
+      "q90_pair_profile_rmsd": 0.031038453577699084,
+      "right": "seed44"
+    }
+  ],
+  "dataset": "MOSTA",
+  "invariants": {
+    "clustering": "package-native minmax, average linkage k=3, peak-time order",
+    "communication_sample_size": 12000,
+    "expression": "inverse PCA count space at all seven times",
+    "lr_complex": "min, require all subunits",
+    "manual_smoothing": false,
+    "matrix_key": "M_sum",
+    "model_and_reference_hashes": {
+      "finetune": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+      "reference": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+      "score": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a"
+    },
+    "states": "same sealed 50k global-t0 fully generated states",
+    "tested_seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "package": {
+    "archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "communication_signature": "(*, adata_dict, time_points: 'Sequence[float]', annotation_key: 'str', f_net, device: 'str', out_dir: 'str', save_dense_attention_matrix: 'bool' = False, remove_self_loop: 'bool' = False, winsor_quantile: 'float' = 0.995, save_pickle_path: 'Optional[str]' = None, max_cells_per_timepoint: 'Optional[int]' = None, random_seed: 'Optional[int]' = 42, cell_indices_by_time: 'Optional[Mapping[str, Sequence[int]]]' = None) -> 'dict[str, dict]'",
+    "module": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py",
+    "projection_signature": "(adata_dict: 'Mapping[str, object]', reference_adata, communications: 'Mapping[str, Mapping[str, object]]', lr_database: 'str | Path | pd.DataFrame', *, time_points: 'Optional[Sequence[float]]' = None, annotation_key: 'str' = 'Annotation', matrix_key: 'str' = 'M_per_source', spatial_dim: 'int' = 2, loadings_key: 'str' = 'PCs', reference_layer: 'Optional[str]' = None, allow_complete_reference_pca_center_fallback: 'bool' = False, expression_space: 'str' = 'count', complex_mode: 'str' = 'min', require_all_subunits: 'bool' = True, duplicate_policy: 'str' = 'first', preferred_species_tag: 'Optional[str]' = None, n_clusters: 'int' = 2, pca_reconstruction: 'Optional[PCAReconstructionSpec]' = None, profile_linkage_method: 'str' = 'average', profile_cluster_order: 'str' = 'peak_time', observed_adata=None, observed_time_key: 'Optional[str]' = None, observed_time_points: 'Optional[Sequence[float]]' = None, observed_annotation_key: 'Optional[str]' = None, observed_layer: 'Optional[str]' = None, observed_expression_space: 'str' = 'log1p', observed_missing_time_policy: 'str' = 'error', observed_time_atol: 'float' = 1e-08, pca_active_absolute_tolerance: 'float' = 1e-12, pca_active_relative_tolerance: 'float' = 1e-07, return_type_matrices: 'bool' = False) -> 'LRTemporalProjectionResult'",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime"
+  },
+  "panel": "S11",
+  "question": "Are package-native M_sum temporal patterns stable to the 12k communication sample seed?",
+  "runtime": {
+    "cuda": "13.0",
+    "cuda_device_name": "NVIDIA GeForce RTX 4090 D",
+    "device": "cuda:0",
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]",
+    "torch": "2.13.0+cu130"
+  },
+  "schema_version": 1,
+  "seed_results": {
+    "seed43": {
+      "cluster_sizes": {
+        "1": 1655,
+        "2": 84,
+        "3": 18
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.6999577691626572
+        }
+      ],
+      "n_retained_pairs": 1757,
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.07740466704610131,
+          "fraction_prominence_lt_minus_0p25": 0.0011383039271485487,
+          "median_normalized_prominence": -0.04731809840637968
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.005691519635742743,
+          "median_normalized_prominence": -0.09470445403775216
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.0011383039271485487,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.028921963454975178
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.0005691519635742744,
+          "median_normalized_prominence": -0.011363526057567727
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.006371129408047425
+        }
+      }
+    },
+    "seed44": {
+      "cluster_sizes": {
+        "1": 1634,
+        "2": 105,
+        "3": 18
+      },
+      "diagnostics": [
+        {
+          "chosen_clusters": 3,
+          "cluster_order": "peak_time",
+          "clusters_found": 3,
+          "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+          "linkage_method": "average",
+          "n_zero_distance_merges": 50,
+          "normalization": "minmax",
+          "requested_clusters": 3,
+          "silhouette": 0.708856500834595
+        }
+      ],
+      "n_retained_pairs": 1757,
+      "pulse_metrics": {
+        "0.5": {
+          "fraction_prominence_gt_0p25": 0.056346044393853156,
+          "fraction_prominence_lt_minus_0p25": 0.0011383039271485487,
+          "median_normalized_prominence": -0.07278390667452705
+        },
+        "1.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.001707455890722823,
+          "median_normalized_prominence": -0.08506583404730239
+        },
+        "1.5": {
+          "fraction_prominence_gt_0p25": 0.0011383039271485487,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.025283280679923782
+        },
+        "2.0": {
+          "fraction_prominence_gt_0p25": 0.0,
+          "fraction_prominence_lt_minus_0p25": 0.001707455890722823,
+          "median_normalized_prominence": -0.016234760116800306
+        },
+        "2.5": {
+          "fraction_prominence_gt_0p25": 0.0011383039271485487,
+          "fraction_prominence_lt_minus_0p25": 0.0,
+          "median_normalized_prominence": -0.002674096647341636
+        }
+      }
+    }
+  },
+  "shared_states": {
+    "files_verified": 44,
+    "manifest": "SHA256SUMS.txt",
+    "manifest_sha256": "4c693bf8902381e9e78979917a695c444c494f0aa221c87c374ac630642edf04",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1"
+  },
+  "source_seed42_run": {
+    "files_verified": 35,
+    "manifest": "SHA256SUMS.txt",
+    "manifest_sha256": "62a18c6ab2aa7285dedec2474f3f5924a586b3aec247ad11b78f1bc61524cfff",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s11-global-t0-generated7-comm12k-average-k3-2b3c79e-seed42-20260825-v2"
+  },
+  "status": "COMPLETE_AUDIT_NOT_FINAL",
+  "wall_seconds": 63.92089236015454
+}

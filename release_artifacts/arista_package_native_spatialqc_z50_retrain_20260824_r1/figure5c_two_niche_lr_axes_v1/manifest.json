@@ -1,0 +1,66 @@
+{
+  "calculation": "mean source ligand/complex expression * mean target receptor/complex expression * selected attention per source cell, computed inside each exact spatial niche",
+  "display_selection": {
+    "N1_sfrpEGC_VLMC": [
+      "AGRN",
+      "LAMININ",
+      "TENASCIN",
+      "NRG",
+      "THBS"
+    ],
+    "N2_reaEGC_wntEGC": [
+      "GRN",
+      "L1CAM",
+      "NRXN",
+      "SEMA3",
+      "FN1"
+    ]
+  },
+  "inputs": {
+    "aligned_h5ad": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/preprocess/arista_aligned.h5ad",
+      "sha256": "6fc1a9b6215ecd68bf1c2d4454a5ac4c2b9b5055b43816d6615f8797adfc0be9"
+    },
+    "assignments": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/figure5c_two_niche_timecourse_v1/tables/roi_two_niche_assignments.csv",
+      "sha256": "88c75b9de1b5cc547360a3914467bb9b744373cf47ba5869fbb30d188a5332f3"
+    },
+    "attention": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/attn_mean_interp_t1.0.npy",
+      "sha256": "919173e8fb6e40176acb22ad2a193a92b641846d5f40a57623078ca548aac9ea"
+    },
+    "edge_index": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention/edge_index_interp_t1.0.npy",
+      "sha256": "3b07af9fd05b53f3ff56905b9bcdfa64c1a23d98c1f9dffc73afb89d1a72c7b4"
+    },
+    "lr_database": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-arista-rootfix-b0a9faa-20260824/CytoBridge/workflow_databases/CellChatDB.ligrec.human.csv",
+      "sha256": "8bfb86da81206cc4c1d8ab15a0086e9fc6cd38a7206450a427e4e77bfb32731c"
+    },
+    "pair_timecourse": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/pair_timecourse.csv",
+      "sha256": "885501d7ed81844170744f1575442e3502ba58327b42c2cb3095018c709f5dde"
+    }
+  },
+  "outputs": {
+    "candidate_display_lr_axes.csv": {
+      "sha256": "b3535b0cb3b365fe43dbf482dce898409920416bc68d4d1599834a48cfd9e8f9",
+      "size_bytes": 4063
+    },
+    "lr_feature_coverage.csv": {
+      "sha256": "1955b08bbeb7a04459e6ddb8b279af841c03e82859c272a1b5c3b3d63c4ba521",
+      "size_bytes": 10830
+    },
+    "server_analyze_figure5c_two_niche_lr_axes.py": {
+      "sha256": "d589bd0d17590d24f8746bd18fbfdfb4e4e1edace563332bd093686c1c51e12f",
+      "size_bytes": 13928
+    },
+    "two_niche_lr_pair_matched_null.csv.gz": {
+      "sha256": "25404516ec47ff3495f5af7adca378455a4ed294b38161ed51d4379fdb5bc7b6",
+      "size_bytes": 60190
+    }
+  },
+  "pair_multiple_testing": "Benjamini-Hochberg within each niche across all retained LR pairs",
+  "pair_null": "ROI cells sampled without replacement within each cell type; exact niche cell-type counts preserved",
+  "schema": "cytobridge.arista.figure5c-two-niche-pair-axes.v1"
+}

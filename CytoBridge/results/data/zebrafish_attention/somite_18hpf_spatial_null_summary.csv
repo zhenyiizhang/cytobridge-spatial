@@ -1,0 +1,2 @@
+stage_label,cell_type,n_cells,observed_jam2a_jam3b_orientation_compatible_pairs,n_permutations,null_mean,null_q025,null_q975,observed_over_null_mean,n_null_at_least_observed,monte_carlo_upper_tail_p_plus1
+18hpf,Somite,375,396,10000,286.23869999999999,247,329,1.3834607270086121,0,9.9990000999900015e-05

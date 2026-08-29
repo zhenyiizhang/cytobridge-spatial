@@ -1,0 +1,41 @@
+{
+  "datasets": {
+    "scnt": {
+      "full_rerun_inputs": [
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/cell_type_counts_by_time.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/cell_type_interaction_network.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/cell_type_pathway_scores.csv.gz",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/cellchat_edge_summary.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/exact_message_summary.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/full_distribution_metrics.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/full_paired_dense_trajectory.npz",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/no_interaction_distribution_metrics.csv",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/observed_cells.csv.gz",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/scnt_direction_evaluation_manifest.json",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/source_manifest.json",
+        "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/panel_data/timewise_scnt_direction_alignment.csv"
+      ],
+      "renderer": "results/neuron-full-cortex-20260811/figure_scnt_nonspatial_interaction_frozen_baseline_20260815/code/build_scnt_nonspatial_interaction_a4.py"
+    },
+    "weinreb": {
+      "full_rerun_inputs": [
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/cellchat_association_metrics.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/cellchat_joined_directed_edges.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/clone_fate_ensemble.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/clone_fate_per_training_seed.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/cytobridge_pathway_scores.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/distribution_per_repeat.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/distribution_w1_w2_composite_per_repeat.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/frozen_baseline_clone_fate_summary.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/frozen_baseline_distribution_metrics.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/interaction_training_seed_rank_stability.csv",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/model_field_grids.npz",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/observed_cells.csv.gz",
+        "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/panel_data/source_manifest.json"
+      ],
+      "renderer": "results/weinreb-ccc-multimethod-20260722/figure_weinreb_nonspatial_interaction_frozen_baseline_20260815/code/build_weinreb_nonspatial_interaction_a4.py"
+    }
+  },
+  "path_base": "project root",
+  "schema_version": 1
+}

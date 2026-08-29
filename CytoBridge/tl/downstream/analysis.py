@@ -715,15 +715,16 @@ import torch.optim as optim
 from anndata import AnnData
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from anndata import AnnData
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from typing import Tuple
+import copy
 
 class MLPClassifier(nn.Module):
     """MLP model for cell type classification"""
@@ -746,12 +747,14 @@ def train_mlp_classifier(
     adata: AnnData,
     classifyed_type: str = 'cluster',
     hidden_size: int = 128,
-    train_mlp_classifier_epoches: int = 400,
+    train_mlp_classifier_epoches: int = 500,
     lr: float = 0.001,
+    seed: int = 42,
     device: str = 'cuda'
 ) -> Tuple[MLPClassifier, LabelEncoder]:
     """
-    Train MLP classifier using real data
+    Train an MLP classifier using the production 500-epoch, seed-42 protocol.
+    The returned weights are selected by held-out balanced accuracy.
     
     Parameters:
         adata: AnnData object containing cell data
@@ -759,6 +762,7 @@ def train_mlp_classifier(
         hidden_size: MLP hidden layer dimension
         train_mlp_classifier_epoches: Number of training epochs
         lr: Learning rate
+        seed: Random seed for splitting, initialization, and training
         device: Training device
     
     Returns:
@@ -777,9 +781,23 @@ def train_mlp_classifier(
     y_encoded = label_encoder.fit_transform(y)
     
     # Split into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y_encoded, test_size=0.2, random_state=42
-    )
+    split_kwargs = {
+        "test_size": 0.2,
+        "random_state": int(seed),
+    }
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y_encoded,
+            stratify=y_encoded,
+            **split_kwargs,
+        )
+    except ValueError:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y_encoded,
+            **split_kwargs,
+        )
     
     # Convert to torch tensors
     X_train = torch.tensor(np.asarray(X_train), dtype=torch.float32).to(device)
@@ -790,11 +808,22 @@ def train_mlp_classifier(
     # Initialize model
     input_size = X.shape[1]
     num_classes = len(label_encoder.classes_)
+    torch.manual_seed(int(seed))
+    np.random.seed(int(seed))
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(int(seed))
     model = MLPClassifier(input_size, hidden_size, num_classes).to(device)
     
     # Define loss function and optimizer
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        T_max=int(train_mlp_classifier_epoches),
+        eta_min=1e-5,
+    )
+    best_balanced_accuracy = float("-inf")
+    best_state = copy.deepcopy(model.state_dict())
     
     # Train the model
     for epoch in range(train_mlp_classifier_epoches):
@@ -831,14 +860,31 @@ def train_mlp_classifier(
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
+        scheduler.step()
+
+        model.eval()
+        with torch.no_grad():
+            test_outputs = model(X_test)
+            _, predicted = torch.max(test_outputs, 1)
+            predicted_cpu = predicted.detach().cpu().numpy()
+            y_test_cpu = y_test.detach().cpu().numpy()
+            accuracy = accuracy_score(y_test_cpu, predicted_cpu)
+            balanced_accuracy = balanced_accuracy_score(
+                y_test_cpu,
+                predicted_cpu,
+            )
+        if balanced_accuracy > best_balanced_accuracy:
+            best_balanced_accuracy = float(balanced_accuracy)
+            best_state = copy.deepcopy(model.state_dict())
         
         # Print results every 100 epochs
         if (epoch + 1) % 100 == 0:
-            model.eval()
-            with torch.no_grad():
-                test_outputs = model(X_test)
-                _, predicted = torch.max(test_outputs, 1)
-                accuracy = accuracy_score(y_test.cpu(), predicted.cpu())
-            print(f'Epoch [{epoch+1}/{train_mlp_classifier_epoches}], Loss: {total_loss.item():.4f}, Test Acc: {accuracy:.4f}')
+            print(
+                f'Epoch [{epoch+1}/{train_mlp_classifier_epoches}], '
+                f'Loss: {total_loss.item():.4f}, Test Acc: {accuracy:.4f}, '
+                f'Test BAcc: {balanced_accuracy:.4f}'
+            )
+    model.load_state_dict(best_state)
+    model.eval()
     
     return model, label_encoder

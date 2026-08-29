@@ -1,0 +1,667 @@
+{
+  "arista_content_used": false,
+  "clusterprofiler_contract": {
+    "background": "same 2,000 eligible Brain original-HVG symbols used by S8",
+    "display_order": "p.adjust asc, pvalue asc, Count desc, Description asc",
+    "display_significance_cutoff": "p.adjust < 0.05",
+    "display_top_n": 20,
+    "key_type": "ENTREZID",
+    "max_gene_set_size": 500,
+    "min_gene_set_size": 5,
+    "multiple_testing": "Benjamini-Hochberg over one pooled BP+MF+CC family per query",
+    "no_term_cherry_picking": true,
+    "ontologies_pooled": true,
+    "ontology": "ALL",
+    "organism": "Mus musculus",
+    "orgdb": "org.Mm.eg.db",
+    "pvalue_cutoff_compute": 1,
+    "query_source": "corrected latest-package S8 Ward-k2 programs and S10 DP3 phases",
+    "qvalue_cutoff_compute": 1
+  },
+  "clusterprofiler_queries": {
+    "s10_phase_1": {
+      "displayed_term_count": 20,
+      "input_symbol_count": 483,
+      "mapped_symbol_count": 455,
+      "minimum_p_adjust": 4.29090409887774e-29,
+      "query_id": "s10_phase_1",
+      "significant_term_count_fdr_lt_0p05": 328,
+      "tested_term_count": 3410,
+      "top_term": "nucleus",
+      "top_term_id": "GO:0005634",
+      "top_term_ontology": "CC",
+      "unique_entrez_count": 455
+    },
+    "s10_phase_2": {
+      "displayed_term_count": 20,
+      "input_symbol_count": 299,
+      "mapped_symbol_count": 292,
+      "minimum_p_adjust": 3.1783116699247e-10,
+      "query_id": "s10_phase_2",
+      "significant_term_count_fdr_lt_0p05": 534,
+      "tested_term_count": 3327,
+      "top_term": "regulation of system process",
+      "top_term_id": "GO:0044057",
+      "top_term_ontology": "BP",
+      "unique_entrez_count": 292
+    },
+    "s10_phase_3": {
+      "displayed_term_count": 20,
+      "input_symbol_count": 218,
+      "mapped_symbol_count": 210,
+      "minimum_p_adjust": 1.20662839046057e-09,
+      "query_id": "s10_phase_3",
+      "significant_term_count_fdr_lt_0p05": 198,
+      "tested_term_count": 2896,
+      "top_term": "cell periphery",
+      "top_term_id": "GO:0071944",
+      "top_term_ontology": "CC",
+      "unique_entrez_count": 210
+    },
+    "s9_pattern_1": {
+      "displayed_term_count": 20,
+      "input_symbol_count": 883,
+      "mapped_symbol_count": 789,
+      "minimum_p_adjust": 6.00405430704343e-24,
+      "query_id": "s9_pattern_1",
+      "significant_term_count_fdr_lt_0p05": 305,
+      "tested_term_count": 3554,
+      "top_term": "nucleus",
+      "top_term_id": "GO:0005634",
+      "top_term_ontology": "CC",
+      "unique_entrez_count": 789
+    },
+    "s9_pattern_2": {
+      "displayed_term_count": 11,
+      "input_symbol_count": 1117,
+      "mapped_symbol_count": 936,
+      "minimum_p_adjust": 2.46010001456902e-06,
+      "query_id": "s9_pattern_2",
+      "significant_term_count_fdr_lt_0p05": 11,
+      "tested_term_count": 3520,
+      "top_term": "extracellular region",
+      "top_term_id": "GO:0005576",
+      "top_term_ontology": "CC",
+      "unique_entrez_count": 936
+    }
+  },
+  "clusterprofiler_software": {
+    "AnnotationDbi": "1.64.1",
+    "DOSE": "3.28.1",
+    "R": "R version 4.3.3 (2024-02-29)",
+    "clusterProfiler": "4.10.0",
+    "enrichplot": "1.22.0",
+    "org.Mm.eg.db": "3.18.0",
+    "orgdb_sqlite": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/workspace/envs/r-clusterprofiler/lib/R/library/org.Mm.eg.db/extdata/org.Mm.eg.sqlite",
+      "sha256": "c52ab0837038b08203f8f40f0b64def3a007b764ddaf2443e653806d6fc80486",
+      "size_bytes": 328507392
+    }
+  },
+  "coordinate_warp": false,
+  "dataset": "MOSTA",
+  "files": {
+    "PROVENANCE.md": {
+      "path": "PROVENANCE.md",
+      "sha256": "5e0112ecea742ae1357d9d5781464a123f42dc577384b63f7f8aa996d99a9671",
+      "size_bytes": 5533
+    },
+    "audit/go_query_audit_metrics.csv": {
+      "path": "audit/go_query_audit_metrics.csv",
+      "sha256": "ffae4f006568febd2b62fe489fcb28f54a1bcd6ebb5f8be6faedfc6d265e7013",
+      "size_bytes": 777
+    },
+    "audit/numerical_audit.json": {
+      "path": "audit/numerical_audit.json",
+      "sha256": "575c5591c570753575d32115bcb67e5e4f65e6466afd08991f973c96562d7a75",
+      "size_bytes": 3416
+    },
+    "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.pdf": {
+      "path": "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.pdf",
+      "sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+      "size_bytes": 350796
+    },
+    "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.png": {
+      "path": "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.png",
+      "sha256": "210e5943b401769cecb4e7254129013b9c0543fc7f7bca8b557891458f40d4d2",
+      "size_bytes": 344160
+    },
+    "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.svg": {
+      "path": "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.svg",
+      "sha256": "3db83882d612c6cf0c88f4e6308ea5b53d0d06813703b314b2734ceedd373b6e",
+      "size_bytes": 9309576
+    },
+    "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.pdf": {
+      "path": "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.pdf",
+      "sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+      "size_bytes": 48940
+    },
+    "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.png": {
+      "path": "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.png",
+      "sha256": "01261d856e0d04f229d43363062945228a7fd151e9d2a92f38afb6f679cca1c8",
+      "size_bytes": 275330
+    },
+    "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.svg": {
+      "path": "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.svg",
+      "sha256": "108e6967ae5cf4f33f1307fa975ec3d0ba3c5af8a530d6d97a576a79249958d9",
+      "size_bytes": 3314427
+    },
+    "numerical_inputs/clusterprofiler_server_run/COMPLETE": {
+      "path": "numerical_inputs/clusterprofiler_server_run/COMPLETE",
+      "sha256": "a4bccf5c13ef5ff8311e59b34d492bc7072a55298723601a6a9c127053aee8fc",
+      "size_bytes": 9
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/brain_hvg_ward_k2_assignments.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/brain_hvg_ward_k2_assignments.csv",
+      "sha256": "d3b7a73e8775247334bd204ed5e1177fe3a2f3b47db0201e7e4a21a71a3cba84",
+      "size_bytes": 18485
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_1_query_symbols.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_1_query_symbols.csv",
+      "sha256": "dc0f463d4d31f3d29dcb8307e58f93aa91384eda84dba05e1e0115b3b1d42f10",
+      "size_bytes": 6555
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_2_query_symbols.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_2_query_symbols.csv",
+      "sha256": "8206a560137dcaa06fc48c1b640dc498b63013669b05bed2b38216be86bb55f5",
+      "size_bytes": 3984
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_3_query_symbols.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s10_phase_3_query_symbols.csv",
+      "sha256": "519282e536a4131ff356699788c49bd53249ed6db86687f6bdbe473debe93d08",
+      "size_bytes": 2922
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s10_top1000_dp3_assignments.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s10_top1000_dp3_assignments.csv",
+      "sha256": "7900086ca6d989f23bd6803cb9444b67765243c31cd1603f6d8e2a6f54e44b6f",
+      "size_bytes": 40792
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s9_pattern_1_query_symbols.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s9_pattern_1_query_symbols.csv",
+      "sha256": "d336878155c8d465e8c2b13491b0158a53b0a42a2e9e6c0cc930ae8534813873",
+      "size_bytes": 12384
+    },
+    "numerical_inputs/clusterprofiler_server_run/inputs/s9_pattern_2_query_symbols.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/inputs/s9_pattern_2_query_symbols.csv",
+      "sha256": "7b416a2e786b269ee51ca2086df8612e4004748cbb69337e459f7df3843d7a64",
+      "size_bytes": 16396
+    },
+    "numerical_inputs/clusterprofiler_server_run/manifest.json": {
+      "path": "numerical_inputs/clusterprofiler_server_run/manifest.json",
+      "sha256": "af1bb4b22e7795b937649279bbfa9aab7f4d46d5070a28151adce9255e3c448b",
+      "size_bytes": 5284
+    },
+    "numerical_inputs/clusterprofiler_server_run/provenance/file_identities_before_complete.json": {
+      "path": "numerical_inputs/clusterprofiler_server_run/provenance/file_identities_before_complete.json",
+      "sha256": "49f85550f3cb53bad060da4aea4d5d093cf56b3ee141503c6e7098cb510735da",
+      "size_bytes": 9312
+    },
+    "numerical_inputs/clusterprofiler_server_run/provenance/org.Mm.eg.db_metadata.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/provenance/org.Mm.eg.db_metadata.csv",
+      "sha256": "78438447352a25750ad8e547fd53af64eb6d6baf992d14613f0d40126527e436",
+      "size_bytes": 984
+    },
+    "numerical_inputs/clusterprofiler_server_run/provenance/sessionInfo.txt": {
+      "path": "numerical_inputs/clusterprofiler_server_run/provenance/sessionInfo.txt",
+      "sha256": "f8ed5daf11e29f22c590c2370e61f2410599101b67743907446919e5dad9d526",
+      "size_bytes": 3641
+    },
+    "numerical_inputs/clusterprofiler_server_run/source/run_mosta_s9_s10_clusterprofiler_20260826_v1.R": {
+      "path": "numerical_inputs/clusterprofiler_server_run/source/run_mosta_s9_s10_clusterprofiler_20260826_v1.R",
+      "sha256": "49ac3271b57406f8aa7e4ed2a33afe0c60accff48a2f5dcfbbe78492e97adcaa",
+      "size_bytes": 12416
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/background_symbol_to_entrez_all_rows.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/background_symbol_to_entrez_all_rows.csv",
+      "sha256": "c5e9199c6fd15eda6e9b3bef680804151b90c536088a3e347c801bd7ac636cc3",
+      "size_bytes": 34533
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/background_symbol_to_entrez_valid.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/background_symbol_to_entrez_valid.csv",
+      "sha256": "a61f48c13e1b47166203f26d06b586740c850f2814a4311f1dffc16464cc496d",
+      "size_bytes": 30760
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/clusterprofiler_query_summary.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/clusterprofiler_query_summary.csv",
+      "sha256": "aa8550ec23a0fca9dcefb9d0ee086ced444afb694d58a357031eb02be522f0e7",
+      "size_bytes": 697
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_all.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_all.csv",
+      "sha256": "78cf812752ee6d5c4846e1a712f9afb8331496545e22917a733d6148dc6c9843",
+      "size_bytes": 1040448
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_display_top20.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_display_top20.csv",
+      "sha256": "96d80cd58f2da3b726652b2a82b3b8288f441fe9782d12edcc33db65a6e425ee",
+      "size_bytes": 23758
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_fdr_lt_0p05.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_1_enrichGO_fdr_lt_0p05.csv",
+      "sha256": "a42b49b820c8b889a3707f720ea5593729a517758c2117c37cb059a67f968232",
+      "size_bytes": 184273
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_all.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_all.csv",
+      "sha256": "169e3f613eb26586a1a1ba3b3c495a5ed17eac2b7b7433773895e3d850d37421",
+      "size_bytes": 964381
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_display_top20.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_display_top20.csv",
+      "sha256": "f5a83f6bdc1b4b309af5f7ac310c9fbe6480dcfa9c0495a821c179f15604f0e5",
+      "size_bytes": 15755
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_fdr_lt_0p05.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_2_enrichGO_fdr_lt_0p05.csv",
+      "sha256": "fd6521864395f59be524a562b3dc445dd7f33ba2c89c1710da417ed928fb9b74",
+      "size_bytes": 213887
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_all.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_all.csv",
+      "sha256": "6432d4a92e9488cf59a0f2711fd465729ced1d368308059afebe6fae9721986f",
+      "size_bytes": 787218
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_display_top20.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_display_top20.csv",
+      "sha256": "b7215117ab9f88cef5abacca6862b914aae7ddd2de940e1036a609ba944cba37",
+      "size_bytes": 10560
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_fdr_lt_0p05.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s10_phase_3_enrichGO_fdr_lt_0p05.csv",
+      "sha256": "4da7c1df5be76f1503b93e3b372267865cef38157bf168be2ff28a6e2468c74f",
+      "size_bytes": 76321
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_all.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_all.csv",
+      "sha256": "71e191aae88a9d0b19df0a52330a84bf250190526316d8241b5fc0452e2bc0df",
+      "size_bytes": 1223228
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_display_top20.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_display_top20.csv",
+      "sha256": "975a203b7d25dfa0b6050593d78fb2a8c3306a76caabe7741bc561bb3f99860b",
+      "size_bytes": 30486
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_fdr_lt_0p05.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_1_enrichGO_fdr_lt_0p05.csv",
+      "sha256": "44ce39c010f37da815f0eeac7af4ec0f1334b9a78e201a03afe3f7e913b9e768",
+      "size_bytes": 220726
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_all.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_all.csv",
+      "sha256": "e0708e78509a9901a07d31117a59a893fdb69145216b0d1664707e294fa73232",
+      "size_bytes": 1089349
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_display_top20.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_display_top20.csv",
+      "sha256": "afaacc324f1bbef92b744a723c5d38acd4e9d79b235f7c7c2fc062ef992ac9b9",
+      "size_bytes": 8893
+    },
+    "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_fdr_lt_0p05.csv": {
+      "path": "numerical_inputs/clusterprofiler_server_run/tables/s9_pattern_2_enrichGO_fdr_lt_0p05.csv",
+      "sha256": "afaacc324f1bbef92b744a723c5d38acd4e9d79b235f7c7c2fc062ef992ac9b9",
+      "size_bytes": 8893
+    },
+    "numerical_inputs/shared_s10/s10_developmental_wave_settings.json": {
+      "path": "numerical_inputs/shared_s10/s10_developmental_wave_settings.json",
+      "sha256": "6583f3a84b99c01840e4c847b5fb175cda31586dd79d291c5a3aab057af68c57",
+      "size_bytes": 1061
+    },
+    "numerical_inputs/shared_s10/s10_top1000_dp3_assignments.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_dp3_assignments.csv",
+      "sha256": "7900086ca6d989f23bd6803cb9444b67765243c31cd1603f6d8e2a6f54e44b6f",
+      "size_bytes": 40792
+    },
+    "numerical_inputs/shared_s10/s10_top1000_dp3_diagnostics.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_dp3_diagnostics.csv",
+      "sha256": "b3d5e29380059e72149e335c775f45ed8271e662f99a13914f187bf1bb0195e8",
+      "size_bytes": 529
+    },
+    "numerical_inputs/shared_s10/s10_top1000_dp3_prototypes.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_dp3_prototypes.csv",
+      "sha256": "3e9588b8992f08c2926569e87bdeea17b33ec392254ce1ef2dd4560981f9a5b2",
+      "size_bytes": 1959
+    },
+    "numerical_inputs/shared_s10/s10_top1000_gene_wise_zscore.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_gene_wise_zscore.csv",
+      "sha256": "52bf07bed2f7795b38c19ce2b22e7581efcebf725fc1876bb5ae392679b97363",
+      "size_bytes": 260035
+    },
+    "numerical_inputs/shared_s10/s10_top1000_peak_ordered_profiles.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_peak_ordered_profiles.csv",
+      "sha256": "c542c6319ed1e3934a2a1abe4711270b6334af352b4bb7c95becdcbfaa781472",
+      "size_bytes": 260035
+    },
+    "numerical_inputs/shared_s10/s10_top1000_temporal_variable_genes.csv": {
+      "path": "numerical_inputs/shared_s10/s10_top1000_temporal_variable_genes.csv",
+      "sha256": "28b20ea9c0a8dc0a552fd04c6c160693969e793718f4f8ebe738bc05657fa9a9",
+      "size_bytes": 263978
+    },
+    "numerical_inputs/shared_summary.json": {
+      "path": "numerical_inputs/shared_summary.json",
+      "sha256": "355dab8c6adda3271119cc34abedf22856bf1c7882fe5e2696340d36f3fd84a1",
+      "size_bytes": 48965
+    },
+    "qa/s10_pdf_200dpi.png": {
+      "path": "qa/s10_pdf_200dpi.png",
+      "sha256": "d6cb4b1bde80294b588f7738172a909292d7ca2bc5ff0473a9f2583305af2823",
+      "size_bytes": 329803
+    },
+    "qa/s10_validation_report.json": {
+      "path": "qa/s10_validation_report.json",
+      "sha256": "8cb85c926285d4edd6519b8c7f541f9b3b3f9b2a9c12d7a08c1cc2ad8f4d4540",
+      "size_bytes": 527
+    },
+    "qa/s9_pdf_200dpi.png": {
+      "path": "qa/s9_pdf_200dpi.png",
+      "sha256": "944a955d89f1952192672ffc0e89ec7a1315d4b6acc6f13fb94ba2ba5ea1a7c9",
+      "size_bytes": 251672
+    },
+    "qa/s9_pdf_300dpi.png": {
+      "path": "qa/s9_pdf_300dpi.png",
+      "sha256": "439f5bdaf43b4b8d8ce7d31710047877f3c22b259f959f3d996e1b3f1cd7777e",
+      "size_bytes": 388025
+    },
+    "qa/s9_validation_report.json": {
+      "path": "qa/s9_validation_report.json",
+      "sha256": "8f8280a32d2318fc0debf285e529b225557b922bd7fb000511a786062a9655bf",
+      "size_bytes": 527
+    },
+    "render_manifest.json": {
+      "path": "render_manifest.json",
+      "sha256": "94a567d8a831ea25a106d73a44b25d9687bf3add08c20018e2d971da5f22b390",
+      "size_bytes": 4792
+    },
+    "source/audit_mosta_s9_s10_clusterprofiler_and_dp3.py": {
+      "path": "source/audit_mosta_s9_s10_clusterprofiler_and_dp3.py",
+      "sha256": "8c0bc5ca1d34dc57a4d2b7e838aed73ca985b72c50008747781383ff9ecf1caf",
+      "size_bytes": 13816
+    },
+    "source/build_s9_s10_archive_manifest.py": {
+      "path": "source/build_s9_s10_archive_manifest.py",
+      "sha256": "841b03fb67db6ae3641648e25938b4225c41f7f57d3993876ba5edd46974d5fb",
+      "size_bytes": 3932
+    },
+    "source/render_mosta_s9_s10_clusterprofiler_exact_submitted_style.py": {
+      "path": "source/render_mosta_s9_s10_clusterprofiler_exact_submitted_style.py",
+      "sha256": "459451a826a74bca0451d68194aa67b860988cfa6260cc0b088516fcf9b35e08",
+      "size_bytes": 15957
+    },
+    "source/run_mosta_s9_s10_clusterprofiler.R": {
+      "path": "source/run_mosta_s9_s10_clusterprofiler.R",
+      "sha256": "49ac3271b57406f8aa7e4ed2a33afe0c60accff48a2f5dcfbbe78492e97adcaa",
+      "size_bytes": 12416
+    },
+    "style_references/submitted_s10_brain_developmental_wave_map_compact.jpg": {
+      "path": "style_references/submitted_s10_brain_developmental_wave_map_compact.jpg",
+      "sha256": "3b7b7b0785d20edd2362f71085df23e058e200ca19556ceb12c8c309e8eb7bf8",
+      "size_bytes": 533312
+    },
+    "style_references/submitted_s9_brain_pattern_compact.jpg": {
+      "path": "style_references/submitted_s9_brain_pattern_compact.jpg",
+      "sha256": "0ca3cf53e775e8f4e5092be73ce84a7cb7414c07e5c7ce4ed7a2f01a7c870394",
+      "size_bytes": 389824
+    }
+  },
+  "final_outputs": {
+    "s10_pdf": {
+      "path": "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.pdf",
+      "sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+      "size_bytes": 350796
+    },
+    "s10_svg": {
+      "path": "figures/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.svg",
+      "sha256": "3db83882d612c6cf0c88f4e6308ea5b53d0d06813703b314b2734ceedd373b6e",
+      "size_bytes": 9309576
+    },
+    "s9_pdf": {
+      "path": "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.pdf",
+      "sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+      "size_bytes": 48940
+    },
+    "s9_svg": {
+      "path": "figures/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.svg",
+      "sha256": "108e6967ae5cf4f33f1307fa975ec3d0ba3c5af8a530d6d97a576a79249958d9",
+      "size_bytes": 3314427
+    }
+  },
+  "model": {
+    "directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "finetune": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Finetune/best_model.pth",
+      "sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+      "size_bytes": 8620533
+    },
+    "score": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Score_Refine/score_model.pth",
+      "sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a",
+      "size_bytes": 1375237
+    },
+    "score_stage": "Score_Refine",
+    "weight_stage": "Finetune"
+  },
+  "numerical_audit": {
+    "clusterprofiler": {
+      "background_input_symbols": 2000,
+      "background_mapped_symbols": 1725,
+      "background_unique_entrez": 1725,
+      "orgdb_sqlite_sha256": "c52ab0837038b08203f8f40f0b64def3a007b764ddaf2443e653806d6fc80486",
+      "query_metrics": [
+        {
+          "bh_max_abs_error": 1.9984014443252818e-15,
+          "display_ontologies": "BP:12;CC:6;MF:2",
+          "displayed_terms": 20,
+          "hypergeometric_max_abs_error": 1.1657341758564144e-15,
+          "input_symbols": 883,
+          "query_id": "s9_pattern_1",
+          "significant_terms": 305,
+          "tested_terms": 3554,
+          "top_p_adjust": 6.0040543070434304e-24,
+          "top_term": "nucleus"
+        },
+        {
+          "bh_max_abs_error": 2.3904489498960402e-14,
+          "display_ontologies": "BP:3;CC:6;MF:2",
+          "displayed_terms": 11,
+          "hypergeometric_max_abs_error": 1.3322676295501878e-15,
+          "input_symbols": 1117,
+          "query_id": "s9_pattern_2",
+          "significant_terms": 11,
+          "tested_terms": 3520,
+          "top_p_adjust": 2.46010001456902e-06,
+          "top_term": "extracellular region"
+        },
+        {
+          "bh_max_abs_error": 2.06735670249536e-15,
+          "display_ontologies": "BP:10;CC:6;MF:4",
+          "displayed_terms": 20,
+          "hypergeometric_max_abs_error": 9.43689570931383e-16,
+          "input_symbols": 483,
+          "query_id": "s10_phase_1",
+          "significant_terms": 328,
+          "tested_terms": 3410,
+          "top_p_adjust": 4.29090409887774e-29,
+          "top_term": "nucleus"
+        },
+        {
+          "bh_max_abs_error": 1.740795008142726e-15,
+          "display_ontologies": "BP:20",
+          "displayed_terms": 20,
+          "hypergeometric_max_abs_error": 1.1657341758564144e-15,
+          "input_symbols": 299,
+          "query_id": "s10_phase_2",
+          "significant_terms": 534,
+          "tested_terms": 3327,
+          "top_p_adjust": 3.1783116699247e-10,
+          "top_term": "regulation of system process"
+        },
+        {
+          "bh_max_abs_error": 4.217112770099618e-15,
+          "display_ontologies": "BP:8;CC:10;MF:2",
+          "displayed_terms": 20,
+          "hypergeometric_max_abs_error": 1.27675647831893e-15,
+          "input_symbols": 218,
+          "query_id": "s10_phase_3",
+          "significant_terms": 198,
+          "tested_terms": 2896,
+          "top_p_adjust": 1.20662839046057e-09,
+          "top_term": "cell periphery"
+        }
+      ],
+      "server_manifest_sha256": "af1bb4b22e7795b937649279bbfa9aab7f4d46d5070a28151adce9255e3c448b"
+    },
+    "dataset": "MOSTA",
+    "errors": [],
+    "interpretability": {
+      "interpretation": "late phase is statistically enriched for cell-periphery/adhesion/ECM terms; nervous system process remains significant but is not the leading pooled GO-ALL term",
+      "phase3_cell_periphery_p_adjust": 1.20662839046057e-09,
+      "phase3_extracellular_matrix_p_adjust": 9.88544879521122e-05,
+      "phase3_nervous_system_process_p_adjust": 0.0003012730274171
+    },
+    "panels": [
+      "S9a-b",
+      "S10a-d"
+    ],
+    "s10_dp3": {
+      "assignments_exact": true,
+      "independent_boundaries": [
+        [
+          0,
+          483
+        ],
+        [
+          483,
+          782
+        ],
+        [
+          782,
+          1000
+        ]
+      ],
+      "objective": 70.34855609421834,
+      "ordered_zscore_max_abs_error": 3.4468544828358816e-06,
+      "phase_sizes": [
+        483,
+        299,
+        218
+      ],
+      "profile_order_exact": true
+    },
+    "schema_version": 1,
+    "status": "PASS"
+  },
+  "package": {
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "release": {
+      "archive_sha256": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+      "archive_sha256_marker": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/ARCHIVE_SHA256",
+        "sha256": "ac75508f602c3997b9e73eb4fe2a3331cac20995b9e1e0cc8ec4c013146259f5",
+        "size_bytes": 65
+      },
+      "detected_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+      "module": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py",
+      "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime",
+      "release_commit_marker": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/RELEASE_COMMIT",
+        "sha256": "d71022425d16936264533bb99a9767a303fac02c85348cfe1b9e5d3d2c4075a4",
+        "size_bytes": 41
+      }
+    }
+  },
+  "panels": [
+    "S9a-b",
+    "S10a-d"
+  ],
+  "principle": "corrected package-native numerical truth with submitted MOSTA style truth",
+  "render_contract": {
+    "coordinate_warp": false,
+    "go_colormap": {
+      "colors": [
+        "#264653",
+        "#2A9D8F",
+        "#E9C46A",
+        "#F4A261",
+        "#E76F51"
+      ],
+      "name": "mosta_submitted_go_p_adjust"
+    },
+    "go_display": "all and only FDR<0.05 terms, ordered by audited clusterProfiler ranking, up to 20; no filler or cherry picking",
+    "phase_colors": [
+      "#1f77b4",
+      "#ff7f0e",
+      "#2ca02c"
+    ],
+    "wave_colormap": "viridis",
+    "wave_limits": [
+      -1.8,
+      1.8
+    ]
+  },
+  "schema_version": 1,
+  "status": "PASS_READY_TO_SEAL",
+  "style_authority": {
+    "s10": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/style_references/submitted_s10_brain_developmental_wave_map_compact.jpg",
+      "sha256": "3b7b7b0785d20edd2362f71085df23e058e200ca19556ceb12c8c309e8eb7bf8",
+      "size_bytes": 533312
+    },
+    "s9": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/style_references/submitted_s9_brain_pattern_compact.jpg",
+      "sha256": "0ca3cf53e775e8f4e5092be73ce84a7cb7414c07e5c7ce4ed7a2f01a7c870394",
+      "size_bytes": 389824
+    },
+    "visual_grammar": "submitted JPEG geometry, direct raw p.adjust five-stop teal-to-coral scale, horizontal Count bars, original filename-form titles"
+  },
+  "validation": {
+    "s10": {
+      "details": {
+        "embedded_image_count": 0,
+        "fonts": [
+          "GOFYPY+Arial-BoldMT",
+          "GOFYPY+ArialMT"
+        ],
+        "page_count": 1,
+        "pages": [
+          {
+            "embedded_images": 0,
+            "height_pt": 792.0,
+            "width_pt": 574.56
+          }
+        ],
+        "pdf_sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+        "png_pixels": [
+          1596,
+          2200
+        ],
+        "png_sha256": "d6cb4b1bde80294b588f7738172a909292d7ca2bc5ff0473a9f2583305af2823"
+      },
+      "errors": [],
+      "warnings": []
+    },
+    "s9": {
+      "details": {
+        "embedded_image_count": 0,
+        "fonts": [
+          "GOFYPY+Arial-BoldMT",
+          "GOFYPY+ArialMT"
+        ],
+        "page_count": 1,
+        "pages": [
+          {
+            "embedded_images": 0,
+            "height_pt": 792.0,
+            "width_pt": 526.32
+          }
+        ],
+        "pdf_sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+        "png_pixels": [
+          2193,
+          3300
+        ],
+        "png_sha256": "439f5bdaf43b4b8d8ce7d31710047877f3c22b259f959f3d996e1b3f1cd7777e"
+      },
+      "errors": [],
+      "warnings": []
+    }
+  }
+}

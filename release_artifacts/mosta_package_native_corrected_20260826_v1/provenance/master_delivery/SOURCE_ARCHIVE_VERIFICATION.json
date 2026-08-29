@@ -1,0 +1,58 @@
+[
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1",
+    "checksum_manifest": "SHA256SUMS.txt",
+    "checksum_manifest_sha256": "7fdfa857a2ae99ac63cc966ce8432b97345385b22ac87c2b8298319d85f30cbb",
+    "verified_file_count": 105,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s4_20260825_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "60c69c3dc3cf5c75c5d845fbef75db6e533eeac561caca16664b140d00a64771",
+    "verified_file_count": 14,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s5_growth_20260825_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "96464cc16dd6476e1a91a52c8b2a5da62f65daef061c9328b11282354a8e8914",
+    "verified_file_count": 26,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s6_composition_20260825_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "ce90886e950cf4bcb5ec8954f033e84d10c9eea5c0821fa1cafb1d2e02c6e821",
+    "verified_file_count": 22,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s7_lineage_20260826_v2",
+    "checksum_manifest": "SHA256SUMS.txt",
+    "checksum_manifest_sha256": "36d4e8323e5891a604d3f88e70c73310d62aa90a78a44a20abf63a961056dcfe",
+    "verified_file_count": 24,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s8_gene_programs_20260826_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "161fd22f7a4ec328fa08fab0531ed57d28bb02f2ade349b7f37f4d6724ee94d0",
+    "verified_file_count": 17,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "cd584476bf86bab1090a11b2beb87f01a3b130f69e5e72e47a3bd6d88ed93e84",
+    "verified_file_count": 61,
+    "status": "PASS"
+  },
+  {
+    "archive_root": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s11_msum_corrected_20260826_v1/archive_v1",
+    "checksum_manifest": "CHECKSUMS.sha256",
+    "checksum_manifest_sha256": "14052e2d5a6ad5bb2d3370ae4f06e927ffdaeb052d7e114a16ea3feb31408f25",
+    "verified_file_count": 58,
+    "status": "PASS"
+  }
+]

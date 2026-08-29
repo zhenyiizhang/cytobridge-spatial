@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "analysis": "training_histories",
+  "manuscript_figure": "Supplementary Figure S41",
+  "displayed_dataset": "arista",
+  "displayed_dataset_label": "ARISTA",
+  "dataset_order": [
+    "Zebrafish",
+    "MOSTA",
+    "ARISTA",
+    "AD mouse",
+    "Chicken heart"
+  ],
+  "history": {
+    "file": "arista_training_history.csv",
+    "columns": [
+      "stage_index",
+      "stage",
+      "epoch",
+      "loss"
+    ],
+    "rows": 5252
+  },
+  "checkpoint_summary": {
+    "file": "panel_metrics.csv",
+    "columns": [
+      "dataset",
+      "stage",
+      "first_checkpoint_metric",
+      "selected_checkpoint_metric",
+      "selected_epoch",
+      "configured_epochs",
+      "percent_reduction"
+    ],
+    "rows": 30
+  },
+  "stages": [
+    {
+      "stage_index": 0,
+      "stage": "Pretrain",
+      "label": "Pretrain",
+      "mode": "neural_ode",
+      "objective": "composite_training_loss",
+      "y_label": "Training loss",
+      "configured_epochs": 100,
+      "smoothing_window": 11,
+      "color": "#355C7D"
+    },
+    {
+      "stage_index": 1,
+      "stage": "Refine",
+      "label": "Refine",
+      "mode": "neural_ode",
+      "objective": "composite_training_loss",
+      "y_label": "Training loss",
+      "configured_epochs": 100,
+      "smoothing_window": 11,
+      "color": "#07838B"
+    },
+    {
+      "stage_index": 2,
+      "stage": "Init_interaction",
+      "label": "Init interaction",
+      "mode": "neural_ode",
+      "objective": "composite_training_loss",
+      "y_label": "Training loss",
+      "configured_epochs": 50,
+      "smoothing_window": 7,
+      "color": "#7B6BA8"
+    },
+    {
+      "stage_index": 3,
+      "stage": "Train_Score",
+      "label": "Train Score",
+      "mode": "score_matching",
+      "objective": "score_matching_loss",
+      "y_label": "Score loss",
+      "configured_epochs": 2001,
+      "smoothing_window": 101,
+      "color": "#C95F72"
+    },
+    {
+      "stage_index": 4,
+      "stage": "Finetune",
+      "label": "Finetune",
+      "mode": "neural_ode",
+      "objective": "composite_training_loss",
+      "y_label": "Training loss",
+      "configured_epochs": 1000,
+      "smoothing_window": 51,
+      "color": "#D58B32"
+    },
+    {
+      "stage_index": 5,
+      "stage": "Score_Refine",
+      "label": "Score Refine",
+      "mode": "score_matching",
+      "objective": "score_matching_loss",
+      "y_label": "Score loss",
+      "configured_epochs": 2001,
+      "smoothing_window": 101,
+      "color": "#8E6C4A"
+    }
+  ]
+}

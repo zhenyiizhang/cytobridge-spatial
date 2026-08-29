@@ -1,0 +1,27 @@
+{
+  "errors": [],
+  "warnings": [
+    "Arial was not detected among the embedded PDF fonts. This is intentional: the submitted S8 is a Photoshop-composed JPEG and the historical notebook/SVG source uses DejaVu Sans."
+  ],
+  "details": {
+    "pdf_sha256": "fe3fbb7d502311f653c6cfcbee42770fdcb2c957c006a2a1e99da318e1e3fc52",
+    "page_count": 1,
+    "pages": [
+      {
+        "width_pt": 606.96,
+        "height_pt": 792.0,
+        "embedded_images": 0
+      }
+    ],
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "EVICAO+DejaVuSans-Bold",
+      "GCWXDV+DejaVuSans-Oblique"
+    ],
+    "embedded_image_count": 0,
+    "png_sha256": "43ed87b6fc14d9d5fd739bcb82af1bcd0d5f79abef7feb1023c61a3f573fe676",
+    "png_pixels": [1686, 2200],
+    "pdf_render_visually_inspected": true,
+    "submitted_reference_ocr_coordinate_check": "PASS; checked labels agree within 0-4 px"
+  }
+}

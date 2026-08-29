@@ -1,0 +1,36 @@
+{
+  "arista_assets_used": false,
+  "dataset": "MOSTA",
+  "forbidden_transforms": {
+    "rotation": false,
+    "stretch": false,
+    "warp": false
+  },
+  "outputs": {
+    "pdf": {
+      "path": "figures/Figure_S5_MOSTA_latest_package_global_t0_growth_exact_submitted_style.pdf",
+      "sha256": "4fbe2b269ee144e00dda328548875cde823b519b9a7b8a18b108c56281a79ebf"
+    },
+    "svg": {
+      "path": "figures/Figure_S5_MOSTA_latest_package_global_t0_growth_exact_submitted_style.svg",
+      "sha256": "f564ad5670f99a705295f40ce1ba9a58d09883b5581b969e5851b5c8baf1b866"
+    }
+  },
+  "panel": "S5",
+  "schema_version": 1,
+  "source_figure_manifest": {
+    "path": "figures/Figure_S5_MOSTA_latest_package_global_t0_growth_exact_submitted_style_manifest.json",
+    "reported_status": "pdf_visual_qa_passed",
+    "sha256": "d775e8d98f48a711f59d7c8ced98824aa43168952a1f4b425fb59c5f2886c7d1"
+  },
+  "status": "ACCEPTED_IMMUTABLE_SI_PANEL",
+  "visual_qa": {
+    "actual_pdf_render_inspected": true,
+    "note": "PASS: submitted dense scatter layers are intentionally rasterized; text, axes, and colorbar remain vector; 240-dpi PDF render was visually inspected.",
+    "render": {
+      "path": "qa/s5_corrected_candidate_pdf_240dpi.png",
+      "sha256": "e7d0686bb0b92644d66a180b5a60125ccf34b272756b9cd4831de7a443d54b0b"
+    },
+    "status": "PASS"
+  }
+}

@@ -1,26 +1,5 @@
-matplotlib
-numpy<2
-torch
-torchvision
-torchaudio
-torchdiffeq
-torchsde
-scipy
-scikit-learn
-pot
-phate
-pyyaml
-tqdm
-seaborn
-pandas
-ipywidgets
-anndata
-scanpy
-geomloss
-scvelo
-qnorm
-plotly==6.5.2
-kaleido==0.2.1
-umap-learn
-torch-geometric
-imageio
+# Compatibility install for development environments that historically used
+# ``pip install -r requirements.txt``.  Wheel users should prefer a named
+# extra such as ``CytoBridge[spatial]`` or ``CytoBridge[all]``.
+-r requirements/core.txt
+-r requirements/all.txt

@@ -1,0 +1,129 @@
+:root {
+  --cytobridge-teal: #08786b;
+  --cytobridge-coral: #b24834;
+}
+
+.sidebar-brand-text {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.sidebar-logo {
+  max-width: 13rem;
+  width: 100%;
+}
+
+.cytobridge-home-figure {
+  background: #ffffff;
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.35rem;
+  display: block;
+  margin: 2rem auto;
+  width: 100%;
+}
+
+.cytobridge-home-cards {
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+}
+
+.cytobridge-home-cards .sd-card {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.35rem;
+  box-shadow: none;
+  height: 100%;
+}
+
+.cytobridge-home-cards .sd-card:hover {
+  border-color: var(--color-brand-primary);
+}
+
+.cytobridge-home-cards .sd-card-title {
+  font-size: 1rem;
+}
+
+.cytobridge-home-cards .sd-card-body p:last-child {
+  margin-bottom: 0;
+}
+
+.admonition.note {
+  border-color: var(--cytobridge-teal);
+}
+
+.admonition.warning {
+  border-color: var(--cytobridge-coral);
+}
+
+table.docutils td,
+table.docutils th {
+  white-space: normal;
+}
+
+.highlight-text pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Pandas' notebook HTML uses fixed black text and a light zebra stripe. Match
+   those tables to Furo so every row remains readable in dark and light mode. */
+div.nboutput.container div.output_area.rendered_html table.dataframe {
+  color: var(--color-foreground-primary);
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe th,
+div.nboutput.container div.output_area.rendered_html table.dataframe td {
+  color: var(--color-foreground-primary);
+  min-width: 10rem;
+  vertical-align: top;
+  white-space: normal;
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr {
+  background: var(--color-background-primary) !important;
+}
+
+div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr:nth-child(odd) {
+  background: var(--color-background-secondary) !important;
+}
+
+/* Furo normally moves the page outline into a drawer below 82rem. Keep it on
+   screen on ordinary laptop displays while leaving the mobile layout intact. */
+@media (min-width: 72em) and (max-width: 82em) {
+  .main,
+  .article-container,
+  article {
+    min-width: 0;
+  }
+
+  .toc-content-icon {
+    display: none;
+  }
+
+  .toc-drawer {
+    border-left: 0;
+    height: auto;
+    min-width: 13em;
+    padding-right: 0.5rem;
+    position: static;
+    width: 13em;
+  }
+
+  .toc-tree {
+    border-left: 1px solid var(--color-background-border);
+    font-size: var(--toc-font-size);
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
+    width: auto;
+  }
+
+  .nbinput.container,
+  .nboutput.container {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

@@ -1,0 +1,322 @@
+# Reusable spatiotemporal benchmark inputs
+
+`build_inputs.py` creates the immutable input boundary shared by CytoBridge and
+external temporal/spatial baselines. Dataset choices live in YAML; the Python
+code contains no zebrafish or ARISTA time labels, paths, dimensions, or target
+sets.
+
+Five corrected package hand-offs are the thin files in
+`configs/unified_benchmark/`. They share the same state/spatial representation,
+fixed prediction population, source roster, LOTO logic, and full-data logic;
+only dataset-specific layers, labels, times, targets, LR database, and resolved
+training configuration differ. The original four-dataset release comparison
+remains immutable. The chicken-heart file is a separate fifth-dataset extension
+bound to its anatomy-reviewed D4/D7/D10/D14 package run. It evaluates D7/D10 in
+LOTO and D7/D10/D14 in full-data mode; D4 is the source boundary and is never
+reported as a forecast target. In the original matrix, the MOSTA full-data
+target set remains `t1,t2,t3` (not the older truncated `t1,t2` set).
+
+The older provenance-locked zebrafish configuration remains at
+`configs/zebrafish_clean_benchmark.yaml`. It freezes:
+
+- corrected `obsm['X_latent']` (50-dimensional state) and
+  `obsm['spatial_aligned']` (two-dimensional space);
+- model times `0..4`;
+- LOTO targets `t1,t2,t3`;
+- full-data evaluation targets `t1,t2,t3,t4`;
+- `prediction_n=5000`, selected before any held-out truth is opened;
+- a method-independent 800-row source support and deterministic 5,000-particle
+  bootstrap roster for every split;
+- the corrected source H5AD SHA-256 and clean-count preprocessing provenance.
+
+## Protocol boundary
+
+Each `loto_tN/train.h5ad` physically excludes every row at `tN`. Its truth
+H5AD/CSV/NPZ contains only `tN`. The PCA and spatial coordinates are copied
+from the common corrected preprocessing and are not refit per fold. LOTO is
+therefore a **transductive frozen-representation** benchmark, not an inductive
+raw-gene holdout.
+
+`full_data/train.h5ad` contains all stages. Full-data truth is an identical
+hard link (or byte copy when hard links are unavailable), while only configured
+evaluation stages `truth_t1.npz` through `truth_t4.npz` are exported. This is
+in-sample reconstruction and must be reported separately from LOTO.
+
+## Validate, build, and verify
+
+For the corrected unified run, use the public three-command launcher. Its
+`run` command uses a 3,600-second limit per method/split and writes explicit
+`completed`, `timeout`, `oom`, `failed`, `not_available`, or `not_applicable`
+rows; it never substitutes another method. `--dry-run` prints the complete
+commands without launching work:
+
+```bash
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run prepare
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run run
+python scripts/spatiotemporal_benchmark/run_unified_benchmark.py --dry-run evaluate
+```
+
+External environments and official source checkouts can be supplied without
+editing code, for example `--python stvcr=/envs/stvcr/bin/python --source
+stvcr=/software/stvcr`. The default package checkpoints are read from
+`corrected-matched-ablation-20260813-3c87a3e-r1/{dataset}/training`. This is the
+same-release, same-seed retraining accepted across the full, radius-only, and
+no-interaction arms; the benchmark uses only its learned-interaction main arm.
+The launcher does not start a method/split until its resolved checkpoints
+exist. The original four dataset YAMLs also pin the aligned-H5AD SHA-256 and
+the SHA-256 plus both the per-profile and matched-family PASS entries of the
+12-profile acceptance report. The chicken-heart extension instead pins its
+current-package training summary, aligned-H5AD/model-input hashes, exact
+four-stage counts, and explicit formal training root.
+
+The primary control set includes `exact_ot_displacement`: exact balanced POT
+OT between training-only adjacent anchors in the frozen joint benchmark space,
+followed by barycentric displacement interpolation (LOTO) or composed adjacent
+maps from the fixed t0 roster (full-data). It uses 800 fitted support cells and
+the same 5,000-particle source roster as every other method.
+
+Each original four-dataset YAML binds the exact aligned-H5AD SHA-256 and hashed
+matched acceptance report. The resolved input manifest may record the aligned H5AD's
+physical accepted-r2 target because the formal matched root uses immutable
+links; the YAML/config-source hash proves those exact bytes were selected
+through the accepted matched hand-off.
+
+Run from the repository root on the server:
+
+```bash
+CONFIG=configs/zebrafish_clean_benchmark.yaml
+OUT=/data/cytobridge/projects/CytoBridge-ST-1104/runs/zebrafish-api/benchmarks/zebrafish-clean-20260718
+
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config "$CONFIG" \
+  --validate-only
+
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config "$CONFIG" \
+  --output-dir "$OUT"
+
+python scripts/spatiotemporal_benchmark/verify_inputs.py \
+  --output-dir "$OUT" \
+  --verify-source
+```
+
+`--validate-only` is read-only: it rehashes and inspects the configured source,
+checks dimensions/times/annotations/layers, and enforces the preprocessing
+contract without creating an output directory. Hash-bound JSON sidecar audits
+listed in `preprocess_contract.external_audits` are also verified, including
+their configured nested assertions. The normal build refuses a
+non-empty `OUT/inputs`. `--overwrite` explicitly replaces only that `inputs`
+subdirectory.
+
+The verifier is independent of the source by default and rehashes every output
+artifact, both manifest SHA sidecars, row membership/order, CSV aliases, NPZ
+shapes, and H5AD contracts. Add `--verify-source` while the source H5AD is
+available to rehash it too.
+
+## Output layout
+
+```text
+OUT/inputs/
+├── manifest.json
+├── manifest.json.sha256
+├── resolved_config.yaml
+├── column_definitions.json
+├── full_data/
+│   ├── manifest.json[.sha256]
+│   ├── train.{h5ad,csv}
+│   ├── truth.{h5ad,csv}
+│   ├── training_reference.npz
+│   ├── source_roster.npz
+│   ├── truth.npz
+│   └── truth_t{1,2,3,4}.npz
+└── loto_t{1,2,3}/
+    ├── manifest.json[.sha256]
+    ├── train.{h5ad,csv}
+    ├── truth.{h5ad,csv}
+    ├── training_reference.npz
+    ├── source_roster.npz
+    ├── truth.npz
+    └── truth_tN.npz
+```
+
+Every H5AD retains source `X`, all layers (including `layers['counts']`), all
+cell/gene metadata, source representations, and adds canonical benchmark fields.
+The machine-readable contract is stored in
+`uns['cytobridge_benchmark_contract']` (the key is YAML-configurable).
+
+CSV files contain canonical metadata, all source `obs` columns, named spatial
+and state columns, and legacy joint aliases `x1..x52`. Compact NPZ files contain
+`spatial`, `state`, `time`, `row_id`, and `annotation`. The combined
+`truth.npz` mirrors `truth.h5ad`; evaluators should use the single-stage
+`truth_tN.npz` files.
+
+`source_roster.npz` is frozen by the input builder, not by an individual
+method. It first selects a deterministic source-stage support of
+`source_roster_support_n` rows and then bootstraps exactly `prediction_n`
+particles from that support. CytoBridge, dynamic methods, and static coupling
+adapters verify and reuse the same row IDs and values for a split.
+
+## Evaluation and reporting
+
+Run LOTO and full-data evaluation into separate directories. Always pass the
+complete primary method list. If a baseline did not finish, provide a simple
+status CSV with columns `track,target,method,status,reason`; allowed non-numeric
+statuses are `timeout`, `oom`, `failed`, `not_available`, and
+`not_applicable`. A missing prediction without one of these explicit statuses
+is still an error. With a status, evaluation continues and the target/method
+tables contain `NA` rather than a surrogate score:
+
+```bash
+python scripts/spatiotemporal_benchmark/evaluate_predictions.py \
+  --input-manifest "$OUT/inputs/manifest.json" \
+  --predictions-root "$OUT/predictions/loto" \
+  --track loto \
+  --status-table "$OUT/status/method_target_status.csv" \
+  --output-dir "$OUT/reports/evaluation/loto" \
+  --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
+
+python scripts/spatiotemporal_benchmark/summarize_results.py \
+  --metrics-long "$OUT/reports/evaluation/loto/loto_metrics_long.csv" \
+  --evaluation-manifest \
+    "$OUT/reports/evaluation/loto/loto_evaluation_manifest.json" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
+  --output-dir "$OUT/reports/summary/loto"
+```
+
+Repeat with `--track full_data` and the corresponding paths. Full-data scores
+are in-sample reconstruction references; they must not be pooled with or used
+to rank LOTO generalization results.
+
+Example status rows:
+
+```csv
+track,target,method,status,reason
+loto,2,stories,timeout,3600 second method budget
+full_data,3,wot,oom,worker exceeded available memory
+```
+
+Completed rows may be included with `status=completed`, or omitted when the
+prediction exists. Failed methods remain visible in the applicability matrix
+and summary tables, but are excluded from numerical ranks.
+
+### Optional matched LOTO-versus-full-data diagnostic
+
+`evaluate_matched_tracks.py` is a separate, opt-in diagnostic; it does not
+change the primary per-track evaluator above. It restricts evaluation to the
+targets shared by both tracks and fits one normalization transform only after
+proving that `row_id`, state, spatial, and time arrays at the explicitly named
+anchor times are byte-identical in every participating training split. For the
+zebrafish comparison, the common anchors are `t0` and `t4`:
+
+```bash
+python scripts/spatiotemporal_benchmark/evaluate_matched_tracks.py \
+  --input-manifest "$OUT/inputs/manifest.json" \
+  --loto-predictions-root "$OUT/predictions/loto" \
+  --full-data-predictions-root "$OUT/predictions/full_data" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
+  --anchor-times 0 4 \
+  --output-dir "$OUT/reports/evaluation/matched" \
+  --methods CytoBridge-0.015 stvcr stories mioflow moscot wot paste spateo \
+            linear_centroid_shift exact_ot_displacement random_independent_pairs
+```
+
+Before evaluating predictions, the script also proves directly from NPZ arrays
+that each LOTO training reference is the byte-exact non-target subset of the
+full-data reference, that train/truth row IDs are disjoint complements, and
+that both track-specific truth files equal the full-data target subset.
+
+The method registry is a required part of the evaluation contract. Its exact
+bytes and SHA-256, together with the exact CLI raw-name to canonical-name
+mapping, declared scope and applicable feature spaces, are bound into the run
+contract and final manifest. Unknown or ambiguous aliases, duplicate canonical
+methods, and predictions emitted in undeclared spaces are rejected before
+publication.
+
+Waddington-OT is registered as a **state-only coupling barycenter adapter**,
+not as a native state generator. Its official API returns transport couplings;
+the benchmark applies those couplings barycentrically to the frozen shared-PC
+state and composes them across stages. Accordingly its producer summary records
+`output_scope=hybrid_state` and
+`native_vs_adapter=hybrid_coupling_adapter`. It remains eligible only for the
+state space: exporting or scoring fabricated spatial/joint output is a contract
+error.
+
+Previously completed WOT predictions used the older
+`native_state`/`native_state` labels even though their arrays were already the
+same state-only barycentric coupling projection. They remain reusable without
+rerunning: the matched evaluator accepts that label pair only when the hashed
+registry resolves the exact raw method to canonical Waddington-OT, the registry
+declares `state_coupling_barycenter_adapter`, and the prediction contains state
+but no spatial output. Each such metadata-only normalization is recorded as
+`legacy_wot_native_state_label_normalized` in the prediction inventory and the
+final scope-compatibility audit; numerical arrays and scores are unchanged.
+
+The two tracks use the same projection seed for each target/space/repeat. Exact
+OT uses separate predicted and observed RNG streams: one observed index set is
+fixed, recorded and shared across every method and track for a target/space, so
+different prediction counts or weights cannot change the observed subsample.
+Outputs comprise a repeat-level long CSV, a semantic split audit, an exact-OT
+index audit, the common transform and anchor-byte audit, and a paired
+method/space/target summary. Code hashes for this evaluator, the primary
+evaluator, `benchmark.py` and `evaluation.py`, plus Python and numerical-library
+versions, are embedded in the final manifest.
+
+The output directory is immutable and bound by `run_contract.json`. An
+immutable, canonically sorted `prediction_inventory.json` binds the exact NPZ
+and summary byte snapshots selected for evaluation, and
+`bound_run_contract.json` binds its SHA to the base run contract. Metric
+calculation uses only the parsed in-memory snapshots. External prediction files
+are rehashed both before metrics and immediately before final publication. An
+interrupted run may resume only with byte-identical contracts, inventory and
+outputs; changed parameters, predictions or partial outputs are rejected. Once
+`matched_evaluation_manifest.json` exists, use a new output directory for any
+rerun. Reported LOTO-minus-full gaps are descriptive: full-data is explicitly
+marked in-sample, each fitted prediction represents one model-training seed,
+and no cross-space score or ranking is produced. TMV is included only for
+declared native unnormalised mass; its delta is withheld when the two tracks use
+different source-time denominators.
+
+Create the audited tables and per-space paired plots only after the matched
+evaluator has published its final manifest:
+
+```bash
+python scripts/spatiotemporal_benchmark/report_matched_tracks.py \
+  --matched-manifest \
+    "$OUT/reports/evaluation/matched/matched_evaluation_manifest.json" \
+  --paired-summary \
+    "$OUT/reports/evaluation/matched/matched_paired_summary.csv" \
+  --method-registry scripts/spatiotemporal_benchmark/method_registry.json \
+  --output-dir "$OUT/reports/summary/matched"
+```
+
+The reporter verifies the evaluator-bound registry mapping and input hashes,
+recomputes TMV applicability, and emits primary sliced-W2 dumbbell plots plus
+supplemental bounded exact W1/W2 plots separately for state, spatial and joint
+spaces. It never constructs a cross-space overall score or rank. Its output
+directory is immutable; use a new directory for a changed input or rerun.
+
+## Adapting another dataset
+
+Copy the YAML and change the source path/hash, time key and explicit mapping,
+representation keys/dimensions, annotation key, target lists, fixed population
+size, and provenance assertions. All can also be overridden from the CLI:
+
+```bash
+python scripts/spatiotemporal_benchmark/build_inputs.py \
+  --config configs/my_dataset.yaml \
+  --h5ad /path/to/aligned.h5ad \
+  --time-key model_time \
+  --time-map '[["day0",0],["day2",1],["day5",2]]' \
+  --loto-targets 1 \
+  --full-data-targets 1,2 \
+  --prediction-n 5000 \
+  --output-dir /new/run/root
+```
+
+Use `--preprocess-contract-json @contract.json` to replace the YAML provenance
+contract for a dataset with a different legitimate preprocessing recipe. Do not
+weaken that contract merely to make an incompatible or double-transformed input
+pass. If a legacy H5AD lacks a provenance field that was verified later, bind
+the immutable audit JSON by path, SHA-256, and `required_exact` assertions under
+`external_audits` instead of editing the H5AD or pretending the field existed.

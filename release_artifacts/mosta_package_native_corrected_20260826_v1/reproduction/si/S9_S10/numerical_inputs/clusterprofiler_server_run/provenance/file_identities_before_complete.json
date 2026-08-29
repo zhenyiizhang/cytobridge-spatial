@@ -1,0 +1,147 @@
+{
+  "1": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/brain_hvg_ward_k2_assignments.csv",
+    "size_bytes": 18485,
+    "sha256": "d3b7a73e8775247334bd204ed5e1177fe3a2f3b47db0201e7e4a21a71a3cba84"
+  },
+  "2": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s10_phase_1_query_symbols.csv",
+    "size_bytes": 6555,
+    "sha256": "dc0f463d4d31f3d29dcb8307e58f93aa91384eda84dba05e1e0115b3b1d42f10"
+  },
+  "3": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s10_phase_2_query_symbols.csv",
+    "size_bytes": 3984,
+    "sha256": "8206a560137dcaa06fc48c1b640dc498b63013669b05bed2b38216be86bb55f5"
+  },
+  "4": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s10_phase_3_query_symbols.csv",
+    "size_bytes": 2922,
+    "sha256": "519282e536a4131ff356699788c49bd53249ed6db86687f6bdbe473debe93d08"
+  },
+  "5": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s10_top1000_dp3_assignments.csv",
+    "size_bytes": 40792,
+    "sha256": "7900086ca6d989f23bd6803cb9444b67765243c31cd1603f6d8e2a6f54e44b6f"
+  },
+  "6": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s9_pattern_1_query_symbols.csv",
+    "size_bytes": 12384,
+    "sha256": "d336878155c8d465e8c2b13491b0158a53b0a42a2e9e6c0cc930ae8534813873"
+  },
+  "7": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/inputs/s9_pattern_2_query_symbols.csv",
+    "size_bytes": 16396,
+    "sha256": "7b416a2e786b269ee51ca2086df8612e4004748cbb69337e459f7df3843d7a64"
+  },
+  "8": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/manifest.json",
+    "size_bytes": 5284,
+    "sha256": "af1bb4b22e7795b937649279bbfa9aab7f4d46d5070a28151adce9255e3c448b"
+  },
+  "9": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/provenance/org.Mm.eg.db_metadata.csv",
+    "size_bytes": 984,
+    "sha256": "78438447352a25750ad8e547fd53af64eb6d6baf992d14613f0d40126527e436"
+  },
+  "10": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/provenance/sessionInfo.txt",
+    "size_bytes": 3641,
+    "sha256": "f8ed5daf11e29f22c590c2370e61f2410599101b67743907446919e5dad9d526"
+  },
+  "11": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/source/run_mosta_s9_s10_clusterprofiler_20260826_v1.R",
+    "size_bytes": 12416,
+    "sha256": "49ac3271b57406f8aa7e4ed2a33afe0c60accff48a2f5dcfbbe78492e97adcaa"
+  },
+  "12": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/background_symbol_to_entrez_all_rows.csv",
+    "size_bytes": 34533,
+    "sha256": "c5e9199c6fd15eda6e9b3bef680804151b90c536088a3e347c801bd7ac636cc3"
+  },
+  "13": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/background_symbol_to_entrez_valid.csv",
+    "size_bytes": 30760,
+    "sha256": "a61f48c13e1b47166203f26d06b586740c850f2814a4311f1dffc16464cc496d"
+  },
+  "14": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/clusterprofiler_query_summary.csv",
+    "size_bytes": 697,
+    "sha256": "aa8550ec23a0fca9dcefb9d0ee086ced444afb694d58a357031eb02be522f0e7"
+  },
+  "15": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_1_enrichGO_all.csv",
+    "size_bytes": 1040448,
+    "sha256": "78cf812752ee6d5c4846e1a712f9afb8331496545e22917a733d6148dc6c9843"
+  },
+  "16": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_1_enrichGO_display_top20.csv",
+    "size_bytes": 23758,
+    "sha256": "96d80cd58f2da3b726652b2a82b3b8288f441fe9782d12edcc33db65a6e425ee"
+  },
+  "17": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_1_enrichGO_fdr_lt_0p05.csv",
+    "size_bytes": 184273,
+    "sha256": "a42b49b820c8b889a3707f720ea5593729a517758c2117c37cb059a67f968232"
+  },
+  "18": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_2_enrichGO_all.csv",
+    "size_bytes": 964381,
+    "sha256": "169e3f613eb26586a1a1ba3b3c495a5ed17eac2b7b7433773895e3d850d37421"
+  },
+  "19": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_2_enrichGO_display_top20.csv",
+    "size_bytes": 15755,
+    "sha256": "f5a83f6bdc1b4b309af5f7ac310c9fbe6480dcfa9c0495a821c179f15604f0e5"
+  },
+  "20": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_2_enrichGO_fdr_lt_0p05.csv",
+    "size_bytes": 213887,
+    "sha256": "fd6521864395f59be524a562b3dc445dd7f33ba2c89c1710da417ed928fb9b74"
+  },
+  "21": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_3_enrichGO_all.csv",
+    "size_bytes": 787218,
+    "sha256": "6432d4a92e9488cf59a0f2711fd465729ced1d368308059afebe6fae9721986f"
+  },
+  "22": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_3_enrichGO_display_top20.csv",
+    "size_bytes": 10560,
+    "sha256": "b7215117ab9f88cef5abacca6862b914aae7ddd2de940e1036a609ba944cba37"
+  },
+  "23": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s10_phase_3_enrichGO_fdr_lt_0p05.csv",
+    "size_bytes": 76321,
+    "sha256": "4da7c1df5be76f1503b93e3b372267865cef38157bf168be2ff28a6e2468c74f"
+  },
+  "24": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_1_enrichGO_all.csv",
+    "size_bytes": 1223228,
+    "sha256": "71e191aae88a9d0b19df0a52330a84bf250190526316d8241b5fc0452e2bc0df"
+  },
+  "25": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_1_enrichGO_display_top20.csv",
+    "size_bytes": 30486,
+    "sha256": "975a203b7d25dfa0b6050593d78fb2a8c3306a76caabe7741bc561bb3f99860b"
+  },
+  "26": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_1_enrichGO_fdr_lt_0p05.csv",
+    "size_bytes": 220726,
+    "sha256": "44ce39c010f37da815f0eeac7af4ec0f1334b9a78e201a03afe3f7e913b9e768"
+  },
+  "27": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_2_enrichGO_all.csv",
+    "size_bytes": 1089349,
+    "sha256": "e0708e78509a9901a07d31117a59a893fdb69145216b0d1664707e294fa73232"
+  },
+  "28": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_2_enrichGO_display_top20.csv",
+    "size_bytes": 8893,
+    "sha256": "afaacc324f1bbef92b744a723c5d38acd4e9d79b235f7c7c2fc062ef992ac9b9"
+  },
+  "29": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1.stage-2624596/tables/s9_pattern_2_enrichGO_fdr_lt_0p05.csv",
+    "size_bytes": 8893,
+    "sha256": "afaacc324f1bbef92b744a723c5d38acd4e9d79b235f7c7c2fc062ef992ac9b9"
+  }
+}

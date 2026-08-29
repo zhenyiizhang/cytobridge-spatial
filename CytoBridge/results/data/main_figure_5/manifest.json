@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "analysis": "main_figure_5",
+  "manuscript_figure": "Main Figure 5",
+  "dataset": "ARISTA",
+  "reader_action": "reference-export",
+  "numerical_recalculation": false,
+  "scientific_label_release": "v5",
+  "files": {
+    "main_figure_5_compact.png": "scientific-label page raster",
+    "panel_index.csv": "panel content and compact/full calculation mapping",
+    "full_recompute_inputs.csv": "relative-path inputs for a full model-based calculation"
+  },
+  "render": {
+    "canvas_pixels": [
+      2481,
+      3508
+    ],
+    "page_points": [
+      595.276,
+      841.89
+    ],
+    "reference_dpi": 300,
+    "compact_raster_crc32": "1331a768"
+  },
+  "scientific_labels": {
+    "Spatial migration velocity": "Spatial velocity",
+    "Spatial velocity cosine simlarity": "Spatial velocity cosine similarity",
+    "interaction VS migration": "interaction vs full spatial velocity"
+  },
+  "vector_rebuild": {
+    "script": "scripts/results/build_main_figure_5_vector.py",
+    "external_inputs": ["formal_vector_pdf", "formal_vector_manifest", "label_font"]
+  },
+  "equivalence": {
+    "png": "The packaged raster is the same exported page payload used by the current Word figure.",
+    "pdf": "The default generated PDF places that raster on the same A4 page. It preserves page appearance and scientific labels, but not the source PDF's vector objects or selectable text.",
+    "vector_pdf": "The portable vector script requires the external formal base inputs and changes only the three registered label areas."
+  }
+}

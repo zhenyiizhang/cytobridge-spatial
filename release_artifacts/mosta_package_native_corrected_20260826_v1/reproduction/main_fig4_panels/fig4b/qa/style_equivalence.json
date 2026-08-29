@@ -1,0 +1,177 @@
+{
+  "comparison": "original AI crop vs corrected crop outside the three replaced embryo image rectangles",
+  "geometry_contract": {
+    "anisotropic_stretch": false,
+    "crop_or_cell_deletion": false,
+    "reflection": false,
+    "rotation": false,
+    "spatial_warp": false,
+    "within_panel_axis": "equal aspect; symmetric whitespace when raw aspect differs from the AI canvas"
+  },
+  "intentional_changes": [
+    "three embryo raster objects replaced with corrected package-native total hotspot values",
+    "the original per-panel q1-q99 robust normalization is retained so each slice shows its internal hotspot localization",
+    "E13.0 uses accepted corrected communication/expression scores mapped onto the selected 50k global-t0 display cohort",
+    "40 display-only Pancreas/Spinal cord cells absent from the accepted communication type universe are retained as base grey with unavailable NaN scores",
+    "two E13.0 Choroid Plexus components are explicitly circled and labeled in the original 9-pt Arial/#66abb4 annotation grammar",
+    "the legacy E13.0 Meninges text is redrawn at its exact baseline with a sub-point white halo because the corrected Jaw-and-tooth hotspot beneath it is darker"
+  ],
+  "outside_replacement_fraction_gt_1": 0.0,
+  "outside_replacement_max": 0,
+  "outside_replacement_mean_abs_maxchannel": 0.0,
+  "replacement_records": [
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.6753536857781087,
+      "canvas_pixel_size": [
+        907,
+        1343
+      ],
+      "coordinate_aspect": 0.6732540161033534,
+      "coordinate_extent": [
+        2.2455286979675293,
+        3.33533650636673
+      ],
+      "illustrator_bbox_points": [
+        2.1388890743,
+        252.8696136475,
+        99.2780151367,
+        396.7040710449
+      ],
+      "illustrator_transform": [
+        97.13912963867188,
+        0.0,
+        -0.0,
+        143.83445739746094,
+        2.1388890743255615,
+        252.86961364746094
+      ],
+      "n_cell_types": 23,
+      "n_cells": 51365,
+      "n_score_available_cells": 51365,
+      "n_score_unavailable_cells": 0,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E12p5_xref37.png",
+      "replacement_sha256": "99f41433a75cdff04b5f7c70fa754f2fdbd14b524939ff30d4aa94cf1c9a3e96",
+      "rotation": false,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "spatial_warp": false,
+      "stage": "E12.5",
+      "time": 0.0,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 142.9776624166262,
+        "width": 96.71072859354709
+      },
+      "xref": 37
+    },
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.6887565152643336,
+      "canvas_pixel_size": [
+        925,
+        1343
+      ],
+      "coordinate_aspect": 0.6873401997254448,
+      "coordinate_extent": [
+        2.4959150552749634,
+        3.631265938282013
+      ],
+      "illustrator_bbox_points": [
+        100.6464157104,
+        249.8218994141,
+        204.339630127,
+        400.373260498
+      ],
+      "illustrator_transform": [
+        103.6932144165039,
+        0.0,
+        -0.0,
+        150.55136108398438,
+        100.64641571044922,
+        249.8218994140625
+      ],
+      "n_cell_types": 25,
+      "n_cells": 63533,
+      "n_score_available_cells": 63493,
+      "n_score_unavailable_cells": 40,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E13p0_xref35.png",
+      "replacement_sha256": "74e2451dbce23fb3ef2a87d4377852346e17be3f272556fa74053876486a7800",
+      "rotation": false,
+      "slice_origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "spatial_warp": false,
+      "stage": "E13.0",
+      "time": 0.5,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 149.6545547632215,
+        "width": 103.2448113272309
+      },
+      "xref": 35
+    },
+    {
+      "anisotropic_data_transform": false,
+      "canvas_aspect": 0.7163067758749069,
+      "canvas_pixel_size": [
+        962,
+        1343
+      ],
+      "coordinate_aspect": 0.6961324024385067,
+      "coordinate_extent": [
+        2.662730574607849,
+        3.82503467053175
+      ],
+      "illustrator_bbox_points": [
+        205.9485015869,
+        249.8938598633,
+        313.2412109375,
+        399.6798400879
+      ],
+      "illustrator_transform": [
+        107.29269409179688,
+        0.0,
+        -0.0,
+        149.78598022460938,
+        205.94850158691406,
+        249.89385986328125
+      ],
+      "n_cell_types": 19,
+      "n_cells": 77369,
+      "n_score_available_cells": 77369,
+      "n_score_unavailable_cells": 0,
+      "placement_mode": "exact original Illustrator image bbox and z-order",
+      "reflection": false,
+      "replacement": "qa/replacement_rasters_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6/E13p5_xref36.png",
+      "replacement_sha256": "af0e302bc9a447312edc58b4f82a5060a7d1268d9f89bc6230774481ce655cc5",
+      "rotation": false,
+      "slice_origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "spatial_warp": false,
+      "stage": "E13.5",
+      "time": 1.0,
+      "unavailable_display_policy": "base grey only; no zero imputation",
+      "visible_content_points": {
+        "height": 148.8937331346545,
+        "width": 103.94678286357505
+      },
+      "xref": 36
+    }
+  ],
+  "schema_version": 1,
+  "status": "PASS",
+  "unchanged_objects": [
+    "panel label b and title",
+    "Wnt3a-Fzd7/Lrp6 label",
+    "Observed/Generated labels",
+    "all original Choroid Plexus, Meninges, and Epidermis annotations and arrows",
+    "E12.5/E13.0/E13.5 labels",
+    "developmental time arrow",
+    "Low-High colorbar and Interaction Score label",
+    "all original relative placements and z-order"
+  ]
+}

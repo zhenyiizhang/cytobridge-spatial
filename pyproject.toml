@@ -4,14 +4,89 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "CytoBridge"
-version = "0.1.0"
 description = "CytoBridge package for spatiotemporal single-cell and spatial transcriptomics analysis."
 readme = "README.md"
-requires-python = ">=3.10"
-dynamic = ["dependencies"]
+requires-python = ">=3.10,<3.12"
+authors = [
+  { name = "Zhenyi Zhang" },
+  { name = "Zihan Wang" },
+  { name = "Jiantao Shen" },
+  { name = "Peijie Zhou" },
+]
+license = { file = "LICENSE" }
+keywords = [
+  "single-cell",
+  "spatial-transcriptomics",
+  "spatiotemporal-modeling",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dynamic = ["dependencies", "optional-dependencies", "version"]
+
+[project.urls]
+Documentation = "https://cytobridge-spatial.readthedocs.io/"
+Issues = "https://github.com/zhenyiizhang/cytobridge-spatial/issues"
+Repository = "https://github.com/zhenyiizhang/cytobridge-spatial"
+
+[project.scripts]
+cytobridge = "CytoBridge.cli:main"
+
+[tool.setuptools]
+include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["CytoBridge*"]
 
 [tool.setuptools.dynamic]
-dependencies = { file = ["requirements.txt"] }
+dependencies = { file = ["requirements/core.txt"] }
+version = { attr = "CytoBridge._version.__version__" }
+
+[tool.setuptools.dynamic.optional-dependencies]
+all = { file = ["requirements/all.txt"] }
+docs = { file = ["requirements/docs.txt"] }
+graph = { file = ["requirements/graph.txt"] }
+notebook = { file = ["requirements/notebook.txt"] }
+plot = { file = ["requirements/plot.txt"] }
+preprocess = { file = ["requirements/preprocess.txt"] }
+spatial = { file = ["requirements/spatial.txt"] }
+train = { file = ["requirements/train.txt"] }
+velocity = { file = ["requirements/velocity.txt"] }
+
+[tool.setuptools.package-data]
+CytoBridge = [
+  "configs/admouse_spatial_full_alpha_express_0015.yaml",
+  "configs/admouse_spatial_full_alpha_express_0015_no_interaction.yaml",
+  "configs/admouse_spatial_full_alpha_express_0015_no_lr_prior.yaml",
+  "configs/arista_spatial_full.yaml",
+  "configs/arista_spatial_full_no_interaction.yaml",
+  "configs/arista_spatial_full_no_lr_prior.yaml",
+  "configs/mosta_spatial_full_alpha_express_0015.yaml",
+  "configs/mosta_spatial_full_alpha_express_0015_no_interaction.yaml",
+  "configs/mosta_spatial_full_alpha_express_0015_no_lr_prior.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015_no_interaction.yaml",
+  "configs/zebrafish_spatial_full_alpha_express_0015_no_lr_prior.yaml",
+  "configs/chicken_heart_spatial_full_alpha_express_0015.yaml",
+  "configs/weinreb_nonspatial_gnn_full.yaml",
+  "configs/weinreb_nonspatial_gnn_no_interaction.yaml",
+  "configs/scnt_cortex_nonspatial_gnn_full.yaml",
+  "configs/scnt_cortex_nonspatial_gnn_no_interaction.yaml",
+  "workflow_configs/*.json",
+  "workflow_databases/*.csv",
+  "workflow_databases/README.md",
+  "results/data/*/*.csv",
+  "results/data/*/*/*.csv",
+  "results/data/*/*.csv.gz",
+  "results/data/*/*.json",
+  "results/data/*/*.npz",
+  "results/data/*/*.pdf",
+  "results/data/*/*.png",
+]

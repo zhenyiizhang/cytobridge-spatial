@@ -1,0 +1,15 @@
+input_id,relative_path,kind,stage,panels,public_source,description
+raw_h5ad,external/arista/Regeneration.h5ad,file,download,a;b;c;d;e,https://db.cngb.org/stomics/datasets/STDS0000056/data,Complete ARISTA source AnnData
+aligned_h5ad,external/arista/preprocess/arista_aligned.h5ad,file,generated,a;b;c;d;e,,Aligned package workflow output
+model_dir,external/arista/training,directory,generated,a;c;d;e,,Package workflow checkpoint directory
+edge_predictor,external/arista/preprocess/edge_classifier/arista_edge_model.pt,file,generated,a;e,,Spatial edge-predictor state
+classifier_cache,external/arista/downstream/classifier_cache/classifier_resmlp.pt,file,generated,a;b,,Generated-cell classifier state
+slice_dir,external/arista/downstream/slice_data,directory,generated,a;b;c;d;e,,Observed and generated slice AnnData files
+sparse_attention_dir,external/arista/downstream/communication/sparse_attention,directory,generated,a,,Sparse directed communication arrays
+velocity_components,external/arista/downstream/velocity/velocity_components.npz,file,generated,c;d,,Full and interaction velocity components
+aligned_identity,external/arista/preprocess/aligned_cell_identity.csv,file,generated,d,,Row-aligned cell identities
+growth_by_cell,external/arista/downstream/growth/growth_by_cell.csv,file,generated,e,,Per-cell growth values
+communication_by_celltype,external/arista/downstream/communication/communication_by_celltype.csv,file,generated,e,,Cell-state communication summary
+formal_vector_pdf,external/arista/main_figure_5/Figure5_ARISTA_package_native_finalAI_style.pdf,file,provided,c,,Formal one-page vector base for the scientific-label rebuild
+formal_vector_manifest,external/arista/main_figure_5/Figure5_ARISTA_package_native_finalAI_style_manifest.json,file,provided,c,,Formal vector-base assembly manifest
+label_font,external/fonts/Arial-Bold.ttf,file,provided,c,,Bold TrueType font used for the three corrected labels

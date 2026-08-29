@@ -1,0 +1,13 @@
+37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/COMPLETE
+863d0f2e67f95c0356e0f0fc17646b5cfe6a21ede633088c7dcf4ec22497c7e6  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/provenance/launch.log
+edca41a17156db617c678c40552b0b2d3b22df5c239f5f148b3830593a6ed76e  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/provenance/launch_mosta_fig4a_40k_50k.sh
+db9c4ff9628c0f6085d37c7a0d1153da1f17d792adb2fef8d3123a21b00ee2f3  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/provenance/run_contract.txt
+eda720ad0c327ea307cdb0706b6637950f813b3bf45142f49865be4a48698ee8  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/provenance/run_mosta_fig4a_global_t0_particle_sensitivity.py
+761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0.h5ad
+66906cd50b55e8eb31738590023e4a0fe0cab31ae32665bd9e2c0dd641ac1f2b  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0p5.h5ad
+6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_1.h5ad
+fee82eeb2244fe11cf838093f43848a924dfa28dff4a7513c81f4154f8d92bf4  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_1p5.h5ad
+b200ce09b73aabe0757b68a229a858e1625806d7b342c0ea1099d95dc0e2902f  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_2.h5ad
+69d6edbdea3aa59203a3c278f743a01d6cce06cffae36b8397ddedad8835a205  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_2p5.h5ad
+b9e2f4ff286c99e38c05b917fd356cb78e21add021b3a53fc6bec8b18d7a5a06  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_3.h5ad
+63ea1da89b075dab6115e21a3171c6563f5e36dbf51942ddb81c76ceb2ae5827  /data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/summary.json

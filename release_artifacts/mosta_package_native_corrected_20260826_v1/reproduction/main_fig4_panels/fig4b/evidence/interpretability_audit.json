@@ -1,0 +1,598 @@
+{
+  "biological_interpretation": {
+    "not_established": [
+      "The audit does not independently validate the exact Wnt3a-Fzd7/Lrp6 triplet as the dominant in-vivo E13.0 jaw/tooth interaction.",
+      "The dark color is not a cross-time magnitude statement because each slice is independently normalized.",
+      "The E13.0 state is model-generated, and the Jaw-and-tooth intensity is strongly concentrated in the same-type edge block."
+    ],
+    "primary_sources": [
+      {
+        "support": "Lrp5/6-dependent Wnt signaling regulates mouse tooth development and patterning.",
+        "title": "Inhibition of Wnt signaling by Wise (Sostdc1) and negative feedback from Shh controls tooth number and patterning",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6512258/"
+      },
+      {
+        "support": "Murine Lrp6 expression was profiled from E11.5-E16.5 and reported in dental epithelium through E13.5.",
+        "title": "Lrp6 Dynamic Expression in Tooth Development and Mutations in Oligodontia",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/33164649/"
+      }
+    ],
+    "supported": [
+      "Canonical Wnt/LRP5/6 signaling is an established regulator of mouse tooth initiation, tooth number, and patterning.",
+      "Lrp6 has been observed in murine tooth development from E11.5-E16.5, with reported dental-epithelium localization through E13.5.",
+      "A localized same-type Jaw-and-tooth signal at the generated E13.0 stage is therefore biologically plausible in direction."
+    ]
+  },
+  "calculation_conclusion": {
+    "cell_self_edges": "none in the saved selected edge arrays at t=0,0.5,1",
+    "formal_primary_reproduction": "PASS at absolute and relative tolerance 1e-8",
+    "formula_gate": "PASS; maximum formula absolute error is zero",
+    "particle_policy": "accepted corrected compute cohort; 50k state is display-only",
+    "trajectory": "global-t0 generated E13.0; source anchor t0; no spatial warp"
+  },
+  "dataset": "mosta",
+  "e13_jaw_and_tooth_decomposition": {
+    "compute_cells": 890,
+    "cross_type_only_rank": 12,
+    "cross_type_only_total": 0.0015414591458271453,
+    "display_cells": 3607,
+    "display_color_reason": {
+      "interpretation": "Jaw and tooth equals the E13.0 q99 bound, so the original per-panel color grammar renders it at maximum saturation.",
+      "normalized_clipped": 1.0,
+      "per_panel_q1": 0.0038692162826912,
+      "per_panel_q99": 0.0326394759079971,
+      "raw_total": 0.0326394759079971
+    },
+    "incoming": 0.016581470867848,
+    "jaw_to_jaw": {
+      "cell_self_edge_artifact": false,
+      "communication_weight_M_per_source": 10.969472301688082,
+      "explanation": "The selected graph contains zero exact cell self-edges. This is same-type communication among distinct nearby Jaw-and-tooth cells, counted once as incoming and once as outgoing in the total hotspot estimand.",
+      "fraction_of_jaw_total_counted_in_incoming_plus_outgoing": 0.9527731649193047,
+      "lr_score": 0.0155490083810849
+    },
+    "ligand_mean_as_sender_Wnt3a": 0.0083843134343624,
+    "outgoing": 0.016058005040149,
+    "primary_rank": 2,
+    "receptor_mean_as_receiver_min_Fzd7_Lrp6": 0.1690633445978164,
+    "total": 0.0326394759079971
+  },
+  "inputs": {
+    "calculation_gate": {
+      "path": "server_run_v4/calculation_gate.json",
+      "sha256": "a49315b2322f1e7c57ba5badd364180c2305d1186e6e6211429e37d97f4ff2c0"
+    },
+    "cell_self_loop_sensitivity": {
+      "path": "qa/server_readonly_cell_selfloop_sensitivity_2b3c79e_20260825_v1.json",
+      "sha256": "fd52cb68cc0b83fb96a38220a20b083502b14cebb820a0590c984792792a1033"
+    },
+    "type_matrix": {
+      "path": "server_run_v4/type_matrix.csv",
+      "sha256": "3929bd90b114d27da00721b542074f309dc0c4083f10e1e4f06e9683cf1e5b3d"
+    },
+    "type_scores": {
+      "path": "server_run_v4/type_scores.csv",
+      "sha256": "13e81abe1b12703c3c5a08fc5cd7c9c2a73563346eee496837458f99d25926b3"
+    }
+  },
+  "pair": "Wnt3a_Fzd7_Lrp6",
+  "panel": "Fig4b",
+  "render_recommendation": {
+    "caption_caveat": "Colors show within-slice relative hotspot localization; total includes incoming and outgoing same-type communication; E13.0 is model-generated.",
+    "keep_corrected_primary_values": true,
+    "keep_per_panel_q1_q99_original_style": true,
+    "label_jaw_and_tooth_as_manuscript_claim": false,
+    "reason": "The signal is calculationally valid and biologically plausible, but 95.3% of its type total is the same-type block and direct validation of the exact triplet is absent. Retain it visually as correct data, but do not promote it over the manuscript's CP/Meninges/Epidermis message."
+  },
+  "schema_version": 1,
+  "status": "PASS_WITH_INTERPRETIVE_CAVEATS",
+  "time_level_sensitivity": [
+    {
+      "annotated_type_ranks": {
+        "Choroid plexus": {
+          "cross_type_only": {
+            "cell_type": "Choroid plexus",
+            "rank": 1,
+            "total": 0.13329415763896382
+          },
+          "primary": {
+            "cell_type": "Choroid plexus",
+            "rank": 1,
+            "total": 0.5823780126447822
+          }
+        },
+        "Epidermis": {
+          "cross_type_only": {
+            "cell_type": "Epidermis",
+            "rank": 3,
+            "total": 0.06984909126608871
+          },
+          "primary": {
+            "cell_type": "Epidermis",
+            "rank": 2,
+            "total": 0.3151869997212741
+          }
+        },
+        "Meninges": {
+          "cross_type_only": {
+            "cell_type": "Meninges",
+            "rank": 2,
+            "total": 0.10870667225505341
+          },
+          "primary": {
+            "cell_type": "Meninges",
+            "rank": 3,
+            "total": 0.13224278534155742
+          }
+        }
+      },
+      "cross_type_edge_score": 0.2545806097020856,
+      "cross_type_only_top_types": [
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 1,
+          "total": 0.13329415763896382
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 2,
+          "total": 0.10870667225505341
+        },
+        {
+          "cell_type": "Epidermis",
+          "rank": 3,
+          "total": 0.06984909126608871
+        },
+        {
+          "cell_type": "Brain",
+          "rank": 4,
+          "total": 0.029709577998619497
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 5,
+          "total": 0.02932409871129886
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 6,
+          "total": 0.02536635706843466
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 7,
+          "total": 0.02285597468787814
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 8,
+          "total": 0.021513982891389123
+        },
+        {
+          "cell_type": "Muscle",
+          "rank": 9,
+          "total": 0.020520716168358096
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 10,
+          "total": 0.013829016567228177
+        },
+        {
+          "cell_type": "Dorsal root ganglion",
+          "rank": 11,
+          "total": 0.006617993268112782
+        },
+        {
+          "cell_type": "Blood vessel",
+          "rank": 12,
+          "total": 0.004872548060175242
+        }
+      ],
+      "pair_score": 0.7908472467858968,
+      "primary_top_types": [
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 1,
+          "total": 0.5823780126447822
+        },
+        {
+          "cell_type": "Epidermis",
+          "rank": 2,
+          "total": 0.3151869997212741
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 3,
+          "total": 0.13224278534155742
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 4,
+          "total": 0.12904399499743313
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 5,
+          "total": 0.06855993621056213
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 6,
+          "total": 0.05930143449410086
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 7,
+          "total": 0.05128523366025246
+        },
+        {
+          "cell_type": "Muscle",
+          "rank": 8,
+          "total": 0.04944535829854049
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 9,
+          "total": 0.04409713387163798
+        },
+        {
+          "cell_type": "Brain",
+          "rank": 10,
+          "total": 0.0332108724715029
+        },
+        {
+          "cell_type": "Mesothelium",
+          "rank": 11,
+          "total": 0.020824478132715783
+        },
+        {
+          "cell_type": "Lung primordium",
+          "rank": 12,
+          "total": 0.020340724513656556
+        }
+      ],
+      "same_type_edge_score": 0.5362666370838111,
+      "same_type_fraction_of_pair_score": 0.6780912992531319,
+      "time": 0.0
+    },
+    {
+      "annotated_type_ranks": {
+        "Choroid plexus": {
+          "cross_type_only": {
+            "cell_type": "Choroid plexus",
+            "rank": 3,
+            "total": 0.004522006612760138
+          },
+          "primary": {
+            "cell_type": "Choroid plexus",
+            "rank": 1,
+            "total": 0.036753294673077544
+          }
+        },
+        "Epidermis": {
+          "cross_type_only": {
+            "cell_type": "Epidermis",
+            "rank": 4,
+            "total": 0.004356597430055578
+          },
+          "primary": {
+            "cell_type": "Epidermis",
+            "rank": 3,
+            "total": 0.023891807875801977
+          }
+        },
+        "Meninges": {
+          "cross_type_only": {
+            "cell_type": "Meninges",
+            "rank": 6,
+            "total": 0.0028545470584515928
+          },
+          "primary": {
+            "cell_type": "Meninges",
+            "rank": 7,
+            "total": 0.017558338321737994
+          }
+        }
+      },
+      "cross_type_edge_score": 0.023324844571135928,
+      "cross_type_only_top_types": [
+        {
+          "cell_type": "Muscle",
+          "rank": 1,
+          "total": 0.005676907921079685
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 2,
+          "total": 0.004720943579288596
+        },
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 3,
+          "total": 0.004522006612760138
+        },
+        {
+          "cell_type": "Epidermis",
+          "rank": 4,
+          "total": 0.004356597430055578
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 5,
+          "total": 0.003981569261437617
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 6,
+          "total": 0.0028545470584515928
+        },
+        {
+          "cell_type": "Brain",
+          "rank": 7,
+          "total": 0.0028054229581991304
+        },
+        {
+          "cell_type": "GI tract",
+          "rank": 8,
+          "total": 0.002408781392872838
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 9,
+          "total": 0.001837220415773411
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 10,
+          "total": 0.0018017348643123256
+        },
+        {
+          "cell_type": "Mesentery",
+          "rank": 11,
+          "total": 0.0016058131502624529
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 12,
+          "total": 0.0015414591458271453
+        }
+      ],
+      "pair_score": 0.1499012082039327,
+      "primary_top_types": [
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 1,
+          "total": 0.036753294673077544
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 2,
+          "total": 0.03263947590799694
+        },
+        {
+          "cell_type": "Epidermis",
+          "rank": 3,
+          "total": 0.023891807875801977
+        },
+        {
+          "cell_type": "Heart",
+          "rank": 4,
+          "total": 0.020031245747247302
+        },
+        {
+          "cell_type": "Muscle",
+          "rank": 5,
+          "total": 0.017774359462443483
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 6,
+          "total": 0.017629237264990015
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 7,
+          "total": 0.017558338321737994
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 8,
+          "total": 0.013542455412617727
+        },
+        {
+          "cell_type": "Mesentery",
+          "rank": 9,
+          "total": 0.012192416717161854
+        },
+        {
+          "cell_type": "Blood vessel",
+          "rank": 10,
+          "total": 0.011946172487185738
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 11,
+          "total": 0.011724280037151211
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 12,
+          "total": 0.011012424465317996
+        }
+      ],
+      "same_type_edge_score": 0.12657636363279678,
+      "same_type_fraction_of_pair_score": 0.8443985552177558,
+      "time": 0.5
+    },
+    {
+      "annotated_type_ranks": {
+        "Choroid plexus": {
+          "cross_type_only": {
+            "cell_type": "Choroid plexus",
+            "rank": 2,
+            "total": 0.019058716707325972
+          },
+          "primary": {
+            "cell_type": "Choroid plexus",
+            "rank": 2,
+            "total": 0.06553602956922017
+          }
+        },
+        "Epidermis": {
+          "cross_type_only": {
+            "cell_type": "Epidermis",
+            "rank": 1,
+            "total": 0.021042368737552893
+          },
+          "primary": {
+            "cell_type": "Epidermis",
+            "rank": 1,
+            "total": 0.0993182999554027
+          }
+        },
+        "Meninges": {
+          "cross_type_only": {
+            "cell_type": "Meninges",
+            "rank": 5,
+            "total": 0.008861558622718332
+          },
+          "primary": {
+            "cell_type": "Meninges",
+            "rank": 7,
+            "total": 0.022397219535286533
+          }
+        }
+      },
+      "cross_type_edge_score": 0.06632884061299424,
+      "cross_type_only_top_types": [
+        {
+          "cell_type": "Epidermis",
+          "rank": 1,
+          "total": 0.021042368737552893
+        },
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 2,
+          "total": 0.019058716707325972
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 3,
+          "total": 0.01877210324228088
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 4,
+          "total": 0.008932171918033976
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 5,
+          "total": 0.008861558622718332
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 6,
+          "total": 0.0072589338687532035
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 7,
+          "total": 0.007094589576614511
+        },
+        {
+          "cell_type": "Brain",
+          "rank": 8,
+          "total": 0.006430956732537286
+        },
+        {
+          "cell_type": "GI tract",
+          "rank": 9,
+          "total": 0.005448163057572347
+        },
+        {
+          "cell_type": "Heart",
+          "rank": 10,
+          "total": 0.00457462389766543
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 11,
+          "total": 0.004495817668666965
+        },
+        {
+          "cell_type": "Mesentery",
+          "rank": 12,
+          "total": 0.0038893839530363176
+        }
+      ],
+      "pair_score": 0.22839763231465465,
+      "primary_top_types": [
+        {
+          "cell_type": "Epidermis",
+          "rank": 1,
+          "total": 0.0993182999554027
+        },
+        {
+          "cell_type": "Choroid plexus",
+          "rank": 2,
+          "total": 0.06553602956922017
+        },
+        {
+          "cell_type": "Cavity",
+          "rank": 3,
+          "total": 0.03238942619256188
+        },
+        {
+          "cell_type": "Heart",
+          "rank": 4,
+          "total": 0.02829573989081523
+        },
+        {
+          "cell_type": "Jaw and tooth",
+          "rank": 5,
+          "total": 0.027984015531962603
+        },
+        {
+          "cell_type": "Cartilage primordium",
+          "rank": 6,
+          "total": 0.024785221868967963
+        },
+        {
+          "cell_type": "Meninges",
+          "rank": 7,
+          "total": 0.022397219535286533
+        },
+        {
+          "cell_type": "Muscle",
+          "rank": 8,
+          "total": 0.02165350416989794
+        },
+        {
+          "cell_type": "Mucosal epithelium",
+          "rank": 9,
+          "total": 0.02000585171138351
+        },
+        {
+          "cell_type": "Connective tissue",
+          "rank": 10,
+          "total": 0.019778249619532576
+        },
+        {
+          "cell_type": "Lung",
+          "rank": 11,
+          "total": 0.016133432785795508
+        },
+        {
+          "cell_type": "Mesentery",
+          "rank": 12,
+          "total": 0.015545156387438919
+        }
+      ],
+      "same_type_edge_score": 0.1620687917016604,
+      "same_type_fraction_of_pair_score": 0.7095905069558008,
+      "time": 1.0
+    }
+  ]
+}

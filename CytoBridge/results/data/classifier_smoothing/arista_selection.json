@@ -1,0 +1,9 @@
+{
+  "dataset": "arista",
+  "selected_k": 1,
+  "candidate_k": [1, 5, 10, 20, 50],
+  "selection_metric": "held-out balanced accuracy",
+  "annotation_key": "Annotation",
+  "n_observed": 46199,
+  "n_classes": 27
+}

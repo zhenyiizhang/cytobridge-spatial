@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "analysis": "lr_complex_aggregation",
+  "manuscript_figure": "Supplementary Figure S25",
+  "files": {
+    "zebrafish/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores",
+    "mosta/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores",
+    "arista/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores",
+    "chicken_heart/paired_scores.csv": "paired minimum-subunit and geometric-mean LR scores"
+  },
+  "calculation": {
+    "rank_summary": "pooled Spearman over pair-time rows and separate Spearman at each time",
+    "top_set": "the smaller of 10 pairs or 20 percent of scored pairs, with pair name as the tie break",
+    "time_axis": "time normalized from zero to one within each dataset"
+  }
+}

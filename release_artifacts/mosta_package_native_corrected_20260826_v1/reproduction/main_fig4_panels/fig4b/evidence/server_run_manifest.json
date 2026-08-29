@@ -1,0 +1,223 @@
+{
+  "dataset": "mosta",
+  "inputs": {
+    "communication_by_celltype": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/communication/communication_by_celltype.csv",
+      "sha256": "60a364cc8ba32e811cf7f7c29b96dfb9473d3db0d4cf310a640bd1331bf51823",
+      "size": 317930
+    },
+    "compute_snapshots": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0.h5ad",
+        "sha256": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8",
+        "size": 16039053
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0p5.h5ad",
+        "sha256": "8a36f062f6d8ed1d2e9b10e5c9bd4bcb0d68c52d367e33641fa976a95de76990",
+        "size": 3914344
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_1.h5ad",
+        "sha256": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6",
+        "size": 23972161
+      }
+    ],
+    "display_snapshots": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0.h5ad",
+        "sha256": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8",
+        "size": 16039053
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0p5.h5ad",
+        "sha256": "66906cd50b55e8eb31738590023e4a0fe0cab31ae32665bd9e2c0dd641ac1f2b",
+        "size": 16351869
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_1.h5ad",
+        "sha256": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6",
+        "size": 23972161
+      }
+    ],
+    "display_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/summary.json",
+      "sha256": "63ea1da89b075dab6115e21a3171c6563f5e36dbf51942ddb81c76ceb2ae5827",
+      "size": 5252
+    },
+    "formal_pair_timecourse": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/pair_timecourse.csv",
+      "sha256": "e6f1a9eaa30271775288ed0efab0f03d816cc4b6ca0b01387f0d22e150d1be5f",
+      "size": 3164589
+    },
+    "full50k_sensitivity_gate": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4b-wnt3a-fzd7-lrp6-global-t0-n50000-2b3c79e-seed42-20260825-v2/calculation_gate.json",
+      "sha256": "8fda5dfd5822e0ac9179d9cd3cda192cec4efd8bb0e73e89b7ee233acde2fa83",
+      "size": 3289
+    },
+    "full50k_sensitivity_reproduction": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4b-wnt3a-fzd7-lrp6-global-t0-n50000-2b3c79e-seed42-20260825-v2/formal_primary_reproduction.csv",
+      "sha256": "fb7c0ba2868ebdf27ab6da4068f4f4074f3dc74b1611ca6a8aad96d09a386b38",
+      "size": 196
+    },
+    "reference_h5ad": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/mosta_aligned.h5ad",
+      "sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+      "size": 15480940504
+    },
+    "workflow_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/summary.json",
+      "sha256": "9ee364c4eaeed26aff4981cae85503c6a610007239a523b9d1c538d258945995",
+      "size": 20441
+    }
+  },
+  "package": {
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "module": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py",
+    "root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime",
+    "source_files": {
+      "lr_projection.py": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/downstream/lr_projection.py",
+        "sha256": "76eeb71f52032952de1dc34e2cf910eb4cf6100f4592736fb2a1d608f706bb5b",
+        "size": 88743
+      }
+    }
+  },
+  "panel": "Fig4b",
+  "runtime": {
+    "pid": 2446611,
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]"
+  },
+  "schema_version": 1,
+  "scientific_contract": {
+    "complex_mode": "min",
+    "compute_cohort": "accepted corrected workflow snapshots (configured initial cap 12000; t0.5 realized 15144)",
+    "compute_state_gates": [
+      {
+        "expected_source_anchor_time": 0.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 51365,
+        "pass": true,
+        "slice_origin": "observed_real",
+        "source_anchor_time": 0.0,
+        "state_dim": 52,
+        "time": 0.0
+      },
+      {
+        "expected_source_anchor_time": 0.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 15144,
+        "pass": true,
+        "slice_origin": "generated_global_t0",
+        "source_anchor_time": 0.0,
+        "state_dim": 52,
+        "time": 0.5
+      },
+      {
+        "expected_source_anchor_time": 1.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 77369,
+        "pass": true,
+        "slice_origin": "observed_real",
+        "source_anchor_time": 1.0,
+        "state_dim": 52,
+        "time": 1.0
+      }
+    ],
+    "core_compute_n_unmapped_cells": 0,
+    "dataset": "mosta",
+    "display_cohort": "50k initial-particle global-t0 manuscript run",
+    "display_mapping": {
+      "n_available_cells": 192227,
+      "n_display_cells": 192267,
+      "n_dropped_cells": 0,
+      "n_unavailable_cells": 40,
+      "unavailable_policy": "retain and render base grey only; NaN unavailable; no zero imputation",
+      "unavailable_types": [
+        "Pancreas",
+        "Spinal cord"
+      ]
+    },
+    "display_mapping_reestimates_scores": false,
+    "display_state_gates": [
+      {
+        "expected_source_anchor_time": 0.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 51365,
+        "pass": true,
+        "slice_origin": "observed_real",
+        "source_anchor_time": 0.0,
+        "state_dim": 52,
+        "time": 0.0
+      },
+      {
+        "expected_source_anchor_time": 0.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 63533,
+        "pass": true,
+        "slice_origin": "generated_global_t0",
+        "source_anchor_time": 0.0,
+        "state_dim": 52,
+        "time": 0.5
+      },
+      {
+        "expected_source_anchor_time": 1.0,
+        "max_abs_X_xy_minus_obsm_spatial": 0.0,
+        "n_cells": 77369,
+        "pass": true,
+        "slice_origin": "observed_real",
+        "source_anchor_time": 1.0,
+        "state_dim": 52,
+        "time": 1.0
+      }
+    ],
+    "estimand": "mean_sender(Wnt3a) * mean_receiver(min(Fzd7,Lrp6)) * M_per_source; incoming+outgoing",
+    "formal_primary_reproduction_max_abs_error": 5.480204068319949e-10,
+    "formal_primary_reproduction_max_relative_error": 3.6558771833675154e-09,
+    "formal_primary_reproduction_tolerance": {
+      "absolute": 1e-08,
+      "rationale": "float32 saved-state reconstruction and summation-order tolerance",
+      "relative": 1e-08
+    },
+    "hotspot": "total",
+    "max_formula_abs_error": 0.0,
+    "missing_subunits_empty": true,
+    "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "pair": "Wnt3a_Fzd7_Lrp6",
+    "panel": "Fig4b",
+    "particle_density_sensitivity": {
+      "accepted_candidate_edges": 76414,
+      "accepted_compute_cells": 15144,
+      "accepted_pair_score": 0.1499012076559161,
+      "candidate_edges_per_cell_accepted": 5.045826730058109,
+      "candidate_edges_per_cell_full50k": 20.379204507893537,
+      "candidate_edges_per_cell_ratio": 4.038823685025515,
+      "cell_count_ratio_full_over_accepted": 4.195258848388801,
+      "full50k_candidate_edges": 1294752,
+      "full50k_display_cells": 63533,
+      "full50k_pair_score": 0.6325948517801893,
+      "pair_score_ratio_full_over_accepted": 4.220078421464424,
+      "reason": "Full-radius M_per_source hotspot scales with numerical particle density; 50k is display-only.",
+      "status": "REJECT_FULL50K_AS_PRIMARY_COMPUTE"
+    },
+    "require_all_subunits": true,
+    "restart_from_preceding_observed_stage": false,
+    "shared_normalization": {
+      "high": 0.13224278534155828,
+      "legacy_per_panel_normalization_used": false,
+      "low": 0.0017711041349544661,
+      "q_high_percent": 99.0,
+      "q_low_percent": 1.0,
+      "scope": "all finite display scores across the three panels",
+      "unavailable_cells_excluded": true
+    },
+    "spatial_warp": false,
+    "status": "PASS",
+    "trajectory_mode": "global_t0_extrapolation",
+    "unreconstructable_subunits_empty": true,
+    "within_time_type_score_max_nunique": 1
+  },
+  "status": "complete",
+  "wall_seconds": 19.039986610412598
+}

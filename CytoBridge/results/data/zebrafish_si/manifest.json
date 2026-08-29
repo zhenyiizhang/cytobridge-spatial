@@ -1,0 +1,168 @@
+{
+  "analysis": "zebrafish_si_s31_s38",
+  "source_analysis": "zebrafish_si_s27_s34",
+  "figures": {
+    "s31": {"title": "Observed and generated states", "source_figure": "s27"},
+    "s32": {"title": "Growth across observed stages", "source_figure": "s28"},
+    "s33": {"title": "Virtual-removal morphology", "source_figure": "s29"},
+    "s34": {"title": "Virtual-removal quantitative comparison", "source_figure": "s30"},
+    "s35": {"title": "YSL-lineage gene dynamics", "source_figure": "s31"},
+    "s36": {"title": "Loss-weight sensitivity", "source_figure": "s32"},
+    "s37": {"title": "Daughter-state perturbation sensitivity", "source_figure": "s33"},
+    "s38": {"title": "Inverse-PCA expression reconstruction", "source_figure": "s34"}
+  },
+  "files": {
+    "celltype_colors.json": {
+      "entries": 42
+    },
+    "s27_celltype_colors.json": {
+      "entries": 42
+    },
+    "s27_observed_generated.npz": {
+      "arrays": {
+        "groups": [
+          14
+        ],
+        "label_id": [
+          17066
+        ],
+        "label_names": [
+          42
+        ],
+        "offsets": [
+          15
+        ],
+        "times": [
+          14
+        ],
+        "xy": [
+          17066,
+          2
+        ]
+      },
+      "bytes": 133377
+    },
+    "s28_growth_per_cell.csv.gz": {
+      "bytes": 171759,
+      "rows": 11999
+    },
+    "s29_virtual_removal.npz": {
+      "arrays": {
+        "groups": [
+          15
+        ],
+        "label_id": [
+          29214
+        ],
+        "label_names": [
+          42
+        ],
+        "offsets": [
+          16
+        ],
+        "times": [
+          15
+        ],
+        "xy": [
+          29214,
+          2
+        ]
+      },
+      "bytes": 216896
+    },
+    "s30_centroid_by_seed.csv": {
+      "bytes": 401,
+      "rows": 10
+    },
+    "s30_endpoint_spatial.npz": {
+      "arrays": {
+        "baseline_xy": [
+          5177,
+          2
+        ],
+        "evl_xy": [
+          3306,
+          2
+        ],
+        "ysl_xy": [
+          4546,
+          2
+        ]
+      },
+      "bytes": 93406
+    },
+    "s30_spatial_w1_curve.csv": {
+      "bytes": 9977,
+      "rows": 162
+    },
+    "s31_gene_dynamics.csv.gz": {
+      "bytes": 24198,
+      "rows": 2250
+    },
+    "s32_loss_weight_metrics.csv": {
+      "bytes": 2628,
+      "rows": 60
+    },
+    "s33_composition.csv.gz": {
+      "bytes": 27108,
+      "rows": 2128
+    },
+    "s33_lineage_pairs.csv": {
+      "bytes": 468,
+      "rows": 6
+    },
+    "s33_lineage_values.csv.gz": {
+      "bytes": 1517,
+      "rows": 120
+    },
+    "s33_observed_composition.csv.gz": {
+      "bytes": 1306,
+      "rows": 58
+    },
+    "s33_particle_counts.csv.gz": {
+      "bytes": 849,
+      "rows": 180
+    },
+    "s33_sensitivity.csv.gz": {
+      "bytes": 4833,
+      "rows": 180
+    },
+    "s34_observed_expression.csv.gz": {
+      "bytes": 39827,
+      "rows": 2584
+    },
+    "s34_reconstructed_expression.csv.gz": {
+      "bytes": 77496,
+      "rows": 2584
+    },
+    "s34_reported_metrics.csv": {
+      "bytes": 704,
+      "rows": 5
+    },
+    "s34_top_genes.csv": {
+      "bytes": 1874,
+      "rows": 250
+    }
+  },
+  "schema_version": 1,
+  "time_grids": {
+    "half_stage": [
+      0,
+      0.5,
+      1,
+      1.5,
+      2,
+      2.5,
+      3,
+      3.5,
+      4
+    ],
+    "observed": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  }
+}

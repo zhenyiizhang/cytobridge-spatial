@@ -1,0 +1,163 @@
+{
+  "data": {
+    "latent_dim": 50,
+    "model_input_dim": 52,
+    "n_observations": 46199,
+    "n_timepoints": 5,
+    "sample_counts_by_timepoint": [
+      7668,
+      8106,
+      9436,
+      9673,
+      11316
+    ],
+    "spatial_dim": 2
+  },
+  "environment": {
+    "cuda_available": true,
+    "cuda_compiled_version": "13.0",
+    "cuda_device_index": 0,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090 D",
+    "cudnn_version": 92000,
+    "device": "cuda",
+    "device_type": "cuda",
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "python_version": "3.10.12",
+    "torch_version": "2.13.0+cu130"
+  },
+  "memory_scope": "CPU max RSS is the process-lifetime high-water mark sampled after training. CUDA peaks are per-stage allocator high-water marks; the run value is the maximum across stages.",
+  "model": {
+    "parameter_count": 2147225,
+    "trainable_parameter_count_at_start": 2087320
+  },
+  "resources": {
+    "cpu_max_rss_mib": 9262.1328125,
+    "cuda_peak_allocated_mib": 870.3583984375,
+    "cuda_peak_reserved_mib": 900.0
+  },
+  "schema_version": 1,
+  "scope": "TrainingPipeline.train only; excludes post-training inference, evaluation, and AnnData serialization.",
+  "stages": [
+    {
+      "batch_size": 512,
+      "configured_epochs": 100,
+      "cuda_peak_allocated_mib": 220.59228515625,
+      "cuda_peak_reserved_mib": 388.0,
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "optimizer_step_count": 800,
+      "recorded_epochs": 100,
+      "save_strategy": "best",
+      "selected_checkpoint_epoch": 98,
+      "stage": "Pretrain",
+      "stage_index": 0,
+      "trainable_parameter_count": 713013,
+      "wall_time_seconds": 77.1829748461023
+    },
+    {
+      "batch_size": 512,
+      "configured_epochs": 100,
+      "cuda_peak_allocated_mib": 221.716796875,
+      "cuda_peak_reserved_mib": 390.0,
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "optimizer_step_count": 800,
+      "recorded_epochs": 100,
+      "save_strategy": "best",
+      "selected_checkpoint_epoch": 97,
+      "stage": "Refine",
+      "stage_index": 1,
+      "trainable_parameter_count": 713013,
+      "wall_time_seconds": 77.38510680897161
+    },
+    {
+      "batch_size": 512,
+      "configured_epochs": 50,
+      "cuda_peak_allocated_mib": 342.10205078125,
+      "cuda_peak_reserved_mib": 470.0,
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "optimizer_step_count": 400,
+      "recorded_epochs": 50,
+      "save_strategy": "best",
+      "selected_checkpoint_epoch": 16,
+      "stage": "Init_interaction",
+      "stage_index": 2,
+      "trainable_parameter_count": 1744519,
+      "wall_time_seconds": 49.96880086604506
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 2001,
+      "cuda_peak_allocated_mib": 845.38427734375,
+      "cuda_peak_reserved_mib": 880.0,
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "score_matching",
+      "optimizer_step_count": 2001,
+      "recorded_epochs": 2001,
+      "save_strategy": "last",
+      "selected_checkpoint_epoch": 2001,
+      "stage": "Train_Score",
+      "stage_index": 3,
+      "trainable_parameter_count": 342801,
+      "wall_time_seconds": 27.917050200048834
+    },
+    {
+      "batch_size": 512,
+      "configured_epochs": 1000,
+      "cuda_peak_allocated_mib": 376.013671875,
+      "cuda_peak_reserved_mib": 880.0,
+      "learning_rate_end": 1.220703125e-08,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "optimizer_step_count": 8000,
+      "recorded_epochs": 1000,
+      "save_strategy": "best",
+      "selected_checkpoint_epoch": 816,
+      "stage": "Finetune",
+      "stage_index": 4,
+      "trainable_parameter_count": 1744519,
+      "wall_time_seconds": 1061.0842071697116
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 2001,
+      "cuda_peak_allocated_mib": 870.3583984375,
+      "cuda_peak_reserved_mib": 900.0,
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "score_matching",
+      "optimizer_step_count": 2001,
+      "recorded_epochs": 2001,
+      "save_strategy": "last",
+      "selected_checkpoint_epoch": 2001,
+      "stage": "Score_Refine",
+      "stage_index": 5,
+      "trainable_parameter_count": 342801,
+      "wall_time_seconds": 30.801453684922308
+    }
+  ],
+  "timing": {
+    "epoch_wall_time_seconds_sum": 1317.067063679453,
+    "run_wall_time_seconds": 1324.5375007176772,
+    "stage_wall_time_seconds_sum": 1324.3395935758017
+  },
+  "timing_scope": "Stage time includes optimizer setup, stage-specific preparation, epochs, checkpoint selection, and checkpoint write. Epoch time covers one training iteration through its optimizer update. CUDA is synchronized at timing boundaries. Run time ends after the final history write and excludes summary serialization.",
+  "training": {
+    "initial_batch_size": 512,
+    "optimizer_step_count": 14002,
+    "optimizer_step_count_scope": "Successful optimizer.step calls executed by TrainingPipeline.",
+    "stage_batch_sizes": [
+      512,
+      512,
+      512,
+      128,
+      512,
+      128
+    ]
+  }
+}

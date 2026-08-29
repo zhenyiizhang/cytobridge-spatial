@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "analysis": "classifier_smoothing",
+  "manuscript_figure": "Supplementary Figure S6",
+  "files": {
+    "five_dataset_k_metrics.csv": "held-out classifier metrics",
+    "formal_k_policy.csv": "dataset smoothing policy",
+    "frame_sensitivity.csv": "Zebrafish composition sensitivity by frame",
+    "transition_by_interval.csv": "Zebrafish label transitions by interval",
+    "arista_selection.json": "ARISTA classifier selection",
+    "heart_selection.json": "Chicken heart classifier selection"
+  },
+  "calculation": {
+    "composition_error_bars": "s.e.m. across nine generated frames",
+    "transition_error_bars": "s.e.m. across four intervals",
+    "transition_cohort": "563 particles"
+  }
+}

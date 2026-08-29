@@ -1,0 +1,19 @@
+{
+  "datasets": {
+    "example": {
+      "aligned_h5ad": "/path/to/matched/aligned.h5ad",
+      "model_dir": "/path/to/formal/training",
+      "edge_predictor": "/path/to/matched/edge_model.pt",
+      "graph_database": "/path/to/species_ligand_receptor.csv",
+      "historical_source": "/path/to/historical/source/checkout",
+      "alpha_express": 0.015,
+      "alpha_spatial": 10.0,
+      "interaction_cutoff": 0.05,
+      "edge_predictor_threshold": 0.5,
+      "seed": 42,
+      "weight_stage": "Finetune",
+      "weight_filename": "best_model.pth",
+      "score_stage": "Score_Refine"
+    }
+  }
+}
