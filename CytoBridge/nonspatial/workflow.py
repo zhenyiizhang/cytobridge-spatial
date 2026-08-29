@@ -179,7 +179,7 @@ def prepare_nonspatial_dataset(
     *,
     overwrite: bool = False,
 ) -> PreparedNonSpatialData:
-    """Run the audited preset preprocessing into a deterministic file layout."""
+    """Prepare a Weinreb or scNT dataset and write the processed files."""
 
     from .preprocess import prepare_scnt_nonspatial, prepare_weinreb_nonspatial
 
@@ -510,7 +510,7 @@ def evaluate_nonspatial_pair(
 
 
 def nonspatial_plan(dataset: str) -> dict[str, Any]:
-    """Return a dependency-free summary suitable for CLI dry runs."""
+    """Return the ordered steps for one non-spatial dataset."""
 
     preset = nonspatial_preset(dataset)
     return {
@@ -523,11 +523,11 @@ def nonspatial_plan(dataset: str) -> dict[str, Any]:
             "evaluate weighted W1/W2/TMV from t=0",
             "run dataset-specific clone-fate or scNT direction evaluation",
             "compute exact interaction attribution",
-            "render provenance-bound A4 figure",
+            f"draw Supplementary Figure {'S4' if preset.name == 'weinreb' else 'S5'}",
         ],
         "historical_replay_note": (
-            "Archived 2026 panel-data bundles reproduce the accepted figures; "
-            "new formal training uses the corrected shared score-energy objective."
+            "The included numerical files reproduce the published figure; use the "
+            "steps above to analyze a new run."
         ),
     }
 

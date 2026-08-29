@@ -4,7 +4,7 @@
   "manuscript_figure": "Supplementary Figure S40",
   "files": {
     "loto_target_stage_means.csv": "target-level Sliced-W2 means across five projection repeats",
-    "native_output_support.csv": "method-native output support used for evaluation",
+    "native_output_support.csv": "table showing which method produced each prediction",
     "protocol.json": "dataset, method, projection, and support settings"
   },
   "calculation": {

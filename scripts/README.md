@@ -286,29 +286,24 @@ python scripts/plot_zebrafish_s22_article_style.py \
   --output-dir <new-article-style-s22-bundle>
 ```
 
-`run_zebrafish_attention_validation.py` is the reviewer-facing, non-circular
-validation of the learned zebrafish interaction field. `analyze` consumes
-SHA-bound outputs from the accepted model, COMMOT, CellAgentChat, NicheNet,
-the frozen 21-axis reference from the 2022 zebrafish atlas, and the
-same-checkpoint interaction-on/off sensitivity. It compares every directed
-cell-type pair, freezes important pairs using CytoBridge alone before reading
-external ranks, retains an expression-only LR baseline, and tests the
-interaction modifier against abundance/distance/self-pair-stratified
-permutations. Attention remains a signed model gate rather than an LR identity
-or communication probability; the exact interaction message is the primary
-model contribution view. `report` renders the frozen numerical bundle into an
-Arial A4 vector PDF, 320-dpi PNG, caption, reviewer response, panel data, and a
-signed manifest. NicheNet is labelled as receiver-transition regulatory
-evidence, and interaction-off is an inference sensitivity rather than an LR
-knockout or causal perturbation.
+`run_zebrafish_attention_analysis.py` compares the zebrafish model scores with
+COMMOT and CellAgentChat and calculates the matched control summaries used by
+S43. Run it from the root of a cloned CytoBridge repository. The `analyze`
+command reads the model, aligned cells, comparison-method results, and the
+fixed ligand–receptor list. The `figure` command combines those tables with the
+trained, before-interaction, and randomized JAM controls and writes the figure,
+panel tables, and run record. Attention is treated as a signed model weight,
+not as a communication probability or a ligand–receptor identity.
 
 ```text
-python scripts/run_zebrafish_attention_validation.py analyze \
-  --spec <sha-bound-zebrafish-spec.json> \
+python -m scripts.run_zebrafish_attention_analysis analyze \
+  --spec <zebrafish-analysis-spec.json> \
   --output-dir <new-analysis-root>
-python scripts/run_zebrafish_attention_validation.py report \
+python -m scripts.run_zebrafish_attention_analysis figure \
   --analysis-dir <completed-analysis-root> \
-  --expected-analysis-manifest-sha256 <analysis-manifest-sha256> \
+  --jam-manifest <trained-jam>/run_manifest.json \
+  --jam-manifest <before-interaction-jam>/run_manifest.json \
+  --jam-manifest <randomized-jam>/run_manifest.json \
   --output-dir <new-report-root>
 ```
 

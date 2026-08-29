@@ -272,11 +272,11 @@ def test_nonspatial_notebook_documents_the_route_and_shows_outputs() -> None:
         for cell in notebook["cells"]
         if cell["cell_type"] == "markdown"
     ]
-    assert any(text.startswith("## How this figure is made") for text in markdown)
+    assert any(text.startswith("## Reproduce this figure") for text in markdown)
     assert "## Load figure inputs" in markdown
     assert any(text.startswith("### 1.") for text in markdown)
     assert any(
-        "Input:" in text and "Creates:" in text and "Continue with:" in text
+        "Start with:" in text and "Writes:" in text and "Next:" in text
         for text in markdown
     )
     assert "## Recalculate panel values" in markdown

@@ -1239,7 +1239,7 @@ def build_workflow_plan(
                 "note": (
                     "snapshots, mosaic, growth, composition, and velocity; 3D "
                     "communication only when the model has an interaction component; "
-                    "lineage only with an explicit persistent-ID contract"
+                    "lineage only when persistent particle IDs are available"
                 ),
             },
             {

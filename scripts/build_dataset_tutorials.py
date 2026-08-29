@@ -86,9 +86,9 @@ TUTORIALS = (
         "admouse_raw.h5ad",
         (
             (
-                "Interaction-prior ablation",
+                "LR-prior ablation and stVCR comparison",
                 "lr_prior_ablation_stvcr.ipynb",
-                "interaction-evidence",
+                "lr-prior-stvcr",
             ),
             ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),
             (
@@ -104,9 +104,9 @@ TUTORIALS = (
         "chicken_heart_raw.h5ad",
         (
             (
-                "Interaction-prior ablation",
+                "LR-prior ablation and stVCR comparison",
                 "lr_prior_ablation_stvcr.ipynb",
-                "interaction-evidence",
+                "lr-prior-stvcr",
             ),
             ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),
             (
@@ -130,27 +130,28 @@ def code(text: str):
 def route_cells(rows: list[dict[str, str]], *, include_paper: bool) -> list:
     cells = []
     for number, row in enumerate(rows, start=1):
-        paper = f"\nUsed for: {row['paper_part']}\n" if include_paper else ""
+        paper = f" ({row['paper_part']})" if include_paper else ""
         note = f"\n{row['note']}\n" if row.get("note") else ""
-    if row.get("entry_type") == "source":
-        entry = f"Original files: `{row['code_or_command']}`"
-    else:
-        language = "python" if row["code_or_command"].startswith("from ") else "text"
-        entry = f"""```{language}
+        if row.get("entry_type") == "source":
+            entry = f"Source files: `{row['code_or_command']}`"
+        else:
+            language = (
+                "python" if row["code_or_command"].startswith("from ") else "text"
+            )
+            entry = f"""```{language}
 {row['code_or_command']}
 ```"""
         cells.append(
             markdown(
                 f"""
-### {number}. {row['step']}
-{paper}
+### {number}. {row['step']}{paper}
 {entry}
 
-Input: `{row['reads']}`
+Start with: `{row['reads']}`
 
-Creates: `{row['writes']}`
+Writes: `{row['writes']}`
 
-Continue with: `{row['next_step']}`
+Next: `{row['next_step']}`
 {note}
 """
             )

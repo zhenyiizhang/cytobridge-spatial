@@ -5,6 +5,8 @@ import importlib.util
 import inspect
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import anndata as ad
 import numpy as np
@@ -20,6 +22,23 @@ SPEC = importlib.util.spec_from_file_location(
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+
+
+def test_reader_cli_uses_analysis_and_figure_terms() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.run_zebrafish_attention_analysis",
+            "--help",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "{analyze,figure,check-analysis,check-figure}" in completed.stdout
+    assert "attention validation" not in completed.stdout.casefold()
 
 
 def _sha(path: Path) -> str:
@@ -943,3 +962,33 @@ def test_spec_rejects_wrong_input_sha(tmp_path: Path) -> None:
     _write_json(spec, payload)
     with pytest.raises(ValueError, match="SHA mismatch"):
         MODULE.analyze(spec, tmp_path / "output", n_selected_pairs=2)
+
+
+def test_reader_report_has_neutral_names_and_no_response_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_portable_report_font(monkeypatch)
+    analysis = _write_submission_report_fixture(tmp_path)
+    jam_manifests, jam_manifest_shas = _write_jam_report_manifests(tmp_path)
+    output = tmp_path / "reader-report"
+    MODULE.report(
+        analysis,
+        output,
+        expected_analysis_manifest_sha256=_sha(
+            analysis / "analysis_manifest.json"
+        ),
+        jam_manifest_paths=jam_manifests,
+        expected_jam_manifest_sha256s=jam_manifest_shas,
+        reader_output=True,
+    )
+    MODULE.validate_report(output)
+    assert (output / "zebrafish_attention_controls.pdf").stat().st_size > 1000
+    assert (output / "zebrafish_attention_controls.png").stat().st_size > 1000
+    assert not (output / "caption.txt").exists()
+    assert not (output / "reviewer_response.md").exists()
+    assert not (output / "provenance.md").exists()
+    assert (output / "code" / "run_zebrafish_attention_analysis.py").is_file()
+    assert (output / "code" / "attention_analysis_implementation.py").is_file()
+    assert not (
+        output / "code" / "run_zebrafish_attention_validation.py"
+    ).exists()

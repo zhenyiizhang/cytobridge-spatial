@@ -1,4 +1,4 @@
-"""Processed results for zebrafish attention validation."""
+"""Results for the zebrafish attention and control comparisons."""
 
 from __future__ import annotations
 

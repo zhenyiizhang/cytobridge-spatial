@@ -1,8 +1,3 @@
-```{image} _static/cytobridge_logo.svg
-:alt: CytoBridge
-:class: cytobridge-home-logo
-```
-
 # CytoBridge
 
 CytoBridge learns continuous cell-state and spatial dynamics from transcriptomic
@@ -93,5 +88,4 @@ api/index
 :hidden:
 
 contributing
-release_notes
 ```

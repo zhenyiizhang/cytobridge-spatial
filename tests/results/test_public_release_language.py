@@ -87,7 +87,7 @@ COMPLETED_NOTEBOOK_OUTPUTS = {
     "main_figure_4.ipynb": "main_figure_4",
     "classifier_smoothing.ipynb": "classifier_smoothing",
     "lr_complex_aggregation.ipynb": "lr_complex_aggregation",
-    "lr_prior_ablation_stvcr.ipynb": "interaction_evidence",
+    "lr_prior_ablation_stvcr.ipynb": "lr_prior_stvcr",
     "loto_benchmark.ipynb": "loto_benchmark",
     "main_figure_5.ipynb": "main_figure_5",
     "mosta_figures.ipynb": "mosta_figures",
@@ -166,14 +166,28 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
-    assert "how this figure is made" in lowered
+    assert "reproduce this figure" in lowered
     assert "### 1." in lowered
-    assert "input:" in lowered
-    assert "creates:" in lowered
-    assert "continue with:" in lowered
+    assert "start with:" in lowered
+    assert "writes:" in lowered
+    assert "next:" in lowered
     assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
+
+
+def test_s39_notebook_uses_the_reader_facing_api() -> None:
+    path = (
+        REPOSITORY_ROOT
+        / "docs"
+        / "tutorials"
+        / "paper_figures"
+        / "lr_prior_ablation_stvcr.ipynb"
+    )
+    source = _notebook_source(path)
+    assert "load_lr_prior_stvcr_results" in source
+    assert "plot_lr_prior_stvcr" in source
+    assert "interaction_evidence" not in source
 
 
 @pytest.mark.parametrize(

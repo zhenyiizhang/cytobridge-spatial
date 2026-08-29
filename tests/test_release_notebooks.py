@@ -17,6 +17,13 @@ NOTEBOOKS = {
     "admouse.ipynb": "admouse",
     "chicken_heart.ipynb": "chicken_heart",
 }
+PAPER_STEP_COUNTS = {
+    "zebrafish.ipynb": 4,
+    "mosta.ipynb": 2,
+    "arista.ipynb": 4,
+    "admouse.ipynb": 5,
+    "chicken_heart.ipynb": 4,
+}
 NOTEBOOK_RUNNER = ROOT / "scripts" / "execute_dataset_notebooks.py"
 
 
@@ -86,6 +93,10 @@ def test_dataset_notebook_is_executed_and_portable(
     )
     positions = [markdown.index(heading) for heading in headings]
     assert positions == sorted(positions)
+    paper_section = markdown.split("## Paper figures", 1)[1].split(
+        "## Saved files", 1
+    )[0]
+    assert paper_section.count("### ") == PAPER_STEP_COUNTS[filename]
 
     assert f"DATASET_CONFIG = '{preset}'" in code
     assert "load_workflow_config(DATASET_CONFIG)" in code

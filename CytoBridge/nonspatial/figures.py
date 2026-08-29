@@ -1,4 +1,4 @@
-"""Provenance-bound replay of the accepted non-spatial A4 figures."""
+"""Read saved S4–S5 panel data and rebuild the published figures."""
 
 from __future__ import annotations
 

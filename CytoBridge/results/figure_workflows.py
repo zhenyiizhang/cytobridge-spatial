@@ -99,7 +99,7 @@ FIGURE_WORKFLOWS = (
         "Redraws S31-S38 from the included result tables. The preceding command creates the full zebrafish analysis used to prepare those tables.",
     ),
     FigureWorkflow(
-        "interaction-evidence",
+        "lr-prior-stvcr",
         "Supplementary Figure S39",
         "numeric-redraw",
         True,
@@ -107,7 +107,7 @@ FIGURE_WORKFLOWS = (
         "Included paired target-level error tables.",
         "scripts/spatiotemporal_benchmark/README.md",
         "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
-        "cytobridge figure interaction-evidence --output-dir outputs/interaction_evidence",
+        "cytobridge figure lr-prior-stvcr --output-dir outputs/lr_prior_stvcr",
         "Redraws S39. Model fitting and held-out predictions are calculated first.",
     ),
     FigureWorkflow(
@@ -116,7 +116,7 @@ FIGURE_WORKFLOWS = (
         "numeric-redraw",
         True,
         "Recalculate matched benchmark ratios and draw the figure.",
-        "Included target-level LOTO means and method support records.",
+        "Included target-level LOTO means and completion table for each method.",
         "scripts/spatiotemporal_benchmark/README.md",
         "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
         "cytobridge figure loto-benchmark --output-dir outputs/loto_benchmark",
@@ -153,8 +153,8 @@ FIGURE_WORKFLOWS = (
         True,
         "Recalculate the included attention summaries and draw the figure.",
         "Included directed-pair, expression, and spatial-null tables.",
-        "scripts/run_zebrafish_attention_validation.py",
-        "python -m scripts.run_zebrafish_attention_validation analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30",
+        "scripts/run_zebrafish_attention_analysis.py",
+        "python -m scripts.run_zebrafish_attention_analysis analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30",
         "cytobridge figure zebrafish-attention --output-dir outputs/zebrafish_attention",
         "Redraws S43 after calculating model and comparison-method outputs.",
     ),
@@ -200,7 +200,7 @@ FIGURE_WORKFLOWS = (
         "external-assembly",
         False,
         "Assemble five vector panels from a separately downloaded MOSTA release.",
-        "Five vector panel PDFs in the external MOSTA figure release.",
+        "Five vector panel PDFs in the downloaded MOSTA figure files.",
         "docs/tutorials/dataset_workflows/mosta.ipynb",
         "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
         "cytobridge figure main-figure-4 --results-dir <mosta-release> --output-dir outputs/main_figure_4",
@@ -212,7 +212,7 @@ FIGURE_WORKFLOWS = (
         "reference-export",
         False,
         "Write viewable copies of the completed MOSTA vector pages.",
-        "Vector PDF and SVG pages in the external MOSTA figure release.",
+        "Vector PDF and SVG pages in the downloaded MOSTA figure files.",
         "docs/tutorials/dataset_workflows/mosta.ipynb",
         "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
         "cytobridge figure mosta-reference-pages --results-dir <mosta-release> --output-dir outputs/mosta_si",
@@ -482,19 +482,19 @@ def _run_lr_complex(results_dir: Path | None, output: Path) -> dict[str, object]
     )
 
 
-def _run_interaction(results_dir: Path | None, output: Path) -> dict[str, object]:
+def _run_lr_prior_stvcr(results_dir: Path | None, output: Path) -> dict[str, object]:
     from .interaction_evidence import (
-        load_interaction_evidence_results,
-        plot_interaction_evidence,
-        write_interaction_evidence_tables,
+        load_lr_prior_stvcr_results,
+        plot_lr_prior_stvcr,
+        write_lr_prior_stvcr_tables,
     )
 
     return _standard_run(
         results_dir,
         output,
-        loader=load_interaction_evidence_results,
-        table_writer=write_interaction_evidence_tables,
-        plotter=plot_interaction_evidence,
+        loader=load_lr_prior_stvcr_results,
+        table_writer=write_lr_prior_stvcr_tables,
+        plotter=plot_lr_prior_stvcr,
     )
 
 
@@ -554,7 +554,7 @@ _RUNNERS = {
     "arista-lr": _run_arista_lr,
     "classifier-smoothing": _run_classifier,
     "compute-cost": _run_compute_cost,
-    "interaction-evidence": _run_interaction,
+    "lr-prior-stvcr": _run_lr_prior_stvcr,
     "loto-benchmark": _run_loto,
     "lr-complex": _run_lr_complex,
     "main-figure-2": _run_main_figure_2,

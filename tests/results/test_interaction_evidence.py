@@ -21,6 +21,11 @@ from CytoBridge.results.interaction_evidence import (  # noqa: E402
     load_interaction_evidence_results,
     plot_interaction_evidence,
 )
+from CytoBridge.results import (  # noqa: E402
+    load_lr_prior_stvcr_results,
+    lr_prior_stvcr_statistics,
+    plot_lr_prior_stvcr,
+)
 
 
 def _fixture_copy(tmp_path: Path) -> Path:
@@ -53,6 +58,16 @@ def test_packaged_interaction_evidence_contract() -> None:
     assert "/Users/" not in manifest_text
     assert "sha256" not in manifest_text.lower()
     assert "2026" not in manifest_text
+
+
+def test_lr_prior_stvcr_api_keeps_the_legacy_api_compatible() -> None:
+    current = load_lr_prior_stvcr_results()
+    legacy = load_interaction_evidence_results()
+    assert current.panel_summary.equals(legacy.panel_summary)
+    assert lr_prior_stvcr_statistics(current) == interaction_evidence_statistics(
+        legacy
+    )
+    assert plot_lr_prior_stvcr is plot_interaction_evidence
 
 
 def test_interaction_evidence_plot_is_agg_safe_and_local(tmp_path: Path) -> None:

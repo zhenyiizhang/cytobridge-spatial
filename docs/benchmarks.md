@@ -76,7 +76,7 @@ Use `--results-dir` to point the wrapper at another compatible table set.
 | --- | --- | --- |
 | Classifier smoothing | `load_classifier_smoothing_results` | `classifier_smoothing_statistics`, `write_classifier_smoothing_tables`, `plot_classifier_smoothing` |
 | LR-complex aggregation | `load_lr_complex_aggregation_results` | `summarize_lr_complex_aggregation`, `write_lr_complex_aggregation_tables`, `plot_lr_complex_aggregation` |
-| Interaction comparisons | `load_interaction_evidence_results` | `interaction_evidence_statistics`, `write_interaction_evidence_tables`, `plot_interaction_evidence` |
+| LR-prior and stVCR comparisons | `load_lr_prior_stvcr_results` | `lr_prior_stvcr_statistics`, `write_lr_prior_stvcr_tables`, `plot_lr_prior_stvcr` |
 | Training histories | `load_training_history_results` | `calculate_smoothed_training_history`, `write_training_history_tables`, `plot_training_histories` |
 | Training time and memory | `load_full_model_compute_cost` | `format_full_model_compute_cost`, `write_full_model_compute_cost_tables` |
 

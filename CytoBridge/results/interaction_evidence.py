@@ -1,4 +1,4 @@
-"""Processed results for LR-prior ablation and external method comparison."""
+"""Results for the LR-prior ablation and stVCR comparison."""
 
 from __future__ import annotations
 
@@ -43,8 +43,8 @@ EXTERNAL_COMPARISON = "stVCR minus CytoBridge"
 
 
 @dataclass(frozen=True)
-class InteractionEvidenceResults:
-    """Paired errors and summaries used by the interaction-evidence figure."""
+class LRPriorStVCRResults:
+    """Paired errors and summaries used by the S39 comparison."""
 
     source_dir: Path
     manifest: dict[str, Any]
@@ -188,7 +188,7 @@ def _validate_stvcr(table: pd.DataFrame, source: Path) -> pd.DataFrame:
     return _sort_table(result)
 
 
-def build_interaction_evidence_panel_summary(
+def build_lr_prior_stvcr_panel_summary(
     no_lr: pd.DataFrame,
     stvcr: pd.DataFrame,
 ) -> pd.DataFrame:
@@ -235,9 +235,9 @@ def build_interaction_evidence_panel_summary(
     return summary
 
 
-def load_interaction_evidence_results(
+def load_lr_prior_stvcr_results(
     results_dir: str | Path | None = None,
-) -> InteractionEvidenceResults:
+) -> LRPriorStVCRResults:
     """Load paired reconstruction errors and calculate the panel summary.
 
     Parameters
@@ -264,17 +264,17 @@ def load_interaction_evidence_results(
         ),
         paths["stvcr_paired_target_deltas.csv"],
     )
-    return InteractionEvidenceResults(
+    return LRPriorStVCRResults(
         source_dir=source_dir,
         manifest=read_manifest(source_dir),
         no_lr=no_lr,
         stvcr=stvcr,
-        panel_summary=build_interaction_evidence_panel_summary(no_lr, stvcr),
+        panel_summary=build_lr_prior_stvcr_panel_summary(no_lr, stvcr),
     )
 
 
-def interaction_evidence_statistics(
-    results: InteractionEvidenceResults,
+def lr_prior_stvcr_statistics(
+    results: LRPriorStVCRResults,
 ) -> dict[str, float | int]:
     """Return selected values from the calculated panel data."""
 
@@ -300,8 +300,8 @@ def _write_csv(table: pd.DataFrame, path: Path) -> None:
     )
 
 
-def write_interaction_evidence_tables(
-    results: InteractionEvidenceResults,
+def write_lr_prior_stvcr_tables(
+    results: LRPriorStVCRResults,
     output_dir: str | Path,
 ) -> dict[str, Path]:
     """Write the paired inputs and calculated panel summary."""
@@ -318,12 +318,21 @@ def write_interaction_evidence_tables(
     return paths
 
 
-def plot_interaction_evidence(
-    results: InteractionEvidenceResults,
+def plot_lr_prior_stvcr(
+    results: LRPriorStVCRResults,
     output_dir: str | Path,
 ) -> tuple[Path, Path]:
-    """Render the interaction-evidence figure as PDF and PNG."""
+    """Draw the S39 comparison as PDF and PNG."""
 
-    from ._interaction_evidence_plot import plot_interaction_evidence as _plot
+    from ._interaction_evidence_plot import plot_lr_prior_stvcr as _plot
 
     return _plot(results, output_dir)
+
+
+# Compatibility names retained for code written before CytoBridge 1.5.
+InteractionEvidenceResults = LRPriorStVCRResults
+build_interaction_evidence_panel_summary = build_lr_prior_stvcr_panel_summary
+load_interaction_evidence_results = load_lr_prior_stvcr_results
+interaction_evidence_statistics = lr_prior_stvcr_statistics
+write_interaction_evidence_tables = write_lr_prior_stvcr_tables
+plot_interaction_evidence = plot_lr_prior_stvcr

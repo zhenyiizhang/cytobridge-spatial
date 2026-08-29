@@ -565,8 +565,8 @@ def plot_zebrafish_attention(
             fontsize=8.3,
         )
 
-        pdf_path = output / "zebrafish_attention_validation_a4.pdf"
-        png_path = output / "zebrafish_attention_validation_a4.png"
+        pdf_path = output / "zebrafish_attention_controls.pdf"
+        png_path = output / "zebrafish_attention_controls.png"
         fig.savefig(pdf_path, facecolor="white")
         fig.savefig(png_path, dpi=320, facecolor="white")
         plt.close(fig)

@@ -128,18 +128,31 @@ def test_figure_workflow_rejects_unknown_name(tmp_path: Path) -> None:
 def test_installed_figure_cli_lists_paper_location_and_input(capsys) -> None:
     assert cli_main(["figure", "list"]) == 0
     output = capsys.readouterr().out
-    assert "arista-lr\tSupplementary Figures S23-S24\tincluded example data" in output
-    assert "main-figure-5-reference\tMain Figure 5\tincluded example data" in output
+    assert "arista-lr\tSupplementary Figures S23-S24\tincluded paper results" in output
+    assert "main-figure-5-reference\tMain Figure 5\tincluded paper results" in output
     assert "main-figure-4\tMain Figure 4\tseparate result directory" in output
 
 
 def test_installed_figure_cli_explains_calculation_steps(capsys) -> None:
     assert cli_main(["figure", "explain", "nonspatial"]) == 0
     output = capsys.readouterr().out
-    assert "Input: Included Weinreb and scNT" in output
+    assert "Start with: Included Weinreb and scNT" in output
     assert "Figure command: cytobridge figure nonspatial" in output
-    assert "How the files connect:" in output
+    assert "Steps that produce the input:" in output
     assert "command:" in output
     assert "source:" not in output
-    assert "input:" in output
-    assert "creates:" in output
+    assert "start with:" in output
+    assert "writes:" in output
+
+
+def test_s39_uses_a_plain_language_command_name(capsys) -> None:
+    assert cli_main(["figure", "explain", "lr-prior-stvcr"]) == 0
+    output = capsys.readouterr().out
+    assert "Figure command: cytobridge figure lr-prior-stvcr" in output
+    assert "interaction-evidence" not in output
+
+
+def test_old_s39_command_name_still_explains_the_canonical_command(capsys) -> None:
+    assert cli_main(["figure", "explain", "interaction-evidence"]) == 0
+    output = capsys.readouterr().out
+    assert "Figure command: cytobridge figure lr-prior-stvcr" in output

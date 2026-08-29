@@ -10,6 +10,10 @@ in the paper. Read the steps from top to bottom:
 3. Run the calculation and plotting cells. Their tables and figures are also
    saved in the published notebook.
 
+Commands that start with `cytobridge` work after installation. Commands that
+start with `python scripts/...` or `python -m scripts...` use files from the
+source repository and should be run from the root of the cloned repository.
+
 You can print the same steps in a terminal:
 
 ```bash
@@ -22,8 +26,8 @@ cytobridge figure explain zebrafish-si
 
 - [Main Figure 2: AGIST benchmark — panel e calculation and page assembly](main_figure_2.ipynb)
 - [Main Figure 3: chicken heart](../dataset_workflows/chicken_heart.ipynb)
-- [Main Figure 4: MOSTA — source map and page assembly](main_figure_4.ipynb)
-- [Main Figure 5: ARISTA — source map and assembled page](main_figure_5.ipynb)
+- [Main Figure 4: MOSTA — assemble the page](main_figure_4.ipynb)
+- [Main Figure 5: ARISTA — view the assembled page](main_figure_5.ipynb)
 - [Main Figure 6: AD mouse](../dataset_workflows/admouse.ipynb)
 
 ## Dataset supplementary figures
@@ -31,8 +35,8 @@ cytobridge figure explain zebrafish-si
 - [AGIST, Supplementary Figures S2–S3](agist_figures.ipynb)
 - [Weinreb and scNT, Supplementary Figures S4–S5](nonspatial_figures.ipynb)
 - [Chicken heart, Supplementary Figures S7–S10](../dataset_workflows/chicken_heart.ipynb)
-- [MOSTA, Supplementary Figures S11–S18 — source map and completed pages](mosta_figures.ipynb)
-- [ARISTA, Supplementary Figures S19–S24 — S23–S24 calculations and S19–S22 source map](arista_figures.ipynb)
+- [MOSTA, Supplementary Figures S11–S18 — view completed pages and find their code](mosta_figures.ipynb)
+- [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
 - [AD mouse, Supplementary Figures S26–S30](../dataset_workflows/admouse.ipynb)
 - [Zebrafish, Supplementary Figures S31–S38](zebrafish_si_s31_s38.ipynb)
 
@@ -40,11 +44,11 @@ cytobridge figure explain zebrafish-si
 
 - [Classifier smoothing, Supplementary Figure S6](classifier_smoothing.ipynb)
 - [LR-complex aggregation, Supplementary Figure S25](lr_complex_aggregation.ipynb)
-- [Interaction-prior ablation, Supplementary Figure S39](lr_prior_ablation_stvcr.ipynb)
+- [LR-prior ablation and stVCR comparison, Supplementary Figure S39](lr_prior_ablation_stvcr.ipynb)
 - [Five-dataset benchmark, Supplementary Figure S40](loto_benchmark.ipynb)
 - [Training histories, Supplementary Figure S41](training_histories.ipynb)
 - [ARISTA local domains, Supplementary Figure S42](arista_local_domains.ipynb)
-- [Zebrafish attention, Supplementary Figure S43](zebrafish_attention.ipynb)
+- [Zebrafish attention and control comparisons, Supplementary Figure S43](zebrafish_attention.ipynb)
 - [Training time and memory](compute_cost.ipynb)
 
 ## Videos

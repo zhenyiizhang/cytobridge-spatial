@@ -10,6 +10,6 @@
     "projection_summary": "five projection sets averaged within each target-space cell",
     "error_bars": "s.e.m. across target stages",
     "ablation_runs": "independently fitted matched Full and No-LR models",
-    "external_runs": "separately fitted LOTO models with method-native output support"
+    "external_runs": "predictions produced directly by each separately fitted LOTO method"
   }
 }

@@ -21,7 +21,7 @@ WORKFLOWS = {
     "compute_cost.ipynb": "compute-cost",
     "loto_benchmark.ipynb": "loto-benchmark",
     "lr_complex_aggregation.ipynb": "lr-complex",
-    "lr_prior_ablation_stvcr.ipynb": "interaction-evidence",
+    "lr_prior_ablation_stvcr.ipynb": "lr-prior-stvcr",
     "main_figure_2.ipynb": "main-figure-2",
     "main_figure_4.ipynb": "main-figure-4",
     "main_figure_5.ipynb": "main-figure-5-reference",
@@ -50,7 +50,7 @@ def _code(source: str, tag: str):
 
 
 def _remove_generated_cells(notebook) -> None:
-    generated_tags = {ROUTE_CELL_TAG, DETAIL_CELL_TAG, PREVIEW_CELL_TAG}
+    generated_tags = {ROUTE_CELL_TAG, DETAIL_CELL_TAG}
     notebook.cells = [
         cell
         for cell in notebook.cells
@@ -76,24 +76,22 @@ pd.set_option("display.max_columns", None)
 def _step_markdown(row: dict[str, str], number: int) -> str:
     note = f"\n{row['note']}\n" if row.get("note") else ""
     if row.get("entry_type") == "source":
-        entry = f"Original files: `{row['code_or_command']}`"
+        entry = f"Source files: `{row['code_or_command']}`"
     else:
         language = "python" if row["code_or_command"].startswith("from ") else "text"
         entry = f"""```{language}
 {row['code_or_command']}
 ```"""
     return f"""
-### {number}. {row['step']}
-
-Used for: {row['paper_part']}
+### {number}. {row['step']} ({row['paper_part']})
 
 {entry}
 
-Input: `{row['reads']}`
+Start with: `{row['reads']}`
 
-Creates: `{row['writes']}`
+Writes: `{row['writes']}`
 
-Continue with: `{row['next_step']}`
+Next: `{row['next_step']}`
 {note}
 """
 
@@ -101,10 +99,10 @@ Continue with: `{row['next_step']}`
 def _insert_route(notebook, workflow: str) -> None:
     route_markdown = _markdown(
         """
-## How this figure is made
+## Reproduce this figure
 
-Follow the steps from top to bottom. Each command names its input, the files it
-creates, and the calculation that uses those files next.
+Run the steps from top to bottom. Each step shows what it reads, what it writes,
+and where to continue.
 
 Replace text inside angle brackets with your path or value. For example,
 `<output-dir>` means the directory where you want the files to be written.
@@ -142,6 +140,12 @@ def _add_nonspatial_route(notebook) -> None:
                 cell.source = source
             break
 
+    if any(
+        PREVIEW_CELL_TAG in cell.metadata.get("tags", ())
+        for cell in notebook.cells
+    ):
+        return
+
     notebook.cells.extend(
         [
             _markdown(
@@ -178,6 +182,12 @@ def _add_zebrafish_route(notebook) -> None:
                 )
                 cell.source = source
             break
+
+    if any(
+        PREVIEW_CELL_TAG in cell.metadata.get("tags", ())
+        for cell in notebook.cells
+    ):
+        return
 
     notebook.cells.extend(
         [
@@ -241,6 +251,18 @@ def _humanize_existing_markdown(notebook) -> None:
         "packaged frozen vector page": "existing vector page",
         "packaged W2 summaries": "included W2 summary tables",
         "The formal page archive is available": "The complete page files are available",
+        "# Supplementary Figure S39: interaction evidence": "# Supplementary Figure S39: LR-prior ablation and stVCR comparison",
+        "# Supplementary Figure S43: zebrafish attention validation": "# Supplementary Figure S43: zebrafish attention and control comparisons",
+        "evaluate the rollout.": "evaluate the generated trajectories.",
+        "## Validate the reference page": "## Check the reference page",
+        "## Check the reference page": "## Check the assembled figure",
+        "## Export the reference page": "## Save PDF and PNG copies",
+        "## Released reference pages for S19–S22": "## Released pages for S19–S22",
+        "## Preview the table-driven scientific redraws": "## Preview S23 and S24",
+        "## Load the current-number mapping": "## Match release files to S11–S18",
+        "## Upstream analysis and API": "## Use results from another run",
+        "The command-line entry is `scripts/results/plot_interaction_evidence.py`. The reader API is in `CytoBridge/results/interaction_evidence.py`. Model fitting and projection generation are upstream of the packaged tables.": "Pass another directory of paired No-LR and stVCR result tables to the installed command:\n\n```bash\ncytobridge figure lr-prior-stvcr --results-dir <paired-results> --output-dir outputs/lr_prior_stvcr\n```",
+        "stVCR's native output support": "predictions produced directly by stVCR",
     }
     for cell in notebook.cells:
         if cell.cell_type != "markdown":
@@ -270,6 +292,36 @@ def _simplify_arista_source_table(notebook) -> None:
                 "    write_arista_source_index,\n", ""
             )
 
+    for cell in notebook.cells:
+        source = "".join(cell.source)
+        if (
+            cell.cell_type == "code"
+            and "reference_pages = export_arista_reference_pages" in source
+        ):
+            if "for figure, (_, png_path) in reference_pages.items():" not in source:
+                cell.source = source.rstrip() + """
+
+for figure, (_, png_path) in reference_pages.items():
+    print(figure)
+    display(Image(filename=str(png_path), width=720))
+"""
+            break
+
+    calculation_start = next(
+        index
+        for index, cell in enumerate(notebook.cells)
+        if "## Calculate S23 and S24" in "".join(cell.source)
+    )
+    reference_start = next(
+        index
+        for index, cell in enumerate(notebook.cells)
+        if "## Released pages for S19–S22" in "".join(cell.source)
+    )
+    if reference_start > calculation_start:
+        reference_cells = notebook.cells[reference_start:]
+        del notebook.cells[reference_start:]
+        notebook.cells[calculation_start:calculation_start] = reference_cells
+
 
 def update(path: Path, workflow: str) -> None:
     notebook = nbformat.read(path, as_version=4)
@@ -282,6 +334,36 @@ def update(path: Path, workflow: str) -> None:
         _add_zebrafish_route(notebook)
     _rename_short_headings(notebook)
     _humanize_existing_markdown(notebook)
+    if path.name == "lr_prior_ablation_stvcr.ipynb":
+        for cell in notebook.cells:
+            if cell.cell_type == "code":
+                source = "".join(cell.source)
+                source = source.replace(
+                    """from CytoBridge.results import (
+    load_interaction_evidence_results,
+    plot_interaction_evidence,
+)
+from CytoBridge.results.interaction_evidence import (
+    interaction_evidence_statistics,
+    write_interaction_evidence_tables,
+)""",
+                    """from CytoBridge.results import (
+    load_lr_prior_stvcr_results,
+    lr_prior_stvcr_statistics,
+    plot_lr_prior_stvcr,
+    write_lr_prior_stvcr_tables,
+)""",
+                )
+                replacements = {
+                    "load_interaction_evidence_results": "load_lr_prior_stvcr_results",
+                    "interaction_evidence_statistics": "lr_prior_stvcr_statistics",
+                    "write_interaction_evidence_tables": "write_lr_prior_stvcr_tables",
+                    "plot_interaction_evidence": "plot_lr_prior_stvcr",
+                    'Path("outputs") / "interaction_evidence"': 'Path("outputs") / "lr_prior_stvcr"',
+                }
+                for old, new in replacements.items():
+                    source = source.replace(old, new)
+                cell.source = source
     if path.name == "arista_figures.ipynb":
         _simplify_arista_source_table(notebook)
     nbformat.write(notebook, path)

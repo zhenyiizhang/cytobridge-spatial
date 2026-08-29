@@ -21,16 +21,19 @@ _FIGURE_COMMAND_HELP = {
     "arista-lr": "recalculate and redraw corrected Figures S23-S24",
     "lr-complex": "redraw Supplementary Figure S25",
     "zebrafish-si": "redraw Supplementary Figures S31-S38",
-    "interaction-evidence": "redraw Supplementary Figure S39 summaries",
+    "lr-prior-stvcr": "redraw Supplementary Figure S39 comparisons",
     "loto-benchmark": "redraw Supplementary Figure S40 summaries",
     "training-histories": "redraw Supplementary Figure S41",
     "arista-local-domains": "redraw Supplementary Figure S42 summaries",
     "zebrafish-attention": "redraw Supplementary Figure S43 summaries",
     "compute-cost": "write Supplementary Table 2",
-    "main-figure-2": "assemble Main Figure 2 from packaged inputs",
-    "main-figure-5-reference": "export the accepted Main Figure 5 reference page",
-    "main-figure-4": "assemble Main Figure 4 from an external MOSTA release",
-    "mosta-reference-pages": "export S11-S18 from an external MOSTA release",
+    "main-figure-2": "assemble Main Figure 2 from the included panel files",
+    "main-figure-5-reference": "export the assembled Main Figure 5",
+    "main-figure-4": "assemble Main Figure 4 from downloaded MOSTA figure files",
+    "mosta-reference-pages": "export S11-S18 from downloaded MOSTA figure files",
+}
+_FIGURE_COMMAND_ALIASES = {
+    "interaction-evidence": "lr-prior-stvcr",
 }
 _DEPENDENCY_PROFILES = {
     "core": ("anndata", "numpy", "pandas", "scipy", "sklearn", "tqdm", "yaml"),
@@ -254,7 +257,10 @@ def _parser() -> argparse.ArgumentParser:
         "explain",
         help="show how the inputs, calculations, and figure command connect",
     )
-    figure_explain.add_argument("name", choices=tuple(_FIGURE_COMMAND_HELP))
+    figure_explain.add_argument(
+        "name",
+        choices=tuple(_FIGURE_COMMAND_HELP),
+    )
     figure_explain.add_argument("--json", action="store_true", dest="as_json")
     for name, help_text in _FIGURE_COMMAND_HELP.items():
         figure_parser = figure_commands.add_parser(name, help=help_text)
@@ -263,7 +269,7 @@ def _parser() -> argparse.ArgumentParser:
             type=Path,
             default=None,
             help=(
-                "result directory; defaults to the example data included with the package. For MOSTA "
+                "result directory; defaults to the paper results included with the package. For MOSTA "
                 "commands, supply the downloaded release directory"
             ),
         )
@@ -617,7 +623,11 @@ def _run_figure_command(args: argparse.Namespace) -> int:
 
         print("command\tpaper location\tinput")
         for workflow in list_figure_workflows():
-            source = "included example data" if workflow["wheel_runnable"] else "separate result directory"
+            source = (
+                "included paper results"
+                if workflow["wheel_runnable"]
+                else "separate result directory"
+            )
             print(
                 f"{workflow['name']}\t{workflow['paper_location']}\t{source}"
             )
@@ -626,22 +636,23 @@ def _run_figure_command(args: argparse.Namespace) -> int:
         from .results.figure_workflows import describe_figure_workflow
         from .results.reproduction_chains import describe_figure_steps
 
-        route = describe_figure_workflow(args.name)
-        chain = describe_figure_steps(args.name)
+        selected_name = _FIGURE_COMMAND_ALIASES.get(args.name, args.name)
+        route = describe_figure_workflow(selected_name)
+        chain = describe_figure_steps(selected_name)
         if args.as_json:
             print(json.dumps({**route, "steps": chain}, indent=2, sort_keys=True))
         else:
             labels = (
                 ("Paper location", "paper_location"),
-                ("Input", "starts_from"),
+                ("Start with", "starts_from"),
                 ("Figure command", "figure_command"),
-                ("Scope", "scope"),
+                ("What this command does", "scope"),
             )
             for label, key in labels:
                 value = route[key]
                 if value:
                     print(f"{label}: {value}")
-            print("How the files connect:")
+            print("Steps that produce the input:")
             for index, row in enumerate(chain, start=1):
                 print(f"  {index}. {row['paper_part']} — {row['step']}")
                 entry_label = (
@@ -652,21 +663,27 @@ def _run_figure_command(args: argparse.Namespace) -> int:
                 print(f"     {entry_label}:")
                 for line in str(row["code_or_command"]).splitlines():
                     print(f"       {line}")
-                print(f"     input: {row['reads']}")
-                print(f"     creates: {row['writes']}")
-                print(f"     continue with: {row['next_step']}")
+                print(f"     start with: {row['reads']}")
+                print(f"     writes: {row['writes']}")
+                print(f"     next: {row['next_step']}")
                 if row.get("note"):
                     print(f"     note: {row['note']}")
         return 0
-    if args.figure_command not in _FIGURE_COMMAND_HELP:
+    if (
+        args.figure_command not in _FIGURE_COMMAND_HELP
+        and args.figure_command not in _FIGURE_COMMAND_ALIASES
+    ):
         print("cytobridge figure requires a subcommand; use --help", file=sys.stderr)
         return 2
 
     try:
         from .results.figure_workflows import run_figure_workflow
 
+        selected_name = _FIGURE_COMMAND_ALIASES.get(
+            args.figure_command, args.figure_command
+        )
         summary = run_figure_workflow(
-            args.figure_command,
+            selected_name,
             args.output_dir,
             results_dir=args.results_dir,
         )
@@ -847,7 +864,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the CytoBridge command-line interface."""
 
     parser = _parser()
-    args = parser.parse_args(argv)
+    command_args = list(sys.argv[1:] if argv is None else argv)
+    if len(command_args) >= 2 and command_args[0] == "figure":
+        if command_args[1] == "explain" and len(command_args) >= 3:
+            command_args[2] = _FIGURE_COMMAND_ALIASES.get(
+                command_args[2], command_args[2]
+            )
+        else:
+            command_args[1] = _FIGURE_COMMAND_ALIASES.get(
+                command_args[1], command_args[1]
+            )
+    args = parser.parse_args(command_args)
     if args.command == "workflow":
         return _run_workflow_command(args)
     if args.command == "figure":

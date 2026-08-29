@@ -100,7 +100,7 @@ The tutorial index covers data preparation, five dataset tutorials, paper
 figures, and benchmarks. Each dataset notebook follows the same path from setup
 through preprocessing, training, downstream analysis, figure code, and saved
 files. Paper-figure notebooks state whether they recalculate values, redraw
-prepared summaries, assemble panel files, or export a reference page.
+prepared summaries, assemble panel files, or export an assembled figure.
 
 Installed figure commands use the same public result APIs as the notebooks:
 
@@ -110,10 +110,10 @@ cytobridge figure explain zebrafish-si
 cytobridge figure arista-lr --output-dir outputs/arista_lr
 ```
 
-The explanation reports the input level, upstream entry, plotting command, and
-limit of the selected figure workflow. Numerical-redraw notebooks preview the
-PNG created by their own plotting cell. Assembly and reference-export pages
-identify the PDF or image used as a source.
+The explanation prints the source files and the commands that produce the
+figure. Each plotting notebook displays the PNG written by its own code. When a
+page is assembled from existing vector panels, the notebook identifies those
+panels and the assembly command.
 
 Complete dataset runs use external AnnData files and checkpoints; their names,
 formats, and expected locations are documented in the input guide.
@@ -137,7 +137,7 @@ in the wheel. The documentation records:
 - dataset accessions and required AnnData fields;
 - preprocessing and coordinate conventions;
 - checkpoint directory layout and package compatibility;
-- compact processed tables included for figure reproduction.
+- processed tables included for figure reproduction.
 
 See the
 [data and checkpoint guide](https://cytobridge-spatial.readthedocs.io/en/latest/data_checkpoints.html)
@@ -148,7 +148,7 @@ before running a dataset notebook.
 ```text
 cytobridge-spatial/
 ├── CytoBridge/          # package source
-├── docs/                # ReadTheDocs source and canonical notebooks
+├── docs/                # Read the Docs source and published notebooks
 ├── scripts/             # command-line workflow helpers
 ├── tests/               # package, notebook, and release tests
 ├── pyproject.toml

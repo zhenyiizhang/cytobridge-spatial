@@ -1,4 +1,4 @@
-"""Load, recalculate, and plot compact result bundles."""
+"""Read result tables, recalculate paper values, and draw paper figures."""
 
 from .agist_figures import (
     AgistFigureData,
@@ -68,11 +68,17 @@ from .reproduction_chains import (
 )
 from .interaction_evidence import (
     InteractionEvidenceResults,
+    LRPriorStVCRResults,
     build_interaction_evidence_panel_summary,
+    build_lr_prior_stvcr_panel_summary,
     interaction_evidence_statistics,
+    lr_prior_stvcr_statistics,
     load_interaction_evidence_results,
+    load_lr_prior_stvcr_results,
     plot_interaction_evidence,
+    plot_lr_prior_stvcr,
     write_interaction_evidence_tables,
+    write_lr_prior_stvcr_tables,
 )
 from .loto_benchmark import (
     LotoBenchmarkData,
@@ -173,7 +179,7 @@ __all__ = [
     "FIGURE_REPRODUCTION_CHAINS",
     "FIGURE_IDS",
     "FigureWorkflow",
-    "InteractionEvidenceResults",
+    "LRPriorStVCRResults",
     "LRComplexAggregationResults",
     "LotoBenchmarkData",
     "MainFigure2Data",
@@ -191,7 +197,7 @@ __all__ = [
     "ZebrafishAttentionResults",
     "ZebrafishSIPanels",
     "ZebrafishSIResults",
-    "build_interaction_evidence_panel_summary",
+    "build_lr_prior_stvcr_panel_summary",
     "attraction_potential",
     "assemble_main_figure_2",
     "assemble_main_figure_4",
@@ -215,7 +221,7 @@ __all__ = [
     "describe_figure_steps",
     "describe_figure_reproduction_chain",
     "format_full_model_compute_cost",
-    "interaction_evidence_statistics",
+    "lr_prior_stvcr_statistics",
     "export_main_figure_5_reference_page",
     "export_mosta_supplementary_figures",
     "export_arista_reference_pages",
@@ -226,7 +232,7 @@ __all__ = [
     "load_classifier_smoothing_results",
     "load_full_model_compute_cost",
     "list_figure_workflows",
-    "load_interaction_evidence_results",
+    "load_lr_prior_stvcr_results",
     "load_loto_benchmark",
     "load_lr_complex_aggregation_results",
     "load_main_figure_2",
@@ -241,7 +247,7 @@ __all__ = [
     "plot_arista_ligand_receptor_figures",
     "plot_arista_supplementary_figures",
     "plot_classifier_smoothing",
-    "plot_interaction_evidence",
+    "plot_lr_prior_stvcr",
     "plot_loto_benchmark",
     "plot_lr_complex_aggregation",
     "plot_main_figure_2",
@@ -268,7 +274,7 @@ __all__ = [
     "write_arista_supplementary_tables",
     "write_classifier_smoothing_tables",
     "write_full_model_compute_cost_tables",
-    "write_interaction_evidence_tables",
+    "write_lr_prior_stvcr_tables",
     "write_loto_benchmark_tables",
     "write_lr_complex_aggregation_tables",
     "write_main_figure_2_tables",

@@ -574,7 +574,7 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     assert "calculate_arista_ligand_receptor_panels" in source
     assert "recalculates S23 and S24" in source
     assert "Draw S23 and S24 from the calculated tables" in source
-    assert "released reference pages" in source.lower()
+    assert "released pages" in source.lower()
     assert "export_arista_reference_pages" in source
     assert "plot_arista_supplementary_figures" not in source
     assert "write_arista_ligand_receptor_tables(data, output_dir, panels)" in source
@@ -582,3 +582,10 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     assert "full_recompute_inputs" in source
     assert "217" not in source
     assert "314" not in source
+    image_outputs = [
+        output
+        for cell in notebook["cells"]
+        for output in cell.get("outputs", ())
+        if "image/png" in output.get("data", {})
+    ]
+    assert len(image_outputs) == 6

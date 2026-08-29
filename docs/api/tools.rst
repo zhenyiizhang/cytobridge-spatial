@@ -76,8 +76,5 @@ Non-spatial temporal workflows
    :members: NonSpatialPreset, available_nonspatial_presets, nonspatial_plan, prepare_nonspatial_dataset, build_nonspatial_lr_prior, train_nonspatial_condition, evaluate_nonspatial_pair
    :show-inheritance:
 
-.. automodule:: CytoBridge.nonspatial.figures
-   :members: validate_historical_figure_bundle, replay_nonspatial_figure
-
 .. automodule:: CytoBridge.nonspatial.communication_consistency
    :members: stratified_sample_indices, encode_cellagentchat_labels, prepare_shared_lr_database, prepare_nichenet_tables, summarize_cellagentchat_pair_matrices, complete_directed_pairs, pairwise_rank_metrics

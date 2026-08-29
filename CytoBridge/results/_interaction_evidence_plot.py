@@ -1,4 +1,4 @@
-"""Matplotlib renderer for the interaction-evidence analysis."""
+"""Matplotlib renderer for the LR-prior and stVCR comparison."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from .interaction_evidence import (
     NO_LR_COMPARISON,
     SPACE_LABELS,
     SPACE_ORDER,
-    InteractionEvidenceResults,
+    LRPriorStVCRResults,
 )
 
 
@@ -218,7 +218,7 @@ def _plot_relative_effects(
     )
 
 
-def _make_figure(results: InteractionEvidenceResults) -> plt.Figure:
+def _make_figure(results: LRPriorStVCRResults) -> plt.Figure:
     figure = plt.figure(figsize=INTERACTION_A4_PORTRAIT)
     outer = figure.add_gridspec(
         nrows=2,
@@ -285,15 +285,15 @@ def _make_figure(results: InteractionEvidenceResults) -> plt.Figure:
     return figure
 
 
-def plot_interaction_evidence(
-    results: InteractionEvidenceResults,
+def plot_lr_prior_stvcr(
+    results: LRPriorStVCRResults,
     output_dir: str | Path,
 ) -> tuple[Path, Path]:
-    """Render the interaction-evidence figure as PDF and PNG."""
+    """Draw the S39 comparison as PDF and PNG."""
 
     output = prepare_output_dir(output_dir)
-    pdf = output / "interaction_evidence.pdf"
-    png = output / "interaction_evidence.png"
+    pdf = output / "lr_prior_stvcr_comparison.pdf"
+    png = output / "lr_prior_stvcr_comparison.png"
     with mpl.rc_context(INTERACTION_RC):
         figure = _make_figure(results)
         save_figure(
@@ -306,3 +306,6 @@ def plot_interaction_evidence(
         )
         plt.close(figure)
     return pdf, png
+
+
+plot_interaction_evidence = plot_lr_prior_stvcr

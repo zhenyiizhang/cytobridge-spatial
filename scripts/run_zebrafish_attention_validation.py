@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Calculate and plot the zebrafish interaction validation used in Figure S43.
+"""Calculate and plot the zebrafish attention comparisons used in Figure S43.
 
 ``analyze`` compares CytoBridge results with COMMOT, CellAgentChat, NicheNet,
 and the interaction on/off analysis.  ``report`` combines those tables with
-the JAM controls and draws the figure.  ``validate`` checks the files recorded
-by a completed run.
+the JAM controls and draws the figure. The two check commands verify the files
+recorded by a completed run.
 """
 
 from __future__ import annotations
@@ -2043,6 +2043,7 @@ def report(
     expected_analysis_manifest_sha256: str | None,
     jam_manifest_paths: list[Path],
     expected_jam_manifest_sha256s: list[str] | None,
+    reader_output: bool = False,
 ) -> None:
     """Render the current-checkpoint three-panel zebrafish reviewer figure."""
 
@@ -2750,8 +2751,13 @@ def report(
         fontsize=8.3,
     )
 
-    pdf_path = output / "zebrafish_attention_validation_a4.pdf"
-    png_path = output / "zebrafish_attention_validation_a4.png"
+    stem = (
+        "zebrafish_attention_controls"
+        if reader_output
+        else "zebrafish_attention_validation_a4"
+    )
+    pdf_path = output / f"{stem}.pdf"
+    png_path = output / f"{stem}.png"
     fig.savefig(pdf_path, facecolor="white")
     fig.savefig(png_path, dpi=320, facecolor="white")
     plt.close(fig)
@@ -2817,7 +2823,8 @@ def report(
         "test direct physical contact, causal regulation, or the published mutant "
         "phenotype."
     )
-    (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
+    if not reader_output:
+        (output / "caption.txt").write_text(caption + "\n", encoding="utf-8")
     reviewer_response = f"""# Response to reviewer concern on attention interpretability
 
 We agree that an attention coefficient cannot be interpreted directly as a biochemical communication probability. We therefore evaluated the current accepted checkpoint at three complementary resolutions.
@@ -2828,14 +2835,31 @@ We agree that an attention coefficient cannot be interpreted directly as a bioch
 
 Together, these results show that the learned interaction field is reproducible across external CCI algorithms under shared inputs, preferentially organizes a pre-specified compatible JAM program relative to checkpoint controls, and localizes to a coherent myogenic molecular context. We retain the explicit boundary that attention is a model contribution, not a native ligand-receptor strength.
 """
-    (output / "reviewer_response.md").write_text(reviewer_response, encoding="utf-8")
+    if not reader_output:
+        (output / "reviewer_response.md").write_text(
+            reviewer_response, encoding="utf-8"
+        )
 
     code_dir = output / "code"
     code_dir.mkdir()
-    script_snapshot = code_dir / Path(__file__).name
-    shutil.copy2(Path(__file__).resolve(), script_snapshot)
+    if reader_output:
+        wrapper_snapshot = code_dir / "run_zebrafish_attention_analysis.py"
+        shutil.copy2(
+            REPO_ROOT / "scripts" / "run_zebrafish_attention_analysis.py",
+            wrapper_snapshot,
+        )
+        script_snapshot = code_dir / "attention_analysis_implementation.py"
+        shutil.copy2(Path(__file__).resolve(), script_snapshot)
+    else:
+        script_snapshot = code_dir / Path(__file__).name
+        shutil.copy2(Path(__file__).resolve(), script_snapshot)
+    rebuild_entry = (
+        "python -m scripts.run_zebrafish_attention_analysis figure"
+        if reader_output
+        else "python scripts/run_zebrafish_attention_validation.py report"
+    )
     rebuild_command = (
-        "python scripts/run_zebrafish_attention_validation.py report "
+        f"{rebuild_entry} "
         f"--analysis-dir {analysis_dir.expanduser().resolve()} "
         f"--output-dir <NEW_OUTPUT_DIR> "
         f"--expected-analysis-manifest-sha256 {expected_analysis_manifest_sha256.casefold()} "
@@ -2877,7 +2901,8 @@ Together, these results show that the learned interaction field is reproducible 
         f"- Figure PDF: `{_sha256(pdf_path)}`\n"
         f"- Plotting-script snapshot: `{_sha256(script_snapshot)}`\n"
     )
-    (output / "provenance.md").write_text(provenance, encoding="utf-8")
+    if not reader_output:
+        (output / "provenance.md").write_text(provenance, encoding="utf-8")
     shutil.copy2(
         analysis_dir.expanduser().resolve() / "analysis_manifest.json",
         output / "analysis_manifest.json",
