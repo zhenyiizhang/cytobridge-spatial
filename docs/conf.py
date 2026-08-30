@@ -97,7 +97,7 @@ html_theme_options = {
     "sidebar_hide_name": True,
     "navigation_with_keys": True,
     "source_repository": "https://github.com/zhenyiizhang/cytobridge-spatial/",
-    "source_branch": "release/cytobridge-reproducible-20260812",
+    "source_branch": "main",
     "source_directory": "docs/",
     "light_css_variables": {
         "color-brand-primary": "#08786b",
