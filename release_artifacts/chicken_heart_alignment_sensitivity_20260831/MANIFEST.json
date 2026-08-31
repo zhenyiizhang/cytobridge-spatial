@@ -1,0 +1,28 @@
+{
+  "archive": "chicken_heart_alignment_sensitivity_20260831",
+  "status": "accepted",
+  "manuscript_figures": [
+    "Supplementary Figure S7",
+    "Supplementary Figure S8"
+  ],
+  "dataset": "chicken_heart",
+  "accepted_package_commit": "c72e592d0dea70941bc4971a79c3c903d7454b08",
+  "scientific_seed": 42,
+  "plot_entry_point": "figure_code/plot_heart_alignment_sensitivity.py",
+  "plot_data": "data/plot_inputs.npz",
+  "analysis_steps": [
+    "full_analysis/prepare_and_run.py",
+    "full_analysis/prepare_lower_perturbations.py",
+    "full_analysis/compare_runs.py",
+    "full_analysis/diagnose_coordinates.py",
+    "full_analysis/export_plot_inputs.py"
+  ],
+  "accepted_outputs": [
+    "figures/heart_alignment_sensitivity_S7_final.pdf",
+    "figures/heart_alignment_sensitivity_S7_final.png",
+    "figures/heart_alignment_sensitivity_S8_final.pdf",
+    "figures/heart_alignment_sensitivity_S8_final.png"
+  ],
+  "provenance": "PROVENANCE.md",
+  "checksums": "CHECKSUMS.sha256"
+}

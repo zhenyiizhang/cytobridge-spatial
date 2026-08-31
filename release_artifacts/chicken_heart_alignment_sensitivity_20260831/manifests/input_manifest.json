@@ -1,0 +1,248 @@
+{
+  "accepted_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-ot-alignment-20260822-f5550e1-r1/result/chicken_heart_ot_aligned.h5ad",
+  "accepted_source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+  "baseline_repeat_uses_accepted_source_directly": true,
+  "coordinate_key": "spatial_ot_input",
+  "variants": [
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_moderate.h5ad",
+      "sha256": "4a27492fca70f4319a045ed71f989309dfc276e4bf4d2dfc3e8db33c5e2e47dd",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 197.7822034461136,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 0.0,
+          "timepoint": "D4",
+          "translate_x_nn": -0.56,
+          "translate_y_nn": 0.44
+        },
+        {
+          "max_input_shift": 173.5190248935255,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 0.0,
+          "timepoint": "D7",
+          "translate_x_nn": 0.6,
+          "translate_y_nn": -0.18
+        },
+        {
+          "max_input_shift": 162.93734992321595,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 0.0,
+          "timepoint": "D10",
+          "translate_x_nn": -0.34,
+          "translate_y_nn": -0.48
+        },
+        {
+          "max_input_shift": 164.71604172028992,
+          "median_nn_distance": 277.0,
+          "rotation_deg": 0.0,
+          "timepoint": "D14",
+          "translate_x_nn": 0.44,
+          "translate_y_nn": 0.4
+        }
+      ],
+      "variant": "translate_moderate"
+    },
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_strong.h5ad",
+      "sha256": "6269327dd182b9627b8797354fbc281aef31bef24a766c429ebcb76030908e7a",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 369.9853544398753,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 0.0,
+          "timepoint": "D4",
+          "translate_x_nn": -1.05,
+          "translate_y_nn": 0.82
+        },
+        {
+          "max_input_shift": 313.6365093543807,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 0.0,
+          "timepoint": "D7",
+          "translate_x_nn": 1.08,
+          "translate_y_nn": -0.34
+        },
+        {
+          "max_input_shift": 307.30975252991965,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 0.0,
+          "timepoint": "D10",
+          "translate_x_nn": -0.62,
+          "translate_y_nn": -0.92
+        },
+        {
+          "max_input_shift": 313.4876444136201,
+          "median_nn_distance": 277.0,
+          "rotation_deg": 0.0,
+          "timepoint": "D14",
+          "translate_x_nn": 0.82,
+          "translate_y_nn": 0.78
+        }
+      ],
+      "variant": "translate_strong"
+    },
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/rotate_moderate.h5ad",
+      "sha256": "85fcfa7dc627ebeaa6bf6f45f0d93bf2a316d688610fc74cc153645b5a03d5be",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 232.69403122150342,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 5.5,
+          "timepoint": "D4",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 408.9480727566408,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": -5.8,
+          "timepoint": "D7",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 646.1311891829504,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 6.2,
+          "timepoint": "D10",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 822.4191059193133,
+          "median_nn_distance": 277.0,
+          "rotation_deg": -6.0,
+          "timepoint": "D14",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        }
+      ],
+      "variant": "rotate_moderate"
+    },
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/rotate_strong.h5ad",
+      "sha256": "85df3e618bb26aef7338e79b626399b6f62c09319d303f259becce9815607f46",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 443.78305628590294,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 10.5,
+          "timepoint": "D4",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 774.7313304113839,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": -11.0,
+          "timepoint": "D7",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 1248.9013080521836,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 12.0,
+          "timepoint": "D10",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        },
+        {
+          "max_input_shift": 1574.3779605804339,
+          "median_nn_distance": 277.0,
+          "rotation_deg": -11.5,
+          "timepoint": "D14",
+          "translate_x_nn": 0.0,
+          "translate_y_nn": 0.0
+        }
+      ],
+      "variant": "rotate_strong"
+    },
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_rotate_moderate.h5ad",
+      "sha256": "af2faa1f44c014316d49beedb73a91db58955b0c97a953dfdb0e8018caf4ff7d",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 430.0597097434656,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 5.5,
+          "timepoint": "D4",
+          "translate_x_nn": -0.56,
+          "translate_y_nn": 0.44
+        },
+        {
+          "max_input_shift": 546.8980425838804,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": -5.8,
+          "timepoint": "D7",
+          "translate_x_nn": 0.6,
+          "translate_y_nn": -0.18
+        },
+        {
+          "max_input_shift": 777.3203814029927,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 6.2,
+          "timepoint": "D10",
+          "translate_x_nn": -0.34,
+          "translate_y_nn": -0.48
+        },
+        {
+          "max_input_shift": 950.60418886084,
+          "median_nn_distance": 277.0,
+          "rotation_deg": -6.0,
+          "timepoint": "D14",
+          "translate_x_nn": 0.44,
+          "translate_y_nn": 0.4
+        }
+      ],
+      "variant": "translate_rotate_moderate"
+    },
+    {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_rotate_strong.h5ad",
+      "sha256": "2edcf1bdc0a1ecc370a9eb516b18602f6d91513507a8c2db8a5619b72bdb981f",
+      "source_sha256": "2783cb49fe4df9b7bb99398ced6ac83a998d8708517e1d4698da76435928a993",
+      "stage_records": [
+        {
+          "max_input_shift": 812.0911859313494,
+          "median_nn_distance": 277.71388153997634,
+          "rotation_deg": 10.5,
+          "timepoint": "D4",
+          "translate_x_nn": -1.05,
+          "translate_y_nn": 0.82
+        },
+        {
+          "max_input_shift": 1028.0987127485728,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": -11.0,
+          "timepoint": "D7",
+          "translate_x_nn": 1.08,
+          "translate_y_nn": -0.34
+        },
+        {
+          "max_input_shift": 1500.5249625031263,
+          "median_nn_distance": 277.0018050482704,
+          "rotation_deg": 12.0,
+          "timepoint": "D10",
+          "translate_x_nn": -0.62,
+          "translate_y_nn": -0.92
+        },
+        {
+          "max_input_shift": 1811.9797639962842,
+          "median_nn_distance": 277.0,
+          "rotation_deg": -11.5,
+          "timepoint": "D14",
+          "translate_x_nn": 0.82,
+          "translate_y_nn": 0.78
+        }
+      ],
+      "variant": "translate_rotate_strong"
+    }
+  ]
+}
