@@ -133,13 +133,13 @@ Complete dataset runs use external AnnData files and checkpoints; their names,
 formats, and expected locations are documented in the input guide.
 
 The [paper reproduction index](docs/paper_reproduction.md) maps Main Figures
-1–6, Supplementary Figures S1–S43, Supplementary Tables 1–2, and the zebrafish
+1–6, Supplementary Figures S1–S45, Supplementary Tables 1–2, and the zebrafish
 videos to their notebooks, scripts, processed inputs, and external-data
 requirements. The source checkout also contains complete MOSTA and ARISTA figure
 releases and the
 [chicken-heart S7/S8 alignment-sensitivity archive](release_artifacts/chicken_heart_alignment_sensitivity_20260831/README.md)
-under `release_artifacts/`; these larger releases are not installed with the
-wheel.
+and the [cross-dataset benchmark summary archive](release_artifacts/five_dataset_loto_summary_20260901/PROVENANCE.md)
+under `release_artifacts/`; these releases are not installed with the wheel.
 
 Start with the
 [tutorial index](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/index.html)

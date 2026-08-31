@@ -1,0 +1,19 @@
+{
+  "accepted_input_root": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-linear-ot-control-20260901-r1",
+  "artifacts": {
+    "arista": {
+      "metrics": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-linear-ot-control-20260901-r1/arista/evaluation/exact_ot_loto/loto_metrics_long.csv",
+      "rows": 45,
+      "sha256": "4aa05d9db2c7fabf9753c8904f8fbb2202c2b7dee6795ada97f93bab9980d255"
+    },
+    "chicken_heart": {
+      "metrics": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-linear-ot-control-20260901-r1/chicken_heart/evaluation/exact_ot_loto/loto_metrics_long.csv",
+      "rows": 30,
+      "sha256": "93d4cf876f981f8e5c2ff1a0ead4f539c83cfd2eb6cb94fc1cf120e72a09a088"
+    }
+  },
+  "benchmark_commit": "61f0b550678ed75e706638ceb7638a0818b7e033",
+  "purpose": "Linear OT displacement control for the refreshed ARISTA and chicken-heart LOTO benchmark",
+  "schema_version": "1.0.0",
+  "status": "complete"
+}

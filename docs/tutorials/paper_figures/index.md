@@ -19,9 +19,9 @@ The notebooks show the command, its inputs, its outputs, and the next step.
 Saved notebook output lets you see the expected tables and figures before
 running anything yourself.
 
-The included numerical files can be redrawn for S4–S6, S25, S31–S40, and S42.
-S25, S39, S40, and S41 also include a command that collects completed analysis
-tables before drawing the figure. S4–S6, S31–S38, and S42 do not yet convert a
+The included numerical files can be redrawn for S4–S6, S25, and S31–S44.
+S25, S39, S40, and S42 also include a command that collects completed analysis
+tables before drawing the figure. S4–S6, S31–S38, and S43 do not yet convert a
 new model run into the exact set of paper panel inputs. Their notebooks still
 show the available upstream calculations so that their inputs and outputs are
 clear.
@@ -71,9 +71,11 @@ cytobridge figure explain zebrafish-si
 - [LR-complex aggregation, Supplementary Figure S25](lr_complex_aggregation.ipynb)
 - [LR-prior ablation and stVCR comparison, Supplementary Figure S39](lr_prior_ablation_stvcr.ipynb)
 - [Five-dataset benchmark, Supplementary Figure S40](loto_benchmark.ipynb)
-- [Training histories, Supplementary Figure S41](training_histories.ipynb)
-- [ARISTA local domains, Supplementary Figure S42](arista_local_domains.ipynb)
-- [Zebrafish attention and control comparisons, Supplementary Figure S43](zebrafish_attention.ipynb)
+- [Cross-dataset benchmark summary, Supplementary Figure S41](loto_benchmark_summary.ipynb)
+- [Training histories, Supplementary Figure S42](training_histories.ipynb)
+- [ARISTA local domains, Supplementary Figure S43](arista_local_domains.ipynb)
+- [Zebrafish attention and control comparisons, Supplementary Figure S44](zebrafish_attention.ipynb)
+- Supplementary Figure S45 is the analysis-workflow schematic supplied with the manuscript.
 - [Training time and memory](compute_cost.ipynb)
 
 ## Videos
@@ -96,6 +98,7 @@ classifier_smoothing
 lr_complex_aggregation
 lr_prior_ablation_stvcr
 loto_benchmark
+loto_benchmark_summary
 arista_local_domains
 zebrafish_attention
 training_histories

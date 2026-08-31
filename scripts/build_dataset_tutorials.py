@@ -43,7 +43,7 @@ TUTORIALS = (
                 "zebrafish-si",
             ),
             (
-                "Supplementary Figure S43",
+                "Supplementary Figure S44",
                 "zebrafish_attention.ipynb",
                 "zebrafish-attention",
             ),
@@ -78,7 +78,7 @@ TUTORIALS = (
                 "arista-lr",
             ),
             (
-                "Supplementary Figure S42",
+                "Supplementary Figure S43",
                 "arista_local_domains.ipynb",
                 "arista-local-domains",
             ),

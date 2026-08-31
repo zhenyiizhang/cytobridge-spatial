@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculate and plot the zebrafish attention comparisons used in Figure S43.
+"""Calculate and plot the zebrafish attention comparisons used in Figure S44.
 
 ``analyze`` compares CytoBridge results with COMMOT, CellAgentChat, NicheNet,
 and the interaction on/off analysis.  ``report`` combines those tables with

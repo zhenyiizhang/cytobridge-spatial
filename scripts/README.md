@@ -290,7 +290,7 @@ python scripts/plot_zebrafish_s22_article_style.py \
 
 `run_zebrafish_attention_analysis.py` compares the zebrafish model scores with
 COMMOT and CellAgentChat and calculates the matched control summaries used by
-S43. Run it from the root of a cloned CytoBridge repository. The `analyze`
+S44. Run it from the root of a cloned CytoBridge repository. The `analyze`
 command reads the model, aligned cells, comparison-method results, and the
 fixed ligand–receptor list. The `figure` command combines those tables with the
 trained, before-interaction, and randomized JAM controls and writes the figure,

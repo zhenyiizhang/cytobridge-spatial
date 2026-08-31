@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the S41 input tables from five completed training runs."""
+"""Build the S42 input tables from five completed training runs."""
 
 from __future__ import annotations
 
@@ -166,7 +166,7 @@ def collect(run_values: list[str], output_dir: Path) -> dict[str, str]:
     manifest = {
         "schema_version": 1,
         "analysis": "training_histories",
-        "manuscript_figure": "Supplementary Figure S41",
+        "manuscript_figure": "Supplementary Figure S42",
         "displayed_dataset": "arista",
         "displayed_dataset_label": "ARISTA",
         "dataset_order": list(DATASET_ORDER),

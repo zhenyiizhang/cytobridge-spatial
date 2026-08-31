@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "analysis": "zebrafish_attention",
-  "manuscript_figure": "Supplementary Figure S43",
+  "manuscript_figure": "Supplementary Figure S44",
   "files": {
     "directed_pair_concordance.csv": "directed cell-type-pair agreement with external communication methods",
     "jam_compatibility_percentile_summary.csv": "attention percentiles for JAM-compatible and other edges",

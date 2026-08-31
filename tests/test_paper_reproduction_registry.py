@@ -20,7 +20,7 @@ def test_registry_covers_every_paper_location() -> None:
 
     for figure in range(1, 7):
         assert f"Main Figure {figure}" in locations
-    for figure in range(1, 44):
+    for figure in range(1, 46):
         assert f"Supplementary Figure S{figure}" in locations
     assert "Supplementary Table 1" in locations
     assert "Supplementary Table 2" in locations
@@ -108,7 +108,7 @@ def test_registry_states_what_each_entry_can_do() -> None:
         "Supplementary Figure S5",
         "Supplementary Figure S6",
         "Supplementary Figure S31",
-        "Supplementary Figure S42",
+        "Supplementary Figure S43",
     ):
         assert "missing-new-run-assembly" in by_location[location]["availability"]
 
@@ -119,6 +119,10 @@ def test_registry_states_what_each_entry_can_do() -> None:
     ):
         assert "new-run collector available" in by_location[location]["availability"]
 
+    assert (
+        by_location["Supplementary Figure S42"]["availability"]
+        == "ready-to-redraw"
+    )
     assert (
         by_location["Supplementary Figure S41"]["availability"]
         == "ready-to-redraw"

@@ -439,7 +439,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "training-histories": (
         _row(
-            "S41",
+            "S42",
             "record training objectives",
             "cytobridge workflow --config <dataset> --step preprocess --step train --train --input-h5ad <raw.h5ad> --output-dir <run> --device cuda:0",
             "raw H5AD, full-model dataset configuration, and matching LR database",
@@ -447,7 +447,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "collect histories",
         ),
         _row(
-            "S41",
+            "S42",
             "collect the five completed histories",
             (
                 "python scripts/collect_training_history_inputs.py \\\n"
@@ -456,24 +456,24 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
                 "  --run arista=<arista-run>/training \\\n"
                 "  --run admouse=<admouse-run>/training \\\n"
                 "  --run chicken_heart=<heart-run>/training \\\n"
-                "  --output-dir <s41-inputs>"
+                "  --output-dir <s42-inputs>"
             ),
             "training_history.csv from each of the five completed runs",
-            "<s41-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
-            "draw S41",
+            "<s42-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            "draw S42",
         ),
         _row(
-            "S41",
+            "S42",
             "smooth within stage and draw",
-            "cytobridge figure training-histories --results-dir <s41-inputs> --output-dir <figure-dir>",
-            "<s41-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            "cytobridge figure training-histories --results-dir <s42-inputs> --output-dir <figure-dir>",
+            "<s42-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
             "representative_training_curves.pdf/.png and displayed stage metrics",
             "finished figure",
         ),
     ),
     "arista-local-domains": (
         _row(
-            "S42",
+            "S43",
             "run corrected ARISTA downstream",
             "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training> --output-dir <downstream>",
             "manuscript ARISTA aligned H5AD and retrained model",
@@ -481,7 +481,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "domain analysis",
         ),
         _row(
-            "S42",
+            "S43",
             "draw from the saved domain and matched-null results",
             "python scripts/results/plot_arista_local_domains.py --results-dir <domain-result-dir> --output-dir <figure-dir>",
             "ROI assignments, domain metadata, cell-type edges, and matched-null tables",
@@ -489,7 +489,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "open the notebook for the same calculation with saved output",
         ),
         _row(
-            "S42",
+            "S43",
             "run the same calculation in the notebook",
             "python scripts/execute_paper_notebooks.py --notebook arista_local_domains --output-dir <notebook-run>",
             "ROI, domain, edge and null tables",
@@ -499,17 +499,17 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "zebrafish-attention": (
         _row(
-            "S43",
+            "S44",
             "compare model scores with external methods",
             "python -m scripts.run_zebrafish_attention_analysis analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30",
             "manuscript zebrafish checkpoint; aligned cells; COMMOT/CellAgentChat outputs; fixed LR universe",
             "directed-pair concordance, expression, display-edge and interaction-sensitivity tables plus analysis_manifest.json",
-            "combine with JAM controls and draw S43",
+            "combine with JAM controls and draw S44",
             "Run this command from the root of a cloned CytoBridge GitHub repository. The installed package contains the final figure command, while this manuscript comparison script remains in the repository.",
         ),
         _row(
-            "S43",
-            "combine JAM controls and draw S43",
+            "S44",
+            "combine JAM controls and draw S44",
             "python -m scripts.run_zebrafish_attention_analysis figure --analysis-dir <attention-analysis> --jam-manifest <trained-jam>/run_manifest.json --jam-manifest <before-interaction-jam>/run_manifest.json --jam-manifest <randomized-jam>/run_manifest.json --output-dir <attention-figure>",
             "attention-analysis tables and one or more matched JAM control manifests",
             "spatial-null, JAM, summary and panel tables; vector PDF/PNG; report_manifest.json",
@@ -517,7 +517,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "Run this command from the same repository checkout. Repeat --jam-manifest for the trained, before-interaction, and randomized comparison results.",
         ),
         _row(
-            "S43",
+            "S44",
             "recalculate displayed statistics and draw",
             "python scripts/execute_paper_notebooks.py --notebook zebrafish_attention --output-dir <notebook-run>",
             "directed_pair_concordance.csv; JAM tables; spatial-null tables; expression and edge tables",

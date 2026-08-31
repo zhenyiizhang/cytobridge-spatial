@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calculate the zebrafish attention comparisons used in Figure S43."""
+"""Calculate the zebrafish attention comparisons used in Figure S44."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--n-selected-pairs", type=int, default=8)
 
     report_parser = commands.add_parser(
-        "figure", help="combine the calculated tables and draw Figure S43"
+        "figure", help="combine the calculated tables and draw Figure S44"
     )
     report_parser.add_argument("--analysis-dir", required=True, type=Path)
     report_parser.add_argument("--output-dir", required=True, type=Path)
@@ -52,7 +52,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     check_analysis.add_argument("--output-dir", required=True, type=Path)
     check_figure = commands.add_parser(
-        "check-figure", help="check the files from a completed Figure S43 run"
+        "check-figure", help="check the files from a completed Figure S44 run"
     )
     check_figure.add_argument("--output-dir", required=True, type=Path)
     return parser
