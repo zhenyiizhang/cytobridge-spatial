@@ -15,6 +15,7 @@ from ._style import (
     INTERACTION_EXTERNAL_COLOR,
     INTERACTION_FULL_COLOR,
     INTERACTION_NO_LR_COLOR,
+    INTERACTION_MARK_COLOR,
     INTERACTION_RC,
     INTERACTION_SPACE_COLORS,
     INTERACTION_TEXT_COLOR,
@@ -172,7 +173,7 @@ def _plot_relative_effects(
             means,
             yerr=errors,
             fmt="none",
-            ecolor=INTERACTION_TEXT_COLOR,
+            ecolor=INTERACTION_MARK_COLOR,
             elinewidth=0.7,
             capsize=2.0,
             capthick=0.7,
@@ -193,7 +194,7 @@ def _plot_relative_effects(
                 values,
                 s=13,
                 facecolor="white",
-                edgecolor=INTERACTION_TEXT_COLOR,
+                edgecolor=INTERACTION_MARK_COLOR,
                 linewidth=0.55,
                 zorder=5,
             )
@@ -201,7 +202,7 @@ def _plot_relative_effects(
     span = max(high - low, 1.0)
     padding = span * 0.12
     ax.set_ylim(low - padding, high + padding)
-    ax.axhline(0, color=INTERACTION_TEXT_COLOR, linewidth=0.7, zorder=1)
+    ax.axhline(0, color=INTERACTION_MARK_COLOR, linewidth=0.7, zorder=1)
     ax.set_xticks(x_base)
     ax.set_xticklabels([DATASET_LABELS[item] for item in DATASET_ORDER])
     ax.set_ylabel(f"Relative sliced-W2 change\nvs {reference_label} (%)")
