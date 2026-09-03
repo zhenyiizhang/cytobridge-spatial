@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "figure": "Supplementary Figure S46",
+  "title": "Cross-method comparison of CytoBridge interaction summaries",
+  "package_commit_before_archive": "c4d188d85c3689042157be9204a0aa94b327a159",
+  "plotting_script": {
+    "path": "scripts/paper_figures/plot_s46_spatial_communication_comparison.py",
+    "sha256": "57434d0daf26cbf660c7ba4f183297c99af42c580ea793a7c4944475a7b9539e"
+  },
+  "figure_pdf": {
+    "path": "figure/spatial_communication_comparison_s46.pdf",
+    "sha256": "7388a4ae512b26329ec2f6924e6abe5c875f0aa4a5a46f29e4bdab4f900a54cd"
+  },
+  "figure_png": {
+    "path": "figure/spatial_communication_comparison_s46.png",
+    "sha256": "0528d7e337f8963970c8db73b613c532dca5b644b2439df0dca6ef9f7c13a6e3"
+  },
+  "panel_data_sha256": {
+    "global_pair_metrics.csv": "f36627449d47e6621bc9d76352c6ba4f27706fb5fa2df9288da87806d04febba",
+    "model_biology_molecular_panel.csv": "6924f3c04941f20b5fc6c6fcd2777683d64f829a55e08652bfa23e09f440b4aa",
+    "model_first_nichenet_chains.csv": "bbb9fe8f2c93f8e4a5ba3c6b1187cd20e1b200642bdcf051362b0c00366fca97",
+    "model_linked_external_support.csv": "3b7f03b326c7c9b1486eaa51d47c26631ca95d689574c774ba07e3e78f51739f",
+    "model_linked_lr_selection_status.csv": "1358c330bb12cb783029d4cb2c408b6ec978a0d32f960e60e7c1af64404bca88",
+    "molecular_rank_consistency.csv": "6aa5f983e30af3329ca5f8ae358be571846e296f9446831eba5adaac43ac0105"
+  }
+}
