@@ -43,7 +43,7 @@ def test_packaged_arista_local_domain_contract() -> None:
     assert data.attention_null.shape == (2, 18)
     assert data.pathway_null.shape == (160, 9)
     assert data.lr_pair_null.shape == (1062, 18)
-    assert data.manifest["manuscript_figure"] == "Supplementary Figure S43"
+    assert data.manifest["manuscript_figure"] == "Supplementary Figure S25"
     assert data.manifest["domains"]["cell_counts"] == DOMAIN_COUNTS
     assert DISPLAY_PROGRAMS[DOMAIN_ORDER[0]] == (
         "AGRN",
