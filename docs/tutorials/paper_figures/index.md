@@ -19,9 +19,9 @@ The notebooks show the command, its inputs, its outputs, and the next step.
 Saved notebook output lets you see the expected tables and figures before
 running anything yourself.
 
-The included numerical files can be redrawn for S4–S6, S25, and S31–S44.
-S25, S39, S40, and S42 also include a command that collects completed analysis
-tables before drawing the figure. S4–S6, S31–S38, and S43 do not yet convert a
+The included numerical files can be redrawn for S4–S6, S25, and S31–S46.
+S41, S42, S45, and S46 also include a command that collects completed analysis
+tables before drawing the figure. S4–S6, S25, and S31–S38 do not yet convert a
 new model run into the exact set of paper panel inputs. Their notebooks still
 show the available upstream calculations so that their inputs and outputs are
 clear.
@@ -62,20 +62,22 @@ cytobridge figure explain zebrafish-si
 - [Chicken heart, Supplementary Figures S7–S10 — run the analyses; final page assembly is separate](../dataset_workflows/chicken_heart.ipynb)
 - [MOSTA, Supplementary Figures S11–S18 — view completed pages and find their code](mosta_figures.ipynb)
 - [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
+- [ARISTA local interaction domains, Supplementary Figure S25](arista_local_domains.ipynb)
 - [AD mouse, Supplementary Figures S26–S30 — available analyses and saved pages](../dataset_workflows/admouse.ipynb)
 - [Zebrafish, Supplementary Figures S31–S38](zebrafish_si_s31_s38.ipynb)
+- [Zebrafish attention and control comparisons, Supplementary Figure S39](zebrafish_attention.ipynb)
+- [Zebrafish decomposition stability, Supplementary Figure S40](zebrafish_decomposition_stability.md)
 
 ## Additional analyses
 
 - [Classifier smoothing, Supplementary Figure S6](classifier_smoothing.ipynb)
-- [LR-complex aggregation, Supplementary Figure S25](lr_complex_aggregation.ipynb)
-- [LR-prior ablation and stVCR comparison, Supplementary Figure S39](lr_prior_ablation_stvcr.ipynb)
-- [Five-dataset benchmark, Supplementary Figure S40](loto_benchmark.ipynb)
-- [Cross-dataset benchmark summary, Supplementary Figure S41](loto_benchmark_summary.ipynb)
-- [Training histories, Supplementary Figure S42](training_histories.ipynb)
-- [ARISTA local domains, Supplementary Figure S43](arista_local_domains.ipynb)
-- [Zebrafish attention and control comparisons, Supplementary Figure S44](zebrafish_attention.ipynb)
-- Supplementary Figure S45 is the analysis-workflow schematic supplied with the manuscript.
+- [LR-complex aggregation, Supplementary Figure S41](lr_complex_aggregation.ipynb)
+- [LR-prior ablation and stVCR comparison, Supplementary Figure S42](lr_prior_ablation_stvcr.ipynb)
+- Supplementary Figure S43 compares spatial communication summaries with COMMOT, CellAgentChat, and NicheNet. Its plotting program and numerical tables are in `release_artifacts/spatial_communication_comparison_s43_20260903`.
+- [Cross-dataset benchmark summary, Supplementary Figure S44](loto_benchmark_summary.ipynb)
+- [Five-dataset benchmark, Supplementary Figure S45](loto_benchmark.ipynb)
+- [Training histories, Supplementary Figure S46](training_histories.ipynb)
+- Supplementary Figure S47 is the analysis-workflow schematic supplied with the manuscript.
 - [Training time and memory](compute_cost.ipynb)
 
 ## Videos
@@ -94,6 +96,7 @@ nonspatial_figures
 mosta_figures
 arista_figures
 zebrafish_si_s31_s38
+zebrafish_decomposition_stability
 classifier_smoothing
 lr_complex_aggregation
 lr_prior_ablation_stvcr

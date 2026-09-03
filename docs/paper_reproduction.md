@@ -35,7 +35,7 @@ The index distinguishes figures that are ready to redraw, completed pages that
 can be viewed or exported, and analyses whose final page assembly is not yet
 available. For AD S29–S30, the exact numerical inputs and plotting program for
 the current pages have not yet been matched to the archived analyses. S4–S6,
-S31–S38, and S43 can be redrawn from the included numbers, but the conversion
+S25 and S31–S38 can be redrawn from the included numbers, but the conversion
 from a newly trained model to those exact notebook inputs is not yet available.
-S25, S39, S40, and S42 include a command that collects completed analysis
+S41, S42, S45, and S46 include a command that collects completed analysis
 tables before passing them to the figure command.

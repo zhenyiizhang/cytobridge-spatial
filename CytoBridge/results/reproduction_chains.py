@@ -211,7 +211,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "lr-complex": (
         _row(
-            "S25",
+            "S41",
             "calculate both complex rules",
             "python scripts/run_lr_complex_aggregation_sensitivity.py --workflow-summary <downstream/summary.json> --output-dir <sensitivity>",
             "each dataset downstream LR trajectories and strict all-subunit coverage",
@@ -219,26 +219,26 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "merge four datasets",
         ),
         _row(
-            "S25",
+            "S41",
             "collect the four completed sensitivity tables",
             (
-                "python scripts/collect_figure_inputs.py s25 \\\n"
+                "python scripts/collect_figure_inputs.py s41 \\\n"
                 "  --dataset-result zebrafish=<zebrafish-sensitivity> \\\n"
                 "  --dataset-result mosta=<mosta-sensitivity> \\\n"
                 "  --dataset-result arista=<arista-sensitivity> \\\n"
                 "  --dataset-result chicken_heart=<chicken-heart-sensitivity> \\\n"
-                "  --output-dir <s25-inputs>"
+                "  --output-dir <s41-inputs>"
             ),
             "comparison/paired_scores.csv from each completed sensitivity run",
-            "<s25-inputs>/<dataset>/paired_scores.csv and manifest.json",
-            "draw S25",
+            "<s41-inputs>/<dataset>/paired_scores.csv and manifest.json",
+            "draw S41",
         ),
         _row(
-            "S25",
+            "S41",
             "summarize and draw",
-            "cytobridge figure lr-complex --results-dir <s25-inputs> --output-dir <figure-dir>",
-            "the collected S25 input directory",
-            "per-time and dataset summary CSVs; Supplementary_Figure_S25.pdf/.png",
+            "cytobridge figure lr-complex --results-dir <s41-inputs> --output-dir <figure-dir>",
+            "the collected S41 input directory",
+            "per-time and dataset summary CSVs; lr_complex_aggregation.pdf/.png",
             "finished figure",
         ),
     ),
@@ -312,7 +312,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "lr-prior-stvcr": (
         _row(
-            "S39a-b",
+            "S42a-b",
             "fit and evaluate Full and No-LR models",
             "scripts/run_matched_ablation_matrix.py and scripts/run_matched_ablation_benchmark_evaluation.py",
             "five manuscript aligned H5ADs; matched Full/No-LR configs; seed 42",
@@ -322,7 +322,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "source",
         ),
         _row(
-            "S39c-d",
+            "S42c-d",
             "prepare held-out benchmark inputs",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
             "the same held-out target stages and a fixed set of 5,000 starting states",
@@ -330,7 +330,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "run CytoBridge and stVCR",
         ),
         _row(
-            "S39c-d",
+            "S42c-d",
             "run held-out CytoBridge and stVCR",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> --software-root <method-checkouts> run --methods cytobridge stvcr --tracks loto --device cuda",
             "held-out inputs, fixed starting states, and the two installed methods",
@@ -338,56 +338,56 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "evaluate the predictions",
         ),
         _row(
-            "S39c-d",
+            "S42c-d",
             "evaluate held-out predictions",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> evaluate --tracks loto",
             "held-out truth and CytoBridge/stVCR predictions",
             "target-stage means and a table showing which method completed each target",
-            "pair the results for S39",
+            "pair the results for S42",
         ),
         _row(
-            "S39",
+            "S42",
             "collect the five completed LOTO target summaries",
             (
-                "python scripts/collect_figure_inputs.py s40 \\\n"
+                "python scripts/collect_figure_inputs.py s45 \\\n"
                 "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
-                "  --protocol <s40-protocol.json> \\\n"
-                "  --output-dir <s40-inputs>"
+                "  --protocol <s45-protocol.json> \\\n"
+                "  --output-dir <s45-inputs>"
             ),
             "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
-            "<s40-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            "<s45-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
             "combine the No-LR and stVCR rows",
-            "Use the protocol.json included with the S40 paper results unless the benchmark contract itself has changed.",
+            "Use the protocol.json included with the S45 paper results unless the benchmark contract itself has changed.",
         ),
         _row(
-            "S39",
+            "S42",
             "combine the matched rows",
             (
-                "python scripts/collect_figure_inputs.py s39 \\\n"
+                "python scripts/collect_figure_inputs.py s42 \\\n"
                 "  --no-lr-table <matched-ablation-report>/paired_target_deltas.csv \\\n"
-                "  --loto-results-dir <s40-inputs> \\\n"
-                "  --output-dir <s39-inputs>"
+                "  --loto-results-dir <s45-inputs> \\\n"
+                "  --output-dir <s42-inputs>"
             ),
-            "paired_target_deltas.csv from the matched Full/No-LR report and the collected S40 input directory",
-            "<s39-inputs>/no_lr_paired_target_deltas.csv; stvcr_paired_target_deltas.csv; manifest.json",
-            "draw S39",
+            "paired_target_deltas.csv from the matched Full/No-LR report and the collected S45 input directory",
+            "<s42-inputs>/no_lr_paired_target_deltas.csv; stvcr_paired_target_deltas.csv; manifest.json",
+            "draw S42",
         ),
         _row(
-            "S39",
+            "S42",
             "summarize and draw",
-            "cytobridge figure lr-prior-stvcr --results-dir <s39-inputs> --output-dir <figure-dir>",
-            "the collected S39 input directory",
+            "cytobridge figure lr-prior-stvcr --results-dir <s42-inputs> --output-dir <figure-dir>",
+            "the collected S42 input directory",
             "lr_prior_stvcr_comparison.pdf/.png and panel summaries",
             "finished figure",
         ),
     ),
     "loto-benchmark": (
         _row(
-            "S40",
+            "S45",
             "prepare held-out benchmark inputs",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
             "the same held-out target stages and fixed starting states for all methods",
@@ -395,7 +395,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "run the compared methods",
         ),
         _row(
-            "S40",
+            "S45",
             "run the compared methods",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> --software-root <method-checkouts> run --methods cytobridge stvcr stories mioflow moscot wot paste spateo linear_centroid_shift exact_ot_displacement random_independent_pairs --tracks loto --device cuda",
             "held-out inputs, fixed starting states, and installed comparison methods",
@@ -403,7 +403,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "evaluate the predictions",
         ),
         _row(
-            "S40",
+            "S45",
             "evaluate held-out predictions",
             "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> evaluate --tracks loto",
             "held-out truth and method predictions",
@@ -411,35 +411,35 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "merge the updated ARISTA and heart results",
         ),
         _row(
-            "S40",
+            "S45",
             "collect the five completed target summaries",
             (
-                "python scripts/collect_figure_inputs.py s40 \\\n"
+                "python scripts/collect_figure_inputs.py s45 \\\n"
                 "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
                 "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
-                "  --protocol <s40-protocol.json> \\\n"
-                "  --output-dir <s40-inputs>"
+                "  --protocol <s45-protocol.json> \\\n"
+                "  --output-dir <s45-inputs>"
             ),
             "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
-            "<s40-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
-            "draw S40",
-            "Use the protocol.json included with the S40 paper results unless the benchmark contract itself has changed. Replace the ARISTA or chicken-heart summary path with a retrained run to update that dataset without changing the other three.",
+            "<s45-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            "draw S45",
+            "Use the protocol.json included with the S45 paper results unless the benchmark contract itself has changed. Replace the ARISTA or chicken-heart summary path with a retrained run to update that dataset without changing the other three.",
         ),
         _row(
-            "S40",
+            "S45",
             "calculate paired ratios and draw",
-            "cytobridge figure loto-benchmark --results-dir <s40-inputs> --output-dir <figure-dir>",
-            "the collected S40 input directory",
+            "cytobridge figure loto-benchmark --results-dir <s45-inputs> --output-dir <figure-dir>",
+            "the collected S45 input directory",
             "five_dataset_loto_benchmark.pdf/.png and ratio/summary tables",
             "finished figure",
         ),
     ),
     "training-histories": (
         _row(
-            "S42",
+            "S46",
             "record training objectives",
             "cytobridge workflow --config <dataset> --step preprocess --step train --train --input-h5ad <raw.h5ad> --output-dir <run> --device cuda:0",
             "raw H5AD, full-model dataset configuration, and matching LR database",
@@ -447,7 +447,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "collect histories",
         ),
         _row(
-            "S42",
+            "S46",
             "collect the five completed histories",
             (
                 "python scripts/collect_training_history_inputs.py \\\n"
@@ -456,24 +456,24 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
                 "  --run arista=<arista-run>/training \\\n"
                 "  --run admouse=<admouse-run>/training \\\n"
                 "  --run chicken_heart=<heart-run>/training \\\n"
-                "  --output-dir <s42-inputs>"
+                "  --output-dir <s46-inputs>"
             ),
             "training_history.csv from each of the five completed runs",
-            "<s42-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
-            "draw S42",
+            "<s46-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            "draw S46",
         ),
         _row(
-            "S42",
+            "S46",
             "smooth within stage and draw",
-            "cytobridge figure training-histories --results-dir <s42-inputs> --output-dir <figure-dir>",
-            "<s42-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            "cytobridge figure training-histories --results-dir <s46-inputs> --output-dir <figure-dir>",
+            "<s46-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
             "representative_training_curves.pdf/.png and displayed stage metrics",
             "finished figure",
         ),
     ),
     "arista-local-domains": (
         _row(
-            "S43",
+            "S25",
             "run corrected ARISTA downstream",
             "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training> --output-dir <downstream>",
             "manuscript ARISTA aligned H5AD and retrained model",
@@ -481,7 +481,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "domain analysis",
         ),
         _row(
-            "S43",
+            "S25",
             "draw from the saved domain and matched-null results",
             "python scripts/results/plot_arista_local_domains.py --results-dir <domain-result-dir> --output-dir <figure-dir>",
             "ROI assignments, domain metadata, cell-type edges, and matched-null tables",
@@ -489,7 +489,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "open the notebook for the same calculation with saved output",
         ),
         _row(
-            "S43",
+            "S25",
             "run the same calculation in the notebook",
             "python scripts/execute_paper_notebooks.py --notebook arista_local_domains --output-dir <notebook-run>",
             "ROI, domain, edge and null tables",
@@ -499,17 +499,17 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "zebrafish-attention": (
         _row(
-            "S44",
+            "S39",
             "compare model scores with external methods",
             "python -m scripts.run_zebrafish_attention_analysis analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30",
             "manuscript zebrafish checkpoint; aligned cells; COMMOT/CellAgentChat outputs; fixed LR universe",
             "directed-pair concordance, expression, display-edge and interaction-sensitivity tables plus analysis_manifest.json",
-            "combine with JAM controls and draw S44",
+            "combine with JAM controls and draw S39",
             "Run this command from the root of a cloned CytoBridge GitHub repository. The installed package contains the final figure command, while this manuscript comparison script remains in the repository.",
         ),
         _row(
-            "S44",
-            "combine JAM controls and draw S44",
+            "S39",
+            "combine JAM controls and draw S39",
             "python -m scripts.run_zebrafish_attention_analysis figure --analysis-dir <attention-analysis> --jam-manifest <trained-jam>/run_manifest.json --jam-manifest <before-interaction-jam>/run_manifest.json --jam-manifest <randomized-jam>/run_manifest.json --output-dir <attention-figure>",
             "attention-analysis tables and one or more matched JAM control manifests",
             "spatial-null, JAM, summary and panel tables; vector PDF/PNG; report_manifest.json",
@@ -517,7 +517,7 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "Run this command from the same repository checkout. Repeat --jam-manifest for the trained, before-interaction, and randomized comparison results.",
         ),
         _row(
-            "S44",
+            "S39",
             "recalculate displayed statistics and draw",
             "python scripts/execute_paper_notebooks.py --notebook zebrafish_attention --output-dir <notebook-run>",
             "directed_pair_concordance.csv; JAM tables; spatial-null tables; expression and edge tables",
@@ -790,7 +790,7 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "This calculation needs files retained from the paper analysis; the standard dataset workflow does not create them.",
         ),
         _row(
-            "S43",
+            "S39",
             "Start from the paper's saved files: compare interaction scores with external methods",
             (
                 "python -m scripts.run_zebrafish_attention_analysis analyze \\\n"
@@ -799,7 +799,7 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             ),
             "paper model and aligned cells; fixed LR pairs; COMMOT and CellAgentChat result files named by the analysis specification",
             "directed-pair, expression, display-edge, and interaction-sensitivity tables",
-            "run the report command, then use the S43 notebook",
+            "run the report command, then use the S39 notebook",
             "The comparison-method files and analysis specification are archived paper inputs, not outputs of the standard workflow. Their required fields and the report command are documented in scripts/README.md.",
         ),
     ),
@@ -830,7 +830,7 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "arista": (
         _row(
-            "Main Figure 5; S19-S24; S42",
+            "Main Figure 5; S19-S25",
             "Use the ARISTA outputs from the model run above",
             "<run>/downstream",
             "the downstream directory written by the complete raw-data run",
@@ -859,13 +859,13 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "This installed command redraws the published S23-S24 results; it does not read the current <run> directory.",
         ),
         _row(
-            "S42",
+            "S25",
             "Start from the paper's saved files: redraw the local-domain figure",
             "cytobridge figure arista-local-domains --output-dir <figure-dir>",
             "saved ARISTA paper ROI, domain, edge, and null-analysis tables included with the package",
-            "local-domain panel tables and S42 PDF/PNG",
+            "local-domain panel tables and S25 PDF/PNG",
             "view the ARISTA local-domain paper notebook",
-            "This installed command redraws the published S42 result; it does not read the current <run> directory.",
+            "This installed command redraws the published S25 result; it does not read the current <run> directory.",
         ),
     ),
     "admouse": (

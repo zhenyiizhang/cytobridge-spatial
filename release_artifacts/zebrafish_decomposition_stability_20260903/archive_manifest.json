@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "figure": "Supplementary Figure S40",
+  "title": "Stability of the interaction and intrinsic-context decomposition in zebrafish",
+  "package_commit_before_archive": "b1ffafcadc976805bf5fb6cc0118c802905a4a88",
+  "training_release_commit": "e80c18a",
+  "training_conditions": 14,
+  "conditions_shown_in_figure": 13,
+  "additional_archived_condition": "ot_mass_1_to_10_seed42_cutoff1p0",
+  "code_sha256": {
+    "code/evaluate_zebrafish_decomposition_stability.py": "dad24a3c9f80e1c180401daf8325b217c0c678b4c866945a718ab85a36abd306",
+    "code/plot_zebrafish_decomposition_stability_v2.py": "08f4152c5bf59c26e378cf7fcd8cd6d147a5a1a7f89e12d6a6337ebbcf25ef84",
+    "code/prepare_zebrafish_decomposition_stability.py": "06c05ee0a0121b44c3dd4934daf406da38bc462f202012dcce5c90ae10fc134f",
+    "code/run_zebrafish_decomposition_evaluation_matrix.py": "45b4a40c3dc434ec7138ce85c1b5193e3a3e723b2d61fa4d5acb129035072a71",
+    "code/run_zebrafish_decomposition_stability.py": "a5723e37460fb37ed3c8def528fbb3c5bfb720c87fed6d918b5b58d8ea26617c",
+    "code/summarize_zebrafish_decomposition_stability.py": "22d7bf2c4c329bc812d1cd21e94544e9ed6e45c59b9d25e393fc157d8820b259",
+    "code/train_zebrafish_decomposition_stability.py": "1c91421c2716920204b5167e698232f24509e2934e32554a3b99781285910333"
+  },
+  "config_sha256": {
+    "configs/alpha_expr_005_seed42_cutoff1p0.yaml": "6a0c3eb9f4ebf8b4cd9f1fe8111597b48894c1641b27afd858b955864eb3b693",
+    "configs/formal_seed42_cutoff0p8.yaml": "20a4bc2a74032ebf8be9da3edcfdb72598ef79b743dd1e8fd2c7df3d0d55f4e4",
+    "configs/formal_seed42_cutoff1p0.yaml": "28e38423bed806185410944d08482d2d9091c93e656458bfa15c83b74ab436d5",
+    "configs/formal_seed42_cutoff1p2.yaml": "f2a0ce0929d41eab24f0cf0f99ef2b11817e6a12e891c09e01fcac369ff20172",
+    "configs/formal_seed43_cutoff0p8.yaml": "92102b31b4339680ce131985aaa86da774f26e6cb694e2f83ff0c3c636295d8d",
+    "configs/formal_seed43_cutoff1p0.yaml": "090adf94eb0bd2760a60d3abd2323c05abf29525f7b62d223c0a9ae8e1a9362b",
+    "configs/formal_seed43_cutoff1p2.yaml": "94ceb6b629767874ac7a9ea525f1a297cc79404c202fd5a6814ac6f001cc5594",
+    "configs/formal_seed44_cutoff0p8.yaml": "3a4e6904522b9ea4cc4beccfd86762f705a3bf9cbaafac8ed80a66cdd8aca7db",
+    "configs/formal_seed44_cutoff1p0.yaml": "92a96b327cfc6ba6300cbea39e2260507e1ca6352fbfc6ccfda1b5e2fba8fc12",
+    "configs/formal_seed44_cutoff1p2.yaml": "386202e52347ed39e002e53ef6d0eba2f8f7ffc9eb9bc93aba75738059533e76",
+    "configs/formal_seed46_cutoff1p0.yaml": "61e828c23b733b0f62f21f53d6c49424c42d776229774a7a9105baa3818e6645",
+    "configs/formal_seed47_cutoff1p0.yaml": "5696178d029beaaa3b90e49b25bfd92e6d451e04bf7a8f9009a2c3c2304759b1",
+    "configs/ot_mass_10_to_1_seed42_cutoff1p0.yaml": "6369c5ca543f57f1cfdbd331f96bd8b866d521fe597112f4a195a292a1013e67",
+    "configs/ot_mass_1_to_10_seed42_cutoff1p0.yaml": "e621360b6329e065c6b78fb647f4440100d525bf9c120ca2ccd2c7191855b0b2"
+  },
+  "panel_data_sha256": {
+    "panel_data_final/analysis_summary.json": "749ce77002562062264c83a3f684099ba0bcc429e224d08b3f25a882aae10f7d",
+    "panel_data_final/distribution_w1_summary.csv": "10ed3c88c7fb83f2d5109022432c101946d6f0c265da554a9fddc94783e39885",
+    "panel_data_final/interaction_fraction_by_time.csv": "54cfd11957512f5b47f082855b44f375670da52ac7eb4bad4671acd6a0a85b66",
+    "panel_data_final/model_setting_component_agreement.csv": "d58ed94650f85a4023e4406469a2323937cd47e3be2898ee373c15b7dd0fb3b5",
+    "panel_data_final/model_setting_directed_pair_agreement.csv": "8b52618d38f9ffaf23f056c6c084ad7c370a65dd5a283151271ce20e93d46696",
+    "panel_data_final/reference_top_directed_pair_percentiles.csv": "c7199d1b0179ba9e5b69fe729284be8ee389d0d1b3dea3463267039a239e1fe4",
+    "panel_data_final/training_seed_component_agreement.csv": "9995f11d90954b5e265d7b100cc7928001c33d47737c674985520be183b0c938",
+    "panel_data_final/training_seed_directed_pair_agreement.csv": "587b4032b04f7060950bcfe74868734ee8726a992af8bb088ee8deea318a9703"
+  },
+  "figure_sha256": {
+    "figure/zebrafish_decomposition_stability_a4.pdf": "1b3bb9329b395959752e830ae25eada17c771d9726f85facdf5aa710dcd798ec",
+    "figure/zebrafish_decomposition_stability_a4.png": "d7255f3794c1e33a00fd02a50bea11fa71efe70eacbca4160adf084e7b907b3c"
+  },
+  "provenance_sha256": {
+    "provenance/analysis_design.md": "c271bba0523e2aa899bb96f486f52a835b270262092214cc5a0fcb75198da6a9",
+    "provenance/final_manifest_v6.md": "80d51740de496313859f79f8337f751dd4d1c514ea9abc2bc41badc7d9845fd6"
+  },
+  "experiment_plan_sha256": "66471eadf1cbed7a3a425e05cabfa09f16b2403aefdfe61982bffe6f486528b1",
+  "caption_sha256": "0f93c7fb1178c8f1388fa83a9ed21c93b0a0418685921404162b6e064a528f21"
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce Supplementary Figure S46 from its archived source tables."""
+"""Reproduce Supplementary Figure S43 from its archived source tables."""
 
 from __future__ import annotations
 
@@ -267,8 +267,8 @@ def plot_figure(panel_data_dir: Path, output_dir: Path) -> tuple[Path, Path]:
     draw_target_table(fig.add_subplot(outer[5]), chains)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    pdf = output_dir / "spatial_communication_comparison_s46.pdf"
-    png = output_dir / "spatial_communication_comparison_s46.png"
+    pdf = output_dir / "spatial_communication_comparison_s43.pdf"
+    png = output_dir / "spatial_communication_comparison_s43.png"
     fig.savefig(pdf, facecolor="white")
     fig.savefig(png, dpi=320, facecolor="white")
     plt.close(fig)

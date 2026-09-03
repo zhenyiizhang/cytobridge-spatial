@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare result directories read by the S25, S39, and S40 figure commands.
+"""Prepare result directories read by the S41, S42, and S45 figure commands.
 
 The calculations that produce the source tables remain in their original
 workflows.  This script only selects, checks, and copies those completed
@@ -145,7 +145,7 @@ def _write_manifest(
 
 
 def collect_s25(dataset_results: dict[str, Path], output_dir: Path) -> Path:
-    """Collect the four paired LR-complex score tables used by S25."""
+    """Collect the four paired LR-complex score tables used by S41."""
 
     output, staging = _new_staging_dir(output_dir)
     sources: list[dict[str, object]] = []
@@ -175,7 +175,7 @@ def collect_s25(dataset_results: dict[str, Path], output_dir: Path) -> Path:
         _write_manifest(
             staging,
             analysis="lr_complex_aggregation",
-            paper_location="Supplementary Figure S25",
+            paper_location="Supplementary Figure S41",
             sources=sources,
             descriptions=descriptions,
         )
@@ -243,7 +243,7 @@ def _normalize_loto_summary(
     result = result.loc[result["method"].notna()].copy()
     result = result.loc[result["status"].astype(str).eq("evaluated")].copy()
     if result.empty:
-        raise ValueError(f"{source} has no evaluated methods used by S40")
+        raise ValueError(f"{source} has no evaluated methods used by S45")
     if "dataset" in result:
         result["dataset"] = dataset
     else:
@@ -382,13 +382,13 @@ def _build_loto_tables(
 def collect_s40(
     dataset_summaries: dict[str, Path], protocol_path: Path, output_dir: Path
 ) -> Path:
-    """Collect five completed LOTO summaries into the S40 input directory."""
+    """Collect five completed LOTO summaries into the S45 input directory."""
 
     protocol_path = protocol_path.expanduser().resolve()
     protocol = _read_protocol(protocol_path)
     output, staging = _new_staging_dir(output_dir)
     sources = [
-        _source_record(protocol_path, label="S40 protocol"),
+        _source_record(protocol_path, label="S45 protocol"),
         *[
             {
                 **_source_record(
@@ -407,12 +407,12 @@ def collect_s40(
         shutil.copyfile(protocol_path, staging / "protocol.json")
 
         # This applies the same dataset, target, method, space, projection, and
-        # native-support checks used by the public S40 plotting command.
+        # native-support checks used by the public S45 plotting command.
         load_loto_benchmark(staging)
         _write_manifest(
             staging,
             analysis="loto_benchmark",
-            paper_location="Supplementary Figure S40",
+            paper_location="Supplementary Figure S45",
             sources=sources,
             descriptions={
                 "loto_target_stage_means.csv": (
@@ -436,15 +436,15 @@ def collect_s40_tables(
     protocol_path: Path,
     output_dir: Path,
 ) -> Path:
-    """Copy an already assembled, completed S40 table set after validation."""
+    """Copy an already assembled, completed S45 table set after validation."""
 
     target_means_path = target_means_path.expanduser().resolve()
     native_support_path = native_support_path.expanduser().resolve()
     protocol_path = protocol_path.expanduser().resolve()
     sources = [
-        _source_record(target_means_path, label="S40 target-stage means"),
-        _source_record(native_support_path, label="S40 native output support"),
-        _source_record(protocol_path, label="S40 protocol"),
+        _source_record(target_means_path, label="S45 target-stage means"),
+        _source_record(native_support_path, label="S45 native output support"),
+        _source_record(protocol_path, label="S45 protocol"),
     ]
     protocol = _read_protocol(protocol_path)
     output, staging = _new_staging_dir(output_dir)
@@ -472,7 +472,7 @@ def collect_s40_tables(
         _write_manifest(
             staging,
             analysis="loto_benchmark",
-            paper_location="Supplementary Figure S40",
+            paper_location="Supplementary Figure S45",
             sources=sources,
             descriptions={
                 "loto_target_stage_means.csv": (
@@ -523,7 +523,7 @@ def _build_stvcr_rows(loto_dir: Path) -> pd.DataFrame:
         values="sliced_w2",
     ).reset_index()
     if wide[["CytoBridge-0.015", "stvcr"]].isna().any().any():
-        raise ValueError("S40 inputs do not contain a matched CytoBridge/stVCR pair")
+        raise ValueError("S45 inputs do not contain a matched CytoBridge/stVCR pair")
     result = wide.rename(columns={"stvcr": "stVCR"})
     result["stvcr_minus_cytobridge"] = result["stVCR"] - result["CytoBridge-0.015"]
     result["stvcr_relative_to_cytobridge"] = (
@@ -543,7 +543,7 @@ def _build_stvcr_rows(loto_dir: Path) -> pd.DataFrame:
 
 
 def collect_s39(no_lr_table: Path, loto_dir: Path, output_dir: Path) -> Path:
-    """Combine a matched No-LR report and S40 inputs for the S39 figure."""
+    """Combine a matched No-LR report and S45 inputs for the S42 figure."""
 
     no_lr_table = no_lr_table.expanduser().resolve()
     loto_dir = loto_dir.expanduser().resolve()
@@ -554,7 +554,7 @@ def collect_s39(no_lr_table: Path, loto_dir: Path, output_dir: Path) -> Path:
         "native_output_support.csv",
         "protocol.json",
     ):
-        loto_sources.append(_source_record(loto_dir / name, label=f"S40 {name}"))
+        loto_sources.append(_source_record(loto_dir / name, label=f"S45 {name}"))
     output, staging = _new_staging_dir(output_dir)
     try:
         no_lr = _select_no_lr_rows(no_lr_table)
@@ -566,7 +566,7 @@ def collect_s39(no_lr_table: Path, loto_dir: Path, output_dir: Path) -> Path:
         _write_manifest(
             staging,
             analysis="interaction_evidence",
-            paper_location="Supplementary Figure S39",
+            paper_location="Supplementary Figure S42",
             sources=[no_lr_record, *loto_sources],
             descriptions={
                 "no_lr_paired_target_deltas.csv": (
@@ -588,7 +588,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     s25 = commands.add_parser(
-        "s25",
+        "s41",
         help="collect four completed LR-complex sensitivity tables",
     )
     s25.add_argument(
@@ -605,20 +605,20 @@ def build_parser() -> argparse.ArgumentParser:
     s25.add_argument("--output-dir", type=Path, required=True)
 
     s39 = commands.add_parser(
-        "s39",
-        help="combine the matched No-LR table with the completed S40 inputs",
+        "s42",
+        help="combine the matched No-LR table with the completed S45 inputs",
     )
     s39.add_argument("--no-lr-table", type=Path, required=True)
     s39.add_argument(
         "--loto-results-dir",
         type=Path,
         required=True,
-        help="the directory prepared by this script's s40 command",
+        help="the directory prepared by this script's s45 command",
     )
     s39.add_argument("--output-dir", type=Path, required=True)
 
     s40 = commands.add_parser(
-        "s40",
+        "s45",
         help="collect the five completed per-dataset LOTO target summaries",
     )
     s40.add_argument(
@@ -646,16 +646,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    legacy_commands = {"s25": "s41", "s39": "s42", "s40": "s45"}
+    if raw_args and raw_args[0] in legacy_commands:
+        raw_args[0] = legacy_commands[raw_args[0]]
+    args = build_parser().parse_args(raw_args)
     try:
-        if args.command == "s25":
+        if args.command == "s41":
             inputs = _parse_assignments(
                 args.dataset_result,
                 expected=LR_COMPLEX_DATASETS,
                 option="--dataset-result",
             )
             output = collect_s25(inputs, args.output_dir)
-        elif args.command == "s39":
+        elif args.command == "s42":
             output = collect_s39(
                 args.no_lr_table,
                 args.loto_results_dir,
@@ -677,7 +681,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 if args.target_means is None or args.native_support is None:
                     raise ValueError(
-                        "s40 requires five --dataset-summary values or both "
+                        "s45 requires five --dataset-summary values or both "
                         "--target-means and --native-support"
                     )
                 output = collect_s40_tables(

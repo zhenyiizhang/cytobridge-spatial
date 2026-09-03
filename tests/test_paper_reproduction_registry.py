@@ -107,25 +107,27 @@ def test_registry_states_what_each_entry_can_do() -> None:
         "Supplementary Figure S4",
         "Supplementary Figure S5",
         "Supplementary Figure S6",
+        "Supplementary Figure S25",
         "Supplementary Figure S31",
-        "Supplementary Figure S43",
     ):
         assert "missing-new-run-assembly" in by_location[location]["availability"]
 
+    assert by_location["Supplementary Figure S43"]["availability"] == "ready-to-redraw"
+
     for location in (
-        "Supplementary Figure S25",
-        "Supplementary Figure S39",
-        "Supplementary Figure S40",
+        "Supplementary Figure S41",
+        "Supplementary Figure S42",
+        "Supplementary Figure S45",
     ):
         assert "new-run collector available" in by_location[location]["availability"]
 
     assert (
-        by_location["Supplementary Figure S42"]["availability"]
-        == "ready-to-redraw"
+        by_location["Supplementary Figure S40"]["reproduction_mode"]
+        == "redraw included numbers + full new-run calculation"
     )
     assert (
-        by_location["Supplementary Figure S41"]["availability"]
-        == "ready-to-redraw"
+        by_location["Supplementary Figure S40"]["availability"]
+        == "ready-to-redraw; complete formal analysis code"
     )
     assert (
         by_location["Supplementary Figure S29"]["availability"]

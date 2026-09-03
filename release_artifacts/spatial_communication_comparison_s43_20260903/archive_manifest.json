@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "figure": "Supplementary Figure S46",
+  "figure": "Supplementary Figure S43",
   "title": "Cross-method comparison of CytoBridge interaction summaries",
   "package_commit_before_archive": "c4d188d85c3689042157be9204a0aa94b327a159",
   "plotting_script": {
-    "path": "scripts/paper_figures/plot_s46_spatial_communication_comparison.py",
-    "sha256": "57434d0daf26cbf660c7ba4f183297c99af42c580ea793a7c4944475a7b9539e"
+    "path": "scripts/paper_figures/plot_s43_spatial_communication_comparison.py",
+    "sha256": "5688cd9c4779999acf1ff9705f11ac84c1881055044380b661790d0c1a9f46a6"
   },
   "figure_pdf": {
-    "path": "figure/spatial_communication_comparison_s46.pdf",
+    "path": "figure/spatial_communication_comparison_s43.pdf",
     "sha256": "7388a4ae512b26329ec2f6924e6abe5c875f0aa4a5a46f29e4bdab4f900a54cd"
   },
   "figure_png": {
-    "path": "figure/spatial_communication_comparison_s46.png",
+    "path": "figure/spatial_communication_comparison_s43.png",
     "sha256": "0528d7e337f8963970c8db73b613c532dca5b644b2439df0dca6ef9f7c13a6e3"
   },
   "panel_data_sha256": {

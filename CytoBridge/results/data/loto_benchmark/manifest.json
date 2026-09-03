@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "analysis": "loto_benchmark",
-  "manuscript_figure": "Supplementary Figure S40",
+  "manuscript_figure": "Supplementary Figure S45",
   "files": {
     "loto_target_stage_means.csv": "target-level Sliced-W2 means across five projection repeats",
     "native_output_support.csv": "table showing which method produced each prediction",

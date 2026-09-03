@@ -1,4 +1,4 @@
-# Supplementary Figure S46
+# Supplementary Figure S43
 
 This directory contains the source tables and final artwork for the cross-method comparison of CytoBridge interaction summaries with COMMOT, CellAgentChat, and NicheNet.
 
@@ -7,9 +7,9 @@ This directory contains the source tables and final artwork for the cross-method
 From the repository root, run:
 
 ```bash
-python scripts/paper_figures/plot_s46_spatial_communication_comparison.py \
-  --panel-data-dir release_artifacts/spatial_communication_comparison_s46_20260903/panel_data \
-  --output-dir output/s46_spatial_communication_comparison
+python scripts/paper_figures/plot_s43_spatial_communication_comparison.py \
+  --panel-data-dir release_artifacts/spatial_communication_comparison_s43_20260903/panel_data \
+  --output-dir output/s43_spatial_communication_comparison
 ```
 
 The command reads the archived CSV tables and draws a new vector PDF and 320-dpi PNG. It does not read or re-export the archived figure.
@@ -29,4 +29,3 @@ The compact tables used for plotting are:
 CellAgentChat is evaluated with the frozen shared-database proxy used in the revision analysis. The zebrafish NicheNet row uses a strict one-to-one Ensembl mapping to the mouse prior and is reported as a cross-species sensitivity analysis.
 
 The accepted input manifests and implementation hashes are recorded in `source_record.md`. The compact plotting inputs are included here so that the published figure can be rebuilt without the original training outputs.
-
