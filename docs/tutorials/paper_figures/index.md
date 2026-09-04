@@ -75,6 +75,7 @@ cytobridge figure explain zebrafish-si
 - [LR-prior ablation and stVCR comparison, Supplementary Figure S42](lr_prior_ablation_stvcr.ipynb)
 - Supplementary Figure S43 compares spatial communication summaries with COMMOT, CellAgentChat, and NicheNet. Its plotting program and numerical tables are in `release_artifacts/spatial_communication_comparison_s43_20260903`.
 - [Cross-dataset benchmark summary, Supplementary Figure S44](loto_benchmark_summary.ipynb)
+- [Run the SpaTrack comparison used in S44](spatrack_benchmark.md)
 - [Five-dataset benchmark, Supplementary Figure S45](loto_benchmark.ipynb)
 - [Training histories, Supplementary Figure S46](training_histories.ipynb)
 - Supplementary Figure S47 is the analysis-workflow schematic supplied with the manuscript.
@@ -98,6 +99,7 @@ arista_figures
 zebrafish_si_s31_s38
 zebrafish_decomposition_stability
 classifier_smoothing
+spatrack_benchmark
 lr_complex_aggregation
 lr_prior_ablation_stvcr
 loto_benchmark
