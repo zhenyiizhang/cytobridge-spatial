@@ -51,4 +51,4 @@ cytobridge figure interaction-ablation --output-dir outputs/s42_published
 
 This command recalculates the projection means, paired error ratios, target summaries, and error bars. It does not load a pre-rendered figure. The plotting API is `CytoBridge.results.interaction_ablation`.
 
-The exact accepted model paths and configurations are recorded in `CytoBridge/results/data/interaction_ablation/inference_run_manifests.json`. The experiment used package commit `61f0b550678ed75e706638ceb7638a0818b7e033`. The three inference seeds quantify prediction variability for the same fitted checkpoint, not independent training or biological replicates.
+The model run names, checkpoint filenames, and configurations are recorded in `CytoBridge/results/data/interaction_ablation/inference_run_manifests.json`. Paths in this record are relative to the original project directory. For your own runs, use the model and input paths written by your dataset workflow. The experiment used package commit `61f0b550678ed75e706638ceb7638a0818b7e033`. The three inference seeds quantify prediction variability for the same fitted checkpoint, not independent training or biological replicates.

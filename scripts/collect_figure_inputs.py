@@ -599,6 +599,13 @@ def collect_interaction_ablation(no_lr_table: Path, inference_dir: Path, output_
         if record["protocol"]["inference_seeds"] != [42, 43, 44]:
             raise ValueError(f"Expected inference seeds 42, 43, and 44 in {directory}")
         frame = pd.read_csv(directory / "metrics.csv")
+        if "projection_sha256" in frame.columns:
+            if "projection_id" in frame.columns:
+                if not frame["projection_id"].eq(frame["projection_sha256"]).all():
+                    raise ValueError(f"Conflicting projection identifiers in {directory}")
+                frame = frame.drop(columns="projection_sha256")
+            else:
+                frame = frame.rename(columns={"projection_sha256": "projection_id"})
         if set(frame.dataset) != {dataset}:
             raise ValueError(f"Unexpected dataset in {directory / 'metrics.csv'}")
         frames.append(frame)

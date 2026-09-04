@@ -8,8 +8,8 @@
   "inference_seeds": [42, 43, 44],
   "growth": "Continuous unnormalized particle weights, without resampling.",
   "intervention": "Entire interaction-network output set to zero. Intrinsic-drift, growth and score networks unchanged.",
-  "no_lr_source": "Accepted no_lr_paired_target_deltas.csv from s39_interaction_evidence_black_text_20260902_v1, with refreshed ARISTA and chicken-heart inputs.",
-  "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2",
+  "no_lr_source": "no_lr_paired_target_deltas.csv from the matched Full/No-LR-prior comparison, including the retrained ARISTA and chicken-heart models.",
+  "inference_source": "runs/interaction-inference-ablation-20260904-r2",
   "inference_package_commit": "61f0b550678ed75e706638ceb7638a0818b7e033",
   "checkpoint_records": "inference_run_manifests.json",
   "plotting_command": "cytobridge figure interaction-ablation --output-dir outputs/interaction_ablation"

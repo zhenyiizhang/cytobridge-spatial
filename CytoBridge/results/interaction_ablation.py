@@ -32,7 +32,7 @@ class InteractionAblationResults:
 def pair_inference_errors(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Average projections, form paired seed ratios, then average the seeds."""
     keys = ["dataset", "inference_seed", "target", "space", "arm", "projection_repeat"]
-    required = set(keys + ["sliced_w2", "projection_sha256", "n_projections"])
+    required = set(keys + ["sliced_w2", "projection_id", "n_projections"])
     if not required.issubset(raw.columns):
         raise ValueError(f"Missing metric columns: {sorted(required - set(raw.columns))}")
     expected = {
@@ -49,8 +49,8 @@ def pair_inference_errors(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame
         raise ValueError("Sliced-W2 values must be finite and positive")
     if not raw["n_projections"].eq(1024).all():
         raise ValueError("Expected 1,024 projection directions per repeat")
-    basis = raw.groupby(["dataset", "target", "space", "projection_repeat"])["projection_sha256"]
-    if raw["projection_sha256"].isna().any() or not basis.nunique().eq(1).all():
+    basis = raw.groupby(["dataset", "target", "space", "projection_repeat"])["projection_id"]
+    if raw["projection_id"].isna().any() or not basis.nunique().eq(1).all():
         raise ValueError("Projection directions differ between paired arms or seeds")
     means = raw.groupby(keys[:5], as_index=False)["sliced_w2"].mean()
     paired = means.pivot(index=keys[:4], columns="arm", values="sliced_w2").reset_index()

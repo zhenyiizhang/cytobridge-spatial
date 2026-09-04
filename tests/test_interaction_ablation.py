@@ -46,12 +46,13 @@ def test_incomplete_pairs_are_rejected():
     with pytest.raises(ValueError, match="both arms"):
         pair_inference_errors(raw.iloc[1:])
     changed = raw.copy()
-    changed.loc[0, "projection_sha256"] = "different"
+    changed.loc[0, "projection_id"] = "different"
     with pytest.raises(ValueError, match="Projection directions"):
         pair_inference_errors(changed)
 
 
-def test_collect_new_inference_runs(tmp_path):
+@pytest.mark.parametrize("projection_column", ["projection_id", "projection_sha256"])
+def test_collect_new_inference_runs(tmp_path, projection_column):
     result = load_interaction_ablation_results()
     records = json.loads((result.source_dir / "inference_run_manifests.json").read_text())
     run_root = tmp_path / "runs"
@@ -59,7 +60,8 @@ def test_collect_new_inference_runs(tmp_path):
         directory = run_root / record["dataset"]
         directory.mkdir(parents=True)
         (directory / "manifest.json").write_text(json.dumps(record))
-        result.inference_metrics.query("dataset == @record['dataset']").to_csv(directory / "metrics.csv", index=False)
+        frame = result.inference_metrics.query("dataset == @record['dataset']")
+        frame.rename(columns={"projection_id": projection_column}).to_csv(directory / "metrics.csv", index=False)
     collected = collect_interaction_ablation(result.source_dir / "no_lr_paired_target_deltas.csv", run_root, tmp_path / "collected")
     observed = load_interaction_ablation_results(collected)
     pd.testing.assert_frame_equal(observed.interaction, result.interaction, check_dtype=False)
