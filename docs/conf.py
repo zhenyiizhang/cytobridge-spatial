@@ -84,6 +84,7 @@ exclude_patterns = [
     "historical_artifact_compatibility.md",
     "limitations.md",
     "release_notes.md",
+    "tutorials/paper_figures/lr_prior_ablation_stvcr.ipynb",
     "scientific_contract.md",
     "zebrafish_clean_counts_workflow.md",
 ]

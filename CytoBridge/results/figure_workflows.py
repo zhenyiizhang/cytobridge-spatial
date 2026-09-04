@@ -99,16 +99,28 @@ FIGURE_WORKFLOWS = (
         "Redraws S31-S38 from the included result tables. The preceding command creates the full zebrafish analysis used to prepare those tables.",
     ),
     FigureWorkflow(
-        "lr-prior-stvcr",
+        "interaction-ablation",
         "Supplementary Figure S42",
+        "numeric-redraw",
+        True,
+        "Draw the LR-prior and inference-time interaction ablations.",
+        "Matched Full/No-LR errors and projection-level interaction-on/off errors.",
+        "scripts/paper_figures/interaction_ablation/run_comparison.py",
+        "python scripts/paper_figures/interaction_ablation/run_comparison.py --dataset arista --model-dir <run>/training --input-manifest <benchmark-run>/arista/inputs/manifest.json --code-root . --output <inference-results>/arista --seeds 42 43 44 --device cuda:0",
+        "cytobridge figure interaction-ablation --output-dir outputs/interaction_ablation",
+        "Recalculates S42 from included numerical results. Use the notebook commands to evaluate another set of fitted models.",
+    ),
+    FigureWorkflow(
+        "lr-prior-stvcr",
+        "Earlier LR-prior and stVCR comparison",
         "numeric-redraw",
         True,
         "Summarize the matched No-LR and stVCR results and draw the figure.",
         "Included paired target-level error tables.",
         "scripts/collect_figure_inputs.py",
-        "python scripts/collect_figure_inputs.py s42 --no-lr-table <matched-ablation-report>/paired_target_deltas.csv --loto-results-dir <s45-inputs> --output-dir <s42-inputs>",
+        "python scripts/collect_figure_inputs.py lr-prior-stvcr --no-lr-table <matched-ablation-report>/paired_target_deltas.csv --loto-results-dir <s45-inputs> --output-dir <comparison-inputs>",
         "cytobridge figure lr-prior-stvcr --results-dir <s42-inputs> --output-dir outputs/lr_prior_stvcr",
-        "Redraws S42 from the completed matched-ablation report and completed LOTO summaries.",
+        "Reproduces the earlier comparison. Current S42 uses the interaction-ablation command.",
     ),
     FigureWorkflow(
         "loto-benchmark",
@@ -482,6 +494,15 @@ def _run_lr_complex(results_dir: Path | None, output: Path) -> dict[str, object]
     )
 
 
+def _run_interaction_ablation(results_dir: Path | None, output: Path) -> dict[str, object]:
+    from .interaction_ablation import (
+        load_interaction_ablation_results, plot_interaction_ablation,
+        write_interaction_ablation_tables,
+    )
+    return _standard_run(results_dir, output, loader=load_interaction_ablation_results,
+                         table_writer=write_interaction_ablation_tables, plotter=plot_interaction_ablation)
+
+
 def _run_lr_prior_stvcr(results_dir: Path | None, output: Path) -> dict[str, object]:
     from .interaction_evidence import (
         load_lr_prior_stvcr_results,
@@ -554,6 +575,7 @@ _RUNNERS = {
     "arista-lr": _run_arista_lr,
     "classifier-smoothing": _run_classifier,
     "compute-cost": _run_compute_cost,
+    "interaction-ablation": _run_interaction_ablation,
     "lr-prior-stvcr": _run_lr_prior_stvcr,
     "loto-benchmark": _run_loto,
     "lr-complex": _run_lr_complex,

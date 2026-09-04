@@ -95,8 +95,8 @@ TUTORIALS = (
         "admouse_raw.h5ad",
         (
             (
-                "LR-prior ablation and stVCR comparison",
-                "lr_prior_ablation_stvcr.ipynb",
+                "LR-prior and interaction ablations",
+                "interaction_ablation.ipynb",
                 "lr-prior-stvcr",
             ),
             ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),
@@ -113,8 +113,8 @@ TUTORIALS = (
         "chicken_heart_raw.h5ad",
         (
             (
-                "LR-prior ablation and stVCR comparison",
-                "lr_prior_ablation_stvcr.ipynb",
+                "LR-prior and interaction ablations",
+                "interaction_ablation.ipynb",
                 "lr-prior-stvcr",
             ),
             ("Five-dataset benchmark", "loto_benchmark.ipynb", "loto-benchmark"),

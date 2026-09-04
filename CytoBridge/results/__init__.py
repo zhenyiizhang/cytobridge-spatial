@@ -66,6 +66,13 @@ from .reproduction_chains import (
     describe_figure_steps,
     describe_figure_reproduction_chain,
 )
+from .interaction_ablation import (
+    InteractionAblationResults,
+    load_interaction_ablation_results,
+    interaction_ablation_statistics,
+    plot_interaction_ablation,
+    write_interaction_ablation_tables,
+)
 from .interaction_evidence import (
     InteractionEvidenceResults,
     LRPriorStVCRResults,

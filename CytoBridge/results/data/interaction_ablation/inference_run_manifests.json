@@ -1,0 +1,716 @@
+[
+  {
+    "status": "complete",
+    "dataset": "zebrafish",
+    "created_at": "2026-09-04T05:50:17.779891+00:00",
+    "model_dir": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/training_run_summary.json",
+      "sha256": "4bc56b9d74b3effc38ae63c1d2f32d7ec989a313ad45a0e8b8b279f590bec21f"
+    },
+    "checkpoints": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Finetune/best_model.pth",
+        "sha256": "c651666c65570357e7f63f81fe63981a43ae2c06736e22420dabfb77b98bb824"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Init_interaction/best_model.pth",
+        "sha256": "6bd56eddca5be034fa4f1cb16153debe34bb8c48e1e77201c045c4cc16ccb7e3"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Pretrain/best_model.pth",
+        "sha256": "30bbaffb6b4f7e99770ebf88c4bc2269ab2c9dd41681400e792fc42278f88c67"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Refine/best_model.pth",
+        "sha256": "dde8e6832763eb565f7b2e4b231074380a6cb1448c2731d462d6ee7c3f0d89d9"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Score_Refine/score_model.pth",
+        "sha256": "e5614be9fd6a6ffdd781682882fd1c99453bf304c2c15b2b420d2b8b0a6c6bd7"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Train_Score/score_model.pth",
+        "sha256": "5c34fe239c15411e6b8112933231d2833f92e41ca68048995b4c08f2e15cd5a4"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/manifest.json",
+        "sha256": "3b9335b83452097eabdef6922f88bba547208228e60a4dfe825e23ec48f5caf7",
+        "size": 88187
+      },
+      "training_reference": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/training_reference.npz",
+        "sha256": "52599f97d87908dab4aed5794f44e93e062d39f39906ea7d48af907cc8a4a12f",
+        "size": 2388873
+      },
+      "source_roster": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/source_roster.npz",
+        "sha256": "41c4521f8e0ab69ed1f355c260fa867f1d0c9808e8da6596c580569a1bf75298",
+        "size": 747747
+      },
+      "truth": {
+        "1.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t1.npz",
+          "sha256": "522ab57665740ad54b466e010721c071970f2998edc9b53c8cd249c73eaae7c0",
+          "size": 206245
+        },
+        "2.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t2.npz",
+          "sha256": "331f18d513f2de98a33c4efd14f694459fafa7852cdb3b290daa48094f637eb3",
+          "size": 413471
+        },
+        "3.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t3.npz",
+          "sha256": "c795df071777c00e27d5699f1304b110f65cace3e067b06ad5ec15b46f16347f",
+          "size": 606418
+        },
+        "4.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t4.npz",
+          "sha256": "9508b9554d1af4d778707cb53a141de6eace28b3a8e130b702bad24ef91f0ac1",
+          "size": 1050880
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/run_comparison.py",
+      "sha256": "47d42d182c80f508134557dcdaa95e2e1e8e23d60beae7ba1f2d46881a2c0126"
+    },
+    "upstream_runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py",
+      "sha256": "ec9af3a797da67fcac62e22a25b2406faf2d05005c5c292d4452d9f021e8339c"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py",
+      "sha256": "aaef8ff173758f2f484cfcf799efab182e98199c1075295bd5cb74c20b5ca0d4"
+    },
+    "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "0",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_44",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      }
+    ],
+    "metrics": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/results/zebrafish/metrics.csv",
+      "sha256": "84018e7666713454d8d46d8cbcbd854dd5bad99da2877c0497f504f80c5cc93b"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "mosta",
+    "created_at": "2026-09-04T05:52:56.918579+00:00",
+    "model_dir": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/training_run_summary.json",
+      "sha256": "d0ca0e163c3164b0059c402246ff8ba56fc8baf6a6bdf91043f607ffa50cc401"
+    },
+    "checkpoints": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Finetune/best_model.pth",
+        "sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Init_interaction/best_model.pth",
+        "sha256": "d8f82d2e9269f0212b03f8133d1869951771ea12474ca9a253e93c708d7853ce"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Pretrain/best_model.pth",
+        "sha256": "cade8b1c9e15055da9e0ee9a4ea7546b59641c76b51cee87da6a0fdcb65debc1"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Refine/best_model.pth",
+        "sha256": "f6ef0186a8dcb18da8bf00b1d48ccd400fcbc626c2cb8e7ffe18081c2df56826"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Score_Refine/score_model.pth",
+        "sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Train_Score/score_model.pth",
+        "sha256": "52a9be5fd96c7c0f60fefa00ef0bbfd2b663119cb02dbab6728be621a7f57a6c"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/manifest.json",
+        "sha256": "cfcae1667edc50b99ac4906ca1260140324279e36c281bdae86b6fba0ff968d9",
+        "size": 87023
+      },
+      "training_reference": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/training_reference.npz",
+        "sha256": "39be6c76a6e4f634e1f2a8baac360d59cf76d720ce9ff12149f145eb25512f74",
+        "size": 67702045
+      },
+      "source_roster": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/source_roster.npz",
+        "sha256": "33a8e981b2320b16275ff7479da092928d9c2a0e580f612d5156d211c9a0818b",
+        "size": 817832
+      },
+      "truth": {
+        "1.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t1.npz",
+          "sha256": "a8a158dea0800f4a42a00fe01ee2912105c587497cbd40a5430c0ce2ed62ad89",
+          "size": 15188906
+        },
+        "2.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t2.npz",
+          "sha256": "2500e80344a9409246e49a1b0d95898c0110f8740c3759153f59901a97896275",
+          "size": 20158831
+        },
+        "3.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t3.npz",
+          "sha256": "4d5d8e3eef09257f427465772af34070aa06130f5ed2c2fffde7cff740a5f229",
+          "size": 22259501
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/run_comparison.py",
+      "sha256": "47d42d182c80f508134557dcdaa95e2e1e8e23d60beae7ba1f2d46881a2c0126"
+    },
+    "upstream_runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py",
+      "sha256": "ec9af3a797da67fcac62e22a25b2406faf2d05005c5c292d4452d9f021e8339c"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py",
+      "sha256": "aaef8ff173758f2f484cfcf799efab182e98199c1075295bd5cb74c20b5ca0d4"
+    },
+    "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "1",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 43,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/results/mosta/metrics.csv",
+      "sha256": "94d608e5c9d759d619c9436843b068c0a9d59744ede4ad412306977ef3a30ba8"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "arista",
+    "created_at": "2026-09-04T05:50:32.354051+00:00",
+    "model_dir": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/training_run_summary.json",
+      "sha256": "2782245a7ce2dad756f89e0eba19b2642e5e6d4610f9b4269661432e801f7bde"
+    },
+    "checkpoints": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Finetune/best_model.pth",
+        "sha256": "7977d02e91fe7880768782ac053ba8269e6bf74c72c9d4cb7cfe4a4a8876eb79"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Init_interaction/best_model.pth",
+        "sha256": "e5e2096a12c079d76b631c39b9cdd9bbc2627df15f6943a1bdd1c256dc6dca1c"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Pretrain/best_model.pth",
+        "sha256": "e8e9443846ed935db0243f0196c9fb1f39d58a44d0c8498339f39765ba3b9a9c"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Refine/best_model.pth",
+        "sha256": "c298706a4e2be1ca636cb040597f47d670c1ede9a774cf71b08849dafabc7b49"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Score_Refine/score_model.pth",
+        "sha256": "142f641838f8dd7e410ae3e570c310fb598145e077422aea8911004c3cac9f37"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Train_Score/score_model.pth",
+        "sha256": "ac0605fd981149dc8df13cb7a6908fe4f948aa35bce6889661c1e7feb81199c5"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/manifest.json",
+        "sha256": "5491162645e69021470217b0178d64760be0b624fce0c97e92ff0d36f2f9bd11",
+        "size": 94927
+      },
+      "training_reference": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/training_reference.npz",
+        "sha256": "d2f45e911fbc83ce2279f7bce9882a9fd3b374026480a5e686784ea452d1316d",
+        "size": 9094132
+      },
+      "source_roster": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/source_roster.npz",
+        "sha256": "32b000b56e5654e429de8ee480f9106347d25c2decbd32e28891f0933585fdfb",
+        "size": 814868
+      },
+      "truth": {
+        "1.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t1.npz",
+          "sha256": "d950c94956e2d75208e264f646451fedb0c6e7ef6ad0c6fe9bef1ae84b35535d",
+          "size": 1596131
+        },
+        "2.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t2.npz",
+          "sha256": "b7ee9cdd216be775b4cc5251f2ffe9f79a393367f06b9f58a957a96fb9b716a8",
+          "size": 1857049
+        },
+        "3.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t3.npz",
+          "sha256": "e1c495ee444d6aeca7a2448e3cadd419d480f29a4b60e8555dd3d1a46b46ea59",
+          "size": 1907070
+        },
+        "4.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t4.npz",
+          "sha256": "da2c046ef929c831e63fc14f1c82976a378afb6cf636ce449966c497a7312c9a",
+          "size": 2228768
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/run_comparison.py",
+      "sha256": "47d42d182c80f508134557dcdaa95e2e1e8e23d60beae7ba1f2d46881a2c0126"
+    },
+    "upstream_runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py",
+      "sha256": "ec9af3a797da67fcac62e22a25b2406faf2d05005c5c292d4452d9f021e8339c"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py",
+      "sha256": "aaef8ff173758f2f484cfcf799efab182e98199c1075295bd5cb74c20b5ca0d4"
+    },
+    "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "2",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/arista/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/arista/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/results/arista/metrics.csv",
+      "sha256": "affbe534158508e48cac6ad45ced5d18b75d1e408252672fd4156660689ac897"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "admouse",
+    "created_at": "2026-09-04T05:51:05.837664+00:00",
+    "model_dir": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/training_run_summary.json",
+      "sha256": "f4458ed122d6bacae1b6d23a24e5b9b8fc064f3d14fcce7b5ec9fb56dd9e84cb"
+    },
+    "checkpoints": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Finetune/last_model.pth",
+        "sha256": "233594069bd4731fa22dfb9dd7bcaeb1c44d7ce4cfb579b024ab95c65a63680f"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Init_interaction/best_model.pth",
+        "sha256": "70baf523e1b0606458d1775ac52dc7eabaa6fb221523d04d7c0dbb4c28195b67"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Pretrain/best_model.pth",
+        "sha256": "c3b22323483a0a833521f1e89c1d397f6eb8e1faf1937438168657e5399fd699"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Refine/best_model.pth",
+        "sha256": "d7cf83459d961ac67fd6301e9ff17b98d9c5c5300314b85a04c3dc8e461b6490"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Score_Refine/score_model.pth",
+        "sha256": "ad9a3d2de35d585d172ab61ed4ca01c8be13b83a00b351ebc3c8bbdcc6821fb3"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Train_Score/score_model.pth",
+        "sha256": "64648a51e70f8d468401ebd37c888b8e1cdd7897f56afb2bfa64aa2a8a2a224f"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/manifest.json",
+        "sha256": "fe5f6fe8465156abdb9bbaac973253c8db7ae745a83022cc83c3ad72c83403bc",
+        "size": 47021
+      },
+      "training_reference": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/training_reference.npz",
+        "sha256": "321bd11088e3a302d94fa8d9d551eec5b706527410d2d5c01dd26366e4ca1aa0",
+        "size": 33928778
+      },
+      "source_roster": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/source_roster.npz",
+        "sha256": "713ce23d1828bf03998bfc729eb977196b897b51cbb42e0f072e0728fdf82594",
+        "size": 822643
+      },
+      "truth": {
+        "1.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/truth_t1.npz",
+          "sha256": "17142f891fd8e670eedbb3751a1c91984463e60dfc18025ea0a63d25a171b385",
+          "size": 11523086
+        },
+        "2.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/truth_t2.npz",
+          "sha256": "cc26d948f34896386eb01c470b107a5bbc22ef7c8fec12007961a9f3aecbdb0d",
+          "size": 11838789
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/run_comparison.py",
+      "sha256": "47d42d182c80f508134557dcdaa95e2e1e8e23d60beae7ba1f2d46881a2c0126"
+    },
+    "upstream_runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py",
+      "sha256": "ec9af3a797da67fcac62e22a25b2406faf2d05005c5c292d4452d9f021e8339c"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py",
+      "sha256": "aaef8ff173758f2f484cfcf799efab182e98199c1075295bd5cb74c20b5ca0d4"
+    },
+    "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "3",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1.0,
+        2.0
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 43,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/results/admouse/metrics.csv",
+      "sha256": "2e1a69c16a3b295feee4bcad1418570ce8459a150dfe2e3bb8fe839b2131d837"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "chicken_heart",
+    "created_at": "2026-09-04T05:50:12.957616+00:00",
+    "model_dir": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/training_run_summary.json",
+      "sha256": "b16b7335e1eaf45e01ce500293570e658a12944fe998fd246ecd00c3a696d248"
+    },
+    "checkpoints": [
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Finetune/best_model.pth",
+        "sha256": "4cf8b44e6ecd5ce9b0b123557b4c6dc95761d754b0be80fd18fac69efc082efd"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Init_interaction/best_model.pth",
+        "sha256": "145deabd1214b0c844098c4a0f80f55807a76a224e35db0e364bb9dd047d3514"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Pretrain/best_model.pth",
+        "sha256": "fea3a65e41218c9b6f9d40b3e8d4fd361dc1b7d8523a4f02cc28457aadde9e8a"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Refine/best_model.pth",
+        "sha256": "e64b03636d82e3a018aad0ee82cc3566142dd87e85c9aba0499fbfdae0787bbd"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Score_Refine/score_model.pth",
+        "sha256": "fdc45941052de2c438c04d56555d61c0f1dcc0896f04081422fdc7722cdbcc75"
+      },
+      {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Train_Score/score_model.pth",
+        "sha256": "d073113def74d3ce30198a620c196fd0575e20f129a088d1b49be7260891ce1f"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/manifest.json",
+        "sha256": "f2f90b51525c6c9dab8a0ec7864eb43e12333bd7d899be39c70f7528ea9d20e3",
+        "size": 75847
+      },
+      "training_reference": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/training_reference.npz",
+        "sha256": "ddd868bc6cbefe8d7b901b0333c0e9deaec16e8dde0d058ce1f5108790af7899",
+        "size": 704522
+      },
+      "source_roster": {
+        "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/source_roster.npz",
+        "sha256": "3f8d9b10fd2f954678a297259b3971e8871e1137411625026668769074f93a78",
+        "size": 361819
+      },
+      "truth": {
+        "1.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t1.npz",
+          "sha256": "afb2e898d0ffb64e30db9950f1aa192ac83df24ad77f7d2051690745057cac5a",
+          "size": 106004
+        },
+        "2.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t2.npz",
+          "sha256": "2651d5db9afe266e4a8708dc160e7dc4b3ef12e6c1d7d95db0344d226d2ec25c",
+          "size": 181408
+        },
+        "3.0": {
+          "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t3.npz",
+          "sha256": "edf181b066684c16d23aa92483087b60f6da746c7bbc184b426a49b167f81c6b",
+          "size": 390679
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/run_comparison.py",
+      "sha256": "47d42d182c80f508134557dcdaa95e2e1e8e23d60beae7ba1f2d46881a2c0126"
+    },
+    "upstream_runner": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py",
+      "sha256": "ec9af3a797da67fcac62e22a25b2406faf2d05005c5c292d4452d9f021e8339c"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py",
+      "sha256": "aaef8ff173758f2f484cfcf799efab182e98199c1075295bd5cb74c20b5ca0d4"
+    },
+    "package_root": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "4",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_roster_matches": true,
+        "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_44",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      }
+    ],
+    "metrics": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2/results/chicken_heart/metrics.csv",
+      "sha256": "eb10864df5130bc8d17a98f44e065927bd75334ab9f4c748154dabd9e9edd3b5"
+    }
+  }
+]

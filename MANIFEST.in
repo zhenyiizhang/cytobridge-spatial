@@ -9,6 +9,8 @@ recursive-include docs *.css *.csv *.ipynb *.json *.md *.png *.py *.rst *.svg
 recursive-include requirements *.txt
 recursive-include CytoBridge/results/data *.csv *.csv.gz *.json *.npz *.pdf *.png
 recursive-include scripts/results *.py
+recursive-include scripts/paper_figures/interaction_ablation *.py *.md
+include tests/test_interaction_ablation.py
 include scripts/execute_paper_notebooks.py
 include scripts/collect_training_history_inputs.py
 include scripts/collect_figure_inputs.py

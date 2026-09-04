@@ -72,7 +72,7 @@ cytobridge figure explain zebrafish-si
 
 - [Classifier smoothing, Supplementary Figure S6](classifier_smoothing.ipynb)
 - [LR-complex aggregation, Supplementary Figure S41](lr_complex_aggregation.ipynb)
-- [LR-prior ablation and stVCR comparison, Supplementary Figure S42](lr_prior_ablation_stvcr.ipynb)
+- [LR-prior and interaction ablations, Supplementary Figure S42](interaction_ablation.ipynb)
 - Supplementary Figure S43 compares spatial communication summaries with COMMOT, CellAgentChat, and NicheNet. Its plotting program and numerical tables are in `release_artifacts/spatial_communication_comparison_s43_20260903`.
 - [Cross-dataset benchmark summary, Supplementary Figure S44](loto_benchmark_summary.ipynb)
 - [Run the SpaTrack comparison used in S44](spatrack_benchmark.md)
@@ -101,7 +101,7 @@ zebrafish_decomposition_stability
 classifier_smoothing
 spatrack_benchmark
 lr_complex_aggregation
-lr_prior_ablation_stvcr
+interaction_ablation
 loto_benchmark
 loto_benchmark_summary
 arista_local_domains

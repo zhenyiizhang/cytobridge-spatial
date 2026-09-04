@@ -1,0 +1,16 @@
+{
+  "analysis": "interaction_ablation",
+  "manuscript_figure": "Supplementary Figure S42",
+  "date": "2026-09-04",
+  "panels_ab": "Matched Full and No-LR-prior retraining. Projection repeats averaged before paired target-space ratios.",
+  "panels_cd": "Same-checkpoint interaction-on/off inference. Average projections within each arm and seed, form off/on ratios, then average the three seeds.",
+  "training_input": "All measured stages in both experiments. Reconstruction, not leave-one-time-point-out prediction.",
+  "inference_seeds": [42, 43, 44],
+  "growth": "Continuous unnormalized particle weights, without resampling.",
+  "intervention": "Entire interaction-network output set to zero. Intrinsic-drift, growth and score networks unchanged.",
+  "no_lr_source": "Accepted no_lr_paired_target_deltas.csv from s39_interaction_evidence_black_text_20260902_v1, with refreshed ARISTA and chicken-heart inputs.",
+  "inference_source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/interaction-inference-ablation-20260904-r2",
+  "inference_package_commit": "61f0b550678ed75e706638ceb7638a0818b7e033",
+  "checkpoint_records": "inference_run_manifests.json",
+  "plotting_command": "cytobridge figure interaction-ablation --output-dir outputs/interaction_ablation"
+}

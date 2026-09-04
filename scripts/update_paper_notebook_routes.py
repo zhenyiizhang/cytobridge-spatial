@@ -23,6 +23,7 @@ WORKFLOWS = {
     "loto_benchmark.ipynb": "loto-benchmark",
     "lr_complex_aggregation.ipynb": "lr-complex",
     "lr_prior_ablation_stvcr.ipynb": "lr-prior-stvcr",
+    "interaction_ablation.ipynb": "interaction-ablation",
     "main_figure_2.ipynb": "main-figure-2",
     "main_figure_4.ipynb": "main-figure-4",
     "main_figure_5.ipynb": "main-figure-5-reference",

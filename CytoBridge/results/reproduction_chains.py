@@ -310,6 +310,38 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "finished figures",
         ),
     ),
+    "interaction-ablation": (
+        _row(
+            "S42a-b", "fit Full and No-LR-prior models",
+            "scripts/run_matched_ablation_matrix.py and scripts/run_matched_ablation_benchmark_evaluation.py",
+            "matched aligned inputs and Full/No-LR training configurations",
+            "paired_target_deltas.csv from the completed matched-ablation report",
+            "retain these LR-prior results",
+            "The No-LR model keeps the interaction network and spatial cutoff. These scripts use the manuscript model records.", "source",
+        ),
+        _row(
+            "S42c-d", "compare inference with and without interaction",
+            "python scripts/paper_figures/interaction_ablation/run_comparison.py --dataset arista --model-dir <run>/training --input-manifest <benchmark-run>/arista/inputs/manifest.json --code-root . --output <inference-results>/arista --seeds 42 43 44 --gpu-metrics --device cuda:0",
+            "the fitted Full model and its matching benchmark input manifest (full_data split)",
+            "<inference-results>/arista/metrics.csv and manifest.json, plus paired predictions for each seed",
+            "repeat for zebrafish, mosta, admouse, and chicken_heart",
+            "No training is repeated. Only the interaction-network output is disabled. Use the corresponding model and input manifest for each dataset.",
+        ),
+        _row(
+            "S42", "collect completed comparisons",
+            "python scripts/collect_figure_inputs.py s42 --no-lr-table <matched-ablation-report>/paired_target_deltas.csv --inference-results-dir <inference-results> --output-dir <s42-inputs>",
+            "the Full/No-LR report and all five completed inference directories",
+            "no_lr_paired_target_deltas.csv, inference_metrics.csv, and model records",
+            "draw all four panels",
+        ),
+        _row(
+            "S42", "recalculate summaries and draw",
+            "cytobridge figure interaction-ablation --results-dir <s42-inputs> --output-dir <figure-dir>",
+            "the collected numerical results",
+            "interaction_ablation.pdf/.png, paired seed/target tables, and caption statistics",
+            "finished figure",
+        ),
+    ),
     "lr-prior-stvcr": (
         _row(
             "S42a-b",

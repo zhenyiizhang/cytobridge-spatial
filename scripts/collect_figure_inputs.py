@@ -583,6 +583,43 @@ def collect_s39(no_lr_table: Path, loto_dir: Path, output_dir: Path) -> Path:
         raise
 
 
+def collect_interaction_ablation(no_lr_table: Path, inference_dir: Path, output_dir: Path) -> Path:
+    """Combine the matched LR-prior table and five completed on/off runs."""
+    from CytoBridge.results.interaction_ablation import load_interaction_ablation_results
+    no_lr_table = no_lr_table.expanduser().resolve()
+    inference_dir = inference_dir.expanduser().resolve()
+    frames, records = [], []
+    for dataset in LOTO_DATASETS:
+        directory = inference_dir / dataset
+        record = json.loads((directory / "manifest.json").read_text())
+        if record.get("status") != "complete" or record.get("training_performed") is not False:
+            raise ValueError(f"Incomplete inference comparison: {directory}")
+        if record.get("dataset") != dataset or not record.get("aligned_input_matches_training"):
+            raise ValueError(f"Model/input mismatch in {directory}")
+        if record["protocol"]["inference_seeds"] != [42, 43, 44]:
+            raise ValueError(f"Expected inference seeds 42, 43, and 44 in {directory}")
+        frame = pd.read_csv(directory / "metrics.csv")
+        if set(frame.dataset) != {dataset}:
+            raise ValueError(f"Unexpected dataset in {directory / 'metrics.csv'}")
+        frames.append(frame)
+        records.append(record)
+    output, staging = _new_staging_dir(output_dir)
+    try:
+        _write_csv(_select_no_lr_rows(no_lr_table), staging / "no_lr_paired_target_deltas.csv")
+        _write_csv(pd.concat(frames, ignore_index=True), staging / "inference_metrics.csv")
+        (staging / "inference_run_manifests.json").write_text(json.dumps(records, indent=2) + "\n")
+        (staging / "manifest.json").write_text(json.dumps({
+            "analysis": "interaction_ablation", "manuscript_figure": "Supplementary Figure S42",
+            "no_lr_source": str(no_lr_table), "inference_source": str(inference_dir),
+            "checkpoint_records": "inference_run_manifests.json",
+        }, indent=2) + "\n")
+        load_interaction_ablation_results(staging)
+        return _finish(staging, output)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -606,14 +643,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     s39 = commands.add_parser(
         "s42",
-        help="combine the matched No-LR table with the completed S45 inputs",
+        aliases=["lr-prior-stvcr"],
+        help="combine the matched No-LR table with five completed interaction-on/off runs",
     )
     s39.add_argument("--no-lr-table", type=Path, required=True)
-    s39.add_argument(
+    comparison = s39.add_mutually_exclusive_group(required=True)
+    comparison.add_argument("--inference-results-dir", type=Path,
+                            help="directory containing one completed interaction-on/off folder per dataset")
+    comparison.add_argument(
         "--loto-results-dir",
         type=Path,
-        required=True,
-        help="the directory prepared by this script's s45 command",
+        help="earlier stVCR comparison only: the directory prepared by s45",
     )
     s39.add_argument("--output-dir", type=Path, required=True)
 
@@ -659,10 +699,11 @@ def main(argv: list[str] | None = None) -> int:
                 option="--dataset-result",
             )
             output = collect_s25(inputs, args.output_dir)
-        elif args.command == "s42":
-            output = collect_s39(
+        elif args.command in ("s42", "lr-prior-stvcr"):
+            collector = collect_interaction_ablation if args.inference_results_dir else collect_s39
+            output = collector(
                 args.no_lr_table,
-                args.loto_results_dir,
+                args.inference_results_dir or args.loto_results_dir,
                 args.output_dir,
             )
         else:

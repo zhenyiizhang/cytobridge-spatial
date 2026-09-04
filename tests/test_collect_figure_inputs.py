@@ -194,4 +194,4 @@ def test_collection_script_runs_from_the_repository_root() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr
-    assert "{s41,s42,s45}" in completed.stdout
+    assert "{s41,s42,lr-prior-stvcr,s45}" in completed.stdout
