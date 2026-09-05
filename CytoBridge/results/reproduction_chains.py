@@ -982,7 +982,7 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "aligned H5AD containing obsm['spatial_original'], obsm['spatial_ot_input'], obsm['spatial_aligned'], and uns['spatial_alignment_info']",
             "coordinate-comparison PDF/PNG, source CSV, caption, and provenance JSON",
             "compare with S7-S8 or use the saved coordinate table in a new layout",
-            "The standard workflow stores the alignment record inside the H5AD rather than in a separate JSON file. The exact S7-S8 page assembly is not included.",
+            "The standard workflow stores the alignment record inside the H5AD. To redraw the accepted S7-S8 sensitivity analysis from its numerical inputs, run python release_artifacts/chicken_heart_alignment_sensitivity_20260831/figure_code/plot_heart_alignment_sensitivity.py --output-dir outputs/heart_alignment.",
         ),
         _row(
             "S9",

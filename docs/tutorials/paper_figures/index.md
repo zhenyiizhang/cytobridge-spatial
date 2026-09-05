@@ -59,7 +59,8 @@ cytobridge figure explain zebrafish-si
 
 - [AGIST, Supplementary Figures S2–S3](agist_figures.ipynb)
 - [Weinreb and scNT, Supplementary Figures S4–S5](nonspatial_figures.ipynb)
-- [Chicken heart, Supplementary Figures S7–S10 — run the analyses; final page assembly is separate](../dataset_workflows/chicken_heart.ipynb)
+- [Chicken-heart alignment sensitivity, Supplementary Figures S7–S8](chicken_heart_alignment.md)
+- [Chicken-heart growth and velocity, Supplementary Figures S9–S10 — run the analyses](../dataset_workflows/chicken_heart.ipynb)
 - [MOSTA, Supplementary Figures S11–S18 — view completed pages and find their code](mosta_figures.ipynb)
 - [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
 - [ARISTA local interaction domains, Supplementary Figure S25](arista_local_domains.ipynb)
@@ -94,6 +95,7 @@ main_figure_4
 main_figure_5
 agist_figures
 nonspatial_figures
+chicken_heart_alignment
 mosta_figures
 arista_figures
 zebrafish_si_s31_s38

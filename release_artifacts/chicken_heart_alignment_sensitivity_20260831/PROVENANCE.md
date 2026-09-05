@@ -102,6 +102,11 @@ accepted PDFs, and the PNGs were exported at 320 dpi.
 S7 contains four rasterized heatmap layers; its text, annotations, axes, bars,
 legends, and layout remain vector. S8 contains no raster layer.
 
+The display was updated on 2026-09-05. Overlaid sections are drawn in the order
+D14, D10, D7, D4 so the smaller early sections remain visible. The legend keeps
+chronological order and has its own row below S7a. Coordinates, metrics, colors,
+marker sizes, and transparency are unchanged.
+
 ## Rebuild
 
 From the archive directory, recreate the accepted figure pages with:

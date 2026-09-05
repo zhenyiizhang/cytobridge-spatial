@@ -33,6 +33,8 @@ from figure_style import (
 
 
 TIME_ORDER = ("D4", "D7", "D10", "D14")
+# Draw larger, later sections first so the early sections remain visible.
+DRAW_ORDER = tuple(reversed(TIME_ORDER))
 TIME_COLORS = {
     "D4": "#4C78A8",
     "D7": "#4CB5AE",
@@ -96,7 +98,7 @@ def scatter_stages(
     size: float,
     alpha: float = 0.80,
 ) -> None:
-    for stage in TIME_ORDER:
+    for zorder, stage in enumerate(DRAW_ORDER, start=1):
         mask = timepoint == stage
         ax.scatter(
             xy[mask, 0],
@@ -106,6 +108,7 @@ def scatter_stages(
             edgecolors="none",
             alpha=alpha,
             rasterized=False,
+            zorder=zorder,
         )
     spatial_axis(ax)
 
@@ -292,7 +295,9 @@ def plot_s7(arrays: dict[str, np.ndarray]) -> tuple[Path, Path]:
 
     heading_a = fig.add_subplot(outer[0])
     panel_heading(heading_a, "a", "Chicken-heart sections", title_x=0.05)
-    section_grid = outer[1].subgridspec(1, 2, wspace=0.12)
+    section_grid = outer[1].subgridspec(
+        2, 2, height_ratios=(1.0, 0.12), wspace=0.12, hspace=0.06
+    )
     ax_input = fig.add_subplot(section_grid[0, 0])
     ax_aligned = fig.add_subplot(section_grid[0, 1])
     scatter_stages(
@@ -309,13 +314,14 @@ def plot_s7(arrays: dict[str, np.ndarray]) -> tuple[Path, Path]:
     )
     ax_input.set_title("Input sections", pad=3)
     ax_aligned.set_title("Aligned sections", pad=3)
-    fig.legend(
+    legend_axis = fig.add_subplot(section_grid[1, :])
+    legend_axis.axis("off")
+    legend_axis.legend(
         time_legend_handles(),
         TIME_ORDER,
         ncol=4,
         frameon=False,
-        loc="upper center",
-        bbox_to_anchor=(0.59, 0.817),
+        loc="center",
         columnspacing=0.9,
         handletextpad=0.25,
         borderaxespad=0,
