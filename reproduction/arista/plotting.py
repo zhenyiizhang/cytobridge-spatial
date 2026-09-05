@@ -116,52 +116,23 @@ def draw_velocity_left(
     palette: dict[str, str],
     roi_bounds: tuple[float, float, float, float],
 ) -> None:
-    from scipy.spatial import cKDTree
+    import scvelo as scv
+    from scvelo.plotting.velocity_embedding_grid import compute_velocity_on_grid
 
-    coords = np.asarray(velocity_adata.obsm["X_spatial"], dtype=float)
-    embedded = np.asarray(velocity_adata.obsm["velocity_spatial"], dtype=float)
-    labels = velocity_adata.obs["Annotation"].astype(str).to_numpy()
-    background = pd.DataFrame(
-        {"x": coords[:, 0], "y": coords[:, 1], "celltype": labels}
-    )
-    scatter_by_celltype(ax, background, palette, size=4.0, alpha=0.56)
-
-    # The corrected scVelo graph projection above is the numerical velocity
-    # calculation.  For the paper-style black stream glyph, interpolate those
-    # already embedded finite vectors onto a regular spatial grid.  A finite
-    # k-nearest-neighbor display grid avoids scVelo's occasional NaN path at
-    # the tissue boundary while leaving the graph projection unchanged.
-    x_lo, x_hi = np.quantile(coords[:, 0], [0.002, 0.998])
-    y_lo, y_hi = np.quantile(coords[:, 1], [0.002, 0.998])
-    x_grid = np.linspace(x_lo, x_hi, 68)
-    y_grid = np.linspace(y_lo, y_hi, 68)
-    mesh_x, mesh_y = np.meshgrid(x_grid, y_grid)
-    query = np.c_[mesh_x.ravel(), mesh_y.ravel()]
-    tree = cKDTree(coords)
-    distances, indices = tree.query(query, k=40, workers=1)
-    weights = 1.0 / np.maximum(distances, 1e-7) ** 2
-    weights /= weights.sum(axis=1, keepdims=True)
-    grid_velocity = np.einsum("ij,ijk->ik", weights, embedded[indices])
-    cell_neighbor_distances, _ = tree.query(coords, k=2, workers=1)
-    support_radius = 3.0 * float(np.quantile(cell_neighbor_distances[:, 1], 0.95))
-    supported = distances[:, 0] <= support_radius
-    speed = np.linalg.norm(grid_velocity, axis=1)
-    supported &= np.isfinite(speed) & (speed > np.quantile(speed[np.isfinite(speed)], 0.05))
-    u = np.ma.masked_where(~supported.reshape(mesh_x.shape), grid_velocity[:, 0].reshape(mesh_x.shape))
-    v = np.ma.masked_where(~supported.reshape(mesh_y.shape), grid_velocity[:, 1].reshape(mesh_y.shape))
-    ax.streamplot(
-        x_grid,
-        y_grid,
-        u,
-        v,
-        color="#111111",
-        density=1.8,
-        linewidth=0.65,
-        arrowsize=0.75,
-        minlength=0.08,
-        maxlength=3.5,
-        zorder=12,
-    )
+    coords = np.asarray(velocity_adata.obsm["X_spatial"], dtype=np.float32)
+    embedded = np.asarray(velocity_adata.obsm["velocity_spatial"], dtype=np.float32)
+    colors_for_types = add_velocity_palette(velocity_adata, palette)
+    # Use the archived scVelo renderer, not the later 68-by-68 IDW grid.
+    grid, velocity = compute_velocity_on_grid(
+        X_emb=coords, V_emb=embedded, density=1, smooth=None, min_mass=None,
+        n_neighbors=None, autoscale=False, adjust_for_stream=True, cutoff_perc=None)
+    speed = np.sqrt(np.sum(velocity ** 2, axis=0))
+    width = np.nan_to_num(2 * speed / np.nanmax(speed), nan=0.)
+    scv.pl.velocity_embedding_stream(
+        velocity_adata, basis='spatial', vkey='velocity', color='Annotation',
+        palette=colors_for_types, density=2., ax=ax, show=False,
+        legend_loc='none', X_grid=grid, V_grid=velocity, linewidth=width,
+        alpha=.3, title='Spatial velocity')
     ax.set_title("Spatial velocity", fontsize=12, fontweight="bold", pad=7)
     ax.set_aspect("equal")
     ax.set_xticks([])
@@ -219,18 +190,7 @@ def draw_roi(
     for spine in ax.spines.values():
         spine.set_color("#68737a")
         spine.set_linewidth(1.4)
-    fx0, fx1, fy0, fy1 = focus_bounds
-    ax.add_patch(
-        Rectangle(
-            (fx0, fy0),
-            fx1 - fx0,
-            fy1 - fy0,
-            fill=False,
-            edgecolor="#ff5a52",
-            linewidth=1.7,
-            zorder=20,
-        )
-    )
+    # The final Figure 5c retains the grey ROI but has no nested red box.
     ax.set_title(
         "Spatial velocity cosine similarity\n(interaction vs full spatial velocity)",
         fontsize=11,
@@ -319,80 +279,6 @@ def plot_figure5c(
     return outputs
 
 def plot_figure5e(grouped: pd.DataFrame, stem: Path) -> list[Path]:
-    fig, ax = plt.subplots(figsize=(7.2, 4.8))
-    sc = ax.scatter(
-        grouped["interaction_mean"],
-        grouped["growth_mean"],
-        s=np.clip(grouped["n"].to_numpy(dtype=float), 20, 400),
-        c=grouped["time_idx"],
-        cmap="plasma",
-        alpha=0.82,
-        edgecolors="white",
-        linewidths=0.35,
-    )
-    ax.set_xlabel("Mean interaction magnitude", fontsize=10)
-    ax.set_ylabel("Mean growth", fontsize=10)
-    ax.yaxis.set_label_coords(-0.15, 0.5)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    for name in ("left", "bottom"):
-        ax.spines[name].set_color("#c6c6c6")
-        ax.spines[name].set_linewidth(1.2)
-    ax.text(
-        0.60,
-        0.91,
-        "Dot=one (time, celltype)\nSize=cells in group",
-        transform=ax.transAxes,
-        ha="left",
-        va="top",
-        fontsize=10,
-    )
-    purple = "#3b00b5"
-    late = grouped[grouped["time"] == grouped["time"].max()]
-    target = late.iloc[int(np.argmin(np.abs(late["growth_mean"] - late["growth_mean"].median())))]
-    ax.annotate(
-        "Time increasing",
-        xy=(target["interaction_mean"], target["growth_mean"]),
-        xycoords="data",
-        xytext=(0.58, 0.03),
-        textcoords="axes fraction",
-        color=purple,
-        fontsize=10,
-        arrowprops=dict(arrowstyle="->", color=purple, lw=1.8),
-    )
-    high_target = late.iloc[int(np.argmax(late["growth_mean"].to_numpy()))]
-    ax.annotate(
-        "",
-        xy=(high_target["interaction_mean"], high_target["growth_mean"]),
-        xycoords="data",
-        xytext=(0.42, 0.43),
-        textcoords="axes fraction",
-        arrowprops=dict(arrowstyle="->", color=purple, lw=1.8),
-    )
-    ax.annotate(
-        "",
-        xy=(1.035, -0.005),
-        xytext=(-0.075, -0.005),
-        xycoords="axes fraction",
-        arrowprops=dict(arrowstyle="->", color="#211917", lw=1.0),
-    )
-    ax.annotate(
-        "",
-        xy=(-0.075, 1.02),
-        xytext=(-0.075, -0.005),
-        xycoords="axes fraction",
-        arrowprops=dict(arrowstyle="->", color="#211917", lw=1.0),
-    )
-    cbar = fig.colorbar(sc, ax=ax, pad=0.04, fraction=0.045)
-    cbar.set_ticks([])
-    cbar.set_label("Time index", fontsize=10)
-    cbar.outline.set_edgecolor("#c6c6c6")
-    cbar.outline.set_linewidth(1.0)
-    cbar.ax.text(1.35, 1.0, "High", transform=cbar.ax.transAxes, ha="left", va="center", fontsize=9)
-    cbar.ax.text(1.35, 0.0, "Low", transform=cbar.ax.transAxes, ha="left", va="center", fontsize=9)
-    fig.subplots_adjust(left=0.20, right=0.87, bottom=0.18, top=0.96)
-    paths = save_figure(fig, stem)
-    plt.close(fig)
-    return paths
+    from .growth_plot import plot_growth_interaction
+
+    return plot_growth_interaction(grouped, stem)

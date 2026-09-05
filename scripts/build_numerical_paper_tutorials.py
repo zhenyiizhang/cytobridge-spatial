@@ -96,23 +96,82 @@ transitions and velocity fields shown in Figure 4.
 Run this notebook from the [source checkout](../../installation.md).
 The first cell downloads the cell-state inputs if needed. The smaller lineage,
 communication and velocity arrays are included with the code.
-The [MOSTA analysis tutorial](../dataset_workflows/mosta.ipynb) starts with the
-trained model and shows how to generate populations and evaluate growth.
+Work through the panels in order. Panel b calculates ligand–receptor scores,
+panel c counts lineage destinations, and panels d–e evaluate the trained model.
+The saved population states keep the cells in a–c identical to those in the
+article. The [MOSTA analysis tutorial](../dataset_workflows/mosta.ipynb)
+introduces population simulation.
 
-Panels a and b retain the paper's frame and label layout. Their cell layers
-are regenerated from coordinates and interaction scores. The remaining panels
-are drawn from lineage and velocity arrays.
+A CUDA GPU is used for the model calculations in d–e below. Panels a–c only
+need the numerical figure data. Each plot is generated from cell coordinates,
+labels or calculated values. Frames and annotations retain the paper's layout.
 '''), setup('mosta', 'figure4a/slice_data/time_0.h5ad'),
-             code('from reproduction.mosta.main_figure import draw_main_figure')]
+             code('''import json
+import numpy as np
+import pandas as pd
+from reproduction.mosta.main_figure import (
+    PANELS, draw_main_figure, draw_interaction_maps, draw_brain_velocity,
+)
+from reproduction.mosta.calculations import interaction_scores, map_interaction_scores
+from reproduction.mosta.figures import style
+
+style()
+palette = json.loads((PANELS / "style_authority/label_to_color.json").read_text())''')]
     for panel, title, description in [
-        ('a', 'Spatial populations', 'Plot the four observed populations and the three generated intermediate populations with the paper’s cell-type colours.'),
-        ('b', 'Interaction maps', 'Calculate the colour range separately at each time from the 1st and 99th percentiles of the interaction scores, then draw the three spatial maps.'),
-        ('c', 'Cartilage lineage', 'Count the destination labels of the simulated cartilage-primordium cells. Draw the three largest transitions and calculate their percentages.'),
-        ('d', 'Interaction-induced gene velocity', 'Draw the projected gene-velocity streamlines and communication arrows. Arrow widths use the saved cell-type communication scores.'),
-        ('e', 'Brain velocity fields', 'Draw full and interaction velocity in gene and spatial coordinates for the selected brain region.'),
+        ('a', 'Spatial populations', 'Plot the observed E12.5, E13.5, E14.5 and E15.5 cells and the generated E13, E14 and E15 populations. The generated states come from one trajectory starting at E12.5 with 50,000 particles, time step 0.05, diffusion 0.03 and seeds 42/43. The simulation includes population growth. Coordinates are not warped. The plotted populations contain 51,365, 63,533, 77,369, 86,610, 102,519, 100,871 and 113,350 cells in time order.'),
+        ('b', 'Wnt3a–Fzd7/Lrp6 interaction maps', '''For each directed cell-type pair, multiply mean ligand expression, mean receptor-complex expression and its communication weight:
+
+`LR score = ligand_mean * receptor_mean * communication_weight`
+
+The receptor complex uses the minimum expression of Fzd7 and Lrp6. The communication weight is `M_per_source`, calculated from the model's attention. Sum incoming and outgoing pair scores for each cell type, then map that value to its cells. These are cell-type scores, not separate LR measurements for each cell.
+
+E13 uses 15,144 generated cells for the calculation and 63,533 cells for the spatial display. The table preserves that distinction. Cells without a corresponding score stay grey. The final plot scales colours to the 1st–99th percentiles separately at each time.'''),
+        ('c', 'Cartilage lineage', '''Follow the same simulated particles from E15 to E15.5 (model times 2.5 to 3). Select the 1,282 particles labelled cartilage primordium at E15 and count their destination labels. Divide by 1,282 to obtain transition fractions. This analysis uses a fixed-particle trajectory, so particle identities remain available across time.
+
+The three largest destinations are cartilage, cartilage primordium and connective tissue. The plot shows their simulated destinations over the observed E15.5 background.'''),
+        ('d', 'Interaction-induced gene velocity', '''Evaluate the downloaded model on the same 8,000 observed E15.5 cells used in the paper. `compute_velocity_components` returns intrinsic drift, interaction and score terms. Full velocity is their sum.
+
+Take the last 50 dimensions of the interaction term and project this gene-state derivative onto spatial coordinates using a 30-neighbour graph. Calculate attention and cell-type communication on the same 8,000 cells. The displayed arrows connect Choroid plexus, Meninges and Brain. The Brain→Brain loop aggregates communication between brain cells.
+
+`calculate_velocity_panel` runs these public APIs and writes the numerical fields and communication table. The next cell passes those newly calculated files to the paper's plotting function.'''),
+        ('e', 'Brain velocity fields', '''Evaluate all 17,071 observed E15.5 Brain cells with interaction group size 1,024. Project the gene derivatives before selecting the displayed brain region. All four plots use spatial coordinates: two show projected gene derivatives and two show the first two (spatial) model dimensions.
+
+The comparison is full velocity (`drift + interaction + score`) versus interaction velocity. The displayed region is −1.3 < x < −0.5 and 3.3 < y < 4.2.'''),
     ]:
-        cells += [markdown(f'## {panel}. {title}\n\n{description}'),
-                  code(f'figures = draw_main_figure(data, output, panels="{panel}")\nshow(figures["{panel}"])')]
+        cells += [markdown(f'## {panel}. {title}\n\n{description}')]
+        if panel == 'b':
+            cells += [code('''edges = pd.read_csv(PANELS / "fig4b/evidence/type_matrix.csv")
+scores = interaction_scores(edges)
+display(scores[["time", "cell_type", "incoming", "outgoing", "total"]].head())
+
+cells_to_plot = pd.read_csv(data / "figure4b/cell_mapping.csv.gz", low_memory=False)
+mapping = map_interaction_scores(cells_to_plot, scores)
+show(draw_interaction_maps(data, output, mapping=mapping))''')]
+        elif panel == 'c':
+            cells += [code('''with np.load(PANELS / "fig4c/evidence/numeric_render_state.npz", allow_pickle=False) as state:
+    destination = pd.Series(state["target_labels"].astype(str))
+counts = destination.value_counts()
+fractions = counts / len(destination)
+display(pd.DataFrame({"cells": counts, "fraction": fractions}).head(3))
+figures = draw_main_figure(data, output, panels="c")
+show(figures["c"])''')]
+        elif panel == 'd':
+            cells += [code('''from reproduction.mosta.calculations import calculate_velocity_panel
+from reproduction.mosta.interaction_velocity import draw_interaction_velocity
+
+model_dir = project / "data/mosta/model"
+if not (model_dir / "config.yaml").is_file():
+    cb.datasets.download("mosta", destination=project, kind="mosta_model.zip")
+
+numeric_d = calculate_velocity_panel(model_dir, output / "calculated_d", "d", device="cuda", overwrite=True)
+show(draw_interaction_velocity(
+    numeric_d, numeric_d.parent / "communication_all_type_edges.csv.gz", palette, output,
+))''')]
+        elif panel == 'e':
+            cells += [code('''numeric_e = calculate_velocity_panel(model_dir, output / "calculated_e", "e", device="cuda", overwrite=True)
+show(draw_brain_velocity(output, numeric_path=numeric_e))''')]
+        else:
+            cells += [code(f'figures = draw_main_figure(data, output, panels="{panel}")\nshow(figures["{panel}"])')]
     write('main_figure_4.ipynb', cells)
 
 
@@ -130,21 +189,51 @@ lineage labels. The velocity and growth arrays are included with the code.
 The [ARISTA analysis tutorial](../dataset_workflows/arista.ipynb) shows how to
 load the trained model, simulate populations and evaluate growth. Here we use
 the saved paper populations and velocity arrays to reproduce the displayed panels.
-The spatial display uses the same coordinate anchoring as the paper. This
-changes the plotted coordinates, not the model's state or cell-type labels.
-To regenerate these populations, follow [Generate the ARISTA paper populations](arista_populations.md).
+Panel a uses the original unwarped populations in `slice_data`. Panel b uses
+the separately anchored display population in `display_states`. These are
+different files and are selected explicitly below.
+
+For model evaluation before plotting, see [Calculate Figure 5 from the trained
+model](arista_model_fields.md). That page gives the model-loading, velocity
+projection and growth calculations, including their output filenames.
 '''), setup('arista', 'all_time_communications.pkl'),
-             code('from reproduction.arista.main_figure import draw_main_figure')]
+             code('''import numpy as np
+import pandas as pd
+from reproduction.arista.main_figure import SOURCE, draw_main_figure''')]
     panels = [
-        ('a', 'Spatial dynamics', 'Calculate the spatial anchors and draw lineage transitions and cell-type communication between the five populations.'),
-        ('b', 'Generated population', 'Plot the generated population at the intermediate time point using the paper’s cell-type colours.'),
-        ('c', 'Spatial velocity', 'Calculate the full-versus-interaction velocity cosine for each cell and the spatial velocity grid. The right panel enlarges the selected region.'),
-        ('d', 'Gene velocity', 'Interpolate the full gene-velocity vectors in PCA space and draw the streamlines over the cells.'),
-        ('e', 'Growth and interaction', 'Group the per-cell values by time and cell type, calculate the means, and draw the growth–interaction comparison.'),
+        ('a', 'Spatial dynamics', '''Use the five unwarped populations at model times 0, 0.5, 1, 1.5 and 2 (2, 3.5, 5, 7.5 and 10 DPI). Their cell counts are 7,668, 7,780, 8,106, 8,608 and 9,436.
+
+Count transitions between labels of the same simulated particles to draw lineage connections. Communication arrows use the saved model-derived cell-type matrices. Spatial anchors are calculated from the coordinates of each cell type. The plotting code applies the original camera, colours and annotations.'''),
+        ('b', 'Generated population', 'Plot the 7,798 generated cells at 3.5 DPI from `display_states/time_0p5.h5ad`. This panel uses the spatially anchored display coordinates. Panel a instead uses the unwarped states from the original simulation.'),
+        ('c', 'Spatial velocity', '''The left plot uses the full spatial velocity at 5 DPI. The right plot compares the full and interaction fields after each 52-dimensional field has been projected onto spatial coordinates with a 30-neighbour graph.
+
+For each cell, divide the dot product of these two projected vectors by their lengths to calculate cosine similarity. Draw the enlarged region using that value. The code below performs this calculation before plotting.'''),
+        ('d', 'Intrinsic-context gene velocity', '''This panel uses **intrinsic drift**, not full velocity. Evaluate `model.predict_velocity` on all 46,199 observed cells and take the last 50 (gene-state) dimensions. Fit a two-component PCA to the gene states, construct a 30-neighbour graph in the 50-dimensional space and project the drift into PCA coordinates with scVelo.
+
+The supplied numerical file stores the resulting coordinates and intrinsic vectors. The plotting function interpolates those vectors onto the scVelo streamline grid and uses the original cell-type label positions. The [model calculation](arista_model_fields.md#intrinsic-context-gene-velocity) regenerates this file from the checkpoint.'''),
+        ('e', 'Growth and interaction', '''Evaluate `model.predict_growth` and the Euclidean norm of the 52-dimensional interaction vector at each of the nine population states. Group the per-cell values by time and cell type, then calculate their arithmetic means. Each circle represents one group and its size encodes the number of cells.
+
+The paper calculation contains 82,306 cells and 177 groups. The nine original input populations are available separately from the display populations. The [model calculation](arista_model_fields.md#growth-and-interaction) shows how to evaluate them.'''),
     ]
     for panel, title, description in panels:
-        cells += [markdown(f'## {panel}. {title}\n\n{description}'),
-                  code(f'figures = draw_main_figure(data, output, panels="{panel}")\nshow(figures["{panel}"])')]
+        cells += [markdown(f'## {panel}. {title}\n\n{description}')]
+        if panel == 'c':
+            cells += [code('''with np.load(SOURCE / "figure5c_embedded_velocity.npz", allow_pickle=False) as state:
+    full = state["full_embedded_velocity"]
+    interaction = state["interaction_embedded_velocity"]
+denominator = np.linalg.norm(full, axis=1) * np.linalg.norm(interaction, axis=1)
+cosine = np.divide((full * interaction).sum(axis=1), denominator,
+                   out=np.zeros(len(full)), where=denominator > 0)
+display(pd.Series(cosine, name="cosine similarity").describe())''')]
+        elif panel == 'e':
+            cells += [code('''values = pd.read_csv(SOURCE / "figure5e_growth_interaction_by_cell.csv")
+means = values.groupby(["time", "celltype"], as_index=False).agg(
+    growth_mean=("growth", "mean"), interaction_mean=("interaction", "mean"),
+    cells=("growth", "size"),
+)
+display(means.head())
+print(f"{len(values):,} cells, {len(means)} time-by-cell-type groups")''')]
+        cells += [code(f'figures = draw_main_figure(data, output, panels="{panel}")\nshow(figures["{panel}"])')]
     write('main_figure_5.ipynb', cells)
 
 

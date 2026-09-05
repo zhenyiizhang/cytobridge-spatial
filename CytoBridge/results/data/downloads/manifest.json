@@ -372,6 +372,20 @@
           "asset_id": 545633889
         }
       ]
+    },
+    {
+      "archive": "arista_growth_model_states.zip",
+      "bytes": 16742384,
+      "sha256": "0db8ddbaa556a43c5913626f8e925e685f633f44e65ba0489811e43555724513",
+      "parts": [
+        {
+          "name": "arista_growth_model_states.zip",
+          "bytes": 16742384,
+          "sha256": "0db8ddbaa556a43c5913626f8e925e685f633f44e65ba0489811e43555724513",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_growth_model_states.zip",
+          "asset_id": 545928115
+        }
+      ]
     }
   ]
 }

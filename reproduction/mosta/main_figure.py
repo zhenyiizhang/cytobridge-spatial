@@ -63,9 +63,10 @@ def draw_populations(data, output, palette):
         return save_page(document, plot.CROP, output, 'Figure4a_spatial_populations')
 
 
-def draw_interaction_maps(data, output):
+def draw_interaction_maps(data, output, mapping=None):
     from . import population_b as plot
-    table = pd.read_csv(data / 'figure4b/cell_mapping.csv.gz', low_memory=False)
+    table = (pd.read_csv(data / 'figure4b/cell_mapping.csv.gz', low_memory=False)
+             if mapping is None else mapping.copy())
     table[plot.NORM_COLUMN] = np.nan
     bounds = []
     with fitz.open(PANELS / 'style_authority/Figure_mouse1.ai') as document:
@@ -108,20 +109,21 @@ def draw_cartilage(output, palette):
     return list(paths.values())
 
 
-def draw_brain_velocity(output):
+def draw_brain_velocity(output, numeric_path=None):
     from .velocity import plot_single_velocity_field
-    from .figures import save
+    from .brain_layout import save_brain_field, assemble_brain_fields
     categories = ('Apical Progenitors (RG)', 'Basal Progenitors (IP)', 'Choroid Plexus',
                   'Excitatory Neurons', 'Glioblasts', 'Inhibitory Neurons', 'Other')
     palette = dict(zip(categories, ('#1f77b4', '#aec7e8', '#7f7f7f', '#ffbb78', '#8c564b', '#9467bd', '#d9d9d9')))
-    with np.load(PANELS / 'fig4e/evidence/numeric_inputs.npz', allow_pickle=False) as archive:
+    source = PANELS / 'fig4e/evidence/numeric_inputs.npz' if numeric_path is None else numeric_path
+    with np.load(source, allow_pickle=False) as archive:
         values = {key: np.asarray(archive[key]) for key in archive.files}
     labels = values['telencephalon_notebook_labels'].astype(str)
     labels[~np.isin(labels, categories)] = 'Other'
     population = ad.AnnData(X=values['features'].astype(np.float32))
     population.obsm['X_spatial'] = values['compute_spatial'].astype(np.float32)
     population.obs['telencephalon'] = pd.Categorical(labels, categories=categories, ordered=True)
-    paths = []
+    fields = {}
     for name, title, field in (
         ('gene_full', 'Gene space: full velocity', 'gene_full_projected_spatial'),
         ('gene_interaction', 'Gene space: interaction velocity', 'gene_interaction_projected_spatial'),
@@ -136,8 +138,9 @@ def draw_brain_velocity(output):
             plot_region=(-1.3, -.5, 3.3, 4.2), palette=palette)
         for text in fig.findobj(plt.Text):
             text.set_fontfamily('Arial')
-        paths.extend(save(fig, output, f'Figure4e_{name}'))
-    return paths
+        fields[name] = save_brain_field(fig, ax, name, output)
+        plt.close(fig)
+    return assemble_brain_fields(fields, output)
 
 
 def draw_main_figure(data_dir, output_dir, panels='abcde'):

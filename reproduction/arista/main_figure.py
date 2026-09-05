@@ -23,9 +23,14 @@ GENE_TYPES = ('cckIN', 'dpEX', 'mpEX', 'mpIN', 'nptxEX', 'npyIN', 'ntng1IN',
 
 
 def load_populations(data_dir):
-    return {str(time): ad.read_h5ad(Path(data_dir) / 'display_states' /
-                                  f"time_{f'{time:g}'.replace('.', 'p')}.h5ad")
-            for time in TIMES}
+    # Figure 5a uses unwarped populations. Figure 5b separately uses the
+    # spatially anchored intermediate population.
+    populations = {str(time): ad.read_h5ad(Path(data_dir) / 'slice_data' /
+                                         f"time_{f'{time:g}'.replace('.', 'p')}.h5ad")
+                   for time in TIMES}
+    for population in populations.values():
+        population.obsm['spatial'] = np.asarray(population.X)[:, :2].copy()
+    return populations
 
 
 def display_coordinates(coordinates, time):
@@ -76,21 +81,56 @@ def draw_stack(data_dir, output, palette):
     settings = json.loads((Path(__file__).parent / 'stack_style.json').read_text())
     settings.update(bidirectional_offset=.06 * np.linalg.norm(np.ptp(xy, axis=0)),
                     observed_time_points=[0., 1., 2.], generated_time_points=[.5, 1.5],
-                    width=1800, height=1350, show_time_axis=True, show_legend=True,
+                    width=int(11.69 * 300), height=int(8.27 * 300),
+                    show_time_axis=False, show_legend=False,
                     font_color='black')
     fig = plot_3d_spatial_sankey_style_focus_anchor(
         populations, communication, [str(t) for t in TIMES], palette, labels, **settings)
     fig.update_layout(scene_camera={'eye': {'x': 1.7, 'y': 1., 'z': .9},
                                     'projection': {'type': 'orthographic'}},
-                      scene={'aspectratio': {'x': 1.2, 'y': 1., 'z': 1.6}},
+                      margin=dict(l=10, r=10, t=10, b=10),
+                      scene={'domain': {'x': [0., 1.], 'y': [0., 1.]},
+                             'aspectratio': {'x': 1.2, 'y': 1., 'z': 1.6}},
                       font={'family': 'Arial', 'size': 16, 'color': 'black'})
+    for trace in fig.data:
+        if trace.type != 'scatter3d':
+            continue
+        if trace.mode == 'lines' and trace.hoverinfo == 'skip' and len(trace.x) == 5:
+            continue  # slice borders stay on their planes
+        trace.z = [None if z is None else float(z) + .04 for z in trace.z]
     paths = [output / 'Figure5a_spatiotemporal_map.pdf', output / 'Figure5a_spatiotemporal_map.png']
     fig.write_html(output / 'Figure5a_spatiotemporal_map.html')
-    fig.write_image(str(paths[0]))
-    fig.write_image(str(paths[1]), scale=2)
+    core = output / 'Figure5a_calculated_core.png'
+    fig.write_image(str(core), scale=2)
+    _place_stack_in_paper_layout(core, paths)
     pd.DataFrame({'time': TIMES, 'cells': [a.n_obs for a in populations.values()]}).to_csv(
         output / 'Figure5a_population_counts.csv', index=False)
     return paths
+
+
+def _place_stack_in_paper_layout(core_path, paths):
+    """Apply the archived Figure 5a canvas placement to a freshly drawn core."""
+    import fitz
+    from PIL import Image
+    from io import BytesIO
+    transform = np.array([[1.16519507, -.00272857794, -1326.42311],
+                          [-.00257634855, 1.17106427, -26.494962], [0., 0., 1.]])
+    with Image.open(core_path) as image:
+        image = image.convert('RGB').resize((7014, 4962), Image.Resampling.LANCZOS)
+        image = image.transform((5723, 5761), Image.Transform.AFFINE,
+                                 tuple(np.linalg.inv(transform)[:2].ravel()),
+                                 resample=Image.Resampling.BICUBIC, fillcolor='white')
+        buffer = BytesIO()
+        image.save(buffer, format='PNG')
+    # This PDF contains labels and arrows only. Its former population image
+    # and all lower panels were removed when this layout asset was archived.
+    document = fitz.open(SOURCE / 'figure5a_labels.pdf')
+    page = document[0]
+    page.insert_image(fitz.Rect(23.7819900513, 14.293762207, 441.495361328, 434.780700684),
+                      stream=buffer.getvalue(), overlay=False)
+    document.save(paths[0], garbage=4, deflate=True)
+    page.get_pixmap(matrix=fitz.Matrix(3, 3), alpha=False).save(paths[1])
+    document.close()
 
 
 def draw_generated_population(data_dir, output, palette):
@@ -102,10 +142,11 @@ def draw_generated_population(data_dir, output, palette):
     return plotting.plot_figure5b(table, palette, output / 'Figure5b_generated_population')
 
 
-def draw_spatial_velocity(output, palette):
+def draw_spatial_velocity(output, palette, state_dir=None):
     """Recalculate the display grid and full-versus-interaction cosine values."""
-    table = pd.read_csv(SOURCE / 'figure5c_all_cells_velocity.csv')
-    with np.load(SOURCE / 'figure5c_embedded_velocity.npz', allow_pickle=False) as state:
+    source = SOURCE if state_dir is None else Path(state_dir)
+    table = pd.read_csv(source / 'figure5c_all_cells_velocity.csv')
+    with np.load(source / 'figure5c_embedded_velocity.npz', allow_pickle=False) as state:
         coordinates = state['manuscript_display_coordinates']
         velocity = state['manuscript_display_direct_embedded_velocity']
         full = state['full_embedded_velocity']
@@ -124,11 +165,14 @@ def draw_spatial_velocity(output, palette):
     return result['Figure5c_spatial_and_roi']
 
 
-def draw_gene_velocity(output, palette):
-    """Calculate a stream grid from all full gene-velocity vectors."""
+def draw_gene_velocity(output, palette, state_path=None):
+    """Draw the intrinsic-context gene velocity selected for Figure 5d."""
     import scvelo as scv
     from scvelo.plotting.velocity_embedding_grid import compute_velocity_on_grid
-    with np.load(SOURCE / 'figure5d_corrected_gene_velocity_state.npz', allow_pickle=False) as state:
+    path = SOURCE / 'figure5d_intrinsic_gene_velocity_state.npz' if state_path is None else Path(state_path)
+    with np.load(path, allow_pickle=False) as state:
+        if str(state['velocity_component']) != 'drift':
+            raise ValueError('Figure 5d requires intrinsic drift, not full velocity.')
         coordinates = state['corrected_raw_pca'].copy()
         velocity = state['embedded_gene_velocity_pca'].copy()
         labels = state['labels'].astype(str)
@@ -157,21 +201,40 @@ def draw_gene_velocity(output, palette):
         arrow_size=1, arrow_style='-|>', max_length=4, integration_direction='both',
         linewidth=linewidth, n_neighbors=None, recompute=False,
         palette=[palette[label] for label in categories], size=None, alpha=.3,
-        X_grid=x_grid, V_grid=v_grid, sort_order=True, legend_loc='right',
+        X_grid=x_grid, V_grid=v_grid, sort_order=True, legend_loc='none',
         title='Gene velocity', figsize=(6, 6), frameon=None, marker='.', show=False)
+    from matplotlib import patheffects
+    placements = pd.read_csv(SOURCE / 'figure5d_label_layout.csv')
+    for row in placements.itertuples(index=False):
+        subset = coordinates[display & (celltypes == row.label)]
+        if not len(subset):
+            continue
+        anchor = np.median(subset, axis=0)
+        ax.annotate(row.label, xy=anchor,
+                    xytext=(row.offset_x_points, row.offset_y_points),
+                    textcoords='offset points', ha='center', va='center',
+                    fontsize=11, weight='bold', color='black',
+                    path_effects=[patheffects.withStroke(linewidth=1.8, foreground='white')])
+    for end in ((.12, .08), (.03, .18)):
+        ax.annotate('', xy=end, xytext=(.03, .08), xycoords='axes fraction',
+                    arrowprops=dict(arrowstyle='->', color='black', lw=1.))
+    ax.text(.048, .175, 'PC1', transform=ax.transAxes, fontsize=9, color='black')
+    ax.text(.067, .09, 'PC2', transform=ax.transAxes, fontsize=9, color='black')
     paths = plotting.save_figure(ax.figure, output / 'Figure5d_gene_velocity')
     plt.close(ax.figure)
     return paths
 
 
-def draw_growth_interaction(output):
+def draw_growth_interaction(output, table_path=None):
     """Calculate one mean growth/interaction point per time and cell type."""
-    table = pd.read_csv(SOURCE / 'figure5e_growth_interaction_by_cell.csv')
+    path = SOURCE / 'figure5e_growth_interaction_by_cell.csv' if table_path is None else Path(table_path)
+    table = pd.read_csv(path)
     grouped = table.groupby(['time', 'celltype'], as_index=False).agg(
         growth_mean=('growth', 'mean'), interaction_mean=('interaction', 'mean'), n=('growth', 'size'))
     grouped['time_idx'] = grouped.time.map({t: i for i, t in enumerate(sorted(grouped.time.unique()))})
     grouped.to_csv(output / 'Figure5e_growth_interaction.csv', index=False)
-    return plotting.plot_figure5e(grouped, output / 'Figure5e_growth_interaction')
+    from .growth_plot import plot_growth_interaction
+    return plot_growth_interaction(grouped, output / 'Figure5e_growth_interaction')
 
 
 def draw_main_figure(data_dir: str | Path, output_dir: str | Path, panels='abcde'):

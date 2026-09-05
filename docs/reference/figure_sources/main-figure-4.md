@@ -19,18 +19,22 @@ python -m reproduction.mosta.main_figure --data-dir data/mosta/paper --output-di
 
 The first command downloads the cell-state inputs. The second calculates the
 plotting summaries and writes PDF and PNG files.
+These commands redraw saved results. Execute the notebook to recalculate the
+panel-b scores and the panel-d/e model fields before drawing.
 
 | Panel | Numerical input | Calculation |
 | --- | --- | --- |
 | a | `data/mosta/paper/figure4a/slice_data/*.h5ad` | Plot observed and generated coordinates with their cell-type labels. |
-| b | `data/mosta/paper/figure4b/cell_mapping.csv.gz` | Normalize the interaction scores using each time's 1st and 99th percentiles. |
-| c | Cartilage particle states in the source archive | Count lineage destinations and calculate the three largest transition fractions. |
-| d | Per-cell gene velocity and cell-type communication tables | Calculate the velocity grid, cell-type anchors and communication arrow widths. |
-| e | Brain states and full/interaction velocity arrays | Calculate gene-space and spatial velocity grids in the selected region. |
+| b | Cell-type expression and communication table, plus spatial cell mapping | Multiply ligand and receptor-complex means by communication weight. Sum incoming and outgoing scores and map them to cells. |
+| c | The 1,282 E15 cartilage-primordium particles and their E15.5 labels | Count destinations of the same particles and divide by 1,282. |
+| d | Trained model and the 8,000 observed E15.5 cell states used in the paper | Evaluate interaction gene velocity and communication on the same cells, then project the 50D gene derivative onto spatial coordinates. |
+| e | Trained model and all 17,071 E15.5 Brain cell states | Calculate full/interaction fields and project gene derivatives before selecting the spatial region. |
 
 The smaller panel c–e arrays are included under
 `release_artifacts/mosta_package_native_corrected_20260826_v1/reproduction/main_fig4_panels/`.
 The Python plotting functions are in `reproduction/mosta/main_figure.py`.
+The LR calculations and model-evaluation functions are in
+`reproduction/mosta/calculations.py`.
 Panels a–b retain the frame and label layout from the paper, but replace every
 scientific point layer with a newly drawn layer.
 
@@ -38,5 +42,6 @@ scientific point layer with a newly drawn layer.
 
 The [MOSTA analysis tutorial](../../tutorials/dataset_workflows/mosta.ipynb)
 loads the matching model and aligned data, generates populations, and calculates
-growth and cell-type composition. The figure notebook uses the saved paper
-states so stochastic simulation does not change which cells are displayed.
+growth and cell-type composition. The figure notebook uses saved population
+states for a–c, then evaluates the downloaded model for d–e. It passes the newly
+calculated velocity and communication files directly to the plotting functions.

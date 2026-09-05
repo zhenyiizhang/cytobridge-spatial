@@ -1,0 +1,10 @@
+{
+  "figure": "5d",
+  "velocity_component": "drift",
+  "cells": 46199,
+  "state_source": "output/arista_package_native_spatialqc_z50_retrain_20260824_r1/figure5d_intrinsic_state_exact_versions_v1/figure5d_corrected_gene_velocity_state.npz",
+  "source_script": "scripts/reviewer_arista_20260824/build_figure5d_package_native_gene_velocity_state.py",
+  "selection": "--velocity-component drift",
+  "calculation": "Intrinsic drift in 50-dimensional gene state, 30-neighbor scVelo graph, two-dimensional PCA.",
+  "label_layout": "Twelve manuscript labels with the archived placement offsets."
+}
