@@ -60,7 +60,9 @@ def test_collect_new_inference_runs(tmp_path, projection_column):
         directory = run_root / record["dataset"]
         directory.mkdir(parents=True)
         (directory / "manifest.json").write_text(json.dumps(record))
-        frame = result.inference_metrics.query("dataset == @record['dataset']")
+        frame = result.inference_metrics.loc[
+            result.inference_metrics["dataset"].eq(record["dataset"])
+        ].copy()
         frame.rename(columns={"projection_id": projection_column}).to_csv(directory / "metrics.csv", index=False)
     collected = collect_interaction_ablation(result.source_dir / "no_lr_paired_target_deltas.csv", run_root, tmp_path / "collected")
     observed = load_interaction_ablation_results(collected)

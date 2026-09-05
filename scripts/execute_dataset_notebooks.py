@@ -64,7 +64,7 @@ def execute_notebook(
 
 
 def run(*, timeout: int, save_outputs: bool, dataset: str | None = None) -> list[dict[str, object]]:
-    # Dataset notebooks train real models. Documentation checks only execute
+    # Dataset notebooks evaluate trained models. Documentation checks only execute
     # the examples that do not require study data or a GPU.
     selected = [p for p in NOTEBOOKS if p.stem == dataset] if dataset else NOTEBOOKS[:2]
     if not selected:
@@ -80,7 +80,7 @@ def main() -> None:
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument(
         "--dataset", choices=[p.stem for p in NOTEBOOKS[2:]],
-        help="Run a study-data notebook, including GPU training. Add its data first.",
+        help="Run one study-data analysis notebook. Extract its data and model first.",
     )
     parser.add_argument(
         "--save-outputs",

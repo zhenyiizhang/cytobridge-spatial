@@ -1,14 +1,17 @@
+---
+orphan: true
+---
+
 # Tutorials
 
-The notebooks are organized in the same order as a CytoBridge analysis. Start
-with a small generated example or your own data, follow a paper dataset from
-preprocessing through downstream analysis, or open a figure notebook to redraw
-one of the paper's saved result files.
+Start with a small preprocessing example, train a model on your data, or
+learn an analysis using one of the paper's trained models.
 
 ## Your data
 
-[Run CytoBridge on your data](your_data.ipynb) shows the AnnData fields,
-configuration file, training command, downstream command, and output folders.
+[Train a model](../training.md) explains preprocessing, alignment, graph
+construction, and fitting through the Python API. For command-line use,
+[configure a workflow](your_data.ipynb).
 
 ## Paper datasets
 
@@ -18,9 +21,8 @@ configuration file, training command, downstream command, and output folders.
 - [AD mouse brain](dataset_workflows/admouse.ipynb)
 - [Developing chicken heart](dataset_workflows/chicken_heart.ipynb)
 
-Each notebook follows one sequence: input data, training, then the resulting
-analyses and plots. Preprocessing is included in training. If you already have
-a model, use [Continue from a trained model](../reuse_model.md) instead.
+Each notebook loads a model, calculates results, and plots the returned arrays
+and tables. You can change the analysis without fitting the model again.
 
 ## Paper figures
 
@@ -35,13 +37,3 @@ running the long calculations again.
 - [Data and checkpoints](../data_checkpoints.md)
 - [Benchmarks](../benchmarks.md)
 - [Training time and memory](../training_compute.md)
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-
-your_data
-dataset_workflows/index
-paper_figures/index
-data_preparation/synthetic_preprocessing
-```

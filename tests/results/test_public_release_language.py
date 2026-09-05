@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -46,7 +47,6 @@ LOCAL_OR_AUDIT_MARKERS = (
     "/home/",
     "/lustre/",
     "/opt/",
-    "/data/",
     "sha256",
     "sha-256",
     "hash",
@@ -57,6 +57,15 @@ LOCAL_OR_AUDIT_MARKERS = (
     "literature_direction_context",
     "descriptive_technical",
 )
+
+# Relative paths such as outputs/admouse/data/ are valid reader inputs.
+PRIVATE_DATA_ROOT = re.compile(r"(?<![\w./-])/data/")
+NUMERICAL_DATA_NOTEBOOKS = {
+    "arista_figures.ipynb": "reproduction.arista.supplementary",
+    "main_figure_4.ipynb": "reproduction.mosta.main_figure",
+    "main_figure_5.ipynb": "reproduction.arista.main_figure",
+    "mosta_figures.ipynb": "reproduction.mosta.figures",
+}
 
 PUBLIC_PROSE_MARKERS = (
     "learning goals",
@@ -129,7 +138,14 @@ def _public_text(path: Path) -> str:
 @pytest.mark.parametrize("path", PUBLIC_TEXT_FILES, ids=lambda path: str(path.name))
 def test_public_files_do_not_expose_local_or_audit_markers(path: Path) -> None:
     text = _public_text(path).lower()
-    found = [marker for marker in LOCAL_OR_AUDIT_MARKERS if marker in text]
+    markers = LOCAL_OR_AUDIT_MARKERS
+    if path == REPOSITORY_ROOT / "CytoBridge/results/data/downloads/manifest.json":
+        # This machine-readable field verifies downloaded archives. It is not
+        # tutorial prose, and the downloader requires its original field name.
+        markers = tuple(marker for marker in markers if marker != "sha256")
+    found = [marker for marker in markers if marker in text]
+    if PRIVATE_DATA_ROOT.search(text):
+        found.append("absolute /data/ path")
     assert not found, f"{path} contains public-release markers: {found}"
 
 
@@ -163,14 +179,28 @@ def test_completed_notebooks_use_installed_package(
     path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
     source = _notebook_source(path)
     lowered = source.lower()
+    if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
+        assert f"from {NUMERICAL_DATA_NOTEBOOKS[notebook_name]} import draw_" in source
+        assert "cb.datasets.download(" in source
+        assert 'project / "data/' in source
+        assert "source checkout" in lowered
+        assert "dataset_workflows/" in source
+        assert not any(token in source for token in ("export_mosta", "export_arista", "assemble_main_figure_4"))
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
     assert "from cytobridge.results" in lowered
-    assert "## start here" in lowered
-    assert "## where the inputs come from" in lowered
-    assert lowered.index("from cytobridge.results") < lowered.index("## where the inputs come from")
-    assert "### 1." in lowered
-    assert "start with:" in lowered
-    assert "writes:" in lowered
-    assert "next:" in lowered
+    assert "## run the notebook" in lowered
+    assert "## where the inputs come from" not in lowered
+    assert "[analysis and input guide](../../reference/figure_sources/" in lowered
+    # The plot notebook and the history of its numerical inputs are separate
+    # reading routes. Check that the linked guide exists and names its inputs.
+    guide_target = source.split("[analysis and input guide](", 1)[1].split(")", 1)[0]
+    guide = (path.parent / guide_target).resolve()
+    assert guide.is_file()
+    guide_text = guide.read_text(encoding="utf-8").lower()
+    assert "## calculation programs" in guide_text
+    assert "start with:" in guide_text
+    assert "writes:" in guide_text
     assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert f'output_dir = Path("outputs") / "{output_slug}"' in source
@@ -199,6 +229,11 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
 ) -> None:
     path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
     source = _notebook_source(path)
+    if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
+        assert "display(Image(filename=str(path)" in source
+        assert "if Path(path).suffix ==" in source
+        assert source.index("figures = draw_") < source.rindex("show(")
+        return
     assert "display(Image(filename" in source
     preview_position = source.index("display(Image(filename")
     producer_positions = [

@@ -1,21 +1,20 @@
 # Installation
 
-CytoBridge requires Python 3.10 or 3.11. The base install contains stable data,
-configuration, and metric dependencies; heavier scientific stacks are selected
-with extras.
+Use Python 3.10 or 3.11. The installation below includes the libraries needed
+for the spatial analysis and training tutorials, together with JupyterLab.
 
 ## Install from GitHub
 
 ```bash
 git clone https://github.com/zhenyiizhang/cytobridge-spatial.git
 cd cytobridge-spatial
-python -m pip install -e '.[spatial,velocity]'
+python -m pip install -e '.[spatial,velocity,notebook]'
 ```
 
-Once version 1.5 is published, the normal installation will be:
+Open JupyterLab from your project folder to run a notebook:
 
 ```bash
-python -m pip install 'CytoBridge[spatial,velocity]>=1.5,<1.6'
+jupyter lab
 ```
 
 ## Installation options
@@ -38,9 +37,8 @@ downstream analysis, so install `spatial` and `velocity` together. The
 `spatial` extra alone is sufficient when explicitly running only preprocessing,
 training, and interaction-graph APIs.
 
-GPU-specific PyTorch wheels are an environment decision. Install the CPU or
-CUDA build appropriate for your machine before or together with a
-Torch-dependent extra.
+The dataset tutorials use an NVIDIA GPU. Install the PyTorch CUDA build that
+matches your machine. The small preprocessing example also runs on a CPU.
 
 ## Verify the environment
 

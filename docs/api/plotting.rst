@@ -10,6 +10,9 @@ Trajectory and composition
 .. automodule:: CytoBridge.pl.celltype
    :members: plot_celltype_composition
 
+.. automodule:: CytoBridge.pl.population
+   :members: plot_population_overview
+
 Velocity and growth
 -------------------
 
@@ -18,6 +21,9 @@ Velocity and growth
 
 .. automodule:: CytoBridge.pl.growth
    :members: plot_g_values, plot_growth_per_time, plot_growth_per_time_from_adata, plot_growth_interaction_bubble, plot_growth_timepoint_grid
+
+.. automodule:: CytoBridge.pl.growth_summary
+   :members: plot_growth_heatmap, plot_growth_size_maps
 
 Temporal, enrichment, and training summaries
 --------------------------------------------

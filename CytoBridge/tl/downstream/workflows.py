@@ -128,7 +128,14 @@ def run_interpolation_workflow(
     spatial_warp_eps: float = 1e-6,
     slice_max_cells_per_timepoint: Optional[int] = None,
     random_seed: Optional[int] = 42,
+    separate_interaction_random_stream: bool = True,
 ) -> InterpolationResult:
+    """Simulate populations and classify their cell states.
+
+    By default, interaction grouping has its own random stream. Set
+    ``separate_interaction_random_stream=False`` to reproduce analyses made
+    before that stream was separated from diffusion and population resampling.
+    """
     valid_piecewise_observed_sample_modes = ("t0_fixed", "per_timepoint")
     if (
         split_sde_piecewise
@@ -249,6 +256,8 @@ def run_interpolation_workflow(
         None if random_seed is None else int(random_seed) + 10_000
     )
     split_interaction_seed = None if random_seed is None else int(random_seed) + 10_001
+    if not separate_interaction_random_stream:
+        nonsplit_interaction_seed = split_interaction_seed = None
     split_interaction_seeds_by_interval: dict[str, int] = {}
 
     feature_cols_full = [f"x{i}" for i in range(1, dim + 1)]
@@ -767,6 +776,7 @@ def run_interpolation_workflow(
         classifier_metadata=classifier_metadata,
         classifier_evaluation=classifier_evaluation,
         simulation_seeds={
+            "separate_interaction_random_stream": bool(separate_interaction_random_stream),
             "non_split_identity": nonsplit_seed,
             "split_population": split_seed,
             "non_split_interaction_grouping": nonsplit_interaction_seed,

@@ -2,6 +2,7 @@
 # by the five public workflow notebooks. Install together with the velocity
 # extra to run their default downstream velocity and interactive-figure cells.
 geomloss>=0.2.6,<0.3
+imageio-ffmpeg>=0.5,<0.7
 ipywidgets>=7.6,<9
 jupyterlab>=4,<5
 matplotlib>=3.7,<4

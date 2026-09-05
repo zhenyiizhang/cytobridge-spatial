@@ -1,34 +1,35 @@
-# Paper datasets
+# Analysis tutorials
 
-Choose a dataset to follow its analysis from raw counts to a trained model and
-downstream plots. Each notebook follows the same order: get the data, set the
-paths, prepare the input, train, and open the results.
+Choose a dataset to work through an analysis from the paper. The notebooks
+load a trained model, calculate the quantities shown below, and draw them.
+Code and results appear together. You can use the same functions with your
+own trained model.
 
-These notebooks contain actual training calls. Add the input files before
-running them locally. The website does not execute GPU training, and it does
-not display placeholder output as if a model had been trained.
+Start with **chicken heart** for a smaller dataset. To fit a new model first,
+follow [Train a model](../../training.md). Training is separate from these
+notebooks, so you can repeat or change an analysis without fitting again.
 
-| Dataset | Input and model availability |
-| --- | --- |
-| Zebrafish | Exact paper inputs and final model download pending |
-| MOSTA | Model files in the source repository; aligned H5AD download pending |
-| ARISTA | Model files in the source repository; aligned H5AD download pending |
-| AD mouse | Exact paper inputs and final model download pending |
-| Chicken heart | Final model files included; aligned H5AD and annotation inputs need a separate download |
+| Dataset | What you calculate | Figure |
+| --- | --- | --- |
+| [Chicken heart](chicken_heart.ipynb) | Daily populations, median growth by cell type, spatial growth maps | S9 |
+| [MOSTA](mosta.ipynb) | Cell-state trajectories, brain-cell growth, population composition | S11–S13 |
+| [ARISTA](arista.ipynb) | Intermediate populations and spatial growth maps | S20 |
+| [AD mouse](admouse.ipynb) | Spatial populations, cell-type proportions and cell numbers | S26 |
+| [Zebrafish](zebrafish.ipynb) | Growth at the measured stages | S32 |
 
-See [Data and checkpoints](../../data_checkpoints.md) for the original study
-downloads and the files needed for each starting point.
+Download instructions are collected on the [data page](../../data_checkpoints.md).
 
 ```{toctree}
 :maxdepth: 1
 
-zebrafish
+chicken_heart
 mosta
 arista
 admouse
-chicken_heart
+zebrafish
 ```
 
 For another experiment, use [Run CytoBridge on your data](../your_data.ipynb).
-To draw from the paper's existing numerical results, use
-[Paper figures](../paper_figures/index.md).
+For the remaining analyses and for the exact saved simulations used in the
+paper, continue to [Paper figures](../paper_figures/index.md). Each dataset
+notebook also links to its next analyses.

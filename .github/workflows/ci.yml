@@ -28,11 +28,11 @@ jobs:
           NUMBA_DISABLE_JIT: "1"
           PYTHONPATH: ${{ github.workspace }}
         run: python scripts/execute_dataset_notebooks.py
-      - name: Execute the paper-figure notebooks
+      - name: Execute paper notebooks with bundled numerical inputs
         env:
           MPLBACKEND: Agg
           PYTHONPATH: ${{ github.workspace }}
-        run: python scripts/execute_paper_notebooks.py
+        run: python scripts/execute_paper_notebooks.py --bundled-only
       - name: Build distributions
         run: python -m build
       - name: Check distribution metadata

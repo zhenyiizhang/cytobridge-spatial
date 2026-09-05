@@ -1,0 +1,377 @@
+{
+  "release_id": 383187702,
+  "tag": "paper-data-20260905",
+  "archives": [
+    {
+      "archive": "arista_spatial_display_data.zip",
+      "bytes": 51863320,
+      "sha256": "830d777ddab75b80e3484b7855bca9ac54354c904e59fb00f1c2818cffb6bc31",
+      "parts": [
+        {
+          "name": "arista_spatial_display_data.zip",
+          "bytes": 51863320,
+          "sha256": "830d777ddab75b80e3484b7855bca9ac54354c904e59fb00f1c2818cffb6bc31",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_spatial_display_data.zip",
+          "asset_id": 545732982
+        }
+      ]
+    },
+    {
+      "archive": "admouse_analysis_data.zip",
+      "bytes": 142518909,
+      "sha256": "ca55e5eb7c1626f50740cd65fc96dc0cae2fcf3c7843ce15bfed6865049f9038",
+      "parts": [
+        {
+          "name": "admouse_analysis_data.zip",
+          "bytes": 142518909,
+          "sha256": "ca55e5eb7c1626f50740cd65fc96dc0cae2fcf3c7843ce15bfed6865049f9038",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_analysis_data.zip",
+          "asset_id": 545592402
+        }
+      ]
+    },
+    {
+      "archive": "admouse_model.zip",
+      "bytes": 11246863,
+      "sha256": "9788f6dac00a25a409a4bfbbde110503ee313002941648186b9920c3f43bf5ca",
+      "parts": [
+        {
+          "name": "admouse_model.zip",
+          "bytes": 11246863,
+          "sha256": "9788f6dac00a25a409a4bfbbde110503ee313002941648186b9920c3f43bf5ca",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_model.zip",
+          "asset_id": 545592405
+        }
+      ]
+    },
+    {
+      "archive": "arista_analysis_data.zip",
+      "bytes": 291730523,
+      "sha256": "a77acca5cd60f46740b53cb39d0dd31a70b07254e3387727adbc7ff1245d2d1b",
+      "parts": [
+        {
+          "name": "arista_analysis_data.zip",
+          "bytes": 291730523,
+          "sha256": "a77acca5cd60f46740b53cb39d0dd31a70b07254e3387727adbc7ff1245d2d1b",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_analysis_data.zip",
+          "asset_id": 545592404
+        }
+      ]
+    },
+    {
+      "archive": "arista_model.zip",
+      "bytes": 14057886,
+      "sha256": "cd665edd5aeed6a9407e229bf69fa78e854c3fca230bf6bf2252f25fc90faf82",
+      "parts": [
+        {
+          "name": "arista_model.zip",
+          "bytes": 14057886,
+          "sha256": "cd665edd5aeed6a9407e229bf69fa78e854c3fca230bf6bf2252f25fc90faf82",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_model.zip",
+          "asset_id": 545592463
+        }
+      ]
+    },
+    {
+      "archive": "chicken_heart_analysis_data.zip",
+      "bytes": 36245300,
+      "sha256": "29a3652d4a555944e36e40356a1a14683182e8c8791084f729128019830c8066",
+      "parts": [
+        {
+          "name": "chicken_heart_analysis_data.zip",
+          "bytes": 36245300,
+          "sha256": "29a3652d4a555944e36e40356a1a14683182e8c8791084f729128019830c8066",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/chicken_heart_analysis_data.zip",
+          "asset_id": 545592518
+        }
+      ]
+    },
+    {
+      "archive": "chicken_heart_model.zip",
+      "bytes": 11739958,
+      "sha256": "69f028ef9ee3ec4ffb8fdd337bf9eac1fc5198b49f21c93cb0472872ba0be9a7",
+      "parts": [
+        {
+          "name": "chicken_heart_model.zip",
+          "bytes": 11739958,
+          "sha256": "69f028ef9ee3ec4ffb8fdd337bf9eac1fc5198b49f21c93cb0472872ba0be9a7",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/chicken_heart_model.zip",
+          "asset_id": 545592607
+        }
+      ]
+    },
+    {
+      "archive": "chicken_heart_training_inputs.zip",
+      "bytes": 1550020427,
+      "sha256": "ceaf116876dfb8e940ce8e75825ea330bd244834030dab3713f0fbe326a6b573",
+      "parts": [
+        {
+          "name": "chicken_heart_training_inputs.zip",
+          "bytes": 1550020427,
+          "sha256": "ceaf116876dfb8e940ce8e75825ea330bd244834030dab3713f0fbe326a6b573",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/chicken_heart_training_inputs.zip",
+          "asset_id": 545592657
+        }
+      ]
+    },
+    {
+      "archive": "mosta_analysis_data.zip",
+      "bytes": 3386394520,
+      "sha256": "f0772da252aa479c905843eb68f5332a56393eb4da5d68b8d9a809fe05c4c67b",
+      "parts": [
+        {
+          "name": "mosta_analysis_data.zip.part01",
+          "bytes": 1887436800,
+          "sha256": "3ca01094362ad18442c4aeffb9f6517177943ee4d3d0aba5915dfbd862c08b01",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/mosta_analysis_data.zip.part01",
+          "asset_id": 545592723
+        },
+        {
+          "name": "mosta_analysis_data.zip.part02",
+          "bytes": 1498957720,
+          "sha256": "f10ad124197fb758e860999c9f0838799e0d8ba53f1e65955161b59f19e14fec",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/mosta_analysis_data.zip.part02",
+          "asset_id": 545593759
+        }
+      ]
+    },
+    {
+      "archive": "mosta_model.zip",
+      "bytes": 11754640,
+      "sha256": "0444a30c08c49b110abf6cf1873f7b7dfeb2b509a7819ca0a0fa4854d7231317",
+      "parts": [
+        {
+          "name": "mosta_model.zip",
+          "bytes": 11754640,
+          "sha256": "0444a30c08c49b110abf6cf1873f7b7dfeb2b509a7819ca0a0fa4854d7231317",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/mosta_model.zip",
+          "asset_id": 545595563
+        }
+      ]
+    },
+    {
+      "archive": "zebrafish_analysis_data.zip",
+      "bytes": 99565636,
+      "sha256": "121a35b1e15db3861cfb7245d7fd01b16088d62e1bb578a64a065c24f697ac8c",
+      "parts": [
+        {
+          "name": "zebrafish_analysis_data.zip",
+          "bytes": 99565636,
+          "sha256": "121a35b1e15db3861cfb7245d7fd01b16088d62e1bb578a64a065c24f697ac8c",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/zebrafish_analysis_data.zip",
+          "asset_id": 545595759
+        }
+      ]
+    },
+    {
+      "archive": "zebrafish_model.zip",
+      "bytes": 14009445,
+      "sha256": "e4c094ba613672373f04aa81be4cf672063e9a0c2adbbb7a4d8c282881f24d26",
+      "parts": [
+        {
+          "name": "zebrafish_model.zip",
+          "bytes": 14009445,
+          "sha256": "e4c094ba613672373f04aa81be4cf672063e9a0c2adbbb7a4d8c282881f24d26",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/zebrafish_model.zip",
+          "asset_id": 545596155
+        }
+      ]
+    },
+    {
+      "archive": "admouse_population_data.zip",
+      "bytes": 281662612,
+      "sha256": "4412f211b8866caa5f0d37b3900d8ce584c947a7a734d14ef9c26de55d19bcb5",
+      "parts": [
+        {
+          "name": "admouse_population_data.zip",
+          "bytes": 281662612,
+          "sha256": "4412f211b8866caa5f0d37b3900d8ce584c947a7a734d14ef9c26de55d19bcb5",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_population_data.zip",
+          "asset_id": 545596218
+        }
+      ]
+    },
+    {
+      "archive": "admouse_nichenet_data.zip",
+      "bytes": 888168870,
+      "sha256": "7ff5a98a8816072861efddfeadd2a690a4752657a6b9f572fcf809a4be10d2ae",
+      "parts": [
+        {
+          "name": "admouse_nichenet_data.zip",
+          "bytes": 888168870,
+          "sha256": "7ff5a98a8816072861efddfeadd2a690a4752657a6b9f572fcf809a4be10d2ae",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_nichenet_data.zip",
+          "asset_id": 545618351
+        }
+      ]
+    },
+    {
+      "archive": "admouse_perturbation_data.zip",
+      "bytes": 36497019,
+      "sha256": "956981d38c1e12ddac6155f869b0e2775cd216821cec974d685660252e66d118",
+      "parts": [
+        {
+          "name": "admouse_perturbation_data.zip",
+          "bytes": 36497019,
+          "sha256": "956981d38c1e12ddac6155f869b0e2775cd216821cec974d685660252e66d118",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_perturbation_data.zip",
+          "asset_id": 545618332
+        }
+      ]
+    },
+    {
+      "archive": "agist_analysis_data.zip",
+      "bytes": 39324912,
+      "sha256": "78fb03197f23c48ec7219d37de8b7cd51f5a8edff32dfa6b560f8e0a7c959a90",
+      "parts": [
+        {
+          "name": "agist_analysis_data.zip",
+          "bytes": 39324912,
+          "sha256": "78fb03197f23c48ec7219d37de8b7cd51f5a8edff32dfa6b560f8e0a7c959a90",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_analysis_data.zip",
+          "asset_id": 545618333
+        }
+      ]
+    },
+    {
+      "archive": "agist_model.zip",
+      "bytes": 9174989,
+      "sha256": "9481ee11fa5e0151e854eec511a050b2e94761a2a2e8073fed313dceec7f8331",
+      "parts": [
+        {
+          "name": "agist_model.zip",
+          "bytes": 9174989,
+          "sha256": "9481ee11fa5e0151e854eec511a050b2e94761a2a2e8073fed313dceec7f8331",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_model.zip",
+          "asset_id": 545618427
+        }
+      ]
+    },
+    {
+      "archive": "scnt_cortex_analysis_data.zip",
+      "bytes": 358590440,
+      "sha256": "7002f48d21433213f98a268076d3e6f959e31613029b0b7a9f3b31c8ad1d2246",
+      "parts": [
+        {
+          "name": "scnt_cortex_analysis_data.zip",
+          "bytes": 358590440,
+          "sha256": "7002f48d21433213f98a268076d3e6f959e31613029b0b7a9f3b31c8ad1d2246",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/scnt_cortex_analysis_data.zip",
+          "asset_id": 545618435
+        }
+      ]
+    },
+    {
+      "archive": "scnt_cortex_model.zip",
+      "bytes": 111604193,
+      "sha256": "ebbe1e4a4b3e03fdc35dba64c20930e64e034f3ad6119e14e36b58e85b0ecd71",
+      "parts": [
+        {
+          "name": "scnt_cortex_model.zip",
+          "bytes": 111604193,
+          "sha256": "ebbe1e4a4b3e03fdc35dba64c20930e64e034f3ad6119e14e36b58e85b0ecd71",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/scnt_cortex_model.zip",
+          "asset_id": 545618500
+        }
+      ]
+    },
+    {
+      "archive": "simulation_analysis_data.zip",
+      "bytes": 5299775,
+      "sha256": "ad3cdc132f710d97fd3674bd2a9608969daf195f90c776dd1f729f49edcfea72",
+      "parts": [
+        {
+          "name": "simulation_analysis_data.zip",
+          "bytes": 5299775,
+          "sha256": "ad3cdc132f710d97fd3674bd2a9608969daf195f90c776dd1f729f49edcfea72",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_analysis_data.zip",
+          "asset_id": 545618684
+        }
+      ]
+    },
+    {
+      "archive": "simulation_model.zip",
+      "bytes": 18573577,
+      "sha256": "c85e7e1943ed603f16ed4d5e3a801394543e77d35c32c0bd69284816ed0b09f0",
+      "parts": [
+        {
+          "name": "simulation_model.zip",
+          "bytes": 18573577,
+          "sha256": "c85e7e1943ed603f16ed4d5e3a801394543e77d35c32c0bd69284816ed0b09f0",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_model.zip",
+          "asset_id": 545618720
+        }
+      ]
+    },
+    {
+      "archive": "weinreb_analysis_data.zip",
+      "bytes": 716169149,
+      "sha256": "3aa357076ad70382af7a231ed45c9dc84fdd89403622a94489fc883c793d7a61",
+      "parts": [
+        {
+          "name": "weinreb_analysis_data.zip",
+          "bytes": 716169149,
+          "sha256": "3aa357076ad70382af7a231ed45c9dc84fdd89403622a94489fc883c793d7a61",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/weinreb_analysis_data.zip",
+          "asset_id": 545618832
+        }
+      ]
+    },
+    {
+      "archive": "weinreb_model.zip",
+      "bytes": 211489249,
+      "sha256": "d6d5f5844a5b525c1fd0d6ed47fdf57d36e4b4a3fe1912fc7ef2847617bc46d4",
+      "parts": [
+        {
+          "name": "weinreb_model.zip",
+          "bytes": 211489249,
+          "sha256": "d6d5f5844a5b525c1fd0d6ed47fdf57d36e4b4a3fe1912fc7ef2847617bc46d4",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/weinreb_model.zip",
+          "asset_id": 545619676
+        }
+      ]
+    },
+    {
+      "archive": "zebrafish_video_data.zip",
+      "bytes": 91162111,
+      "sha256": "8ea94f71c548a8ff58a654a66c45e2c8ffbd4487eb28bf5f7f8e17748a70deda",
+      "parts": [
+        {
+          "name": "zebrafish_video_data.zip",
+          "bytes": 91162111,
+          "sha256": "8ea94f71c548a8ff58a654a66c45e2c8ffbd4487eb28bf5f7f8e17748a70deda",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/zebrafish_video_data.zip",
+          "asset_id": 545620170
+        }
+      ]
+    },
+    {
+      "archive": "arista_figure_data.zip",
+      "bytes": 8600854,
+      "sha256": "3f06b4599ced517945c43ad8787cc3bea9147d684759f5a0655fee427b39650d",
+      "parts": [
+        {
+          "name": "arista_figure_data.zip",
+          "bytes": 8600854,
+          "sha256": "3f06b4599ced517945c43ad8787cc3bea9147d684759f5a0655fee427b39650d",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_figure_data.zip",
+          "asset_id": 545633890
+        }
+      ]
+    },
+    {
+      "archive": "mosta_figure_data.zip",
+      "bytes": 368264843,
+      "sha256": "59faeaf15c8b7d715f545d6c67574c317cd2821acad30e856444b37a33090177",
+      "parts": [
+        {
+          "name": "mosta_figure_data.zip",
+          "bytes": 368264843,
+          "sha256": "59faeaf15c8b7d715f545d6c67574c317cd2821acad30e856444b37a33090177",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/mosta_figure_data.zip",
+          "asset_id": 545633889
+        }
+      ]
+    }
+  ]
+}

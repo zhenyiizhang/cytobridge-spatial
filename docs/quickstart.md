@@ -1,71 +1,50 @@
 # Get started
 
-CytoBridge takes a time series of expression counts and spatial coordinates,
-fits a dynamical model, and calculates trajectories, growth, and cell–cell
-interactions.
+CytoBridge learns cell-state and spatial dynamics from measurements collected
+at several times. The Python API has three parts: `cb.pp` prepares data,
+`cb.tl` fits models and calculates results, and `cb.pl` draws plots.
 
-## Try a small example
+## Try the analysis API
 
-Start with the [preprocessing notebook](tutorials/data_preparation/synthetic_preprocessing.ipynb).
-It creates a small count matrix and plots the processed data. It runs on a CPU
-without downloading a study dataset. This example covers preprocessing, not
-model training.
+Start with the [chicken-heart notebook](tutorials/dataset_workflows/chicken_heart.ipynb).
+It is the smallest of the five spatial datasets. After downloading its data
+and model, run the cells in order to:
 
-## Train a model
+1. Load the aligned data and trained model.
+2. Calculate and plot velocity components.
+3. Calculate and plot growth across stages.
+4. Calculate attention and summarize cell-type interactions.
 
-After [installation](installation.md), put your counts H5AD in a working
-directory. For example, with a MOSTA input:
+Each calculation returns arrays or tables that can be used in later analyses.
+The notebook displays its calculated plots alongside the code.
 
-```bash
-cytobridge workflow --config mosta --train \
-  --input-h5ad data/mosta_raw.h5ad \
-  --output-dir outputs/mosta --device cuda
+The [other dataset tutorials](tutorials/dataset_workflows/index.md) use the same
+functions with MOSTA, ARISTA, AD mouse, and Zebrafish data.
+
+## Prepare and train your own data
+
+[Train a model](training.md) starts from a counts AnnData and shows each Python
+step separately: expression preprocessing, spatial alignment, LR graph
+construction, and model fitting. It ends by loading that model for analysis.
+
+If you first want a small example that runs without study data or a GPU, the
+[preprocessing notebook](tutorials/data_preparation/synthetic_preprocessing.ipynb)
+creates a count matrix, calculates PCA, and plots the processed features.
+
+## Reproduce a paper figure
+
+[Paper figures](tutorials/paper_figures/index.md) is a separate collection for
+the manuscript's particular comparisons and panel layouts. Those pages name
+the numerical files or existing panels that they read.
+
+## Use the command line
+
+The [workflow guide](reuse_model.md) provides commands for running a dataset's
+configured sequence from the terminal. Use the Python tutorials when you want
+to change or inspect individual analyses.
+
+```{toctree}
+:hidden:
+
+tutorials/data_preparation/synthetic_preprocessing
 ```
-
-This is **one command**. The backslashes continue it across lines.
-
-It runs the following steps in order:
-
-1. Prepare expression features and align the spatial coordinates.
-2. Fit the LR edge predictor and train the dynamical model.
-3. Calculate the downstream results and draw the standard plots.
-
-**You do not need to run `preprocess` first.** The `--train` command includes
-preprocessing. The separate `--step preprocess` option is only for inspecting
-the prepared data without training.
-
-The command above expects a prepared counts H5AD, not a downloaded archive.
-The [data guide](data_checkpoints.md) lists the required fields and the
-availability of the paper's inputs.
-
-## Find the outputs
-
-All results from the command are written under `outputs/mosta/`:
-
-```text
-outputs/mosta/
-├── preprocess/mosta_aligned.h5ad
-├── training/
-└── downstream/
-    ├── summary.json
-    ├── slice_data/
-    ├── growth/
-    ├── velocity/
-    ├── communication/
-    └── figures/
-```
-
-Training reads the aligned H5AD from `preprocess/`. Downstream analysis reads
-that same H5AD and the fitted model in `training/`. The plots in
-`downstream/figures/` are drawn from this run's results.
-
-## Choose your next step
-
-- **Your own experiment:** [adapt the input fields and settings](tutorials/your_data.ipynb).
-- **A paper dataset:** [follow its training notebook](tutorials/dataset_workflows/index.md).
-- **An existing model:** [calculate results without retraining](reuse_model.md).
-- **A paper figure:** [draw from the saved numerical results](tutorials/paper_figures/index.md).
-
-The standard analysis plots are not automatically the assembled manuscript
-pages. The figure tutorials give the additional calculations and layout steps
-where these are available.

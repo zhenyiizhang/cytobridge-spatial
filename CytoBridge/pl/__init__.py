@@ -86,6 +86,8 @@ from .temporal import (
     plot_temporal_profile_small_multiples,
 )
 from .celltype import plot_celltype_composition
+from .growth_summary import plot_growth_heatmap, plot_growth_size_maps
+from .population import plot_population_overview
 from .enrichment import plot_enrichment_bar, plot_enrichment_dot
 from .training import plot_training_history, summarize_training_history
 

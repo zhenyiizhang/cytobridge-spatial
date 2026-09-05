@@ -107,6 +107,16 @@ TUTORIALS = (
         "chicken_heart_raw.h5ad",
         (
             (
+                "Cell-state trajectories, lineage transitions, and growth",
+                "chicken_heart_daily.md",
+                "chicken-heart-daily",
+            ),
+            (
+                "Supplementary Figures S7–S8: alignment sensitivity",
+                "chicken_heart_alignment.md",
+                "chicken-heart-alignment",
+            ),
+            (
                 "LR-prior and interaction ablations",
                 "interaction_ablation.ipynb",
                 "lr-prior-stvcr",
@@ -139,228 +149,42 @@ def code(text: str, *, cell_id: str | None = None):
 
 
 def build_notebook(tutorial: Tutorial):
-    """Write a linear, executable tutorial for a new dataset run."""
-    dataset = tutorial.dataset
-    figures = "\n".join(
-        f"- [{label}](../paper_figures/{target})"
-        for label, target, _ in tutorial.figure_links
-    )
-    cells = [
-        markdown(f"""
-# {tutorial.title}
+    if tutorial.dataset == "admouse":
+        from build_admouse_population_tutorial import build_notebook as build_admouse
 
-This notebook starts with raw counts, trains CytoBridge, and opens the resulting
-growth, trajectory, and interaction analyses. Run the cells in order after
-[installing CytoBridge](../../installation.md) and adding the input files below.
-Training requires a GPU and is not run when this website is built.
+        return build_admouse()
+    if tutorial.dataset == "arista":
+        from build_arista_growth_tutorial import build_notebook as build_arista
 
-To draw a figure from the paper's saved results without training, go directly
-to [Paper figures](../paper_figures/index.md). Those results are separate from
-the new model fitted here.
-"""),
-        markdown(f"""
-## Get the data
+        return build_arista()
+    if tutorial.dataset == "mosta":
+        from build_mosta_trajectory_tutorial import build_notebook as build_mosta
 
-Use `data/{tutorial.raw_filename}` for the counts H5AD. The [download
-guide](../../data_checkpoints.md) lists the original study and the files still
-needed for the paper's exact input. A study download may need conversion to
-H5AD before it can be used here.
+        return build_mosta()
+    if tutorial.dataset == "zebrafish":
+        from build_zebrafish_growth_tutorial import build_notebook as build_zebrafish
 
-Run this notebook from your own working directory. All paths below are relative
-to that directory. Use a new output folder for each training run.
-"""),
-        markdown("## Set the paths"),
-        code(f"""
-from pathlib import Path
-import json
+        return build_zebrafish()
+    if tutorial.dataset == "chicken_heart":
+        from build_chicken_heart_tutorial import build_notebook as build_heart
 
-from CytoBridge.workflow import WorkflowOptions, load_workflow_config, run_workflow
+        return build_heart()
+    from build_analysis_tutorials import build_analysis_notebook
 
-DATASET_CONFIG = {dataset!r}
-RAW_H5AD = Path("data/{tutorial.raw_filename}")
-OUTPUT_DIR = Path("outputs/{dataset}")
-ALIGNED_H5AD = OUTPUT_DIR / "preprocess" / "{dataset}_aligned.h5ad"
-MODEL_DIR = OUTPUT_DIR / "training"
-
-config, _ = load_workflow_config(DATASET_CONFIG)
-"""),
-        markdown("""
-## Prepare the input
-
-The configuration gives the names of the count layer, time column, cell-type
-column, and spatial coordinates. This table shows the fields expected in the
-raw H5AD.
-"""),
-        code("""
-import pandas as pd
-
-preprocess = config["preprocess"]
-align = preprocess["align"]
-coordinate_columns = align.get("spatial_obs_keys")
-spatial_source = (
-    f"obs[{coordinate_columns!r}]" if coordinate_columns
-    else f"obsm[{align.get('input_spatial_key', 'spatial')!r}]"
-)
-pd.DataFrame({
-    "Input": ["Counts", "Time", "Cell type", "Coordinates"],
-    "AnnData field": [
-        f"layers[{align.get('expression_layer', 'X')!r}]"
-        if align.get("expression_layer", "X") != "X" else "X",
-        f"obs[{preprocess['time_key']!r}]",
-        f"obs[{preprocess['annotation_source']!r}]",
-        spatial_source,
-    ],
-})
-"""),
-    ]
-    if dataset == "chicken_heart":
-        cells += [
-            markdown("""
-### Combine counts and annotations
-
-Skip these two cells if `RAW_H5AD` is already prepared. To build it from the
-GEO matrices, supply the two annotation/reference H5AD files listed below.
-They are needed to recover the paper's selected spots and labels, and are not
-part of the GEO count-matrix download. Their distribution is still being
-arranged.
-
-The first function joins counts and annotations. The second prepares the
-coordinates for alignment, including the recorded D7 orientation.
-"""),
-            code("""
-import CytoBridge as cb
-
-RAW_10X_DIR = Path("data/GSE149457_RAW")
-METADATA_H5AD = Path("data/chicken_heart_spatial_merged_with_meta.h5ad")
-REFERENCE_ALIGNMENT_H5AD = Path("data/heart_aligned_all_timepoints.h5ad")
-PREPARATION_DIR = Path("outputs/chicken_heart_input")
-"""),
-            code("""
-PREPARATION_DIR.mkdir(parents=True, exist_ok=True)
-reference_input = PREPARATION_DIR / "chicken_heart_reference_input.h5ad"
-cb.pp.prepare_chicken_heart_input(
-    raw_dir=RAW_10X_DIR,
-    metadata_h5ad=METADATA_H5AD,
-    aligned_reference_h5ad=REFERENCE_ALIGNMENT_H5AD,
-    output_h5ad=reference_input,
-    output_table=PREPARATION_DIR / "model_input.csv",
-    manifest_path=PREPARATION_DIR / "preparation.json",
-    graph_database=cb.pp.bundled_graph_database_path(DATASET_CONFIG),
-    repair_legacy_d7_left_right=False,
-)
-cb.pp.prepare_chicken_heart_ot_input(
-    input_h5ad=reference_input,
-    output_h5ad=RAW_H5AD,
-    output_table=PREPARATION_DIR / "chicken_heart_ot_input.csv",
-    manifest_path=PREPARATION_DIR / "ot_input.json",
-)
-"""),
-        ]
-    cells += [
-        code("""
-if not RAW_H5AD.is_file():
-    raise FileNotFoundError(f"Add the input H5AD or update RAW_H5AD: {RAW_H5AD}")
-"""),
-        markdown("""
-## Train and calculate the results
-
-This call performs preprocessing, fits the LR edge predictor, trains the
-dynamical model, and runs the configured downstream analyses. **Do not run a
-separate preprocessing command first.**
-
-The aligned data are written to `ALIGNED_H5AD`. Training reads that file and
-writes the model to `MODEL_DIR`. Downstream analysis then reads both.
-"""),
-        code("""
-result = run_workflow(
-    config,
-    options=WorkflowOptions(
-        input_h5ad=RAW_H5AD,
-        output_dir=OUTPUT_DIR,
-        train=True,
-        device="cuda",
-    ),
-)
-"""),
-        markdown(f"""
-The equivalent terminal command is below. Use either the Python call above
-or this command, not both.
-
-```bash
-cytobridge workflow --config {dataset} --train \\
-  --input-h5ad data/{tutorial.raw_filename} \\
-  --output-dir outputs/{dataset} --device cuda
-```
-"""),
-        markdown("""
-## Open the results
-
-The previous step creates the following files. The exact set of analyses is
-selected by the dataset configuration.
-
-| Result | Location under `OUTPUT_DIR` |
-| --- | --- |
-| Aligned expression and coordinates | `preprocess/` |
-| Trained model and settings | `training/` |
-| Observed and interpolated cell populations | `downstream/slice_data/` |
-| Growth rates | `downstream/growth/` |
-| Velocity components | `downstream/velocity/` |
-| Cell-type interaction summaries | `downstream/communication/` |
-| Plots | `downstream/figures/` |
-
-Read the summary written by **this run**, then list its generated plots:
-"""),
-        code("""
-downstream_dir = OUTPUT_DIR / "downstream"
-summary = json.loads((downstream_dir / "summary.json").read_text())
-summary
-"""),
-        code("""
-figure_files = sorted((downstream_dir / "figures").rglob("*.png"))
-pd.DataFrame({"Figure": [str(path.relative_to(OUTPUT_DIR)) for path in figure_files]})
-"""),
-        markdown("To view one of these plots in the notebook:"),
-        code("""
-from IPython.display import Image, display
-
-if figure_files:
-    display(Image(filename=str(figure_files[0])))
-"""),
-        markdown(f"""
-## Paper figures
-
-The plots above use your new model. The paper figure notebooks below explain
-which saved numerical results they use and whether further calculations are
-needed. They do not automatically use `OUTPUT_DIR`.
-
-{figures}
-
-For the calculation steps behind each panel, see the
-[figure-by-figure guide](../../paper_reproduction.md).
-To repeat analysis with an existing model, see
-[Continue from a trained model](../../reuse_model.md).
-"""),
-    ]
-    return nbformat.v4.new_notebook(
-        cells=cells,
-        metadata={
-            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-            "language_info": {"name": "python", "version": "3.11"},
-            "cytobridge": {"requires_study_data": True, "runs_training": True},
-        },
-    )
+    return build_analysis_notebook(tutorial)
 
 
 def build_own_data_notebook():
     """Show the input fields and one complete training command."""
     cells = [
         markdown("""
-# Run CytoBridge on your data
+# Configure a command-line workflow
 
 Start with an AnnData file containing raw counts, a time label, cell-type labels,
 and spatial coordinates. This guide shows how to tell CytoBridge where those
 fields are stored, then run preprocessing, training, and analysis with one
-command.
+command. To work through the Python functions individually, use
+[Train a model](../training.md).
 
 The [small preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
 shows how to create an AnnData object. To reuse an existing model, see
@@ -416,8 +240,8 @@ stages are used.
 
 The table below lists the main settings to review before saving. In particular,
 choose a suitable LR database and species, spatial scale, and neighborhood
-size. The [dataset tutorials](dataset_workflows/index.md) show the choices for
-the paper datasets.
+size. The dataset configurations contain the paper's settings. The
+[dataset tutorials](dataset_workflows/index.md) cover analysis after training.
 """),
         code("""
 pd.DataFrame({
@@ -446,8 +270,10 @@ CONFIG_PATH.write_text(json.dumps(config, indent=2) + "\\n")
 
 The configuration above starts from Zebrafish settings. For another species,
 supply your LR CSV in the command below and set
-`downstream.preferred_species_tag` to its species tag. The CSV needs
-`ligand` and `receptor` columns.
+`downstream.preferred_species_tag` to its species tag. For graph construction,
+the CSV needs `Ligand`, `Receptor`, `Pathway`, and `Annotation` columns, as in
+the included CellChatDB tables. Keep the interaction-type annotations from
+the database.
 """),
         markdown("""
 ## Train and calculate results
@@ -798,16 +624,29 @@ above is drawn directly from `processed`.
     )
 
 
+def write_notebook(notebook, path):
+    """Preserve outputs only if the entire code sequence has not changed."""
+    if path.exists():
+        previous = nbformat.read(path, as_version=4)
+        old = [c for c in previous.cells if c.cell_type == "code"]
+        new = [c for c in notebook.cells if c.cell_type == "code"]
+        if [c.source for c in old] == [c.source for c in new]:
+            for before, after in zip(old, new):
+                after.outputs = before.outputs
+                after.execution_count = before.execution_count
+    nbformat.write(notebook, path)
+
+
 def main() -> None:
     NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
     for tutorial in TUTORIALS:
         path = NOTEBOOK_DIR / f"{tutorial.dataset}.ipynb"
-        nbformat.write(build_notebook(tutorial), path)
+        write_notebook(build_notebook(tutorial), path)
         print(path.relative_to(ROOT))
-    nbformat.write(build_own_data_notebook(), OWN_DATA_NOTEBOOK)
+    write_notebook(build_own_data_notebook(), OWN_DATA_NOTEBOOK)
     print(OWN_DATA_NOTEBOOK.relative_to(ROOT))
     SYNTHETIC_NOTEBOOK.parent.mkdir(parents=True, exist_ok=True)
-    nbformat.write(build_synthetic_preprocessing_notebook(), SYNTHETIC_NOTEBOOK)
+    write_notebook(build_synthetic_preprocessing_notebook(), SYNTHETIC_NOTEBOOK)
     print(SYNTHETIC_NOTEBOOK.relative_to(ROOT))
 
 

@@ -29,11 +29,13 @@ _FIGURE_COMMAND_HELP = {
     "zebrafish-attention": "redraw Supplementary Figure S39 summaries",
     "compute-cost": "write Supplementary Table 2",
     "main-figure-2": "assemble Main Figure 2 from the included panel files",
-    "main-figure-5-reference": "export the assembled Main Figure 5",
-    "main-figure-4": "assemble Main Figure 4 from downloaded MOSTA figure files",
-    "mosta-reference-pages": "export S11-S18 from downloaded MOSTA figure files",
+    "main-figure-5-reference": "draw Main Figure 5 from numerical data",
+    "main-figure-4": "draw Main Figure 4 from numerical data",
+    "mosta-reference-pages": "draw S11-S18 from numerical data",
 }
 _FIGURE_COMMAND_ALIASES = {
+    "main-figure-5": "main-figure-5-reference",
+    "mosta-si": "mosta-reference-pages",
     "interaction-evidence": "lr-prior-stvcr",
 }
 _DEPENDENCY_PROFILES = {
@@ -90,6 +92,7 @@ _DEPENDENCY_PROFILES = {
     "notebook": (
         "fitz",
         "geomloss",
+        "imageio_ffmpeg",
         "ipywidgets",
         "jupyterlab",
         "matplotlib",

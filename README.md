@@ -51,99 +51,54 @@ cytobridge doctor
 
 ## Quick start
 
-Five example dataset configurations are included: Zebrafish, MOSTA, ARISTA,
-AD mouse, and developing chicken heart. Review a configuration and its planned
-steps before supplying data:
+Start with the [chicken-heart analysis tutorial](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/dataset_workflows/chicken_heart.html).
+It loads the trained model, computes velocity, growth, and attention, then
+plots the returned arrays and tables. Each step uses the public Python API.
 
-```bash
-cytobridge workflow --list-configs
-cytobridge workflow --config zebrafish --check
-```
+To work with your own experiment, follow
+[Train a model](https://cytobridge-spatial.readthedocs.io/en/latest/training.html).
+That guide explains expression preprocessing, spatial alignment, LR graph
+construction, and model fitting as separate Python calls, then shows how to
+continue with analysis.
 
-For another dataset, export the closest example configuration, edit the data
-columns and analysis settings, and check the edited JSON:
-
-```bash
-cytobridge workflow --config zebrafish --export-config configs/my_dataset.json
-cytobridge workflow --config configs/my_dataset.json --train \
-  --input-h5ad inputs/my_dataset.h5ad \
-  --output-dir outputs/my_dataset --device cuda --check
-```
-
-The [own-data tutorial](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/your_data.html)
-lists the fields that must be changed before training. The
-[small generated-data example](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/data_preparation/synthetic_preprocessing.html)
-runs preprocessing and plots the result.
-
-Start a complete run from raw data with `--train`. This one command performs
-preprocessing, training, and downstream analysis in order:
-
-```bash
-cytobridge workflow --config mosta --train \
-  --input-h5ad /path/to/mosta_raw_counts.h5ad \
-  --output-dir /path/to/mosta_run \
-  --device cuda
-```
-
-If preprocessing and training are already complete, run downstream analysis
-from the aligned AnnData file and the matching model directory:
-
-```bash
-cytobridge workflow --config zebrafish --step downstream \
-  --aligned-h5ad /path/to/zebrafish_aligned.h5ad \
-  --model-dir /path/to/zebrafish_model \
-  --output-dir /path/to/zebrafish_results \
-  --device cuda
-```
-
-The workflow command uses the same package functions exposed under
-`CytoBridge.pp`, `CytoBridge.tl`, and `CytoBridge.pl`. See the
-[quickstart](https://cytobridge-spatial.readthedocs.io/en/latest/quickstart.html) for
-the input keys and optional ligand–receptor and gene-dynamics steps.
+For a CPU example without external data, run the
+[preprocessing notebook](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/data_preparation/synthetic_preprocessing.html).
 
 ## Tutorials and paper figures
 
-The tutorial index covers data preparation, five dataset tutorials, paper
-figures, and benchmarks. Each dataset notebook starts with one raw-data command
-that preprocesses, trains, and runs the analyses selected in its configuration.
-It then
-shows the saved aligned H5AD, model, result folders, and an optional downstream
-rerun in a new directory. It separately labels
-commands that continue from a new run, commands that use the paper's saved files, and
-paper inputs that are not distributed in this repository. An optional
-preprocessing-only section is clearly marked as an inspection run rather than a
-prerequisite for training. Paper-figure notebooks state whether they recalculate
-values, redraw prepared summaries, assemble panel files, or export an assembled
-figure.
+The notebooks in `docs/tutorials/dataset_workflows/` introduce the analysis
+functions using chicken heart, MOSTA, ARISTA, AD mouse, and Zebrafish data.
+Their displayed outputs come from executing the code on each dataset's trained
+model. Training is not repeated when you run these notebooks.
+Choose a dataset in the [tutorial index](docs/tutorials/dataset_workflows/index.md)
+and download its external AnnData files and checkpoints using the
+[data and checkpoint guide](docs/data_checkpoints.md).
 
-Installed figure commands use the same public result APIs as the notebooks:
+The [paper figure notebooks](docs/tutorials/paper_figures/index.md) are a separate
+collection for reproducing the manuscript's particular comparisons and panel
+layouts. They identify their numerical inputs and plotting code. Where a page
+uses existing vector panels or a completed figure, it says so.
+
+The [API reference](https://cytobridge-spatial.readthedocs.io/en/latest/api/index.html)
+groups functions by analysis. The
+[figure source index](docs/paper_reproduction.md) records the scripts and data
+used for the paper panels.
+
+## Command-line use
+
+The workflow command runs the steps selected by a dataset configuration.
+For example, with the prepared chicken-heart counts:
 
 ```bash
-cytobridge figure list
-cytobridge figure explain zebrafish-si
-cytobridge figure arista-lr --output-dir outputs/arista_lr
+cytobridge workflow --config chicken_heart --train \
+  --input-h5ad outputs/chicken_heart_input/input.h5ad \
+  --output-dir outputs/chicken_heart_trained --device cuda
 ```
 
-The explanation prints the source files and the commands that produce the
-figure. Each plotting notebook displays the PNG written by its own code. When a
-page is assembled from existing vector panels, the notebook identifies those
-panels and the assembly command.
-
-Complete dataset runs use external AnnData files and checkpoints; their names,
-formats, and expected locations are documented in the input guide.
-
-The [paper reproduction index](docs/paper_reproduction.md) maps Main Figures
-1–6, Supplementary Figures S1–S45, Supplementary Tables 1–2, and the zebrafish
-videos to their notebooks, scripts, processed inputs, and external-data
-requirements. The source checkout also contains complete MOSTA and ARISTA figure
-releases and the
-[chicken-heart S7/S8 alignment-sensitivity archive](release_artifacts/chicken_heart_alignment_sensitivity_20260831/README.md)
-and the [cross-dataset benchmark summary archive](release_artifacts/five_dataset_loto_summary_20260901/PROVENANCE.md)
-under `release_artifacts/`; these releases are not installed with the wheel.
-
-Start with the
-[tutorial index](https://cytobridge-spatial.readthedocs.io/en/latest/tutorials/index.html)
-or browse the notebooks in `docs/tutorials/`.
+See [input preparation](docs/chicken_heart_preparation.md) for the two calls that
+produce that input, or [configure a workflow](docs/tutorials/your_data.ipynb) for
+another experiment. The Python tutorials are the starting point for changing
+individual analyses.
 
 ## Data and checkpoints
 
@@ -184,10 +139,9 @@ python -m pip install -e '.[docs]'
 sphinx-build -W --keep-going -E -b html docs docs/_build/html
 ```
 
-Read the Docs renders the committed notebook outputs. CI executes the public
-notebook cells with the long training and downstream switches left off. It
-checks the examples and saved outputs, but it does not retrain all five paper
-datasets.
+Read the Docs renders the committed notebook outputs. CI executes the small
+examples and checks notebook structure and outputs. Study-data notebooks are
+executed separately on a machine with their data and models.
 
 ## Development
 

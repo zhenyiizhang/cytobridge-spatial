@@ -3,6 +3,7 @@
 cellrank>=2,<3
 furo>=2024.8.6,<2027
 geomloss>=0.2.6,<0.3
+imageio-ffmpeg>=0.5,<0.7
 ipython>=8,<10
 ipywidgets>=7.6,<9
 joblib>=1.2,<2

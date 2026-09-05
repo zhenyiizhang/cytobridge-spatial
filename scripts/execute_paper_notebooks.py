@@ -17,12 +17,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "docs" / "tutorials" / "paper_figures"
 OPERATIONS = {
     "main_figure_2": "redraw panel e and assemble existing panels a-d",
-    "main_figure_4": "assemble existing vector panels",
-    "main_figure_5": "copy an existing figure page",
-    "mosta_figures": "export existing figure pages",
-    "arista_figures": "redraw S23-S24; display existing S19-S22 pages",
+    "main_figure_4": "draw all panels from cell states and numerical results",
+    "main_figure_5": "draw all panels from cell states and numerical results",
+    "mosta_figures": "draw S11-S18 from cell states and numerical results",
+    "arista_figures": "draw S19-S24 from cell states and numerical results",
     "compute_cost": "format recorded measurements as a table",
 }
+DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures"}
 
 # The kernels run in temporary output directories. Keep the source checkout on
 # their import path when this script is used before installing a wheel.
@@ -131,6 +132,8 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--report", type=Path, help="Save the execution summary as JSON.")
+    parser.add_argument("--bundled-only", action="store_true",
+                        help="Run notebooks whose numerical inputs ship with the source checkout")
     parser.add_argument(
         "--notebook",
         action="append",
@@ -146,6 +149,11 @@ def main() -> None:
         help="Store the executed cells in the published notebooks.",
     )
     args = parser.parse_args()
+    if args.bundled_only:
+        if args.notebook:
+            parser.error("Use either --bundled-only or --notebook")
+        args.notebook = [p.stem for p in sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+                         if p.stem not in DOWNLOAD_NOTEBOOKS]
 
     if args.output_dir is not None:
         summaries = run(

@@ -8,6 +8,7 @@ and command-line modules used by the tutorials.
    :maxdepth: 2
 
    preprocessing
+   datasets
    tools
    plotting
    workflow

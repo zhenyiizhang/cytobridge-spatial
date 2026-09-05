@@ -34,9 +34,14 @@ WORKFLOWS = {
     "zebrafish_si_s31_s38.ipynb": "zebrafish-si",
 }
 
+# These tutorials now contain their own download, calculation and plotting
+# steps. Do not replace them with the older source-index introduction.
+NUMERICAL_TUTORIALS = {"main_figure_4.ipynb", "main_figure_5.ipynb", "mosta_figures.ipynb", "arista_figures.ipynb"}
+
 ROUTE_CELL_TAG = "cytobridge-reproduction-route"
 DETAIL_CELL_TAG = "cytobridge-upstream-detail"
 PREVIEW_CELL_TAG = "cytobridge-generated-preview"
+SOURCE_DIR = ROOT / "docs" / "reference" / "figure_sources"
 
 
 def _markdown(source: str, tag: str):
@@ -115,34 +120,47 @@ def _insert_route(notebook, workflow: str) -> None:
         "main-figure-2": "These cells redraw panel e from numerical results and combine it with the existing panels a–d.",
         "arista-lr": "These cells recalculate and draw S23–S24 from LR time-course tables. S19–S22 are displayed as completed pages.",
         "compute-cost": "These cells format the recorded training measurements into a table. They do not measure a new training run.",
-        "nonspatial": "These cells draw S4–S5 from the included cell arrays and result tables. They recalculate selected summaries and use the saved tables for other panels. Converting a new model run into this complete set of panel inputs is still missing.",
+        "nonspatial": "Draw S4–S5 from the included per-cell arrays and analysis tables. The cells calculate the plotted summaries and save new PDF and PNG files.",
     }
     purpose = purposes.get(
         workflow,
         "These cells read the included numerical results, calculate the panel summaries, and draw new figures.",
     )
+    # Keep the numerical redraw and the earlier model calculations on separate
+    # pages. Their order must not depend on vague references to "steps below".
+    title = notebook.cells[0].source.splitlines()[0]
+    notebook.cells[0].source = title + "\n\n" + purpose
+    source_link = f"../../reference/figure_sources/{workflow}.md"
     notebook.cells.insert(1, _markdown(
-        "## Start here\n\n" + purpose
-        + "\n\nRun the Python cells below in order. No training is needed for this page. "
-        "The section **Where the inputs come from** at the end gives the earlier "
-        "calculations and their required files.",
+        "## Run the notebook\n\n"
+        "This page starts with the paper's saved inputs. Run its Python cells "
+        "from top to bottom to create the output shown here.\n\n"
+        "To repeat the model calculations first, use the "
+        f"[analysis and input guide]({source_link}). It identifies the model, "
+        "data, analysis programs, and the files read by this notebook. "
+        "Choose that route only if you want to recalculate those inputs.",
         ROUTE_CELL_TAG,
     ))
-    notebook.cells.append(_markdown(
-        "## Where the inputs come from\n\n"
-        "These are the available steps from the earlier analysis. They are not prerequisites "
-        "for drawing the included results above. Each step lists the file it reads "
-        "and the result used by the next step.\n\n"
-        "Paths in angle brackets are placeholders to replace with your files. "
-        "A source directory names archived code, not a command you can run. "
-        + ("The listed steps do not yet form an executable sequence from a new "
-           "model run to the final page." if workflow in {"main-figure-4", "nonspatial"} else ""),
-        ROUTE_CELL_TAG,
-    ))
-    notebook.cells.extend(
-        _markdown(_step_markdown(row, number), ROUTE_CELL_TAG)
-        for number, row in enumerate(describe_figure_steps(workflow), start=1)
-    )
+    rows = describe_figure_steps(workflow)
+    SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+    notebook_name = next(k for k, v in WORKFLOWS.items() if v == workflow)
+    notebook_link = "../../tutorials/paper_figures/" + notebook_name
+    if workflow == "lr-prior-stvcr":
+        notebook_link = "https://github.com/zhenyiizhang/cytobridge-spatial/blob/main/docs/tutorials/paper_figures/" + notebook_name
+    source_text = ["---\norphan: true\n---\n", title.replace("# ", "# Analysis inputs: ", 1),
+        "\nThe [figure notebook](" + notebook_link + ") starts from saved numerical results or completed panels. This page records the calculations that precede it.\n",
+        "## Calculation programs\n\nEach command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.\n"]
+    commands = [row for row in rows if row.get("entry_type") != "source"]
+    for number, row in enumerate(commands, 1):
+        source_text.append(_step_markdown(row, number))
+    sources = [row for row in rows if row.get("entry_type") == "source"]
+    if sources:
+        source_text.append("\n## Archived source files\n\nThese entries locate implementation files. They are reference material, not additional commands.\n")
+        for row in sources:
+            source_text.append(f"\n### {row['paper_part']}: {row['step']}\n\n`{row['code_or_command']}`\n\nInput: {row['reads']}\n\nOutput: {row['writes']}\n")
+    if workflow in {"nonspatial", "zebrafish-si", "main-figure-4", "main-figure-5-reference", "mosta-reference-pages", "arista-lr"}:
+        source_text.append("\n## Preparing inputs for the figure notebook\n\nThe model-analysis commands and the archived panel scripts are separate programs. The package does not yet provide one command that converts a new model run into all the inputs of this figure notebook. Use the saved paper inputs for its existing plotting cells.\n")
+    (SOURCE_DIR / f"{workflow}.md").write_text("\n".join(source_text) + "\n")
 
 
 def _insert_after_source(notebook, marker: str, cells: list) -> None:
@@ -400,6 +418,8 @@ from CytoBridge.results.interaction_evidence import (
 
 def main() -> None:
     for name, workflow in WORKFLOWS.items():
+        if name in NUMERICAL_TUTORIALS:
+            continue
         path = NOTEBOOK_DIR / name
         update(path, workflow)
         print(path.relative_to(ROOT))

@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 
 import matplotlib
@@ -84,21 +85,13 @@ def require_sha(path: Path, expected: str, label: str) -> None:
         raise RuntimeError(f"{label} SHA mismatch: {actual}")
 
 
-def require_release(release: Path) -> None:
-    head = subprocess.run(
+def release_commit(release: Path) -> str | None:
+    result = subprocess.run(
         ["git", "-C", str(release), "rev-parse", "HEAD"],
-        check=True,
         capture_output=True,
         text=True,
-    ).stdout.strip()
-    dirty = subprocess.run(
-        ["git", "-C", str(release), "status", "--porcelain"],
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    if head != EXPECTED_RELEASE_COMMIT or dirty:
-        raise RuntimeError(f"Release mismatch: head={head!r}, dirty={dirty!r}")
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
 
 
 def extract_edges(args: argparse.Namespace) -> int:
@@ -108,10 +101,10 @@ def extract_edges(args: argparse.Namespace) -> int:
     model_dir = args.model_dir.resolve()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    require_release(release)
-    require_sha(trajectory_path, EXPECTED["trajectory"], "trajectory")
-    require_sha(h5ad_path, EXPECTED["h5ad"], "h5ad")
-    require_sha(model_dir / "Finetune" / "best_model.pth", EXPECTED["model"], "model")
+    if args.verify_paper_inputs:
+        require_sha(trajectory_path, EXPECTED["trajectory"], "trajectory")
+        require_sha(h5ad_path, EXPECTED["h5ad"], "h5ad")
+        require_sha(model_dir / "Finetune" / "best_model.pth", EXPECTED["model"], "model")
 
     sys.path.insert(0, str(release))
     import anndata as ad
@@ -248,7 +241,7 @@ def extract_edges(args: argparse.Namespace) -> int:
         manifest_path,
         {
             "status": "complete",
-            "release_commit": EXPECTED_RELEASE_COMMIT,
+            "release_commit": release_commit(release),
             "semantics": (
                 "Frozen learned edge predictor and first-layer attention evaluated "
                 "on each stored growth-on baseline state; the strongest 260 directed "
@@ -357,20 +350,32 @@ def render(args: argparse.Namespace) -> int:
     extraction = args.extraction.resolve()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    require_sha(trajectory_path, EXPECTED["trajectory"], "trajectory")
+    if args.verify_paper_inputs:
+        require_sha(trajectory_path, EXPECTED["trajectory"], "trajectory")
     manifest_path = extraction / "extraction_manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    if manifest.get("status") != "complete":
-        raise RuntimeError("Interaction extraction is incomplete")
-    for item in manifest["outputs"]:
-        path = extraction / Path(item["path"]).name
-        if not path.is_file() or sha256(path) != item["sha256"]:
-            raise RuntimeError(f"Changed interaction output: {path}")
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text())
+        if manifest.get("status") != "complete":
+            raise RuntimeError("Interaction extraction is incomplete")
+        for item in manifest["outputs"]:
+            path = extraction / Path(item["path"]).name
+            if not path.is_file() or sha256(path) != item["sha256"]:
+                raise RuntimeError(f"Changed interaction output: {path}")
 
     trajectories = np.load(trajectory_path, allow_pickle=True)
     bundle = np.load(extraction / "learned_interactions.npz", allow_pickle=True)
+    if len(trajectories) != len(TIMES):
+        raise ValueError(f"Expected {len(TIMES)} trajectory frames on the 0–4 time grid")
     if not np.array_equal(bundle["sampled_indices"], SAMPLED):
         raise RuntimeError("Unexpected sampled frame indices")
+    for position, frame_index in enumerate(SAMPLED):
+        n_cells = len(trajectories[frame_index])
+        src, dst, att = (np.asarray(bundle[key][position])
+                         for key in ("source", "target", "attention"))
+        if not (src.shape == dst.shape == att.shape) or not np.isfinite(att).all():
+            raise ValueError(f"Invalid edge arrays in frame {frame_index}")
+        if any(np.any((idx < 0) | (idx >= n_cells)) for idx in (src, dst)):
+            raise ValueError(f"Edge endpoints are outside frame {frame_index}")
     all_attention = np.concatenate([np.asarray(values, dtype=float) for values in bundle["attention"]])
     positive = all_attention[np.isfinite(all_attention) & (all_attention > 0)]
     if not len(positive):
@@ -420,7 +425,7 @@ def render(args: argparse.Namespace) -> int:
     for index, image in enumerate(frames):
         image.convert("RGB").save(frame_dir / f"frame_{index:03d}.png")
     command = [
-        "ffmpeg",
+        shutil.which("ffmpeg") or __import__("imageio_ffmpeg").get_ffmpeg_exe(),
         "-y",
         "-loglevel",
         "error",
@@ -455,7 +460,7 @@ def render(args: argparse.Namespace) -> int:
         "# Provenance\n\n"
         f"- Baseline trajectory: `{trajectory_path}`\n"
         f"- Interaction extraction: `{extraction}`\n"
-        f"- Frozen package commit: `{EXPECTED_RELEASE_COMMIT}`\n"
+        f"- Original paper simulation commit: `{EXPECTED_RELEASE_COMMIT}`\n"
         "- Growth-on split SDE: sigma=0.03, dt=0.005, split interval=0.05.\n"
         "- Interaction overlay: strongest 260 directed accepted edges per frame, "
         "colored by absolute mean first-layer attention.\n"
@@ -469,9 +474,10 @@ def render(args: argparse.Namespace) -> int:
         {
             "status": "complete",
             "analysis": "zebrafish_baseline_virtual_tissue_dynamics",
-            "release_commit": EXPECTED_RELEASE_COMMIT,
+            "original_simulation_commit": EXPECTED_RELEASE_COMMIT,
             "trajectory": record(trajectory_path),
-            "extraction_manifest": record(manifest_path),
+            "extraction_manifest": record(manifest_path) if manifest_path.is_file() else None,
+            "interaction_arrays": record(extraction / "learned_interactions.npz"),
             "outputs": [record(path) for path in outputs],
         },
     )
@@ -493,12 +499,15 @@ def parser() -> argparse.ArgumentParser:
     extract.add_argument("--device", default="cuda:0")
     extract.add_argument("--edge-batch-size", type=int, default=131_072)
     extract.add_argument("--output", required=True, type=Path)
+    extract.add_argument("--verify-paper-inputs", action="store_true",
+                         help="Check exact file identity against the original paper run")
     extract.set_defaults(func=extract_edges)
     render_parser = sub.add_parser("render")
     render_parser.add_argument("--trajectory", required=True, type=Path)
     render_parser.add_argument("--extraction", required=True, type=Path)
     render_parser.add_argument("--output", required=True, type=Path)
     render_parser.add_argument("--fps", type=float, default=6.0)
+    render_parser.add_argument("--verify-paper-inputs", action="store_true")
     render_parser.set_defaults(func=render)
     return root
 

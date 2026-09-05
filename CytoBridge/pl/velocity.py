@@ -313,6 +313,7 @@ def plot_velocity_component(
     basis: str = "spatial",
     show_legend: bool = False,
     n_neighbors: int = 30,
+    show: bool = False,
 ):
     """Plot a model-derived velocity field using scVelo-style streamlines.
 
@@ -337,6 +338,8 @@ def plot_velocity_component(
         Optional mapping label -> hex/rgb.
     out_path
         If provided, saves the figure (pdf/svg/png based on suffix).
+    show
+        Display the calculated plot in a notebook as well as saving it.
 
     Notes
     -----
@@ -461,6 +464,8 @@ def plot_velocity_component(
         adata.uns["velocity_plot_fallback"] = reason
         if out_path:
             fig.savefig(out_path, dpi=300, bbox_inches="tight")
+        if show:
+            plt.show()
         plt.close(fig)
         return adata
 
@@ -564,6 +569,8 @@ def plot_velocity_component(
         adata.uns["velocity_plot_render"] = "scvelo_stream_vector"
     else:
         adata.uns["velocity_plot_render"] = "scvelo_stream_not_saved"
+    if show:
+        plt.show()
     plt.close(fig)
     return adata
 

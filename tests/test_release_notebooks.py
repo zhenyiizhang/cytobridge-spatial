@@ -44,38 +44,48 @@ def _notebook_text(notebook: dict) -> tuple[str, str]:
 @pytest.mark.parametrize(("filename", "dataset"), NOTEBOOKS.items())
 def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str) -> None:
     notebook = json.loads((DATASET_NOTEBOOK_DIR / filename).read_text())
-    assert notebook["metadata"]["cytobridge"]["runs_training"] is True
+    assert notebook["metadata"]["cytobridge"]["runs_training"] is False
     code, markdown = _notebook_text(notebook)
-    assert f"DATASET_CONFIG = '{dataset}'" in code
-    assert "run_workflow(" in code and "train=True" in code
+    assert notebook['metadata']['cytobridge']['dataset'] == dataset
+    required = {
+        'chicken_heart': ('run_interpolation_workflow', 'evaluate_growth_by_timepoint'),
+        'mosta': ('run_interpolation_workflow', 'evaluate_growth_by_timepoint', 'summarize_label_composition'),
+        'arista': ('run_interpolation_workflow', 'evaluate_growth_by_timepoint'),
+        'admouse': ('simulate_sde_points_split', 'predict_labels_for_trajectories', 'summarize_label_composition'),
+        'zebrafish': ('model_state_adata', 'evaluate_growth_by_timepoint'),
+    }
+    for function in ('load_dynamical_model_from_dir', *required[dataset]):
+        assert f"cb.tl.{function}(" in code
+    assert "run_workflow(" not in code
     assert "RUN_TRAINING" not in code
     assert "build_workflow_plan" not in code
-    assert "downstream_dir / \"summary.json\"" in code
+    assert '.to_csv(' in code
+    assert 'Image(filename=' not in code
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
+    assert all(cell["execution_count"] is not None for cell in code_cells)
+    assert sum("image/png" in out.get("data", {})
+               for cell in code_cells for out in cell["outputs"]) >= {
+                   'chicken_heart': 2, 'mosta': 3, 'arista': 1, 'admouse': 1, 'zebrafish': 1,
+               }[dataset]
+    assert not any(out.get('output_type') == 'error'
+                   for cell in code_cells for out in cell['outputs'])
     # Real study-data tutorials are not executed by a documentation build.
     # A successful branch that skips training is not a reproduced result.
     for cell in notebook["cells"]:
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]))
-    headings = (
-        "## Get the data", "## Set the paths", "## Prepare the input",
-        "## Train and calculate the results", "## Open the results", "## Paper figures",
-    )
-    positions = [markdown.index(h) for h in headings]
-    assert positions == sorted(positions)
-    assert "Do not run a" in markdown
+    # Each dataset teaches its own paper analysis, not an identical generic recipe.
+    assert '## Load' in markdown
+    assert '## Draw' in markdown or '## Spatial' in markdown
     assert "data_checkpoints.md" in markdown
-    assert "reuse_model.md" in markdown
-    assert "not both" in markdown
+    assert "training.md" in markdown
+    assert "PROJECT_DIR" in markdown and "PROJECT_DIR" in code
     text = (code + markdown).lower()
     for phrase in ("learning goals", "exercise", "notes and interpretation",
                    "handoff", "hash-verified", "smoke", "dry run"):
         assert phrase not in text
     for path in ("/Users/", "/home/", "/tmp/"):
         assert path not in json.dumps(notebook)
-    if dataset == "chicken_heart":
-        assert "prepare_chicken_heart_input(" in code
-        assert "prepare_chicken_heart_ot_input(" in code
-        assert "not" in markdown and "GEO count-matrix download" in markdown
 
 
 def test_notebook_runner_executes_the_published_sources() -> None:
@@ -101,7 +111,7 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
     assert "Learning goals" not in source
     assert "Notes and interpretation" not in source
     assert "handoff" not in source.casefold()
-    assert "run_workflow" in source
+    assert "build_analysis_notebook" in source
     assert "build_own_data_notebook" in source
     assert "build_synthetic_preprocessing_notebook" in source
 
@@ -135,7 +145,9 @@ def test_tutorial_navigation_has_one_dataset_section() -> None:
     assert tutorial_index.count("## Paper datasets") == 1
     assert "Dataset notebooks" not in tutorial_index
     assert tutorial_index.count("dataset_workflows/") >= 5
-    assert tutorial_index.count("your_data") == 2
+    assert "your_data" in tutorial_index
+    home = (ROOT / "docs/index.md").read_text()
+    assert home.count("tutorials/dataset_workflows/index") == 2  # Card and toctree.
     assert "paper_figures/index" in tutorial_index
     for preset in NOTEBOOKS.values():
         assert preset in dataset_index

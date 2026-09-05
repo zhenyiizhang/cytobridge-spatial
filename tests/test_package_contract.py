@@ -390,7 +390,7 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
     )
     assert ".[spatial,velocity]" in readme
     assert ".[notebook,velocity]" in readme
-    assert "[spatial,velocity]" in installation
+    assert "[spatial,velocity,notebook]" in installation
 
     compatibility_lines = {
         line.strip()
@@ -411,6 +411,7 @@ def test_dependency_profiles_are_bounded_and_all_is_the_union() -> None:
         "anndata": "anndata",
         "cellrank": "cellrank",
         "geomloss": "geomloss",
+        "imageio-ffmpeg": "imageio_ffmpeg",
         "ipython": "IPython",
         "ipywidgets": "ipywidgets",
         "jupyterlab": "jupyterlab",

@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 
 import matplotlib
@@ -341,7 +342,7 @@ def render_frame(
 def encode_mp4(frame_dir: Path, output: Path) -> None:
     subprocess.run(
         [
-            "ffmpeg",
+            shutil.which("ffmpeg") or __import__("imageio_ffmpeg").get_ffmpeg_exe(),
             "-y",
             "-loglevel",
             "error",

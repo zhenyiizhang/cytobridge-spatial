@@ -1,0 +1,21 @@
+{
+  "source_profile": "../../../data/gene_zscore_profiles.csv",
+  "n_genes": 347,
+  "n_times": 26,
+  "method": {
+    "requested_clusters": 4,
+    "clusters_found": 4,
+    "normalization": "gene-wise zscore (formal r2 profiles, unchanged)",
+    "linkage_method": "weighted",
+    "metric": "euclidean",
+    "cluster_order": "peak_time",
+    "cut_strategy": "scipy_cut_tree_exact_n_clusters",
+    "silhouette": 0.5939435312226916,
+    "cluster_sizes": {
+      "1": 127,
+      "2": 63,
+      "3": 8,
+      "4": 149
+    }
+  }
+}

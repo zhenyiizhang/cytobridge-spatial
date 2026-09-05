@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+import types
 
 import pandas as pd
 import pytest
@@ -30,7 +32,6 @@ def test_figure_workflow_registry_is_complete_and_explicit() -> None:
     assert {
         "numeric-redraw",
         "result-summary-redraw",
-        "reference-export",
         "external-assembly",
         "table-only",
     }.issubset(modes)
@@ -41,7 +42,7 @@ def test_figure_workflow_registry_is_complete_and_explicit() -> None:
             for workflow in FIGURE_WORKFLOWS
             if workflow.name == "main-figure-5-reference"
         ).mode
-        == "reference-export"
+        == "numeric-redraw"
     )
     for workflow in FIGURE_WORKFLOWS:
         assert workflow.starts_from
@@ -113,7 +114,8 @@ def test_every_dataset_names_its_paper_continuation_and_known_breaks() -> None:
         assert all("..." not in row["code_or_command"] for row in rows)
     ad_rows = describe_dataset_paper_steps("admouse")
     heart_rows = describe_dataset_paper_steps("chicken_heart")
-    assert any("not currently contain" in row["note"] for row in ad_rows)
+    assert any('plot_population.py' in row['code_or_command'] for row in ad_rows)
+    assert any('final_figures' in row['code_or_command'] for row in ad_rows)
     assert any("not included" in row["note"] for row in heart_rows)
     assert all("pca_artifacts.npz" not in row["code_or_command"] for row in ad_rows)
     assert all("alignment_manifest.json" not in row["code_or_command"] for row in heart_rows)
@@ -129,6 +131,29 @@ def test_compute_cost_installed_workflow(tmp_path: Path) -> None:
     assert (output / "run_summary.json").is_file()
 
 
+@pytest.mark.parametrize(("name", "module", "function"), [
+    ("main-figure-4", "reproduction.mosta.main_figure", "draw_main_figure"),
+    ("main-figure-5-reference", "reproduction.arista.main_figure", "draw_main_figure"),
+    ("mosta-reference-pages", "reproduction.mosta.figures", "draw_supplementary"),
+])
+def test_paper_commands_call_numerical_plotting_programs(tmp_path, monkeypatch, name, module, function):
+    called = []
+    fake = types.ModuleType(module)
+
+    def draw(data_dir, output_dir):
+        called.append((data_dir, output_dir))
+        return {"a": (output_dir / "new_figure.pdf", output_dir / "new_figure.png")}
+
+    setattr(fake, function, draw)
+    monkeypatch.setitem(sys.modules, module, fake)
+    inputs, outputs = tmp_path / "data", tmp_path / "plots"
+    inputs.mkdir()
+    report = run_figure_workflow(name, outputs, results_dir=inputs)
+    assert called == [(inputs, outputs)]
+    assert report["mode"] == "numeric-redraw"
+    assert report["figures"]["a"] == [str(outputs / "new_figure.pdf"), str(outputs / "new_figure.png")]
+
+
 def test_figure_workflow_rejects_unknown_name(tmp_path: Path) -> None:
     try:
         run_figure_workflow("not-a-figure", tmp_path / "out")
@@ -142,7 +167,7 @@ def test_installed_figure_cli_lists_paper_location_and_input(capsys) -> None:
     assert cli_main(["figure", "list"]) == 0
     output = capsys.readouterr().out
     assert "arista-lr\tSupplementary Figures S23-S24\tincluded paper results" in output
-    assert "main-figure-5-reference\tMain Figure 5\tincluded paper results" in output
+    assert "main-figure-5-reference\tMain Figure 5\tseparate result directory" in output
     assert "main-figure-4\tMain Figure 4\tseparate result directory" in output
 
 

@@ -566,22 +566,14 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     notebook = json.loads(path.read_text(encoding="utf-8"))
     source = "\n".join("".join(cell.get("source", ())) for cell in notebook["cells"])
     assert "Supplementary Figures S19–S24" in source
-    assert "from CytoBridge.results import" in source
-    assert 'output_dir = Path("outputs") / "arista_supplementary_figures"' in source
-    assert 'data.full_recompute_inputs[["input_id", "stage", "figures"]]' in source
+    assert "from reproduction.arista.supplementary import draw_supplementary" in source
+    assert "cb.datasets.download" in source
+    assert "arista_spatial_display_data.zip" in source
+    assert "data/arista/paper" in source
+    for number in range(19, 25):
+        assert f'figures=[{number}]' in source
+    assert "export_arista_reference_pages" not in source
     assert "formal_release.source_index" not in source
-    assert "plot_arista_ligand_receptor_figures" in source
-    assert "calculate_arista_ligand_receptor_panels" in source
-    assert "recalculates S23 and S24" in source
-    assert "Draw S23 and S24 from the calculated tables" in source
-    assert "released pages" in source.lower()
-    assert "export_arista_reference_pages" in source
-    assert "plot_arista_supplementary_figures" not in source
-    assert "write_arista_ligand_receptor_tables(data, output_dir, panels)" in source
-    assert 'figures=("S19", "S20", "S21", "S22")' in source
-    assert "full_recompute_inputs" in source
-    assert "217" not in source
-    assert "314" not in source
     image_outputs = [
         output
         for cell in notebook["cells"]

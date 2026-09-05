@@ -14,35 +14,32 @@ cell-cell interaction analysis in one Python package.
 :gutter: 2
 :class-container: cytobridge-home-cards
 
-:::{grid-item-card} Installation
-:link: installation
+:::{grid-item-card} Get started
+:link: quickstart
 :link-type: doc
 
-Install CytoBridge and choose the optional dependencies needed for plotting or
-spatial analysis.
+See the input, run a first analysis, and find the resulting plots.
 :::
 
 :::{grid-item-card} Run CytoBridge on your data
-:link: tutorials/your_data
+:link: training
 :link-type: doc
 
-Start with a counts H5AD. The tutorial prepares the data, trains a model, and
-runs the standard analyses.
+Prepare expression and coordinates, build an LR graph, and fit cell-state dynamics.
 :::
 
-:::{grid-item-card} Dataset notebooks
+:::{grid-item-card} Analysis tutorials
 :link: tutorials/dataset_workflows/index
 :link-type: doc
 
-Repeat the standard workflow for each of the five datasets used in the paper.
+Calculate velocities, growth, and interactions with the Python API.
 :::
 
 :::{grid-item-card} Paper figures
 :link: tutorials/paper_figures/index
 :link-type: doc
 
-Draw from the paper's numerical results and find the calculation behind each
-panel. Assembled pages are listed separately.
+Find a main or supplementary figure and the code used to calculate and draw it.
 :::
 
 :::{grid-item-card} API reference
@@ -75,26 +72,31 @@ quickstart
 :caption: Tutorials
 :hidden:
 
-tutorials/index
+tutorials/dataset_workflows/index
+training
+trajectory_analysis
+
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Guides
+:caption: Paper reproduction
 :hidden:
 
-data_checkpoints
-reuse_model
-downstream
-nonspatial_workflows
-benchmarks
-training_compute
-paper_reproduction
+tutorials/paper_figures/index
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Reference
+:hidden:
+
+reference/index
 ```
 
 ```{toctree}
 :maxdepth: 2
-:caption: API
+:caption: Python and command line
 :hidden:
 
 api/index

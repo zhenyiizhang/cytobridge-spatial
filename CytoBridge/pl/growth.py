@@ -45,6 +45,7 @@ def plot_growth_timepoint_grid(
     shared_colorbar: bool = False,
     colorbar_label: str | None = None,
     title: str | None = None,
+    show: bool = False,
 ):
     """Plot spatial growth maps on an observed/interpolated time grid.
 
@@ -53,6 +54,7 @@ def plot_growth_timepoint_grid(
     robust-scales every time point to 0--1 before plotting, while
     ``'global_limits'`` uses one pair of robust raw-value limits across all
     panels.  The latter two modes can use one genuinely shared colorbar.
+    Set ``show=True`` to also display the calculated plot in a notebook.
     """
     from pathlib import Path
     import math
@@ -239,6 +241,8 @@ def plot_growth_timepoint_grid(
         path = Path(out_path).expanduser().resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(path, bbox_inches="tight", facecolor="white")
+        if show:
+            plt.show()
         plt.close(fig)
     return path
 
@@ -378,7 +382,7 @@ def plot_g_values(
     samples_column: str = "samples",
 ):
     """Plot growth-rate g-values as a scatter plot.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -405,7 +409,7 @@ def plot_g_values(
         Colormap name.
     samples_column : str
         Name of time/samples column.
-        
+
     Returns
     -------
     str or None
@@ -413,7 +417,7 @@ def plot_g_values(
     """
     import matplotlib.pyplot as plt
     import torch
-    
+
     from CytoBridge.tl.downstream.downstream_data import infer_feature_columns
 
     time_points = sorted(df[samples_column].unique())
@@ -427,7 +431,7 @@ def plot_g_values(
     if "growth" not in getattr(model, "components", []):
         raise ValueError("Model does not have growth_net component")
     model = model.to(device)
-    
+
     data_by_time = {}
     for time in [time_points[time_index]]:
         subset = df[df[samples_column] == time]
@@ -436,11 +440,11 @@ def plot_g_values(
         with torch.no_grad():
             g_values = model.predict_growth(t=t_expand, x=data)
         data_by_time[time] = {"data": subset, "g_values": g_values.detach().cpu().numpy().flatten()}
-    
+
     all_g_values = np.concatenate([content["g_values"] for content in data_by_time.values()])
     vmax_value = np.percentile(all_g_values, 95)
     norm = plt.Normalize(vmin=0, vmax=vmax_value, clip=True)
-    
+
     fig, ax = plt.subplots(figsize=figsize)
     for time, content in data_by_time.items():
         subset = content["data"]
@@ -454,19 +458,19 @@ def plot_g_values(
         y = data_reduced[:, 1]
         colors = plt.cm.get_cmap(cmap)(norm(g_vals))
         ax.scatter(x, y, c=colors, label=f"Time {time}", s=point_size, alpha=alpha, marker="o")
-    
+
     ax.set_xlabel("Dim 1")
     ax.set_ylabel("Dim 2")
     ax.legend()
-    
+
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array(all_g_values)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label("Predicted growth rate")
-    
+
     if out_path:
         fig.savefig(out_path, format="pdf" if out_path.endswith(".pdf") else "png", bbox_inches="tight")
-    
+
     plt.show()
     return out_path
 
@@ -483,7 +487,7 @@ def plot_growth_per_time(
     cmap: str = "rainbow",
 ):
     """Plot growth-rate scatter for each time point (Nature-style).
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -504,7 +508,7 @@ def plot_growth_per_time(
         Name of time/samples column.
     cmap : str
         Colormap name.
-        
+
     Returns
     -------
     list
@@ -514,9 +518,9 @@ def plot_growth_per_time(
     import matplotlib.pyplot as plt
     import torch
     from CytoBridge.tl.downstream.downstream_data import infer_feature_columns
-    
+
     os.makedirs(out_dir, exist_ok=True)
-    
+
     if "growth" not in getattr(model, "components", []):
         raise ValueError("Model does not have growth_net component")
     model = model.to(device)
@@ -1038,7 +1042,7 @@ def plot_gene_expression_trends(
     out_dir: str = ".",
 ):
     """Plot gene expression trends across time.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -1053,7 +1057,7 @@ def plot_gene_expression_trends(
         Number of top HVGs if genes not specified.
     out_dir : str
         Output directory.
-        
+
     Returns
     -------
     list
@@ -1062,50 +1066,50 @@ def plot_gene_expression_trends(
     import os
     import matplotlib.pyplot as plt
     import pandas as pd
-    
+
     os.makedirs(out_dir, exist_ok=True)
-    
+
     if genes is None:
         if "highly_variable" in adata.var.columns:
             hvg_mask = adata.var["highly_variable"]
             genes = adata.var_names[hvg_mask][:top_hvg].tolist()
         else:
             genes = adata.var_names[:top_hvg].tolist()
-    
+
     output_paths = []
     for gene in genes:
         if gene not in adata.var_names:
             continue
-        
+
         expr = adata[:, gene].X
         if hasattr(expr, "toarray"):
             expr = expr.toarray().flatten()
         else:
             expr = np.array(expr).flatten()
-        
+
         plot_df = pd.DataFrame({
             time_key: adata.obs[time_key].values,
             groupby: adata.obs[groupby].values,
             "expression": expr,
         })
-        
+
         mean_df = plot_df.groupby([time_key, groupby])["expression"].mean().reset_index()
-        
+
         fig, ax = plt.subplots(figsize=(8, 5))
         for group_name in mean_df[groupby].unique():
             group_data = mean_df[mean_df[groupby] == group_name]
             ax.plot(group_data[time_key], group_data["expression"], marker="o", label=group_name)
-        
+
         ax.set_xlabel("Time")
         ax.set_ylabel("Mean Expression")
         ax.set_title(f"{gene} Expression Trend")
         ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
-        
+
         out_path = os.path.join(out_dir, f"gene_trend_{gene}.pdf")
         fig.savefig(out_path, bbox_inches="tight")
         output_paths.append(out_path)
         plt.close(fig)
-    
+
     return output_paths
 
 
@@ -1117,7 +1121,7 @@ def plot_cell_counts_over_time(
     figsize: tuple = (10, 6),
 ):
     """Plot cell counts per group across time.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -1130,7 +1134,7 @@ def plot_cell_counts_over_time(
         Output file path.
     figsize : tuple
         Figure size.
-        
+
     Returns
     -------
     matplotlib.figure.Figure
@@ -1138,22 +1142,22 @@ def plot_cell_counts_over_time(
     """
     import matplotlib.pyplot as plt
     import pandas as pd
-    
+
     counts_df = adata.obs.groupby([time_key, groupby]).size().reset_index(name="count")
-    
+
     fig, ax = plt.subplots(figsize=figsize)
     for group_name in counts_df[groupby].unique():
         group_data = counts_df[counts_df[groupby] == group_name]
         ax.plot(group_data[time_key], group_data["count"], marker="o", label=group_name)
-    
+
     ax.set_xlabel("Time")
     ax.set_ylabel("Cell Count")
     ax.set_title("Cell Counts Over Time")
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
-    
+
     fig.tight_layout()
-    
+
     if out_path:
         fig.savefig(out_path, bbox_inches="tight")
-    
+
     return fig

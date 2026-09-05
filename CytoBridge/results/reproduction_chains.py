@@ -275,12 +275,21 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "python scripts/paper_figures/zebrafish_loss_weight/evaluate_model.py --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --training-dir <loss-setting-run>/training --condition <condition-name> --output-dir <loss-evaluation-root>/<condition-name> --device cuda:0",
             "aligned H5AD and the trained model for each loss setting",
             "evaluation tables for each setting",
+            "collect the two expression-weight evaluations, then draw S36",
+        ),
+        _row(
+            "S36",
+            "combine the expression-weight evaluations",
+            "python scripts/paper_figures/zebrafish_loss_weight/collect_alpha_metrics.py --reference <loss-evaluation-root>/reference/distribution_metrics.csv --alternative <loss-evaluation-root>/alpha_expr_005/distribution_metrics.csv --output <loss-evaluation-root>/alpha_metrics.csv",
+            "distribution_metrics.csv for expression weights 0.015 and 0.05",
+            "alpha_metrics.csv with model, time, space, and w1 columns",
             "draw S36",
+            "Use reference, alpha_expr_005, ot_mass_10_to_1, and ot_mass_1_to_10 as the evaluation folder names. The alpha_expr_005 model uses alpha_express=0.05; the other settings are specified by prepare_configs.py.",
         ),
         _row(
             "S36",
             "draw loss-weight sensitivity",
-            "python scripts/paper_figures/zebrafish_loss_weight/plot_figure.py --alpha-metrics <alpha-weight-evaluation.csv> --evaluation-root <loss-evaluation-root> --output-dir <loss-figure-dir>",
+            "python scripts/paper_figures/zebrafish_loss_weight/plot_figure.py --alpha-metrics <loss-evaluation-root>/alpha_metrics.csv --evaluation-root <loss-evaluation-root> --output-dir <loss-figure-dir>",
             "evaluation tables for all loss settings",
             "s32_loss_weight_metrics.csv and the S36 PDF/PNG",
             "finished figure",
@@ -288,16 +297,17 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
         _row(
             "S37",
             "run daughter-noise sensitivity",
-            "python -m scripts.run_zebrafish_interval_daughter_noise_sensitivity --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --model-dir <run>/training --classifier-cache <zebrafish-paper-output>/classifier/classifier.pt --acceptance-report <run>/matched_ablation_acceptance.json --output-dir <daughter-noise-run> --device cuda:0",
-            "zebrafish model and interval-local source states",
-            "composition, lineage, particle-count and sensitivity CSV files for five paired seeds",
+            "python -m reproduction.zebrafish.daughter_noise --data-dir data/zebrafish --seed 42 --output-dir outputs/daughter_noise/seed_42 --device cuda:0",
+            "downloaded zebrafish aligned data, model, and full-state classifier",
+            "four trajectories, composition_long.csv, lineage_transition_long.csv, and particle_counts.csv",
             "draw S37",
+            "Repeat for seeds 43 through 46 in separate directories. All simulations start at time zero and continue to time four.",
         ),
         _row(
             "S37",
             "draw daughter-noise sensitivity",
-            "python scripts/plot_zebrafish_interval_daughter_noise_sensitivity.py --run-manifest <daughter-noise-run>/run_manifest.json --acceptance-report <run>/matched_ablation_acceptance.json --output-dir <daughter-noise-figure>",
-            "daughter-noise run record and matched_ablation_acceptance.json from the same model run",
+            "python -m reproduction.zebrafish.plot_daughter_noise --run-dir outputs/daughter_noise/seed_42 --run-dir outputs/daughter_noise/seed_43 --run-dir outputs/daughter_noise/seed_44 --run-dir outputs/daughter_noise/seed_45 --run-dir outputs/daughter_noise/seed_46 --output-dir outputs/daughter_noise_figure",
+            "composition and lineage tables from the five completed runs",
             "daughter-noise sensitivity PDF/PNG and plotted tables",
             "recalculate all eight pages",
         ),
@@ -619,87 +629,56 @@ FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "main-figure-5-reference": (
         _row(
-            "Main Figure 5a-e",
-            "run the corrected ARISTA downstream analysis",
-            "cytobridge workflow --config arista --step downstream --aligned-h5ad <run>/preprocess/arista_aligned.h5ad --model-dir <run>/training --output-dir <arista-downstream-rerun> --device cuda:0",
-            "manuscript aligned H5AD; retrained checkpoint; downstream states and interaction tables",
-            "<arista-downstream-rerun>/downstream with spatial states; growth and composition summaries; gene-dynamics and ligand-receptor tables",
-            "build the final panels",
+            "Main Figure 5a-e", "download the numerical inputs",
+            "python -m CytoBridge.datasets arista --kind arista_figure_data.zip --output-dir .",
+            "public paper data release", "data/arista/paper numerical inputs",
+            "download the spatial display states",
         ),
         _row(
-            "Main Figure 5a-e",
-            "build the final panels and assemble the vector page",
-            "release_artifacts/arista_package_native_spatialqc_z50_retrain_20260824_r1/Figure5_fullpage_original_style_v2_final",
-            "panel-specific results and final panel PDFs retained in the ARISTA release",
-            "Main Figure 5 vector PDF, PNG, QA report, and file record",
-            "write a viewable notebook copy",
-            "This release directory contains the panel records and the page-building script. It is a source directory, not a terminal command. The notebook below checks and copies the final page; it does not recalculate its panel values.",
-            "source",
+            "Main Figure 5a-e", "download the spatial display states",
+            "python -m CytoBridge.datasets arista --kind arista_spatial_display_data.zip --output-dir .",
+            "public paper data release", "data/arista/paper/display_states and growth data",
+            "draw the panels",
         ),
         _row(
-            "Main Figure 5a-e",
-            "check the assembled page and write a viewable copy",
-            "python scripts/execute_paper_notebooks.py --notebook main_figure_5 --output-dir <notebook-run>",
-            "included assembled page and panel index",
-            "Main_Figure_5.pdf/.png and panel index",
-            "finished page copy",
+            "Main Figure 5a-e", "draw the panels",
+            "python -m reproduction.arista.main_figure --data-dir data/arista/paper --output-dir outputs/main_figure_5_reference",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
+            "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
         ),
     ),
     "main-figure-4": (
         _row(
-            "Main Figure 4a-e",
-            "run the corrected MOSTA downstream analysis",
-            "cytobridge workflow --config mosta --step downstream --aligned-h5ad <run>/preprocess/mosta_aligned.h5ad --model-dir <run>/training --output-dir <mosta-downstream-rerun> --device cuda:0",
-            "manuscript aligned H5AD; full checkpoint; corrected global-t0 trajectory",
-            "<mosta-downstream-rerun>/downstream with corrected states; growth, composition, and lineage summaries; gene and ligand-receptor tables",
-            "build the five panels",
+            "Main Figure 4a-e", "download the numerical inputs",
+            "python -m CytoBridge.datasets mosta --kind mosta_figure_data.zip --output-dir .",
+            "public paper data release", "data/mosta/paper numerical inputs",
+            "draw the panels",
         ),
         _row(
-            "Main Figure 4a-e",
-            "build the five vector panels",
-            "release_artifacts/mosta_package_native_corrected_20260826_v1/reproduction/main_fig4_panels",
-            "corrected downstream outputs and the panel-specific numerical inputs recorded in the MOSTA release",
-            "five vector panel PDFs plus calculation, rendering, and provenance records",
-            "assemble the page",
-            "This directory contains the calculation and rendering source for panels a-e. It is a source directory, not a terminal command.",
-            "source",
-        ),
-        _row(
-            "Main Figure 4a-e",
-            "assemble the vector page and write a notebook copy",
-            "python scripts/execute_paper_notebooks.py --notebook main_figure_4 --output-dir <notebook-run>",
-            "five vector panel PDFs from the MOSTA release",
-            "<notebook-run>/main_figure_4/outputs/main_figure_4/main_figure_4.pdf, main_figure_4.png, and figure index",
-            "finished figure",
-            "The notebook assembles the final vector panels. The preceding release directory contains the code that calculated and rendered those panels.",
+            "Main Figure 4a-e", "draw the panels",
+            "python -m reproduction.mosta.main_figure --data-dir data/mosta/paper --output-dir outputs/main_figure_4",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
+            "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
         ),
     ),
     "mosta-reference-pages": (
         _row(
-            "S11-S18",
-            "run corrected MOSTA downstream",
-            "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training> --output-dir <downstream>",
-            "manuscript aligned H5AD and full model",
-            "corrected global-t0 states; growth; composition; persistent lineage; gene/LR tables",
-            "run figure-specific calculation scripts",
+            "S11-S18", "download the numerical inputs",
+            "python -m CytoBridge.datasets mosta --kind mosta_figure_data.zip --output-dir .",
+            "public paper data release", "data/mosta/paper numerical inputs",
+            "draw the panels",
         ),
         _row(
-            "S11-S18",
-            "calculate and render each page",
-            "calculation_scripts and renderer columns in the MOSTA release figure_index.csv",
-            "downstream outputs plus figure-specific numerical tables",
-            "vector PDF/SVG pages and the source record for each figure",
-            "public export",
-            "The figure index names the calculation and rendering files for every page. It is listed for reference and is not a command.",
-            "source",
-        ),
-        _row(
-            "S11-S18",
-            "write viewable copies of the completed pages",
-            "python scripts/execute_paper_notebooks.py --notebook mosta_figures --output-dir <notebook-run>",
-            "completed vector pages and file checks",
-            "Supplementary_Figure_S11.pdf/.png through Supplementary_Figure_S18.pdf/.png",
+            "S11-S18", "draw the panels",
+            "python -m reproduction.mosta.figures --data-dir data/mosta/paper --output-dir outputs/mosta_reference_pages",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
             "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
         ),
     ),
 }
@@ -809,17 +788,13 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
             "S37",
             "Start from the paper's saved files: calculate daughter-noise sensitivity",
             (
-                "python -m scripts.run_zebrafish_interval_daughter_noise_sensitivity \\\n"
-                "  --aligned-h5ad <saved-paper-files>/preprocess/zebrafish_aligned.h5ad \\\n"
-                "  --model-dir <saved-paper-files>/training \\\n"
-                "  --classifier-cache <zebrafish-paper-results>/classifier/classifier.pt \\\n"
-                "  --acceptance-report <matched-ablation-run>/matched_ablation_acceptance.json \\\n"
-                "  --output-dir <daughter-noise-run> --device cuda:0"
+                "python -m reproduction.zebrafish.daughter_noise --data-dir data/zebrafish "
+                "--seed 42 --output-dir outputs/daughter_noise/seed_42 --device cuda:0"
             ),
-            "paper zebrafish model, its evaluation-cell record, and its matched-ablation acceptance report",
+            "downloaded zebrafish model, aligned cells, and 52-feature classifier",
             "daughter-noise composition, lineage, and particle-count tables",
-            "run the S31-S38 paper notebook",
-            "This calculation needs files retained from the paper analysis; the standard dataset workflow does not create them.",
+            "repeat for seeds 43–46 and collect the runs with reproduction.zebrafish.plot_daughter_noise",
+            "See the S37 tutorial for the complete simulation and plotting commands.",
         ),
         _row(
             "S39",
@@ -902,55 +877,56 @@ DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
     ),
     "admouse": (
         _row(
-            "S29",
-            "Continue from the model run above: prepare temporal NicheNet inputs",
+            "S26",
+            "Calculate cell-type counts, proportions, and spatial population panels",
             (
-                "python scripts/prepare_temporal_nichenet_inputs.py \\\n"
-                "  --expression-h5ad <run>/preprocess/admouse_aligned.h5ad \\\n"
-                "  --output-dir <nichenet-inputs>"
+                "python reproduction/admouse/plot_population.py \\\n"
+                "  --run-dir data/admouse/populations \\\n"
+                "  --output-dir outputs/admouse_population"
             ),
-            "aligned AD states; interval definitions; NicheNet prior and receiver programs",
-            "one NicheNet input directory per interval",
-            "run temporal NicheNet",
+            "formal r2 generated cell-state arrays and k=1 cell-type labels at 25 model times",
+            "celltype_counts_and_proportions.csv and ad_supplementary1.pdf/.png",
+            "view the recalculated population panels",
+            "This command calculates from cell states and labels, not from a finished image. It reproduces the original model-time-labelled panels. The manuscript age mapping is archived separately.",
+        ),
+        _row(
+            "Main Figure 6",
+            "AD spatial, gene-program, LR, and Trem2 analyses",
+            "reproduction/admouse/final_figures/main/",
+            "r2 spatial populations, gene profiles, LR time courses, and Trem2 perturbation results",
+            "main-figure panels and their numerical tables",
+            "follow the panel map in reproduction/admouse/README.md",
+            "The supplied scripts and small tables are now archived. Some scripts require the original server data layout and are not yet portable commands.",
+            "source",
+        ),
+        _row(
+            "S27-S28",
+            "Gene Ontology analysis of temporal gene programs",
+            "reproduction/admouse/final_figures/supplementary/go/",
+            "gene lists for temporal programs 1 and 4 from the Figure 6 clustering",
+            "GO dot, network, and overlap plots",
+            "assemble the GO panels",
+            "The gene lists and R plotting scripts are included. The required R annotation packages are listed in those scripts.",
+            "source",
         ),
         _row(
             "S29",
-            "Continue from the model run above: run temporal NicheNet",
-            (
-                "Rscript scripts/run_temporal_nichenet_reference.R \\\n"
-                "  --input-dir <nichenet-inputs>/<interval> \\\n"
-                "  --out-dir <nichenet-default>/<interval> \\\n"
-                "  --ligand-target-matrix <ligand-target-matrix.rds> \\\n"
-                "  --lr-network <mouse-lr-network.rds> --prior-mode default"
-            ),
-            "prepared NicheNet interval directories and the NicheNet prior",
-            "interval-level ligand activity and LR-network tables",
-            "compare with CytoBridge",
-            "Run this command once for each interval directory created in the preceding step.",
+            "NicheNet ligand activity and ligand-receptor networks",
+            "reproduction/admouse/final_figures/supplementary/nichenet/",
+            "51 generated/observed states on the 0.05 time grid, inverse-PCA expression summaries, and NicheNet priors",
+            "50-window ligand activities, seven-interval summaries, and six LR network panels",
+            "follow interpolation, input preparation, NicheNet scoring, then nichenet1.R and nichenet2.R",
+            "These are the supplied S29 calculation and plotting scripts. The 0.05 value is the output-time interval, not the expression-loss weight. Large states and R prior matrices remain in the server data collection.",
+            "source",
         ),
         _row(
-            "S29",
-            "Start from the paper's saved files: compare NicheNet with the archived CytoBridge interaction tables",
-            (
-                "python scripts/compare_cytobridge_to_temporal_nichenet.py \\\n"
-                "  --learned-dir <paper-cytobridge-comparison-input> \\\n"
-                "  --nichenet-default-dir <nichenet-default> \\\n"
-                "  --temporal-input-dir <nichenet-inputs> \\\n"
-                "  --output-dir <nichenet-comparison>"
-            ),
-            "NicheNet results and the archived paper directory containing the matching CytoBridge interaction-message tables",
-            "comparison tables used for plotting",
-            "draw a new comparison figure, or record the files used for the published S29 page",
-            "The standard downstream directory is not a substitute for <paper-cytobridge-comparison-input>. Optional gene-space comparisons additionally require separately retained PCA-fit artifacts; preprocessing does not create that standalone paper input.",
-        ),
-        _row(
-            "Main Figure 6; S26-S28; S30",
-            "Required paper files not included: AD figures need the archived analysis directory",
-            "retained AD paper analysis archive (not included in this repository)",
-            "paper gene, LR, model-score, perturbation, snapshot, and GO tables",
-            "Main Figure 6 and S26-S28/S30 vector panels and page layouts",
-            "use the archived calculation and plotting files once their public location is recorded",
-            "The repository does not currently contain the exact page builders and input tables for these figures, so this entry records the missing paper provenance and does not present an executable command.",
+            "S30",
+            "Spp1 perturbation module scores",
+            "reproduction/admouse/final_figures/supplementary/downstream/scripts/ad_supplementary2.py",
+            "whole_tissue_spp1_modules_endpoint.csv in the matching archived data folder",
+            "Spp1 activation and knockdown module-score panels",
+            "assemble the S30 panel",
+            "The script and its exact small plotting table are archived together.",
             "source",
         ),
     ),

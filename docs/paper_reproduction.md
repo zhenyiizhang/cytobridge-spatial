@@ -4,11 +4,11 @@ Choose the path that matches what you want to do.
 
 ## Redraw the published result
 
-Open a [paper figure notebook](tutorials/paper_figures/index.md). Most notebooks
-recalculate the displayed values from numerical CSV or NPZ files included with
-CytoBridge, then write new PDF and PNG files. Notebooks described as
-"view/export" open or copy a completed page because the original page-layout
-files are kept with the paper results rather than in the installed package.
+Open a [paper figure notebook](tutorials/paper_figures/index.md). The numerical
+plotting notebooks calculate summaries from CSV, NPZ or H5AD inputs and write
+new PDF and PNG files. Figures 4–6, MOSTA S11–S18 and ARISTA S19–S24 have
+dedicated plotting programs. Their tutorials identify the required downloads.
+Figure 2 still reuses its earlier panels a–d while drawing panel e from numbers.
 
 ## Continue from a new model run
 
@@ -31,11 +31,12 @@ cytobridge figure explain zebrafish-si
 
 {download}`Download the figure index <data/paper_reproduction_registry.csv>`
 
-The index distinguishes figures that are ready to redraw, completed pages that
-can be viewed or exported, and analyses whose final page assembly is not yet
-available. For AD S29–S30, the exact numerical inputs and plotting program for
-the current pages have not yet been matched to the archived analyses. S4–S6,
-S25 and S31–S38 can be redrawn from the included numbers, but the conversion
+The index distinguishes numerical plotting, static artwork and remaining
+analysis steps. AD S29–S30 now have their numerical inputs and plotting
+commands in the [AD figure guide](tutorials/paper_figures/admouse_figures.md). S4–S6,
+S25, S31–S36 and S38 can be redrawn from the included numbers, but the conversion
 from a newly trained model to those exact notebook inputs is not yet available.
+The [S37 tutorial](tutorials/paper_figures/zebrafish_daughter_noise.md) includes
+the complete simulation, comparison, and plotting commands.
 S41, S42, S45, and S46 include a command that collects completed analysis
 tables before passing them to the figure command.

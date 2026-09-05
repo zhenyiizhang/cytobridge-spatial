@@ -1,6 +1,39 @@
 Tools API
 =========
 
+The :doc:`analysis tutorials <../tutorials/dataset_workflows/index>` show these
+functions in use. Most calculations accept AnnData and return arrays, tables,
+or AnnData objects. Plotting is a separate step.
+
+.. list-table:: Common tasks
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Task
+     - Function
+   * - Prepare model states from aligned data
+     - ``cb.tl.model_state_adata``
+   * - Fit a dynamical model
+     - ``cb.tl.fit``
+   * - Open a trained model
+     - ``cb.tl.load_dynamical_model_from_dir``
+   * - Calculate velocity components
+     - ``cb.tl.compute_velocity_components_from_adata``
+   * - Calculate growth rates
+     - ``cb.tl.evaluate_growth_by_timepoint``
+   * - Calculate graph attention
+     - ``cb.tl.save_interpolated_attention``
+   * - Summarize cell-type interactions
+     - ``cb.tl.analyze_attention_by_celltype``
+   * - Simulate trajectories
+     - ``cb.tl.simulate_sde_points``
+
+Model input
+-----------
+
+.. automodule:: CytoBridge.tl.downstream.downstream_data
+   :members: model_state_adata, adata_to_aligned_dataframe, build_time_grid
+
 Model fitting and loading
 -------------------------
 

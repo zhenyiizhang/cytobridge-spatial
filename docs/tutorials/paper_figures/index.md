@@ -8,10 +8,9 @@ Choose a figure below. Each notebook states what its code actually does.
 | Existing vector panels | Assembles the panels into a page |
 | A completed PDF/PNG page | Displays or copies the page |
 
-The latter two do not reproduce the underlying analysis. Figure 4 currently
-assembles existing panels. Figure 5, MOSTA S11–S18, and ARISTA S19–S22 include
-completed-page displays. These still need a complete, tested route from
-numerical inputs to the final panels.
+Figures 4 and 5, MOSTA S11–S18 and ARISTA S19–S24 draw their panels from
+cell-state arrays and numerical tables. Figure 2a–d is still being connected
+to its numerical inputs.
 
 ## Draw from the included results
 
@@ -33,14 +32,14 @@ the notebook. No training is started by these figure notebooks.
 
 ## Recalculate from a model
 
-Use the [dataset tutorials](../dataset_workflows/index.md) for training or
-[Continue from a trained model](../../reuse_model.md) for downstream analysis.
-The final section of each figure notebook gives the earlier calculations and
-their input files.
+Use [Train a model](../../training.md) to fit your data, then continue with
+the [analysis tutorials](../dataset_workflows/index.md).
+Each figure notebook links to a separate guide to its earlier calculations
+and input files.
 
 A new model run is not automatically used by a paper redraw command. Several
 figures still need code to convert a new run into their exact plotting inputs,
-including S4–S5 and S31–S38. The
+including S4–S5, S31–S36 and S38. S37 has its own simulation and plotting tutorial. The
 [figure-by-figure inventory](../../paper_reproduction.md) records those gaps.
 
 ## Check the available notebooks
@@ -60,22 +59,24 @@ raw-data-to-figure analysis.
 ## Main figures
 
 - [Main Figure 2: AGIST benchmark — redraw panel e and assemble the page](main_figure_2.ipynb)
-- [Main Figure 3: chicken heart — run the analysis; final page assembly is separate](../dataset_workflows/chicken_heart.ipynb)
-- [Main Figure 4: MOSTA — assemble the page](main_figure_4.ipynb)
-- [Main Figure 5: ARISTA — view the assembled page](main_figure_5.ipynb)
-- [Main Figure 6: AD mouse — run the analysis; final page assembly is separate](../dataset_workflows/admouse.ipynb)
+- [Chicken-heart development: trajectories, cell types, and growth](chicken_heart_daily.md)
+- [Main Figure 4: MOSTA](main_figure_4.ipynb)
+- [Main Figure 5: ARISTA](main_figure_5.ipynb)
+- [Main Figure 6: AD mouse](admouse_figures.md)
 
 ## Dataset supplementary figures
 
 - [AGIST, Supplementary Figures S2–S3](agist_figures.ipynb)
 - [Weinreb and scNT, Supplementary Figures S4–S5](nonspatial_figures.ipynb)
 - [Chicken-heart alignment sensitivity, Supplementary Figures S7–S8](chicken_heart_alignment.md)
-- [Chicken-heart growth and velocity, Supplementary Figures S9–S10 — run the analyses](../dataset_workflows/chicken_heart.ipynb)
-- [MOSTA, Supplementary Figures S11–S18 — view completed pages and find their code](mosta_figures.ipynb)
+- [Chicken-heart growth and velocity analyses](chicken_heart_daily.md)
+- [MOSTA, Supplementary Figures S11–S18](mosta_figures.ipynb)
 - [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
+- [Generate the ARISTA paper populations](arista_populations.md)
 - [ARISTA local interaction domains, Supplementary Figure S25](arista_local_domains.ipynb)
-- [AD mouse, Supplementary Figures S26–S30 — available analyses and saved pages](../dataset_workflows/admouse.ipynb)
+- [AD mouse, Supplementary Figures S26–S30](admouse_figures.md)
 - [Zebrafish, Supplementary Figures S31–S38](zebrafish_si_s31_s38.ipynb)
+- [Recalculate daughter-cell perturbations, Supplementary Figure S37](zebrafish_daughter_noise.md)
 - [Zebrafish attention and control comparisons, Supplementary Figure S39](zebrafish_attention.ipynb)
 - [Zebrafish decomposition stability, Supplementary Figure S40](zebrafish_decomposition_stability.md)
 
@@ -99,8 +100,11 @@ raw-data-to-figure analysis.
 ```{toctree}
 :hidden:
 :maxdepth: 1
+arista_populations
+zebrafish_daughter_noise
 
 Figure 2: AGIST <main_figure_2>
+Chicken-heart daily plots <chicken_heart_daily>
 Figure 4: MOSTA <main_figure_4>
 Figure 5: ARISTA <main_figure_5>
 S2–S3: AGIST <agist_figures>
@@ -110,6 +114,7 @@ S7–S8: Heart alignment <chicken_heart_alignment>
 S11–S18: MOSTA <mosta_figures>
 S19–S24: ARISTA <arista_figures>
 S25: ARISTA local domains <arista_local_domains>
+Figure 6 and S26–S30: AD mouse <admouse_figures>
 S31–S38: Zebrafish <zebrafish_si_s31_s38>
 S39: Attention comparisons <zebrafish_attention>
 S40: Decomposition stability <zebrafish_decomposition_stability>

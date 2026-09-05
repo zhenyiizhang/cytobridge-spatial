@@ -47,6 +47,7 @@ from .benchmark import (
     fit_frozen_benchmark_transform,
 )
 from .downstream_data import (
+    model_state_adata,
     adata_to_aligned_dataframe,
     build_time_grid,
     infer_feature_columns,
@@ -199,6 +200,7 @@ __all__ = [
     "copy_if_needed",
     "MLP",
     "adata_to_aligned_dataframe",
+    "model_state_adata",
     "analyze_attention_by_celltype",
     "analyze_spatial_label_sensitivity",
     "analyze_spatial_gnn_by_celltype",

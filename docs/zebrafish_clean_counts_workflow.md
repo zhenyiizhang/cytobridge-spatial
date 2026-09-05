@@ -338,8 +338,8 @@ Compare both condition tables on the same `(time, space)` grid. Lower W1, W2,
 and TMV are better, but model selection should also inspect spatial/PCA support
 and clumping diagnostics rather than reducing the decision to one mean value.
 
-Use `--profile smoke` first when validating a new environment or adapter. A
-smoke run caps cells and epochs and is not a scientific model comparison.
+The commands above use the full training schedule. For a short installation
+check, `--profile smoke` reduces the number of cells and training epochs.
 
 ### 4. Build a portable paired review bundle
 
@@ -350,8 +350,7 @@ paper root manifest must report all seven stages: `classifier`, `velocity`,
 Always use a new output directory and `--bundle-mode copy` for an artifact that
 will be downloaded or archived. Logs are opt-in: name only the canonical logs
 from the formal run. The bundler deliberately does not copy the whole mixed
-`RUN/logs/` directory, because it may also contain smoke runs, failed attempts,
-or superseded outputs.
+`RUN/logs/` directory, which may include earlier test runs.
 
 ```bash
 BUNDLE="$RUN/reviews/DATE/zebrafish_clean_counts_full_review_bundle_DATE"

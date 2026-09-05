@@ -328,7 +328,7 @@ def test_main_figure_4_legacy_name_remains_available() -> None:
 @pytest.mark.parametrize(
     ("notebook_name", "output_slug", "title"),
     (
-        ("main_figure_4.ipynb", "main_figure_4", "Main Figure 4: MOSTA"),
+        ("main_figure_4.ipynb", "main_figure_4", "Figure 4: MOSTA"),
         ("mosta_figures.ipynb", "mosta_figures", "Supplementary Figures S11–S18"),
     ),
 )
@@ -343,13 +343,19 @@ def test_mosta_notebooks_use_public_reader_api(
         "".join(cell.get("source", ())) for cell in notebook["cells"]
     )
     assert title in source
-    assert "from CytoBridge.results import" in source
-    assert "load_mosta_figure_release()" in source
-    assert f'output_dir = Path("outputs") / "{output_slug}"' in source
+    assert "cb.datasets.download" in source
+    assert 'data/mosta/paper' in source
+    assert 'outputs/mosta_paper' in source
     if notebook_name == "main_figure_4.ipynb":
-        assert "assemble_main_figure_4" in source
+        assert "from reproduction.mosta.main_figure import draw_main_figure" in source
+        for panel in "abcde":
+            assert f'panels="{panel}"' in source
     else:
-        assert "export_mosta_supplementary_figures" in source
+        assert "from reproduction.mosta.figures import draw_supplementary" in source
+        for number in range(11, 19):
+            assert f'figures=[{number}]' in source
+    assert "assemble_main_figure_4" not in source
+    assert "export_mosta_supplementary_figures" not in source
     assert any(
         cell.get("outputs")
         for cell in notebook["cells"]

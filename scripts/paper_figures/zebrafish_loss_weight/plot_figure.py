@@ -148,6 +148,11 @@ def main() -> int:
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     frame.to_csv(output_dir / "loss_weight_metrics.csv", index=False)
+    # The combined SI notebook uses these two names for the same control model.
+    si_input = frame.assign(condition=frame["condition"].replace({
+        "reference_alpha": "formal_alpha_control", "reference_ratio": "formal",
+    }))
+    si_input.to_csv(output_dir / "s32_loss_weight_metrics.csv", index=False)
     summary = frame.groupby(["condition", "space"], sort=False)["w1"].mean().reset_index(name="mean_w1")
     summary.to_csv(output_dir / "summary_statistics.csv", index=False)
     for path in draw(frame, output_dir):

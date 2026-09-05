@@ -197,38 +197,38 @@ FIGURE_WORKFLOWS = (
     FigureWorkflow(
         "main-figure-5-reference",
         "Main Figure 5",
-        "reference-export",
-        True,
-        "Check the assembled Main Figure 5 page and write a viewable copy.",
-        "Included Main Figure 5 page image and panel index.",
-        "docs/tutorials/dataset_workflows/arista.ipynb",
+        "numeric-redraw",
+        False,
+        "Draw all five panels from cell states and numerical results.",
+        "Downloaded ARISTA display populations and included velocity and growth arrays.",
+        "docs/tutorials/paper_figures/main_figure_5.ipynb",
         "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
-        "cytobridge figure main-figure-5-reference --output-dir outputs/main_figure_5",
-        "This command checks and copies the assembled page. Follow the preceding ARISTA steps for the panel calculations.",
+        "cytobridge figure main-figure-5-reference --results-dir data/arista/paper --output-dir outputs/main_figure_5",
+        "Calculates spatial anchors, velocity grids and grouped growth/interaction values, then draws the panels.",
     ),
     FigureWorkflow(
         "main-figure-4",
         "Main Figure 4",
-        "external-assembly",
+        "numeric-redraw",
         False,
-        "Assemble five vector panels from a separately downloaded MOSTA release.",
-        "Five vector panel PDFs in the downloaded MOSTA figure files.",
-        "docs/tutorials/dataset_workflows/mosta.ipynb",
+        "Draw all five panels from cell states and numerical results.",
+        "Downloaded MOSTA populations and included lineage, communication and velocity arrays.",
+        "docs/tutorials/paper_figures/main_figure_4.ipynb",
         "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
-        "cytobridge figure main-figure-4 --results-dir <mosta-release> --output-dir outputs/main_figure_4",
-        "Assembles Main Figure 4; it does not redraw the five source panels.",
+        "cytobridge figure main-figure-4 --results-dir data/mosta/paper --output-dir outputs/main_figure_4",
+        "Redraws every scientific panel. The frame and label layout of panels a-b is retained from the paper.",
     ),
     FigureWorkflow(
         "mosta-reference-pages",
         "Supplementary Figures S11-S18",
-        "reference-export",
+        "numeric-redraw",
         False,
-        "Write viewable copies of the completed MOSTA vector pages.",
-        "Vector PDF and SVG pages in the downloaded MOSTA figure files.",
-        "docs/tutorials/dataset_workflows/mosta.ipynb",
+        "Draw all eight supplementary figures from numerical data.",
+        "Downloaded MOSTA cell states and included gene and LR result tables.",
+        "docs/tutorials/paper_figures/mosta_figures.ipynb",
         "cytobridge workflow --config mosta --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training-dir> --output-dir <downstream-dir>",
-        "cytobridge figure mosta-reference-pages --results-dir <mosta-release> --output-dir outputs/mosta_si",
-        "This command copies the completed S11-S18 pages. Their calculation and rendering scripts are listed in the figure index.",
+        "cytobridge figure mosta-reference-pages --results-dir data/mosta/paper --output-dir outputs/mosta_si",
+        "Calculates population summaries, lineage transitions and LR curves, and redraws S11-S18.",
     ),
 )
 
@@ -414,51 +414,31 @@ def _run_main_figure_2(results_dir: Path | None, output: Path) -> dict[str, obje
 def _run_main_figure_5_reference(
     results_dir: Path | None, output: Path
 ) -> dict[str, object]:
-    from .main_figure_5 import (
-        export_main_figure_5_reference_page,
-        load_main_figure_5,
-        validate_main_figure_5_reference_page,
-        write_main_figure_5_tables,
-    )
-
-    data = load_main_figure_5(results_dir)
-    page = validate_main_figure_5_reference_page(data)
+    from reproduction.arista.main_figure import draw_main_figure
+    data = results_dir or Path('data/arista/paper')
     return {
-        "input_directory": str(data.source_dir),
-        "figures": _paths(export_main_figure_5_reference_page(data, output, page)),
-        "tables": _paths(write_main_figure_5_tables(data, page, output)),
+        "input_directory": str(data),
+        "figures": _paths(draw_main_figure(data, output)),
     }
 
 
 def _run_main_figure_4(results_dir: Path | None, output: Path) -> dict[str, object]:
-    from .mosta_figures import (
-        assemble_main_figure_4,
-        load_mosta_figure_release,
-        write_mosta_figure_index,
-    )
-
-    release = load_mosta_figure_release(results_dir)
+    from reproduction.mosta.main_figure import draw_main_figure
+    data = results_dir or Path('data/mosta/paper')
     return {
-        "input_directory": str(release.root),
-        "figures": _paths(assemble_main_figure_4(release, output)),
-        "figure_index": str(write_mosta_figure_index(release, output)),
+        "input_directory": str(data),
+        "figures": _paths(draw_main_figure(data, output)),
     }
 
 
 def _run_mosta_reference_pages(
     results_dir: Path | None, output: Path
 ) -> dict[str, object]:
-    from .mosta_figures import (
-        export_mosta_supplementary_figures,
-        load_mosta_figure_release,
-        write_mosta_figure_index,
-    )
-
-    release = load_mosta_figure_release(results_dir)
+    from reproduction.mosta.figures import draw_supplementary
+    data = results_dir or Path('data/mosta/paper')
     return {
-        "input_directory": str(release.root),
-        "figures": _paths(export_mosta_supplementary_figures(release, output)),
-        "figure_index": str(write_mosta_figure_index(release, output)),
+        "input_directory": str(data),
+        "figures": _paths(draw_supplementary(data, output)),
     }
 
 
@@ -602,7 +582,17 @@ def run_figure_workflow(
         raise ValueError(f"Unknown figure workflow: {name}")
     output = new_output_dir(output_dir)
     source = None if results_dir is None else Path(results_dir).expanduser().resolve()
-    details = _RUNNERS[name](source, output)
+    try:
+        details = _RUNNERS[name](source, output)
+    except ModuleNotFoundError as error:
+        if error.name and error.name.split('.')[0] == 'reproduction':
+            raise RuntimeError(
+                f"{name} uses the paper-reproduction scripts in the source repository. "
+                "Clone https://github.com/zhenyiizhang/cytobridge-spatial, install it "
+                "with python -m pip install -e '.[notebook,velocity]', and run this "
+                "command from that checkout."
+            ) from error
+        raise
     workflow = _WORKFLOW_BY_NAME[name]
     summary = {
         **describe_figure_workflow(name),

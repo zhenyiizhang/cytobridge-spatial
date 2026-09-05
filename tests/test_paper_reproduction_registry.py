@@ -55,6 +55,8 @@ def test_registry_states_what_each_entry_can_do() -> None:
     assert set(rows[0]) == required_columns
 
     allowed_modes = {
+        "draw numerical inputs",
+        "calculate summaries and draw numerical inputs",
         "redraw included numbers",
         "redraw included summary",
         "assemble included panels",
@@ -78,7 +80,7 @@ def test_registry_states_what_each_entry_can_do() -> None:
 
     assert {
         "redraw included numbers",
-        "view/export completed page",
+        "draw numerical inputs",
         "new-run analysis",
         "format included table",
     } <= observed_modes
@@ -90,14 +92,14 @@ def test_registry_states_what_each_entry_can_do() -> None:
     )
     assert (
         by_location["Main Figure 4"]["reproduction_mode"]
-        == "view/export completed page"
+        == "draw numerical inputs"
     )
     assert by_location["Main Figure 4"]["wheel_runnable"] == "false"
     assert (
         by_location["Main Figure 5"]["reproduction_mode"]
-        == "view/export completed page"
+        == "draw numerical inputs"
     )
-    assert by_location["Main Figure 5"]["wheel_runnable"] == "true"
+    assert by_location["Main Figure 5"]["wheel_runnable"] == "false"
     assert (
         by_location["Supplementary Table 2"]["reproduction_mode"]
         == "format included table"
@@ -131,7 +133,7 @@ def test_registry_states_what_each_entry_can_do() -> None:
     )
     assert (
         by_location["Supplementary Figure S29"]["availability"]
-        == "missing-provenance"
+        == "ready-to-redraw"
     )
 
 

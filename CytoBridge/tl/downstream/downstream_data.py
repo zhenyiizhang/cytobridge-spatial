@@ -128,6 +128,62 @@ def infer_feature_columns(
     ]
 
 
+def model_state_adata(
+    adata,
+    *,
+    time_key: str = "time_point_processed",
+    latent_key: str = "X_latent",
+    spatial_key: Optional[str] = "spatial_aligned",
+):
+    """Create an AnnData of model states from a preprocessed expression dataset.
+
+    ``X`` contains spatial coordinates followed by latent expression features,
+    in the order used by :func:`CytoBridge.tl.fit`. Set ``spatial_key=None``
+    for a non-spatial model. This copies existing coordinates and PCA scores,
+    without fitting or rescaling either of them.
+
+    Observation names and annotations are retained. The numeric model times
+    are stored in ``obs['time_point_processed']``. Coordinates are available
+    in both ``obsm['spatial']`` (plotting) and ``obsm['spatial_aligned']``
+    (model input). Latent features remain in ``obsm['X_latent']``.
+
+    A backed AnnData can be supplied: the gene-expression matrix is not read.
+    The returned object is in memory and independent of the input file.
+    """
+    import anndata as ad
+
+    if not adata.obs_names.is_unique:
+        raise ValueError("Observation names must be unique.")
+    if latent_key not in adata.obsm:
+        raise KeyError(f"Missing preprocessed features: obsm[{latent_key!r}].")
+    if time_key not in adata.obs:
+        raise KeyError(f"Missing model times: obs[{time_key!r}].")
+    latent = np.asarray(adata.obsm[latent_key], dtype=np.float32)
+    blocks = []
+    names = []
+    if spatial_key is not None:
+        if spatial_key not in adata.obsm:
+            raise KeyError(f"Missing aligned coordinates: obsm[{spatial_key!r}].")
+        spatial = np.asarray(adata.obsm[spatial_key], dtype=np.float32)
+        blocks.append(spatial)
+        names.extend(f"spatial_{i + 1}" for i in range(spatial.shape[1]))
+    blocks.append(latent)
+    names.extend(f"latent_{i + 1}" for i in range(latent.shape[1]))
+    values = np.concatenate(blocks, axis=1)
+    times = np.asarray([parse_time_value(t) for t in adata.obs[time_key]], dtype=float)
+    if not np.isfinite(values).all() or not np.isfinite(times).all():
+        raise ValueError("Model features and times must be finite.")
+    states = ad.AnnData(
+        X=values, obs=adata.obs.copy(), var=pd.DataFrame(index=names),
+    )
+    states.obs["time_point_processed"] = times
+    states.obsm["X_latent"] = latent.copy()
+    if spatial_key is not None:
+        states.obsm["spatial"] = spatial.copy()
+        states.obsm["spatial_aligned"] = spatial.copy()
+    return states
+
+
 def merge_annotation(
     df: pd.DataFrame,
     annotation_csv: str | Path,
