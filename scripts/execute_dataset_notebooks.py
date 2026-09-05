@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the public dataset tutorials from top to bottom."""
+"""Execute the small examples, or explicitly select a study-data tutorial."""
 
 from __future__ import annotations
 
@@ -63,10 +63,15 @@ def execute_notebook(
     }
 
 
-def run(*, timeout: int, save_outputs: bool) -> list[dict[str, object]]:
+def run(*, timeout: int, save_outputs: bool, dataset: str | None = None) -> list[dict[str, object]]:
+    # Dataset notebooks train real models. Documentation checks only execute
+    # the examples that do not require study data or a GPU.
+    selected = [p for p in NOTEBOOKS if p.stem == dataset] if dataset else NOTEBOOKS[:2]
+    if not selected:
+        raise ValueError(f"Unknown dataset: {dataset}")
     return [
         execute_notebook(path, timeout=timeout, save_outputs=save_outputs)
-        for path in NOTEBOOKS
+        for path in selected
     ]
 
 
@@ -74,12 +79,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument(
+        "--dataset", choices=[p.stem for p in NOTEBOOKS[2:]],
+        help="Run a study-data notebook, including GPU training. Add its data first.",
+    )
+    parser.add_argument(
         "--save-outputs",
         action="store_true",
         help="Store the executed cells in the published notebooks.",
     )
     args = parser.parse_args()
-    print(json.dumps(run(timeout=args.timeout, save_outputs=args.save_outputs), indent=2))
+    print(json.dumps(run(timeout=args.timeout, save_outputs=args.save_outputs, dataset=args.dataset), indent=2))
 
 
 if __name__ == "__main__":

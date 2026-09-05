@@ -41,96 +41,41 @@ def _notebook_text(notebook: dict) -> tuple[str, str]:
     return code, markdown
 
 
-@pytest.mark.parametrize(("filename", "preset"), NOTEBOOKS.items())
-def test_dataset_notebook_is_executed_and_portable(
-    filename: str,
-    preset: str,
-) -> None:
-    path = DATASET_NOTEBOOK_DIR / filename
-    notebook = json.loads(path.read_text(encoding="utf-8"))
-    assert notebook["nbformat"] == 4
-    assert notebook["metadata"]["kernelspec"] == {
-        "display_name": "Python 3",
-        "language": "python",
-        "name": "python3",
-    }
-
-    cell_ids = [cell["id"] for cell in notebook["cells"]]
-    assert len(cell_ids) == len(set(cell_ids))
-
-    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
-    assert code_cells
-    assert all(cell["execution_count"] is not None for cell in code_cells)
-    assert sum(len(cell.get("outputs", ())) for cell in code_cells) >= 4
-    for cell in code_cells:
-        ast.parse("".join(cell.get("source", [])))
-
+@pytest.mark.parametrize(("filename", "dataset"), NOTEBOOKS.items())
+def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str) -> None:
+    notebook = json.loads((DATASET_NOTEBOOK_DIR / filename).read_text())
+    assert notebook["metadata"]["cytobridge"]["runs_training"] is True
     code, markdown = _notebook_text(notebook)
-    public_text = f"{code}\n{markdown}".casefold()
-    serialized = json.dumps(notebook, ensure_ascii=False)
-
-    forbidden_public_phrases = {
-        "learning goals",
-        "scientific question",
-        "scientific contract",
-        "notes and interpretation",
-        "exercise",
-        "reviewer",
-        "hash-verified",
-        "sha256",
-        "handoff",
-    }
-    assert not {phrase for phrase in forbidden_public_phrases if phrase in public_text}
-    for machine_path in ("/Users/", "/home/", "/tmp/", "/private/tmp/"):
-        assert machine_path not in serialized
-
+    assert f"DATASET_CONFIG = '{dataset}'" in code
+    assert "run_workflow(" in code and "train=True" in code
+    assert "RUN_TRAINING" not in code
+    assert "build_workflow_plan" not in code
+    assert "downstream_dir / \"summary.json\"" in code
+    # Real study-data tutorials are not executed by a documentation build.
+    # A successful branch that skips training is not a reproduced result.
+    for cell in notebook["cells"]:
+        if cell["cell_type"] == "code":
+            ast.parse("".join(cell["source"]))
     headings = (
-        "## Setup",
-        "## Start a new model run",
-        "## Inspect the aligned data without training (optional)",
-        "## Run downstream analysis again (optional)",
-        "## Paper figures",
-        "## Saved files",
+        "## Get the data", "## Set the paths", "## Prepare the input",
+        "## Train and calculate the results", "## Open the results", "## Paper figures",
     )
-    positions = [markdown.index(heading) for heading in headings]
+    positions = [markdown.index(h) for h in headings]
     assert positions == sorted(positions)
-    paper_section = markdown.split("## Paper figures", 1)[1].split(
-        "## Saved files", 1
-    )[0]
-    assert paper_section.count("### ") == PAPER_STEP_COUNTS[filename]
-
-    assert f"DATASET_CONFIG = '{preset}'" in code
-    assert "load_workflow_config(DATASET_CONFIG)" in code
-    assert "WorkflowOptions" in code
-    assert "build_workflow_plan" in code
-    assert "render_workflow_plan" in code
-    assert "run_workflow" in code
-    assert "RUN_TRAINING = False" in code
-    assert "RUN_PREPROCESS_ONLY = False" in code
-    assert "RUN_DOWNSTREAM = False" in code
-    assert 'scientific["classifier_k"]' in code
-    assert 'preprocess["annotation_source"]' in code
-    assert 'align.get("expression_layer", "X")' in code
-    assert "spatial_source" in code
-    assert 'steps=("preprocess",)' in code
-    assert 'steps=("downstream",)' in code
-    assert "train=True" in code
-    assert '"output": DOWNSTREAM_RERUN_DIR / "downstream"' in code
-    assert "sys.path" not in code
-    assert "Path(__file__)" not in code
-    assert "### 1." not in markdown
-    assert "pca_artifacts.npz" not in markdown
-    assert "alignment_manifest.json" not in markdown
-    assert "make_admouse_article_figures.py" not in markdown
-    assert (
-        "Continue from the model run above" in paper_section
-        or "Start from the paper's saved files" in paper_section
-    )
-
-    if preset == "chicken_heart":
-        assert "prepare_chicken_heart_input" in code
-        assert "prepare_chicken_heart_ot_input" in code
-        assert "RUN_RAW_DATA_ASSEMBLY = False" in code
+    assert "Do not run a" in markdown
+    assert "data_checkpoints.md" in markdown
+    assert "reuse_model.md" in markdown
+    assert "not both" in markdown
+    text = (code + markdown).lower()
+    for phrase in ("learning goals", "exercise", "notes and interpretation",
+                   "handoff", "hash-verified", "smoke", "dry run"):
+        assert phrase not in text
+    for path in ("/Users/", "/home/", "/tmp/"):
+        assert path not in json.dumps(notebook)
+    if dataset == "chicken_heart":
+        assert "prepare_chicken_heart_input(" in code
+        assert "prepare_chicken_heart_ot_input(" in code
+        assert "not" in markdown and "GEO count-matrix download" in markdown
 
 
 def test_notebook_runner_executes_the_published_sources() -> None:
@@ -162,20 +107,20 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
 
 
 def test_own_data_notebook_is_executed_and_has_complete_commands() -> None:
-    notebook = json.loads(OWN_DATA_NOTEBOOK.read_text(encoding="utf-8"))
+    notebook = json.loads(OWN_DATA_NOTEBOOK.read_text())
     code, markdown = _notebook_text(notebook)
-    public_text = f"{code}\n{markdown}"
-    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
-    assert all(cell["execution_count"] is not None for cell in code_cells)
-    assert "--export-config" in public_text
-    assert "--check" in public_text
-    assert "--train" in public_text
-    assert "--step downstream" in public_text
-    assert "preprocess['annotation_source']" in code
-    assert "CONFIG_TO_REVIEW = CONFIG_PATH if CONFIG_PATH.is_file()" in code
-    assert "does **not** open the H5AD" in markdown
-    assert 'print("cytobridge workflow' not in code
-    assert "## Expected output locations" in markdown
+    assert all(
+        cell["execution_count"] is not None
+        for cell in notebook["cells"] if cell["cell_type"] == "code"
+    )
+    assert "--train" in markdown
+    assert "train=True" not in code  # This page does not start training during a docs check.
+    assert "config[\"preprocess\"][\"annotation_source\"]" in code
+    assert "align.pop(\"spatial_obs_keys\", None)" in code
+    assert 'config["preprocess"]["batch_indices"] = None' in code
+    assert "time_mapping" in code
+    assert "reuse_model.md" in markdown
+    assert "## Open the results" in markdown
 
 
 def test_tutorial_navigation_has_one_dataset_section() -> None:

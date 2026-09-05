@@ -41,8 +41,8 @@ Repeat the standard workflow for each of the five datasets used in the paper.
 :link: tutorials/paper_figures/index
 :link-type: doc
 
-Redraw figures from included numerical files, or view completed pages when the
-original layout files are kept separately.
+Draw from the paper's numerical results and find the calculation behind each
+panel. Assembled pages are listed separately.
 :::
 
 :::{grid-item-card} API reference
@@ -84,6 +84,7 @@ tutorials/index
 :hidden:
 
 data_checkpoints
+reuse_model
 downstream
 nonspatial_workflows
 benchmarks

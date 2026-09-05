@@ -1,18 +1,23 @@
 # Paper datasets
 
-These notebooks follow the five spatial datasets used in the paper. Each one
-starts with the command that prepares the raw H5AD and trains a new model, then
-shows downstream analysis. Later entries are labelled **Continue from the
-model run above** when they read that output, and **Start from the paper's saved
-files** when they read the exact tables, arrays, or models retained for the
-paper. **Required paper files not included** names an input without pretending
-that the new run creates it.
-An optional preprocessing-only section is provided for inspecting the aligned
-H5AD; it is an alternative check, not a step that must be run before training.
+Choose a dataset to follow its analysis from raw counts to a trained model and
+downstream plots. Each notebook follows the same order: get the data, set the
+paths, prepare the input, train, and open the results.
 
-The time-consuming cells are switched off on the documentation site. Their
-commands, paths, and saved output remain visible; set the corresponding
-`RUN_...` variable to `True` after adding the data locally.
+These notebooks contain actual training calls. Add the input files before
+running them locally. The website does not execute GPU training, and it does
+not display placeholder output as if a model had been trained.
+
+| Dataset | Input and model availability |
+| --- | --- |
+| Zebrafish | Exact paper inputs and final model download pending |
+| MOSTA | Model files in the source repository; aligned H5AD download pending |
+| ARISTA | Model files in the source repository; aligned H5AD download pending |
+| AD mouse | Exact paper inputs and final model download pending |
+| Chicken heart | Final model files included; aligned H5AD and annotation inputs need a separate download |
+
+See [Data and checkpoints](../../data_checkpoints.md) for the original study
+downloads and the files needed for each starting point.
 
 ```{toctree}
 :maxdepth: 1
@@ -24,6 +29,6 @@ admouse
 chicken_heart
 ```
 
-For a new experiment, begin with [Run CytoBridge on your
-data](../your_data.ipynb). For the final plotting steps, use the [paper figure
-notebooks](../paper_figures/index.md).
+For another experiment, use [Run CytoBridge on your data](../your_data.ipynb).
+To draw from the paper's existing numerical results, use
+[Paper figures](../paper_figures/index.md).

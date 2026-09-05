@@ -1,51 +1,61 @@
 # Paper figures
 
-There are two ways to use these notebooks.
+Choose a figure below. Each notebook states what its code actually does.
 
-**Redraw a paper figure.** Open a figure notebook and run its calculation and
-plotting cells. Most notebooks read numerical CSV or NPZ files included with
-CytoBridge and write new PDF and PNG files. A few notebooks instead open or
-export a completed page; their link text says so.
+| Starting material | What the notebook does |
+| --- | --- |
+| Included CSV/NPZ results | Calculates summaries and draws new plots |
+| Existing vector panels | Assembles the panels into a page |
+| A completed PDF/PNG page | Displays or copies the page |
 
-**Continue from a new model run.** Start with a
-[dataset notebook](../dataset_workflows/index.md), then use a figure notebook
-only when it gives a command that accepts the saved files from your run. Some
-paper figures still lack the step that converts a new run into the exact panel
-inputs or assembles the final page. The
-[complete paper index](../../paper_reproduction.md) records this figure by
-figure.
+The latter two do not reproduce the underlying analysis. Figure 4 currently
+assembles existing panels. Figure 5, MOSTA S11–S18, and ARISTA S19–S22 include
+completed-page displays. These still need a complete, tested route from
+numerical inputs to the final panels.
 
-The notebooks show the command, its inputs, its outputs, and the next step.
-Saved notebook output lets you see the expected tables and figures before
-running anything yourself.
+## Draw from the included results
 
-The included numerical files can be redrawn for S4–S6, S25, and S31–S46.
-S41, S42, S45, and S46 also include a command that collects completed analysis
-tables before drawing the figure. S4–S6, S25, and S31–S38 do not yet convert a
-new model run into the exact set of paper panel inputs. Their notebooks still
-show the available upstream calculations so that their inputs and outputs are
-clear.
-
-Commands that start with `cytobridge` work after installation. Commands that
-start with `python scripts/...` or `python -m scripts...` use files from the
-source repository and should be run from the root of the cloned repository.
-
-When you run a notebook from a cloned repository, for example
-`python scripts/execute_paper_notebooks.py --notebook arista_figures
---output-dir notebook_runs`, it creates a notebook-specific working directory.
-Files written by that notebook appear under
-`notebook_runs/arista_figures/outputs/arista_supplementary_figures`, not
-directly under `notebook_runs`. Other notebooks use the same
-`<runner output>/<notebook name>/outputs/<notebook-specific folder>` pattern;
-their setup cells show the final folder name.
-
-To print the same steps in a terminal:
+For example, redraw S4–S5 from their numerical inputs in a source checkout:
 
 ```bash
-cytobridge figure list
-cytobridge figure explain nonspatial
-cytobridge figure explain zebrafish-si
+python scripts/execute_paper_notebooks.py \
+  --notebook nonspatial_figures \
+  --output-dir notebook_runs
 ```
+
+The plots are written to
+`notebook_runs/nonspatial_figures/outputs/nonspatial_figures/`.
+Other notebooks use the same
+`<output-dir>/<notebook-name>/outputs/<figure-folder>/` structure.
+
+The displayed outputs on this site let you inspect the results before running
+the notebook. No training is started by these figure notebooks.
+
+## Recalculate from a model
+
+Use the [dataset tutorials](../dataset_workflows/index.md) for training or
+[Continue from a trained model](../../reuse_model.md) for downstream analysis.
+The final section of each figure notebook gives the earlier calculations and
+their input files.
+
+A new model run is not automatically used by a paper redraw command. Several
+figures still need code to convert a new run into their exact plotting inputs,
+including S4–S5 and S31–S38. The
+[figure-by-figure inventory](../../paper_reproduction.md) records those gaps.
+
+## Check the available notebooks
+
+Run all figure notebooks in new output directories and save an execution report:
+
+```bash
+python scripts/execute_paper_notebooks.py \
+  --output-dir figure_check \
+  --report figure_check/report.json
+```
+
+The report distinguishes numerical plotting, panel assembly, and page copying.
+It tests the available figure notebooks, not training or the complete
+raw-data-to-figure analysis.
 
 ## Main figures
 
@@ -90,25 +100,25 @@ cytobridge figure explain zebrafish-si
 :hidden:
 :maxdepth: 1
 
-main_figure_2
-main_figure_4
-main_figure_5
-agist_figures
-nonspatial_figures
-chicken_heart_alignment
-mosta_figures
-arista_figures
-zebrafish_si_s31_s38
-zebrafish_decomposition_stability
-classifier_smoothing
-spatrack_benchmark
-lr_complex_aggregation
-interaction_ablation
-loto_benchmark
-loto_benchmark_summary
-arista_local_domains
-zebrafish_attention
-training_histories
-compute_cost
+Figure 2: AGIST <main_figure_2>
+Figure 4: MOSTA <main_figure_4>
+Figure 5: ARISTA <main_figure_5>
+S2–S3: AGIST <agist_figures>
+S4–S5: Non-spatial data <nonspatial_figures>
+S6: Classifier smoothing <classifier_smoothing>
+S7–S8: Heart alignment <chicken_heart_alignment>
+S11–S18: MOSTA <mosta_figures>
+S19–S24: ARISTA <arista_figures>
+S25: ARISTA local domains <arista_local_domains>
+S31–S38: Zebrafish <zebrafish_si_s31_s38>
+S39: Attention comparisons <zebrafish_attention>
+S40: Decomposition stability <zebrafish_decomposition_stability>
+S41: LR complexes <lr_complex_aggregation>
+S42: Interaction ablations <interaction_ablation>
+S44: Benchmark summary <loto_benchmark_summary>
+SpaTrack comparison <spatrack_benchmark>
+S45: Benchmark details <loto_benchmark>
+S46: Training histories <training_histories>
+Training time and memory <compute_cost>
 ../zebrafish_videos
 ```

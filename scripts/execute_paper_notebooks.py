@@ -15,6 +15,14 @@ from nbclient import NotebookClient
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "docs" / "tutorials" / "paper_figures"
+OPERATIONS = {
+    "main_figure_2": "redraw panel e and assemble existing panels a-d",
+    "main_figure_4": "assemble existing vector panels",
+    "main_figure_5": "copy an existing figure page",
+    "mosta_figures": "export existing figure pages",
+    "arista_figures": "redraw S23-S24; display existing S19-S22 pages",
+    "compute_cost": "format recorded measurements as a table",
+}
 
 # The kernels run in temporary output directories. Keep the source checkout on
 # their import path when this script is used before installing a wheel.
@@ -73,6 +81,8 @@ def execute_notebook(
     code_cells = [cell for cell in notebook.cells if cell.cell_type == "code"]
     return {
         "notebook": path.name,
+        "operation": OPERATIONS.get(path.stem, "draw figures from included numerical results"),
+        "training_performed": False,
         "code_cells": len(code_cells),
         "executed_cells": sum(cell.execution_count is not None for cell in code_cells),
         "outputs": sum(len(cell.get("outputs", ())) for cell in code_cells),
@@ -120,6 +130,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--report", type=Path, help="Save the execution summary as JSON.")
     parser.add_argument(
         "--notebook",
         action="append",
@@ -143,6 +154,9 @@ def main() -> None:
             save_outputs=args.save_outputs,
             notebook_names=tuple(args.notebook),
         )
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(json.dumps(summaries, indent=2) + "\n")
         print(json.dumps(summaries, indent=2))
         return
 
@@ -153,6 +167,9 @@ def main() -> None:
             save_outputs=args.save_outputs,
             notebook_names=tuple(args.notebook),
         )
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(summaries, indent=2) + "\n")
     print(json.dumps(summaries, indent=2))
 
 

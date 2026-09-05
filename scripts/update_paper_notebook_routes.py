@@ -108,33 +108,41 @@ Writes: `{row['writes']}`
 
 
 def _insert_route(notebook, workflow: str) -> None:
-    route_markdown = _markdown(
-        """
-## Run the notebook
-
-The plotting cells use numerical files included with CytoBridge and write new
-PDF and PNG files. The steps below list the commands and source files that
-produced those inputs. Each step names what it reads, what it writes, and what
-comes next.
-
-A command can be repeated when you have the inputs named under **Start with**.
-**Source files** points to calculation code kept with the paper results. The
-plotting cells use a new run only when the final plotting command explicitly
-accepts that run's result directory. The paper figure index marks notebooks
-where this conversion step is not yet available.
-
-Replace text inside angle brackets with your path or value. For example,
-`<output-dir>` means the directory where you want the files to be written.
-""",
-        ROUTE_CELL_TAG,
+    purposes = {
+        "main-figure-4": "These cells assemble five existing vector panels. They do not recalculate the panel data.",
+        "main-figure-5-reference": "These cells copy the completed Figure 5 page. They do not recalculate or redraw its panels.",
+        "mosta-reference-pages": "These cells show the completed S11–S18 pages and their source index. They do not recalculate or redraw the panels.",
+        "main-figure-2": "These cells redraw panel e from numerical results and combine it with the existing panels a–d.",
+        "arista-lr": "These cells recalculate and draw S23–S24 from LR time-course tables. S19–S22 are displayed as completed pages.",
+        "compute-cost": "These cells format the recorded training measurements into a table. They do not measure a new training run.",
+        "nonspatial": "These cells draw S4–S5 from the included cell arrays and result tables. They recalculate selected summaries and use the saved tables for other panels. Converting a new model run into this complete set of panel inputs is still missing.",
+    }
+    purpose = purposes.get(
+        workflow,
+        "These cells read the included numerical results, calculate the panel summaries, and draw new figures.",
     )
-    route_steps = [
+    notebook.cells.insert(1, _markdown(
+        "## Start here\n\n" + purpose
+        + "\n\nRun the Python cells below in order. No training is needed for this page. "
+        "The section **Where the inputs come from** at the end gives the earlier "
+        "calculations and their required files.",
+        ROUTE_CELL_TAG,
+    ))
+    notebook.cells.append(_markdown(
+        "## Where the inputs come from\n\n"
+        "These are the available steps from the earlier analysis. They are not prerequisites "
+        "for drawing the included results above. Each step lists the file it reads "
+        "and the result used by the next step.\n\n"
+        "Paths in angle brackets are placeholders to replace with your files. "
+        "A source directory names archived code, not a command you can run. "
+        + ("The listed steps do not yet form an executable sequence from a new "
+           "model run to the final page." if workflow in {"main-figure-4", "nonspatial"} else ""),
+        ROUTE_CELL_TAG,
+    ))
+    notebook.cells.extend(
         _markdown(_step_markdown(row, number), ROUTE_CELL_TAG)
-        for number, row in enumerate(
-            describe_figure_steps(workflow), start=1
-        )
-    ]
-    notebook.cells[1:1] = [route_markdown, *route_steps]
+        for number, row in enumerate(describe_figure_steps(workflow), start=1)
+    )
 
 
 def _insert_after_source(notebook, marker: str, cells: list) -> None:
@@ -290,6 +298,7 @@ def _humanize_existing_markdown(notebook) -> None:
         source = "".join(cell.source)
         for old, new in replacements.items():
             source = source.replace(old, new)
+        source = source.replace("recalculate every displayed summary", "recalculate the derived summaries")
         cell.source = source
 
 
@@ -347,7 +356,6 @@ def update(path: Path, workflow: str) -> None:
     notebook = nbformat.read(path, as_version=4)
     _remove_generated_cells(notebook)
     _configure_dataframe_display(notebook)
-    _insert_route(notebook, workflow)
     if path.name == "nonspatial_figures.ipynb":
         _add_nonspatial_route(notebook)
     elif path.name == "zebrafish_si_s31_s38.ipynb":
@@ -386,6 +394,7 @@ from CytoBridge.results.interaction_evidence import (
                 cell.source = source
     if path.name == "arista_figures.ipynb":
         _simplify_arista_source_table(notebook)
+    _insert_route(notebook, workflow)
     nbformat.write(notebook, path)
 
 

@@ -1,5 +1,60 @@
 # Data and checkpoints
 
+## What to download
+
+Choose a starting point before downloading large files.
+
+| What you want to do | Files needed |
+| --- | --- |
+| Draw a figure from saved numerical results | Source repository or installed package, as stated in the figure tutorial |
+| Repeat downstream analysis without training | Matching aligned H5AD, final dynamical and score checkpoints, configuration, and edge predictor |
+| Train again from the paper input | Counts H5AD with the paper's observations, annotations, coordinates, and training settings |
+| Repeat a sensitivity analysis or benchmark | Its own models, evaluation inputs, and settings, not just the main dataset model |
+
+The full study-data downloads are not linked here yet. The original data
+portals below provide the study data, but not necessarily the assembled H5AD
+used in this paper. Downloading the repository alone is therefore sufficient
+for many numerical figure redraws, **not for a complete retraining of the
+paper**.
+
+## Model files included with the source repository
+
+These files are available in a
+[GitHub source checkout](https://github.com/zhenyiizhang/cytobridge-spatial).
+They are not part of the pip wheel.
+
+| Dataset | Directory under `release_artifacts/` | Model files |
+| --- | --- | --- |
+| MOSTA | `mosta_package_native_corrected_20260826_v1/model/` | Final dynamical and score models, classifier, and configuration |
+| ARISTA | `arista_package_native_spatialqc_z50_retrain_20260824_r1/main_run/` | Training stages, classifiers, configuration, and run record |
+| Chicken heart | `chicken_heart_model_c72e592/` | Final dynamical model (8.6 MB), score model (1.4 MB), edge predictor (0.24 MB), configuration, and run record |
+| Zebrafish and AD mouse | Not yet included as complete model downloads | Use the figure tutorials for the numerical results already included |
+
+The repository's `edge_classifier/` directory contains **edge predictors**.
+Those files alone are not trained CytoBridge dynamical models.
+
+For chicken heart, see the
+[model instructions](https://github.com/zhenyiizhang/cytobridge-spatial/tree/main/release_artifacts/chicken_heart_model_c72e592).
+Its aligned H5AD is about 145 MB and will be provided separately. The current
+figure-code archive does not contain the complete daily-interpolation inputs.
+
+## Files needed for the full paper downloads
+
+| Dataset | Required data download | Additional files for paper-specific analyses |
+| --- | --- | --- |
+| Zebrafish | Raw counts H5AD and matching `zebrafish_aligned.h5ad` | Evaluation-cell selections, classifier, model-comparison records, and sensitivity-run models |
+| MOSTA | Raw counts H5AD and matching `mosta_aligned.h5ad` | Panel-specific trajectory, lineage, gene, and LR inputs listed in the figure index |
+| ARISTA | Raw counts H5AD and matching `arista_aligned.h5ad` | Panel inputs for S19–S22 and Figure 5, including spatial and lineage data |
+| AD mouse | Counts H5AD with sample and cell labels, and matching `admouse_aligned.h5ad` | Figure 6 and S26–S30 panel inputs and fitted classifiers |
+| Chicken heart | `chicken_heart_aligned.h5ad`, raw 10x matrices, `chicken_heart_spatial_merged_with_meta.h5ad`, and `heart_aligned_all_timepoints.h5ad` | Daily interpolated slices, the corrected classifier, anatomical annotations, and the plotting helpers |
+| Weinreb and scNT cortex | Dataset-specific preprocessing inputs and Full/No-interaction run directories | Clone/fate or RNA measurements and attribution inputs |
+| AGIST | Simulation configuration and generated training arrays | Fitted model and simulated trajectories |
+| Cross-dataset comparisons | Input selections, transforms, and predictions for each method and target time | Repeated-seed and altered-setting runs |
+
+These are the files still needed to test reproduction from beginning to end.
+The [figure guide](paper_reproduction.md) distinguishes calculations using
+included numerical data from pages assembled from existing panels.
+
 CytoBridge does not include large study datasets or trained model directories
 in the wheel. Provide those files explicitly when running a workflow. The
 package does include small species-specific CellChatDB tables under

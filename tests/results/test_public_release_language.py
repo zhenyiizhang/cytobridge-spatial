@@ -164,7 +164,9 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     assert "from cytobridge.results" in lowered
-    assert "## run the notebook" in lowered
+    assert "## start here" in lowered
+    assert "## where the inputs come from" in lowered
+    assert lowered.index("from cytobridge.results") < lowered.index("## where the inputs come from")
     assert "### 1." in lowered
     assert "start with:" in lowered
     assert "writes:" in lowered

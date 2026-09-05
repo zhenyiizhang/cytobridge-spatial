@@ -5,14 +5,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import re
 
 import nbformat
-
-from CytoBridge.results.reproduction_chains import (
-    describe_dataset_paper_steps,
-    describe_dataset_run_steps,
-)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -142,696 +136,363 @@ def code(text: str, *, cell_id: str | None = None):
     return cell
 
 
-def _show_placeholders(text: str) -> str:
-    """Keep angle-bracket path placeholders visible in rendered Markdown."""
-
-    return re.sub(r"(?<!`)(<[^<>\n]+>)(?!`)", r"`\1`", text)
-
-
-def route_cells(
-    rows: list[dict[str, str]],
-    *,
-    include_paper: bool,
-    include_heading: bool = True,
-) -> list:
-    cells = []
-    for row in rows:
-        paper = f" ({row['paper_part']})" if include_paper else ""
-        note_text = _show_placeholders(row.get("note", ""))
-        note = f"\n{note_text}\n" if note_text else ""
-        if row.get("entry_type") == "source":
-            entry = (
-                "File or directory to use (not a command): "
-                f"`{row['code_or_command']}`"
-            )
-        else:
-            language = (
-                "python" if row["code_or_command"].startswith("from ") else "bash"
-            )
-            entry = f"""```{language}
-{row['code_or_command']}
-```"""
-        heading = f"### {row['step']}{paper}\n" if include_heading else ""
-        cells.append(
-            markdown(
-                f"""
-{heading}
-{entry}
-
-**Input:** {_show_placeholders(row['reads'])}
-
-**Output:** {_show_placeholders(row['writes'])}
-
-**Continue with:** {_show_placeholders(row['next_step'])}
-{note}
-"""
-            )
-        )
-    return cells
 
 
 def build_notebook(tutorial: Tutorial):
-    dataset_name = tutorial.dataset
-    aligned_name = f"{dataset_name}_aligned.h5ad"
-    chicken_setup = ""
-    chicken_preparation = []
-    if dataset_name == "chicken_heart":
-        chicken_setup = """
+    """Write a linear, executable tutorial for a new dataset run."""
+    dataset = tutorial.dataset
+    figures = "\n".join(
+        f"- [{label}](../paper_figures/{target})"
+        for label, target, _ in tutorial.figure_links
+    )
+    cells = [
+        markdown(f"""
+# {tutorial.title}
 
+This notebook starts with raw counts, trains CytoBridge, and opens the resulting
+growth, trajectory, and interaction analyses. Run the cells in order after
+[installing CytoBridge](../../installation.md) and adding the input files below.
+Training requires a GPU and is not run when this website is built.
+
+To draw a figure from the paper's saved results without training, go directly
+to [Paper figures](../paper_figures/index.md). Those results are separate from
+the new model fitted here.
+"""),
+        markdown(f"""
+## Get the data
+
+Use `data/{tutorial.raw_filename}` for the counts H5AD. The [download
+guide](../../data_checkpoints.md) lists the original study and the files still
+needed for the paper's exact input. A study download may need conversion to
+H5AD before it can be used here.
+
+Run this notebook from your own working directory. All paths below are relative
+to that directory. Use a new output folder for each training run.
+"""),
+        markdown("## Set the paths"),
+        code(f"""
+from pathlib import Path
+import json
+
+from CytoBridge.workflow import WorkflowOptions, load_workflow_config, run_workflow
+
+DATASET_CONFIG = {dataset!r}
+RAW_H5AD = Path("data/{tutorial.raw_filename}")
+OUTPUT_DIR = Path("outputs/{dataset}")
+ALIGNED_H5AD = OUTPUT_DIR / "preprocess" / "{dataset}_aligned.h5ad"
+MODEL_DIR = OUTPUT_DIR / "training"
+
+config, _ = load_workflow_config(DATASET_CONFIG)
+"""),
+        markdown("""
+## Prepare the input
+
+The configuration gives the names of the count layer, time column, cell-type
+column, and spatial coordinates. This table shows the fields expected in the
+raw H5AD.
+"""),
+        code("""
+import pandas as pd
+
+preprocess = config["preprocess"]
+align = preprocess["align"]
+coordinate_columns = align.get("spatial_obs_keys")
+spatial_source = (
+    f"obs[{coordinate_columns!r}]" if coordinate_columns
+    else f"obsm[{align.get('input_spatial_key', 'spatial')!r}]"
+)
+pd.DataFrame({
+    "Input": ["Counts", "Time", "Cell type", "Coordinates"],
+    "AnnData field": [
+        f"layers[{align.get('expression_layer', 'X')!r}]"
+        if align.get("expression_layer", "X") != "X" else "X",
+        f"obs[{preprocess['time_key']!r}]",
+        f"obs[{preprocess['annotation_source']!r}]",
+        spatial_source,
+    ],
+})
+"""),
+    ]
+    if dataset == "chicken_heart":
+        cells += [
+            markdown("""
+### Combine counts and annotations
+
+Skip these two cells if `RAW_H5AD` is already prepared. To build it from the
+GEO matrices, supply the two annotation/reference H5AD files listed below.
+They are needed to recover the paper's selected spots and labels, and are not
+part of the GEO count-matrix download. Their distribution is still being
+arranged.
+
+The first function joins counts and annotations. The second prepares the
+coordinates for alignment, including the recorded D7 orientation.
+"""),
+            code("""
 import CytoBridge as cb
 
 RAW_10X_DIR = Path("data/GSE149457_RAW")
 METADATA_H5AD = Path("data/chicken_heart_spatial_merged_with_meta.h5ad")
 REFERENCE_ALIGNMENT_H5AD = Path("data/heart_aligned_all_timepoints.h5ad")
-PREPARATION_DIR = RAW_H5AD.parent / "chicken_heart_preparation"
-RUN_RAW_DATA_ASSEMBLY = False
-"""
-        chicken_preparation = [
-            markdown(
-                """
-### Assemble the chicken-heart H5AD
-
-The public GSE149457 10x matrices contain the raw counts and spot coordinates.
-Two paper-retained H5AD files are also required: `METADATA_H5AD` supplies the
-spot roster, region labels, and cell-type labels, and
-`REFERENCE_ALIGNMENT_H5AD` supplies the matching row order used by the original
-paper preparation. These two H5AD files are not generated by the public 10x
-download or by the standard workflow.
-
-The first call joins the raw counts to those retained annotations. The second
-call starts from the raw coordinates, records them as `spatial_original`, and
-writes `spatial_ot_input`; for D7 this applies the recorded 180-degree
-pre-orientation before CytoBridge fits a new alignment.
-
-**Input:** `RAW_10X_DIR`, `METADATA_H5AD`, and `REFERENCE_ALIGNMENT_H5AD`
-
-**Output:** `RAW_H5AD`, containing counts, annotations, `spatial_original`, and
-`spatial_ot_input`
-
-**Continue with:** the **Run a new dataset from raw counts** command below
-"""
-            ),
-            code(
-                """
-if RUN_RAW_DATA_ASSEMBLY:
-    PREPARATION_DIR.mkdir(parents=True, exist_ok=True)
-    reference_input = PREPARATION_DIR / "chicken_heart_reference_input.h5ad"
-    cb.pp.prepare_chicken_heart_input(
-        raw_dir=RAW_10X_DIR,
-        metadata_h5ad=METADATA_H5AD,
-        aligned_reference_h5ad=REFERENCE_ALIGNMENT_H5AD,
-        output_h5ad=reference_input,
-        output_table=PREPARATION_DIR / "model_input.csv",
-        manifest_path=PREPARATION_DIR / "preparation.json",
-        graph_database=cb.pp.bundled_graph_database_path(DATASET_CONFIG),
-        repair_legacy_d7_left_right=False,
-    )
-    cb.pp.prepare_chicken_heart_ot_input(
-        input_h5ad=reference_input,
-        output_h5ad=RAW_H5AD,
-        output_table=PREPARATION_DIR / "chicken_heart_ot_input.csv",
-        manifest_path=PREPARATION_DIR / "ot_input.json",
-    )
-else:
-    print(
-        "Raw-data assembly is off. Add the public 10x matrices and the two "
-        "paper-retained H5AD files, then set RUN_RAW_DATA_ASSEMBLY = True."
-    )
-"""
-            ),
+PREPARATION_DIR = Path("outputs/chicken_heart_input")
+"""),
+            code("""
+PREPARATION_DIR.mkdir(parents=True, exist_ok=True)
+reference_input = PREPARATION_DIR / "chicken_heart_reference_input.h5ad"
+cb.pp.prepare_chicken_heart_input(
+    raw_dir=RAW_10X_DIR,
+    metadata_h5ad=METADATA_H5AD,
+    aligned_reference_h5ad=REFERENCE_ALIGNMENT_H5AD,
+    output_h5ad=reference_input,
+    output_table=PREPARATION_DIR / "model_input.csv",
+    manifest_path=PREPARATION_DIR / "preparation.json",
+    graph_database=cb.pp.bundled_graph_database_path(DATASET_CONFIG),
+    repair_legacy_d7_left_right=False,
+)
+cb.pp.prepare_chicken_heart_ot_input(
+    input_h5ad=reference_input,
+    output_h5ad=RAW_H5AD,
+    output_table=PREPARATION_DIR / "chicken_heart_ot_input.csv",
+    manifest_path=PREPARATION_DIR / "ot_input.json",
+)
+"""),
         ]
-    figure_lines = "\n".join(
-        f"- [{label}](../paper_figures/{target})"
-        for label, target, _workflow in tutorial.figure_links
-    )
-    run_rows = describe_dataset_run_steps(dataset_name)
-    paper_route_cells = route_cells(
-        describe_dataset_paper_steps(dataset_name), include_paper=True
-    )
-    cells = [
-        markdown(
-            f"""
-# {tutorial.title}
+    cells += [
+        code("""
+if not RAW_H5AD.is_file():
+    raise FileNotFoundError(f"Add the input H5AD or update RAW_H5AD: {RAW_H5AD}")
+"""),
+        markdown("""
+## Train and calculate the results
 
-This notebook is a guide to the `{dataset_name}` workflow. It shows how raw
-data are mapped into the fields expected by CytoBridge, how a new model run is
-passed to downstream analysis, and which later steps start from files saved
-for the paper instead of the new run. Edit the paths in **Setup** before
-starting.
+This call performs preprocessing, fits the LR edge predictor, trains the
+dynamical model, and runs the configured downstream analyses. **Do not run a
+separate preprocessing command first.**
 
-For a small example that runs on generated data, see [Synthetic
-preprocessing](../data_preparation/synthetic_preprocessing.ipynb). The [data and
-checkpoint guide](../../data_checkpoints.md) lists inputs distributed outside
-the package.
-"""
-        ),
-        markdown("## Setup"),
-        code(
-            f"""
-from pathlib import Path
-
-import pandas as pd
-from IPython.display import display
-
-from CytoBridge.workflow import (
-    WorkflowOptions,
-    build_workflow_plan,
-    load_workflow_config,
-    render_workflow_plan,
-    run_workflow,
-)
-DATASET_CONFIG = {dataset_name!r}
-RAW_H5AD = Path("data/{tutorial.raw_filename}")
-OUTPUT_DIR = Path("tutorial_outputs/{dataset_name}")
-PREPROCESS_ONLY_DIR = Path("tutorial_outputs/{dataset_name}_preprocess_only")
-DOWNSTREAM_RERUN_DIR = Path("tutorial_outputs/{dataset_name}_downstream_rerun")
-ALIGNED_H5AD = OUTPUT_DIR / "preprocess" / {aligned_name!r}
-MODEL_DIR = OUTPUT_DIR / "training"
-{chicken_setup}
-
-RUN_TRAINING = False
-RUN_PREPROCESS_ONLY = False
-RUN_DOWNSTREAM = False
-"""
-        ),
-        code(
-            """
-config, config_source = load_workflow_config(DATASET_CONFIG)
-dataset = config["dataset"]
-scientific = config["scientific"]
-downstream = config["downstream"]
-preprocess = config["preprocess"]
-align = preprocess["align"]
-
-spatial_obs_keys = align.get("spatial_obs_keys")
-if spatial_obs_keys:
-    spatial_source = ", ".join(f"obs[{key!r}]" for key in spatial_obs_keys)
-else:
-    spatial_source = f"obsm[{align.get('input_spatial_key', 'spatial')!r}]"
-
-pd.DataFrame(
-    {
-        "setting": [
-            "dataset",
-            "configuration",
-            "raw time column",
-            "raw annotation column",
-            "aligned annotation column",
-            "raw count layer",
-            "raw spatial coordinates",
-            "aligned spatial coordinates",
-            "model time values",
-            "classifier neighbors",
-        ],
-        "value": [
-            dataset["display_name"],
-            config_source,
-            preprocess["time_key"],
-            preprocess["annotation_source"],
-            dataset["annotation_key"],
-            align.get("expression_layer", "X"),
-            spatial_source,
-            f"obsm[{dataset['spatial_key']!r}]",
-            ", ".join(map(str, align["time_mapping"].values())),
-            scientific["classifier_k"],
-        ],
-    }
-)
-"""
-        ),
-        markdown(
-            """
-## Start a new model run
-
-The dataset configuration records the count layer, time mapping, spatial
-coordinates, alignment settings, and model settings. Start here when fitting a
-new model. The command reads the raw H5AD, writes the aligned H5AD, fits the
-ligand--receptor edge predictor when the model uses one, trains CytoBridge, and
-runs the analyses selected in the configuration. No separate preprocessing
-command is needed first.
-"""
-        ),
-        *chicken_preparation,
-        route_cells([run_rows[0]], include_paper=False)[0],
-        markdown(
-            """
-The next two cells show the same operation through the Python API. Leave
-`RUN_TRAINING = False` when reading the documentation; set it to `True` only
-after the paths above point to your data. The compact table shows the file
-used by each step; the complete package plan is stored in `training_plan_text`
-if you want to print it in Jupyter.
-"""
-        ),
-        code(
-            """
-training_options = WorkflowOptions(
-    input_h5ad=RAW_H5AD,
-    output_dir=OUTPUT_DIR,
-    train=True,
-)
-training_plan = build_workflow_plan(
+The aligned data are written to `ALIGNED_H5AD`. Training reads that file and
+writes the model to `MODEL_DIR`. Downstream analysis then reads both.
+"""),
+        code("""
+result = run_workflow(
     config,
-    source=config_source,
-    options=training_options,
+    options=WorkflowOptions(
+        input_h5ad=RAW_H5AD,
+        output_dir=OUTPUT_DIR,
+        train=True,
+        device="cuda",
+    ),
 )
-training_plan_text = render_workflow_plan(training_plan)
-pd.DataFrame(
-    [
-        {
-            "step": "preprocess",
-            "input": RAW_H5AD,
-            "output": ALIGNED_H5AD,
-        },
-        {
-            "step": "train",
-            "input": ALIGNED_H5AD,
-            "output": MODEL_DIR,
-        },
-        {
-            "step": "downstream",
-            "input": f"{ALIGNED_H5AD} + {MODEL_DIR}",
-            "output": OUTPUT_DIR / "downstream",
-        },
-    ]
-)
-"""
-        ),
-        code(
-            """
-if RUN_TRAINING:
-    if not RAW_H5AD.is_file():
-        raise FileNotFoundError(f"Update RAW_H5AD before training: {RAW_H5AD}")
-    training_result = run_workflow(config, options=training_options)
-    training_result
-else:
-    print("Training is off. Set RUN_TRAINING = True to start a new model run.")
-"""
-        ),
-        markdown(
-            """
-## Inspect the aligned data without training (optional)
+"""),
+        markdown(f"""
+The equivalent terminal command is below. Use either the Python call above
+or this command, not both.
 
-Use this separate command only when you want to examine the aligned H5AD before
-committing to a model fit. It writes to `PREPROCESS_ONLY_DIR` and does not fit
-an edge predictor or a CytoBridge model. It is not an earlier step in the model
-run above; when you are ready to train, use the first command from the raw H5AD.
-"""
-        ),
-        route_cells(
-            [run_rows[1]], include_paper=False, include_heading=False
-        )[0],
-        code(
-            """
-preprocess_only_options = WorkflowOptions(
-    input_h5ad=RAW_H5AD,
-    output_dir=PREPROCESS_ONLY_DIR,
-    steps=("preprocess",),
-)
-preprocess_only_plan = build_workflow_plan(
-    config,
-    source=config_source,
-    options=preprocess_only_options,
-)
-preprocess_only_plan_text = render_workflow_plan(preprocess_only_plan)
-pd.DataFrame(
-    [
-        {
-            "step": "preprocess only",
-            "input": RAW_H5AD,
-            "output": PREPROCESS_ONLY_DIR / "preprocess" / ALIGNED_H5AD.name,
-        }
-    ]
-)
-"""
-        ),
-        code(
-            """
-if RUN_PREPROCESS_ONLY:
-    if not RAW_H5AD.is_file():
-        raise FileNotFoundError(f"Update RAW_H5AD before preprocessing: {RAW_H5AD}")
-    preprocess_only_result = run_workflow(
-        config,
-        options=preprocess_only_options,
-    )
-    preprocess_only_result
-else:
-    print(
-        "Preprocessing-only run is off. Set RUN_PREPROCESS_ONLY = True "
-        "to write an aligned H5AD without training."
-    )
-"""
-        ),
-        markdown(
-            """
-## Run downstream analysis again (optional)
+```bash
+cytobridge workflow --config {dataset} --train \\
+  --input-h5ad data/{tutorial.raw_filename} \\
+  --output-dir outputs/{dataset} --device cuda
+```
+"""),
+        markdown("""
+## Open the results
 
-The first command already runs downstream analysis. Use this section only when
-you want to repeat it from the same aligned H5AD and fitted model. The rerun
-writes to `DOWNSTREAM_RERUN_DIR`, leaving the original results unchanged.
-"""
-        ),
-        route_cells(
-            [run_rows[2]], include_paper=False, include_heading=False
-        )[0],
-        code(
-            """
-downstream_options = WorkflowOptions(
-    aligned_h5ad=ALIGNED_H5AD,
-    model_dir=MODEL_DIR,
-    output_dir=DOWNSTREAM_RERUN_DIR,
-    steps=("downstream",),
-)
-downstream_plan = build_workflow_plan(
-    config,
-    source=config_source,
-    options=downstream_options,
-)
-downstream_plan_text = render_workflow_plan(downstream_plan)
-pd.DataFrame(
-    [
-        {
-            "step": "downstream",
-            "input": f"{ALIGNED_H5AD}; {MODEL_DIR}",
-            "output": DOWNSTREAM_RERUN_DIR / "downstream",
-        }
-    ]
-)
-"""
-        ),
-        code(
-            """
-if RUN_DOWNSTREAM:
-    missing = [path for path in (ALIGNED_H5AD, MODEL_DIR) if not path.exists()]
-    if missing:
-        raise FileNotFoundError(f"Missing aligned data or model directory: {missing}")
-    downstream_result = run_workflow(config, options=downstream_options)
-    downstream_result
-else:
-    print("Downstream rerun is off. Set RUN_DOWNSTREAM = True to repeat it.")
-"""
-        ),
-        markdown(
-            f"""
+The previous step creates the following files. The exact set of analyses is
+selected by the dataset configuration.
+
+| Result | Location under `OUTPUT_DIR` |
+| --- | --- |
+| Aligned expression and coordinates | `preprocess/` |
+| Trained model and settings | `training/` |
+| Observed and interpolated cell populations | `downstream/slice_data/` |
+| Growth rates | `downstream/growth/` |
+| Velocity components | `downstream/velocity/` |
+| Cell-type interaction summaries | `downstream/communication/` |
+| Plots | `downstream/figures/` |
+
+Read the summary written by **this run**, then list its generated plots:
+"""),
+        code("""
+downstream_dir = OUTPUT_DIR / "downstream"
+summary = json.loads((downstream_dir / "summary.json").read_text())
+summary
+"""),
+        code("""
+figure_files = sorted((downstream_dir / "figures").rglob("*.png"))
+pd.DataFrame({"Figure": [str(path.relative_to(OUTPUT_DIR)) for path in figure_files]})
+"""),
+        markdown("To view one of these plots in the notebook:"),
+        code("""
+from IPython.display import Image, display
+
+if figure_files:
+    display(Image(filename=str(figure_files[0])))
+"""),
+        markdown(f"""
 ## Paper figures
 
-The headings state exactly where each calculation starts:
+The plots above use your new model. The paper figure notebooks below explain
+which saved numerical results they use and whether further calculations are
+needed. They do not automatically use `OUTPUT_DIR`.
 
-- **Continue from the model run above** reads the `OUTPUT_DIR` created here.
-- **Start from the paper's saved files** reads the tables, arrays, or models
-  retained from the exact paper analysis. It does not read the current
-  `OUTPUT_DIR` unless the step says so.
-- **Required paper files not included** names an input or page builder that is
-  not shipped in this repository; no command is shown in its place.
+{figures}
 
-Commands beginning with `python scripts/...` or `python -m scripts...` must be
-run from the root of a cloned source repository. Each step names its input,
-output, and the notebook that continues from it.
-
-{figure_lines}
-"""
-        ),
-        *paper_route_cells,
-        markdown("## Saved files"),
-        markdown(
-            f"""
-- Aligned data: `tutorial_outputs/{dataset_name}/preprocess/{aligned_name}`
-- Training directory: `tutorial_outputs/{dataset_name}/training`
-- Downstream directory: `tutorial_outputs/{dataset_name}/downstream`
-"""
-        ),
+For the calculation steps behind each panel, see the
+[figure-by-figure guide](../../paper_reproduction.md).
+To repeat analysis with an existing model, see
+[Continue from a trained model](../../reuse_model.md).
+"""),
     ]
     return nbformat.v4.new_notebook(
         cells=cells,
         metadata={
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3",
-            },
+            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
             "language_info": {"name": "python", "version": "3.11"},
+            "cytobridge": {"requires_study_data": True, "runs_training": True},
         },
     )
 
 
 def build_own_data_notebook():
-    """Build the short route from an AnnData file to a package run."""
-
+    """Show the input fields and one complete training command."""
     cells = [
-        markdown(
-            """
+        markdown("""
 # Run CytoBridge on your data
 
-If you are fitting a model from raw data, use the single `--train` command in
-this notebook. It performs preprocessing first, then training and downstream
-analysis. You do not need to run a separate preprocessing command.
+Start with an AnnData file containing raw counts, a time label, cell-type labels,
+and spatial coordinates. This guide shows how to tell CytoBridge where those
+fields are stored, then run preprocessing, training, and analysis with one
+command.
 
-Choose the included dataset that uses the most similar species, count layer,
-time layout, and spatial coordinates. Export its configuration, then change the
-field names and analysis settings for your AnnData object. The same edited file
-is used for preprocessing, training, and downstream analysis.
+The [small preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
+shows how to create an AnnData object. To reuse an existing model, see
+[Continue from a trained model](../reuse_model.md).
+"""),
+        markdown("""
+## Describe your input
 
-If you want to see preprocessing run before using a real file, begin with the
-[small generated example](data_preparation/synthetic_preprocessing.ipynb).
-"""
-        ),
-        markdown("## Choose an example configuration"),
-        code(
-            """
+In the example below, counts are in `layers['counts']`, time is in
+`obs['stage']`, cell type is in `obs['cell_type']`, and two-dimensional
+coordinates are in `obsm['spatial']`.
+
+Use raw, non-negative counts, unique observation names, and gene symbols
+matching your LR table. Do not normalize or run PCA first: preprocessing does
+that.
+"""),
+        markdown("""
+## Create a configuration
+
+The following cells load an example configuration, change its input fields for
+observations at stages D0, D2, and D4, and show the settings before you save it.
+Edit the values in these cells for your experiment. They create a new
+configuration rather than editing an existing JSON file.
+"""),
+        code("""
 from pathlib import Path
-
+import json
 import pandas as pd
-from IPython.display import display
 
 from CytoBridge.workflow import load_workflow_config
 
-STARTING_CONFIG = "zebrafish"
 CONFIG_PATH = Path("configs/my_dataset.json")
-RAW_H5AD = Path("inputs/my_dataset_raw.h5ad")
-RUN_ROOT = Path("outputs/my_dataset")
-CUSTOM_LR_DATABASE = None  # or Path("inputs/my_ligand_receptor_table.csv")
-RUN_WORKFLOW = False
+config, _ = load_workflow_config("zebrafish")
 
-CONFIG_TO_REVIEW = CONFIG_PATH if CONFIG_PATH.is_file() else STARTING_CONFIG
-config, config_source = load_workflow_config(CONFIG_TO_REVIEW)
-preprocess = config["preprocess"]
-align = preprocess["align"]
-dataset = config["dataset"]
+config["dataset"]["name"] = "my_dataset"
+config["preprocess"]["time_key"] = "stage"
+config["preprocess"]["annotation_source"] = "cell_type"
+config["preprocess"]["batch_indices"] = None  # Use all observed stages.
+align = config["preprocess"]["align"]
+align["expression_layer"] = "counts"
+align["input_spatial_key"] = "spatial"
+align.pop("spatial_obs_keys", None)
+align["time_mapping"] = {"D0": 0, "D2": 1, "D4": 2}
+config["downstream"]["observed"] = [0, 1, 2]
+config["downstream"]["interpolated"] = [0.5, 1.5]
+"""),
+        markdown("""
+These are example times, not values to copy unchanged. Replace them with your
+measured stages and the times you want to predict. Keep the ordering and
+relative spacing of the observed times consistent with the experiment.
+The example removes the Zebrafish-specific stage selection so that all three
+stages are used.
 
-spatial_obs_keys = align.get("spatial_obs_keys")
-if spatial_obs_keys:
-    spatial_source = ", ".join(f"obs[{key!r}]" for key in spatial_obs_keys)
-else:
-    spatial_source = f"obsm[{align.get('input_spatial_key', 'spatial')!r}]"
+The table below lists the main settings to review before saving. In particular,
+choose a suitable LR database and species, spatial scale, and neighborhood
+size. The [dataset tutorials](dataset_workflows/index.md) show the choices for
+the paper datasets.
+"""),
+        code("""
+pd.DataFrame({
+    "Setting": [
+        "Count layer", "Time column", "Cell-type column", "Coordinates",
+        "Time mapping", "LR species", "Interaction neighborhood",
+    ],
+    "Value": [
+        align["expression_layer"],
+        config["preprocess"]["time_key"],
+        config["preprocess"]["annotation_source"],
+        align["input_spatial_key"],
+        str(align["time_mapping"]),
+        config["downstream"].get("preferred_species_tag"),
+        config["train"].get("interaction_cutoff"),
+    ],
+})
+"""),
+        markdown("""
+After editing the values, save the configuration. Run this cell locally:
 
-pd.DataFrame(
-    {
-        "field in the example": [
-            "raw counts",
-            "raw time",
-            "raw annotation",
-            "raw spatial coordinates",
-            "aligned annotation",
-            "aligned spatial coordinates",
-        ],
-        "AnnData location": [
-            f"layers[{align.get('expression_layer', 'counts')!r}]",
-            f"obs[{preprocess['time_key']!r}]",
-            f"obs[{preprocess['annotation_source']!r}]",
-            spatial_source,
-            f"obs[{dataset['annotation_key']!r}]",
-            f"obsm[{dataset['spatial_key']!r}]",
-        ],
-    }
-)
-"""
-        ),
-        markdown(
-            """
-The table initially shows the Zebrafish example. After exporting and editing
-`configs/my_dataset.json`, rerun the notebook: it will load that file and show
-your field names instead.
-"""
-        ),
-        markdown(
-            """
-## Check the raw AnnData layout
-
-CytoBridge expects observations in rows and genes in columns. Before running
-the workflow, check that:
-
-- `obs_names` are unique;
-- the configured count layer contains finite, non-negative integer counts;
-- the configured time and annotation columns exist in `obs` and contain no
-  missing values;
-- every source time appears in `preprocess.align.time_mapping` and every
-  observed model time appears in the data;
-- the configured spatial input contains two finite coordinates for every
-  observation; and
-- gene names match the symbols in the ligand-receptor CSV when that analysis is
-  enabled.
-
-The [small generated example](data_preparation/synthetic_preprocessing.ipynb)
-constructs an AnnData object with this layout and runs preprocessing on it.
-"""
-        ),
-        markdown(
-            """
-Export the example configuration:
-
-```bash
-cytobridge workflow --config zebrafish \\
-  --export-config configs/my_dataset.json
+```python
+CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+CONFIG_PATH.write_text(json.dumps(config, indent=2) + "\\n")
 ```
 
-In the exported JSON, change these exact fields:
-
-- `dataset.name` and `dataset.annotation_key`;
-- `preprocess.time_key` and `preprocess.annotation_source`;
-- `preprocess.align.expression_layer`, `spatial_obs_keys` or
-  `input_spatial_key`, and `time_mapping`;
-- `scientific.classifier_k`, `alpha_spatial`, and `alpha_express`;
-- `train.interaction_cutoff` and the training configuration when your model
-  settings differ; and
-- `downstream.observed`, `downstream.interpolated`, and
-  `downstream.preferred_species_tag`.
-
-The example configuration selects an LR database included with CytoBridge. To
-use your own CSV instead, do not put its local path in `train.graph_database`.
-Pass the file with `--graph-database` when fitting the edge predictor and with
-`--lr-database` for downstream ligand--receptor analysis. The CSV must contain
+The configuration above starts from Zebrafish settings. For another species,
+supply your LR CSV in the command below and set
+`downstream.preferred_species_tag` to its species tag. The CSV needs
 `ligand` and `receptor` columns.
+"""),
+        markdown("""
+## Train and calculate results
 
-The five dataset notebooks display the exact raw and aligned fields used by
-their included configurations.
-
-Keep `steps.default` unchanged and `preprocess.enabled` set to `true` if you
-want the single command below to run preprocessing, training, and downstream
-analysis in order.
-"""
-        ),
-        markdown(
-            """
-## Review the planned steps
+Put your input at `data/my_dataset_raw.h5ad`, then run:
 
 ```bash
-cytobridge workflow --config configs/my_dataset.json --train \\
-  --input-h5ad inputs/my_dataset_raw.h5ad \\
-  --output-dir outputs/my_dataset --device cuda --check
-```
-
-`--check` shows the selected steps, settings, and intended paths without
-starting the calculation. It does **not** open the H5AD or verify its columns,
-layers, coordinates, or values. Those checks run when preprocessing starts, so
-review the table above and inspect your AnnData before running the next command.
-"""
-        ),
-        markdown(
-            """
-## Preprocess, train, and run downstream analysis
-
-```bash
-cytobridge workflow --config configs/my_dataset.json --train \\
-  --input-h5ad inputs/my_dataset_raw.h5ad \\
+cytobridge workflow --config configs/my_dataset.json --train \
+  --input-h5ad data/my_dataset_raw.h5ad \
   --output-dir outputs/my_dataset --device cuda
 ```
 
-Training starts only when `--train` is present. With the exported configuration
-unchanged, this command runs preprocessing, training, and downstream analysis
-in order. It writes the aligned H5AD, model directory, result folders, summary
-file, and PNG/PDF figures under `outputs/my_dataset`.
+This **one command** preprocesses the input, fits the LR edge predictor, trains
+the model, and calculates the downstream results. Do not run `preprocess`
+first.
 
-If you need your own LR table, use this complete version of the same command:
+If you are using a custom LR table, use this version of the same command:
 
 ```bash
-cytobridge workflow --config configs/my_dataset.json --train \\
-  --input-h5ad inputs/my_dataset_raw.h5ad \\
-  --graph-database inputs/my_ligand_receptor_table.csv \\
-  --lr-database inputs/my_ligand_receptor_table.csv \\
+cytobridge workflow --config configs/my_dataset.json --train \
+  --input-h5ad data/my_dataset_raw.h5ad \
+  --graph-database data/my_ligand_receptor_table.csv \
+  --lr-database data/my_ligand_receptor_table.csv \
   --output-dir outputs/my_dataset --device cuda
 ```
-"""
-        ),
-        code(
-            """
-from CytoBridge.workflow import WorkflowOptions, run_workflow
 
-if RUN_WORKFLOW:
-    if not CONFIG_PATH.is_file():
-        raise FileNotFoundError(
-            f"Export and edit the configuration before starting: {CONFIG_PATH}"
-        )
-    if not RAW_H5AD.is_file():
-        raise FileNotFoundError(f"Update RAW_H5AD before starting: {RAW_H5AD}")
-    run_config, _ = load_workflow_config(CONFIG_PATH)
-    run_options = WorkflowOptions(
-        input_h5ad=RAW_H5AD,
-        output_dir=RUN_ROOT,
-        graph_database=CUSTOM_LR_DATABASE,
-        lr_database=CUSTOM_LR_DATABASE,
-        device="cuda",
-        train=True,
-    )
-    run_result = run_workflow(run_config, options=run_options)
-    run_result
-else:
-    print(
-        "The full run is off. Update the paths, then set RUN_WORKFLOW = True "
-        "to preprocess, train, and run downstream analysis."
-    )
-"""
-        ),
-        markdown(
-            """
-## Continue from an existing model
+Choose one of these commands. The second supplies the same LR table for
+training and downstream analysis.
+"""),
+        markdown("""
+## Open the results
 
-Use the aligned H5AD and model directory from the same run:
+The trained model is in `outputs/my_dataset/training/`. Growth, velocities,
+trajectories, and interaction tables are in `outputs/my_dataset/downstream/`.
+Open its `summary.json` for the list of analyses and `figures/` for the plots.
 
-```bash
-cytobridge workflow --config configs/my_dataset.json --step downstream \\
-  --aligned-h5ad outputs/my_dataset/preprocess/my_dataset_aligned.h5ad \\
-  --model-dir outputs/my_dataset/training \\
-  --output-dir outputs/my_dataset_downstream_rerun --device cuda
-```
-
-Use a new output directory for a second downstream calculation. The
-paper-figure commands state whether they read this new run or files retained
-from the paper analysis. A paper redraw command does not automatically analyze
-this new directory.
-"""
-        ),
-        markdown("## Expected output locations"),
-        code(
-            """
-with pd.option_context("display.max_colwidth", None):
-    display(
-        pd.DataFrame(
-            {
-                "output": [
-                    "aligned data",
-                    "model directory",
-                    "downstream summary",
-                    "standard figures",
-                ],
-                "path": [
-                    RUN_ROOT / "preprocess" / "my_dataset_aligned.h5ad",
-                    RUN_ROOT / "training",
-                    RUN_ROOT / "downstream" / "summary.json",
-                    RUN_ROOT / "downstream" / "figures",
-                ],
-            }
-        )
-    )
-"""
-        ),
+To change the downstream analysis without training again, follow
+[Continue from a trained model](../reuse_model.md) with your own configuration,
+aligned H5AD, and training directory.
+"""),
     ]
     return nbformat.v4.new_notebook(
         cells=cells,
         metadata={
-            "kernelspec": {
-                "display_name": "Python 3",
-                "language": "python",
-                "name": "python3",
-            },
+            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
             "language_info": {"name": "python", "version": "3.11"},
         },
     )

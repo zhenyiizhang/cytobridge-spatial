@@ -18,13 +18,9 @@ configuration file, training command, downstream command, and output folders.
 - [AD mouse brain](dataset_workflows/admouse.ipynb)
 - [Developing chicken heart](dataset_workflows/chicken_heart.ipynb)
 
-Each dataset notebook starts with the raw-data training command, then states
-which aligned H5AD and model directory are passed to downstream analysis and
-which later commands can analyze that new run. Commands that start from files
-retained for the paper are labelled separately because they do not
-automatically read the new run. A
-separate optional section shows how to inspect preprocessing without starting a
-fit.
+Each notebook follows one sequence: input data, training, then the resulting
+analyses and plots. Preprocessing is included in training. If you already have
+a model, use [Continue from a trained model](../reuse_model.md) instead.
 
 ## Paper figures
 
