@@ -78,7 +78,8 @@ directories within their dataset folder.
 | --- | --- |
 | [mosta_figure_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/mosta_figure_data.zip) | Saved populations and numerical tables for Figure 4 and S11–S18 |
 | [arista_figure_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_figure_data.zip) | Saved populations, communication summaries, and lineage labels for Figure 5a–b |
-| [arista_spatial_display_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_spatial_display_data.zip) | Spatially anchored and unwarped numerical populations for Figure 5a–b and S19, plus per-cell growth for S20 |
+| [arista_spatial_populations.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_spatial_populations.zip) | Observed and directly simulated populations for S19 |
+| [arista_spatial_display_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_spatial_display_data.zip) | Per-cell growth for S20 in `growth_by_cell.csv.gz` |
 | [admouse_population_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_population_data.zip) | The saved states and cell-type labels for Figure 6b and S26 |
 | [admouse_perturbation_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_perturbation_data.zip) | Trem2 states, attention edges, and module scores for Figure 6f–g |
 | [admouse_nichenet_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_nichenet_data.zip) | The 51 states, expression summaries, and NicheNet reference networks for S29 |

@@ -143,8 +143,8 @@ def test_registry_states_what_each_entry_can_do() -> None:
 
 def test_zebrafish_release_media_are_archived() -> None:
     expected = {
-        "Supplementary_Video_4_Zebrafish_YSL_Ablation.mp4": 4_393_527,
-        "Supplementary_Video_5_Zebrafish_EVL_Ablation.mp4": 3_898_599,
+        "Supplementary_Video_4_Zebrafish_YSL_Ablation.mp4": 4_579_302,
+        "Supplementary_Video_5_Zebrafish_EVL_Ablation.mp4": 4_033_474,
         "zebrafish_baseline_virtual_tissue_dynamics.mp4": 520_815,
         "zebrafish_baseline_virtual_tissue_dynamics.gif": 611_777,
     }

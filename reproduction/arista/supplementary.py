@@ -37,7 +37,10 @@ def draw_populations(data, output, palette):
         for kind, folder in sources:
             path = data / folder / f'time_{token}.h5ad'
             population = ad.read_h5ad(path)
-            xy = np.asarray(population.obsm['spatial'])
+            # Generated maps use the coordinates produced by the simulation,
+            # including when an older input file contains display coordinates.
+            xy = (np.asarray(population.X)[:, :2] if kind == 'Generated'
+                  else np.asarray(population.obsm['spatial']))
             panels[(float(time), kind)] = spatial.SpatialPanel(
                 float(time), kind, xy[:, 0], xy[:, 1],
                 population.obs.Annotation.astype(str).to_numpy(),

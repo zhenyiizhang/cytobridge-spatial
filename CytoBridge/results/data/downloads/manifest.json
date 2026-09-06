@@ -386,6 +386,20 @@
           "asset_id": 545928115
         }
       ]
+    },
+    {
+      "archive": "arista_spatial_populations.zip",
+      "bytes": 50436735,
+      "sha256": "5b6f221c53110398ccb653da663ad24ccbf72fb58a97d20ee64a46cd243c8720",
+      "parts": [
+        {
+          "name": "arista_spatial_populations.zip",
+          "bytes": 50436735,
+          "sha256": "5b6f221c53110398ccb653da663ad24ccbf72fb58a97d20ee64a46cd243c8720",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/arista_spatial_populations.zip",
+          "asset_id": 547453332
+        }
+      ]
     }
   ]
 }

@@ -17,6 +17,21 @@ Inspect hidden outputs too: a command called for one current figure must not
 also display an outdated figure. Keep original research files recoverable,
 but do not present them as the current reproduction tutorial.
 
+## Resolve a disagreement before changing the paper
+
+When the website and paper differ, first identify the figure actually embedded
+in the current Word or SI and follow its own source record. Do not assume the
+tutorial is correct, and do not replace an accepted paper figure just to match
+the tutorial. Check each panel separately: in September 2026, S19 was already
+unadjusted, whereas the embedded Figure 5b still used adjusted display coordinates.
+
+Check the coordinates or quantities that the plotting function actually reads.
+A filename, caption, successful notebook run, or visually similar preview is
+not enough. Keep simulation output, display transforms, and training alignment
+distinct. If the error is in the tutorial, correct its code, selected inputs,
+download, and executed output together. Change the paper only when that change
+is needed and authorized.
+
 ## Follow the calculation from input to figure
 
 For every analysis, a reader must be able to answer:
@@ -120,3 +135,7 @@ Record concrete failures and fixes, rather than a single package-wide pass.
   the training configuration used by the command. Test a reader's edit.
 - Several SI notebooks: the displayed calculation was disconnected from a
   plotting wrapper that loaded its own defaults.
+- ARISTA: the S19 tutorial selected spatially adjusted display coordinates,
+  whereas the current SI used the original simulation. Verify the actual
+  coordinate arrays as well as the figure filename and caption. All generated
+  paper maps now use the simulated spatial coordinates directly.

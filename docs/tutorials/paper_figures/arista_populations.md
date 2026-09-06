@@ -38,12 +38,12 @@ The command writes three sets of H5AD files:
 | --- | --- |
 | `display_states/` | Observed populations at measured times and generated populations at intermediate times. |
 | `generated_display_states/` | Generated populations at all nine times. |
-| `model_states/` | Unwarped states for quantitative analysis. |
+| `model_states/` | Populations used for quantitative analysis. |
 
-In the two display directories, `obsm["spatial"]` stores the spatially anchored
-coordinates used for plotting. The model states and cell-type labels are
-calculated before that display transform. The fixed-particle label file tracks
-the same cells across time for lineage analysis.
+For generated cells, `X` contains the two simulated spatial coordinates followed
+by the 50 gene-state features. `obsm["spatial"]` is a copy of the first two columns
+of `X`. Plotting uses these simulated coordinates directly. The fixed-particle
+label file tracks the same cells across time for lineage analysis.
 
 ## Draw the populations
 

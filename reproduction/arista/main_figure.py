@@ -23,8 +23,7 @@ GENE_TYPES = ('cckIN', 'dpEX', 'mpEX', 'mpIN', 'nptxEX', 'npyIN', 'ntng1IN',
 
 
 def load_populations(data_dir):
-    # Figure 5a uses unwarped populations. Figure 5b separately uses the
-    # spatially anchored intermediate population.
+    # Use the coordinates produced by the simulation for every generated map.
     populations = {str(time): ad.read_h5ad(Path(data_dir) / 'slice_data' /
                                          f"time_{f'{time:g}'.replace('.', 'p')}.h5ad")
                    for time in TIMES}
@@ -134,11 +133,12 @@ def _place_stack_in_paper_layout(core_path, paths):
 
 
 def draw_generated_population(data_dir, output, palette):
-    population = ad.read_h5ad(data_dir / 'display_states/time_0p5.h5ad')
-    xy = np.asarray(population.obsm['spatial'])
+    population = ad.read_h5ad(data_dir / 'slice_data/time_0p5.h5ad')
+    xy = np.asarray(population.X)[:, :2]
     table = pd.DataFrame({'x': xy[:, 0], 'y': xy[:, 1],
                           'celltype': population.obs['Annotation'].astype(str).to_numpy(),
                           'displayed_point_glyph': True})
+    table.to_csv(output / 'Figure5b_cells.csv', index=False)
     return plotting.plot_figure5b(table, palette, output / 'Figure5b_generated_population')
 
 

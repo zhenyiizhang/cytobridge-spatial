@@ -45,6 +45,56 @@ def test_figure5e_original_populations_and_groups():
     assert values.groupby(['time', 'celltype']).ngroups == 177
 
 
+def test_figure5b_uses_the_same_simulation_as_panel_a(monkeypatch, tmp_path):
+    pytest.importorskip('matplotlib')
+    ad = pytest.importorskip('anndata')
+    from reproduction.arista import main_figure
+    values = np.array([[1., 2., 3.], [4., 5., 6.]])
+    cells = ad.AnnData(values)
+    cells.obs['Annotation'] = ['first', 'second']
+    cells.obsm['spatial'] = np.full((2, 2), 999.)
+    paths = []
+    def read(path):
+        paths.append(Path(path))
+        return cells
+    monkeypatch.setattr(main_figure.ad, 'read_h5ad', read)
+    def plot(table, palette, stem):
+        np.testing.assert_array_equal(table[['x', 'y']], values[:, :2])
+        return []
+    monkeypatch.setattr(main_figure.plotting, 'plot_figure5b', plot)
+    main_figure.draw_generated_population(tmp_path, tmp_path, {})
+    assert paths == [tmp_path / 'slice_data/time_0p5.h5ad']
+
+
+def test_arista_population_generator_does_not_adjust_spatial_coordinates():
+    import ast
+    source = (ROOT / 'reproduction/arista/simulate_paper_populations.py').read_text()
+    call = next(n for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Call)
+                and isinstance(n.func, ast.Attribute) and n.func.attr == 'run_interpolation_workflow')
+    options = {k.arg: k.value for k in call.keywords}
+    for name in ('spatial_warp_to_observed', 'spatial_warp_to_observed_piecewise'):
+        assert ast.literal_eval(options[name]) is False
+    assert 'sde_points_split_prewarp[index]' not in source
+
+
+def test_s19_uses_simulated_coordinates_not_display_transforms(monkeypatch, tmp_path):
+    ad = pytest.importorskip('anndata')
+    pytest.importorskip('fitz')
+    from reproduction.arista import supplementary
+    values = np.array([[1., 2., 3.], [4., 5., 6.]])
+    cells = ad.AnnData(values)
+    cells.obs['Annotation'] = ['first', 'second']
+    cells.obsm['spatial'] = np.full((2, 2), 999.)
+    monkeypatch.setattr(supplementary.ad, 'read_h5ad', lambda path: cells)
+    def plot(panels, *args, **kwargs):
+        for (_, kind), panel in panels.items():
+            expected = values[:, :2] if kind == 'Generated' else cells.obsm['spatial']
+            np.testing.assert_array_equal(np.column_stack([panel.x, panel.y]), expected)
+        return {'pdf': tmp_path/'test.pdf', 'png': tmp_path/'test.png'}, pd.DataFrame({'input_path': []})
+    monkeypatch.setattr(supplementary.spatial, 'plot_s12', plot)
+    supplementary.draw_populations(tmp_path, tmp_path, {})
+
+
 def test_figure4_lr_scores_recalculate_archived_values():
     pytest.importorskip('matplotlib')
     pytest.importorskip('fitz')

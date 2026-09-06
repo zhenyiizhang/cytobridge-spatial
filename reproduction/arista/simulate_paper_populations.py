@@ -1,8 +1,4 @@
-"""Generate the ARISTA populations used for the paper's spatial displays.
-
-Spatial anchoring changes display coordinates only. Cell labels, lineage and
-communication use the model states before that transform.
-"""
+"""Simulate the ARISTA populations from the trained model and classify cells."""
 from __future__ import annotations
 
 import argparse
@@ -36,9 +32,9 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
         classifier_concat_spatial=True, classifier_knn_neighbors=10,
         sde_n_samples=7668, sde_dt=.05, split_sde_dt=.01,
         split_sigma_scalar=.03, split_growth_alpha=1.,
-        spatial_warp_to_observed_piecewise=True,
-        spatial_warp_visualization_only=True, spatial_warp_k=1,
-        spatial_warp_eps=1e-6, random_seed=42,
+        spatial_warp_to_observed=False,
+        spatial_warp_to_observed_piecewise=False,
+        random_seed=42,
         separate_interaction_random_stream=False)
     for folder in ('display_states', 'model_states', 'generated_display_states'):
         (output / folder).mkdir()
@@ -49,8 +45,8 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
             output / f'display_states/time_{token}.h5ad', compression='gzip')
         result.communication_adata_dict[str(time)].write_h5ad(
             output / f'model_states/time_{token}.h5ad', compression='gzip')
-        generated = ad.AnnData(X=np.asarray(result.sde_points_split_prewarp[index], dtype=np.float32))
-        generated.obsm['spatial'] = np.asarray(result.sde_points_split[index], dtype=np.float32)[:, :2]
+        generated = ad.AnnData(X=np.asarray(result.sde_points_split[index], dtype=np.float32))
+        generated.obsm['spatial'] = np.asarray(generated.X)[:, :2].copy()
         generated.obs['Annotation'] = np.asarray(result.slice_labels_split[index]).astype(str)
         generated.write_h5ad(output / f'generated_display_states/time_{token}.h5ad', compression='gzip')
         records.append({'time': float(time), 'observed_or_interpolated': result.adata_dict[str(time)].n_obs,
