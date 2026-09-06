@@ -167,28 +167,6 @@ plot_set <- function(res, prefix, title_base) {
   )
 
 
-  # Barplot
-  safe_save(
-    function() {
-      barplot(
-        res,
-        showCategory = 20,
-        font.size = 8,
-        label_format = 1000
-      ) +
-        ggtitle(paste0(title_base, " Barplot")) +
-        scale_fill_gradientn(colors = palette_main) +
-        theme(
-          axis.text.y = element_text(size = 8),
-          plot.margin = margin(10, 20, 10, 10)
-        )
-    },
-    paste0(prefix, "_bar.pdf"),
-    width = 13,
-    height = 8
-  )
-
-
   # Cnetplot
   safe_save(
     function() {

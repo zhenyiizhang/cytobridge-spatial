@@ -346,27 +346,15 @@ spatial coordinates.
             """
 from __future__ import annotations
 
-from io import BytesIO
 import platform
 from importlib.metadata import version
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from anndata import AnnData
-from IPython.display import Image, display
 
 import CytoBridge
 
-mpl.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "DejaVu Sans"],
-        "font.size": 9,
-        "axes.linewidth": 0.8,
-    }
-)
 
 SEED = 42
 rng = np.random.default_rng(SEED)
@@ -508,72 +496,7 @@ preprocess_summary
         ),
         markdown(
             """
-## 4. Plot the processed coordinates
-
-The left panel shows the spatial coordinates supplied in the input AnnData.
-The right panel uses the first two columns of the `X_latent` matrix produced by
-the preprocessing call above.
-""",
-            cell_id="plot-result",
-        ),
-        code(
-            """
-stage_colors = {"E0": "#59616A", "E1": "#07838B", "E2": "#D28C3C"}
-fig, axes = plt.subplots(1, 2, figsize=(7.0, 3.0))
-
-for stage in stage_colors:
-    mask = processed.obs["stage"].astype(str).to_numpy() == stage
-    axes[0].scatter(
-        processed.obsm["spatial"][mask, 0],
-        processed.obsm["spatial"][mask, 1],
-        s=22,
-        color=stage_colors[stage],
-        linewidth=0,
-        label=stage,
-    )
-    axes[1].scatter(
-        processed.obsm["X_latent"][mask, 0],
-        processed.obsm["X_latent"][mask, 1],
-        s=22,
-        color=stage_colors[stage],
-        linewidth=0,
-        label=stage,
-    )
-
-for letter, ax in zip(("a", "b"), axes):
-    ax.text(
-        -0.15,
-        1.08,
-        letter,
-        transform=ax.transAxes,
-        fontsize=12,
-        fontweight="bold",
-        va="top",
-    )
-    ax.spines[["top", "right"]].set_visible(False)
-
-axes[0].set(
-    title="Input spatial coordinates",
-    xlabel="Spatial coordinate 1",
-    ylabel="Spatial coordinate 2",
-)
-axes[1].set(
-    title="Processed latent coordinates",
-    xlabel="PC 1",
-    ylabel="PC 2",
-)
-axes[1].legend(frameon=False, title="Stage", markerscale=0.9)
-fig.tight_layout()
-image_buffer = BytesIO()
-fig.savefig(image_buffer, format="png", dpi=144, bbox_inches="tight")
-plt.close(fig)
-display(Image(data=image_buffer.getvalue()))
-""",
-            cell_id="plot-processed",
-        ),
-        markdown(
-            """
-## 5. Validate reuse of a processed object
+## 4. Validate reuse of a processed object
 
 Passing the transformed matrix through the default preprocessing path a second
 time raises a `ValueError`. Start a new preprocessing run from the raw count
@@ -605,8 +528,9 @@ else:
 
 `processed` contains the normalized expression matrix, `obsm['X_latent']`,
 PCA metadata, mapped numeric times, and the original spatial coordinates.
-`preprocess_summary` collects the fields checked in this example, and the plot
-above is drawn directly from `processed`.
+`preprocess_summary` collects the fields checked in this example.
+Continue with [Train a model](../../training.md) to align coordinates, build
+the ligand–receptor graph, and fit cell-state dynamics.
 """,
             cell_id="outputs",
         ),

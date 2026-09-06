@@ -88,7 +88,8 @@ Rscript reproduction/admouse/go/enrich_program.R \
 ```
 
 Each directory contains gene-ID mappings, the enrichment table, the fitted
-enrichment object, and five plots. `R_packages.txt` records the package and
+enrichment object, and the four plot types in S27–S28: dot plot, enrichment
+map, gene–term network, and UpSet plot. `R_packages.txt` records the package and
 annotation versions. Changing the annotation database can change the GO results.
 
 ## Perturbation panels: Figure 6f–g and S30

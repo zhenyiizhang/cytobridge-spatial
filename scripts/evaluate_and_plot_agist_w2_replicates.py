@@ -83,26 +83,11 @@ def load_truth(path: Path) -> dict[float, np.ndarray]:
 
 def compute_metrics(trajectory_dir: Path, truth_csv: Path, output_csv: Path) -> pd.DataFrame:
     if output_csv.exists():
-        existing = pd.read_csv(output_csv)
-        expected_pairs = {
-            (float(time), space)
-            for time in (1.0, 2.0, 3.0)
-            for space in SPACES
-        }
-        complete_seeds = {
-            int(seed)
-            for seed, subset in existing.groupby("seed")
-            if {
-                (float(row.time), str(row.space))
-                for row in subset.itertuples(index=False)
-            }
-            == expected_pairs
-        }
-        if len(complete_seeds) >= 2 and set(existing["seed"].astype(int)) == complete_seeds:
-            return existing.sort_values(["space", "time", "seed"])
-        rows = existing.to_dict("records")
-    else:
-        rows = []
+        raise FileExistsError(
+            f"Results already exist at {output_csv}. "
+            "Choose a new output directory to evaluate these trajectories."
+        )
+    rows = []
     truth = load_truth(truth_csv)
     completed = {
         (int(row["seed"]), float(row["time"]), str(row["space"])) for row in rows

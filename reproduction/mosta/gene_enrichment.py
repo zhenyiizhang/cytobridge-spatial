@@ -219,8 +219,9 @@ def render_wave_axes(
     if not np.array_equal(np.unique(phases), np.asarray([1, 2, 3])) or np.any(np.diff(phases) < 0):
         raise ValueError("S10 phases are not contiguous 1/2/3")
     counts = pd.Series(phases).value_counts().sort_index().to_dict()
-    if counts != {1: 483, 2: 299, 3: 218}:
-        raise ValueError(f"Unexpected corrected S10 phase sizes: {counts}")
+    # A new trajectory can assign a different number of genes to each phase.
+    # Keep the three contiguous phases checked above, without requiring the
+    # exact group sizes of one saved simulation.
 
     ax_strip = fig.add_axes([0.164, 0.655, 0.023, 0.327])
     strip = (phases - 1).reshape(-1, 1)

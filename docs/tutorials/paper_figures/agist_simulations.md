@@ -17,6 +17,9 @@ This creates `data/agist/`, containing `model/`, `edge_classifier/`,
 
 ## Simulate the populations
 
+Use new output directories for both simulation and distance calculation.
+Existing results are retained, rather than reused for a different trajectory.
+
 ```bash
 python scripts/run_agist_split_sde_replicates.py \
   --config data/agist/config.yaml \
