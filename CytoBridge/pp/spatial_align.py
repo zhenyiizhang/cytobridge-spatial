@@ -354,7 +354,9 @@ def _prepare_adata_for_alignment(
             f"({adata.n_obs}, {cfg.spatial_dim}), got {spatial_input.shape}."
         )
     try:
-        spatial_input = np.asarray(spatial_input, dtype=np.float32)
+        # Center and scale before reducing precision. Large slide-coordinate
+        # offsets otherwise leave rounding errors after a rigid translation.
+        spatial_input = np.asarray(spatial_input, dtype=np.float64)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"Spatial source {spatial_source} must be numeric.") from exc
     if not np.isfinite(spatial_input).all():

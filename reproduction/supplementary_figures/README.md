@@ -1,6 +1,6 @@
 # Supplementary figure plotting
 
-Recreate the September 6 versions of S2–S7, S25, S34, S36, and S39–S46 from the
+Recreate the September 6 versions of S2–S8, S25, S34, S36, and S39–S46 from the
 numerical results included with this repository. The scripts calculate the plotted
 summaries and draw the panels. Existing PDF or PNG figures are not used as inputs.
 
@@ -29,7 +29,7 @@ preprocessing and training are documented in their respective tutorials.
 | S2–S3 | `CytoBridge/results/data/agist_figures` | `plot_summaries.s2`, `plot_panels.agist` |
 | S4–S5 | `CytoBridge/results/data/nonspatial_figures` | `plot_panels.nonspatial` |
 | S6 | Classifier-smoothing result tables loaded by `CytoBridge.results.classifier_smoothing` | `plot_panels.classifier` |
-| S7 | `data/heart_alignment` | `plot_panels.heart` |
+| S7–S8 | `../chicken_heart/alignment_sensitivity_20260906/summary` | `plot_panels.heart` |
 | S25 | ARISTA local-domain tables loaded by `CytoBridge.results.arista_local_domains` | `plot_domains.s25` |
 | S34, S36 | Zebrafish numerical results loaded by `CytoBridge.results.zebrafish_si` | `plot_panels.zebrafish` |
 | S39 | `data/commot_comparison` and `CytoBridge/results/data/zebrafish_attention` | `commot_permutations`, `plot_panels.attention` |
@@ -53,3 +53,10 @@ The submitted-style PDFs and PNGs are retained in
 the top-10, top-50 and top-100 LR comparisons. Paths beginning with `data/` in the
 table are relative to this directory. Package paths are relative to the repository
 root. S34 and S36 share a plotting routine, so requesting either produces both.
+
+S7/S8 use the subsequently accepted integer perturbations: translations of 1 and
+2 median-neighbor distances, rotations of 1° and 3°, and their combinations.
+Their current figures and calculation record are in
+`reproduction/chicken_heart/alignment_sensitivity_20260906/`.
+Requesting either S7 or S8 produces both. The older S7 in the dated 17-figure
+archive is retained as a previous version, not the current manuscript figure.

@@ -1,0 +1,7 @@
+{
+  "base_commit": "c72e592d0dea70941bc4971a79c3c903d7454b08",
+  "original_software": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-ot-20260823-r2/software",
+  "software": "/home/ubuntu/cytobridge_runs/heart_alignment_precision_20260906/software",
+  "change": "Center and scale spatial coordinates in float64, then create float32 model tensors.",
+  "training_objective_and_settings": "unchanged"
+}

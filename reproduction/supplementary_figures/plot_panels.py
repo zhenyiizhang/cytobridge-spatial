@@ -212,15 +212,15 @@ def classifier():
     save(fig,6)
 
 def heart():
-    m=load('heart');m.RESULTS_DIR=ROOT/'data/heart_alignment'
-    m.FIGURE_DIR=directory(7);m.TRANSLATION_COLOR=BLUE;m.ROTATION_COLOR=RED
-    m.configure_style()
-    def edit(fig):
-        for ax in fig.axes:
-            if ax.get_title() in ('Translation','Rotation'):
-                for patch in ax.patches:
-                    center=patch.get_x()+patch.get_width()/2;patch.set_width(.38);patch.set_x(center-.19)
-    with edit_before_save(edit):adopt(m.plot_s7(m.load_plot_inputs()),7)
+    path=ROOT.parent/'chicken_heart/alignment_sensitivity_20260906/plot_sensitivity.py'
+    spec=importlib.util.spec_from_file_location('heart_alignment_current',path)
+    module=importlib.util.module_from_spec(spec)
+    sys.modules[spec.name]=module
+    spec.loader.exec_module(module)
+    module.main(['--output-dir',str(OUT),'--figures','7','8'])
+    for number in (7,8):
+        adopt(tuple(OUT/f'heart_alignment_sensitivity_S{number}_final.{suffix}'
+                    for suffix in ('pdf','png')),number)
 
 def zebrafish():
     a=api('zebrafish_si');r=a.load_zebrafish_si_results();p=a.calculate_zebrafish_si_panels(r)

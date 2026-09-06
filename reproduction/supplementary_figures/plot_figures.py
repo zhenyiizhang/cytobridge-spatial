@@ -11,7 +11,7 @@ import plot_summaries as summaries
 import plot_domains as domains
 from CytoBridge import zebrafish_attention_validation as attention
 
-FIGURES=(2,3,4,5,6,7,25,34,36,39,40,41,42,43,44,45,46)
+FIGURES=(2,3,4,5,6,7,8,25,34,36,39,40,41,42,43,44,45,46)
 ROOT=Path(__file__).resolve().parent
 
 def commot_permutations(output):
@@ -60,7 +60,7 @@ def main():
     domains.save=summaries.save
     calls={2:summaries.s2,3:panels.agist,
         4:lambda:panels.nonspatial(clone_values=True,figures=('s4',)),
-        5:lambda:panels.nonspatial(figures=('s5',)),6:panels.classifier,7:panels.heart,
+        5:lambda:panels.nonspatial(figures=('s5',)),6:panels.classifier,7:panels.heart,8:panels.heart,
         25:lambda:domains.s25(control_label='Randomly sampled cells'),
         34:panels.zebrafish,36:panels.zebrafish,
         39:lambda:panels.attention(permutation_values=commot_permutations(tables)),
@@ -77,7 +77,7 @@ def main():
             panels.mpl.rcParams.update({'axes.titlesize':10,'axes.labelsize':9,
                 'xtick.labelsize':8.5,'ytick.labelsize':8.5,'legend.fontsize':8.5})
         calls[n]()
-        done.update((34,36) if n in (34,36) else (n,))
+        done.update((34,36) if n in (34,36) else ((7,8) if n in (7,8) else (n,)))
     combined=fitz.open()
     for n in sorted(set(requested)):
         with fitz.open(output/f'S{n}.pdf') as figure:
