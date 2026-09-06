@@ -108,5 +108,9 @@ Record concrete failures and fixes, rather than a single package-wide pass.
 - AD: the reader was sent to a generic training page instead of being shown
   the dataset's training call and the model directory used next.
 - Zebrafish: several overlapping entry pages made the analysis order unclear.
+- S34 and S36: a working calculation still called an older plot style. Check
+  the current SI image, not only the renderer's name or figure number.
+- Custom-data configuration: changing a workflow setting must also update
+  the training configuration used by the command. Test a reader's edit.
 - Several SI notebooks: the displayed calculation was disconnected from a
   plotting wrapper that loaded its own defaults.

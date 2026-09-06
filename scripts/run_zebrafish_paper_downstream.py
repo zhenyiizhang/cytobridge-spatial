@@ -1244,13 +1244,14 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 f"grid; missing={sorted(set(missing_render_times))}. Choose "
                 "--video-step as an integer multiple of --s22-simulation-step."
             )
-    formats = ([] if ctx.args.video_formats.strip().lower() == "none"
+    formats = ([] if getattr(ctx.args, "calculate_only", False) or ctx.args.video_formats.strip().lower() == "none"
                else _parse_csv_strings(ctx.args.video_formats))
     unsupported = sorted(set(formats).difference({"gif", "mp4"}))
     if unsupported:
         raise ValueError(f"Unsupported --video-formats values: {unsupported}")
     settings = {
         "mosaic_times": list(HALF_TIMES),
+        "calculate_only": getattr(ctx.args, "calculate_only", False),
         "video_times": video_times,
         "trajectory_frames": "generated_at_every_time_including_integer_times",
         "observed_integer_frames": "separate_reference_only",
@@ -1479,93 +1480,94 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
         source_table.to_csv(source_path, index=False)
         outputs.append(source_path)
 
-        snapshot_dir = stage_dir / "mosaic_snapshots"
-        cb.tl.save_timepoint_snapshots(
-            adata_dict=dense_result.adata_dict,
-            time_keys=[str(float(value)) for value in HALF_TIMES],
-            annotation_key=ctx.args.annotation_key,
-            label_to_color=ctx.label_to_color,
-            snapshot_dir=str(snapshot_dir),
-            background_color="white",
-            font_color="black",
-            snapshot_point_size=float(ctx.args.point_size),
-            snapshot_alpha=0.9,
-            mosaic_cols=S22_MOSAIC_COLUMNS,
-            mosaic_cell_size=3.0,
-            mosaic_show_title=True,
-            save_pdf=True,
-        )
-        outputs.extend(sorted(snapshot_dir.glob("*")))
-
-        mosaic_points = np.empty(len(HALF_TIMES), dtype=object)
-        mosaic_labels: list[np.ndarray] = []
-        for index, time_value in enumerate(HALF_TIMES):
-            state = dense_result.adata_dict[str(float(time_value))]
-            mosaic_points[index] = np.asarray(state.X, dtype=np.float32)
-            mosaic_labels.append(
-                state.obs[ctx.args.annotation_key].astype(str).to_numpy()
+        if not getattr(ctx.args, "calculate_only", False):
+            snapshot_dir = stage_dir / "mosaic_snapshots"
+            cb.tl.save_timepoint_snapshots(
+                adata_dict=dense_result.adata_dict,
+                time_keys=[str(float(value)) for value in HALF_TIMES],
+                annotation_key=ctx.args.annotation_key,
+                label_to_color=ctx.label_to_color,
+                snapshot_dir=str(snapshot_dir),
+                background_color="white",
+                font_color="black",
+                snapshot_point_size=float(ctx.args.point_size),
+                snapshot_alpha=0.9,
+                mosaic_cols=S22_MOSAIC_COLUMNS,
+                mosaic_cell_size=3.0,
+                mosaic_show_title=True,
+                save_pdf=True,
             )
-        mosaic_pdf = (
-            stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.pdf"
-        )
-        fig = cb.pl.plot_trajectory_grid(
-            sde_points=mosaic_points,
-            time_values=HALF_TIMES,
-            dim_pairs=((0, 1),),
-            labels_list=mosaic_labels,
-            label_to_color=ctx.label_to_color,
-            out_path=str(mosaic_pdf),
-            figsize_per_panel=(2.6, 2.6),
-            point_size=float(ctx.args.point_size),
-            alpha=0.9,
-            title="Global-t0 fixed-population state transport (growth disabled)",
-            n_cols=S22_MOSAIC_COLUMNS,
-            show_axes=False,
-            show_legend=True,
-            equal_aspect=True,
-            legend_title="Cell type",
-            legend_fontsize=6.0,
-        )
-        mosaic_png = (
-            stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.png"
-        )
-        fig.savefig(mosaic_png, dpi=240, bbox_inches="tight", facecolor="white")
-        plt.close(fig)
-        outputs.extend([mosaic_pdf, mosaic_png])
+            outputs.extend(sorted(snapshot_dir.glob("*")))
 
-        reference_points = np.empty(len(OBSERVED_TIMES), dtype=object)
-        reference_labels: list[np.ndarray] = []
-        for index, time_value in enumerate(OBSERVED_TIMES):
-            state = observed_states[float(time_value)]
-            reference_points[index] = np.asarray(state.X, dtype=np.float32)
-            reference_labels.append(
-                state.obs[ctx.args.annotation_key].astype(str).to_numpy()
+            mosaic_points = np.empty(len(HALF_TIMES), dtype=object)
+            mosaic_labels: list[np.ndarray] = []
+            for index, time_value in enumerate(HALF_TIMES):
+                state = dense_result.adata_dict[str(float(time_value))]
+                mosaic_points[index] = np.asarray(state.X, dtype=np.float32)
+                mosaic_labels.append(
+                    state.obs[ctx.args.annotation_key].astype(str).to_numpy()
+                )
+            mosaic_pdf = (
+                stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.pdf"
             )
-        reference_pdf = stage_dir / "S22_observed_reference_mosaic.pdf"
-        reference_fig = cb.pl.plot_trajectory_grid(
-            sde_points=reference_points,
-            time_values=OBSERVED_TIMES,
-            dim_pairs=((0, 1),),
-            labels_list=reference_labels,
-            label_to_color=ctx.label_to_color,
-            out_path=str(reference_pdf),
-            figsize_per_panel=(2.6, 2.6),
-            point_size=float(ctx.args.point_size),
-            alpha=0.9,
-            title="Observed zebrafish reference slices",
-            n_cols=S22_MOSAIC_COLUMNS,
-            show_axes=False,
-            show_legend=True,
-            equal_aspect=True,
-            legend_title="Cell type",
-            legend_fontsize=6.0,
-        )
-        reference_png = stage_dir / "S22_observed_reference_mosaic.png"
-        reference_fig.savefig(
-            reference_png, dpi=240, bbox_inches="tight", facecolor="white"
-        )
-        plt.close(reference_fig)
-        outputs.extend([reference_pdf, reference_png])
+            fig = cb.pl.plot_trajectory_grid(
+                sde_points=mosaic_points,
+                time_values=HALF_TIMES,
+                dim_pairs=((0, 1),),
+                labels_list=mosaic_labels,
+                label_to_color=ctx.label_to_color,
+                out_path=str(mosaic_pdf),
+                figsize_per_panel=(2.6, 2.6),
+                point_size=float(ctx.args.point_size),
+                alpha=0.9,
+                title="Global-t0 fixed-population state transport (growth disabled)",
+                n_cols=S22_MOSAIC_COLUMNS,
+                show_axes=False,
+                show_legend=True,
+                equal_aspect=True,
+                legend_title="Cell type",
+                legend_fontsize=6.0,
+            )
+            mosaic_png = (
+                stage_dir / "S22_global_t0_fixed_population_state_transport_mosaic.png"
+            )
+            fig.savefig(mosaic_png, dpi=240, bbox_inches="tight", facecolor="white")
+            plt.close(fig)
+            outputs.extend([mosaic_pdf, mosaic_png])
+
+            reference_points = np.empty(len(OBSERVED_TIMES), dtype=object)
+            reference_labels: list[np.ndarray] = []
+            for index, time_value in enumerate(OBSERVED_TIMES):
+                state = observed_states[float(time_value)]
+                reference_points[index] = np.asarray(state.X, dtype=np.float32)
+                reference_labels.append(
+                    state.obs[ctx.args.annotation_key].astype(str).to_numpy()
+                )
+            reference_pdf = stage_dir / "S22_observed_reference_mosaic.pdf"
+            reference_fig = cb.pl.plot_trajectory_grid(
+                sde_points=reference_points,
+                time_values=OBSERVED_TIMES,
+                dim_pairs=((0, 1),),
+                labels_list=reference_labels,
+                label_to_color=ctx.label_to_color,
+                out_path=str(reference_pdf),
+                figsize_per_panel=(2.6, 2.6),
+                point_size=float(ctx.args.point_size),
+                alpha=0.9,
+                title="Observed zebrafish reference slices",
+                n_cols=S22_MOSAIC_COLUMNS,
+                show_axes=False,
+                show_legend=True,
+                equal_aspect=True,
+                legend_title="Cell type",
+                legend_fontsize=6.0,
+            )
+            reference_png = stage_dir / "S22_observed_reference_mosaic.png"
+            reference_fig.savefig(
+                reference_png, dpi=240, bbox_inches="tight", facecolor="white"
+            )
+            plt.close(reference_fig)
+            outputs.extend([reference_pdf, reference_png])
 
         fixed_particle_count = int(
             dense_result.adata_dict[str(float(simulation_times[0]))].n_obs
@@ -1672,6 +1674,7 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
 
 def _stage_growth(ctx: RunContext) -> dict[str, object]:
     settings = {
+        "calculate_only": getattr(ctx.args, "calculate_only", False),
         "observed_times": list(OBSERVED_TIMES),
         "normalization": "independent per-time 5th-95th percentile scaling",
         "raw_growth_exported": True,
@@ -1700,6 +1703,9 @@ def _stage_growth(ctx: RunContext) -> dict[str, object]:
         raw_path = stage_dir / "growth_per_cell.csv"
         raw.to_csv(raw_path, index=False)
         outputs: list[Path] = [raw_path]
+
+        if getattr(ctx.args, "calculate_only", False):
+            return outputs, {"n_growth_values": int(len(raw)), "composite_outputs": []}
 
         common_plot_options = {
             "adata_dict": observed_states,
@@ -2581,6 +2587,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
         external_manifest_path = None
     settings = {
         "time_points": list(HALF_TIMES),
+        "calculate_only": getattr(ctx.args, "calculate_only", False),
         "trajectory": (
             "observed integer states with actual annotations plus canonical "
             "interval-local one-sided half-time states simulated from the preceding "
@@ -2957,79 +2964,80 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
             }
             table.to_csv(path, index=index)
             outputs.append(path)
-        import matplotlib.pyplot as plt
+        if not getattr(ctx.args, "calculate_only", False):
+            import matplotlib.pyplot as plt
 
-        figure, axes = plt.subplots(2, 3, figsize=(12.0, 7.6), facecolor="white")
-        for axis, time_value in zip(axes.ravel(), OBSERVED_TIMES):
-            exact_values = exact_observed_expression[float(time_value)].to_numpy(
-                dtype=np.float64
+            figure, axes = plt.subplots(2, 3, figsize=(12.0, 7.6), facecolor="white")
+            for axis, time_value in zip(axes.ravel(), OBSERVED_TIMES):
+                exact_values = exact_observed_expression[float(time_value)].to_numpy(
+                    dtype=np.float64
+                )
+                decoded_values = temporal.expression[float(time_value)].to_numpy(
+                    dtype=np.float64
+                )
+                axis.scatter(
+                    exact_values,
+                    decoded_values,
+                    s=5,
+                    alpha=0.35,
+                    color="#4C78A8",
+                    linewidths=0,
+                )
+                axis.scatter(
+                    exact_values[np.asarray(top_mask, dtype=bool)],
+                    decoded_values[np.asarray(top_mask, dtype=bool)],
+                    s=7,
+                    alpha=0.55,
+                    color="#E45756",
+                    linewidths=0,
+                    label=f"top {top_n}",
+                )
+                lo = float(min(exact_values.min(), decoded_values.min()))
+                hi = float(max(exact_values.max(), decoded_values.max()))
+                axis.plot([lo, hi], [lo, hi], color="black", linewidth=0.8, alpha=0.7)
+                metric_row = observed_validation.loc[
+                    (observed_validation["time"] == float(time_value))
+                    & (observed_validation["decoder"] == "clipped_inverse_pca")
+                    & (observed_validation["scope"] == "all_active_features")
+                ].iloc[0]
+                axis.set_title(
+                    f"t={time_value:g}: r={metric_row['pearson_r']:.3f}, "
+                    f"RMSE={metric_row['rmse']:.3f}"
+                )
+                axis.set_xlabel("exact observed mean log1p")
+                axis.set_ylabel("clipped inverse-PCA mean")
+            axes.ravel()[-1].axis("off")
+            axes.ravel()[0].legend(frameon=False, loc="lower right")
+            figure.suptitle(
+                f"{ctx.args.ysl_label}: observed anchors vs rank-50 reconstruction"
             )
-            decoded_values = temporal.expression[float(time_value)].to_numpy(
-                dtype=np.float64
+            figure.tight_layout()
+            for suffix in ("pdf", "png"):
+                validation_path = (
+                    stage_dir / f"S25_observed_vs_inverse_pca_validation.{suffix}"
+                )
+                figure.savefig(validation_path, dpi=300, bbox_inches="tight")
+                outputs.append(validation_path)
+            plt.close(figure)
+            heatmap_pdf = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.pdf"
+            heatmap_png = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.png"
+            cb.pl.plot_temporal_gene_heatmap(
+                temporal.expression,
+                temporal.top_variable_genes,
+                out_path=heatmap_pdf,
+                top_n=top_n,
+                title=f"{ctx.args.ysl_label}: top {top_n} temporal-variance genes",
+                panel_columns=S25_HEATMAP_COLUMNS,
             )
-            axis.scatter(
-                exact_values,
-                decoded_values,
-                s=5,
-                alpha=0.35,
-                color="#4C78A8",
-                linewidths=0,
+            cb.pl.plot_temporal_gene_heatmap(
+                temporal.expression,
+                temporal.top_variable_genes,
+                out_path=heatmap_png,
+                top_n=top_n,
+                title=f"{ctx.args.ysl_label}: top {top_n} temporal-variance genes",
+                panel_columns=S25_HEATMAP_COLUMNS,
             )
-            axis.scatter(
-                exact_values[np.asarray(top_mask, dtype=bool)],
-                decoded_values[np.asarray(top_mask, dtype=bool)],
-                s=7,
-                alpha=0.55,
-                color="#E45756",
-                linewidths=0,
-                label=f"top {top_n}",
-            )
-            lo = float(min(exact_values.min(), decoded_values.min()))
-            hi = float(max(exact_values.max(), decoded_values.max()))
-            axis.plot([lo, hi], [lo, hi], color="black", linewidth=0.8, alpha=0.7)
-            metric_row = observed_validation.loc[
-                (observed_validation["time"] == float(time_value))
-                & (observed_validation["decoder"] == "clipped_inverse_pca")
-                & (observed_validation["scope"] == "all_active_features")
-            ].iloc[0]
-            axis.set_title(
-                f"t={time_value:g}: r={metric_row['pearson_r']:.3f}, "
-                f"RMSE={metric_row['rmse']:.3f}"
-            )
-            axis.set_xlabel("exact observed mean log1p")
-            axis.set_ylabel("clipped inverse-PCA mean")
-        axes.ravel()[-1].axis("off")
-        axes.ravel()[0].legend(frameon=False, loc="lower right")
-        figure.suptitle(
-            f"{ctx.args.ysl_label}: observed anchors vs rank-50 reconstruction"
-        )
-        figure.tight_layout()
-        for suffix in ("pdf", "png"):
-            validation_path = (
-                stage_dir / f"S25_observed_vs_inverse_pca_validation.{suffix}"
-            )
-            figure.savefig(validation_path, dpi=300, bbox_inches="tight")
-            outputs.append(validation_path)
-        plt.close(figure)
-        heatmap_pdf = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.pdf"
-        heatmap_png = stage_dir / "S25_YSL_top250_temporal_variance_heatmap.png"
-        cb.pl.plot_temporal_gene_heatmap(
-            temporal.expression,
-            temporal.top_variable_genes,
-            out_path=heatmap_pdf,
-            top_n=top_n,
-            title=f"{ctx.args.ysl_label}: top {top_n} temporal-variance genes",
-            panel_columns=S25_HEATMAP_COLUMNS,
-        )
-        cb.pl.plot_temporal_gene_heatmap(
-            temporal.expression,
-            temporal.top_variable_genes,
-            out_path=heatmap_png,
-            top_n=top_n,
-            title=f"{ctx.args.ysl_label}: top {top_n} temporal-variance genes",
-            panel_columns=S25_HEATMAP_COLUMNS,
-        )
-        outputs.extend([heatmap_pdf, heatmap_png])
+            outputs.extend([heatmap_pdf, heatmap_png])
         settings_path = stage_dir / "temporal_settings.json"
         settings_path.write_text(
             json.dumps(_json_ready(temporal.settings), indent=2, sort_keys=True),
@@ -4065,6 +4073,10 @@ def _build_context(args: argparse.Namespace) -> RunContext:
             if candidate.is_absolute()
             else (Path.cwd() / candidate).resolve()
         )
+        # The loaded checkpoint contains the predictor weights. A training-time
+        # file path may not exist after the model is moved to another computer.
+        if not edge_predictor_path.is_file():
+            edge_predictor_path = None
     if args.shared_cache_dir is None:
         # .../RUN/preprocess/zebrafish_aligned.h5ad -> .../RUN/shared_downstream_cache
         shared_cache_dir = args.aligned_h5ad.parent.parent / "shared_downstream_cache"
@@ -4316,6 +4328,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--video-fps", type=int, default=10)
     parser.add_argument("--video-formats", default="gif,mp4",
                         help="gif, mp4, gif,mp4, or none to draw only the figures.")
+    parser.add_argument(
+        "--calculate-only", action="store_true",
+        help="For s22, growth, and s25, save numerical results without figures or videos.",
+    )
     parser.add_argument("--velocity-neighbors", type=int, default=30)
 
     parser.add_argument("--ablation-step", type=float, default=0.05)

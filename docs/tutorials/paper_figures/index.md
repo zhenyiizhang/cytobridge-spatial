@@ -28,7 +28,7 @@ calculate the other datasets' results from a model, use these guides:
 - [Weinreb and scNT preprocessing, training and evaluation](../../nonspatial_workflows.md)
 - [MOSTA population simulation and growth](../dataset_workflows/mosta.ipynb)
 - [ARISTA population simulation](arista_populations.md) and [velocity/growth calculations](arista_model_fields.md)
-- [Zebrafish population and gene dynamics](zebrafish_model_figures.md), [virtual cell removal](zebrafish_virtual_removal.md) and [daughter-cell perturbations](zebrafish_daughter_noise.md)
+- [Zebrafish S31–S38: training, simulations, analyses and figures](zebrafish_si_s31_s38.ipynb)
 
 Figure 2a–d currently uses the assembled original panels. Its panel e is drawn
 from numerical results. Figure 3's calculation notebooks generate the individual
@@ -98,9 +98,6 @@ ARISTA model fields <arista_model_fields>
 S25: ARISTA local domains <arista_local_domains>
 Figure 6 and S26–S30: AD mouse <admouse_figures>
 S31–S38: Zebrafish <zebrafish_si_s31_s38>
-Zebrafish model calculations <zebrafish_model_figures>
-Zebrafish virtual cell removal <zebrafish_virtual_removal>
-S37: Daughter-cell perturbations <zebrafish_daughter_noise>
 S39: Attention comparisons <zebrafish_attention>
 S40: Decomposition stability <zebrafish_decomposition_stability>
 S41: LR complexes <lr_complex_aggregation>

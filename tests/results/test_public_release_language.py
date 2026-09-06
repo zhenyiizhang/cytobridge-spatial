@@ -181,6 +181,16 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
     path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
     source = _notebook_source(path)
     lowered = source.lower()
+    if notebook_name == "zebrafish_si_s31_s38.ipynb":
+        assert "cb.datasets.download(" in source
+        assert "cb.tl.fit(" in source
+        assert "--calculate-only" in source
+        assert 'project / "data/zebrafish"' in source
+        assert 'project / "outputs/zebrafish_s31_s38"' in source
+        assert "installation.md" in lowered
+        assert "reference/figure_sources/zebrafish-si.md" not in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
     if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
         notebook = json.loads(path.read_text())
         code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
@@ -239,6 +249,18 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
 ) -> None:
     path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
     source = _notebook_source(path)
+    if notebook_name == "zebrafish_si_s31_s38.ipynb":
+        assert "display(Image(filename=str(path)))" in source
+        for variable, producer in (
+            ("population_figures", "plot_populations_and_growth"),
+            ("removal_figures", "plot_removal"),
+            ("ysl_figures", "calculate_ysl_genes"),
+            ("loss_figures", "plot_loss_weights"),
+            ("daughter_figures", "plot_daughter_results"),
+            ("reconstruction_figures", "plot_gene_reconstruction"),
+        ):
+            assert source.index(f"{variable} = {producer}(") < source.index(f"show_figures({variable})")
+        return
     if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
         assert "display(Image(filename=str(path)" in source
         assert "if Path(path).suffix ==" in source

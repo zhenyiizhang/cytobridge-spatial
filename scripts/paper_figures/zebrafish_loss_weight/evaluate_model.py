@@ -54,7 +54,7 @@ def main() -> int:
         random_seed=int(args.random_seed),
         include_initial_time=False,
     )
-    paths = save_distribution_evaluation(result, output_dir)
+    paths = save_distribution_evaluation(result, output_dir, save_figures=False)
     record = {
         "condition": str(args.condition),
         "aligned_h5ad": str(aligned_h5ad),

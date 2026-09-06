@@ -78,7 +78,11 @@ def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str
     assert '## Load' in markdown
     assert '## Draw' in markdown or '## Spatial' in markdown
     assert "data_checkpoints.md" in markdown
-    assert "training.md" in markdown
+    if dataset == "admouse":
+        assert "cb.tl.fit(" in code  # Training is explained on this page.
+        assert "MODEL_DIR =" in code
+    else:
+        assert "training.md" in markdown
     assert "PROJECT_DIR" in markdown and "PROJECT_DIR" in code
     text = (code + markdown).lower()
     for phrase in ("learning goals", "exercise", "notes and interpretation",
@@ -133,6 +137,31 @@ def test_own_data_notebook_is_executed_and_has_complete_commands() -> None:
     assert "## Open the results" in markdown
 
 
+def test_own_data_notebook_saves_consistent_workflow_and_training_settings(tmp_path, monkeypatch):
+    import yaml
+    from CytoBridge.workflow import _validate_builtin_training_contract
+
+    monkeypatch.setenv("CYTOBRIDGE_PROJECT_DIR", str(tmp_path))
+    notebook = json.loads(OWN_DATA_NOTEBOOK.read_text())
+    namespace = {}
+    for cell in notebook["cells"]:
+        if cell["cell_type"] != "code":
+            continue
+        source = "".join(cell["source"])
+        # Emulate a reader changing the two graph settings before saving.
+        if "TRAINING_CONFIG_PATH.write_text" in source:
+            namespace["config"]["train"]["interaction_cutoff"] = 0.42
+            namespace["config"]["train"]["edge_predictor_threshold"] = 0.61
+        exec(compile(source, "your_data.ipynb", "exec"), namespace)
+    workflow = json.loads((tmp_path / "configs/my_dataset.json").read_text())
+    training_path = Path(workflow["train"]["config"])
+    assert training_path == tmp_path / "configs/my_dataset.yaml"
+    training = yaml.safe_load(training_path.read_text())
+    assert training["model"]["interaction_net"]["cutoff"] == 0.42
+    assert training["model"]["interaction_net"]["edge_predictor_thre"] == 0.61
+    _validate_builtin_training_contract(workflow)
+
+
 def test_tutorial_navigation_has_one_dataset_section() -> None:
     tutorial_index = (ROOT / "docs" / "tutorials" / "index.md").read_text(
         encoding="utf-8"
@@ -144,7 +173,8 @@ def test_tutorial_navigation_has_one_dataset_section() -> None:
 
     assert tutorial_index.count("## Paper datasets") == 1
     assert "Dataset notebooks" not in tutorial_index
-    assert tutorial_index.count("dataset_workflows/") >= 5
+    assert tutorial_index.count("dataset_workflows/") >= 4
+    assert "paper_figures/zebrafish_si_s31_s38.ipynb" in tutorial_index
     assert "your_data" in tutorial_index
     home = (ROOT / "docs/index.md").read_text()
     assert home.count("tutorials/dataset_workflows/index") == 2  # Card and toctree.

@@ -6,20 +6,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-
-DISPLAY = {
-    "reference_alpha": (r"$\alpha_{expr}=0.015$", "#1F4E79", None),
-    "alpha_expr_005": (r"$\alpha_{expr}=0.05$", "#D55E00", "///"),
-    "ot_mass_10_to_1": (r"$\lambda_{OT}:\lambda_{mass}=10:1$", "#E69F00", "\\\\"),
-    "reference_ratio": (r"$\lambda_{OT}:\lambda_{mass}=1:1$", "#1F4E79", None),
-    "ot_mass_1_to_10": (r"$\lambda_{OT}:\lambda_{mass}=1:10$", "#009E73", ".."),
-}
-SPACES = (("joint", "Joint state"), ("pca", "Expression state"), ("spatial", "Physical space"))
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,72 +59,9 @@ def load_results(alpha_metrics: Path, evaluation_root: Path) -> pd.DataFrame:
     return result
 
 
-def style() -> None:
-    mpl.rcParams.update(
-        {
-            "font.family": "Arial",
-            "font.size": 9,
-            "axes.titlesize": 10,
-            "axes.titleweight": "bold",
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-            "savefig.facecolor": "white",
-        }
-    )
-
-
 def draw(frame: pd.DataFrame, output_dir: Path) -> tuple[Path, Path]:
-    style()
-    fig, axes = plt.subplots(2, 3, figsize=(11.69, 8.27), sharex=True)
-    fig.subplots_adjust(left=0.075, right=0.985, bottom=0.09, top=0.88, hspace=0.48, wspace=0.30)
-    rows = (
-        ("Expression-loss weight", ("reference_alpha", "alpha_expr_005")),
-        ("OT-to-mass loss ratio", ("ot_mass_10_to_1", "reference_ratio", "ot_mass_1_to_10")),
-    )
-    for column, (space, title) in enumerate(SPACES):
-        space_values = frame.loc[frame["space"].eq(space), "w1"]
-        ymax = float(space_values.max()) * 1.15
-        for row_index, (row_title, conditions) in enumerate(rows):
-            ax = axes[row_index, column]
-            times = sorted(frame.loc[frame["space"].eq(space), "time"].astype(float).unique())
-            x = np.arange(len(times), dtype=float)
-            width = 0.72 / len(conditions)
-            for index, condition in enumerate(conditions):
-                part = frame.loc[
-                    frame["space"].eq(space) & frame["condition"].eq(condition)
-                ].sort_values("time")
-                if list(part["time"].astype(float)) != times:
-                    raise ValueError(f"Missing time point for {condition} in {space}")
-                label, color, hatch = DISPLAY[condition]
-                offset = (index - (len(conditions) - 1) / 2) * width
-                ax.bar(
-                    x + offset,
-                    part["w1"],
-                    width=width,
-                    label=label,
-                    color=color,
-                    edgecolor="black",
-                    linewidth=0.5,
-                    hatch=hatch,
-                )
-            ax.set_title(title)
-            ax.set_ylim(0, ymax)
-            ax.set_xticks(x, [f"{value:g}" for value in times])
-            ax.spines[["top", "right"]].set_visible(False)
-            ax.grid(axis="y", color="#D9D9D9", linewidth=0.6, alpha=0.75)
-            if column == 0:
-                ax.set_ylabel(f"{row_title}\nWasserstein-1")
-            if row_index == 1:
-                ax.set_xlabel("Time")
-            if column == 2:
-                ax.legend(frameon=False, bbox_to_anchor=(1.02, 1), loc="upper left")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    pdf = output_dir / "zebrafish_loss_weight_sensitivity.pdf"
-    png = output_dir / "zebrafish_loss_weight_sensitivity.png"
-    fig.savefig(pdf, bbox_inches="tight")
-    fig.savefig(png, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    return pdf, png
+    from CytoBridge.results._zebrafish_loss import draw as draw_current_s36
+    return draw_current_s36(frame, output_dir)
 
 
 def main() -> int:

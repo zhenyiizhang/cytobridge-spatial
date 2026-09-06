@@ -39,16 +39,12 @@ cytobridge figure explain zebrafish-si
 The index distinguishes numerical plotting, static artwork and remaining
 analysis steps. AD S29–S30 now have their numerical inputs and plotting
 commands in the [AD figure guide](tutorials/paper_figures/admouse_figures.md).
-The [zebrafish model tutorial](tutorials/paper_figures/zebrafish_model_figures.md)
-recalculates S31, S32, S35 and S38 from the downloaded model and data.
+The [zebrafish notebook](tutorials/paper_figures/zebrafish_si_s31_s38.ipynb)
+puts the model calculations and plotting for S31–S38 on one page. It also
+includes the training and evaluation code for the S36 loss-weight comparison.
 The [non-spatial workflow](nonspatial_workflows.md) passes newly evaluated
 distribution, clone-fate and direction results directly to plotting.
 Some remaining S4–S5 panels, S6 and S25 can be redrawn from the
 included numbers but still need adapters from a new model run.
-The [virtual-removal tutorial](tutorials/paper_figures/zebrafish_virtual_removal.md)
-recalculates S33–S34, and the [analysis guide](reference/figure_sources/zebrafish-si.md)
-includes the configuration, training, evaluation and plotting commands for S36.
-The [S37 tutorial](tutorials/paper_figures/zebrafish_daughter_noise.md) includes
-the complete simulation, comparison, and plotting commands.
 S41, S42, S45, and S46 include a command that collects completed analysis
 tables before passing them to the figure command.

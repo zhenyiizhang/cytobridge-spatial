@@ -390,7 +390,7 @@ def _render_virtual_removal_quantitative(
     figure.text(
         0.105,
         0.955,
-        "Endpoint spatial distributions (t = 4)",
+        "Spatial distributions",
         fontsize=12,
         fontweight="bold",
         va="top",
@@ -402,8 +402,8 @@ def _render_virtual_removal_quantitative(
     ]
     snapshots = (
         (results.endpoint_baseline_xy, "Baseline", "#59616A"),
-        (results.endpoint_ysl_xy, "YSL removal", "#0072B2"),
-        (results.endpoint_evl_xy, "EVL removal", "#D55E00"),
+        (results.endpoint_ysl_xy, "YSL removal", "#2166AC"),
+        (results.endpoint_evl_xy, "EVL removal", "#B2182B"),
     )
     for axis, (xy, title, color) in zip(snapshot_axes, snapshots, strict=True):
         axis.scatter(
@@ -440,7 +440,11 @@ def _render_virtual_removal_quantitative(
         0.10, 1.09, "Spatial W1", transform=curve_axis.transAxes, fontsize=12,
         fontweight="bold", va="bottom",
     )
-    for variant, label, color, marker in ABLATION_SPECS:
+    styles = (
+        ("remove_YSL", "YSL removal", "#2166AC", "o"),
+        ("remove_EVL", "EVL removal", "#B2182B", "o"),
+    )
+    for variant, label, color, marker in styles:
         subset = results.ablation_w1_curve.loc[
             results.ablation_w1_curve["variant"].eq(variant)
         ].sort_values("time")
@@ -450,7 +454,7 @@ def _render_virtual_removal_quantitative(
         curve_axis.fill_between(
             time, mean - sem, mean + sem, color=color, alpha=0.16, linewidth=0
         )
-        curve_axis.plot(time, mean, color=color, linewidth=1.8, label=label, zorder=3)
+        curve_axis.plot(time, mean, color=color, linewidth=1.15, label=label, zorder=3)
         observed = np.isclose(
             time[:, None], np.arange(5, dtype=float)[None, :], atol=1e-9
         ).any(axis=1)
@@ -464,7 +468,8 @@ def _render_virtual_removal_quantitative(
     curve_axis.set_xticks(np.arange(5, dtype=float))
     curve_axis.set_xlabel("Developmental stage")
     curve_axis.set_ylabel("W1 distance from baseline")
-    _clean_axis(curve_axis)
+    _clean_axis(curve_axis, grid=False)
+    curve_axis.grid(False)
     curve_axis.legend(frameon=False, loc="upper left", handlelength=2.2)
 
     centroid_axis.text(
@@ -472,7 +477,7 @@ def _render_virtual_removal_quantitative(
         fontweight="bold", va="bottom",
     )
     centroid_axis.text(
-        0.10, 1.09, "Endpoint centroid shift (t = 4)",
+        0.10, 1.09, "Centroid shift",
         transform=centroid_axis.transAxes, fontsize=12, fontweight="bold", va="bottom",
     )
     summaries = panels.ablation_centroid_summary.set_index("variant")
@@ -484,37 +489,41 @@ def _render_virtual_removal_quantitative(
         float(summaries["ci95_high"].max()),
     ) + 0.025
     centroid_axis.set_ylim(0, ymax)
-    for x, (variant, label, color, marker) in enumerate(ABLATION_SPECS):
+    for x, (variant, label, color, marker) in enumerate(styles):
         row = summaries.loc[variant]
         values = raw[variant].to_numpy(float)
         mean = float(row["mean"])
-        centroid_axis.bar(x, mean, width=0.54, color=color, alpha=0.62, linewidth=0)
+        centroid_axis.bar(x, mean, width=0.34, color=color, linewidth=0)
         centroid_axis.errorbar(
             x,
             mean,
             yerr=np.asarray(
                 [[mean - float(row["ci95_low"])], [float(row["ci95_high"]) - mean]]
             ),
-            color="#24313A",
+            color="black",
             linewidth=0.9,
             capsize=3,
             capthick=0.9,
             zorder=4,
         )
         centroid_axis.scatter(
-            np.full(values.size, x), values, s=25, marker=marker, facecolor="white",
-            edgecolor=color, linewidth=1, zorder=5,
-        )
-        centroid_axis.text(
-            x, 0.5 * mean, f"{mean:.3f}", color="white", fontsize=8.3,
-            fontweight="bold", ha="center", va="center",
-            bbox={"facecolor": color, "edgecolor": "none", "pad": 0.45},
-            zorder=6,
+            np.full(values.size, x), values, s=14, marker=marker, facecolor="white",
+            edgecolor=color, linewidth=0.65, zorder=5,
         )
     centroid_axis.set_xlim(-0.55, 1.55)
     centroid_axis.set_xticks([0, 1], ["YSL removal", "EVL removal"])
     centroid_axis.set_ylabel("Centroid shift from baseline")
-    _clean_axis(centroid_axis)
+    _clean_axis(centroid_axis, grid=False)
+    centroid_axis.grid(False)
+    for axis in (curve_axis, centroid_axis):
+        axis.tick_params(width=0.6, length=2.5)
+        for spine in axis.spines.values():
+            spine.set_linewidth(0.65)
+            spine.set_color("black")
+    from matplotlib.text import Text
+    for text in figure.findobj(Text):
+        text.set_fontfamily("Arial")
+        text.set_color("black")
     return _save(figure, output, "s34")
 
 
@@ -583,66 +592,8 @@ def _loss_legend(conditions: list[str], key: str):
 
 
 def _render_loss_weight(results: "ZebrafishSIResults", output: Path):
-    frame = results.loss_weight_metrics
-    figure, axes = plt.subplots(2, 3, figsize=(11.69, 8.27), sharex=True)
-    figure.subplots_adjust(
-        left=0.075, right=0.985, bottom=0.09, top=0.88, hspace=0.48, wspace=0.30
-    )
-    row_specs = (
-        (["formal_alpha_control", "alpha_expr_005"], "label"),
-        (["ot_mass_10_to_1", "formal", "ot_mass_1_to_10"], "ratio_label"),
-    )
-    for column, (space, title) in enumerate(LOSS_SPACES):
-        ymax = float(frame.loc[frame["space"].eq(space), "w1"].max()) * 1.15
-        for row, (conditions, _) in enumerate(row_specs):
-            axis = axes[row, column]
-            x = np.arange(4, dtype=float)
-            width = 0.72 / len(conditions)
-            for index, condition in enumerate(conditions):
-                data = frame.loc[
-                    frame["condition"].eq(condition) & frame["space"].eq(space)
-                ].sort_values("time")
-                offset = (index - (len(conditions) - 1) / 2) * width
-                style = LOSS_STYLES[condition]
-                axis.bar(
-                    x + offset,
-                    data["w1"],
-                    width=width,
-                    color=style["color"],
-                    edgecolor="black",
-                    linewidth=0.5,
-                    hatch=style["hatch"],
-                    zorder=3,
-                )
-            axis.set_ylim(0, ymax)
-            axis.set_title(title, pad=5, fontsize=10, fontweight="bold")
-            axis.set_xticks(x, ["1", "2", "3", "4"])
-            if row == 1:
-                axis.set_xlabel("Model time")
-            if column == 0:
-                axis.set_ylabel("W1 (lower is better)")
-            axis.spines["top"].set_visible(False)
-            axis.spines["right"].set_visible(False)
-            axis.grid(axis="y", color="#D9D9D9", linewidth=0.6, alpha=0.75, zorder=0)
-    figure.text(0.016, 0.965, "a", fontsize=14, fontweight="bold", va="top")
-    figure.text(
-        0.048, 0.965, r"Sensitivity to $\alpha_{\mathrm{expr}}$",
-        fontsize=12, fontweight="bold", va="top",
-    )
-    figure.legend(
-        handles=_loss_legend(*row_specs[0]), loc="upper right",
-        bbox_to_anchor=(0.985, 0.972), ncol=2, frameon=False,
-    )
-    figure.text(0.016, 0.515, "b", fontsize=14, fontweight="bold", va="top")
-    figure.text(
-        0.048, 0.515, r"Sensitivity to $\lambda_{OT}:\lambda_{mass}$",
-        fontsize=12, fontweight="bold", va="top",
-    )
-    figure.legend(
-        handles=_loss_legend(*row_specs[1]), loc="center right",
-        bbox_to_anchor=(0.985, 0.516), ncol=3, frameon=False,
-    )
-    return _save(figure, output, "s36", dpi=480)
+    from ._zebrafish_loss import draw
+    return draw(results.loss_weight_metrics, output)
 
 
 def _wrapped(value: str, width: int) -> str:

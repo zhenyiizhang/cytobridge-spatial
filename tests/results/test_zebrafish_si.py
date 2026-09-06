@@ -241,7 +241,7 @@ def test_zebrafish_si_all_plots_are_agg_safe_and_rc_local(tmp_path: Path) -> Non
         "s33": (2646, 3740),
         "s34": (2620, 1824),
         "s35": (2646, 3740),
-        "s36": (5611, 3969),
+        "s36": (2816, 2048),
         "s38": (2646, 3740),
     }
     for figure_id, (pdf, png) in rendered.items():
@@ -296,14 +296,11 @@ def test_zebrafish_si_notebook_documents_the_route_and_shows_outputs() -> None:
         for cell in notebook["cells"]
         if cell["cell_type"] == "markdown"
     ]
-    assert any(text.startswith("## Run the notebook") for text in markdown)
-    assert "## Load figure inputs" in markdown
-    assert any("reference/figure_sources/zebrafish-si.md" in text for text in markdown)
-    guide = (REPOSITORY_ROOT / "docs/reference/figure_sources/zebrafish-si.md").read_text()
-    assert "Start with:" in guide and "Writes:" in guide
-    assert "## Recalculate panel values" in markdown
-    assert "## Draw and save the figure" in markdown
-    assert any(text.startswith("## Preview the generated figures") for text in markdown)
+    for heading in ("## 1. Data", "## 2. Use", "## S31–S32.", "## S33–S34.",
+                    "## S35.", "## S36.", "## S37.", "## S38."):
+        assert any(heading in text for text in markdown)
+    assert not any("reference/figure_sources/zebrafish-si.md" in text for text in markdown)
+    assert any("retrain_loss_models = True" in text for text in markdown)
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
     image_outputs = [

@@ -15,7 +15,7 @@ construction, and fitting through the Python API. For command-line use,
 
 ## Paper datasets
 
-- [Zebrafish embryogenesis](dataset_workflows/zebrafish.ipynb)
+- [Zebrafish embryogenesis](paper_figures/zebrafish_si_s31_s38.ipynb)
 - [MOSTA mouse organogenesis](dataset_workflows/mosta.ipynb)
 - [ARISTA salamander brain regeneration](dataset_workflows/arista.ipynb)
 - [AD mouse brain](dataset_workflows/admouse.ipynb)
@@ -33,7 +33,7 @@ running the long calculations again.
 
 ## Examples and reference
 
-- [Small preprocessing example with a plotted result](data_preparation/synthetic_preprocessing.ipynb)
+- [Small preprocessing example](data_preparation/synthetic_preprocessing.ipynb)
 - [Data and checkpoints](../data_checkpoints.md)
 - [Benchmarks](../benchmarks.md)
 - [Training time and memory](../training_compute.md)

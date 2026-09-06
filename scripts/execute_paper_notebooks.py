@@ -21,11 +21,12 @@ OPERATIONS = {
     "main_figure_5": "draw all panels from cell states and numerical results",
     "mosta_figures": "draw S11-S18 from cell states and numerical results",
     "chicken_heart_daily": "calculate velocities, cell-type transitions and interactions from the trained model",
+    "zebrafish_si_s31_s38": "simulate populations and perturbations, calculate downstream results and draw S31–S38",
     "arista_figures": "draw S19-S24 from cell states and numerical results",
     "compute_cost": "format recorded measurements as a table",
 }
 DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures",
-                      "chicken_heart_daily"}
+                      "chicken_heart_daily", "zebrafish_si_s31_s38"}
 EXCLUDED_NOTEBOOKS = {"lr_prior_ablation_stvcr"}  # Superseded by interaction_ablation.
 
 # The kernels run in temporary output directories. Keep the CytoBridge code folder on

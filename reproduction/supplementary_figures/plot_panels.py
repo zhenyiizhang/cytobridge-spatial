@@ -242,21 +242,8 @@ def zebrafish():
                 for patch in ax.patches:
                     mid=patch.get_x()+patch.get_width()/2;patch.set_width(.34);patch.set_x(mid-.17);patch.set_alpha(1)
     with edit_before_save(removal):adopt(m._render_virtual_removal_quantitative(r,p,directory(34)),34)
-    # Two expression weights and three transport/mass settings, with all results retained.
-    styles=m.LOSS_STYLES
-    for name in styles:styles[name]['hatch']=None
-    for name,color in [('formal_alpha_control',BLUE),('alpha_expr_005',RED),
-      ('ot_mass_10_to_1',RED),('formal',BLUE),('ot_mass_1_to_10',GREY)]:styles[name]['color']=color
-    def weights(fig):
-        fig.set_size_inches(8.8,6.4)
-        for ax in fig.axes:
-            ax.set_ylabel(ax.get_ylabel().replace(' (lower is better)',''))
-            ax.title.set_weight('normal')
-            for patch in ax.patches:
-                mid=patch.get_x()+patch.get_width()/2;w=patch.get_width()*.76
-                patch.set_width(w);patch.set_x(mid-w/2);patch.set_linewidth(.4)
-            clean(ax,grid='y')
-    with edit_before_save(weights):adopt(m._render_loss_weight(r,directory(36)),36)
+    from CytoBridge.results._zebrafish_loss import draw as draw_loss_weights
+    adopt(draw_loss_weights(r.loss_weight_metrics, directory(36)), 36)
 
 def training():
     r=api('training_histories').load_training_history_results();m=load('training_histories')

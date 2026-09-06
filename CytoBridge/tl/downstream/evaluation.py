@@ -653,8 +653,13 @@ def compute_generated_vs_observed_plot_limits(
 def save_distribution_evaluation(
     result: DistributionEvaluationResult,
     output_dir: str | Path,
+    *,
+    save_figures: bool = True,
 ) -> dict[str, str]:
-    """Save metrics plus spatial and PCA observed/generated figures."""
+    """Save metrics and samples, with optional observed/generated figures.
+
+    Set ``save_figures=False`` when the tables will feed a separate paper plot.
+    """
     output_dir = Path(output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = output_dir / "distribution_metrics.csv"
@@ -676,6 +681,8 @@ def save_distribution_evaluation(
         )
     np.savez_compressed(samples_path, **sample_payload)
     paths = {"metrics": str(metrics_path), "samples": str(samples_path)}
+    if not save_figures:
+        return paths
     if result.spatial_dim >= 2:
         paths["spatial_figure"] = str(
             plot_generated_vs_observed(

@@ -44,7 +44,7 @@ def lineage_expression(adata, points, lineage_ids, weights=None):
     return pd.concat(rows, ignore_index=True), pd.DataFrame(counts)
 
 
-def run(data_dir, output_dir, seed=42, device="cuda:0"):
+def run(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
     import anndata as ad
 
     data, output = Path(data_dir), Path(output_dir)
@@ -54,7 +54,9 @@ def run(data_dir, output_dir, seed=42, device="cuda:0"):
     spatial = np.asarray(adata.obsm["spatial_aligned"], dtype=np.float32)
     mask = np.isclose(adata.obs.time_point_processed.to_numpy(float), 0)
     x0 = np.column_stack((spatial[mask], latent[mask])).astype(np.float32)
-    loaded = cb.tl.load_dynamical_model_from_dir(data / "model", dim=x0.shape[1], device=device)
+    loaded = cb.tl.load_dynamical_model_from_dir(
+        Path(model_dir) if model_dir is not None else data / "model",
+        dim=x0.shape[1], device=device)
     loaded.model.eval()
     runtime = cb.tl.build_dynamical_runtime(loaded)
     interaction = runtime.f_net.interaction_net
@@ -112,5 +114,6 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--model-dir", type=Path)
     args = parser.parse_args()
-    print(run(args.data_dir, args.output_dir, args.seed, args.device))
+    print(run(args.data_dir, args.output_dir, args.seed, args.device, args.model_dir))

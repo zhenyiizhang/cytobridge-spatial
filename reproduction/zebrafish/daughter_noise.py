@@ -43,7 +43,7 @@ def object_array(values):
     return result
 
 
-def simulate(data_dir, output_dir, seed=42, device="cuda:0"):
+def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
     data, output = Path(data_dir), Path(output_dir)
     output.mkdir(parents=True, exist_ok=False)
     import anndata as ad
@@ -59,7 +59,9 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0"):
     initial = np.isclose(time, 0)
     x0 = np.column_stack((spatial[initial], latent[initial])).astype(np.float32)
     initial_labels = obs.loc[initial, "Annotation"].astype(str).to_numpy()
-    model = cb.tl.load_dynamical_model_from_dir(data / "model", dim=x0.shape[1], device=device)
+    model = cb.tl.load_dynamical_model_from_dir(
+        Path(model_dir) if model_dir is not None else data / "model",
+        dim=x0.shape[1], device=device)
     runtime = cb.tl.build_dynamical_runtime(model)
     interaction = runtime.f_net.interaction_net
     interaction.link_predictor = ObservedSupportLinkPredictor(
@@ -128,5 +130,6 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--model-dir", type=Path)
     args = parser.parse_args()
-    simulate(args.data_dir, args.output_dir, args.seed, args.device)
+    simulate(args.data_dir, args.output_dir, args.seed, args.device, args.model_dir)

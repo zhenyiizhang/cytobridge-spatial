@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Build the five public dataset tutorial notebooks."""
+"""Build the preprocessing and custom-configuration examples.
+
+Dataset analysis notebooks are maintained directly with their executed outputs.
+"""
 
 from __future__ import annotations
 
@@ -212,12 +215,19 @@ configuration rather than editing an existing JSON file.
         code("""
 from pathlib import Path
 import json
+import os
 import pandas as pd
+import yaml
+from importlib.resources import files
 
 from CytoBridge.workflow import load_workflow_config
 
-CONFIG_PATH = Path("configs/my_dataset.json")
+PROJECT_DIR = Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", ".")).resolve()
+CONFIG_PATH = PROJECT_DIR / "configs/my_dataset.json"
+TRAINING_CONFIG_PATH = PROJECT_DIR / "configs/my_dataset.yaml"
 config, _ = load_workflow_config("zebrafish")
+training_config = yaml.safe_load(
+    files("CytoBridge").joinpath("configs", config["train"]["config"]).read_text())
 
 config["dataset"]["name"] = "my_dataset"
 config["preprocess"]["time_key"] = "stage"
@@ -261,13 +271,22 @@ pd.DataFrame({
 })
 """),
         markdown("""
-After editing the values, save the configuration. Run this cell locally:
-
-```python
+After editing the values, save both configuration files. The JSON describes the
+input and workflow. The YAML contains the network and training settings. This
+cell keeps the interaction neighborhood and edge threshold consistent between
+them and makes the workflow use your new YAML.
+"""),
+        code("""
 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+interaction = training_config["model"]["interaction_net"]
+interaction["cutoff"] = config["train"]["interaction_cutoff"]
+interaction["edge_predictor_thre"] = config["train"]["edge_predictor_threshold"]
+TRAINING_CONFIG_PATH.write_text(yaml.safe_dump(training_config, sort_keys=False))
+config["train"]["config"] = str(TRAINING_CONFIG_PATH)
 CONFIG_PATH.write_text(json.dumps(config, indent=2) + "\\n")
-```
-
+CONFIG_PATH
+"""),
+        markdown("""
 The configuration above starts from Zebrafish settings. For another species,
 supply your LR CSV in the command below and set
 `downstream.preferred_species_tag` to its species tag. For graph construction,
@@ -278,7 +297,8 @@ the database.
         markdown("""
 ## Train and calculate results
 
-Put your input at `data/my_dataset_raw.h5ad`, then run:
+Put your input at `data/my_dataset_raw.h5ad` inside your project folder. In a
+terminal, change to that folder (the `PROJECT_DIR` shown above), then run:
 
 ```bash
 cytobridge workflow --config configs/my_dataset.json --train \
@@ -562,11 +582,7 @@ def write_notebook(notebook, path):
 
 
 def main() -> None:
-    NOTEBOOK_DIR.mkdir(parents=True, exist_ok=True)
-    for tutorial in TUTORIALS:
-        path = NOTEBOOK_DIR / f"{tutorial.dataset}.ipynb"
-        write_notebook(build_notebook(tutorial), path)
-        print(path.relative_to(ROOT))
+    # Do not replace the edited dataset notebooks with the earlier templates.
     write_notebook(build_own_data_notebook(), OWN_DATA_NOTEBOOK)
     print(OWN_DATA_NOTEBOOK.relative_to(ROOT))
     SYNTHETIC_NOTEBOOK.parent.mkdir(parents=True, exist_ok=True)

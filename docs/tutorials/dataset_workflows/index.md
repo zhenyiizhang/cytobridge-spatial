@@ -5,9 +5,10 @@ load a trained model, calculate the quantities shown below, and draw them.
 Code and results appear together. You can use the same functions with your
 own trained model.
 
-Start with **chicken heart** for a smaller dataset. To fit a new model first,
-follow [Train a model](../../training.md). Training is separate from these
-notebooks, so you can repeat or change an analysis without fitting again.
+Start with chicken heart for a smaller dataset. The notebooks can use the
+supplied models without training again. AD and the complete zebrafish notebook
+also show the training call on the page. [Train a model](../../training.md)
+explains preprocessing and fitting for a new input file.
 
 | Dataset | What you calculate | Figure |
 | --- | --- | --- |
@@ -15,7 +16,7 @@ notebooks, so you can repeat or change an analysis without fitting again.
 | [MOSTA](mosta.ipynb) | Cell-state trajectories, brain-cell growth, population composition | S11–S13 |
 | [ARISTA](arista.ipynb) | Intermediate populations and spatial growth maps | S20 |
 | [AD mouse](admouse.ipynb) | Spatial populations, cell-type proportions and cell numbers | S26 |
-| [Zebrafish](zebrafish.ipynb) | Growth at the measured stages | S32 |
+| [Zebrafish](../paper_figures/zebrafish_si_s31_s38.ipynb) | Populations, growth, gene dynamics and perturbations | S31–S38 |
 
 Download instructions are collected on the [data page](../../data_checkpoints.md).
 
