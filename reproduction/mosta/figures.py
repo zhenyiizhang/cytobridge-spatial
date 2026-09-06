@@ -91,6 +91,13 @@ def draw_growth(shared: Path, output: Path):
 def draw_composition(shared: Path, output: Path):
     """S13: calculate counts and proportions, including the Other group."""
     table = pd.read_csv(shared / 's6_composition/celltype_composition_fully_generated.csv')
+    return plot_composition(table, output)
+
+
+def plot_composition(table: pd.DataFrame, output: Path):
+    """Draw S13 from the table returned by ``cb.tl.summarize_label_composition``."""
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
     counts = table.pivot(index='time', columns='celltype', values='count').fillna(0)
     selected = counts.reindex(columns=CELL_TYPES, fill_value=0).copy()
     selected['Other'] = counts.drop(columns=list(CELL_TYPES), errors='ignore').sum(axis=1)
@@ -156,6 +163,14 @@ def draw_lr_profiles(output: Path):
     source = SOURCE / 'si/S11'
     table = pd.read_csv(source / 'numerical_truth/seed42_M_sum/lr_pair_timecourse.csv')
     selected = pd.read_csv(source / 'tables/s11_msum_stable_representative31.csv').sort_values('display_order')
+    return plot_lr_profiles(table, selected, output)
+
+
+def plot_lr_profiles(table: pd.DataFrame, selected: pd.DataFrame, output: Path):
+    """Draw S18 from calculated LR scores and the paper's panel selection."""
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    selected = selected.sort_values('display_order')
     colors = {1: '#D97757', 2: '#2A7F9E', 3: '#6A994E'}
     fig, axes = plt.subplots(8, 4, figsize=(13.6, 23.2))
     plotted = []

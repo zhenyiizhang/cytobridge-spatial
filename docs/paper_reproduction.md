@@ -8,6 +8,9 @@ Open a [paper figure notebook](tutorials/paper_figures/index.md). The numerical
 plotting notebooks calculate summaries from CSV, NPZ or H5AD inputs and write
 new PDF and PNG files. Figures 4–6, MOSTA S11–S18 and ARISTA S19–S24 have
 dedicated plotting programs. Their tutorials identify the required downloads.
+The MOSTA supplementary notebook also evaluates the model and recalculates
+gene programs, enrichment and LR scores, with separate calculation and
+plotting cells.
 Figure 2 still reuses its earlier panels a–d while drawing panel e from numbers.
 
 ## Continue from a new model run

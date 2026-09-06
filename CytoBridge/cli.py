@@ -110,6 +110,7 @@ _DEPENDENCY_PROFILES = {
     "docs": (
         "furo",
         "IPython",
+        "ipywidgets",
         "myst_parser",
         "nbsphinx",
         "sphinx",

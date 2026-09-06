@@ -20,9 +20,9 @@ the code. A notebook that needs a larger download names it in its first cell.
 | AD mouse | Figure 6, S26–S30 | [Population, interaction and perturbation analyses](admouse_figures.md) |
 | Zebrafish | S31–S40 | [S31–S38](zebrafish_si_s31_s38.ipynb), [attention comparisons](zebrafish_attention.ipynb), [stability across seeds and settings](zebrafish_decomposition_stability.md) |
 
-To start from a trained model rather than the paper's saved numerical results,
-use these calculation guides. Each guide names the files it produces and
-passes them to its plotting functions.
+The MOSTA supplementary notebook recalculates its downstream analyses from
+the saved cell states and trained model. To simulate a new trajectory, or
+calculate the other datasets' results from a model, use these guides:
 
 - [AGIST simulations and Wasserstein distances](agist_simulations.md)
 - [Weinreb and scNT preprocessing, training and evaluation](../../nonspatial_workflows.md)
@@ -67,7 +67,8 @@ python scripts/execute_paper_notebooks.py --bundled-only --output-dir notebook_r
 ```
 
 To include the larger MOSTA and ARISTA notebooks, set the project folder
-containing the downloads. Figure 4 also evaluates its model on a CUDA GPU.
+containing the downloads. Figure 4 uses a CUDA GPU. MOSTA S11–S18 also needs
+its model, aligned data and the R packages listed at the start of that notebook.
 
 ```bash
 python scripts/execute_paper_notebooks.py --project-dir paper_run --output-dir notebook_runs_full --report notebook_runs_full/report.json
