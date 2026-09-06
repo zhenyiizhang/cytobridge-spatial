@@ -81,6 +81,9 @@ def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str
     if dataset == "admouse":
         assert "cb.tl.fit(" in code  # Training is explained on this page.
         assert "MODEL_DIR =" in code
+    elif dataset == "zebrafish":
+        assert "../paper_figures/zebrafish_si_s31_s38.ipynb" in markdown
+        assert notebook["metadata"]["nbsphinx"]["orphan"] is True
     else:
         assert "training.md" in markdown
     assert "PROJECT_DIR" in markdown and "PROJECT_DIR" in code
