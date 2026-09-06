@@ -34,7 +34,7 @@ mark the spatial regions highlighted in the paired trajectories.
   used in the baseline export.
 
 The trajectory arrays, model directory, aligned AnnData object, classifier,
-PCA projection, and color table are external inputs. Their paths are provided
+and color table are external inputs. Their paths are provided
 as command-line arguments; they are not copied into the Python wheel.
 
 ## Captions
@@ -53,12 +53,5 @@ from t = 0 to t = 4. Arrows show the strongest directed cell-cell interactions
 selected by the frozen learned edge predictor at each generated state; color
 indicates first-layer attention strength.
 
-## File checksums
-
-| File | SHA-256 |
-| --- | --- |
-| `Supplementary_Video_4_Zebrafish_YSL_Ablation.mp4` | `5f2b0eb1dd3f08684958d9e2f15fc6849f4152a22130866f32ebc208c7652cc2` |
-| `Supplementary_Video_5_Zebrafish_EVL_Ablation.mp4` | `bbad6f50ee0d1eeec52b4dd72f9b8c4b4146db01369d76a305f73cde9731c108` |
-| `zebrafish_baseline_virtual_tissue_dynamics.mp4` | `ad4f98d44058cbe0a93ce1f64d399f65525cfa99df33b2771e5b32369f3ca04c` |
-| `zebrafish_baseline_virtual_tissue_dynamics.gif` | `1120487bafaadadbe1912de89ef83ede55ebc9340c913b5cf4b0c885a5c1a114` |
-
+Videos 4 and 5 use `classifier_resmlp_25f65c49dc60ea4c.pt`, the same classifier
+as S33. Its inputs are time, two spatial coordinates and 50 expression PCs.

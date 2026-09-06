@@ -97,8 +97,8 @@ def adopt(paths,n):
     for path,ext in zip(paths,('pdf','png')):
         if Path(path)!=OUT/f'S{n}.{ext}':shutil.copy2(path,OUT/f'S{n}.{ext}')
 
-def agist():
-    a=api('agist_figures');r=a.load_agist_figures();p=a.calculate_agist_figure_panels(r)
+def agist(results_dir=None):
+    a=api('agist_figures');r=a.load_agist_figures(results_dir);p=a.calculate_agist_figure_panels(r)
     m=load('agist_figures');m.LEARNED=BLUE;m.INTERACTION_OFF=RED;m.GROUND_TRUTH=BLACK
     def edit(fig):
         # a/b keep the original continuous time colors and trajectory geometry.
@@ -114,8 +114,8 @@ def paired(ax,first,second,labels,xlabel):
     ax.set_yticks(y,labels);ax.set_xlabel(xlabel);ax.set_xlim(left=0)
     clean(ax)
 
-def nonspatial(*,clone_values=False,figures=('s4','s5')):
-    a=api('nonspatial_figures');r=a.load_nonspatial_figures();p=a.calculate_nonspatial_panels(r)
+def nonspatial(*,clone_values=False,figures=('s4','s5'),results_dir=None):
+    a=api('nonspatial_figures');r=a.load_nonspatial_figures(results_dir);p=a.calculate_nonspatial_panels(r)
     m=load('nonspatial_figures')
     m.TEAL=BLUE;m.ROSE=RED;m.CORAL=RED;m.HEADING=BLACK
     # Only panel b's vector fields use black. Keep the cell-type palette and
@@ -179,8 +179,8 @@ def nonspatial(*,clone_values=False,figures=('s4','s5')):
     with edit_before_save(edit):
         for n,paths in m.render_nonspatial_figures(r,p,directory(4),figures).items():adopt(paths,int(n[1:]))
 
-def classifier():
-    a=api('classifier_smoothing');r=a.load_classifier_smoothing_results()
+def classifier(results_dir=None):
+    a=api('classifier_smoothing');r=a.load_classifier_smoothing_results(results_dir)
     fig=plt.figure(figsize=(8.6,5.9))
     gs=fig.add_gridspec(2,5,left=.085,right=.985,bottom=.10,top=.86,hspace=.84,wspace=.58)
     panel(fig,'a','Held-out classification',.045,.963)
@@ -222,8 +222,8 @@ def heart():
         adopt(tuple(OUT/f'heart_alignment_sensitivity_S{number}_final.{suffix}'
                     for suffix in ('pdf','png')),number)
 
-def zebrafish():
-    a=api('zebrafish_si');r=a.load_zebrafish_si_results();p=a.calculate_zebrafish_si_panels(r)
+def zebrafish(results_dir=None):
+    a=api('zebrafish_si');r=a.load_zebrafish_si_results(results_dir);p=a.calculate_zebrafish_si_panels(r)
     m=load('zebrafish_si',replacements=(('#0072B2',BLUE),('#D55E00',RED)))
     m.ABLATION_SPECS=tuple((v,l,BLUE if i==0 else RED,'o') for i,(v,l,c,mk) in enumerate(m.ABLATION_SPECS))
     m._clean_axis=lambda ax,**kw:clean(ax)
@@ -245,8 +245,8 @@ def zebrafish():
     from CytoBridge.results._zebrafish_loss import draw as draw_loss_weights
     adopt(draw_loss_weights(r.loss_weight_metrics, directory(36)), 36)
 
-def training():
-    r=api('training_histories').load_training_history_results();m=load('training_histories')
+def training(results_dir=None):
+    r=api('training_histories').load_training_history_results(results_dir);m=load('training_histories')
     labels=['Pretraining','Refinement','Interaction training','Score training','Fine-tuning','Score refinement']
     m.STAGES=tuple(dataclasses.replace(s,color=BLUE,label=labels[i]) for i,s in enumerate(m.STAGES))
     def edit(fig):
@@ -260,8 +260,8 @@ def training():
             clean(ax,grid='y')
     with edit_before_save(edit):adopt(m.plot_training_histories(r,directory(46)),46)
 
-def benchmark():
-    r=api('loto_benchmark').load_loto_benchmark();m=load('loto_benchmark')
+def benchmark(results_dir=None):
+    r=api('loto_benchmark').load_loto_benchmark(results_dir);m=load('loto_benchmark')
     m.CYTOBRIDGE_COLOR=BLUE;m.COMPARISON_COLOR=RED
     def edit(fig):
         fig.set_size_inches(8.27,9.6)

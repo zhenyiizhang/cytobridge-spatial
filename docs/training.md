@@ -157,7 +157,7 @@ DEVICE = "cuda"
 
 Continue with [Velocity and growth](tutorials/model_analysis.ipynb), starting
 at **Calculate velocity components**. Use the variables above and skip that
-notebook's chicken-heart example input. The calculation and plotting cells
+notebook's chicken-heart example input. The calculation cells
 work with your trained model and do not require a study `workflow.json`.
 
 ## Paper training settings

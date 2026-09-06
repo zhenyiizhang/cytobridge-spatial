@@ -49,11 +49,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--figures',nargs='+',default=[f'S{n}' for n in FIGURES])
     parser.add_argument('--output-dir',type=Path,default=Path('outputs/supplementary_figures'))
-    parser.add_argument('--results-dir',type=Path,help='Input directory for S41 or S42, instead of the included data')
+    parser.add_argument('--results-dir',type=Path,help='Numerical input directory, instead of the included data')
     args=parser.parse_args()
     requested=[int(n.upper().removeprefix('S')) for n in args.figures]
-    if args.results_dir is not None and (len(requested)!=1 or requested[0] not in (41,42)):
-        parser.error('--results-dir is supported for one figure: S41 or S42')
+    input_groups=({2,3},{4,5},{6},{25},{34,36},{41},{42},{45},{46})
+    if args.results_dir is not None and not any(set(requested)<=group for group in input_groups):
+        parser.error('Requested figures must share a supported numerical input format')
     if any(n not in FIGURES for n in requested):parser.error('Choose figures from '+', '.join(f'S{n}' for n in FIGURES))
     output=args.output_dir.resolve();output.mkdir(parents=True,exist_ok=True)
     tables=output/'tables';tables.mkdir(exist_ok=True)
@@ -61,16 +62,17 @@ def main():
         module.OUT=output
         module.TABLES=tables
     domains.save=summaries.save
-    calls={2:summaries.s2,3:panels.agist,
-        4:lambda:panels.nonspatial(clone_values=True,figures=('s4',)),
-        5:lambda:panels.nonspatial(figures=('s5',)),6:panels.classifier,7:panels.heart,8:panels.heart,
-        25:lambda:domains.s25(control_label='Randomly sampled cells'),
-        34:panels.zebrafish,36:panels.zebrafish,
+    calls={2:lambda:summaries.s2(args.results_dir),3:lambda:panels.agist(args.results_dir),
+        4:lambda:panels.nonspatial(clone_values=True,figures=('s4',),results_dir=args.results_dir),
+        5:lambda:panels.nonspatial(figures=('s5',),results_dir=args.results_dir),
+        6:lambda:panels.classifier(args.results_dir),7:panels.heart,8:panels.heart,
+        25:lambda:domains.s25(control_label='Randomly sampled cells',results_dir=args.results_dir),
+        34:lambda:panels.zebrafish(args.results_dir),36:lambda:panels.zebrafish(args.results_dir),
         39:lambda:panels.attention(permutation_values=commot_permutations(tables)),
         40:summaries.s40,41:lambda:panels.lr(top_n=100,results_dir=args.results_dir),
         42:lambda:panels.ablation(results_dir=args.results_dir),
-        43:panels.communication,44:lambda:panels.wins(uniform_markers=True),45:panels.benchmark,
-        46:panels.training}
+        43:panels.communication,44:lambda:panels.wins(uniform_markers=True),
+        45:lambda:panels.benchmark(args.results_dir),46:lambda:panels.training(args.results_dir)}
     done=set()
     for n in requested:
         if n in done:continue

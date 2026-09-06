@@ -7,6 +7,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED = (2, 3, 4, 5, 6, 7, 8, 25, 34, 36, 39, 40, 41, 42, 43, 44, 45, 46)
+INPUT_GROUPS = ({2, 3}, {4, 5}, {6}, {25}, {34, 36}, {41}, {42}, {45}, {46})
 
 
 def draw_supplementary(figures, output_dir, *, results_dir=None):
@@ -19,7 +20,7 @@ def draw_supplementary(figures, output_dir, *, results_dir=None):
     output_dir : path
         Directory for newly drawn PDF/PNG figures and their ``tables/`` folder.
     results_dir : path, optional
-        For S41 or S42, read this directory instead of the included inputs.
+        Read this directory instead of the included inputs.
         It uses the corresponding ``CytoBridge.results`` loader format.
 
     Returns
@@ -35,8 +36,8 @@ def draw_supplementary(figures, output_dir, *, results_dir=None):
         raise ValueError(f"Choose distinct figure numbers from {SUPPORTED}.")
     output = Path(output_dir).expanduser().resolve()
     if results_dir is not None:
-        if len(numbers)!=1 or numbers[0] not in (41,42):
-            raise ValueError("results_dir is supported for a single figure, S41 or S42.")
+        if not any(set(numbers) <= group for group in INPUT_GROUPS):
+            raise ValueError("Use figures sharing one input format: S2/S3, S4/S5, S6, S25, S34/S36, S41, S42, S45 or S46.")
         results_dir = Path(results_dir).expanduser().resolve()
         if output == results_dir or results_dir in output.parents:
             raise ValueError("Save the figure outside the input directory.")

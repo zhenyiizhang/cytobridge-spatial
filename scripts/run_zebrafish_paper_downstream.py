@@ -78,7 +78,7 @@ ALL_STAGES = (
 )
 OBSERVED_TIMES = (0.0, 1.0, 2.0, 3.0, 4.0)
 HALF_TIMES = tuple(float(value) for value in np.arange(0.0, 4.0 + 0.5, 0.5))
-MAIN_CLASSIFIER_CACHE_TAG = "zebrafish-paper-main-spatial2-latent10"
+MAIN_CLASSIFIER_CACHE_TAG = "zebrafish-paper-spatial2-latent50"
 S22_FIXED_GROWTH_ALPHA = 0.0
 S22_TRAJECTORY_MODE = "global_t0_fixed_population_state_transport"
 S22_TRAJECTORY_SCOPE = (
@@ -861,9 +861,11 @@ def _execute_stage(
 
 def _main_classifier_settings(ctx: RunContext) -> dict[str, object]:
     epochs = 2 if ctx.args.profile == "smoke" else int(ctx.args.classifier_epochs)
+    supplied = getattr(ctx.args, "classifier_cache", None)
     return {
-        "contract": "time + aligned spatial(2) + leading latent PCs(10)",
-        "n_joint_features": 12,
+        "contract": "time + aligned spatial(2) + latent PCs(50)",
+        "n_joint_features": 52,
+        "supplied_checkpoint": str(Path(supplied).resolve()) if supplied else None,
         "hidden_size": 128,
         "epochs": epochs,
         "learning_rate": 1e-3,
@@ -878,6 +880,13 @@ def _main_classifier_settings(ctx: RunContext) -> dict[str, object]:
 
 def _train_main_classifier(ctx: RunContext):
     settings = _main_classifier_settings(ctx)
+    if settings["supplied_checkpoint"]:
+        path = Path(settings["supplied_checkpoint"])
+        cached = cb.tl.load_cached_mlp_classifier(str(path), device=ctx.args.device)
+        expected = ("samples", *(f"x{i}" for i in range(1, 53)))
+        if tuple(cached.feature_cols) != expected or not cached.include_time_feature:
+            raise ValueError("Supply the zebrafish classifier for time, two spatial coordinates and 50 expression PCs")
+        return cached, path
     cached, cache_path = cb.tl.train_cached_mlp_classifier_from_adata(
         ctx.adata,
         cache_dir=settings["cache_dir"],
@@ -897,6 +906,7 @@ def _train_main_classifier(ctx: RunContext):
         n_features=int(settings["n_joint_features"]),
         best_epoch_metric=str(settings["best_epoch_metric"]),
         train_on_full_data=bool(settings["train_on_full_data"]),
+        strict_stratification=True,
     )
     return cached, Path(cache_path)
 
@@ -1094,6 +1104,9 @@ def _run_interpolation(
         )
     ]
     classifier_settings = _main_classifier_settings(ctx)
+    supplied = classifier_settings["supplied_checkpoint"]
+    if supplied:
+        _train_main_classifier(ctx)  # Check feature order before running the simulation.
     return cb.tl.run_interpolation_workflow(
         df=ctx.df,
         dim=ctx.dim,
@@ -1107,7 +1120,8 @@ def _run_interpolation(
         use_real_for_observed=not global_t0,
         classifier_cache_dir=str(ctx.shared_cache_dir / "trajectory_classifier"),
         classifier_cache_tag=MAIN_CLASSIFIER_CACHE_TAG,
-        classifier_adata=ctx.adata,
+        classifier_cache_path=supplied,
+        classifier_adata=None if supplied else ctx.adata,
         classifier_time_key=ctx.args.time_key,
         classifier_obsm_key=ctx.args.latent_key,
         classifier_spatial_key=ctx.args.spatial_key,
@@ -1118,7 +1132,7 @@ def _run_interpolation(
         classifier_test_size=float(classifier_settings["test_size"]),
         classifier_train_on_full_data=False,
         classifier_best_metric="bacc",
-        classifier_n_pcs=12,
+        classifier_n_pcs=int(classifier_settings["n_joint_features"]),
         classifier_knn_neighbors=10,
         sde_n_samples=(
             int(ctx.args.smoke_n_samples)
@@ -1754,80 +1768,17 @@ def _stage_growth(ctx: RunContext) -> dict[str, object]:
 
 
 def _ablation_classifier(ctx: RunContext, stage_dir: Path):
-    from sklearn.decomposition import PCA
-
-    latent = np.asarray(ctx.adata.obsm[ctx.args.latent_key], dtype=np.float32)
-    if latent.shape[1] < 10:
-        raise ValueError(
-            f"Ablation classifier requires at least 10 latent PCs, got {latent.shape[1]}"
-        )
-    pca = PCA(n_components=10, random_state=int(ctx.args.random_seed))
-    latent_pca10 = pca.fit_transform(latent).astype(np.float32)
-    classifier_features = np.hstack(
-        (
-            np.asarray(ctx.adata.obsm[ctx.args.spatial_key], dtype=np.float32),
-            latent_pca10,
-        )
-    ).astype(np.float32)
-    classifier_adata = ad.AnnData(
-        X=np.zeros((ctx.adata.n_obs, 0), dtype=np.float32),
-        obs=ctx.adata.obs[[ctx.args.annotation_key, ctx.args.time_key]].copy(),
-    )
-    classifier_adata.obsm["X_ablation_classifier"] = classifier_features
-    epochs = (
-        2 if ctx.args.profile == "smoke" else int(ctx.args.ablation_classifier_epochs)
-    )
-    cached, cache_path = cb.tl.train_cached_mlp_classifier_from_adata(
-        classifier_adata,
-        cache_dir=ctx.shared_cache_dir / "ablation_classifier",
-        cache_tag="zebrafish-paper-ablation-spatial2-pca10",
-        label_col=ctx.args.annotation_key,
-        time_key=ctx.args.time_key,
-        obsm_key="X_ablation_classifier",
-        concat_spatial=False,
-        hidden_size=128,
-        epochs=epochs,
-        lr=1e-3,
-        test_size=0.1,
-        seed=int(ctx.args.random_seed),
-        device=ctx.args.device,
-        include_time_feature=True,
-        n_features=12,
-        best_epoch_metric="bacc",
-        train_on_full_data=True,
-    )
-    pca_path = stage_dir / "ablation_classifier_pca10.npz"
-    np.savez_compressed(
-        pca_path,
-        components=np.asarray(pca.components_, dtype=np.float32),
-        mean=np.asarray(pca.mean_, dtype=np.float32),
-        explained_variance=np.asarray(pca.explained_variance_, dtype=np.float32),
-        explained_variance_ratio=np.asarray(
-            pca.explained_variance_ratio_, dtype=np.float32
-        ),
-        singular_values=np.asarray(pca.singular_values_, dtype=np.float32),
-        n_samples_seen=np.asarray([latent.shape[0]], dtype=np.int64),
-    )
+    cached, cache_path = _train_main_classifier(ctx)
 
     def labeler(points, time_points):
-        transformed = np.empty(len(points), dtype=object)
-        for index, frame in enumerate(points):
-            frame = np.asarray(frame, dtype=np.float32)
-            transformed[index] = np.hstack(
-                (frame[:, :2], pca.transform(frame[:, 2:]))
-            ).astype(np.float32)
         return cb.tl.predict_labels_for_trajectories(
-            sde_points=transformed,
-            ts_points=time_points,
-            model=cached.model,
-            label_encoder=cached.label_encoder,
-            feature_dim=12,
-            device=ctx.args.device,
-            knn_neighbors=10,
+            sde_points=points, ts_points=time_points,
+            model=cached.model, label_encoder=cached.label_encoder,
+            feature_dim=52, device=ctx.args.device, knn_neighbors=10,
             include_time_feature=True,
         )
 
-    return cached, Path(cache_path), pca_path, labeler
+    return cached, cache_path, None, labeler
 
 
 def _compute_trajectory_support_audit(
@@ -2239,15 +2190,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
             "publication_stage_fails_on_violation": True,
         },
         "classifier": {
-            "contract": "time + spatial2 + fresh PCA10(original latent50)",
-            "hidden_size": 128,
-            "epochs": (
-                2
-                if ctx.args.profile == "smoke"
-                else int(ctx.args.ablation_classifier_epochs)
-            ),
-            "best_epoch_metric": "bacc",
-            "train_on_full_data": True,
+            **_main_classifier_settings(ctx),
             "knn_neighbors": 10,
         },
         "random_stream_coupling": (
@@ -2310,7 +2253,7 @@ def _stage_ablation(ctx: RunContext) -> dict[str, object]:
                     f"contract: expected {expected}, got {actual}."
                 )
         cached, cache_path, pca_path, labeler = _ablation_classifier(ctx, stage_dir)
-        outputs: list[Path] = [cache_path, pca_path]
+        outputs: list[Path] = [cache_path] + ([pca_path] if pca_path is not None else [])
         results: dict[str, object] = {}
         matched_counts: dict[str, int] = {}
         publication_metrics: dict[str, str] = {}
@@ -2722,7 +2665,7 @@ def _stage_s25(ctx: RunContext) -> dict[str, object]:
                 if external_bundle is not None
                 else "s22_canonical_interval_local"
             )
-            if classifier_cache_path is None:
+            if classifier_cache_path is None or getattr(ctx.args, "classifier_cache", None):
                 cached, cache_path = _train_main_classifier(ctx)
                 classifier_cache_path = str(cache_path)
                 classifier_accuracy = cached.accuracy
@@ -4314,6 +4257,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--point-size", type=float, default=2.0)
 
     parser.add_argument("--classifier-epochs", type=int, default=500)
+    parser.add_argument("--classifier-cache", type=Path,
+                        help="Use the supplied 52-feature cell-type classifier for every requested stage.")
     parser.add_argument(
         "--s22-simulation-step",
         type=float,

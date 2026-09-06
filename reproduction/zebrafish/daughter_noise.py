@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 
 import CytoBridge as cb
+from reproduction.zebrafish.classifier import load_classifier, assign_cell_types
 
 TIMES = np.linspace(0, 4, 81)
 DISPLAY = np.arange(0, 81, 10)
@@ -67,8 +68,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
     interaction.link_predictor = ObservedSupportLinkPredictor(
         interaction.link_predictor, latent).to(device)
     model.model.eval()
-    classifier = cb.tl.load_cached_mlp_classifier(
-        str(data / "classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt"), device=device)
+    classifier = load_classifier(data, device)
     composition, lineage, particles = [], [], []
     for noise in NOISES:
         print(f"Seed {seed}, daughter noise {noise:g}", flush=True)
@@ -86,11 +86,8 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
             frame, ancestors = np.asarray(points[i]), np.asarray(ids[i], dtype=int)
             if not np.isfinite(frame).all() or len(frame) == 0:
                 raise ValueError(f"Invalid population at time {TIMES[i]}")
-            assigned = initial_labels.copy() if i == 0 else np.asarray(
-                cb.tl.predict_labels_for_points(
-                    points=frame, time_value=float(TIMES[i]), model=classifier.model,
-                    label_encoder=classifier.label_encoder, feature_dim=52,
-                    device=device, knn_neighbors=10, include_time_feature=True)).astype(str)
+            assigned = initial_labels.copy() if i == 0 else assign_cell_types(
+                frame, TIMES[i], classifier, device)
             labels.append(assigned)
             counts = pd.Series(assigned).value_counts()
             for celltype, count in counts.items():

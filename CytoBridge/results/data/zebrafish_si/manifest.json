@@ -2,14 +2,38 @@
   "analysis": "zebrafish_si_s31_s38",
   "source_analysis": "zebrafish_si_s27_s34",
   "figures": {
-    "s31": {"title": "Observed and generated states", "source_figure": "s27"},
-    "s32": {"title": "Growth across observed stages", "source_figure": "s28"},
-    "s33": {"title": "Virtual-removal morphology", "source_figure": "s29"},
-    "s34": {"title": "Virtual-removal quantitative comparison", "source_figure": "s30"},
-    "s35": {"title": "YSL-lineage gene dynamics", "source_figure": "s31"},
-    "s36": {"title": "Loss-weight sensitivity", "source_figure": "s32"},
-    "s37": {"title": "Daughter-state perturbation sensitivity", "source_figure": "s33"},
-    "s38": {"title": "Inverse-PCA expression reconstruction", "source_figure": "s34"}
+    "s31": {
+      "title": "Observed and generated states",
+      "source_figure": "s27"
+    },
+    "s32": {
+      "title": "Growth across observed stages",
+      "source_figure": "s28"
+    },
+    "s33": {
+      "title": "Virtual-removal morphology",
+      "source_figure": "s29"
+    },
+    "s34": {
+      "title": "Virtual-removal quantitative comparison",
+      "source_figure": "s30"
+    },
+    "s35": {
+      "title": "YSL-lineage gene dynamics",
+      "source_figure": "s31"
+    },
+    "s36": {
+      "title": "Loss-weight sensitivity",
+      "source_figure": "s32"
+    },
+    "s37": {
+      "title": "Daughter-state perturbation sensitivity",
+      "source_figure": "s33"
+    },
+    "s38": {
+      "title": "Inverse-PCA expression reconstruction",
+      "source_figure": "s34"
+    }
   },
   "files": {
     "celltype_colors.json": {
@@ -20,27 +44,27 @@
     },
     "s27_observed_generated.npz": {
       "arrays": {
-        "groups": [
-          14
+        "xy": [
+          17066,
+          2
         ],
         "label_id": [
           17066
         ],
-        "label_names": [
-          42
-        ],
         "offsets": [
           15
+        ],
+        "groups": [
+          14
         ],
         "times": [
           14
         ],
-        "xy": [
-          17066,
-          2
+        "label_names": [
+          42
         ]
       },
-      "bytes": 133377
+      "bytes": 136204
     },
     "s28_growth_per_cell.csv.gz": {
       "bytes": 171759,
@@ -48,27 +72,27 @@
     },
     "s29_virtual_removal.npz": {
       "arrays": {
-        "groups": [
-          15
+        "xy": [
+          29214,
+          2
         ],
         "label_id": [
           29214
         ],
-        "label_names": [
-          42
-        ],
         "offsets": [
           16
+        ],
+        "groups": [
+          15
         ],
         "times": [
           15
         ],
-        "xy": [
-          29214,
-          2
+        "label_names": [
+          35
         ]
       },
-      "bytes": 216896
+      "bytes": 220175
     },
     "s30_centroid_by_seed.csv": {
       "bytes": 401,
@@ -80,12 +104,12 @@
           5177,
           2
         ],
-        "evl_xy": [
-          3306,
-          2
-        ],
         "ysl_xy": [
           4546,
+          2
+        ],
+        "evl_xy": [
+          3306,
           2
         ]
       },
@@ -132,15 +156,15 @@
       "rows": 2584
     },
     "s34_reconstructed_expression.csv.gz": {
-      "bytes": 77496,
+      "bytes": 77440,
       "rows": 2584
     },
     "s34_reported_metrics.csv": {
-      "bytes": 704,
+      "bytes": 706,
       "rows": 5
     },
     "s34_top_genes.csv": {
-      "bytes": 1874,
+      "bytes": 1875,
       "rows": 250
     }
   },
@@ -164,5 +188,12 @@
       3,
       4
     ]
+  },
+  "classifier": {
+    "file": "classifier_resmlp_25f65c49dc60ea4c.pt",
+    "state_features": 52,
+    "includes_time": true,
+    "spatial_neighbors": 10,
+    "selection": "held-out validation, without a full-data refit"
   }
 }

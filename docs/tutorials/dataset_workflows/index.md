@@ -27,7 +27,7 @@ chicken_heart
 mosta
 arista
 admouse
-zebrafish
+../paper_figures/zebrafish_si_s31_s38
 ```
 
 For another experiment, use [Run CytoBridge on your data](../your_data.ipynb).

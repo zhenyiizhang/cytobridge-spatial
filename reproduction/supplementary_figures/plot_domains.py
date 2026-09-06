@@ -49,8 +49,8 @@ def save(fig,n):
         doc[0].get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(OUT/f'S{n}_review.png')
     plt.close(fig)
 
-def s25(control_label='Matched null'):
-    api=source.module('arista_local_domains');r=api.load_arista_local_domains();p=api.calculate_arista_local_domain_panels(r)
+def s25(control_label='Randomly sampled cells',results_dir=None):
+    api=source.module('arista_local_domains');r=api.load_arista_local_domains(results_dir);p=api.calculate_arista_local_domain_panels(r)
     m=source.plotter('arista_local_domains');domains=list(api.DOMAIN_ORDER)
     m.DOMAIN_COLORS={domains[0]:RED,domains[1]:BLUE}
     fig=plt.figure(figsize=(8.27,9.25))

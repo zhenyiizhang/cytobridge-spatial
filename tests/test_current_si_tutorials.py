@@ -75,6 +75,16 @@ def test_training_continues_at_real_generic_analysis_section():
     assert 'paper_figures/chicken_heart_daily.ipynb' in source
     assert 'Image(filename=' not in source
 
+
+@pytest.mark.parametrize('name,variable', [
+    ('agist_figures','data'), ('nonspatial_figures','results'),
+    ('arista_local_domains','data'), ('classifier_smoothing','results'),
+    ('training_histories','results'), ('loto_benchmark','data'),
+])
+def test_plotter_reads_the_input_directory_selected_above(name, variable):
+    source = notebook_source('paper_figures/'+name)
+    assert f'results_dir={variable}.source_dir' in source
+
 def test_current_renderer_rejects_source_overwrite(tmp_path):
     from reproduction.paper_figures import draw_supplementary
     with pytest.raises(ValueError):

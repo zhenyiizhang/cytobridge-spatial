@@ -85,7 +85,7 @@ def test_notebook_uses_the_installed_package() -> None:
     assert "repo_root" not in source
     assert "sys.path" not in source
     assert 'Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", ".")) / "outputs" / "training_histories_notebook"' in source
-    assert 'draw_supplementary([46], output_dir)' in source
+    assert 'draw_supplementary([46], output_dir, results_dir=results.source_dir)' in source
 
 
 def test_packaged_training_history_contract() -> None:

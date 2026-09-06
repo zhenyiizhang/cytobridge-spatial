@@ -35,9 +35,9 @@ def save(fig,n):
         doc[0].get_pixmap(matrix=fitz.Matrix(1.5,1.5),alpha=False).save(OUT/f'S{n}_review.png')
     plt.close(fig)
 
-def s2():
+def s2(results_dir=None):
     api=source.module('agist_figures')
-    data=api.load_agist_figures()
+    data=api.load_agist_figures(results_dir)
     p=api.calculate_agist_figure_panels(data)
     fig,axs=plt.subplots(2,2,figsize=(7.8,4.9))
     fig.subplots_adjust(left=.105,right=.975,bottom=.125,top=.90,hspace=.64,wspace=.29)

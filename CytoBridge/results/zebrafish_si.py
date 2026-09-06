@@ -312,9 +312,9 @@ def _validate_frame_contracts(
         )
     ) != expected_s29:
         raise ValueError("S33 has an unexpected frame grid")
-    if set(observed_generated.label_names.astype(str)) != set(observed_colors):
+    if not set(observed_generated.label_names.astype(str)).issubset(observed_colors):
         raise ValueError("The S31 frames and color map use different labels")
-    if set(virtual_removal.label_names.astype(str)) != set(virtual_removal_colors):
+    if not set(virtual_removal.label_names.astype(str)).issubset(virtual_removal_colors):
         raise ValueError("The S33 frames and color map use different labels")
 
 

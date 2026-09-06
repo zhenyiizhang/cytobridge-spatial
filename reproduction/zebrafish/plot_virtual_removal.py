@@ -12,6 +12,7 @@ import pandas as pd
 from scipy import stats
 
 import CytoBridge as cb
+from reproduction.zebrafish.classifier import CLASSIFIER_FILE, load_classifier, assign_cell_types
 from CytoBridge.results.zebrafish_si import PackedSpatialFrames
 from CytoBridge.results._zebrafish_si_plot import _RC, _render_virtual_removal_morphology, _render_virtual_removal_quantitative
 
@@ -46,19 +47,9 @@ def collect_metrics(run_dirs):
 
 
 def draw(data_dir, run_dirs, output_dir, device="cpu"):
-    import anndata as ad
-    from sklearn.decomposition import PCA
-
     data, output = Path(data_dir), Path(output_dir)
     seeds, curve, centroids, summary = collect_metrics(run_dirs)
-    observed = ad.read_h5ad(data / "aligned.h5ad", backed="r")
-    try:
-        latent = np.asarray(observed.obsm["X_latent"], dtype=np.float32)
-    finally:
-        observed.file.close()
-    pca = PCA(n_components=10, random_state=42).fit(latent)
-    cached = cb.tl.load_cached_mlp_classifier(
-        str(data / "paper_classifier/classifier_resmlp_0adc1c3a0170a81e.pt"), device=device)
+    cached = load_classifier(data, device)
     frames, endpoints = [], {}
     for condition, name in (("baseline", "Baseline"), ("remove_YSL", "YSL removal"), ("remove_EVL", "EVL removal")):
         # This file is an array produced by the preceding simulation command.
@@ -66,10 +57,7 @@ def draw(data_dir, run_dirs, output_dir, device="cpu"):
         endpoints[condition] = np.asarray(points[-1][:, :2])
         for time in range(5):
             frame = np.asarray(points[time*20], dtype=np.float32)
-            features = np.column_stack((frame[:, :2], (frame[:, 2:]-pca.mean_) @ pca.components_.T)).astype(np.float32)
-            labels = np.asarray(cb.tl.predict_labels_for_points(
-                points=features, time_value=time, model=cached.model, label_encoder=cached.label_encoder,
-                feature_dim=12, device=device, knn_neighbors=10, include_time_feature=True)).astype(str)
+            labels = assign_cell_types(frame, time, cached, device)
             frames.append((name, time, frame[:, :2], labels))
     names = np.unique(np.concatenate([labels for _, _, _, labels in frames]))
     packed = PackedSpatialFrames(
@@ -87,6 +75,13 @@ def draw(data_dir, run_dirs, output_dir, device="cpu"):
     curve.to_csv(output / "spatial_w1_curve.csv", index=False)
     centroids.to_csv(output / "centroid_by_seed.csv", index=False)
     summary.to_csv(output / "centroid_summary.csv", index=False)
+    (output / "classification.json").write_text(json.dumps({
+        "classifier": str(data / CLASSIFIER_FILE),
+        "features": "time, two aligned spatial coordinates, 50 original expression PCs",
+        "spatial_neighbors": 10,
+        "display_seed": 42,
+        "simulation_directories": [str(seeds[seed]) for seed in sorted(seeds)],
+    }, indent=2) + "\n")
     results = SimpleNamespace(virtual_removal=packed, celltype_colors=colors,
                               endpoint_baseline_xy=endpoints["baseline"], endpoint_ysl_xy=endpoints["remove_YSL"],
                               endpoint_evl_xy=endpoints["remove_EVL"], ablation_w1_curve=curve,

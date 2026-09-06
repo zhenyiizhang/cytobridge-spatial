@@ -132,6 +132,11 @@ def run_interpolation_workflow(
 ) -> InterpolationResult:
     """Simulate populations and classify their cell states.
 
+    An existing ``classifier_cache_path`` selects a trained classifier. It is
+    loaded without retraining or modifying the file, even if ``classifier_adata``
+    is also supplied. To train a new classifier, use a new output path or call
+    ``train_cached_mlp_classifier_from_adata`` explicitly.
+
     By default, interaction grouping has its own random stream. Set
     ``separate_interaction_random_stream=False`` to reproduce analyses made
     before that stream was separated from diffusion and population resampling.
@@ -269,7 +274,12 @@ def run_interpolation_workflow(
             observed_time_points,
         )
         t_train0 = time.perf_counter()
-        if classifier_adata is not None:
+        if classifier_cache_path is not None and os.path.isfile(classifier_cache_path):
+            classifier_cache_resolved = os.path.abspath(classifier_cache_path)
+            cached_classifier = load_cached_mlp_classifier(
+                classifier_cache_resolved, device=device
+            )
+        elif classifier_adata is not None:
             cache_dir_resolved = classifier_cache_dir or os.path.join(
                 output_dir, "classifier_cache"
             )
@@ -316,6 +326,22 @@ def run_interpolation_workflow(
         classifier_model = cached_classifier.model
         label_encoder = cached_classifier.label_encoder
         classifier_feature_dim = int(cached_classifier.feature_dim)
+        expected_cols = ("samples",) + tuple(
+            f"x{i}" for i in range(1, classifier_feature_dim + 1)
+        )
+        if tuple(cached_classifier.feature_cols) != expected_cols:
+            raise ValueError(
+                "The trajectory classifier must take time followed by ordered "
+                "state features (samples, x1, x2, ...)."
+            )
+        if classifier_feature_indices is None:
+            if classifier_feature_dim > dim:
+                raise ValueError("The classifier requires more features than the model state contains.")
+        elif (len(classifier_feature_indices) != classifier_feature_dim or
+              any(int(i) < 0 or int(i) >= dim for i in classifier_feature_indices)):
+            raise ValueError("classifier_feature_indices must match the classifier's state features.")
+        if classifier_n_pcs is not None and int(classifier_n_pcs) != classifier_feature_dim:
+            raise ValueError("classifier_n_pcs does not match the supplied classifier's feature count.")
         classifier_accuracy = cached_classifier.accuracy
         classifier_balanced_accuracy = cached_classifier.balanced_accuracy
         classifier_metadata = dict(cached_classifier.metadata)

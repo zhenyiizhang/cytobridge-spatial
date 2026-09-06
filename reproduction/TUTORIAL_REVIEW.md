@@ -50,6 +50,12 @@ that already does so. When training is optional, state the choice once, show
 the complete training call, and make the following model-loading cell use the
 selected model directory. Do not overwrite the downloaded paper model.
 
+An explicitly selected classifier must also be loaded without retraining or
+overwriting its checkpoint. Validate the feature order and count. A change in
+cache metadata version is not permission to replace downloaded weights. Use
+one declared classifier across a dataset's figures, and check its recorded
+model-selection procedure before describing any full-data refit.
+
 Use concrete names from the distributed files and configuration. A directory
 link is not an executable command. Do not pack several commands, alternative
 flags, and instructions into one prose sentence. Keep model settings in the

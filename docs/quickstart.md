@@ -10,11 +10,11 @@ Start with [Velocity and growth](tutorials/model_analysis.ipynb), which uses
 the chicken-heart model. Run the cells in order to:
 
 1. Load the aligned data and trained model.
-2. Calculate and plot velocity components.
-3. Calculate and plot growth across stages.
+2. Calculate velocity components.
+3. Calculate growth across stages.
 
 Each calculation returns arrays or tables that can be used in later analyses.
-The notebook displays its calculated plots alongside the code.
+The notebook displays these arrays and tables alongside the code.
 
 Continue to the [dataset tutorials](tutorials/dataset_workflows/index.md) for
 population simulation and the analyses used in the paper.

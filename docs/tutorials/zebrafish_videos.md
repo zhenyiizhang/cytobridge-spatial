@@ -29,17 +29,15 @@ The number of cells can change between frames because growth is enabled.
 ## Videos 4 and 5: virtual removal
 
 The following command assigns cell types to each simulated state, draws all
-frames, and encodes both videos. It uses the same fitted classifier and PCA
-transformation as the paper analysis.
+frames, and encodes both videos. It uses the same classifier as S33, reading
+the original 50 expression PCs, two spatial coordinates and model time.
 
 ```bash
 python release_assets/zebrafish_videos/source/render_latest_ablation_videos.py \
   --package-root . \
   --trajectory-root data/zebrafish/videos/trajectories \
-  --classifier data/zebrafish/paper_classifier/classifier_resmlp_0adc1c3a0170a81e.pt \
-  --pca data/zebrafish/videos/ablation_classifier_pca10.npz \
+  --classifier data/zebrafish/classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt \
   --colors data/zebrafish/videos/label_to_color.json \
-  --reference-labels data/zebrafish/videos/global_t0_labeled_sources.npz \
   --output-dir outputs/zebrafish_videos
 ```
 

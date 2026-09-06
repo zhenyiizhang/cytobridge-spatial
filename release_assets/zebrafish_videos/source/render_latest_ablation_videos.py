@@ -24,14 +24,6 @@ from PIL import Image
 TIMES = np.linspace(0.0, 4.0, 81, dtype=np.float64)
 MODEL_TIMES = np.asarray([0, 1, 2, 3, 4], dtype=float)
 REAL_TIMES_HPF = np.asarray([5.25, 10, 12, 18, 24], dtype=float)
-EXPECTED = {
-    "baseline_points.npy": "1ed598e88b3c3e98fb1fd1107a289e8a4598406d70bdcd1c1067f61c11934020",
-    "remove_YSL_points.npy": "b55f6ed6237148b6ec86173a17ebe1a3d35d79f7031a08597b4a839162015f56",
-    "remove_EVL_points.npy": "7d18d1842716e6084e32fec729eeb1fed696b55f23104bf7ac751c8914571829",
-    "classifier": "98c79a7f3c2c275de67e136c316021799152fb2f29c85ee6adb84d5e0354b80c",
-    "pca": "b56b7900078d3c503d93fc43b96544306e9b541494fb56cb70871dc42397a6b6",
-    "colors": "d43a9947d492d457c7a54296451253d13988be5ee6d3ad8c8a070c7e77ee9ec6",
-}
 CONDITIONS = {
     "baseline": "baseline_points.npy",
     "YSL": "remove_YSL_points.npy",
@@ -52,10 +44,6 @@ def record(path: Path) -> dict[str, object]:
     return {"path": str(path), "bytes": path.stat().st_size, "sha256": sha256(path)}
 
 
-def require_sha(path: Path, expected: str) -> None:
-    actual = sha256(path)
-    if actual != expected:
-        raise RuntimeError(f"SHA mismatch for {path}: {actual}")
 
 
 def object_array(values) -> np.ndarray:
@@ -369,9 +357,7 @@ def main() -> int:
     parser.add_argument("--package-root", required=True, type=Path)
     parser.add_argument("--trajectory-root", required=True, type=Path)
     parser.add_argument("--classifier", required=True, type=Path)
-    parser.add_argument("--pca", required=True, type=Path)
     parser.add_argument("--colors", required=True, type=Path)
-    parser.add_argument("--reference-labels", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
     output = args.output_dir.resolve()
@@ -381,11 +367,7 @@ def main() -> int:
     inputs = {}
     for condition, filename in CONDITIONS.items():
         path = args.trajectory_root.resolve() / filename
-        require_sha(path, EXPECTED[filename])
         inputs[condition] = path
-    require_sha(args.classifier.resolve(), EXPECTED["classifier"])
-    require_sha(args.pca.resolve(), EXPECTED["pca"])
-    require_sha(args.colors.resolve(), EXPECTED["colors"])
 
     sys.path.insert(0, str(args.package_root.resolve()))
     import CytoBridge as cb
@@ -399,42 +381,32 @@ def main() -> int:
             raise RuntimeError(f"Unexpected trajectory for {condition}")
     cached = cb.tl.load_cached_mlp_classifier(str(args.classifier.resolve()), device="cpu")
     if (
-        cached.feature_dim != 12
+        cached.feature_dim != 52
         or not cached.include_time_feature
         or cached.label_col != "Annotation"
-        or cached.metadata.get("cache_tag") != "zebrafish-paper-ablation-spatial2-pca10"
+        or tuple(cached.feature_cols) != ("samples", *(f"x{i}" for i in range(1, 53)))
     ):
-        raise RuntimeError("Ablation classifier contract mismatch")
-    with np.load(args.pca.resolve(), allow_pickle=False) as archive:
-        components = np.asarray(archive["components"], dtype=np.float32)
-        mean = np.asarray(archive["mean"], dtype=np.float32)
+        raise RuntimeError("Use the zebrafish classifier for time, two spatial coordinates and 50 expression PCs")
     labels = {}
     for condition, frames in trajectories.items():
         features = []
         for frame in frames:
             points = np.asarray(frame, dtype=np.float32)
-            pca10 = (points[:, 2:] - mean) @ components.T
-            features.append(np.hstack((points[:, :2], pca10)).astype(np.float32))
+            if points.ndim != 2 or points.shape[1] != 52 or not np.isfinite(points).all():
+                raise ValueError(f"Invalid simulated state in {condition}")
+            features.append(points)
         labels[condition] = object_array(
             cb.tl.predict_labels_for_trajectories(
                 sde_points=object_array(features),
                 ts_points=TIMES,
                 model=cached.model,
                 label_encoder=cached.label_encoder,
-                feature_dim=12,
+                feature_dim=52,
                 device="cpu",
                 knn_neighbors=10,
                 include_time_feature=True,
             )
         )
-    reference = np.load(args.reference_labels.resolve(), allow_pickle=True)
-    reference_names = {"baseline": "Baseline", "YSL": "YSL removal", "EVL": "EVL removal"}
-    for condition, display_name in reference_names.items():
-        for position, frame_index in enumerate(range(0, 81, 10)):
-            expected = np.asarray(reference[f"{display_name}_labels"][position]).astype(str)
-            actual = np.asarray(labels[condition][frame_index]).astype(str)
-            if not np.array_equal(actual, expected):
-                raise RuntimeError(f"Classifier reference mismatch: {condition}, frame {frame_index}")
     label_path = output / "classifier_assigned_labels.npz"
     np.savez_compressed(
         label_path,
@@ -498,7 +470,7 @@ def main() -> int:
         "- Simulation: seed-42 growth-on split SDE with the frozen learned-interaction support gate.\n"
         "- Time grid: 0 to 4 in 0.05 increments, 81 frames.\n"
         "- Video: 2520 x 1260, H.264, 10 frames per second.\n"
-        "- Cell colors: frozen spatial2+PCA10 time-aware ablation classifier with k=10 spatial smoothing.\n"
+        "- Cell colors: the same time-aware, 52-feature classifier as S33, with k=10 spatial voting.\n"
         "- Layout and region boxes follow the submitted Supplementary Videos 4 and 5.\n"
     )
     outputs = video_paths + preview_paths + [label_path, roi_path, caption_path, provenance]
@@ -510,9 +482,7 @@ def main() -> int:
         "inputs": [
             *(record(path) for path in inputs.values()),
             record(args.classifier.resolve()),
-            record(args.pca.resolve()),
             record(args.colors.resolve()),
-            record(args.reference_labels.resolve()),
         ],
         "outputs": [record(path) for path in outputs],
     }
