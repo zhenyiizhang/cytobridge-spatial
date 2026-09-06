@@ -110,11 +110,12 @@ def _top_set(table: pd.DataFrame, column: str, top_n: int) -> set[str]:
     return set(ordered.head(top_n)["pair"].astype(str))
 
 
-def _top_overlap(table: pd.DataFrame) -> tuple[int, int, float]:
+def _top_overlap(table: pd.DataFrame, top_n: int | None = None) -> tuple[int, int, float]:
     n_pairs = int(len(table))
     if n_pairs == 0:
         return 0, 0, float("nan")
-    top_n = min(n_pairs, max(1, min(10, math.ceil(0.2 * n_pairs))))
+    top_n = (min(n_pairs, max(1, min(10, math.ceil(0.2 * n_pairs))))
+             if top_n is None else min(n_pairs, top_n))
     minimum = _top_set(table, "score_min", top_n)
     geometric = _top_set(table, "score_geometric_mean", top_n)
     overlap = minimum.intersection(geometric)
@@ -124,8 +125,16 @@ def _top_overlap(table: pd.DataFrame) -> tuple[int, int, float]:
 
 def summarize_lr_complex_aggregation(
     paired_scores: pd.DataFrame,
+    *, top_n: int | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Calculate per-time and per-dataset LR aggregation summaries."""
+    """Calculate LR summaries. Use ``top_n=100`` for the current SI figure.
+
+    Omitting the cutoff retains the original top-10/20% calculation for
+    existing callers. An explicit cutoff uses that many pairs, or all pairs
+    if fewer are available.
+    """
+    if top_n is not None and (isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1):
+        raise ValueError("top_n must be a positive integer.")
 
     per_time_rows: list[dict[str, object]] = []
     dataset_rows: list[dict[str, object]] = []
@@ -151,7 +160,7 @@ def summarize_lr_complex_aggregation(
             for scope, subset in scopes:
                 first = subset["score_min"].to_numpy(dtype=float)
                 second = subset["score_geometric_mean"].to_numpy(dtype=float)
-                top_n, overlap_n, jaccard = _top_overlap(subset)
+                selected_n, overlap_n, jaccard = _top_overlap(subset, top_n)
                 per_time_rows.append(
                     {
                         "dataset": DATASET_LABELS[dataset],
@@ -160,7 +169,7 @@ def summarize_lr_complex_aggregation(
                         "scope": scope,
                         "n_pairs": int(len(subset)),
                         "spearman": _safe_spearman(first, second),
-                        "top_n": top_n,
+                        "top_n": selected_n,
                         "top_overlap_n": overlap_n,
                         "top_jaccard": jaccard,
                     }
@@ -192,7 +201,7 @@ def summarize_lr_complex_aggregation(
     dataset_summary["min_per_time_spearman"] = dataset_summary["dataset"].map(
         minimum_rank
     )
-    dataset_summary["min_top10_jaccard"] = dataset_summary["dataset"].map(
+    dataset_summary[f"min_top{10 if top_n is None else top_n}_jaccard"] = dataset_summary["dataset"].map(
         minimum_jaccard
     )
     return per_time, dataset_summary
@@ -200,6 +209,7 @@ def summarize_lr_complex_aggregation(
 
 def load_lr_complex_aggregation_results(
     results_dir: str | Path | None = None,
+    *, top_n: int | None = None,
 ) -> LRComplexAggregationResults:
     """Load paired LR scores and calculate the figure tables.
 
@@ -223,7 +233,7 @@ def load_lr_complex_aggregation_results(
     paired_scores = pd.concat(tables, ignore_index=True)
     if paired_scores.duplicated(["dataset", "time", "pair"]).any():
         raise ValueError("Paired LR scores contain duplicate dataset-time-pair rows")
-    per_time, dataset_summary = summarize_lr_complex_aggregation(paired_scores)
+    per_time, dataset_summary = summarize_lr_complex_aggregation(paired_scores, top_n=top_n)
     return LRComplexAggregationResults(
         source_dir=source_dir,
         manifest=read_manifest(source_dir),

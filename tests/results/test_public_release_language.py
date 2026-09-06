@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import gzip
 import json
 import re
@@ -94,7 +95,6 @@ COMPLETED_NOTEBOOK_OUTPUTS = {
     "main_figure_4.ipynb": "main_figure_4",
     "classifier_smoothing.ipynb": "classifier_smoothing",
     "lr_complex_aggregation.ipynb": "lr_complex_aggregation",
-    "lr_prior_ablation_stvcr.ipynb": "lr_prior_stvcr",
     "loto_benchmark.ipynb": "loto_benchmark",
     "main_figure_5.ipynb": "main_figure_5",
     "mosta_figures.ipynb": "mosta_figures",
@@ -172,7 +172,7 @@ def test_notebooks_use_reproduction_only_prose(path: Path) -> None:
     ("notebook_name", "output_slug"),
     COMPLETED_NOTEBOOK_OUTPUTS.items(),
 )
-def test_completed_notebooks_use_installed_package(
+def test_figure_notebooks_document_inputs_and_portable_outputs(
     notebook_name: str,
     output_slug: str,
 ) -> None:
@@ -180,7 +180,13 @@ def test_completed_notebooks_use_installed_package(
     source = _notebook_source(path)
     lowered = source.lower()
     if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
-        assert f"from {NUMERICAL_DATA_NOTEBOOKS[notebook_name]} import draw_" in source
+        notebook = json.loads(path.read_text())
+        code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
+                         if cell['cell_type'] == 'code')
+        assert any(isinstance(node, ast.ImportFrom)
+                   and node.module == NUMERICAL_DATA_NOTEBOOKS[notebook_name]
+                   and any(name.name.startswith('draw_') for name in node.names)
+                   for node in ast.walk(ast.parse(code)))
         assert "cb.datasets.download(" in source
         assert 'project / "data/' in source
         assert "source checkout" in lowered
@@ -189,12 +195,13 @@ def test_completed_notebooks_use_installed_package(
         assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
         return
     assert "from cytobridge.results" in lowered
-    assert "## run the notebook" in lowered
+    assert any(heading in lowered for heading in ("## before you start", "## run the notebook"))
     assert "## where the inputs come from" not in lowered
-    assert "[analysis and input guide](../../reference/figure_sources/" in lowered
     # The plot notebook and the history of its numerical inputs are separate
     # reading routes. Check that the linked guide exists and names its inputs.
-    guide_target = source.split("[analysis and input guide](", 1)[1].split(")", 1)[0]
+    guide_links = re.findall(r"\]\((\.\./\.\./reference/figure_sources/[^)]+)\)", source)
+    assert guide_links, f"{path} needs a link to its input and calculation guide"
+    guide_target = guide_links[0]
     guide = (path.parent / guide_target).resolve()
     assert guide.is_file()
     guide_text = guide.read_text(encoding="utf-8").lower()
@@ -203,7 +210,8 @@ def test_completed_notebooks_use_installed_package(
     assert "writes:" in guide_text
     assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
-    assert f'output_dir = Path("outputs") / "{output_slug}"' in source
+    assert 'Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", ".")) / "outputs"' in source
+    assert f'/ "{output_slug}"' in source
 
 
 def test_s39_notebook_uses_the_reader_facing_api() -> None:
@@ -235,12 +243,13 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
         assert source.index("figures = draw_") < source.rindex("show(")
         return
     assert "display(Image(filename" in source
-    preview_position = source.index("display(Image(filename")
-    producer_positions = [
-        source.find(token)
-        for token in ("plot_", "assemble_", "export_")
-        if source.find(token) >= 0
-    ]
+    notebook = json.loads(path.read_text())
+    code = '\n'.join(''.join(c['source']) for c in notebook['cells'] if c['cell_type']=='code')
+    calls = [node for node in ast.walk(ast.parse(code)) if isinstance(node, ast.Call)]
+    preview_position = min(node.lineno for node in calls
+                           if isinstance(node.func, ast.Name) and node.func.id == 'Image')
+    producer_positions = [node.lineno for node in calls if isinstance(node.func, ast.Name)
+                          and node.func.id.startswith(('plot_', 'draw_', 'assemble_'))]
     assert producer_positions
     assert min(producer_positions) < preview_position
 

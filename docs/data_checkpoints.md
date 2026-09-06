@@ -12,8 +12,11 @@ into your working directory:
 
 ```python
 import CytoBridge as cb
+import os
+from pathlib import Path
 
-data_dir = cb.datasets.download("chicken_heart", destination=".")
+project = Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", "paper_run")).resolve()
+data_dir = cb.datasets.download("chicken_heart", destination=project)
 ```
 
 This downloads the model and analysis data and extracts them into
@@ -23,7 +26,7 @@ same working directory for `PROJECT_DIR` in the notebook.
 For the command line:
 
 ```bash
-python -m CytoBridge.datasets chicken_heart --output-dir .
+python -m CytoBridge.datasets chicken_heart --output-dir "$CYTOBRIDGE_PROJECT_DIR"
 ```
 
 Use `kind="all"` in Python, or `--kind all` on the command line, to include

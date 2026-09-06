@@ -4,27 +4,39 @@ orphan: true
 
 # Analysis inputs: Supplementary Figures S31–S38: zebrafish downstream panels
 
-The [figure notebook](../../tutorials/paper_figures/zebrafish_si_s31_s38.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/zebrafish_si_s31_s38.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
+
+For S31, S32, S35 and S38, follow the complete
+[model-analysis tutorial](../../tutorials/paper_figures/zebrafish_model_figures.md).
+For S37, follow [daughter-cell perturbations](../../tutorials/paper_figures/zebrafish_daughter_noise.md).
+For S33–S34, follow [virtual YSL and EVL removal](../../tutorials/paper_figures/zebrafish_virtual_removal.md).
+The commands below also cover the loss-weight comparison in S36.
 
 ## Calculation programs
 
 Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
 
 
-### 1. calculate the zebrafish downstream results (S31-S35; S38)
+### 1. calculate populations, growth and expression reconstruction (S31–S32; S38)
 
 ```text
-python -m scripts.run_zebrafish_paper_downstream --aligned-h5ad <saved-paper-root>/zebrafish/preprocess/zebrafish_aligned.h5ad --model-dir <saved-paper-root>/zebrafish/training --acceptance-report <saved-paper-root>/matched_ablation_acceptance.json --lr-database <zebrafish-lr.csv> --output-dir <paper-output> --stage all --device cuda
+python scripts/run_zebrafish_paper_downstream.py --aligned-h5ad data/zebrafish/aligned.h5ad --model-dir data/zebrafish/model --output-dir outputs/zebrafish_analysis --stage s22,growth,s25 --video-formats none --device cuda:0
 ```
 
-Start with: `aligned zebrafish H5AD; trained model; zebrafish LR database; matched_ablation_acceptance.json from the same run`
+Start with: `downloaded aligned zebrafish H5AD and trained model`
 
-Writes: `observed and generated states; growth; virtual-removal arrays; gene-dynamics and inverse-PCA tables; one record for each completed analysis`
+Writes: `s22 state arrays; growth/growth_per_cell.csv; s25 observed and reconstructed expression tables`
 
-Next: `prepare the tables used by S31-S38`
+Next: use the plotting commands in the model-analysis tutorial.
 
 
-Use matched_ablation_acceptance.json from the same model run.
+S35 uses a separate continuous-weight simulation of the initial YSL lineage.
+It does not use the interval-specific `s25` analysis. Its complete calculation
+and plotting command is:
+
+```bash
+python -m reproduction.zebrafish.ysl_gene_dynamics --data-dir data/zebrafish --output-dir outputs/zebrafish_ysl_genes --device cuda:0
+```
 
 
 

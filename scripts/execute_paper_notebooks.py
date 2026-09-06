@@ -24,6 +24,7 @@ OPERATIONS = {
     "compute_cost": "format recorded measurements as a table",
 }
 DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures"}
+EXCLUDED_NOTEBOOKS = {"lr_prior_ablation_stvcr"}  # Superseded by interaction_ablation.
 
 # The kernels run in temporary output directories. Keep the source checkout on
 # their import path when this script is used before installing a wheel.
@@ -108,7 +109,8 @@ def run(
         if len(notebooks) != len(set(notebooks)):
             raise ValueError("A notebook was selected more than once")
     else:
-        notebooks = sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+        notebooks = [p for p in sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+                     if p.stem not in EXCLUDED_NOTEBOOKS]
     if not notebooks:
         raise FileNotFoundError(f"No notebooks found in {NOTEBOOK_DIR}")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -131,6 +133,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--project-dir", type=Path,
+                        help="Shared project containing data/. Notebook results go to its outputs/.")
     parser.add_argument("--report", type=Path, help="Save the execution summary as JSON.")
     parser.add_argument("--bundled-only", action="store_true",
                         help="Run notebooks whose numerical inputs ship with the source checkout")
@@ -149,11 +153,14 @@ def main() -> None:
         help="Store the executed cells in the published notebooks.",
     )
     args = parser.parse_args()
+    if args.project_dir:
+        os.environ["CYTOBRIDGE_PROJECT_DIR"] = str(args.project_dir.expanduser().resolve())
+    os.environ.setdefault("CYTOBRIDGE_SOURCE_DIR", str(PROJECT_ROOT))
     if args.bundled_only:
         if args.notebook:
             parser.error("Use either --bundled-only or --notebook")
         args.notebook = [p.stem for p in sorted(NOTEBOOK_DIR.glob("*.ipynb"))
-                         if p.stem not in DOWNLOAD_NOTEBOOKS]
+                         if p.stem not in DOWNLOAD_NOTEBOOKS | EXCLUDED_NOTEBOOKS]
 
     if args.output_dir is not None:
         summaries = run(

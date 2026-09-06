@@ -1,8 +1,9 @@
 # Simulate trajectories
 
-Continue from a [dataset analysis notebook](tutorials/dataset_workflows/index.md).
-It creates `states`, `model`, and `OUTPUT_DIR`. Here we use that model
-to follow cells between two observed stages.
+Continue from [Velocity and growth](tutorials/model_analysis.ipynb) or the
+last cell of [Train a model](training.md). Both define `states`, `model`,
+`time_key`, `observed_times`, `DEVICE`, and `OUTPUT_DIR`. Here we use those
+same variables to follow cells between two observed stages.
 
 ## Choose a time interval
 

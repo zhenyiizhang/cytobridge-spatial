@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figure S46: training histories
 
-The [figure notebook](../../tutorials/paper_figures/training_histories.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/training_histories.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 

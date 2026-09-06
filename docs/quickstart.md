@@ -6,20 +6,18 @@ at several times. The Python API has three parts: `cb.pp` prepares data,
 
 ## Try the analysis API
 
-Start with the [chicken-heart notebook](tutorials/dataset_workflows/chicken_heart.ipynb).
-It is the smallest of the five spatial datasets. After downloading its data
-and model, run the cells in order to:
+Start with [Velocity and growth](tutorials/model_analysis.ipynb), which uses
+the chicken-heart model. Run the cells in order to:
 
 1. Load the aligned data and trained model.
 2. Calculate and plot velocity components.
 3. Calculate and plot growth across stages.
-4. Calculate attention and summarize cell-type interactions.
 
 Each calculation returns arrays or tables that can be used in later analyses.
 The notebook displays its calculated plots alongside the code.
 
-The [other dataset tutorials](tutorials/dataset_workflows/index.md) use the same
-functions with MOSTA, ARISTA, AD mouse, and Zebrafish data.
+Continue to the [dataset tutorials](tutorials/dataset_workflows/index.md) for
+population simulation and the analyses used in the paper.
 
 ## Prepare and train your own data
 

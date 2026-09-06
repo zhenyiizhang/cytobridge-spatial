@@ -17,9 +17,8 @@ The complete figure archive is in `release_artifacts/zebrafish_decomposition_sta
 From the repository root, run:
 
 ```bash
-python release_artifacts/zebrafish_decomposition_stability_20260903/code/plot_zebrafish_decomposition_stability_v2.py \
-  --panel-data release_artifacts/zebrafish_decomposition_stability_20260903/panel_data_final \
-  --output-dir results/zebrafish_decomposition_stability_figure
+python -m reproduction.paper_figures --figures 40 \
+  --output-dir outputs/zebrafish_decomposition_stability
 ```
 
 This command calculates the plotted positions from the included CSV tables and writes a new PDF and PNG. The plotting code does not import a completed figure.

@@ -1,125 +1,110 @@
 # Paper figures
 
-Choose a figure below. Each notebook states what its code actually does.
+Find a figure below and run its notebook from top to bottom. The notebook
+introduces the input arrays or tables, calculates the plotted quantities, and
+saves new figures. Its displayed results are saved notebook outputs.
 
-| Starting material | What the notebook does |
+Start with the [source installation](../../installation.md), which sets up the
+code and data folders for JupyterLab. Small numerical tables are included with
+the code. A notebook that needs a larger download names it in its first cell.
+
+## Main figures and dataset analyses
+
+| Dataset | Paper figures | Start here |
+| --- | --- | --- |
+| AGIST | Figure 2, S2–S3 | [Simulation comparisons](agist_figures.ipynb), [Figure 2](main_figure_2.ipynb) |
+| Weinreb and scNT | S4–S5 | [Expression-state dynamics](nonspatial_figures.ipynb) |
+| Chicken heart | Figure 3, S7–S10 | [Growth and daily populations](../dataset_workflows/chicken_heart.ipynb), [lineage and velocity](chicken_heart_daily.md), [alignment](chicken_heart_alignment.md) |
+| MOSTA | Figure 4, S11–S18 | [Figure 4](main_figure_4.ipynb), [supplementary figures](mosta_figures.ipynb) |
+| ARISTA | Figure 5, S19–S25 | [Figure 5](main_figure_5.ipynb), [S19–S24](arista_figures.ipynb), [local interaction domains](arista_local_domains.ipynb) |
+| AD mouse | Figure 6, S26–S30 | [Population, interaction and perturbation analyses](admouse_figures.md) |
+| Zebrafish | S31–S40 | [S31–S38](zebrafish_si_s31_s38.ipynb), [attention comparisons](zebrafish_attention.ipynb), [stability across seeds and settings](zebrafish_decomposition_stability.md) |
+
+To start from a trained model rather than the paper's saved numerical results,
+use these calculation guides. Each guide names the files it produces and
+passes them to its plotting functions.
+
+- [AGIST simulations and Wasserstein distances](agist_simulations.md)
+- [Weinreb and scNT preprocessing, training and evaluation](../../nonspatial_workflows.md)
+- [MOSTA population simulation and growth](../dataset_workflows/mosta.ipynb)
+- [ARISTA population simulation](arista_populations.md) and [velocity/growth calculations](arista_model_fields.md)
+- [Zebrafish population and gene dynamics](zebrafish_model_figures.md), [virtual cell removal](zebrafish_virtual_removal.md) and [daughter-cell perturbations](zebrafish_daughter_noise.md)
+
+Figure 2a–d currently uses the assembled original panels. Its panel e is drawn
+from numerical results. Figure 3's calculation notebooks generate the individual
+panels, but do not yet assemble the manuscript page. Figures 1 and S47 are model
+schematics, rather than computational results.
+
+## Comparisons and model settings
+
+| Figure | Analysis |
 | --- | --- |
-| Included CSV/NPZ results | Calculates summaries and draws new plots |
-| Existing vector panels | Assembles the panels into a page |
-| A completed PDF/PNG page | Displays or copies the page |
+| S6 | [Cell-type classifier smoothing](classifier_smoothing.ipynb) |
+| S41 | [LR-complex aggregation](lr_complex_aggregation.ipynb) |
+| S42 | [LR-prior and interaction ablations](interaction_ablation.ipynb) |
+| S43 | [COMMOT, CellAgentChat and NicheNet comparisons](spatial_communication.ipynb) |
+| S44 | [Benchmark summary](loto_benchmark_summary.ipynb), including the [SpaTrack calculation](spatrack_benchmark.md) |
+| S45 | [Five-dataset benchmark](loto_benchmark.ipynb) |
+| S46 | [Training histories](training_histories.ipynb) |
+| Table 2 | [Training time and memory](compute_cost.ipynb) |
 
-Figures 4 and 5, MOSTA S11–S18 and ARISTA S19–S24 draw their panels from
-cell-state arrays and numerical tables. Figure 2a–d is still being connected
-to its numerical inputs.
-
-## Draw from the included results
-
-For example, redraw S4–S5 from their numerical inputs in a source checkout:
-
-```bash
-python scripts/execute_paper_notebooks.py \
-  --notebook nonspatial_figures \
-  --output-dir notebook_runs
-```
-
-The plots are written to
-`notebook_runs/nonspatial_figures/outputs/nonspatial_figures/`.
-Other notebooks use the same
-`<output-dir>/<notebook-name>/outputs/<figure-folder>/` structure.
-
-The displayed outputs on this site let you inspect the results before running
-the notebook. No training is started by these figure notebooks.
-
-## Recalculate from a model
-
-Use [Train a model](../../training.md) to fit your data, then continue with
-the [analysis tutorials](../dataset_workflows/index.md).
-Each figure notebook links to a separate guide to its earlier calculations
-and input files.
-
-A new model run is not automatically used by a paper redraw command. Several
-figures still need code to convert a new run into their exact plotting inputs,
-including S4–S5, S31–S36 and S38. S37 has its own simulation and plotting tutorial. The
-[figure-by-figure inventory](../../paper_reproduction.md) records those gaps.
-
-## Check the available notebooks
-
-Run all figure notebooks in new output directories and save an execution report:
+The supplementary notebooks use the current SI plotting programs. For example,
+this command redraws S4, S5 and S41 from numerical inputs. S4/S5 use
+black streamlines, and S41 calculates top-100 overlap from the full LR rankings.
 
 ```bash
-python scripts/execute_paper_notebooks.py \
-  --output-dir figure_check \
-  --report figure_check/report.json
+python -m reproduction.paper_figures --figures 4 5 41 --output-dir outputs/paper_figures
 ```
 
-The report distinguishes numerical plotting, panel assembly, and page copying.
-It tests the available figure notebooks, not training or the complete
-raw-data-to-figure analysis.
+See [Zebrafish videos](../zebrafish_videos.md) for trajectory animation.
 
-## Main figures
+## Run several notebooks
 
-- [Main Figure 2: AGIST benchmark — redraw panel e and assemble the page](main_figure_2.ipynb)
-- [Chicken-heart development: trajectories, cell types, and growth](chicken_heart_daily.md)
-- [Main Figure 4: MOSTA](main_figure_4.ipynb)
-- [Main Figure 5: ARISTA](main_figure_5.ipynb)
-- [Main Figure 6: AD mouse](admouse_figures.md)
+To run the notebooks that need only the included numerical inputs:
 
-## Dataset supplementary figures
+```bash
+python scripts/execute_paper_notebooks.py --bundled-only --output-dir notebook_runs --report notebook_runs/report.json
+```
 
-- [AGIST, Supplementary Figures S2–S3](agist_figures.ipynb)
-- [Weinreb and scNT, Supplementary Figures S4–S5](nonspatial_figures.ipynb)
-- [Chicken-heart alignment sensitivity, Supplementary Figures S7–S8](chicken_heart_alignment.md)
-- [Chicken-heart growth and velocity analyses](chicken_heart_daily.md)
-- [MOSTA, Supplementary Figures S11–S18](mosta_figures.ipynb)
-- [ARISTA, Supplementary Figures S19–S24](arista_figures.ipynb)
-- [Generate the ARISTA paper populations](arista_populations.md)
-- [ARISTA local interaction domains, Supplementary Figure S25](arista_local_domains.ipynb)
-- [AD mouse, Supplementary Figures S26–S30](admouse_figures.md)
-- [Zebrafish, Supplementary Figures S31–S38](zebrafish_si_s31_s38.ipynb)
-- [Recalculate daughter-cell perturbations, Supplementary Figure S37](zebrafish_daughter_noise.md)
-- [Zebrafish attention and control comparisons, Supplementary Figure S39](zebrafish_attention.ipynb)
-- [Zebrafish decomposition stability, Supplementary Figure S40](zebrafish_decomposition_stability.md)
+To include the larger MOSTA and ARISTA notebooks, set the project folder
+containing the downloads. Figure 4 also evaluates its model on a CUDA GPU.
 
-## Additional analyses
+```bash
+python scripts/execute_paper_notebooks.py --project-dir paper_run --output-dir notebook_runs_full --report notebook_runs_full/report.json
+```
 
-- [Classifier smoothing, Supplementary Figure S6](classifier_smoothing.ipynb)
-- [LR-complex aggregation, Supplementary Figure S41](lr_complex_aggregation.ipynb)
-- [LR-prior and interaction ablations, Supplementary Figure S42](interaction_ablation.ipynb)
-- Supplementary Figure S43 compares spatial communication summaries with COMMOT, CellAgentChat, and NicheNet. Its plotting program and numerical tables are in `release_artifacts/spatial_communication_comparison_s43_20260903`.
-- [Cross-dataset benchmark summary, Supplementary Figure S44](loto_benchmark_summary.ipynb)
-- [Run the SpaTrack comparison used in S44](spatrack_benchmark.md)
-- [Five-dataset benchmark, Supplementary Figure S45](loto_benchmark.ipynb)
-- [Training histories, Supplementary Figure S46](training_histories.ipynb)
-- Supplementary Figure S47 is the analysis-workflow schematic supplied with the manuscript.
-- [Training time and memory](compute_cost.ipynb)
-
-## Videos
-
-- [Zebrafish trajectory videos](../zebrafish_videos.md)
+With `--project-dir`, figures are saved under `paper_run/outputs/`. Without it,
+each notebook writes inside its own folder under `--output-dir`. This command
+runs analyses and plotting, not model training.
 
 ```{toctree}
 :hidden:
 :maxdepth: 1
-arista_populations
-zebrafish_daughter_noise
 
 Figure 2: AGIST <main_figure_2>
-Chicken-heart daily plots <chicken_heart_daily>
+AGIST model simulations <agist_simulations>
+Chicken-heart lineage and velocity <chicken_heart_daily>
 Figure 4: MOSTA <main_figure_4>
 Figure 5: ARISTA <main_figure_5>
-S2–S3: AGIST <agist_figures>
+S2–S3: Simulations <agist_figures>
 S4–S5: Non-spatial data <nonspatial_figures>
 S6: Classifier smoothing <classifier_smoothing>
 S7–S8: Heart alignment <chicken_heart_alignment>
 S11–S18: MOSTA <mosta_figures>
 S19–S24: ARISTA <arista_figures>
+ARISTA model populations <arista_populations>
+ARISTA model fields <arista_model_fields>
 S25: ARISTA local domains <arista_local_domains>
 Figure 6 and S26–S30: AD mouse <admouse_figures>
 S31–S38: Zebrafish <zebrafish_si_s31_s38>
+Zebrafish model calculations <zebrafish_model_figures>
+Zebrafish virtual cell removal <zebrafish_virtual_removal>
+S37: Daughter-cell perturbations <zebrafish_daughter_noise>
 S39: Attention comparisons <zebrafish_attention>
 S40: Decomposition stability <zebrafish_decomposition_stability>
 S41: LR complexes <lr_complex_aggregation>
 S42: Interaction ablations <interaction_ablation>
+S43: Spatial communication <spatial_communication>
 S44: Benchmark summary <loto_benchmark_summary>
 SpaTrack comparison <spatrack_benchmark>
 S45: Benchmark details <loto_benchmark>

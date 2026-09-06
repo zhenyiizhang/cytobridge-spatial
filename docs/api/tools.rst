@@ -111,3 +111,6 @@ Non-spatial temporal workflows
 
 .. automodule:: CytoBridge.nonspatial.communication_consistency
    :members: stratified_sample_indices, encode_cellagentchat_labels, prepare_shared_lr_database, prepare_nichenet_tables, summarize_cellagentchat_pair_matrices, complete_directed_pairs, pairwise_rank_metrics
+
+.. automodule:: CytoBridge.nonspatial.plotting
+   :members: plot_nonspatial_evaluation, distribution_comparison

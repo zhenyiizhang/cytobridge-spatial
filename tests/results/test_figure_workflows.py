@@ -54,7 +54,7 @@ def test_figure_workflow_registry_is_complete_and_explicit() -> None:
 def test_figure_workflow_explanation_has_complete_route() -> None:
     route = describe_figure_workflow("zebrafish-si")
     assert route["starts_from"].startswith("Included zebrafish")
-    assert route["upstream_entry"] == "scripts/run_zebrafish_paper_downstream.py"
+    assert route["upstream_entry"] == "docs/tutorials/paper_figures/zebrafish_model_figures.md"
     assert "--aligned-h5ad" in route["upstream_command"]
     assert route["figure_command"].startswith("cytobridge figure zebrafish-si")
 

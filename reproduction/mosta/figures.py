@@ -72,37 +72,20 @@ def draw_spatial_states(shared: Path, output: Path):
 
 def draw_growth(shared: Path, output: Path):
     """S12: select brain cells and draw the shared-scale growth maps."""
+    from .growth import plot_brain_growth
+
     growth = pd.read_csv(shared / 's5_growth/growth_by_cell_fully_generated.csv')
     brain = growth.loc[growth.celltype.eq('Brain')]
     settings = json.loads((shared / 's5_growth/growth_contract.json').read_text())
-    vmin, vmax = settings['vmin'], settings['vmax']
-    if not np.isfinite(brain[['x', 'y', 'growth']]).all().all():
-        raise ValueError('Growth inputs contain non-finite values.')
-    low, high = brain[['x', 'y']].min(), brain[['x', 'y']].max()
-    padding = .04 * (high - low)
-    cmap = mpl.colors.LinearSegmentedColormap.from_list(
-        'growth', ['#17324d', '#245b78', '#1f8a8a', '#7bc8a4', '#e8f6ef'])
-    display_times = [t for t in TIMES if t != 1.5]
-    fig = plt.figure(figsize=(12.63, 7.59))
-    grid = fig.add_gridspec(3, 5, width_ratios=[1, 1, 1, 1, .07],
-                            wspace=.10, hspace=.16)
-    axes = [fig.add_subplot(grid[row, column]) for row in range(3) for column in range(4)]
-    for ax, time in zip(axes, display_times):
-        cells = brain.loc[np.isclose(brain.time, time)]
-        ax.scatter(cells.x, cells.y, c=np.clip(cells.growth, vmin, vmax),
-                   cmap=cmap, norm=mpl.colors.Normalize(vmin, vmax),
-                   s=2.2, alpha=.92, linewidths=0)
-        ax.set(xlim=(low.x-padding.x, high.x+padding.x),
-               ylim=(low.y-padding.y, high.y+padding.y), xticks=[], yticks=[])
-        ax.set_aspect('equal')
-        ax.set_title(f't={time:.2f}', loc='left', fontsize=9)
-        for spine in ax.spines.values():
-            spine.set_linewidth(.7)
-    colorbar = fig.colorbar(mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(vmin, vmax),
-                                                cmap=cmap), cax=fig.add_subplot(grid[:, -1]))
-    colorbar.set_label('Growth rate')
+    fig, summary = plot_brain_growth(brain, vmin=settings['vmin'], vmax=settings['vmax'])
+    output.mkdir(parents=True, exist_ok=True)
     brain.groupby('time').growth.agg(['count', 'median']).to_csv(output / 'S12_growth_summary.csv')
-    return save(fig, output, 'Figure_S12_MOSTA_growth')
+    summary.to_csv(output / 'S12_displayed_panels.csv', index=False)
+    paths = [output / f'Figure_S12_MOSTA_growth.{suffix}' for suffix in ('pdf', 'png')]
+    fig.savefig(paths[0])
+    fig.savefig(paths[1], dpi=300)
+    plt.close(fig)
+    return paths
 
 
 def draw_composition(shared: Path, output: Path):

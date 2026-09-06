@@ -11,6 +11,7 @@ from importlib import import_module
 
 
 _EXPORTS = {
+    "plot_nonspatial_evaluation": (".plotting", "plot_nonspatial_evaluation"),
     "PreparedNonSpatialData": (".preprocess", "PreparedNonSpatialData"),
     "prepare_scnt_nonspatial": (".preprocess", "prepare_scnt_nonspatial"),
     "prepare_weinreb_nonspatial": (".preprocess", "prepare_weinreb_nonspatial"),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 from pathlib import Path
@@ -347,9 +348,18 @@ def test_mosta_notebooks_use_public_reader_api(
     assert 'data/mosta/paper' in source
     assert 'outputs/mosta_paper' in source
     if notebook_name == "main_figure_4.ipynb":
-        assert "from reproduction.mosta.main_figure import draw_main_figure" in source
-        for panel in "abcde":
+        code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
+                         if cell['cell_type'] == 'code')
+        assert any(isinstance(node, ast.ImportFrom)
+                   and node.module == 'reproduction.mosta.main_figure'
+                   and any(name.name == 'draw_main_figure' for name in node.names)
+                   for node in ast.walk(ast.parse(code)))
+        for panel in "ac":
             assert f'panels="{panel}"' in source
+        calls = {node.func.id for node in ast.walk(ast.parse(code))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+        assert {'draw_interaction_maps', 'calculate_velocity_panel',
+                'draw_interaction_velocity', 'draw_brain_velocity'} <= calls
     else:
         assert "from reproduction.mosta.figures import draw_supplementary" in source
         for number in range(11, 19):

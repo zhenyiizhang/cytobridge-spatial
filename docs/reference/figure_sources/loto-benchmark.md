@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figure S45: five-dataset LOTO benchmark
 
-The [figure notebook](../../tutorials/paper_figures/loto_benchmark.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/loto_benchmark.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 

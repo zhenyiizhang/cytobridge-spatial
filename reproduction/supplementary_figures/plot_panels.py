@@ -346,8 +346,8 @@ def attention(*,null_label='Randomized',permutation_values=None):
             clean(ax)
     with edit_before_save(edit):adopt(m.plot_zebrafish_attention(r,directory(39)),39)
 
-def lr(*,top_n=50):
-    a=api('lr_complex_aggregation');r=a.load_lr_complex_aggregation_results()
+def lr(*,top_n=100,results_dir=None):
+    a=api('lr_complex_aggregation');r=a.load_lr_complex_aggregation_results(results_dir,top_n=top_n)
     rows=[]
     for (d,t),df in r.paired_scores.groupby(['dataset','time']):
         n=min(top_n,len(df));first=a._top_set(df,'score_min',n);second=a._top_set(df,'score_geometric_mean',n)
@@ -388,9 +388,13 @@ def lr(*,top_n=50):
     fig.text(.55,.035,'Normalized developmental time',ha='center',fontsize=9)
     save(fig,41)
 
-def ablation():
-    no=pd.read_csv(WORK/'CytoBridge/results/data/interaction_evidence/no_lr_paired_target_deltas.csv')
-    off=pd.read_csv(ROOT/'data/interaction_ablation/paired_target_errors.csv')
+def ablation(results_dir=None):
+    if results_dir is None:
+        no=pd.read_csv(WORK/'CytoBridge/results/data/interaction_evidence/no_lr_paired_target_deltas.csv')
+        off=pd.read_csv(ROOT/'data/interaction_ablation/paired_target_errors.csv')
+    else:
+        result=api('interaction_ablation').load_interaction_ablation_results(results_dir)
+        no,off=result.no_lr.copy(),result.interaction.copy()
     no['change']=100*(no.no_lr_prior/no.full-1);off['change']=100*off.off_relative_to_on
     datasets=['zebrafish','mosta','arista','admouse','chicken_heart']
     labels=['Zebrafish','MOSTA','ARISTA','AD mouse','Chicken\nheart']

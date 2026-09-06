@@ -49,8 +49,11 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--figures',nargs='+',default=[f'S{n}' for n in FIGURES])
     parser.add_argument('--output-dir',type=Path,default=Path('outputs/supplementary_figures'))
+    parser.add_argument('--results-dir',type=Path,help='Input directory for S41 or S42, instead of the included data')
     args=parser.parse_args()
     requested=[int(n.upper().removeprefix('S')) for n in args.figures]
+    if args.results_dir is not None and (len(requested)!=1 or requested[0] not in (41,42)):
+        parser.error('--results-dir is supported for one figure: S41 or S42')
     if any(n not in FIGURES for n in requested):parser.error('Choose figures from '+', '.join(f'S{n}' for n in FIGURES))
     output=args.output_dir.resolve();output.mkdir(parents=True,exist_ok=True)
     tables=output/'tables';tables.mkdir(exist_ok=True)
@@ -64,7 +67,8 @@ def main():
         25:lambda:domains.s25(control_label='Randomly sampled cells'),
         34:panels.zebrafish,36:panels.zebrafish,
         39:lambda:panels.attention(permutation_values=commot_permutations(tables)),
-        40:summaries.s40,41:lambda:panels.lr(top_n=100),42:panels.ablation,
+        40:summaries.s40,41:lambda:panels.lr(top_n=100,results_dir=args.results_dir),
+        42:lambda:panels.ablation(results_dir=args.results_dir),
         43:panels.communication,44:lambda:panels.wins(uniform_markers=True),45:panels.benchmark,
         46:panels.training}
     done=set()

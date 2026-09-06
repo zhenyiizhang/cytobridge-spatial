@@ -110,9 +110,13 @@ def test_registry_states_what_each_entry_can_do() -> None:
         "Supplementary Figure S5",
         "Supplementary Figure S6",
         "Supplementary Figure S25",
-        "Supplementary Figure S31",
     ):
         assert "missing-new-run-assembly" in by_location[location]["availability"]
+
+    for figure in (31, 32, 35, 37, 38):
+        row = by_location[f"Supplementary Figure S{figure}"]
+        assert "full new-run calculation" in row["reproduction_mode"]
+        assert "missing-new-run-assembly" not in row["availability"]
 
     assert by_location["Supplementary Figure S43"]["availability"] == "ready-to-redraw"
 

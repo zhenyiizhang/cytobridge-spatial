@@ -11,11 +11,22 @@ cd cytobridge-spatial
 python -m pip install -e '.[spatial,velocity,notebook]'
 ```
 
-Open JupyterLab from your project folder to run a notebook:
+Keep the source checkout and the study data in separate folders. From the
+checkout, start JupyterLab with the two locations set explicitly:
 
 ```bash
+export CYTOBRIDGE_SOURCE_DIR="$PWD"
+export CYTOBRIDGE_PROJECT_DIR="$PWD/paper_run"
+export PYTHONPATH="$CYTOBRIDGE_SOURCE_DIR${PYTHONPATH:+:$PYTHONPATH}"
+mkdir -p "$CYTOBRIDGE_PROJECT_DIR"
 jupyter lab
 ```
+
+Open a notebook under `docs/tutorials/` in JupyterLab. Its data are read from
+`paper_run/data/` and new results go to `paper_run/outputs/`. You can change
+`CYTOBRIDGE_PROJECT_DIR` to an existing data directory before launching
+JupyterLab. The source path makes the paper-specific `reproduction` modules
+available even when the notebook is opened in a nested folder.
 
 ## Installation options
 

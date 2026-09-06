@@ -34,9 +34,9 @@ WORKFLOWS = {
     "zebrafish_si_s31_s38.ipynb": "zebrafish-si",
 }
 
-# These tutorials now contain their own download, calculation and plotting
-# steps. Do not replace them with the older source-index introduction.
-NUMERICAL_TUTORIALS = {"main_figure_4.ipynb", "main_figure_5.ipynb", "mosta_figures.ipynb", "arista_figures.ipynb"}
+# Current tutorials are edited directly, including their executed outputs.
+# This older migration must not replace them with a generated introduction.
+NUMERICAL_TUTORIALS = set(WORKFLOWS) - {"lr_prior_ablation_stvcr.ipynb"}
 
 ROUTE_CELL_TAG = "cytobridge-reproduction-route"
 DETAIL_CELL_TAG = "cytobridge-upstream-detail"

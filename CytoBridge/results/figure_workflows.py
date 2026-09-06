@@ -93,10 +93,10 @@ FIGURE_WORKFLOWS = (
         True,
         "Recalculate the included zebrafish panel values and draw eight figures.",
         "Included zebrafish panel arrays and result tables.",
-        "scripts/run_zebrafish_paper_downstream.py",
-        "python -m scripts.run_zebrafish_paper_downstream --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --model-dir <run>/training --acceptance-report <run>/matched_ablation_acceptance.json --lr-database <zebrafish-lr.csv> --output-dir <zebrafish-paper-output> --stage all --device cuda",
+        "docs/tutorials/paper_figures/zebrafish_model_figures.md",
+        "python scripts/run_zebrafish_paper_downstream.py --aligned-h5ad data/zebrafish/aligned.h5ad --model-dir data/zebrafish/model --output-dir outputs/zebrafish_analysis --stage s22,growth,s25 --video-formats none --device cuda:0",
         "cytobridge figure zebrafish-si --output-dir outputs/zebrafish_si",
-        "Redraws S31-S38 from the included result tables. The preceding command creates the full zebrafish analysis used to prepare those tables.",
+        "Redraws S31-S38 from included numerical results. The model tutorial provides separate calculation and plotting commands for populations, growth, and expression. S35 follows the initial YSL lineage using continuous population weights.",
     ),
     FigureWorkflow(
         "interaction-ablation",

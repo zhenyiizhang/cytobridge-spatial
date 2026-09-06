@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figure S41: LR-complex aggregation
 
-The [figure notebook](../../tutorials/paper_figures/lr_complex_aggregation.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/lr_complex_aggregation.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 
@@ -49,9 +49,9 @@ Next: `draw S41`
 ### 3. summarize and draw (S41)
 
 ```text
-cytobridge figure lr-complex --results-dir <s41-inputs> --output-dir <figure-dir>
+python -m reproduction.paper_figures --figures 41 --results-dir <s41-inputs> --output-dir <figure-dir>
 ```
 
 Start with: `the collected S41 input directory`
 
-Writes: `per-time and dataset summary CSVs; lr_complex_aggregation.pdf/.png`
+Writes: `S41.pdf/.png; tables/S41_top100_jaccard.csv; per-time and dataset summary CSVs`

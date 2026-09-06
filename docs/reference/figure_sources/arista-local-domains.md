@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figure S25: ARISTA local interaction domains
 
-The [figure notebook](../../tutorials/paper_figures/arista_local_domains.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/arista_local_domains.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 

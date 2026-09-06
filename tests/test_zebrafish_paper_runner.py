@@ -103,8 +103,10 @@ def _acceptance_args(tmp_path):
     return args, run_root, aligned, model, report
 
 
-def test_formal_profile_requires_both_acceptance_arguments(tmp_path):
-    with pytest.raises(ValueError, match="acceptance-report.*required"):
+def test_downloaded_inputs_do_not_require_old_acceptance_record(tmp_path):
+    # The normal reader path should reach input validation without an
+    # acceptance file tied to the original server directory.
+    with pytest.raises(FileNotFoundError, match="aligned zebrafish H5AD"):
         runner.main(
             [
                 "--aligned-h5ad",
@@ -115,6 +117,13 @@ def test_formal_profile_requires_both_acceptance_arguments(tmp_path):
                 str(tmp_path / "output"),
             ]
         )
+
+
+def test_acceptance_digest_still_requires_the_corresponding_report():
+    args = SimpleNamespace(profile="full", acceptance_report=None,
+                              expected_acceptance_sha256="0" * 64)
+    with pytest.raises(ValueError, match="requires --acceptance-report"):
+        runner._require_formal_acceptance_cli(args)
 
 
 def test_matched_acceptance_rejects_tampered_report(tmp_path):

@@ -155,10 +155,10 @@ observed_times = sorted(states.obs[time_key].unique())
 DEVICE = "cuda"
 ```
 
-You can now use the [analysis tutorial](tutorials/dataset_workflows/chicken_heart.ipynb)
-from **Calculate velocity components** onward, with these variables. Skip its
-dataset download and model-loading sections. No study `workflow.json` is needed
-for these velocity, growth, or attention calculations.
+Continue with [Velocity and growth](tutorials/model_analysis.ipynb), starting
+at **Calculate velocity components**. Use the variables above and skip that
+notebook's chicken-heart example input. The calculation and plotting cells
+work with your trained model and do not require a study `workflow.json`.
 
 ## Paper training settings
 

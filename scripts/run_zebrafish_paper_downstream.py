@@ -23,12 +23,10 @@ Examples
 Run all manuscript analyses::
 
     python scripts/run_zebrafish_paper_downstream.py \
-      --aligned-h5ad MATCHED_RUN/zebrafish/preprocess/zebrafish_aligned.h5ad \
-      --model-dir MATCHED_RUN/zebrafish/training \
-      --acceptance-report MATCHED_RUN/matched_ablation_acceptance.json \
-      --expected-acceptance-sha256 <exact-sha256> \
+      --aligned-h5ad data/zebrafish/aligned.h5ad \
+      --model-dir data/zebrafish/model \
       --lr-database /path/to/zebrafish_ligand_receptor.csv \
-      --output-dir MATCHED_RUN/zebrafish/paper_downstream \
+      --output-dir outputs/zebrafish_downstream \
       --stage all --device cuda
 
 Resume only S25 and communication::
@@ -297,11 +295,6 @@ def _require_zebrafish_matched_path(
 def _require_formal_acceptance_cli(args: argparse.Namespace) -> None:
     report = getattr(args, "acceptance_report", None)
     digest = getattr(args, "expected_acceptance_sha256", None)
-    required = str(getattr(args, "profile", "full")) == "full"
-    if required and report is None:
-        raise ValueError(
-            "--acceptance-report is required for the complete analysis"
-        )
     if report is None and digest is not None:
         raise ValueError(
             "--expected-acceptance-sha256 requires --acceptance-report"
@@ -1251,7 +1244,8 @@ def _stage_s22(ctx: RunContext) -> dict[str, object]:
                 f"grid; missing={sorted(set(missing_render_times))}. Choose "
                 "--video-step as an integer multiple of --s22-simulation-step."
             )
-    formats = _parse_csv_strings(ctx.args.video_formats)
+    formats = ([] if ctx.args.video_formats.strip().lower() == "none"
+               else _parse_csv_strings(ctx.args.video_formats))
     unsupported = sorted(set(formats).difference({"gif", "mp4"}))
     if unsupported:
         raise ValueError(f"Unsupported --video-formats values: {unsupported}")
@@ -4235,7 +4229,8 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help=(
-            "Validation JSON written by the matched zebrafish training run."
+            "Optional validation record from a matched training run. Not needed "
+            "when using the downloaded model and aligned data."
         ),
     )
     parser.add_argument(
@@ -4319,7 +4314,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--video-step", type=float, default=0.1)
     parser.add_argument("--video-fps", type=int, default=10)
-    parser.add_argument("--video-formats", default="gif,mp4")
+    parser.add_argument("--video-formats", default="gif,mp4",
+                        help="gif, mp4, gif,mp4, or none to draw only the figures.")
     parser.add_argument("--velocity-neighbors", type=int, default=30)
 
     parser.add_argument("--ablation-step", type=float, default=0.05)

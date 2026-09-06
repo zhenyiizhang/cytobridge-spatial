@@ -47,13 +47,31 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(int(seed))
 
 
-def load_models(project_root: Path, config_path: Path, checkpoint_dir: Path, device: str):
+def load_models(
+    project_root: Path,
+    config_path: Path,
+    checkpoint_dir: Path,
+    device: str,
+    edge_predictor: Path | None = None,
+):
     sys.path.insert(0, str(project_root))
-    from DeepRUOT.models import FNet_interaction, scoreNet2
+    from CytoBridge.tl.downstream.legacy_models import (
+        LegacyFNetInteraction,
+        LegacyScoreNet2,
+    )
 
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     model_config = config["model"]
-    f_net = FNet_interaction(
+    predictor = Path(edge_predictor or model_config["edge_predictor_path"])
+    if not predictor.is_absolute():
+        predictor = config_path.parent / predictor
+    if not predictor.is_file():
+        raise FileNotFoundError(
+            f"Edge predictor not found: {predictor}. "
+            "Pass --edge-predictor data/agist/edge_classifier/mouse.pt."
+        )
+    model_config["edge_predictor_path"] = str(predictor.resolve())
+    f_net = LegacyFNetInteraction(
         in_out_dim=int(model_config["in_out_dim"]),
         hidden_dim=int(model_config["hidden_dim"]),
         n_hiddens=int(model_config["n_hiddens"]),
@@ -65,7 +83,7 @@ def load_models(project_root: Path, config_path: Path, checkpoint_dir: Path, dev
         edge_predictor_path=str(model_config["edge_predictor_path"]),
         edge_predictor_thre=float(model_config.get("edge_predictor_thre", 0.45)),
     ).to(device)
-    score_net = scoreNet2(
+    score_net = LegacyScoreNet2(
         in_out_dim=int(model_config["in_out_dim"]),
         hidden_dim=int(model_config["score_hidden_dim"]),
         activation=str(model_config["activation"]),
@@ -95,7 +113,7 @@ def simulate_split(
     interaction_m: int,
     split_noise_std: float,
 ) -> tuple[list[np.ndarray], list[np.ndarray]]:
-    from DeepRUOT.interaction import cal_interaction, euler_sdeint_split
+    from reproduction.agist.integration import cal_interaction, euler_sdeint_split
 
     x0_tensor = torch.tensor(x0, dtype=torch.float32, device=device)
     lnw0 = torch.log(torch.ones(x0_tensor.shape[0], 1, device=device) / x0_tensor.shape[0])
@@ -156,9 +174,10 @@ def exact_w2(pred: np.ndarray, truth: np.ndarray, pred_weight: np.ndarray) -> fl
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project-root", type=Path, required=True)
+    parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--checkpoint-dir", type=Path, required=True)
+    parser.add_argument("--edge-predictor", type=Path, help="Downloaded mouse.pt edge predictor.")
     parser.add_argument("--data-csv", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="cuda")
@@ -170,12 +189,15 @@ def main() -> None:
     parser.add_argument("--simulate-only", action="store_true")
     args = parser.parse_args()
 
+    if args.output_dir.exists() and any(args.output_dir.iterdir()):
+        raise FileExistsError(f"Choose a new output directory: {args.output_dir}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     trajectory_dir = args.output_dir / "trajectories"
     trajectory_dir.mkdir(exist_ok=True)
 
     config, f_net, score_net, model_path, score_path = load_models(
-        args.project_root.resolve(), args.config.resolve(), args.checkpoint_dir.resolve(), args.device
+        args.project_root.resolve(), args.config.resolve(), args.checkpoint_dir.resolve(),
+        args.device, edge_predictor=args.edge_predictor,
     )
     data = pd.read_csv(args.data_csv)
     feature_cols = [f"x{i}" for i in range(1, 53)]

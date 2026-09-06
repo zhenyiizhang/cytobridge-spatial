@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Table 2: full-model compute cost
 
-The [figure notebook](../../tutorials/paper_figures/compute_cost.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/compute_cost.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 

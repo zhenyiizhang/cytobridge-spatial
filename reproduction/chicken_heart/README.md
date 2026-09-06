@@ -70,7 +70,7 @@ been tested with the same package source as the other three notebooks.
 
 These outputs are kept separately from the assembled manuscript pages.
 The current S7–S8 sensitivity figures use the code in
-`release_artifacts/chicken_heart_alignment_sensitivity_20260831/`, not the
+`reproduction/chicken_heart/alignment_sensitivity_20260906/`, not the
 older alignment code supplied in the collaborator ZIP.
 
 ## S10 comparison-region boxes

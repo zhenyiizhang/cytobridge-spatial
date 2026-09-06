@@ -74,6 +74,7 @@ quickstart
 
 tutorials/dataset_workflows/index
 training
+tutorials/model_analysis
 trajectory_analysis
 
 ```

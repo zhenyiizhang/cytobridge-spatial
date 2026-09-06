@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figure S42: LR-prior and interaction ablations
 
-The [figure notebook](../../tutorials/paper_figures/interaction_ablation.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/interaction_ablation.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 
@@ -46,12 +46,12 @@ Next: `draw all four panels`
 ### 3. recalculate summaries and draw (S42)
 
 ```text
-cytobridge figure interaction-ablation --results-dir <s42-inputs> --output-dir <figure-dir>
+python -m reproduction.paper_figures --figures 42 --results-dir <s42-inputs> --output-dir <figure-dir>
 ```
 
 Start with: `the collected numerical results`
 
-Writes: `interaction_ablation.pdf/.png, paired seed/target tables, and caption statistics`
+Writes: `S42.pdf/.png; tables/S42_no_lr.csv, S42_interaction_off.csv, and S42_summaries.csv`
 
 
 

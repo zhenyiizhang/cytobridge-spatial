@@ -4,7 +4,7 @@ orphan: true
 
 # Analysis inputs: Supplementary Figures S4–S5: grouped non-spatial analyses
 
-The [figure notebook](../../tutorials/paper_figures/nonspatial_figures.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [figure notebook](../../tutorials/paper_figures/nonspatial_figures.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
 
 ## Calculation programs
 
@@ -141,7 +141,7 @@ python scripts/execute_paper_notebooks.py --notebook nonspatial_figures --output
 
 Start with: `included numerical files under nonspatial_figures/*`
 
-Writes: `<notebook-run>/nonspatial_figures/outputs/nonspatial_figures/supplementary_figure_s4_weinreb_nonspatial.pdf and supplementary_figure_s5_scnt_nonspatial.pdf, matching PNGs, and derived CSV tables`
+Writes: `<notebook-run>/nonspatial_figures/outputs/nonspatial_figures/S4.pdf and S5.pdf, matching PNGs, and derived CSV tables`
 
 
 The included numerical files reproduce the paper figure. They use the paper's saved Full checkpoint and the corrected No-interaction run; they are not the output of a new matched two-arm run. Steps 1–8 show the public route for producing both arms in a new run. The notebook recalculates the displayed values and draws new PDF and PNG files rather than loading finished figure pages.

@@ -102,6 +102,22 @@ cytobridge nonspatial evaluate \
 The evaluation directory contains weighted W1, weighted W2, and total-mass
 variation tables for both arms.
 
+Draw the distribution panel directly from that evaluation:
+
+```python
+from CytoBridge.nonspatial import plot_nonspatial_evaluation
+
+figures = plot_nonspatial_evaluation(
+    "weinreb",
+    "outputs/nonspatial/weinreb/evaluation/paired_distribution_metrics.csv",
+    "outputs/nonspatial/weinreb/distribution_plot",
+)
+```
+
+The function pairs the two conditions by time and seed, averages inference
+repeats, and draws the S4c comparison using the paper's plotting function.
+Use `"scnt_cortex"` and its evaluation path to draw S5c.
+
 For Weinreb, calculate clone-fate summaries from Day 2 to Day 6:
 
 ```bash
@@ -123,6 +139,23 @@ cytobridge nonspatial scnt-direction \
   --no-interaction-run-dir "$run_root/no_interaction" \
   --output-dir "$run_root/scnt_direction" --device cuda:0
 ```
+
+To draw the additional evaluation panel, pass the output of the corresponding
+command to `plot_nonspatial_evaluation`: use `clone_fate_dir` for Weinreb or
+`direction_csv` for scNT. For example, after the scNT commands finish:
+
+```python
+figures = plot_nonspatial_evaluation(
+    "scnt_cortex",
+    "outputs/nonspatial/scnt_cortex/evaluation/paired_distribution_metrics.csv",
+    "outputs/nonspatial/scnt_cortex/evaluation_plots",
+    direction_csv="outputs/nonspatial/scnt_cortex/scnt_direction/timewise_scnt_direction_alignment.csv",
+)
+```
+
+This draws S5c–d from that run. The complete S4–S5 notebook also includes
+cell-state display coordinates, velocity grids and communication tables, which
+are separate inputs.
 
 ## Calculate interaction attribution
 
