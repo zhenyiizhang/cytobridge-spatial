@@ -17,7 +17,7 @@ To draw selected figures:
 python reproduction/supplementary_figures/plot_figures.py --figures S39 S41 --output-dir outputs/selected_figures
 ```
 
-Each figure is saved as a vector PDF and a 320-dpi PNG. The output directory also
+Each figure is saved as a vector PDF and a PNG at 320 dpi or higher. The output directory also
 contains a combined PDF and the calculated plot tables. Use Arial to match the
 manuscript typography. Training is not repeated by this plotting command. Dataset
 preprocessing and training are documented in their respective tutorials.
