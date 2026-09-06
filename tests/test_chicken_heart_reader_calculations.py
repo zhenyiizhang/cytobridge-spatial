@@ -68,6 +68,24 @@ def test_daily_notebook_connects_calculations_to_plotting():
     assert "earlier alignment" not in text
 
 
+def test_tutorial_omits_extra_daily_transition_illustration():
+    code = notebook_code()
+    assert "daily_settings" not in code
+    assert '"daily_transitions"' not in code
+    assert '"daily": days' not in code
+    assert '"cardiomyocyte_transitions"' in code
+    assert '"epicardial_fibroblast_transitions"' in code
+
+
+def test_model_notebook_is_not_scheduled_without_its_dataset():
+    runner = ROOT / "scripts/execute_paper_notebooks.py"
+    download_set = next(node.value for node in ast.parse(runner.read_text()).body
+                        if isinstance(node, ast.Assign)
+                        and any(isinstance(t, ast.Name) and t.id == "DOWNLOAD_NOTEBOOKS"
+                                for t in node.targets))
+    assert "chicken_heart_daily" in ast.literal_eval(download_set)
+
+
 def test_each_lineage_panel_uses_only_its_selected_intervals(tmp_path):
     function = next(n for n in ast.parse(notebook_code()).body
                     if isinstance(n, ast.FunctionDef) and n.name == "plot_transitions")

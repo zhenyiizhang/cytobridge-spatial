@@ -20,13 +20,15 @@ OPERATIONS = {
     "main_figure_4": "draw all panels from cell states and numerical results",
     "main_figure_5": "draw all panels from cell states and numerical results",
     "mosta_figures": "draw S11-S18 from cell states and numerical results",
+    "chicken_heart_daily": "calculate velocities, cell-type transitions and interactions from the trained model",
     "arista_figures": "draw S19-S24 from cell states and numerical results",
     "compute_cost": "format recorded measurements as a table",
 }
-DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures"}
+DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures",
+                      "chicken_heart_daily"}
 EXCLUDED_NOTEBOOKS = {"lr_prior_ablation_stvcr"}  # Superseded by interaction_ablation.
 
-# The kernels run in temporary output directories. Keep the source checkout on
+# The kernels run in temporary output directories. Keep the CytoBridge code folder on
 # their import path when this script is used before installing a wheel.
 _pythonpath = os.environ.get("PYTHONPATH")
 os.environ["PYTHONPATH"] = (
@@ -137,7 +139,7 @@ def main() -> None:
                         help="Shared project containing data/. Notebook results go to its outputs/.")
     parser.add_argument("--report", type=Path, help="Save the execution summary as JSON.")
     parser.add_argument("--bundled-only", action="store_true",
-                        help="Run notebooks whose numerical inputs ship with the source checkout")
+                        help="Run notebooks whose numerical inputs are included in the CytoBridge code folder")
     parser.add_argument(
         "--notebook",
         action="append",

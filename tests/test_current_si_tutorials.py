@@ -68,8 +68,11 @@ def test_training_continues_at_real_generic_analysis_section():
     assert '## Calculate velocity components' in source
     assert 'cb.tl.compute_velocity_components(' in source
     assert 'cb.tl.evaluate_growth_by_timepoint(' in source
-    assert 'velocity=velocity[component][:, :2]' in source
-    assert 'scale_mode="global_limits"' in source
+    assert 'velocity_components.npz' in source
+    assert 'growth_by_cell.csv' in source
+    assert 'cb.pl.plot_velocity_component(' not in source
+    assert 'cb.pl.plot_growth_timepoint_grid(' not in source
+    assert 'paper_figures/chicken_heart_daily.ipynb' in source
     assert 'Image(filename=' not in source
 
 def test_current_renderer_rejects_source_overwrite(tmp_path):
