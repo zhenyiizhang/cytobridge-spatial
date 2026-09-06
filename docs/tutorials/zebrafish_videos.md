@@ -4,7 +4,7 @@ These videos follow the simulated tissue from 5.25 to 24 hours post-fertilizatio
 Videos 4 and 5 compare the baseline with virtual removal of YSL or EVL cells.
 A third video shows the baseline with directed interaction edges.
 
-Run the commands from a [source checkout](../installation.md). Install the
+Run the commands from a [CytoBridge code folder](../installation.md). Install the
 notebook dependencies, which include a video encoder:
 
 ```bash

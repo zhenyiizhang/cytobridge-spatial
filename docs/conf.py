@@ -94,6 +94,7 @@ html_title = f"CytoBridge {release}"
 html_logo = "_static/cytobridge_logo.svg"
 html_static_path = ["_static"]
 html_css_files = ["cytobridge.css"]
+html_js_files = ["notebook-images.js"]
 html_theme_options = {
     "sidebar_hide_name": True,
     "navigation_with_keys": True,

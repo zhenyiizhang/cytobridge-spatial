@@ -11,8 +11,9 @@ cd cytobridge-spatial
 python -m pip install -e '.[spatial,velocity,notebook]'
 ```
 
-Keep the source checkout and the study data in separate folders. From the
-checkout, start JupyterLab with the two locations set explicitly:
+The commands above create a folder named `cytobridge-spatial`. While in that
+folder, start JupyterLab with the following settings. Downloaded data and new
+results will be kept in its `paper_run` subfolder:
 
 ```bash
 export CYTOBRIDGE_SOURCE_DIR="$PWD"

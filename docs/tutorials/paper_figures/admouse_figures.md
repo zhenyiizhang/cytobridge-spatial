@@ -5,7 +5,7 @@ trained model and generates new populations. This page continues with the
 gene-program, ligand–receptor, perturbation, and NicheNet analyses. It also
 shows how to redraw S26 from the saved simulation used in the paper.
 
-Run these commands from the source checkout described in
+Run these commands from the CytoBridge code folder described in
 [Installation](../../installation.md). Each command writes new tables and
 plots under `outputs/`.
 

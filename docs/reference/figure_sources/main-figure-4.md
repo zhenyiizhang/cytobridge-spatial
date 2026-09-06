@@ -10,7 +10,7 @@ panels from a completed page.
 
 ## Download and draw
 
-From the source checkout:
+From the CytoBridge code folder:
 
 ```bash
 python -m CytoBridge.datasets mosta --kind mosta_figure_data.zip --output-dir .

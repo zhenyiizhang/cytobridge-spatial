@@ -345,7 +345,7 @@ def test_mosta_notebooks_use_public_reader_api(
     )
     assert title in source
     assert "cb.datasets.download" in source
-    assert 'data/mosta/paper' in source
+    assert 'data/mosta' in source
     assert 'outputs/mosta_paper' in source
     if notebook_name == "main_figure_4.ipynb":
         code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
@@ -361,9 +361,15 @@ def test_mosta_notebooks_use_public_reader_api(
         assert {'draw_interaction_maps', 'calculate_velocity_panel',
                 'draw_interaction_velocity', 'draw_brain_velocity'} <= calls
     else:
-        assert "from reproduction.mosta.figures import draw_supplementary" in source
-        for number in range(11, 19):
-            assert f'figures=[{number}]' in source
+        for calculation in ("evaluate_growth_by_timepoint", "summarize_label_composition",
+                            "summarize_temporal_gene_patterns", "analyze_developmental_wave",
+                            "compute_timepoint_communications",
+                            "project_communication_to_lr_timecourses"):
+            assert f"cb.tl.{calculation}(" in source
+        assert "plot_brain_growth(brain," in source
+        assert "plot_composition(composition," in source
+        assert "plot_lr_profiles(lr.pair_timecourse," in source
+        assert "draw_supplementary(" not in source
     assert "assemble_main_figure_4" not in source
     assert "export_mosta_supplementary_figures" not in source
     assert any(

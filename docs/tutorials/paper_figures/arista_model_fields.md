@@ -2,7 +2,7 @@
 
 The [Figure 5 notebook](main_figure_5.ipynb) draws the paper's numerical results.
 This page shows how the velocity and growth values are calculated from the
-trained model. Run the examples from the source checkout on a CUDA GPU.
+trained model. Run the examples from the CytoBridge code folder on a CUDA GPU.
 
 ## Model and population states
 

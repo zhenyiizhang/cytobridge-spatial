@@ -7,7 +7,7 @@ intermediate observed stages. Five random seeds are used for each setting.
 
 ## Download the inputs
 
-Run this Python code from the source checkout after
+Run this Python code from the CytoBridge code folder after
 [installation](../../installation.md):
 
 ```python

@@ -200,7 +200,7 @@ def draw_supplementary(data_dir: str | Path, output_dir: str | Path, figures=ran
     """Draw selected S11–S18 panels, returning their newly generated PDF/PNG paths.
 
     ``data_dir`` is ``data/mosta/paper`` from ``mosta_figure_data.zip``.
-    The source checkout supplies the small GO and LR result tables.
+    The CytoBridge code folder supplies the small GO and LR result tables.
     """
     from . import gene_enrichment, gene_programs
     data, output = Path(data_dir).resolve(), Path(output_dir).resolve()

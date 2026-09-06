@@ -6,7 +6,7 @@ and draws the comparison in gene-expression and physical space.
 
 ## Download the inputs
 
-From the [source checkout](../../installation.md), run:
+From the [CytoBridge code folder](../../installation.md), run:
 
 ```bash
 python -m CytoBridge.datasets agist --output-dir . --kind analysis

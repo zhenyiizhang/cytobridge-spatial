@@ -2,9 +2,11 @@
 
 These four notebooks calculate daily populations, lineage transitions,
 interaction networks, growth, and velocity from the trained chicken-heart model.
-They are portable copies of the collaborator's `celltypecorrected` notebooks.
 For an introduction to the Python API, start with the
 [chicken-heart tutorial](../../docs/tutorials/dataset_workflows/chicken_heart.ipynb).
+Continue with [trajectories and interactions](../../docs/tutorials/paper_figures/chicken_heart_daily.ipynb)
+to calculate the velocity, transition, and interaction panels. Both website
+notebooks show the calculations and their resulting figures.
 
 ## Inputs
 
@@ -25,7 +27,7 @@ my_project/data/chicken_heart/
     └── chicken_heart_spatial_merged_with_meta.h5ad
 ```
 
-Install the package and notebook dependencies from the source checkout:
+Install the package and notebook dependencies from the CytoBridge code folder:
 
 ```bash
 python -m pip install -e '.[all]' nbformat nbclient ipykernel
@@ -54,7 +56,7 @@ Use `--output-dir` to keep another run separately.
 For one step, add `--step interpolation`, `--step daily`, `--step d10`, or
 `--step supplementary`. The last three read the interpolation results in the
 same output directory. When opening a notebook manually, set `REPO_ROOT` to
-the source checkout and `PROJECT_DIR` to the folder containing `data/`.
+the CytoBridge code folder and `PROJECT_DIR` to the folder containing `data/`.
 
 ## Model and analysis settings
 
@@ -63,15 +65,8 @@ classifier named above. The four observed stages D4, D7, D10, and D14 map to
 model times 0, 1, 2, and 3. Interpolation restarts at each observed stage and
 uses `split_resample_dt=1/12` for the daily output grid.
 
-The port changes file locations and selects the classifier by its exact name.
-The copied numerical cells and plotting-function bodies are retained. The
-original D10 notebook named its package folder `package-release`. It has
-been tested with the same package source as the other three notebooks.
-
-These outputs are kept separately from the assembled manuscript pages.
 The current S7–S8 sensitivity figures use the code in
-`reproduction/chicken_heart/alignment_sensitivity_20260906/`, not the
-older alignment code supplied in the collaborator ZIP.
+`reproduction/chicken_heart/alignment_sensitivity_20260906/`.
 
 ## S10 comparison-region boxes
 

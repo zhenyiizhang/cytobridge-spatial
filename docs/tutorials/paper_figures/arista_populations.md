@@ -6,7 +6,7 @@ analysis APIs, start with the [ARISTA tutorial](../dataset_workflows/arista.ipyn
 
 ## Download the model and aligned data
 
-Run this from the [source checkout](../../installation.md):
+Run this from the [CytoBridge code folder](../../installation.md):
 
 ```python
 import CytoBridge as cb

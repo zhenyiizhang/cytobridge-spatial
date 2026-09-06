@@ -1,10 +1,10 @@
 # Paper figures
 
-Find a figure below and run its notebook from top to bottom. The notebook
-introduces the input arrays or tables, calculates the plotted quantities, and
-saves new figures. Its displayed results are saved notebook outputs.
+Choose a dataset or analysis below. The dataset notebooks calculate dynamics
+from a trained model. The figure pages show the panel calculations and plotting
+code, including analyses that start from saved intermediate tables.
 
-Start with the [source installation](../../installation.md), which sets up the
+Start with the [installation instructions](../../installation.md), which set up the
 code and data folders for JupyterLab. Small numerical tables are included with
 the code. A notebook that needs a larger download names it in its first cell.
 
@@ -14,7 +14,7 @@ the code. A notebook that needs a larger download names it in its first cell.
 | --- | --- | --- |
 | AGIST | Figure 2, S2–S3 | [Simulation comparisons](agist_figures.ipynb), [Figure 2](main_figure_2.ipynb) |
 | Weinreb and scNT | S4–S5 | [Expression-state dynamics](nonspatial_figures.ipynb) |
-| Chicken heart | Figure 3, S7–S10 | [Growth and daily populations](../dataset_workflows/chicken_heart.ipynb), [lineage and velocity](chicken_heart_daily.md), [alignment](chicken_heart_alignment.md) |
+| Chicken heart | Figure 3, S7–S10 | [Growth and daily populations](../dataset_workflows/chicken_heart.ipynb), [lineage and velocity](chicken_heart_daily.ipynb), [alignment](chicken_heart_alignment.md) |
 | MOSTA | Figure 4, S11–S18 | [Figure 4](main_figure_4.ipynb), [supplementary figures](mosta_figures.ipynb) |
 | ARISTA | Figure 5, S19–S25 | [Figure 5](main_figure_5.ipynb), [S19–S24](arista_figures.ipynb), [local interaction domains](arista_local_domains.ipynb) |
 | AD mouse | Figure 6, S26–S30 | [Population, interaction and perturbation analyses](admouse_figures.md) |

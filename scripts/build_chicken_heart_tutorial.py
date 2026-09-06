@@ -154,7 +154,7 @@ pd.DataFrame(slice_records)[["time_label", "time_float", "is_observed", "n_cells
 The simulation, growth table, and plots are saved in the `OUTPUT_DIR` set
 above. The saved `manifest.json` names every population and its time.
 
-The [chicken-heart analysis notebooks](../paper_figures/chicken_heart_daily.md)
+The [chicken-heart analysis notebook](../paper_figures/chicken_heart_daily.ipynb)
 use these populations for lineage transitions, cell-type interactions, and
 velocity analysis. Run their analysis steps rather than repeating interpolation.
 The separate [S7–S8 alignment analysis](../paper_figures/chicken_heart_alignment.md)

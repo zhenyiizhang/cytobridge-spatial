@@ -16,7 +16,7 @@ The fitted coupling maps each starting cell to the weighted mean of its target-s
 
 ## Run
 
-From a CytoBridge source checkout with the benchmark dependencies installed. This calculation was run with NumPy 1.26.4 and POT 0.9.7. Use NumPy below 2 because the archived SpaTrack solver uses `np.Inf`.
+Run the commands below in the `cytobridge-spatial` folder after installing the benchmark dependencies. This calculation used NumPy 1.26.4 and POT 0.9.7. Use NumPy below 2 because this version of the SpaTrack solver uses `np.Inf`.
 
 ```bash
 python release_artifacts/five_dataset_loto_summary_20260904/code/spatrack/run_benchmark.py \

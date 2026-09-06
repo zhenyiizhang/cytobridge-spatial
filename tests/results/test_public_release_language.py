@@ -69,6 +69,8 @@ NUMERICAL_DATA_NOTEBOOKS = {
 }
 
 PUBLIC_PROSE_MARKERS = (
+    "source checkout",
+    "collaborator's earlier",
     "learning goals",
     "scientific question",
     "scientific contract",
@@ -185,11 +187,11 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
                          if cell['cell_type'] == 'code')
         assert any(isinstance(node, ast.ImportFrom)
                    and node.module == NUMERICAL_DATA_NOTEBOOKS[notebook_name]
-                   and any(name.name.startswith('draw_') for name in node.names)
+                   and any(name.name.startswith(('draw_', 'plot_')) for name in node.names)
                    for node in ast.walk(ast.parse(code)))
         assert "cb.datasets.download(" in source
         assert 'project / "data/' in source
-        assert "source checkout" in lowered
+        assert "installation.md" in lowered
         assert "dataset_workflows/" in source
         assert not any(token in source for token in ("export_mosta", "export_arista", "assemble_main_figure_4"))
         assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
@@ -214,18 +216,18 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
     assert f'/ "{output_slug}"' in source
 
 
-def test_s39_notebook_uses_the_reader_facing_api() -> None:
+def test_old_stvcr_page_points_to_current_ablation_and_benchmark() -> None:
     path = (
         REPOSITORY_ROOT
         / "docs"
         / "tutorials"
         / "paper_figures"
-        / "lr_prior_ablation_stvcr.ipynb"
+        / "lr_prior_ablation_stvcr.md"
     )
-    source = _notebook_source(path)
-    assert "load_lr_prior_stvcr_results" in source
-    assert "plot_lr_prior_stvcr" in source
-    assert "interaction_evidence" not in source
+    source = path.read_text()
+    assert "interaction_ablation.ipynb" in source
+    assert "loto_benchmark.ipynb" in source
+    assert not path.with_suffix(".ipynb").exists()
 
 
 @pytest.mark.parametrize(
@@ -240,7 +242,14 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
     if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
         assert "display(Image(filename=str(path)" in source
         assert "if Path(path).suffix ==" in source
-        assert source.index("figures = draw_") < source.rindex("show(")
+        if notebook_name == "mosta_figures.ipynb":
+            for calculation, plot in (("evaluate_growth_by_timepoint(", "plot_brain_growth(brain,"),
+                                      ("summarize_label_composition(", "plot_composition(composition,"),
+                                      ("project_communication_to_lr_timecourses(", "plot_lr_profiles(lr.pair_timecourse,")):
+                assert source.index(calculation) < source.index(plot)
+            assert "show(plot_lr_profiles(lr.pair_timecourse," in source
+        else:
+            assert source.index("figures = draw_") < source.rindex("show(")
         return
     assert "display(Image(filename" in source
     notebook = json.loads(path.read_text())

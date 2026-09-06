@@ -1,6 +1,6 @@
 """Draw AD paper panels from the published numerical inputs.
 
-Run from the source checkout, for example:
+Run from the CytoBridge code folder, for example:
 python reproduction/admouse/draw_figures.py --panels cd e --output-dir outputs/admouse
 """
 from __future__ import annotations

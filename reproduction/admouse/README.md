@@ -2,7 +2,7 @@
 
 The [AD figure guide](../../docs/tutorials/paper_figures/admouse_figures.md)
 lists the inputs, dependencies, and commands in calculation order.
-Run the commands from the source checkout.
+Run the commands from the CytoBridge code folder.
 
 ## Gene programs and LR time courses
 

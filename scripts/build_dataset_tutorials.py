@@ -108,7 +108,7 @@ TUTORIALS = (
         (
             (
                 "Cell-state trajectories, lineage transitions, and growth",
-                "chicken_heart_daily.md",
+                "chicken_heart_daily.ipynb",
                 "chicken-heart-daily",
             ),
             (

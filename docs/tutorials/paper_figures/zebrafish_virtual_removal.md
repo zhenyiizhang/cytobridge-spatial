@@ -7,7 +7,7 @@ model, with growth and diffusion active.
 
 ## Download the inputs
 
-From the [source checkout](../../installation.md), run:
+From the [CytoBridge code folder](../../installation.md), run:
 
 ```bash
 python -m CytoBridge.datasets zebrafish --kind analysis --output-dir .
