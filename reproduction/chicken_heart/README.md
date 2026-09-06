@@ -72,3 +72,20 @@ These outputs are kept separately from the assembled manuscript pages.
 The current S7–S8 sensitivity figures use the code in
 `release_artifacts/chicken_heart_alignment_sensitivity_20260831/`, not the
 older alignment code supplied in the collaborator ZIP.
+
+## S10 comparison-region boxes
+
+`s10_highlights.tex` adds two black boxes to the accepted S10 assembly. They mark
+the corresponding lower-left ventricular region in the CytoBridge and veloAgent
+panels. This is an annotation step only. It does not calculate velocity or alter
+the existing streamlines.
+
+From this directory, run:
+
+```bash
+latexmk -pdf s10_highlights.tex
+```
+
+The unchanged base artwork is `data/s10_before_highlights.png`. The new boxes are
+vector elements in the resulting PDF. The base artwork retains its original
+resolution.

@@ -1,0 +1,6 @@
+metric,value
+adjusted_spearman_rho,0.8860773232072998
+null_adjusted_spearman_mean,0.7051277254845305
+null_adjusted_spearman_q025,0.6612419019760707
+null_adjusted_spearman_q975,0.7512264823946866
+adjusted_spearman_empirical_p_upper,0.0009990009990009

@@ -1,0 +1,169 @@
+condition,condition_label,condition_order,sender_type,receiver_type,pair_label,pair_order,reference_mean_D_AB_state,condition_mean_D_AB_state,condition_percentile,condition_rank_descending,n_directed_pairs
+formal_seed42_cutoff1p0,Seed 42,0,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,23.604977536873676,100.0,1.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,10.634106021669831,99.8567335243553,2.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,8.99144364987238,99.7134670487106,3.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,5.859461148984961,99.5702005730659,4.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,5.536850381900846,99.42693409742121,5.0,698
+formal_seed42_cutoff1p0,Seed 42,0,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.326627911006477,99.2836676217765,6.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Eye,Eye,Eye → Eye,6,4.22893406444942,4.22893406444942,99.14040114613181,7.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,4.172555226311167,98.9971346704871,8.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.632030316478843,98.8538681948424,9.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,3.4997444291859767,98.71060171919771,10.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,2.5767699415755927,98.567335243553,11.0,698
+formal_seed42_cutoff1p0,Seed 42,0,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,2.30249348445646,98.42406876790831,12.0,698
+formal_seed43_cutoff1p0,Seed 43,1,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,20.02567966154479,100.0,1.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,2.390123613365318,99.2836676217765,6.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,3.040989577609482,99.5702005730659,4.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.567475573468073,99.42693409742121,5.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,3.43322111462792,99.7134670487106,3.0,698
+formal_seed43_cutoff1p0,Seed 43,1,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.774529411425998,99.8567335243553,2.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Eye,Eye,Eye → Eye,6,4.22893406444942,1.7945451308392997,99.14040114613181,7.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,1.659103413249757,98.8538681948424,9.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,1.5940922697169475,98.567335243553,11.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,1.7905862037620213,98.9971346704871,8.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.4393245535251922,98.42406876790831,12.0,698
+formal_seed43_cutoff1p0,Seed 43,1,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.5253241657859292,96.84813753581662,23.0,698
+formal_seed44_cutoff1p0,Seed 44,2,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,23.76995061455773,100.0,1.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,3.1971276047288715,99.5702005730659,4.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,5.840252637426686,99.8567335243553,2.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.1201168872705267,98.71060171919771,10.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,2.556887973770088,98.9971346704871,8.0,698
+formal_seed44_cutoff1p0,Seed 44,2,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.348850786699758,99.7134670487106,3.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Eye,Eye,Eye → Eye,6,4.22893406444942,2.51242829947255,98.8538681948424,9.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,2.9656219847987426,99.42693409742121,5.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,2.5991864119709813,99.14040114613181,7.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.605128906567575,99.2836676217765,6.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.6868361859713203,98.28080229226362,13.0,698
+formal_seed44_cutoff1p0,Seed 44,2,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.8236455341721488,97.27793696275072,20.0,698
+formal_seed46_cutoff1p0,Seed 46,3,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,23.615057625149877,100.0,1.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,3.262537043167722,99.5702005730659,4.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,4.774275352959788,99.7134670487106,3.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.827593046187918,99.42693409742121,5.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,2.824251782573388,99.2836676217765,6.0,698
+formal_seed46_cutoff1p0,Seed 46,3,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,5.27341503180785,99.8567335243553,2.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Eye,Eye,Eye → Eye,6,4.22893406444942,2.357239385949547,99.14040114613181,7.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,2.325595669519611,98.8538681948424,9.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,2.354763981814802,98.9971346704871,8.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.302331583150476,98.71060171919771,10.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.6594746991194953,98.567335243553,11.0,698
+formal_seed46_cutoff1p0,Seed 46,3,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.8027119556443947,97.56446991404012,18.0,698
+formal_seed47_cutoff1p0,Seed 47,4,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,9.766503662656945,100.0,1.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,3.662973688691749,99.5702005730659,4.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,5.960115466180713,99.8567335243553,2.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.910565504835952,99.14040114613181,7.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,4.161275441662754,99.7134670487106,3.0,698
+formal_seed47_cutoff1p0,Seed 47,4,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,2.073037329526159,98.71060171919771,10.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Eye,Eye,Eye → Eye,6,4.22893406444942,2.4640641496407945,98.9971346704871,8.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,1.3599212454885883,98.42406876790831,12.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.0033819334348704,99.2836676217765,6.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,3.0321653877944024,99.42693409742121,5.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.9753407138308705,98.567335243553,11.0,698
+formal_seed47_cutoff1p0,Seed 47,4,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.8408945404478815,97.70773638968481,17.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,20.717520704623105,100.0,1.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,8.829893805120665,99.8567335243553,2.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,7.910784412280468,99.7134670487106,3.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,5.403951911161676,99.5702005730659,4.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,5.229421857557624,99.42693409742121,5.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.208444012574804,99.2836676217765,6.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Eye,Eye,Eye → Eye,6,4.22893406444942,3.079247638134033,98.9971346704871,8.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,3.5115636890817177,99.14040114613181,7.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.075001298503089,98.8538681948424,9.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.820303040105122,98.71060171919771,10.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,2.0752875634451025,98.567335243553,11.0,698
+formal_seed42_cutoff0p8,"0.8×, seed 42",5,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,1.716988792353214,98.42406876790831,12.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,19.37136512973665,100.0,1.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,2.65455476164628,99.42693409742121,5.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,3.7222575149484274,99.7134670487106,3.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.244164677366797,99.2836676217765,6.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,3.2961931769162818,99.5702005730659,4.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.935223653372782,99.8567335243553,2.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Eye,Eye,Eye → Eye,6,4.22893406444942,1.7017953176651,98.71060171919771,10.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,1.7185441820883154,98.8538681948424,9.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,1.9396288668497668,99.14040114613181,7.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,1.7829743852659772,98.9971346704871,8.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.4047961242716296,98.42406876790831,12.0,698
+formal_seed43_cutoff0p8,"0.8×, seed 43",6,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.4841547954877951,96.84813753581662,23.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,20.88879409188786,100.0,1.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,2.662431630149862,99.5702005730659,4.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,5.613441807420747,99.8567335243553,2.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,1.8566866165334015,98.42406876790831,12.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,2.507800666125412,99.42693409742121,5.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.199064610796431,99.7134670487106,3.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Eye,Eye,Eye → Eye,6,4.22893406444942,2.069255890656377,98.567335243553,11.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,2.403851953933607,99.14040114613181,7.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,2.422915079723504,99.2836676217765,6.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.176385941410196,98.8538681948424,9.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.5170500394295754,98.13753581661891,14.0,698
+formal_seed44_cutoff0p8,"0.8×, seed 44",7,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.5980363357012323,96.99140401146131,22.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,26.05755485009622,100.0,1.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,11.094718299238966,99.8567335243553,2.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,8.121701913030497,99.7134670487106,3.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,6.832853455861131,99.5702005730659,4.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,6.25780654905616,99.42693409742121,5.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.286829168744053,98.9971346704871,8.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Eye,Eye,Eye → Eye,6,4.22893406444942,4.315691404576924,99.14040114613181,7.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,4.710981491723637,99.2836676217765,6.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.391894968610858,98.71060171919771,10.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,3.741564694227797,98.8538681948424,9.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,2.6118621375628934,98.42406876790831,12.0,698
+formal_seed42_cutoff1p2,"1.2×, seed 42",8,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,2.718738141598969,98.567335243553,11.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,21.166264284465026,100.0,1.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,3.564329467108937,99.42693409742121,5.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,3.751913010757651,99.5702005730659,4.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,2.6836967482016565,99.2836676217765,6.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,3.882504876620254,99.7134670487106,3.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.180509192041392,99.8567335243553,2.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Eye,Eye,Eye → Eye,6,4.22893406444942,2.0305569726060013,98.8538681948424,9.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,2.086313616639931,98.9971346704871,8.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,2.012039919091964,98.71060171919771,10.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.2718301779319114,99.14040114613181,7.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.5869958560653354,98.28080229226362,13.0,698
+formal_seed43_cutoff1p2,"1.2×, seed 43",9,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.9721221890990076,97.85100286532952,16.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,24.975028295562225,100.0,1.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,3.189892264272728,99.42693409742121,5.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,4.494326842624846,99.8567335243553,2.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,1.9330991484705016,98.42406876790831,12.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,2.474503351847107,99.2836676217765,6.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.113305936270796,99.7134670487106,3.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Eye,Eye,Eye → Eye,6,4.22893406444942,2.1678234929720026,98.9971346704871,8.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,3.240787651615696,99.5702005730659,4.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,2.091413140481123,98.71060171919771,10.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,2.2511629489102813,99.14040114613181,7.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.4793627325521421,97.99426934097421,15.0,698
+formal_seed44_cutoff1p2,"1.2×, seed 44",10,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,0.8511841312843944,97.56446991404012,18.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,25.63211370690034,100.0,1.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,10.657628862355072,99.8567335243553,2.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,8.912515252110492,99.7134670487106,3.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,5.950282444412639,99.5702005730659,4.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,5.773306871817159,99.42693409742121,5.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,4.781661629982296,99.2836676217765,6.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Eye,Eye,Eye → Eye,6,4.22893406444942,3.730413930895188,98.9971346704871,8.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,4.508878284696955,99.14040114613181,7.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.307544044978977,98.8538681948424,9.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,3.106850368547787,98.71060171919771,10.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,2.2679423916073764,98.28080229226362,13.0,698
+alpha_expr_005_seed42_cutoff1p0,Expression 0.05,11,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,2.473380930773738,98.567335243553,11.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,23.595948764558347,100.0,1.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,9.391653057050313,99.8567335243553,2.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,6.901289015042766,99.7134670487106,3.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,4.111827304394521,99.42693409742121,5.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,5.6662484979555,99.5702005730659,4.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,3.6086437170448735,99.14040114613181,7.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Eye,Eye,Eye → Eye,6,4.22893406444942,3.951818682507478,99.2836676217765,6.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,3.543629961107677,98.9971346704871,8.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,3.4890563741488063,98.8538681948424,9.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,3.1316066193435628,98.71060171919771,10.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,2.469061252121354,98.42406876790831,12.0,698
+ot_mass_10_to_1_seed42_cutoff1p0,Transport:mass 10:1,12,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,1.7344607971711856,98.13753581661891,14.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,"Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer","Musculature System, Yolk Syncytial Layer → Musculature System, Yolk Syncytial Layer",0,23.604977536873676,14.23870028946514,100.0,1.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Fast Muscle Cell,Fast Muscle Cell,Fast Muscle Cell → Fast Muscle Cell,1,10.634106021669831,6.6792145234243705,99.7134670487106,3.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Spinal Cord Ventral Region,Spinal Cord Ventral Region,Spinal Cord Ventral Region → Spinal Cord Ventral Region,2,8.99144364987238,2.638453927417116,99.14040114613181,7.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Pigment Cell,Pigment Cell,Pigment Cell → Pigment Cell,3,5.859461148984961,3.988147137933984,99.42693409742121,5.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region,Spinal Cord Dorsal Region → Spinal Cord Dorsal Region,4,5.536850381900846,7.364779022344865,99.8567335243553,2.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,"Musculature System, Yolk Syncytial Layer",Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer → Yolk Syncytial Layer",5,4.326627911006477,2.6144150288667687,98.9971346704871,8.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Eye,Eye,Eye → Eye,6,4.22893406444942,1.1413685544758825,98.13753581661891,14.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Pronephros,Pronephros,Pronephros → Pronephros,7,4.172555226311167,3.1639126191256457,99.2836676217765,6.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Spinal Cord Anterior Region,Spinal Cord Anterior Region,Spinal Cord Anterior Region → Spinal Cord Anterior Region,8,3.632030316478843,1.088689755361464,97.99426934097421,15.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Nervous System,Spinal Cord Anterior Region,Nervous System → Spinal Cord Anterior Region,9,3.4997444291859767,0.9291011212891512,97.56446991404012,18.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Nervous System,Nervous System,Nervous System → Nervous System,10,2.5767699415755927,1.0783918221686333,97.85100286532952,16.0,698
+ot_mass_1_to_10_seed42_cutoff1p0,Transport:mass 1:10,13,Spinal Cord Ventral Region,Fast Muscle Cell,Spinal Cord Ventral Region → Fast Muscle Cell,11,2.30249348445646,1.3239558588962614,98.567335243553,11.0,698

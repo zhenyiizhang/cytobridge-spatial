@@ -1,0 +1,13 @@
+metric,setting_index,setting,mean,count
+Directed-pair ranking,0,Neighborhood 0.8×,0.972696403451196,3
+Directed-pair ranking,1,Neighborhood 1.2×,0.9649399517799595,3
+Directed-pair ranking,2,Expression loss weight 0.05,0.9969872230870008,1
+Directed-pair ranking,3,Transport:mass weight 10:1,0.9912711636166104,1
+Interaction component,0,Neighborhood 0.8×,0.9720091819763184,3
+Interaction component,1,Neighborhood 1.2×,0.9645370642344157,3
+Interaction component,2,Expression loss weight 0.05,0.9555227756500244,1
+Interaction component,3,Transport:mass weight 10:1,0.8357483148574829,1
+Top-pair overlap,0,Neighborhood 0.8×,0.8631132634832448,3
+Top-pair overlap,1,Neighborhood 1.2×,0.8758267657840961,3
+Top-pair overlap,2,Expression loss weight 0.05,0.9248661997430704,1
+Top-pair overlap,3,Transport:mass weight 10:1,0.8623548646022446,1

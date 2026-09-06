@@ -1,0 +1,11 @@
+variant,reference,same_obs_order,n_obs
+baseline_repeat,accepted_baseline,True,3550
+translate_low,baseline_repeat,True,3550
+translate_moderate,baseline_repeat,True,3550
+translate_strong,baseline_repeat,True,3550
+rotate_low,baseline_repeat,True,3550
+rotate_moderate,baseline_repeat,True,3550
+rotate_strong,baseline_repeat,True,3550
+translate_rotate_low,baseline_repeat,True,3550
+translate_rotate_moderate,baseline_repeat,True,3550
+translate_rotate_strong,baseline_repeat,True,3550

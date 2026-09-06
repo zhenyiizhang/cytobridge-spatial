@@ -1,0 +1,9 @@
+metric,setting_index,setting,mean,count
+Gene state,0,Neighborhood 0.8×,-0.3328388212295863,3
+Gene state,1,Neighborhood 1.2×,0.6702130855561261,3
+Gene state,2,Expression loss weight 0.05,2.5136207976689695,1
+Gene state,3,Transport:mass weight 10:1,0.9619605302136236,1
+Spatial,0,Neighborhood 0.8×,0.3115233560075555,3
+Spatial,1,Neighborhood 1.2×,1.8082930236023624,3
+Spatial,2,Expression loss weight 0.05,0.2502300798314039,1
+Spatial,3,Transport:mass weight 10:1,3.677463032456507,1
