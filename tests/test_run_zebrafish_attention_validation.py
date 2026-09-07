@@ -745,6 +745,13 @@ def test_validation_fails_after_table_tamper(tmp_path: Path) -> None:
         MODULE.validate(output)
 
 
+def test_jam_manifest_hashes_are_optional_and_record_observed_bytes(tmp_path: Path) -> None:
+    manifests, expected_hashes = _write_jam_report_manifests(tmp_path)
+    records, tables = MODULE._verified_jam_report_tables(manifests, None)
+    assert [record["sha256"] for record in records] == expected_hashes
+    assert set(tables) == set(MODULE.JAM_REPORT_TABLES)
+
+
 def test_report_rejects_nonformal_pair_field(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

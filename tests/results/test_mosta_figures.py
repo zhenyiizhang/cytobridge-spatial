@@ -346,21 +346,26 @@ def test_mosta_notebooks_use_public_reader_api(
     assert title in source
     assert "cb.datasets.download" in source
     assert 'data/mosta' in source
-    assert 'outputs/mosta_paper' in source
     if notebook_name == "main_figure_4.ipynb":
+        assert 'outputs/figure4_from_model' in source
         code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
                          if cell['cell_type'] == 'code')
         assert any(isinstance(node, ast.ImportFrom)
                    and node.module == 'reproduction.mosta.main_figure'
                    and any(name.name == 'draw_main_figure' for name in node.names)
                    for node in ast.walk(ast.parse(code)))
-        for panel in "ac":
-            assert f'panels="{panel}"' in source
+        assert 'panels="a"' in source
+        assert 'arrays=lineage' in source
+        for calculation in ('run_interpolation_workflow', 'compute_timepoint_communications',
+                            'compute_focal_lr_type_hotspots', 'simulate_sde_points',
+                            'predict_labels_for_trajectories'):
+            assert f'cb.tl.{calculation}(' in code
         calls = {node.func.id for node in ast.walk(ast.parse(code))
                  if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
-        assert {'draw_interaction_maps', 'calculate_velocity_panel',
+        assert {'draw_interaction_maps', 'draw_cartilage', 'calculate_velocity_panel',
                 'draw_interaction_velocity', 'draw_brain_velocity'} <= calls
     else:
+        assert 'outputs/mosta_paper' in source
         for calculation in ("evaluate_growth_by_timepoint", "summarize_label_composition",
                             "summarize_temporal_gene_patterns", "analyze_developmental_wave",
                             "compute_timepoint_communications",

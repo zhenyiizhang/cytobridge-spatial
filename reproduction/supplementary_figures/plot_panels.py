@@ -97,8 +97,10 @@ def adopt(paths,n):
     for path,ext in zip(paths,('pdf','png')):
         if Path(path)!=OUT/f'S{n}.{ext}':shutil.copy2(path,OUT/f'S{n}.{ext}')
 
-def agist(results_dir=None):
-    a=api('agist_figures');r=a.load_agist_figures(results_dir);p=a.calculate_agist_figure_panels(r)
+def agist(results_dir=None,*,data=None,panel_values=None):
+    a=api('agist_figures')
+    r=a.load_agist_figures(results_dir) if data is None else data
+    p=a.calculate_agist_figure_panels(r) if panel_values is None else panel_values
     m=load('agist_figures');m.LEARNED=BLUE;m.INTERACTION_OFF=RED;m.GROUND_TRUTH=BLACK
     def edit(fig):
         # a/b keep the original continuous time colors and trajectory geometry.
@@ -114,8 +116,10 @@ def paired(ax,first,second,labels,xlabel):
     ax.set_yticks(y,labels);ax.set_xlabel(xlabel);ax.set_xlim(left=0)
     clean(ax)
 
-def nonspatial(*,clone_values=False,figures=('s4','s5'),results_dir=None):
-    a=api('nonspatial_figures');r=a.load_nonspatial_figures(results_dir);p=a.calculate_nonspatial_panels(r)
+def nonspatial(*,clone_values=False,figures=('s4','s5'),results_dir=None,data=None,panel_values=None):
+    a=api('nonspatial_figures')
+    r=a.load_nonspatial_figures(results_dir) if data is None else data
+    p=a.calculate_nonspatial_panels(r) if panel_values is None else panel_values
     m=load('nonspatial_figures')
     m.TEAL=BLUE;m.ROSE=RED;m.CORAL=RED;m.HEADING=BLACK
     # Only panel b's vector fields use black. Keep the cell-type palette and
@@ -271,8 +275,9 @@ def benchmark(results_dir=None):
             clean(ax,grid='y')
     with edit_before_save(edit):adopt(m.plot_loto_benchmark(r,directory(45)),45)
 
-def attention(*,null_label='Randomized',permutation_values=None):
-    r=api('zebrafish_attention').load_zebrafish_attention_results()
+def attention(*,null_label='Randomized',permutation_values=None,results_dir=None):
+    a=api('zebrafish_attention');r=a.load_zebrafish_attention_results(results_dir)
+    a.write_zebrafish_attention_tables(r,TABLES)
     m=load('zebrafish_attention',replacements=(('#168A83',BLUE),))
     def edit(fig):
         fig.set_size_inches(8.27,9.8)
@@ -416,7 +421,7 @@ def ablation(results_dir=None):
     no.to_csv(TABLES/'S42_no_lr.csv',index=False);off.to_csv(TABLES/'S42_interaction_off.csv',index=False)
     pd.DataFrame(summaries).to_csv(TABLES/'S42_summaries.csv',index=False);save(fig,42)
 
-def communication():
+def communication(results_dir=None):
     m=load('communication');m.ACCENT=BLUE;m.SECONDARY_GREY=RED
     def metric(ax,tables,*,metric,title,x_label,show_y):
         for j,method in enumerate(('COMMOT','CellAgentChat')):
@@ -436,16 +441,17 @@ def communication():
                 ax.legend([Patch(color=BLUE),Patch(color=RED)],['COMMOT','CellAgentChat'],
                   loc='lower left',bbox_to_anchor=(0,1.12),ncol=2,fontsize=8.5,handlelength=1)
     with edit_before_save(edit):
-        adopt(m.plot_figure(ROOT/'data/communication',directory(43)),43)
+        source=Path(results_dir) if results_dir is not None else ROOT/'data/communication'
+        adopt(m.plot_figure(source,directory(43)),43)
 
-def wins(*,uniform_markers=False):
+def wins(*,uniform_markers=False,results_dir=None):
     replacements=[('fmt="D"','fmt="o"'),('marker="D"','marker="o"')]
     if uniform_markers:
         replacements.append(('alpha=1.0 if is_cytobridge else 0.70','alpha=1.0'))
     m=load('wins',replacements=replacements)
     marker_color=BLACK if uniform_markers else BLUE
     m.CYTOBRIDGE_COLOR=marker_color;m.OTHER_COLOR=marker_color;m.SUMMARY_COLOR=BLUE
-    source=ROOT/'data/benchmark'
+    source=Path(results_dir) if results_dir is not None else ROOT/'data/benchmark'
     targets=pd.read_csv(source/'loto_target_stage_means_with_spatrack.csv')
     ranks,counts=m.rank_targets(targets)
     ranks.to_csv(TABLES/'S44_rankings.csv',index=False);counts.to_csv(TABLES/'S44_win_counts.csv',index=False)

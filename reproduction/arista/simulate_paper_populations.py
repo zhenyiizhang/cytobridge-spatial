@@ -7,6 +7,7 @@ from pathlib import Path
 
 import anndata as ad
 import numpy as np
+import yaml
 import CytoBridge as cb
 
 
@@ -36,13 +37,17 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
         spatial_warp_to_observed_piecewise=False,
         random_seed=42,
         separate_interaction_random_stream=False)
-    for folder in ('display_states', 'model_states', 'generated_display_states'):
+    for folder in ('display_states', 'model_states', 'generated_display_states', 'slice_data'):
         (output / folder).mkdir()
     records = []
     for index, time in enumerate(result.ts_points):
         token = f'{time:g}'.replace('.', 'p')
         result.adata_dict[str(time)].write_h5ad(
             output / f'display_states/time_{token}.h5ad', compression='gzip')
+        # Figure 5 uses these same observed/intermediate populations. Export
+        # their states directly, without another simulation or display warp.
+        result.adata_dict[str(time)].write_h5ad(
+            output / f'slice_data/time_{token}.h5ad', compression='gzip')
         result.communication_adata_dict[str(time)].write_h5ad(
             output / f'model_states/time_{token}.h5ad', compression='gzip')
         generated = ad.AnnData(X=np.asarray(result.sde_points_split[index], dtype=np.float32))
@@ -55,6 +60,17 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
                         time_points=np.asarray(result.ts_points),
                         **{f'labels_{i}': np.asarray(labels).astype(str)
                            for i, labels in enumerate(result.predicted_labels_list)})
+    config_path = Path(cb.__file__).resolve().parent / 'configs/arista_downstream.yaml'
+    communication_settings = yaml.safe_load(config_path.read_text())['communication']
+    cb.tl.compute_timepoint_communications(
+        adata_dict=result.communication_adata_dict,
+        time_points=result.ts_points, annotation_key='Annotation',
+        f_net=runtime.f_net, device=device, out_dir=str(output / 'attention'),
+        remove_self_loop=communication_settings['remove_self_loop'],
+        winsor_quantile=communication_settings['winsor_quantile'],
+        save_pickle_path=str(output / 'all_time_communications.pkl'))
+    (output / 'communication_settings.json').write_text(
+        json.dumps(communication_settings, indent=2) + '\n')
     (output / 'population_sizes.json').write_text(json.dumps(records, indent=2) + '\n')
     return output
 

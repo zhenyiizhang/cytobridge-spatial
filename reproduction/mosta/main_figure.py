@@ -88,10 +88,11 @@ def draw_interaction_maps(data, output, mapping=None):
     return paths
 
 
-def draw_cartilage(output, palette):
+def draw_cartilage(output, palette, *, arrays=None):
     from . import cartilage as plot
-    with np.load(PANELS / 'fig4c/evidence/numeric_render_state.npz', allow_pickle=False) as archive:
-        arrays = {key: np.asarray(archive[key]) for key in archive.files}
+    if arrays is None:
+        with np.load(PANELS / 'fig4c/evidence/numeric_render_state.npz', allow_pickle=False) as archive:
+            arrays = {key: np.asarray(archive[key]) for key in archive.files}
     labels = arrays['target_labels'].astype(str)
     if len(labels) != len(arrays['selected_lineage_id']):
         raise ValueError('The target labels and lineage identifiers must have the same length.')

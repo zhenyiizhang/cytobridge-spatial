@@ -31,26 +31,48 @@ Run this command from the root of a cloned CytoBridge GitHub repository. The ins
 ### 2. combine JAM controls and draw S39 (S39)
 
 ```text
-python -m scripts.run_zebrafish_attention_analysis figure --analysis-dir <attention-analysis> --jam-manifest <trained-jam>/run_manifest.json --jam-manifest <before-interaction-jam>/run_manifest.json --jam-manifest <randomized-jam>/run_manifest.json --output-dir <attention-figure>
+python -m scripts.run_zebrafish_attention_analysis figure \
+  --analysis-dir <attention-analysis> \
+  --jam-manifest <jam-controls>/manifest.json \
+  --jam-manifest <jam-biology>/manifest.json \
+  --output-dir <attention-figure>
 ```
 
-Start with: `attention-analysis tables and one or more matched JAM control manifests`
+Start with: `attention-analysis tables, the three-condition JAM control manifest, and the JAM spatial/biology manifest`
 
 Writes: `spatial-null, JAM, summary and panel tables; vector PDF/PNG; report_manifest.json`
 
-Next: `recalculate the displayed statistics`
+Next: `collect the numerical inputs for the current figure notebook`
 
 
-Run this command from the same repository checkout. Repeat --jam-manifest for the trained, before-interaction, and randomized comparison results.
+The control manifest is written by `scripts/reviewer_zebrafish_ccc/jam_trained_init_random_control.py`, which processes the trained, pre-interaction and randomized edge tables together. The spatial/biology manifest is written by `scripts/reviewer_zebrafish_ccc/jam_myocyte_case_study.py`.
 
 
 
-### 3. recalculate displayed statistics and draw (S39)
+### 3. collect the calculated panel tables (S39)
 
 ```text
-python scripts/execute_paper_notebooks.py --notebook zebrafish_attention --output-dir <notebook-run>
+python -m scripts.collect_zebrafish_attention_inputs \
+  --panel-data-dir <attention-figure>/panel_data \
+  --cytobridge-pairs <attribution>/type_pair_summary.csv \
+  --commot-pairs <commot>/commot_type_pair_scores.csv.gz \
+  --output-dir <s39-inputs>
 ```
 
-Start with: `directed_pair_concordance.csv; JAM tables; spatial-null tables; expression and edge tables`
+Start with: the ten tables exported in `<attention-figure>/panel_data`, plus the CytoBridge and COMMOT pair-score files bound to the preceding attention analysis. The collector selects their terminal stage using the same rule as `analyze`.
 
-Writes: `zebrafish_attention_controls.pdf/.png and summary tables`
+Writes: `<s39-inputs>/manifest.json`, the ten unchanged panel tables, and `commot_comparison/` containing the corresponding pair scores. The collector derives the manifest from these results and checks the existing S39 input contract. It does not run model inference or substitute included paper tables. Use a new output directory.
+
+### 4. draw the collected results (S39)
+
+In the figure notebook, set `results_dir = Path("<s39-inputs>")` and `commot_results_dir = results_dir / "commot_comparison"`, then run all cells. The final call uses those paths:
+
+```python
+pdf_path, png_path = draw_supplementary(
+    [39], output_dir,
+    results_dir=results.source_dir,
+    commot_results_dir=commot_results_dir,
+)["s39"]
+```
+
+Writes: `S39.pdf`, `S39.png`, panel summary tables and the 1,000 within-group COMMOT permutation values. Model inference, external-method execution and the 10,000 JAM label permutations are not repeated by this final step.

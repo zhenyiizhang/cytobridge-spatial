@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "docs" / "tutorials" / "paper_figures"
 OPERATIONS = {
     "main_figure_2": "redraw panel e and assemble existing panels a-d",
-    "main_figure_4": "draw all panels from cell states and numerical results",
+    "main_figure_4": "simulate populations and lineage, calculate communication/LR and velocity fields, then draw Figure 4",
     "main_figure_5": "draw all panels from cell states and numerical results",
     "mosta_figures": "draw S11-S18 from cell states and numerical results",
     "chicken_heart_daily": "calculate velocities, cell-type transitions and interactions from the trained model",

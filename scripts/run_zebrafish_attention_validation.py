@@ -1151,7 +1151,7 @@ def _verified_jam_report_tables(
         manifest_records.append(
             {
                 "path": str(resolved),
-                "sha256": expected,
+                "sha256": observed_sha256,
                 "size_bytes": int(resolved.stat().st_size),
             }
         )

@@ -4,6 +4,9 @@ These rules record the author's corrections to the September 2026 tutorials.
 They apply to the website, notebooks, linked analysis scripts, and recorded
 notebook outputs. They are maintenance instructions, not tutorial prose.
 
+The [7 September page-by-page review](TUTORIAL_REVIEW_20260907.md) records the
+current calculation checks and open input-generation work for all 27 notebooks.
+
 ## What belongs in a tutorial
 
 Use the current manuscript and SI as the figure reference. Record the figure
@@ -45,6 +48,22 @@ For every analysis, a reader must be able to answer:
 Loading final summary tables is not model evaluation. Reading a finished PDF
 and exporting it again is not figure reproduction. Displaying a PNG that the
 preceding numerical plotting call just created is fine.
+
+A download location does not explain how a numerical input was calculated.
+For every derived CSV, NPZ, H5AD, pickle, or other result read by a notebook,
+trace back to the calculation that creates it. Show that calculation with its
+required inputs, or give an explicit prerequisite notebook and the exact output
+used here. Follow the chain back to measured data and the selected model. A
+directory of archived scripts, a generic training-page link, or a sentence
+such as "the analysis tutorial introduces simulation" does not supply the
+missing calculation.
+
+Saved paper results may provide a shorter redraw option, but cannot replace
+the requested data/model-to-figure route. State the choice once. In the full
+route, execute the calculation and pass its returned object or output path to
+the plot. Do not call a notebook self-contained merely because its missing
+upstream results can be downloaded. Do not mark the issue fixed after adding
+prose alone.
 
 Pass newly calculated objects or explicit result paths to the plotting step.
 Do not calculate a table in one cell and silently reload an unrelated included
@@ -116,6 +135,12 @@ make sure removed examples have also disappeared from recorded outputs.
 Rebuild the website, verify the pushed GitHub commit, and check the published
 page. Report local verification, publication, and remaining work separately.
 
+Check notebook-generation scripts as well as the notebooks they produce.
+An older generator must not restore removed text, stale input choices, or
+disconnected calculations. Test the generated cells, not only the checked-in
+notebook. Record separately whether a route was reviewed, executed from saved
+results, or executed from measured inputs and model weights.
+
 Keep a dated page-by-page review outside the public tutorial navigation.
 Record concrete failures and fixes, rather than a single package-wide pass.
 
@@ -139,3 +164,8 @@ Record concrete failures and fixes, rather than a single package-wide pass.
   whereas the current SI used the original simulation. Verify the actual
   coordinate arrays as well as the figure filename and caption. All generated
   paper maps now use the simulated spatial coordinates directly.
+- Figure 4: saying that another MOSTA notebook was optional concealed that
+  panels a–c started from previously calculated populations, communication,
+  and lineage labels. The user had repeatedly requested the code that produces
+  those inputs. File availability, provenance records, and a successful redraw
+  do not meet that request. Audit every tutorial for the same missing step.

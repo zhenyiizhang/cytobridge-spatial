@@ -36,6 +36,51 @@ def map_interaction_scores(cells, scores):
     return result
 
 
+def save_population_states(populations, output_dir):
+    """Save simulated/observed AnnData states for the Figure 4a renderer."""
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    for time, cells in populations.items():
+        name = f'{float(time):g}'.replace('.', 'p')
+        cells.write_h5ad(output / f'time_{name}.h5ad')
+    return output
+
+
+def cartilage_lineage_inputs(states, labels, times, reference, *,
+                            source_time=2.5, target_time=3.):
+    """Select the same particles at E15 and E15.5, with observed background.
+
+    ``states`` and ``labels`` are returned by ``simulate_sde_points`` and
+    ``predict_labels_for_trajectories``. Rows must retain particle identities.
+    """
+    times = np.asarray(times, dtype=float)
+    hits = [np.flatnonzero(np.isclose(times, time, rtol=0, atol=1e-10))
+            for time in (source_time, target_time)]
+    if any(len(hit) != 1 for hit in hits):
+        raise ValueError('Source and target times must each occur once.')
+    start, end = (int(hit[0]) for hit in hits)
+    if start >= end:
+        raise ValueError('Target time must follow source time.')
+    source, target = np.asarray(states[start]), np.asarray(states[end])
+    source_labels, target_labels = np.asarray(labels[start]).astype(str), np.asarray(labels[end]).astype(str)
+    if len(source) != len(target) or len(source_labels) != len(source) or len(target_labels) != len(target):
+        raise ValueError('Lineage analysis requires the same particles and one label per particle.')
+    selected = source_labels == 'Cartilage primordium'
+    if not selected.any():
+        raise ValueError('No cartilage-primordium particles at the source time.')
+    observed = np.isclose(reference.obs['time_point_processed'].to_numpy(dtype=float), target_time)
+    if not observed.any():
+        raise ValueError('No observed population at the target time.')
+    return {
+        'source_background_spatial': source[:, :2],
+        'selected_source_spatial': source[selected, :2],
+        'target_spatial': target[selected, :2],
+        'target_labels': target_labels[selected],
+        'observed_target_spatial': np.asarray(reference.obsm['spatial_aligned'])[observed, :2],
+        'selected_lineage_id': np.flatnonzero(selected),
+    }
+
+
 def calculate_velocity_panel(model_dir, output_dir, panel, device='cuda', *, overwrite=False):
     """Evaluate the model on the exact observed cells used for panel d or e.
 

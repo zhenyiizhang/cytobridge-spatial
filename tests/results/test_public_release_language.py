@@ -202,15 +202,21 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
         assert "cb.datasets.download(" in source
         assert 'project / "data/' in source
         assert "installation.md" in lowered
-        assert "dataset_workflows/" in source
+        if notebook_name == "main_figure_4.ipynb":
+            assert 'project / "outputs/figure4_from_model"' in code
+            assert 'cb.tl.run_interpolation_workflow(' in code
+            assert 'cb.tl.load_dynamical_model_from_dir(' in code
+            assert 'cb.tl.compute_focal_lr_type_hotspots(' in code
+        else:
+            assert "dataset_workflows/" in source
         assert not any(token in source for token in ("export_mosta", "export_arista", "assemble_main_figure_4"))
         assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
         return
     assert "from cytobridge.results" in lowered
     assert any(heading in lowered for heading in ("## before you start", "## run the notebook"))
     assert "## where the inputs come from" not in lowered
-    # The plot notebook and the history of its numerical inputs are separate
-    # reading routes. Check that the linked guide exists and names its inputs.
+    # Check the linked guide's structure. This does not establish that its
+    # numerical-input generation is complete; that needs execution review.
     guide_links = re.findall(r"\]\((\.\./\.\./reference/figure_sources/[^)]+)\)", source)
     assert guide_links, f"{path} needs a link to its input and calculation guide"
     guide_target = guide_links[0]
@@ -270,6 +276,15 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
                                       ("project_communication_to_lr_timecourses(", "plot_lr_profiles(lr.pair_timecourse,")):
                 assert source.index(calculation) < source.index(plot)
             assert "show(plot_lr_profiles(lr.pair_timecourse," in source
+        elif notebook_name == 'main_figure_4.ipynb':
+            for calculation, plot in (
+                ('population_result = cb.tl.run_interpolation_workflow(', 'show(draw_main_figure('),
+                ('lr = cb.tl.compute_focal_lr_type_hotspots(', 'show(draw_interaction_maps('),
+                ('lineage = cartilage_lineage_inputs(', 'show(draw_cartilage('),
+                ('numeric_d = calculate_velocity_panel(', 'show(draw_interaction_velocity('),
+                ('numeric_e = calculate_velocity_panel(', 'show(draw_brain_velocity('),
+            ):
+                assert source.index(calculation) < source.index(plot)
         else:
             assert source.index("figures = draw_") < source.rindex("show(")
         return
