@@ -93,6 +93,25 @@ def test_published_manifest_has_complete_parts():
             assert len(part['sha256']) == 64
 
 
+def test_s3_training_source_is_an_explicit_additional_download(tmp_path, monkeypatch):
+    downloaded = []
+    monkeypatch.setattr(datasets, '_download_archive',
+                        lambda record, path: downloaded.append(record['archive']))
+    datasets.download('simulation', tmp_path)
+    assert downloaded == ['simulation_model.zip', 'simulation_analysis_data.zip']
+    downloaded.clear()
+    datasets.download('simulation', tmp_path, kind='simulation_training_code.zip')
+    assert downloaded == ['simulation_training_code.zip']
+
+
+def test_nonspatial_training_source_can_be_selected_separately(tmp_path, monkeypatch):
+    downloaded = []
+    monkeypatch.setattr(datasets, '_download_archive',
+                        lambda record, path: downloaded.append(record['archive']))
+    datasets.download('nonspatial', tmp_path, kind='nonspatial_training_code.zip')
+    assert downloaded == ['nonspatial_training_code.zip']
+
+
 def test_public_api_fallback_does_not_use_credentials(monkeypatch):
     calls = []
     sentinel = object()

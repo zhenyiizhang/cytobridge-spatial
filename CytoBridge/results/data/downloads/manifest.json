@@ -3,6 +3,34 @@
   "tag": "paper-data-20260905",
   "archives": [
     {
+      "archive": "nonspatial_training_code.zip",
+      "bytes": 1720687,
+      "sha256": "c1d56e503f9644ffb769faf0b6b903fb09c59d9f7139eee28eeb14df76ff7274",
+      "parts": [
+        {
+          "name": "nonspatial_training_code.zip",
+          "bytes": 1720687,
+          "sha256": "c1d56e503f9644ffb769faf0b6b903fb09c59d9f7139eee28eeb14df76ff7274",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/nonspatial_training_code.zip",
+          "asset_id": 549115308
+        }
+      ]
+    },
+    {
+      "archive": "simulation_training_code.zip",
+      "bytes": 380629,
+      "sha256": "3b8ff96d67b837e9b7b1b620acd5ab42d21ceea3dee4a8f03a2166944d6703b1",
+      "parts": [
+        {
+          "name": "simulation_training_code.zip",
+          "bytes": 380629,
+          "sha256": "3b8ff96d67b837e9b7b1b620acd5ab42d21ceea3dee4a8f03a2166944d6703b1",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_training_code.zip",
+          "asset_id": 549012228
+        }
+      ]
+    },
+    {
       "archive": "nonspatial_paper_inputs.zip",
       "bytes": 35690820,
       "sha256": "198b32eefc2080f3b696d3d5a42fbc8301e68b7d697008ddadfed688a1e96213",

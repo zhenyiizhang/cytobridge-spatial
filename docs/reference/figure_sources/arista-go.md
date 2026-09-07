@@ -11,8 +11,8 @@ The [ARISTA S19–S24 notebook](../../tutorials/paper_figures/arista_figures.ipy
 recalculates enrichment from its newly reconstructed gene programs and expressed
 gene background. It does not read precomputed enrichment statistics.
 
-The original library is available through the
-[Enrichr library endpoint](https://maayanlab.cloud/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2023).
+The original library is available in the
+[Enrichr library collection](https://maayanlab.cloud/Enrichr/#libraries).
 The retained input does not identify a more specific daily GO release. The file
 has not been modified; the included `GO_SOURCE.md` records its identity and origin.
 

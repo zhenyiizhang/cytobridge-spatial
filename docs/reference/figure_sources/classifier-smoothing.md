@@ -2,16 +2,18 @@
 orphan: true
 ---
 
-# Analysis inputs: Supplementary Figure S6: classifier smoothing
+# Classifier smoothing for Supplementary Figure S6
 
-S6 uses three calculations: observed-cell model-selection accuracy, composition
-across nine generated population frames, and label transitions of 563 fixed
-particles. The latter two populations are not interchangeable.
+S6 compares classifier smoothing through observed-cell model-selection accuracy,
+composition across nine generated population frames, and label transitions of
+563 fixed particles. Population composition uses a growing simulation; label
+transitions follow a separate fixed cohort.
 
 ## 1. Train observed-cell classifiers and evaluate k
 
-Run in the CytoBridge code folder after preparing each aligned H5AD. These fits train
-only the downstream classifier, not the dynamics model. Use new output directories.
+Run the commands in the CytoBridge code folder after preparing each dataset's
+`aligned.h5ad`. This step fits the downstream classifiers. The dynamics model is
+loaded separately in step 3. Use new output directories for these calculations.
 
 ```bash
 python scripts/select_classifier_spatial_k.py --dataset zebrafish \
@@ -38,13 +40,13 @@ these are model-selection scores, not an untouched test set.
 Each output contains `classifier.pt`, `selection.json`, `k_metrics.csv`,
 `per_time_metrics.csv`, and `heldout_inputs.npz`. The NPZ records exact
 train/held-out row indices, truth, raw predictions, times, coordinates, and class
-encoding. This supplies the concrete arrays that the former
-`select_spatial_smoothing_k(...)` example left undefined.
+encoding. Step 5 collects `k_metrics.csv` and `selection.json` from each dataset.
 
 ## 2. Fit the separate trajectory classifier
 
-S6b/c use time + spatial(2) + leading latent PCs(10), selected by accuracy.
-Do not substitute an all-PC classifier from S6a or a full-data ablation classifier.
+S6b/c use a separate classifier with time, two spatial coordinates, and the
+leading 10 latent PCs. Its checkpoint is selected by accuracy, whereas S6a uses
+all 50 PCs and balanced accuracy.
 
 ```bash
 python scripts/run_classifier_smoothing_inputs.py trajectory-classifier \
@@ -55,11 +57,15 @@ python scripts/run_classifier_smoothing_inputs.py trajectory-classifier \
 This writes `outputs/s6/trajectory_classifier/classifier.pt` with its complete
 feature/training metadata and `training_manifest.json`. It uses 500 epochs,
 hidden size 128, learning rate 0.001, seed 42, stratified 90/10 model selection,
-and the accuracy-selected classifier without full-data refitting. To replay
-the original figure's existing trajectories, use their original classifier
-checkpoint instead; its labels are verified in step 4.
+and the accuracy-selected checkpoint without full-data refitting. The following
+simulation and evaluation commands both read this `classifier.pt`. If evaluating
+previously generated trajectories, use the classifier that generated their labels.
 
 ## 3. Generate both trajectory inputs
+
+The aligned zebrafish data and fitted model in `data/zebrafish/model` provide
+the starting cells and dynamics. The classifier from step 2 labels the generated
+states.
 
 ```bash
 python scripts/run_classifier_smoothing_inputs.py generate \
@@ -68,7 +74,7 @@ python scripts/run_classifier_smoothing_inputs.py generate \
   --output-dir outputs/s6/states --device cuda:2
 ```
 
-The command reads the actual ordered t0 cells and requires 563 cells with 52
+The command reads the ordered t0 cells and requires 563 cells with 52
 joint features. It preserves the S6 population definitions: a global-t0 growing
 split simulation on a 0.1 output grid, dt/resampling interval 0.05, growth scale
 1, sigma 0.03, no daughter noise, and a 100,000-particle ceiling; independently,
@@ -78,9 +84,9 @@ display warp or intermediate observed restart.
 
 Outputs are `outputs/s6/states/generated_frames/index.json` and nine NPZ frames,
 `outputs/s6/states/fixed_cohort.npz`, and `generation_manifest.json`. The manifest
-records the H5AD, dynamics/score checkpoints, classifier, and settings. These are
-new simulations; changing the fitted model or classifier can change the curves.
-The included paper tables are not replaced.
+records the H5AD, dynamics/score checkpoints, classifier, and settings. Step 4
+reads both the frame index and fixed cohort from this directory. Changing the
+fitted model or classifier can change the resulting curves.
 
 ## 4. Calculate composition and fixed-cohort transition sensitivity
 
@@ -92,11 +98,13 @@ python scripts/run_classifier_smoothing_inputs.py evaluate \
   --output-dir outputs/s6/generated_evaluation
 ```
 
-This recomputes all five votes and verifies each saved k=10 label. It requires
-exact ordered t0 agreement between the population frames and fixed cohort.
-It writes `frame_sensitivity.csv`, `transition_by_interval.csv`, and
-`evaluation_manifest.json`. Passing existing trajectory paths reruns
-classification/statistics but does not rerun simulation.
+This applies all five voting settings to the saved states, checks the saved
+k=10 labels, and requires the same ordered t0 cells in both simulations.
+Population composition and fixed-cohort transitions are saved as
+`outputs/s6/generated_evaluation/frame_sensitivity.csv` and
+`transition_by_interval.csv`, alongside `evaluation_manifest.json`. With
+previously generated trajectory paths, this step recalculates classification
+and statistics only.
 
 ## 5. Collect and draw those results
 
@@ -110,11 +118,16 @@ CYTOBRIDGE_CLASSIFIER_SMOOTHING_RESULTS="$PWD/outputs/s6/panel_data" \
   --output-dir outputs/s6/notebook
 ```
 
-The collector produces all six required S6 files from the supplied calculations,
-records source hashes, and validates the figure contract. Formal downstream k
-remains 10 for zebrafish/MOSTA/ARISTA and 1 for AD mouse/chicken heart. If a new
-experiment selects a different accuracy-optimal k, validation stops instead of
-mislabeling it with the paper's fixed selection annotations. The notebook keeps
-the environment-selected directory through its final S6 plotting call.
-Use an absolute results path, as above: the notebook runner changes the kernel's
-working directory to its separate run folder.
+The collector combines the observed-cell results into `five_dataset_k_metrics.csv`
+and `formal_k_policy.csv`, saves `arista_selection.json` and `heart_selection.json`,
+and copies the two trajectory-evaluation CSVs into `outputs/s6/panel_data/`.
+It also writes `manifest.json`.
+
+S6's downstream settings are k=10 for zebrafish, MOSTA, and ARISTA, and k=1 for
+AD mouse and chicken heart. The plotting input check stops if the selected k
+differs from the figure's fixed selection annotations.
+
+The notebook reads `outputs/s6/panel_data/` for both its calculations and final
+S6 plot. Use the absolute results path shown above because the notebook runs
+in a separate working directory. Its executed notebook and figure outputs are
+saved under `outputs/s6/notebook/`.

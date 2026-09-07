@@ -2,16 +2,14 @@
 orphan: true
 ---
 
-# Analysis inputs: Supplementary Figure S41: LR-complex aggregation
+# LR-complex aggregation for Supplementary Figure S41
 
-The [figure notebook](../../tutorials/paper_figures/lr_complex_aggregation.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
+S41 compares minimum and geometric-mean aggregation of ligand-receptor
+complex subunits. Both calculations use the same expression states and
+model-derived communication matrices. Run these commands in the CytoBridge
+code folder, replacing paths in angle brackets with your file locations.
 
-## Calculation programs
-
-Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
-
-
-### 1. generate the primary downstream LR result
+## 1. Calculate the primary LR scores
 
 For each of `zebrafish`, `mosta`, `arista`, and `chicken_heart`, start from the
 aligned expression/PCA AnnData and matching fitted model from that dataset's
@@ -28,20 +26,21 @@ cytobridge workflow --config zebrafish --step downstream \
 With downloaded model inputs, use `data/zebrafish/aligned.h5ad` and
 `data/zebrafish/model` in those same arguments. The included species-matched LR
 database is selected by `--config`; `--lr-database <database.csv>` explicitly
-selects another database for a new analysis. Do not set `--skip-lr`.
+selects another database for a new analysis. Keep LR calculation enabled by
+omitting `--skip-lr`.
 
 This command simulates and classifies the configured time slices, calculates
 model-derived communication, and projects strict all-subunit LR scores. It
 writes `<zebrafish-primary>/downstream/summary.json`, the expression-state
 snapshots, `communication/communication_by_celltype.csv`, and
 `ligand_receptor/pair_timecourse.csv` under that downstream directory. The
-summary binds the exact paths; keep those files together and do not substitute
-a summary from another fitted model. Use a new output directory for each run.
+summary lists the files read in step 2, so keep the downstream directory
+together. Use a new output directory for each run.
 
 Repeat with the other three dataset configurations and their corresponding
 aligned H5AD/model directories. This is downstream inference, not model fitting.
 
-### 2. calculate both complex rules (S41)
+## 2. Compare the two complex rules
 
 ```text
 python scripts/run_lr_complex_aggregation_sensitivity.py \
@@ -55,17 +54,15 @@ changing only complex aggregation to the geometric mean. It writes
 `<zebrafish-sensitivity>/comparison/paired_scores.csv` and `run_manifest.json`.
 Run this once per dataset; no new simulations or classifier fits occur here.
 
-For a legacy ARISTA native summary lacking `simulation.slice_origins_by_time`,
-the original native producer declares observed times 0, 1, 2, 3, 4. Pass
-`--observed-time-points 0 1 2 3 4` explicitly. No times are guessed. The same
-primary-score equality check still applies. The chicken-heart native summary's
-`annotation_key: celltype_prediction` is used for both observed and generated
-states; it must not be silently replaced by another annotation column.
+If an ARISTA summary lacks `simulation.slice_origins_by_time`, add
+`--observed-time-points 0 1 2 3 4` for its five observed time points. For chicken
+heart, the summary's `annotation_key: celltype_prediction` supplies the labels
+for both observed and generated states.
 
+## 3. Collect the four sensitivity tables
 
-
-
-### 3. collect the four completed sensitivity tables (S41)
+After running step 2 for all four datasets, collect their
+`comparison/paired_scores.csv` files:
 
 ```text
 python scripts/collect_figure_inputs.py s41 \
@@ -76,24 +73,18 @@ python scripts/collect_figure_inputs.py s41 \
   --output-dir <s41-inputs>
 ```
 
-Start with: `comparison/paired_scores.csv from each completed sensitivity run`
+The collected directory contains `<dataset>/paired_scores.csv` for each
+dataset and `manifest.json`. Use this `<s41-inputs>` directory for the plot.
 
-Writes: `<s41-inputs>/<dataset>/paired_scores.csv and manifest.json`
-
-Next: `draw S41`
-
-
-
-
-### 4. summarize and draw (S41)
+## 4. Summarize and draw S41
 
 ```text
 python -m reproduction.paper_figures --figures 41 --results-dir <s41-inputs> --output-dir <figure-dir>
 ```
 
-Start with: `the collected S41 input directory`
-
-Writes: `S41.pdf/.png; tables/S41_top100_jaccard.csv; per-time and dataset summary CSVs`
+This reads the collected paired scores and saves `S41.pdf`, `S41.png`,
+`tables/S41_top100_jaccard.csv`, and the per-time and dataset summaries in
+`<figure-dir>`.
 
 To execute the notebook against the same newly collected directory:
 
@@ -106,4 +97,6 @@ CYTOBRIDGE_LR_COMPLEX_RESULTS=<s41-inputs> \
 Use the absolute path for `<s41-inputs>`: the notebook runner changes the
 kernel's working directory to its separate run folder.
 
-The notebook passes `results.source_dir` to the S41 plotting function.
+The [notebook](../../tutorials/paper_figures/lr_complex_aggregation.ipynb) reads
+the same paired scores and passes `results.source_dir` to the S41 plotting
+function, so its plot uses the directory selected above.

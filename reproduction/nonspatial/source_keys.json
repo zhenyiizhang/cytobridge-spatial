@@ -2,14 +2,14 @@
   "weinreb": {
     "prepared_h5ad": "measured Weinreb_prepared_50pc.h5ad",
     "model_grids": "calculate_weinreb_fields: support_masked_stream_grids.npz",
-    "distribution": "paired evaluation: frozen_baseline_distribution_metrics.csv",
-    "clone_fate": "clone-fate evaluation: frozen_baseline_clone_fate_summary.csv",
-    "cellchat_joined": "all-directed-pair comparison: joined_attention_message_cellchat_edges.csv",
-    "pathways": "LR attribution: pathway_scores.csv"
+    "distribution": "distribution_inputs(paired_distribution_metrics.csv): paired_distribution.csv",
+    "clone_fate": "clone_fate_input(analysis_dir): three-row metric comparison from full/summary.json and no_interaction/summary.json",
+    "cellchat_joined": "weinreb_cellchat_input(exact_message_summary.csv, cellchat_joined_directed_edges.csv): new message scores joined to observed CellChat scores",
+    "pathways": "LR attribution: cell_type_pathway_scores.csv.gz"
   },
   "scnt": {
     "prepared_h5ad": "measured scnt_cortical_full_hvg2000_latent.h5ad",
-    "full_trajectory": "Full model inference: paired_dense_trajectory.npz",
+    "full_trajectory": "analyze.trajectory: full_dense_trajectory.npz (time_points, points and weights)",
     "full_distribution": "Full model evaluation: distribution_metrics.csv",
     "no_interaction_distribution": "No-interaction evaluation: distribution_metrics.csv",
     "direction": "new-RNA direction evaluation: timewise_scnt_direction_alignment.csv",

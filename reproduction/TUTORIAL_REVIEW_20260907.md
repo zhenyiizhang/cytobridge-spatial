@@ -24,8 +24,28 @@ model calculation, numerical output and plotting. Paper results were not changed
 - S2/S3 and S4/S5 notebooks ran in fresh kernels. S3 raw generation reproduced
   both original CSVs and reference NPZ arrays exactly. Five inference seeds ran
   with the original model architecture. S4b evaluated three LR models over five
-  groupings each, maximum field difference 5.87e-8. Other S4/S5 panels explicitly
-  reuse original model-analysis outputs, not finished figures.
+  groupings each, maximum field difference 5.87e-8. S4/S5 now also have executed
+  distribution, clone-fate, new-RNA direction, trajectory and LR-attribution
+  producers, with adapters from their actual outputs to the panel tables.
+  The new Weinreb/scNT sender-message values match the original tables within
+  1.11e-8 and 2.34e-9, respectively. Details of the inference repeats are in
+  the non-spatial execution report.
+- The final default S4/S5 notebook ran all nine cells in a fresh kernel, with
+  no saved-result override. All 12 model-dependent inputs came from these new
+  calculations. The ten clone-fate seeds reproduced the original metrics.
+  Both full figures are embedded as actual execution outputs.
+- S3's original radial training runtime and the released model configuration
+  are now distributed as simulation_training_code.zip (380,629 bytes). The
+  six-stage trainer was executed with one epoch per stage on the original data,
+  producing all six checkpoints. This checks training execution, not a new
+  full 5,252-epoch reproduction. The original full schedule remains in the
+  download. The guide connects generation, training, evaluation and the notebook.
+- S4/S5 training implementations and five selected configurations are distributed
+  in nonspatial_training_code.zip (1,720,687 bytes). Each model's six-stage
+  training entry ran with one epoch per stage and 32 observed cells per time.
+  The current launcher also takes the cutoff and LR threshold from the selected
+  preparation and prior. Its LR training path was executed separately. These
+  checks do not constitute new full-length model training.
 - S6 trained five held-out classifiers and one trajectory classifier, generated
   growing/fixed-cohort trajectories and evaluated smoothing. S39 reran its
   analysis and 10,000-label spatial permutations. S41 reran four-dataset
@@ -55,7 +75,7 @@ count. Optional training and native external-method inference are separate.
 | paper_figures/arista_figures.ipynb | Dataset populations/growth → S19–21; new gene reconstruction, clustering, GO and LR → S22–24. All six figures executed and displayed. |
 | paper_figures/arista_local_domains.ipynb | Same-run Figure 5c fields/attention and S23 LR → segmentation/permutations → six tables → S25. Executed. |
 | paper_figures/agist_figures.ipynb | New clustering/model fields → S2. Original reference/weights → five-seed attraction evaluation → S3. Executed; original failed diagnostic outcomes retained internally. |
-| paper_figures/nonspatial_figures.ipynb | S4b three-model evaluation executed. Measured cells plus explicit model trajectories/messages and saved arm evaluations → 24 new plotting inputs → S4/S5. Other upstream model evaluations not rerun. |
+| paper_figures/nonspatial_figures.ipynb | Default nine-cell notebook calculates model fields, both-arm distributions, ten-seed clone fate, new-RNA direction, dense trajectories and LR attribution, then converts and plots S4/S5. Executed without saved-result overrides. The linked guide additionally provides preparation and original-model training with explicit downstream selection. |
 | paper_figures/chicken_heart_daily.ipynb | Declared population/model inputs → paper velocity, composition, transition and interaction plots. Non-paper daily transition removed in earlier repair. |
 | paper_figures/classifier_smoothing.ipynb | Classifiers → trajectories → smoothing evaluation → selected plotting inputs. Producers and notebook executed. |
 | paper_figures/compute_cost.ipynb | Actual run summaries → table. Selected directory persists. New-hardware measurements are separate; no new training timing claimed. Executed. |
@@ -107,6 +127,12 @@ and `portable_benchmark_reader_repair.md`. AD is also summarized in
 [AD_READER_CHECK_20260907.md](AD_READER_CHECK_20260907.md).
 
 Automatic GitHub-to-Read-the-Docs deployment was repaired and verified on
-commit `8462c54`. Later changes require their own push, build and page check.
+commit `8462c54`. Commit `9b42bc6` also passed both Python CI jobs, the docs CI
+job and Read-the-Docs build 34434652. The local full suite for the subsequent
+source-download/non-spatial additions passed 1,855 tests with 12 skips. The
+subsequent focused download, public-language, selected-input and numerical
+analysis checks passed 395 tests with three optional-dependency skips. The
+server's non-spatial numerical-analysis tests passed all 21 cases. Later changes
+require their own push, build and page check.
 Full-suite execution and publication are verified separately from scientific
 input-to-figure execution.

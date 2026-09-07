@@ -765,6 +765,11 @@ def _assess_final_two_band_morphology(
     return table, summary
 
 
+def _evaluation_plot(args, function, *positional, **keywords):
+    if not getattr(args, "no_plots", False):
+        function(*positional, **keywords)
+
+
 def evaluate(args: argparse.Namespace) -> dict:
     import anndata as ad
     from scipy.stats import spearmanr
@@ -819,7 +824,7 @@ def evaluate(args: argparse.Namespace) -> dict:
             )
     gt_signal_table = pd.DataFrame(gt_signal_rows)
     gt_signal_table.to_csv(output / "ground_truth_interaction_signal.csv", index=False)
-    _plot_gt_interaction_signal(
+    _evaluation_plot(args, _plot_gt_interaction_signal,
         gt_signal_table, output / "ground_truth_interaction_signal.png"
     )
     x0 = gt_points[0]
@@ -1113,7 +1118,7 @@ def evaluate(args: argparse.Namespace) -> dict:
                 for column in range(2)
             ]
         ).to_csv(output / "gene_force_projection.csv", index=False)
-        _plot_gene_force_projection(
+        _evaluation_plot(args, _plot_gene_force_projection,
             learned_projection,
             target_projection,
             output / "gene_force_projection.png",
@@ -1132,7 +1137,7 @@ def evaluate(args: argparse.Namespace) -> dict:
         encoding="utf-8",
     )
 
-    _plot_snapshot_grid(
+    _evaluation_plot(args, _plot_snapshot_grid,
         time_points=gt_time,
         ground_truth=gt_points,
         predicted=on_points_by_seed[seeds[0]],
@@ -1141,7 +1146,7 @@ def evaluate(args: argparse.Namespace) -> dict:
         title="Fixed-population spatial snapshots",
         output_path=output / "gt_vs_generated_spatial.png",
     )
-    _plot_snapshot_grid(
+    _evaluation_plot(args, _plot_snapshot_grid,
         time_points=gt_time,
         ground_truth=gt_points,
         predicted=on_points_by_seed[seeds[0]],
@@ -1150,15 +1155,15 @@ def evaluate(args: argparse.Namespace) -> dict:
         title="Fixed-population 2D gene-state snapshots",
         output_path=output / "gt_vs_generated_gene.png",
     )
-    _plot_w1(metrics, output / "interaction_on_vs_off_w1.png")
-    _plot_gene_ablation_delta(
+    _evaluation_plot(args, _plot_w1, metrics, output / "interaction_on_vs_off_w1.png")
+    _evaluation_plot(args, _plot_gene_ablation_delta,
         paired,
         assessment_start_time=float(gt_time[0])
         + 0.5 * float(gt_time[-1] - gt_time[0]),
         output_path=output / "gene_interaction_ablation_delta.png",
     )
-    _plot_pattern(pattern, shape_scale, output / "interaction_pattern.png")
-    _plot_mass(mass_table, output / "growth_mass_curve.png")
+    _evaluation_plot(args, _plot_pattern, pattern, shape_scale, output / "interaction_pattern.png")
+    _evaluation_plot(args, _plot_mass, mass_table, output / "growth_mass_curve.png")
 
     dense_time = np.asarray(reference["dense_time"], dtype=float)
     gt_dense = np.asarray(reference["dense_state"], dtype=np.float32)
@@ -1176,7 +1181,7 @@ def evaluate(args: argparse.Namespace) -> dict:
         growth_mode=str(args.fixed_cell_dynamics_growth_mode),
         verbose=False,
     )
-    _plot_dense_trajectories(
+    _evaluation_plot(args, _plot_dense_trajectories,
         dense_time=dense_time,
         ground_truth=gt_dense,
         predicted=predicted_dense,
@@ -1378,6 +1383,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     eval_parser.add_argument("--no-score", action="store_true")
+    eval_parser.add_argument("--no-plots", action="store_true",
+                             help="Save numerical results without diagnostic figures.")
     eval_parser.add_argument(
         "--fixed-cell-dynamics-growth-mode",
         choices=("frozen_uniform", "learned"),
@@ -1428,6 +1435,8 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     all_parser.add_argument("--no-score", action="store_true")
+    all_parser.add_argument("--no-plots", action="store_true",
+                            help="Save numerical results without diagnostic figures.")
     all_parser.add_argument(
         "--fixed-cell-dynamics-growth-mode",
         choices=("frozen_uniform", "learned"),

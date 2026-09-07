@@ -2,22 +2,60 @@
 orphan: true
 ---
 
-# Analysis inputs: Supplementary Figure S39: zebrafish attention and control comparisons
+# Zebrafish attention and control comparisons for Supplementary Figure S39
 
-The [figure notebook](../../tutorials/paper_figures/zebrafish_attention.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
+S39 combines model-to-method score comparisons with JAM controls and spatial
+permutations. The steps below calculate the comparison tables, then pass them
+to the [figure notebook](../../tutorials/paper_figures/zebrafish_attention.ipynb).
+Run the commands in the CytoBridge code folder and replace paths in angle
+brackets with your file locations.
 
-## Calculation programs
-
-Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
-
-
-### 1. produce and bind the numerical inputs
+## 1. Prepare the method comparisons and interaction contrasts
 
 The [spatial communication calculation guide](spatial-communication.md) gives
 the shared-sample preparation and native external-output filenames. For S39,
 retain the zebrafish terminal sample, model attribution, COMMOT, CellAgentChat,
-NicheNet and LR database from that same shared-input analysis. Bind those actual
-files rather than writing hashes or a PASS result by hand:
+NicheNet and LR database from that same shared-input analysis.
+
+The comparison also reads the report from the matched ablation matrix produced
+by `scripts/run_matched_ablation_matrix.py`. After its twelve training and
+downstream arms have finished, calculate the report:
+
+```bash
+python scripts/validate_corrected_de_novo_run.py --run-root <matched-run> \
+  --datasets zebrafish zebrafish_no_lr_prior zebrafish_no_interaction \
+  mosta mosta_no_lr_prior mosta_no_interaction \
+  arista arista_no_lr_prior arista_no_interaction \
+  admouse admouse_no_lr_prior admouse_no_interaction \
+  --matched-family zebrafish --matched-family mosta \
+  --matched-family arista --matched-family admouse \
+  --report <new-acceptance.json>
+```
+
+Step 2 reads this report as `matched_acceptance`. Use the path selected by
+`--report` in that step's `matched_acceptance` argument.
+
+For the fixed-checkpoint interaction contrast, use the zebrafish training
+directory containing its checkpoints and `training_run_summary.json`:
+
+```bash
+python scripts/run_five_dataset_weighted_interaction_ablation.py run \
+  --dataset zebrafish --model-dir <zebrafish-training> \
+  --expected-training-summary-sha256 <training_run_summary.json-sha256> \
+  --aligned-h5ad data/zebrafish/aligned.h5ad \
+  --expected-aligned-sha256 <aligned.h5ad-sha256> \
+  --output-dir <interaction-analysis> --device cuda:2
+```
+
+This simulates the same checkpoint with and without interaction, then writes
+`<interaction-analysis>/target_relative_sliced_w2.csv` and `manifest.json`.
+Read the two required file checksums with `sha256sum` on Linux or
+`shasum -a 256` on macOS.
+
+## 2. Compare model scores with external methods
+
+Create the analysis configuration from the terminal sample, method outputs,
+and interaction results prepared above:
 
 ```bash
 python scripts/build_zebrafish_attention_spec.py \
@@ -40,67 +78,20 @@ python scripts/build_zebrafish_attention_spec.py \
   --output <analysis-spec.json>
 ```
 
-The two interaction/acceptance records are required provenance from completed
-matched and fixed-checkpoint analyses, not values inferred from the attention
-table. The builder reports a missing input and rejects an acceptance record
-without PASS; it does not manufacture either upstream analysis. Their repository
-producers are `scripts/run_matched_ablation_matrix.py` (the matched-run acceptance)
-and `scripts/run_five_dataset_weighted_interaction_ablation.py` (the per-dataset
-`target_relative_sliced_w2.csv` and `manifest.json`). Use the exact outputs of
-those completed analyses, not a hand-written acceptance placeholder. NicheNet scope
-remains the scope recorded by its original manifest.
-
-For an already completed matched matrix, its acceptance record is calculated
-by the validator below. This checks the twelve completed training/downstream
-arms; it does not train missing arms or turn an incomplete run into PASS.
-
-```bash
-python scripts/validate_corrected_de_novo_run.py --run-root <matched-run> \
-  --datasets zebrafish zebrafish_no_lr_prior zebrafish_no_interaction \
-  mosta mosta_no_lr_prior mosta_no_interaction \
-  arista arista_no_lr_prior arista_no_interaction \
-  admouse admouse_no_lr_prior admouse_no_interaction \
-  --matched-family zebrafish --matched-family mosta \
-  --matched-family arista --matched-family admouse \
-  --report <new-acceptance.json>
-```
-
-Bind that report as `matched_acceptance`. To calculate the zebrafish
-fixed-checkpoint interaction contrast, retaining the actual training summary:
-
-```bash
-python scripts/run_five_dataset_weighted_interaction_ablation.py run \
-  --dataset zebrafish --model-dir <zebrafish-training> \
-  --expected-training-summary-sha256 <training_run_summary.json-sha256> \
-  --aligned-h5ad data/zebrafish/aligned.h5ad \
-  --expected-aligned-sha256 <aligned.h5ad-sha256> \
-  --output-dir <interaction-analysis> --device cuda:2
-```
-
-The model directory must contain its own `training_run_summary.json`; do not
-attach another run's summary to a downloaded checkpoint. This calculation
-simulates the fixed checkpoint with and without interaction and writes the
-target-error table and manifest bound above. The two SHA-256 values can be
-read with `sha256sum` (Linux) or `shasum -a 256` (macOS).
-
-### 2. compare model scores with external methods (S39)
+The resulting `<analysis-spec.json>` lists the files for the comparison and
+retains the NicheNet evidence scope recorded in its manifest. Analyze these
+inputs with 30 selected cell-type pairs:
 
 ```text
 python -m scripts.run_zebrafish_attention_analysis analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30
 ```
 
-Start with: `manuscript zebrafish checkpoint; aligned cells; COMMOT/CellAgentChat outputs; fixed LR universe`
+This saves directed-pair concordance, expression, display-edge, and
+interaction-sensitivity tables with `analysis_manifest.json` in
+`<attention-analysis>`. Step 4 combines these tables with the JAM calculations
+below.
 
-Writes: `directed-pair concordance, expression, display-edge and interaction-sensitivity tables plus analysis_manifest.json`
-
-Next: `combine with JAM controls and draw S39`
-
-
-Run this command from the root of a cloned CytoBridge GitHub repository. The installed package contains the final figure command, while this manuscript comparison script remains in the repository.
-
-
-
-### 3. calculate JAM controls and spatial permutations
+## 3. Calculate JAM controls and spatial permutations
 
 Produce the three attribution conditions from the same aligned H5AD and fitted
 model using `scripts/reviewer_zebrafish_ccc/run_cytobridge_spatial_attribution.py`:
@@ -109,9 +100,8 @@ condition uses `--checkpoint-stage Refine`, the saved checkpoint immediately
 before interaction training in the six-stage model;
 the randomized condition adds `--randomize-interaction-seed 17` to Finetune.
 Use `--grouping-seeds 101,202,303,404,505`, `--time-label-key time`, and
-`--device cuda:2`. The exact stage directories and `observed_cells.csv.gz` are
-written under each supplied `--output-dir`. Do not replace a pre-interaction
-checkpoint with a newly trained or zero-weight model.
+`--device cuda:2`. The stage directories and `observed_cells.csv.gz` are written
+under each supplied `--output-dir`.
 
 ```bash
 python scripts/reviewer_zebrafish_ccc/jam_trained_init_random_control.py \
@@ -133,7 +123,9 @@ python scripts/reviewer_zebrafish_ccc/jam_myocyte_case_study.py \
 These calculate the same-scaffold JAM compatibility and the fixed-cutoff
 spatial-label null. Their `manifest.json` files are the next command's inputs.
 
-### 4. combine JAM controls and export panel tables
+## 4. Combine the comparison and JAM tables
+
+Read the score comparisons from step 2 and both JAM manifests from step 3:
 
 ```text
 python -m scripts.run_zebrafish_attention_analysis figure \
@@ -143,18 +135,15 @@ python -m scripts.run_zebrafish_attention_analysis figure \
   --output-dir <attention-figure>
 ```
 
-Start with: `attention-analysis tables, the three-condition JAM control manifest, and the JAM spatial/biology manifest`
+This writes spatial-null, JAM, and summary tables, PDF/PNG plots, and
+`report_manifest.json` under `<attention-figure>`. The ten tables in its
+`panel_data/` directory are the inputs to the S39 collector.
 
-Writes: `spatial-null, JAM, summary and panel tables; vector PDF/PNG; report_manifest.json`
+## 5. Collect the S39 panel tables
 
-Next: `collect the numerical inputs for the current figure notebook`
-
-
-The control manifest is written by `scripts/reviewer_zebrafish_ccc/jam_trained_init_random_control.py`, which processes the trained, pre-interaction and randomized edge tables together. The spatial/biology manifest is written by `scripts/reviewer_zebrafish_ccc/jam_myocyte_case_study.py`.
-
-
-
-### 5. collect the calculated panel tables (S39)
+Use `panel_data/` from step 4 and the same CytoBridge and COMMOT pair-score
+files used in step 2. The collector selects their terminal stage with the
+same rule as `analyze`.
 
 ```text
 python -m scripts.collect_zebrafish_attention_inputs \
@@ -164,13 +153,21 @@ python -m scripts.collect_zebrafish_attention_inputs \
   --output-dir <s39-inputs>
 ```
 
-Start with: the ten tables exported in `<attention-figure>/panel_data`, plus the CytoBridge and COMMOT pair-score files bound to the preceding attention analysis. The collector selects their terminal stage using the same rule as `analyze`.
+The new `<s39-inputs>` directory contains `manifest.json`, the ten panel tables,
+and `commot_comparison/` with the corresponding pair scores. The JAM result's
+`fisher_exact_two_sided_p_descriptive_technical` values are also copied to the
+column name read by the figure loader; this leaves the test values unchanged.
 
-Writes: `<s39-inputs>/manifest.json`, the ten panel tables, and `commot_comparison/` containing the corresponding pair scores. The current native JAM producer's `fisher_exact_two_sided_p_descriptive_technical` column is retained and given the identical-value historical loader alias; no test is recomputed or reinterpreted. The collector derives the manifest from these results and checks the existing S39 input contract. It does not run model inference or substitute included paper tables. Use a new output directory.
+## 6. Draw the collected results
 
-### 6. draw the collected results (S39)
+Set `CYTOBRIDGE_ZEBRAFISH_ATTENTION_RESULTS=<s39-inputs>` to an absolute input
+path before launching the figure notebook, then run all cells. The notebook
+reads the panel tables and their matching `commot_comparison/` subdirectory.
 
-Set `CYTOBRIDGE_ZEBRAFISH_ATTENTION_RESULTS=<s39-inputs>` to an absolute input path before launching the figure notebook, then run all cells. It selects the new table directory and its matching `commot_comparison/` subdirectory together. If you edit the selection cell directly, set both `results_dir = Path("<s39-inputs>")` and `commot_results_dir = results_dir / "commot_comparison"`. The final call uses those paths:
+If selecting the paths in the notebook instead, set
+`results_dir = Path("<s39-inputs>")` and
+`commot_results_dir = results_dir / "commot_comparison"` in the selection cell.
+The final plotting call uses both paths:
 
 ```python
 pdf_path, png_path = draw_supplementary(
@@ -180,4 +177,6 @@ pdf_path, png_path = draw_supplementary(
 )["s39"]
 ```
 
-Writes: `S39.pdf`, `S39.png`, panel summary tables and the 1,000 within-group COMMOT permutation values. Model inference, external-method execution and the 10,000 JAM label permutations are not repeated by this final step.
+The plot saves `S39.pdf`, `S39.png`, panel summary tables, and the 1,000
+within-group COMMOT permutation values in `output_dir`. It reads the saved
+model comparisons and 10,000 JAM label permutations from the preceding steps.

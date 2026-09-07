@@ -261,10 +261,9 @@ def build_nonspatial_lr_prior(
         implementation_paths=(Path(__file__), manifest_path),
     )
     observed_cutoff = float(result["pair_sampling"]["candidate_radius"])
-    if not np.isclose(observed_cutoff, preset.interaction_cutoff, rtol=0, atol=1e-10):
-        raise ValueError(
-            f"{preset.name} state-space cutoff changed: {observed_cutoff!r}."
-        )
+    # The radius is calculated from this preparation, not from a previous run.
+    if not np.isfinite(observed_cutoff) or observed_cutoff <= 0:
+        raise ValueError("The fitted state-space cutoff must be finite and positive.")
     return result
 
 

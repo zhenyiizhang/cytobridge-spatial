@@ -2,14 +2,15 @@
 orphan: true
 ---
 
-# Analysis inputs: Supplementary Figure S43: spatial communication
+# Spatial communication for Supplementary Figure S43
 
-The notebook consumes four calculated panel tables. They are not the native
-outputs of COMMOT, CellAgentChat or NicheNet. This route converts the completed
-method outputs into those four tables.
-Run in the CytoBridge code folder with the external methods in their own environments.
+S43 compares directed cell-type-pair scores and molecular support across
+communication methods. The calculations below turn each method's output into
+four panel tables, which the notebook then reads to draw the figure. Run the
+commands in the CytoBridge code folder, with external methods in their own
+environments.
 
-## 1. Keep the native results and their shared-input records
+## 1. Prepare the shared sample and run the methods
 
 Use one directory per dataset under `outputs/ccc`: `zebrafish`, `mosta`, `arista`,
 `admouse`, and `chicken_heart`. The following names are used below; existing
@@ -28,10 +29,10 @@ directories may be supplied instead by changing the corresponding JSON paths.
 The adapter commands above begin with `python scripts/`. CellAgentChat's
 [preparation and execution guide](https://github.com/zhenyiizhang/cytobridge-spatial/blob/main/scripts/reviewer_zebrafish_ccc/cellagentchat/README.md)
 and NicheNet's [pinned R workflow](https://github.com/zhenyiizhang/cytobridge-spatial/blob/main/scripts/reviewer_zebrafish_ccc/nichenet/README.md)
-specify their separate dependencies and orthology contracts. Do not reuse a
-zebrafish orthology map for another species or convert an unavailable method
-into a zero score. The current zebrafish NicheNet panel is a strict confidence-1
-cross-species sensitivity, not a native zebrafish prior or pooled primary claim.
+specify their dependencies and species-specific orthology maps. The zebrafish
+NicheNet calculation uses confidence-1 cross-species mappings and is reported
+as a molecular sensitivity analysis. Use the corresponding species' map for
+each of the other datasets.
 
 First summarize each completed NicheNet run, retaining the candidates,
 receiver-response definitions, and manifests from its preparation:
@@ -45,7 +46,7 @@ python scripts/run_spatial_communication_consistency.py summarize-nichenet \
 Repeat for the other datasets. Outputs are `nichenet_lr_evidence.csv.gz`,
 `nichenet_ligand_target_evidence.csv.gz`, and `manifest.json`.
 
-## 2. Bind the completed files and calculate the directed-pair comparison
+## 2. Compare directed cell-type-pair scores
 
 Create `outputs/ccc/aggregate_config.json` as a JSON object with a `datasets`
 mapping containing all five dataset names. Each value uses these exact keys:
@@ -65,11 +66,12 @@ mapping containing all five dataset names. Each value uses these exact keys:
 }
 ```
 
-Set the actual CellAgentChat exported score column (the formal shared-database
-run uses `cellagentchat_native_primary_mean`). For methods genuinely unavailable,
-retain their observed status/reason and omit the file key. Do not mark an
-unfinished run complete. S43 needs completed COMMOT and CellAgentChat results
-for all five audit datasets; the figure displays four, excluding AD mouse.
+Set `cellagentchat_score_column` to the column exported by your CellAgentChat
+run; the shared-database calculation uses `cellagentchat_native_primary_mean`.
+For an unavailable method, record its status and reason and omit its file key.
+Unavailable methods have no numerical score. S43 requires completed COMMOT and
+CellAgentChat results for all five datasets; the figure displays four, excluding
+AD mouse.
 
 ```bash
 python scripts/run_spatial_communication_consistency.py aggregate \
@@ -77,14 +79,16 @@ python scripts/run_spatial_communication_consistency.py aggregate \
 ```
 
 This builds complete directed terminal-stage type-pair grids, zero-fills absent
-pairs within an available method, and calculates Spearman/top-20% overlap using
-the existing definitions. It writes `cytobridge_external_metrics.csv`,
-`directed_pair_method_scores.csv`, selection/status tables, and `manifest.json`.
+pairs within an available method, and calculates Spearman correlation and
+top-20% overlap. The results are saved in `outputs/ccc/aggregate/` as
+`cytobridge_external_metrics.csv`, `directed_pair_method_scores.csv`,
+selection/status tables, and `manifest.json`. Step 3 uses this directory to
+select cell-type pairs for molecular analysis.
 
 ## 3. Calculate model-first LR and molecular summaries
 
 Create `outputs/ccc/biology_config.json` with `schema_version: 1` and a `datasets`
-mapping for the same five datasets. Each value binds these exact input paths:
+mapping for the same five datasets. Each value specifies these input paths:
 
 ```json
 {
@@ -103,10 +107,11 @@ mapping for the same five datasets. Each value binds these exact input paths:
 }
 ```
 
-Use the species/run-specific NicheNet evidence scope in every record. The
-selection stage records unsupported datasets instead of inventing an LR axis.
-The molecular summary verifies the frozen selection artifacts before calculating
-within-pair molecular ranks and receiver-target evidence.
+Set `nichenet_target_evidence_scope` for the species and NicheNet calculation
+used in each record. The first command selects model-linked LR pairs and
+records datasets without a supported pair in its status table. The second
+reads that selection to calculate within-pair molecular ranks and
+receiver-target evidence.
 
 ```bash
 python scripts/run_spatial_communication_consistency.py select-model-biology \
@@ -120,8 +125,9 @@ python scripts/run_spatial_communication_consistency.py summarize-model-biology-
 The first command writes `selected_model_linked_lr.csv`, candidate/status tables,
 `model_linked_external_support.csv`, and `manifest.json`. The second writes
 `model_biology_molecular_panel.csv`, `model_first_nichenet_chains.csv`,
-`molecular_rank_consistency.csv`, and `manifest.json`. To reuse a completed
-frozen selection, pass its directory without rerunning selection.
+`molecular_rank_consistency.csv`, and `manifest.json`. These files are saved in
+`outputs/ccc/selection/` and `outputs/ccc/molecular/`, respectively. To reuse a
+completed selection, pass its directory to the second command.
 
 ## 4. Export the four notebook inputs and draw
 
@@ -134,9 +140,15 @@ CYTOBRIDGE_SPATIAL_COMMUNICATION_RESULTS="$PWD/outputs/ccc/s43_inputs" \
   --output-dir outputs/ccc/notebook
 ```
 
-The collector verifies manifest-bound input bytes and performs the same
-selection/merge as the original `plot-model-biology` producer. It writes
+The collector joins the pair-level comparisons, selected LR pairs, and
+molecular summaries from steps 2 and 3. It saves
 `global_pair_metrics.csv`, `model_linked_external_support.csv`,
 `model_biology_molecular_panel.csv`, `model_first_nichenet_chains.csv`, and an
-input/output manifest. It does not run external inference or render the older
-figure. The notebook passes that directory to the S43 plotting function.
+input/output manifest in `outputs/ccc/s43_inputs/`.
+
+The [notebook](../../tutorials/paper_figures/spatial_communication.ipynb) reads
+these four tables and passes the same directory to the S43 plotting function.
+Its executed notebook and figure outputs are saved under `outputs/ccc/notebook/`.
+The absolute input path is needed because the notebook runs in a separate
+working directory. This final step summarizes and plots the saved method
+outputs; method execution takes place in step 1.

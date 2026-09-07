@@ -90,6 +90,13 @@ cache metadata version is not permission to replace downloaded weights. Use
 one declared classifier across a dataset's figures, and check its recorded
 model-selection procedure before describing any full-data refit.
 
+Simplifying prose must not remove preparation, training, evaluation or
+attribution commands. A shorter table saying “read the evaluation output”
+reintroduces the same missing-producer problem. Check the command's actual
+output names and schema, then show how those outputs enter the plotting
+dictionary. Different Full models used by different paper panels must remain
+explicitly distinguished; do not label them as one matched training run.
+
 Use concrete names from the distributed files and configuration. A directory
 link is not an executable command. Do not pack several commands, alternative
 flags, and instructions into one prose sentence. Keep model settings in the
@@ -159,6 +166,15 @@ An older generator must not restore removed text, stale input choices, or
 disconnected calculations. Test the generated cells, not only the checked-in
 notebook. Record separately whether a route was reviewed, executed from saved
 results, or executed from measured inputs and model weights.
+
+Do not move a missing model calculation into a separate reference page and
+leave the primary notebook reading only its old output. Put the supported
+model-analysis calls in the notebook's default sequence, followed by the exact
+conversion and plotting calls. An explicitly selected saved-result shortcut
+may skip calculations, but it must not be the route used to certify the
+default notebook. Run the default cells with the public download layout and
+without private source overrides. Optional training can have a separate guide
+when its model, prepared-data and prior selections are shown explicitly.
 
 Keep a dated page-by-page review outside the public tutorial navigation.
 Record concrete failures and fixes, rather than a single package-wide pass.

@@ -68,6 +68,10 @@ S2 uses the recorded generator velocity as its known reference, and evaluates
 the fitted velocity, score-gradient and grouped interaction on the same rows.
 The groups are broad unsupervised state partitions, not annotated cell types.
 S3 holds the model fixed and changes the five inference seeds.
+
+To generate the S3 observations or train its radial model from scratch,
+follow [S3 data generation and training](../../reference/figure_sources/agist.md).
+That guide shows how to select the new evaluation in this notebook.
 """), code(SETUP + """
 agist_root = Path(os.environ.get("CYTOBRIDGE_AGIST_DATA", project / "data/agist"))
 simulation_root = Path(os.environ.get("CYTOBRIDGE_SIMULATION_DATA", project / "data/simulation"))
@@ -122,15 +126,20 @@ That explicit choice reuses model results; otherwise this cell performs a new
 evaluation. Small stochastic/numerical differences from the paper are possible.
 """), code("""
 evaluation_override = os.environ.get("CYTOBRIDGE_ATTRACTION_EVALUATION")
+simulation_data = Path(os.environ.get("CYTOBRIDGE_ATTRACTION_DATA", simulation_root / "data"))
+simulation_model = Path(os.environ.get("CYTOBRIDGE_ATTRACTION_MODEL", simulation_root / "training/model"))
 if evaluation_override:
     evaluation = Path(evaluation_override)
 else:
     evaluation = output / "attraction_evaluation"
-    run("scripts.run_spatial_synthetic_benchmark", "evaluate",
-        "--data-dir", simulation_root / "data",
-        "--model-dir", simulation_root / "training/model",
+    command = [sys.executable, "-m", "scripts.run_spatial_synthetic_benchmark", "evaluate",
+        "--data-dir", simulation_data,
+        "--model-dir", simulation_model,
         "--stage", "Score_Refine", "--evaluation-dir", evaluation,
-        "--seeds", "1,4,8,32,256", "--no-score", "--device", device)
+        "--seeds", "1,4,8,32,256", "--no-score", "--no-plots", "--device", device]
+    with (output / "attraction_evaluation.log").open("w") as log:
+        subprocess.run(list(map(str, command)), cwd=repo, check=True,
+                       stdout=log, stderr=subprocess.STDOUT)
 """), md("""
 ## Convert the calculated results to the displayed arrays
 
@@ -142,7 +151,7 @@ evaluation directory above.
 from reproduction.agist.inputs import attraction_inputs, collect_agist_inputs
 from CytoBridge.results import calculate_agist_figure_panels, write_agist_figure_tables
 
-attraction = attraction_inputs(simulation_root / "data/attractive_observed.h5ad", evaluation)
+attraction = attraction_inputs(simulation_data / "attractive_observed.h5ad", evaluation)
 data = collect_agist_inputs(output / "plot_inputs", velocity=velocity, attraction=attraction)
 panels = calculate_agist_figure_panels(data)
 tables = write_agist_figure_tables(panels, output / "figures")
@@ -345,22 +354,30 @@ def nonspatial():
     cells = [md("""
 # Supplementary Figures S4–S5: non-spatial model analyses
 
-Calculate the S4b velocity field directly from the three fitted LR models.
-Convert the measured cells, explicit trajectory outputs, directed interaction
-tables and evaluation results into the numerical inputs for S4–S5, then draw
-the figures from that new directory.
+Start from measured cells and fitted models. Calculate velocity fields,
+distribution errors, clone fate, RNA-direction alignment, dense trajectories,
+exact GNN messages and LR attribution, then draw S4–S5 from those results.
 
-S4b uses the LR-informed training seeds 42, 43 and 44, each averaged over five
+S4b/e/f use the LR-informed training seeds 42, 43 and 44. S4b averages five
 16-cell groupings; S4c/d compare the radius-graph Full and No-interaction models.
-S5 uses the corresponding cortical Full model.
+S5 uses the cortical LR Full model and its No-interaction comparison.
 
-Run these cells with the CytoBridge code folder available. The downloads
-provide the prepared data, trained models and numerical analysis outputs.
+Run these cells in order with the CytoBridge code folder available. Set
+`CYTOBRIDGE_DEVICE` to an available GPU, or `cpu` for a slower run. The default
+route recalculates every model-dependent input. Training is optional; the
+[training guide](../../reference/figure_sources/nonspatial.md) shows how to
+prepare data, build a prior and fit the original state-space architecture.
+
+To reuse an existing numerical analysis, set `CYTOBRIDGE_NONSPATIAL_SOURCES`
+to a JSON file containing `weinreb`, `scnt` and `weinreb_field_models` paths.
+That shortcut reuses the selected analyses while still calculating S4b.
 """), code(SETUP + """
 import json
 from reproduction.nonspatial.inputs import downloaded_sources
+from reproduction.nonspatial import analyze
 
 source_override = os.environ.get("CYTOBRIDGE_NONSPATIAL_SOURCES")
+reuse_analysis = bool(source_override)
 if source_override:
     selected = json.loads(Path(source_override).read_text())
     weinreb, scnt = selected["weinreb"], selected["scnt"]
@@ -374,6 +391,15 @@ else:
         cb.datasets.download("nonspatial", destination=project,
                              kind="nonspatial_paper_inputs.zip")
     weinreb, scnt, field_models = downloaded_sources(project)
+
+wroot, sroot = project / "data/weinreb", project / "data/scnt_cortex"
+wfull, wno = wroot / "full/model", wroot / "no_interaction/model"
+sfull, sno = sroot / "full/model", sroot / "no_interaction/model"
+wexpression, wprior = wroot / "original/Weinreb.h5ad", wroot / "edge_prior/manifest.json"
+sexpression = sroot / "original/hvg2000/scnt_cortical_full_total_expression.h5ad"
+sprior = sroot / "edge_prior/manifest.json"
+sraw = sroot / "original/scnt_cortical_full_20547_raw_counts.h5ad"
+spca = sroot / "original/hvg2000/scnt_cortical_full_hvg2000_pca_artifacts.npz"
 
 output = project / "outputs" / ("nonspatial_" + run_name)
 output.mkdir(parents=True, exist_ok=False)
@@ -390,24 +416,103 @@ from reproduction.nonspatial.fields import calculate_weinreb_fields
 weinreb["model_grids"] = calculate_weinreb_fields(
     weinreb["prepared_h5ad"], field_models, output / "weinreb_model_fields",
     device=device, grouping_seeds=(0, 1, 2, 3, 4))
-weinreb["model_grids"]
 """), md("""
-## Select the numerical results for the other panels
+## S4c and S5c. Simulate both models and calculate distribution errors
 
-The source dictionaries below identify each input file. Distribution and
-clone-fate tables are recorded evaluations of the selected fitted models.
-The S5 dense trajectory records the Full model's simulated 50-PC states;
-its streamlines are calculated here by finite differences, not read as a plot.
-The directed GNN-message and LR-attribution tables are model-analysis outputs.
-CellChat scores are an independent reference. This cell does not rerun those
-upstream evaluations.
-
-To use newly calculated results, replace the corresponding dictionary path
-with your evaluation's output before continuing. Source filenames and producer
-descriptions are listed in `reproduction/nonspatial/source_keys.json`.
+Use each model's matching prepared 50-PC states. Simulate 2,048 particles with
+growth, score, noise `sigma=0.1`, integration step `0.05` and 16-cell interaction
+groups. Calculate weighted W1/W2 and absolute total-mass error at observed
+times, with up to 1,024 points for OT. Each call writes a long
+`paired_distribution_metrics.csv`; the adapter below selects its PCA rows.
+New stochastic evaluations can differ from the paper's saved values.
 """), code("""
-display(weinreb)
-display(scnt)
+if not reuse_analysis:
+    wdistribution = analyze.distribution(
+        weinreb["prepared_h5ad"], wfull, wno, output / "weinreb_distribution",
+        device=device, seed=42)
+    sdistribution = analyze.distribution(
+        scnt["prepared_h5ad"], sfull, sno, output / "scnt_distribution",
+        device=device, seed=42)
+"""), md("""
+## S4d. Calculate clone-fate agreement from ten rollouts
+
+Propagate every day-2 cell to day 6 with step `0.1`, `sigma=0.1` and seeds 0–9.
+The original uniform-weighted k=20 classifier is fitted on all measured day-6
+cells. Score clone-positive source cells whose lineage occurs at day 6.
+Weighted simulated and measured fate distributions are compared per clone.
+The call writes each arm's `summary.json` and per-lineage tables.
+"""), code("""
+if not reuse_analysis:
+    analyze.clone_fate(
+        weinreb["prepared_h5ad"], wfull, wno, output / "weinreb_clone_fate",
+        device=device, seeds=tuple(range(10)))
+"""), md("""
+## S5b/d. Calculate dense trajectories and new-RNA direction
+
+Reconstruct the measured new-RNA direction from total/new counts, the saved
+PCA transformation and the two-hour labeling interval. Evaluate each model's
+field on all measured cells with grouping seeds 101, 202, 303, 404 and 505;
+write cellwise cosines and `timewise_scnt_direction_alignment.csv`.
+
+Simulate the Full model at 41 times from 0 to 2, preserving the identities of
+2,048 particles. The resulting `full_dense_trajectory.npz` supplies the
+finite-difference vectors for the S5b streamlines.
+"""), code("""
+if not reuse_analysis:
+    scnt["direction"] = analyze.direction(
+        sraw, scnt["prepared_h5ad"], spca, sfull, sno,
+        output / "scnt_direction", device=device)
+    scnt["full_trajectory"] = analyze.trajectory(
+        scnt["prepared_h5ad"], sfull, output / "scnt_trajectory", device=device)
+"""), md("""
+## S4e/f and S5b/e/f. Calculate exact messages and LR attribution
+
+Decompose the learned interaction into sender-type contributions on every
+measured cell. Reconstruct LR expression compatibility with the fitted prior,
+then calculate `S_AB = D_AB × Q_AB`. Average grouping replicates within each
+model before averaging the three Weinreb training seeds.
+
+The calls write `exact_message_summary.csv`, `cell_type_interaction_network.csv`
+and `cell_type_pathway_scores.csv.gz`. CellChat remains an independent,
+expression-only reference; the model scores and concordance are recalculated.
+"""), code("""
+if not reuse_analysis:
+    wattribution = analyze.attribution(
+        wexpression, weinreb["prepared_h5ad"], wprior, field_models,
+        output / "weinreb_attribution", cell_type_key="Cell type annotation",
+        training_seeds=(42, 43, 44), device=device)
+    sattribution = analyze.attribution(
+        sexpression, scnt["prepared_h5ad"], sprior, [sfull],
+        output / "scnt_attribution", cell_type_key="cell_type",
+        training_seeds=(42,), device=device)
+"""), md("""
+## Convert the new analysis outputs to panel inputs
+
+Pivot the long distribution tables into the paired PCA comparison. Convert
+each arm's clone-fate JSON summary to the three displayed metric rows. Join
+new Weinreb GNN messages to the measured CellChat reference, and select the
+new cortical message, network and pathway tables. These assignments keep the
+calculated outputs connected to the plot below.
+"""), code("""
+from reproduction.nonspatial.adapters import (
+    distribution_inputs, clone_fate_input, weinreb_cellchat_input,
+)
+
+if not reuse_analysis:
+    weinreb["distribution"] = distribution_inputs(
+        wdistribution, output / "weinreb_distribution_tables")["distribution"]
+    scnt_metrics = distribution_inputs(sdistribution, output / "scnt_distribution_tables")
+    scnt["full_distribution"] = scnt_metrics["full_distribution"]
+    scnt["no_interaction_distribution"] = scnt_metrics["no_interaction_distribution"]
+    weinreb["clone_fate"] = clone_fate_input(
+        output / "weinreb_clone_fate", output / "weinreb_clone_fate_panel.csv")
+    weinreb["cellchat_joined"] = weinreb_cellchat_input(
+        wattribution / "exact_message_summary.csv", weinreb["cellchat_joined"],
+        output / "weinreb_cellchat_comparison.csv")
+    weinreb["pathways"] = wattribution / "cell_type_pathway_scores.csv.gz"
+    scnt["exact_message_summary"] = sattribution / "exact_message_summary.csv"
+    scnt["network"] = sattribution / "cell_type_interaction_network.csv"
+    scnt["pathways"] = sattribution / "cell_type_pathway_scores.csv.gz"
 """), md("""
 ## Calculate all displayed arrays and tables
 
@@ -424,7 +529,7 @@ from CytoBridge.results import calculate_nonspatial_panels, write_nonspatial_tab
 data = collect_nonspatial_inputs(weinreb, scnt, output / "plot_inputs")
 panels = calculate_nonspatial_panels(data)
 tables = write_nonspatial_tables(panels, output / "figures")
-tables
+panels.summary
 """), md("## Draw S4–S5 from the new inputs"), code("""
 from reproduction.paper_figures import draw_supplementary
 figures = draw_supplementary(

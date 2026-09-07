@@ -52,6 +52,11 @@ For the five spatial datasets, the model archive contains the final dynamical mo
 predictor, fitted cell-type classifier, and settings. The analysis-data archive
 contains the matching aligned H5AD.
 
+The S3 radial model's training implementation and configuration are available
+in [simulation_training_code.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_training_code.zip)
+(0.4 MB). The [S3 calculation guide](reference/figure_sources/agist.md)
+shows how to train it and use the resulting model in the figure notebook.
+
 For example, extracting the two chicken-heart archives gives:
 
 ```text
@@ -86,6 +91,7 @@ directories within their dataset folder.
 | [zebrafish_video_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/zebrafish_video_data.zip) | Numerical trajectories and labels for the zebrafish videos |
 | [chicken_heart_training_inputs.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/chicken_heart_training_inputs.zip) | Count matrices, section annotations, and alignment inputs |
 | [nonspatial_paper_inputs.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/nonspatial_paper_inputs.zip) | Three LR models for S4b and numerical analyses for S4–S5, used with the Weinreb and scNT downloads |
+| [nonspatial_training_code.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/nonspatial_training_code.zip) | Training implementations and configurations for the S4–S5 models (1.7 MB), with commands in the [non-spatial guide](reference/figure_sources/nonspatial.md) |
 
 For example, add the saved AD populations to an existing download:
 

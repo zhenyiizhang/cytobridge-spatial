@@ -141,3 +141,24 @@ def test_main2_growth_uses_original_clipped_global_normalization():
     lo, hi = np.percentile(x, [1, 99])
     np.testing.assert_array_equal(normalize_growth(x), (np.clip(x, lo, hi) - lo) / (hi - lo))
     np.testing.assert_array_equal(normalize_growth(np.ones(20)), np.zeros(20))
+
+
+def test_s3_selected_observations_and_model_reach_evaluation_and_plot():
+    import nbformat
+    root = Path(__file__).resolve().parents[1]
+    notebook = nbformat.read(root / "docs/tutorials/paper_figures/agist_figures.ipynb", as_version=4)
+    source = "\n".join(cell.source for cell in notebook.cells if cell.cell_type == "code")
+    assert '"--data-dir", simulation_data' in source
+    assert '"--model-dir", simulation_model' in source
+    assert 'attraction_inputs(simulation_data / "attractive_observed.h5ad", evaluation)' in source
+    assert '"--no-plots"' in source
+
+
+def test_s3_numerical_evaluation_can_skip_diagnostic_plots():
+    from types import SimpleNamespace
+    from scripts.run_spatial_synthetic_benchmark import _evaluation_plot
+    calls = []
+    _evaluation_plot(SimpleNamespace(no_plots=True), calls.append, "not drawn")
+    assert calls == []
+    _evaluation_plot(SimpleNamespace(no_plots=False), calls.append, "drawn")
+    assert calls == ["drawn"]
