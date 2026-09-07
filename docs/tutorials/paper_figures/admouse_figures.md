@@ -1,9 +1,9 @@
 # AD mouse figures
 
-The [AD population tutorial](../dataset_workflows/admouse.ipynb) starts from the
-trained model and generates new populations. This page continues with the
-gene-program, ligand–receptor, perturbation, and NicheNet analyses. It also
-shows how to redraw S26 from the saved simulation used in the paper.
+This page calculates the gene programs, ligand–receptor time courses and
+perturbations in Figure 6, followed by GO and NicheNet analyses in S27–S30.
+Start with the AD model and aligned data from [Data and models](../../data_checkpoints.md).
+No other notebook needs to be run first.
 
 Run these commands from the CytoBridge code folder described in
 [Installation](../../installation.md). Each command writes new tables and
@@ -32,19 +32,45 @@ python reproduction/admouse/draw_figures.py \
 
 ## Gene programs and LR time courses: Figure 6c–e
 
-The numerical inputs for these panels are included in
-`reproduction/admouse/final_figures/main/data/`. The gene table contains
-347 microglial gene profiles. The LR table contains scores across model times.
+Generate 26 populations at model times 0–2.5, starting with the observed cells
+at time zero. Cell types are assigned by the fitted classifier. For each time,
+the calculation reconstructs expression from PCA, averages expression within
+microglia, and standardizes each gene's time course. Genes with nonzero PCA
+loadings are retained, giving 347 profiles with the paper inputs.
+
+For LR scores, the model's cell-type communication weights are multiplied by
+the corresponding sender-ligand and receiver-receptor expression. The command
+writes both input tables needed by the plotting step below.
+
+```bash
+python -m reproduction.admouse.calculate_programs \
+  --data-dir data/admouse --output-dir outputs/admouse_calculated --device cuda:0
+```
+
+The new populations are in `outputs/admouse_calculated/generated_states/`,
+the gene profiles are in `gene_programs/`, and the LR scores are in
+`lr_pair_timecourse.csv`. Draw Figure 6b–e from these new results:
 
 ```bash
 python reproduction/admouse/draw_figures.py \
-  --panels cd e --output-dir outputs/admouse_programs
+  --panels b cd e \
+  --population-dir outputs/admouse_calculated/generated_states \
+  --gene-input-dir outputs/admouse_calculated/gene_programs \
+  --lr-input outputs/admouse_calculated/lr_pair_timecourse.csv \
+  --output-dir outputs/admouse_programs
 ```
 
 For panels c–d, the command clusters the gene profiles using weighted
 hierarchical linkage, assigns four programs, and calculates their mean
 curves. For panel e, it calculates a z-score within each LR pair before
 drawing the time courses.
+
+The output of the gene-program calculation above:
+
+```{image} ../../_static/figures/admouse_calculated_gene_programs.png
+:alt: Figure 6c–d gene profiles and temporal programs calculated from the AD model.
+:width: 100%
+```
 
 The output includes the heatmap, program curves, LR plot, and these tables:
 
@@ -94,25 +120,51 @@ annotation versions. Changing the annotation database can change the GO results.
 
 ## Perturbation panels: Figure 6f–g and S30
 
-Extract `admouse_perturbation_data.zip`. It contains the saved Trem2
-perturbation states, attention edges, and module scores.
+Continue from `outputs/admouse_calculated/` above. These two commands change
+the initial PCA states along the selected gene's loading, then simulate the
+perturbed populations using the same model and random seed. The perturbation
+scales are 1 for Trem2 and 2.5 for Spp1, as used in these panels.
+
+```bash
+python -m reproduction.admouse.perturbations \
+  --data-dir data/admouse --baseline-dir outputs/admouse_calculated \
+  --gene Trem2 --output-dir outputs/admouse_perturbations/trem2 --device cuda:0
+```
+
+```bash
+python -m reproduction.admouse.perturbations \
+  --data-dir data/admouse --baseline-dir outputs/admouse_calculated \
+  --gene Spp1 --output-dir outputs/admouse_perturbations/spp1 --device cuda:0
+```
+
+Module scores use the gene sets in `reproduction/admouse/gene_sets.py`.
+For each gene, expression is standardized with equally weighted moments of
+the baseline and perturbed populations. The plot shows the mean score change
+within each gene set. Draw the new results:
 
 ```bash
 python reproduction/admouse/draw_figures.py \
-  --data-dir data/admouse --panels f g --output-dir outputs/admouse_trem2
+  --data-dir outputs/admouse_perturbations --panels f g --output-dir outputs/admouse_trem2
 ```
 
 The command draws the spatial comparison, recalculates cell-type composition
-from the saved labels, and plots the module-score changes. For S30, the Spp1
-module-score table is already included with the code:
+from the new labels, and plots the module-score changes. For S30:
 
 ```bash
 python reproduction/admouse/draw_figures.py \
-  --panels s30 --output-dir outputs/admouse_spp1
+  --panels s30 --spp1-input outputs/admouse_perturbations/spp1/spp1_module_scores.csv \
+  --output-dir outputs/admouse_spp1
 ```
 
-These commands draw the results of saved perturbation simulations. They do
-not run a new perturbation experiment.
+To redraw the saved paper perturbation instead, extract
+`admouse_perturbation_data.zip` and use `--data-dir data/admouse` for panels f–g.
+
+S30 drawn from the Spp1 calculation above:
+
+```{image} ../../_static/figures/admouse_calculated_spp1.png
+:alt: S30 module-score changes calculated from the Spp1 perturbation.
+:width: 100%
+```
 
 ## NicheNet analysis: S29
 
@@ -125,12 +177,20 @@ install.packages(c("dplyr", "tidyr", "tibble", "purrr", "magrittr", "ROCR",
                   "caTools", "Hmisc", "ggplot2", "circlize", "png"))
 ```
 
-First reconstruct gene expression from the saved PCA states and prepare the
-microglial gene sets for the 50 adjacent time intervals:
+First generate the 51 populations used for the 50 NicheNet time intervals:
+
+```bash
+python reproduction/admouse/nichenet/interpolate.py \
+  --data-dir data/admouse --output-dir outputs/admouse_nichenet_populations --device cuda:0
+```
+
+Reconstruct gene expression from those populations and prepare the microglial
+gene sets for adjacent intervals:
 
 ```bash
 python reproduction/admouse/nichenet/prepare.py \
-  --data-dir data/admouse --output-dir outputs/admouse_nichenet
+  --data-dir data/admouse --states outputs/admouse_nichenet_populations/slice_data \
+  --output-dir outputs/admouse_nichenet
 ```
 
 This writes expression summaries and the input gene lists into
@@ -158,7 +218,6 @@ The new plots are in `outputs/admouse_nichenet/figures/`, with their numerical
 tables in `data/`. The scoring and network functions are included under the
 NicheNet license in `reproduction/admouse/nichenet/nichenetr_R/`.
 
-To generate a new set of 51 populations, `nichenet/interpolate.py` accepts
-`--data-dir` and `--output-dir`. Pass its `slice_data/` output to
-`prepare.py --states`. The 0.05 spacing here is the simulation output interval.
-The population and NicheNet analyses use different output grids.
+For the saved paper NicheNet populations, use `data/admouse/nichenet/slice_data`
+as `--states` and omit the interpolation command. The 0.05 spacing is the
+simulation output interval for NicheNet. Figure 6 uses a 0.1 interval.

@@ -44,7 +44,7 @@ def object_array(values):
     return result
 
 
-def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
+def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None, classifier_path=None):
     data, output = Path(data_dir), Path(output_dir)
     output.mkdir(parents=True, exist_ok=False)
     import anndata as ad
@@ -68,7 +68,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
     interaction.link_predictor = ObservedSupportLinkPredictor(
         interaction.link_predictor, latent).to(device)
     model.model.eval()
-    classifier = load_classifier(data, device)
+    classifier = load_classifier(data, device, classifier_path=classifier_path)
     composition, lineage, particles = [], [], []
     for noise in NOISES:
         print(f"Seed {seed}, daughter noise {noise:g}", flush=True)
@@ -116,6 +116,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None):
     observed.to_csv(output / "observed_composition.csv", index=False)
     (output / "run_summary.json").write_text(json.dumps(dict(
         status="complete", seed=seed, data_dir=str(data.resolve()), model=str(model.weight_path),
+        classifier=str(Path(classifier_path).resolve()) if classifier_path is not None else str((data / "classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt").resolve()),
         initial_time=0, initial_count=len(x0), final_time=4, daughter_noise_std=NOISES,
         dt=.005, resample_dt=.05, sigma=.03, growth_alpha=1., interaction_seed=seed+10001,
     ), indent=2) + "\n")
@@ -128,5 +129,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--model-dir", type=Path)
+    parser.add_argument("--classifier-cache", type=Path)
     args = parser.parse_args()
-    simulate(args.data_dir, args.output_dir, args.seed, args.device, args.model_dir)
+    simulate(args.data_dir, args.output_dir, args.seed, args.device, args.model_dir, args.classifier_cache)

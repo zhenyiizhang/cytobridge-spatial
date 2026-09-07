@@ -85,6 +85,7 @@ directories within their dataset folder.
 | [admouse_nichenet_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/admouse_nichenet_data.zip) | The 51 states, expression summaries, and NicheNet reference networks for S29 |
 | [zebrafish_video_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/zebrafish_video_data.zip) | Numerical trajectories and labels for the zebrafish videos |
 | [chicken_heart_training_inputs.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/chicken_heart_training_inputs.zip) | Count matrices, section annotations, and alignment inputs |
+| [nonspatial_paper_inputs.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/nonspatial_paper_inputs.zip) | Three LR models for S4b and numerical analyses for S4–S5, used with the Weinreb and scNT downloads |
 
 For example, add the saved AD populations to an existing download:
 

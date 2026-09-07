@@ -138,7 +138,7 @@ def _validate_template(config: dict) -> None:
         raise RuntimeError(f"Unexpected accepted workflow config: {checks}; expected {expected}")
 
 
-def prepare_inputs() -> None:
+def prepare_inputs(compression=None) -> None:
     INPUT_DIR.mkdir(parents=True, exist_ok=True)
     source = sc.read_h5ad(SOURCE_INPUT)
     if SPATIAL_KEY not in source.obsm:
@@ -178,7 +178,7 @@ def prepare_inputs() -> None:
             "stage_records_json": json.dumps(stage_records, sort_keys=True),
             "important": "D7 accepted 180-degree pre-orientation is retained before perturbation.",
         }
-        adata.write_h5ad(output_path)
+        adata.write_h5ad(output_path, compression=compression)
         records.append(
             {
                 "variant": variant,

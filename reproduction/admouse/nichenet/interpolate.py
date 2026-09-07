@@ -26,6 +26,9 @@ import CytoBridge as cb
 parser = argparse.ArgumentParser(description='Generate the 51 AD states used for NicheNet analysis.')
 parser.add_argument('--data-dir', type=Path, default=Path('data/admouse'))
 parser.add_argument('--output-dir', type=Path, required=True)
+parser.add_argument('--model-dir', type=Path)
+parser.add_argument('--classifier-cache', type=Path)
+parser.add_argument('--device', default='cuda:0')
 args = parser.parse_args()
 DATA_ROOT = args.data_dir.resolve()
 RESULT = args.output_dir.resolve()
@@ -33,8 +36,8 @@ if RESULT == DATA_ROOT or DATA_ROOT in RESULT.parents:
     parser.error('Choose an output directory outside the downloaded data.')
 SLICE_DIR = RESULT / "slice_data"
 ALIGNED_H5AD = DATA_ROOT / 'aligned.h5ad'
-MODEL_DIR = DATA_ROOT / 'model'
-CLASSIFIER = (
+MODEL_DIR = args.model_dir.resolve() if args.model_dir is not None else DATA_ROOT / 'model'
+CLASSIFIER = args.classifier_cache.resolve() if args.classifier_cache is not None else (
     DATA_ROOT
     / "classifier_cache"
     / "classifier_resmlp_46ee959d0b1f14db.pt"
@@ -56,7 +59,7 @@ SPLIT_SDE_DT = 0.01
 SPLIT_SIGMA = 0.03
 SPLIT_GROWTH_ALPHA = 1.0
 INTERACTION_M = 1024
-DEVICE = "cuda:0"
+DEVICE = args.device
 
 
 def sha256(path: Path) -> str:

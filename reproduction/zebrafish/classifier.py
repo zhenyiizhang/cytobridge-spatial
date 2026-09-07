@@ -8,8 +8,8 @@ import CytoBridge as cb
 CLASSIFIER_FILE = "classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt"
 
 
-def load_classifier(data_dir, device="cpu"):
-    path = Path(data_dir) / CLASSIFIER_FILE
+def load_classifier(data_dir, device="cpu", classifier_path=None):
+    path = Path(classifier_path) if classifier_path is not None else Path(data_dir) / CLASSIFIER_FILE
     classifier = cb.tl.load_cached_mlp_classifier(str(path), device=device)
     expected = ("samples", *(f"x{i}" for i in range(1, 53)))
     if tuple(classifier.feature_cols) != expected or not classifier.include_time_feature:

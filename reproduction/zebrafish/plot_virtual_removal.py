@@ -46,10 +46,10 @@ def collect_metrics(run_dirs):
     return seeds, curve, endpoint, pd.DataFrame(rows)
 
 
-def draw(data_dir, run_dirs, output_dir, device="cpu"):
+def draw(data_dir, run_dirs, output_dir, device="cpu", classifier_path=None):
     data, output = Path(data_dir), Path(output_dir)
     seeds, curve, centroids, summary = collect_metrics(run_dirs)
-    cached = load_classifier(data, device)
+    cached = load_classifier(data, device, classifier_path=classifier_path)
     frames, endpoints = [], {}
     for condition, name in (("baseline", "Baseline"), ("remove_YSL", "YSL removal"), ("remove_EVL", "EVL removal")):
         # This file is an array produced by the preceding simulation command.
@@ -76,7 +76,7 @@ def draw(data_dir, run_dirs, output_dir, device="cpu"):
     centroids.to_csv(output / "centroid_by_seed.csv", index=False)
     summary.to_csv(output / "centroid_summary.csv", index=False)
     (output / "classification.json").write_text(json.dumps({
-        "classifier": str(data / CLASSIFIER_FILE),
+        "classifier": str(Path(classifier_path).resolve()) if classifier_path is not None else str((data / CLASSIFIER_FILE).resolve()),
         "features": "time, two aligned spatial coordinates, 50 original expression PCs",
         "spatial_neighbors": 10,
         "display_seed": 42,
@@ -97,5 +97,6 @@ if __name__ == "__main__":
     parser.add_argument("--run-dir", type=Path, action="append", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--classifier-cache", type=Path)
     args = parser.parse_args()
-    print(draw(args.data_dir, args.run_dir, args.output_dir, args.device))
+    print(draw(args.data_dir, args.run_dir, args.output_dir, args.device, args.classifier_cache))

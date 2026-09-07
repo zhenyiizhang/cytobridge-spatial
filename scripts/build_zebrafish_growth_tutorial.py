@@ -128,4 +128,4 @@ compares training seeds and model settings.
 
 
 if __name__ == "__main__":
-    write_notebook(build_notebook(), ROOT / "docs/tutorials/dataset_workflows/zebrafish.ipynb")
+    raise SystemExit("This earlier generator is retired. Edit docs/tutorials/dataset_workflows/zebrafish.ipynb directly.")

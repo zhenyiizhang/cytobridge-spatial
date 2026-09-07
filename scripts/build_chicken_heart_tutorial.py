@@ -174,4 +174,4 @@ compares perturbed input coordinates and independently fitted models.
 
 
 if __name__ == "__main__":
-    write_notebook(build_notebook(), ROOT / "docs/tutorials/dataset_workflows/chicken_heart.ipynb")
+    raise SystemExit("This earlier generator is retired. Edit docs/tutorials/dataset_workflows/chicken_heart.ipynb directly.")

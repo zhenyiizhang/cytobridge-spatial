@@ -50,12 +50,23 @@ def draw_lr_profiles(output: Path, input_file: Path | None = None):
     module.main()
 
 
-def draw_spatial_populations(data: Path, output: Path):
+def draw_spatial_populations(data: Path, output: Path, population_dir: Path | None = None):
     """Draw Figure 6b from saved states and labels at the three shown ages."""
     module = source_module('ad_main_figureb')
     module.STATE_DIR = data / 'populations/compat_base/01_interpolation'
     module.LABEL_DIR = data / 'populations/whole_tissue/baseline_labels_k1'
     module.OUTPUT_DIR = output
+    if population_dir is not None:
+        import anndata as ad
+        arrays = output / 'population_arrays'
+        arrays.mkdir(parents=True, exist_ok=True)
+        for age in module.REQUESTED_AGES:
+            time = module.saved_time_for_age(age)
+            population = ad.read_h5ad(population_dir / f'time_{time:g}.h5ad')
+            np.save(arrays / f'generated_t{time:g}.npy', population.X)
+            np.save(arrays / f'labels_t{time:g}.npy', population.obs.major_annotation.to_numpy(dtype=str))
+        module.STATE_DIR = arrays
+        module.LABEL_DIR = arrays
     module.main()
 
 
@@ -69,12 +80,24 @@ def draw_trem2_spatial(data: Path, output: Path):
     module.FIGURES = output
     cases = {condition: source.load_case('whole_tissue', condition)
              for condition in source.SPATIAL_CONDITIONS}
-    tables = source.prepare_scope_tables('whole_tissue')
+    composition_rows = []
+    for condition, case in cases.items():
+        counts = pd.Series(case['labels']).value_counts()
+        for celltype in source.CELLTYPE_ORDER:
+            count = int(counts.get(celltype, 0))
+            composition_rows.append(dict(condition=condition, condition_label=source.SPATIAL_TITLES[condition],
+                celltype=celltype, count=count, fraction=count/len(case['labels']), total=len(case['labels'])))
+    composition = pd.DataFrame(composition_rows)
+    source.PANEL_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    composition.to_csv(source.PANEL_DATA_DIR / 'whole_tissue_composition_endpoint.csv', index=False)
     spatial_window = source.spatial_limits({'whole_tissue': cases})
-    limits = source.shared_plot_limits({'whole_tissue': cases}, {'whole_tissue': tables})
-    module.draw_panel_a(source, cases, tables['composition'], spatial_window,
-                        limits['spatial_attention_vmax'])
-    module.draw_panel_b(source, tables['composition'])
+    selected = [source.microglia_neuron_edges(case)[2] for case in cases.values()]
+    nonempty = [values for values in selected if len(values)]
+    if not nonempty:
+        nonempty = [case['attention'] for case in cases.values() if len(case['attention'])]
+    vmax = float(np.quantile(np.concatenate(nonempty), .995)) if nonempty else 1.0
+    module.draw_panel_a(source, cases, composition, spatial_window, vmax)
+    module.draw_panel_b(source, composition)
 
 
 def draw_module_response(input_file: Path, output: Path, gene: str):
@@ -132,6 +155,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, default=Path('data/admouse'))
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--gene-input-dir', type=Path,
+                        help='directory with gene_zscore_profiles.csv and gene_temporal_metadata.csv')
+    parser.add_argument('--lr-input', type=Path, help='calculated lr_pair_timecourse.csv')
+    parser.add_argument('--spp1-input', type=Path, help='calculated Spp1 module-score table')
+    parser.add_argument('--population-dir', type=Path, help='generated_states directory written by calculate_programs')
     parser.add_argument('--panels', nargs='+', choices=['b', 'cd', 'e', 'f', 'g', 's30'], required=True)
     args = parser.parse_args()
     data, output = args.data_dir.resolve(), args.output_dir.resolve()
@@ -140,17 +168,17 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     for panel in args.panels:
         if panel == 'b':
-            draw_spatial_populations(data, output)
+            draw_spatial_populations(data, output, args.population_dir)
         elif panel == 'cd':
-            draw_gene_programs(output)
+            draw_gene_programs(output, args.gene_input_dir)
         elif panel == 'e':
-            draw_lr_profiles(output)
+            draw_lr_profiles(output, args.lr_input)
         elif panel == 'f':
             draw_trem2_spatial(data, output)
         elif panel == 'g':
             draw_module_response(data / 'trem2/trem2_module_scores.csv', output, 'Trem2')
         else:
-            draw_module_response(ARCHIVE / 'supplementary/downstream/data/ad_supplementary2/whole_tissue_spp1_modules_endpoint.csv', output, 'Spp1')
+            draw_module_response(args.spp1_input or ARCHIVE / 'supplementary/downstream/data/ad_supplementary2/whole_tissue_spp1_modules_endpoint.csv', output, 'Spp1')
         print(f'Drew {panel} in {output}')
 
 

@@ -26,9 +26,52 @@ The inputs are included in `reproduction/chicken_heart/alignment_sensitivity_202
 | S7b | `summary/coordinate_metrics.csv`, `summary/velocity_metrics_pooled.csv`, and `summary/interaction_metrics.csv` |
 | S7c | `input_manifest.json`: applied translations and rotations in every stage |
 
-The [analysis code and calculation record](https://github.com/zhenyiizhang/cytobridge-spatial/tree/main/reproduction/chicken_heart/alignment_sensitivity_20260906)
-record preparation, alignment, training, comparison, and export of these inputs.
-The plotting command above starts from those completed calculations.
+## Calculate new results
+
+Start with `data/chicken_heart/aligned.h5ad` from
+[Data and models](../../data_checkpoints.md). It includes counts and the
+pre-oriented input coordinates in `spatial_ot_input`. First train a reference
+model, unless you already have this workflow's complete output:
+
+```bash
+PYTHONHASHSEED=0 python -m CytoBridge.cli workflow \
+  --config CytoBridge/workflow_configs/chicken_heart.json --train \
+  --input-h5ad data/chicken_heart/aligned.h5ad \
+  --output-dir outputs/chicken_heart_reference --device cuda:0
+```
+
+Prepare the six perturbed inputs, then run all seven conditions. The training
+command repeats alignment, edge prediction, model training and downstream
+analysis. Each condition writes to its own directory under `runs/`.
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py prepare \
+  --input-h5ad data/chicken_heart/aligned.h5ad --output-dir outputs/heart_sensitivity
+```
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py train \
+  --output-dir outputs/heart_sensitivity --device cuda:0
+```
+
+Then calculate the comparison tables and collect the coordinates for plotting:
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py compare \
+  --output-dir outputs/heart_sensitivity --reference-run outputs/chicken_heart_reference
+```
+
+Finally, draw S7–S8 from those new results:
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/plot_sensitivity.py \
+  --results-dir outputs/heart_sensitivity/summary \
+  --manifest outputs/heart_sensitivity/input_manifest.json \
+  --output-dir outputs/heart_sensitivity/figures
+```
+
+The original seven-run results are shown below. Repeating model training
+produces new estimates using the same comparison procedure.
 
 ## Supplementary Figure S7
 

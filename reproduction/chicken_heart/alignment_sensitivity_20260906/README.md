@@ -41,7 +41,56 @@ annotations, cell identities and the D7 pre-orientation. For each condition,
 preprocessing, alignment, edge-classifier fitting, complete model training and
 downstream analysis were repeated with seed 42.
 
-The source scripts are retained in `server_code/`:
+To calculate new inputs, start with `data/chicken_heart/aligned.h5ad` from the
+chicken-heart download. It contains counts and the pre-oriented section
+coordinates in `spatial_ot_input`. The command below trains the reference
+model and calculates its downstream fields. If you already ran this same
+workflow, use that output directory as `--reference-run` instead.
+
+```bash
+PYTHONHASHSEED=0 python -m CytoBridge.cli workflow \
+  --config CytoBridge/workflow_configs/chicken_heart.json --train \
+  --input-h5ad data/chicken_heart/aligned.h5ad \
+  --output-dir outputs/chicken_heart_reference --device cuda:0
+```
+
+Prepare the six perturbed inputs, then run the unperturbed repeat and six
+perturbed conditions. Training is substantial. Each condition repeats
+alignment, edge prediction, model training and downstream calculation.
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py prepare \
+  --input-h5ad data/chicken_heart/aligned.h5ad --output-dir outputs/heart_sensitivity
+```
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py train \
+  --output-dir outputs/heart_sensitivity --device cuda:0
+```
+
+The default runs all seven conditions sequentially. To distribute them across
+GPUs, run separate commands with `--variant translate_low` (or another
+condition listed by `--help`) and the desired `--device`. Each condition writes
+to its own directory under `outputs/heart_sensitivity/runs/`.
+
+Calculate coordinate, velocity and attention agreement from those new runs:
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/calculate.py compare \
+  --output-dir outputs/heart_sensitivity --reference-run outputs/chicken_heart_reference
+```
+
+Draw both figures using the newly calculated tables and coordinate arrays:
+
+```bash
+python reproduction/chicken_heart/alignment_sensitivity_20260906/plot_sensitivity.py \
+  --results-dir outputs/heart_sensitivity/summary \
+  --manifest outputs/heart_sensitivity/input_manifest.json \
+  --output-dir outputs/heart_sensitivity/figures
+```
+
+`calculate.py` calls the original calculations in `server_code/`, with the
+input and output paths supplied above:
 
 1. `prepare_and_run.py` reads the original H5AD and generates perturbed inputs.
    `run_experiment.py` sets the 1×/2× translations and 1°/3° rotations, then runs
@@ -52,10 +101,9 @@ The source scripts are retained in `server_code/`:
 4. `export_plot_inputs.py` collects coordinates in the same observation order
    for plotting.
 
-These are the scripts used on the analysis server. Their paths and launch
-settings are recorded in `experiment.json` and `input_manifest.json`. They are
-retained as the calculation record, separate from the portable plotting command
-above.
+The original run settings are recorded in `experiment.json` and
+`input_manifest.json`. The saved numerical results reproduce the paper's
+reported values. Repeating model training gives a new set of estimates.
 
 The original input is
 `/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-ot-alignment-20260822-f5550e1-r1/result/chicken_heart_ot_aligned.h5ad`.

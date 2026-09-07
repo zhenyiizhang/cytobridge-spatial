@@ -3,6 +3,20 @@
   "tag": "paper-data-20260905",
   "archives": [
     {
+      "archive": "nonspatial_paper_inputs.zip",
+      "bytes": 35690820,
+      "sha256": "198b32eefc2080f3b696d3d5a42fbc8301e68b7d697008ddadfed688a1e96213",
+      "parts": [
+        {
+          "name": "nonspatial_paper_inputs.zip",
+          "bytes": 35690820,
+          "sha256": "198b32eefc2080f3b696d3d5a42fbc8301e68b7d697008ddadfed688a1e96213",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/nonspatial_paper_inputs.zip",
+          "asset_id": 548924749
+        }
+      ]
+    },
+    {
       "archive": "arista_spatial_display_data.zip",
       "bytes": 51863320,
       "sha256": "830d777ddab75b80e3484b7855bca9ac54354c904e59fb00f1c2818cffb6bc31",
