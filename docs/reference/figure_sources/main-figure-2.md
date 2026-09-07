@@ -2,54 +2,28 @@
 orphan: true
 ---
 
-# Analysis inputs: Main Figure 2: AGIST benchmark
+# Main Figure 2: simulation and numerical inputs
 
-The [figure notebook](../../tutorials/paper_figures/main_figure_2.ipynb) starts from saved numerical results or completed panels. This page records the calculations that precede it.
+The [Figure 2 notebook](../../tutorials/paper_figures/main_figure_2.ipynb)
+downloads the AGIST observations, checkpoint and edge predictor, generates the
+four observed snapshot plots, evaluates the model fields and reconstructs the
+scVelo velocity comparisons. It also generates ten split-SDE trajectories and
+calculates weighted W2 at times 1–3. The resulting tables are passed directly
+to the panel-e renderer. Previously generated trajectories or distances can be
+selected explicitly.
 
-The [AGIST simulation tutorial](../../tutorials/paper_figures/agist_simulations.md)
-contains complete download, simulation, distance-calculation and panel-e plotting commands.
+Only CytoBridge is reevaluated in panel e. STORIES and stVCR remain the paper's
+recorded external benchmark values. No model training is performed.
 
-## Calculation programs
+The numerical methods follow the original AGIST plotting notebook: the same
+30% seed-0 rows for both velocity comparisons, 30-neighbor graphs, and the
+first two gene-state coordinates for the gene display. The model's growth and
+time-zero attention graph are also calculated from the checkpoint.
 
-Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
-
-
-### 1. generate replicate trajectories (Main Figure 2e)
-
-```text
-python scripts/run_agist_split_sde_replicates.py --config data/agist/config.yaml --checkpoint-dir data/agist/model --edge-predictor data/agist/edge_classifier/mouse.pt --data-csv data/agist/mouse_brain_simulation.csv --output-dir outputs/agist_simulations --simulate-only --device cuda:0
-```
-
-Start with: `fixed model checkpoint; AGIST cells; ten inference seeds`
-
-Writes: `one trajectory file per inference seed`
-
-Next: `calculate replicate W2`
-
-
-
-
-### 2. calculate replicate W2 (Main Figure 2e)
-
-```text
-python scripts/evaluate_and_plot_agist_w2_replicates.py --trajectory-dir outputs/agist_simulations/trajectories --truth-csv data/agist/mouse_brain_simulation.csv --output-dir outputs/agist_distances
-```
-
-Start with: `replicate trajectories and observed AGIST cells`
-
-Writes: `w2_replicates_long.csv; w2_mean_sd_ci.csv; figure2e_agist_w2_mean_sd.pdf/.png`
-
-Next: `draw panel e`
-
-
-
-
-### 3. draw panel e and assemble (Main Figure 2e)
-
-```text
-python scripts/execute_paper_notebooks.py --notebook main_figure_2 --output-dir <notebook-run>
-```
-
-Start with: `panel-e tables and the existing panels a–d PDF`
-
-Writes: `Main_Figure_2.pdf/.png and copied panel-e tables`
+Two generator reference files are still absent: `g_values.npy` and
+`attn_matrix_time0.npy`, originally written under
+`results/mosta_interaction_1017_tiaocan/`. The velocity archives contain neither
+file. Supply these observation-matched arrays to complete c/d using the
+notebook's growth normalization, regression and attention-flow calculations.
+Until those inputs are available, the notebook draws a's snapshots, b and e.
+Only the upper illustration in a is a non-numerical schematic.

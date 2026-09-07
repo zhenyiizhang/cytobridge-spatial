@@ -132,3 +132,23 @@ def test_completed_s39_panel_tables_collect_and_load_without_packaged_manifest(t
     with pytest.raises(ValueError, match="unexpected spatial summary values"):
         collect_panel_data(panel_data, cytobridge_pairs, commot_pairs, tmp_path / "invalid")
     assert not (tmp_path / "invalid").exists()
+
+
+def test_native_jam_descriptive_fisher_column_keeps_exact_values(tmp_path):
+    from scripts.collect_zebrafish_attention_inputs import collect_panel_data
+    source = ROOT / "CytoBridge/results/data/zebrafish_attention"
+    panel = tmp_path / "native"
+    shutil.copytree(source, panel)
+    path = panel / "jam_quartile_compatibility.csv"
+    table = pd.read_csv(path, float_precision="round_trip").rename(columns={
+        "fisher_exact_two_sided_p": "fisher_exact_two_sided_p_descriptive_technical"})
+    table.to_csv(path, index=False, float_format="%.17g")
+    before = path.read_bytes()
+    comparison = ROOT / "reproduction/supplementary_figures/data/commot_comparison"
+    output = collect_panel_data(panel, comparison / "cytobridge_type_pair_summary.csv",
+        comparison / "commot_type_pair_scores.csv.gz", tmp_path / "collected")
+    actual = pd.read_csv(output / path.name, float_precision="round_trip")
+    np.testing.assert_array_equal(actual.fisher_exact_two_sided_p,
+                                  actual.fisher_exact_two_sided_p_descriptive_technical)
+    assert path.read_bytes() == before
+    assert json.loads((output / "manifest.json").read_text())["schema_aliases"]

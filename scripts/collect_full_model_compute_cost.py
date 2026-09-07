@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -13,6 +14,8 @@ import pandas as pd
 from CytoBridge.results.compute_cost import (
     DATASET_ORDER,
     RAW_COLUMNS,
+    FullModelComputeCostResults,
+    format_full_model_compute_cost,
     _DISPLAY_CONTRACT,
     _MEASUREMENT_CONTRACT,
     load_full_model_compute_cost,
@@ -62,8 +65,8 @@ def _positive_number(value: object, *, field: str, source: Path) -> float:
         number = float(value)
     except (TypeError, ValueError) as error:
         raise ValueError(f"{source} has an invalid {field}") from error
-    if not number > 0:
-        raise ValueError(f"{source} has a non-positive {field}")
+    if not math.isfinite(number) or not number > 0:
+        raise ValueError(f"{source} has a non-positive or non-finite {field}")
     return number
 
 
@@ -74,7 +77,7 @@ def _positive_integer(value: object, *, field: str, source: Path) -> int:
     return int(number)
 
 
-def _read_summary(dataset: str, source: Path) -> dict[str, object]:
+def _read_summary(dataset: str, source: Path, *, paper_hardware: bool = True) -> dict[str, object]:
     payload = json.loads(source.read_text(encoding="utf-8"))
     if payload.get("schema_version") != 1:
         raise ValueError(f"{source} has an unsupported schema version")
@@ -95,7 +98,7 @@ def _read_summary(dataset: str, source: Path) -> dict[str, object]:
         )
 
     expected_gpu = _MEASUREMENT_CONTRACT["hardware"]["gpu_model"]
-    if environment.get("cuda_device_name") != expected_gpu:
+    if paper_hardware and environment.get("cuda_device_name") != expected_gpu:
         raise ValueError(
             f"{source} was measured on {environment.get('cuda_device_name')!r}; "
             f"Supplementary Table 2 uses {expected_gpu!r}"
@@ -128,7 +131,7 @@ def _read_summary(dataset: str, source: Path) -> dict[str, object]:
     }
 
 
-def collect(run_values: list[str], output_dir: Path) -> dict[str, str]:
+def collect(run_values: list[str], output_dir: Path, *, new_measurements: bool = False) -> dict[str, str]:
     parsed = [_parse_run(value) for value in run_values]
     runs = dict(parsed)
     if len(runs) != len(parsed):
@@ -142,7 +145,33 @@ def collect(run_values: list[str], output_dir: Path) -> dict[str, str]:
         raise FileExistsError(f"Output directory is not empty: {output}")
     output.mkdir(parents=True, exist_ok=True)
 
-    rows = [_read_summary(dataset, runs[dataset]) for dataset in DATASET_ORDER]
+    rows = [_read_summary(dataset, runs[dataset], paper_hardware=not new_measurements)
+            for dataset in DATASET_ORDER]
+    if new_measurements:
+        hardware = {
+            dataset: json.loads(path.read_text())["environment"].get("cuda_device_name")
+            for dataset, path in runs.items()
+        }
+        if any(not isinstance(value, str) or not value.strip() for value in hardware.values()):
+            raise ValueError("Every new measurement must record its cuda_device_name")
+        raw = pd.DataFrame(rows, columns=RAW_COLUMNS)
+        raw["gpu_model"] = raw.dataset.map(hardware)
+        raw_path = output / "new_compute_cost_measurements.csv"
+        raw.to_csv(raw_path, index=False)
+        measured = FullModelComputeCostResults(output, {}, raw)
+        table = format_full_model_compute_cost(measured)
+        table["GPU"] = raw.gpu_model.to_numpy()
+        table_path = output / "new_compute_cost_table.csv"
+        table.to_csv(table_path, index=False)
+        record = output / "new_measurements_manifest.json"
+        record.write_text(json.dumps({
+            "analysis": "new_full_model_compute_measurements",
+            "paper_table": False,
+            "hardware_by_dataset": hardware,
+            "sources": {dataset: {"path": str(path), "sha256": _sha256(path)}
+                        for dataset, path in runs.items()},
+        }, indent=2) + "\n")
+        return {"raw": str(raw_path), "display": str(table_path), "manifest": str(record)}
     table_path = output / "full_model_compute_cost.csv"
     manifest_path = output / "manifest.json"
     pd.DataFrame(rows, columns=RAW_COLUMNS).to_csv(table_path, index=False)
@@ -185,8 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--new-measurements", action="store_true",
+                        help="Write a separate table with actual hardware labels; do not produce Supplementary Table 2 inputs")
     args = parser.parse_args(argv)
-    print(json.dumps(collect(args.run, args.output_dir), indent=2))
+    print(json.dumps(collect(args.run, args.output_dir, new_measurements=args.new_measurements), indent=2))
     return 0
 
 

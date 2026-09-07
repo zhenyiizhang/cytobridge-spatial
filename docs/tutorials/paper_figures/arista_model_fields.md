@@ -1,25 +1,24 @@
 # Calculate the Figure 5 model fields
 
-The [Figure 5 notebook](main_figure_5.ipynb) draws the paper's numerical results.
-This page shows how the velocity and growth values are calculated from the
-trained model. Run the examples from the CytoBridge code folder on a CUDA GPU.
+The [Figure 5 notebook](main_figure_5.ipynb) contains the model calculation
+and plots. First run the [ARISTA dataset notebook](../dataset_workflows/arista.ipynb),
+which generates the states, communication and post-simulation random state.
+The calls below continue from those outputs on a CUDA GPU.
 
 ## Model and population states
 
 ```python
 from pathlib import Path
-import CytoBridge as cb
-
-cb.datasets.download("arista", destination=".", kind="analysis")
-cb.datasets.download("arista", destination=".", kind="arista_growth_model_states.zip")
-
+import json
 data = Path("data/arista")
-states = data / "paper/growth_model_states"
+analysis = Path("outputs/arista")
+populations = analysis / "populations"
+states = populations / "model_states"
+model_dir = Path(json.loads((populations / "model_selection.json").read_text())["model_dir"])
 ```
 
-The second download contains the nine unwarped populations used for Figure 5e.
-They contain 82,306 cells in total. Use these files for the quantitative
-calculation, rather than the separately generated display populations.
+These are the nine unwarped measured/intermediate populations exported by the
+dataset notebook. Use a new output directory for each calculation.
 
 ## Growth and interaction
 
@@ -31,8 +30,9 @@ The interaction magnitude is the Euclidean norm over all 52 model dimensions.
 import anndata as ad
 import numpy as np
 import torch
+import CytoBridge as cb
 
-loaded = cb.tl.load_dynamical_model_from_dir(data / "model", dim=52, device="cuda")
+loaded = cb.tl.load_dynamical_model_from_dir(model_dir, dim=52, device="cuda")
 cells = ad.read_h5ad(states / "time_0.h5ad")
 x = np.asarray(cells.X, dtype=np.float32)
 cb.tl.set_global_random_seed(42)
@@ -53,8 +53,8 @@ Run this calculation at all nine times and save the per-cell and grouped tables:
 ```python
 from reproduction.arista.model_fields import calculate_fields
 
-field_output = Path("outputs/arista_model_fields")
-grouped = calculate_fields(data / "model", states, field_output, device="cuda", seed=42)
+field_output = analysis / "fields"
+grouped = calculate_fields(model_dir, states, field_output, device="cuda", seed=42)
 grouped.head()
 ```
 
@@ -70,26 +70,29 @@ figures.mkdir(parents=True, exist_ok=True)
 draw_growth_interaction(figures, table_path=field_output / "figure5e_growth_interaction_by_cell.csv")
 ```
 
-Interaction evaluation uses randomly grouped cells. The original grouping was
-not stored in the Figure 5e run, so a new evaluation does not reproduce every
-interaction value exactly. The Figure 5 notebook uses the saved per-cell values
-to reproduce the published circles. Growth values are deterministic for these
-states and the supplied checkpoint.
+The Figure 5 notebook redraws the paper panel from its original per-cell table.
+The calls above plot a new model evaluation, whose interaction values can differ
+because interaction is evaluated in random 1,024-cell groups.
 
 ## Spatial velocity
 
-Continue from the `velocity_time_1.npz` file just calculated. Model time 1 is
-5 DPI. The left panel projects the two spatial components of full velocity.
-The enlarged panel compares the full and interaction 52D fields, each projected
-onto the observed spatial coordinates using a 30-neighbour graph.
+Restore the post-simulation random state and evaluate the five observed times
+in order, using random groups of 1,024 cells for interaction. Model time 1 is
+5 DPI. The left panel projects the two spatial components
+of full velocity. The enlarged panel compares the full and interaction 52D
+directions on a 30-neighbour graph built in spatial coordinates (`X_spatial`).
+The scVelo transition directions use all 52 state dimensions on this spatial graph.
 
 ```python
 import json
 from reproduction.arista.spatial_velocity import calculate_spatial_velocity
 from reproduction.arista.main_figure import SOURCE, draw_spatial_velocity
+from reproduction.arista.model_fields import calculate_observed_fields
 
+observed = calculate_observed_fields(data, populations, analysis / "observed_fields",
+                                     device="cuda", model_dir=model_dir)
 spatial_output = calculate_spatial_velocity(
-    field_output / "velocity_time_1.npz", "outputs/arista_spatial_velocity",
+    observed / "velocity_time_1.npz", analysis / "spatial_velocity",
 )
 palette = json.loads((SOURCE / "label_to_color.json").read_text())
 draw_spatial_velocity(figures, palette, state_dir=spatial_output)
@@ -109,10 +112,9 @@ fits a two-component PCA to the gene states and projects the drift through a
 from reproduction.arista.gene_velocity import calculate_gene_velocity
 from reproduction.arista.main_figure import draw_gene_velocity
 
-gene_file = calculate_gene_velocity(data, "outputs/arista_intrinsic_velocity", device="cuda")
+gene_file = calculate_gene_velocity(data, analysis / "gene_velocity", device="cuda", model_dir=model_dir)
 draw_gene_velocity(figures, palette, state_path=gene_file)
 ```
 
 `gene_file` is `figure5d_intrinsic_gene_velocity_state.npz`. It stores the PCA
-coordinates, projected vectors, cell labels and an explicit `drift` component
-tag. The plotting function checks this tag before drawing.
+coordinates, projected vectors, cell labels and the `drift` component tag.

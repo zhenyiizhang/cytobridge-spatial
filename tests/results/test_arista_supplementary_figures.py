@@ -567,11 +567,14 @@ def test_arista_supplementary_notebook_uses_current_numbering() -> None:
     source = "\n".join("".join(cell.get("source", ())) for cell in notebook["cells"])
     assert "Supplementary Figures S19–S24" in source
     assert "from reproduction.arista.supplementary import draw_supplementary" in source
-    assert "cb.datasets.download" in source
-    assert "arista_spatial_display_data.zip" in source
-    assert "data/arista/paper" in source
-    for number in range(19, 25):
-        assert f'figures=[{number}]' in source
+    assert "../dataset_workflows/arista.ipynb" in source
+    assert "calculate_gene_programs" in source
+    assert "calculate_lr_timecourses" in source
+    assert "tables_dir=" in source and "lr_panels=" in source
+    assert 'for number in [19, 20, 21]:' in source
+    assert 'figures=[22]' in source
+    assert 'for number in [23, 24]:' in source
+    assert 'figures=[number]' in source
     assert "export_arista_reference_pages" not in source
     assert "formal_release.source_index" not in source
     image_outputs = [

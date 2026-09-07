@@ -769,9 +769,9 @@ def evaluate(args: argparse.Namespace) -> dict:
     import anndata as ad
     from scipy.stats import spearmanr
 
-    from CytoBridge.tl.downstream.checkpoint import load_dynamical_model_from_dir
+    from reproduction.agist.attraction_model import load_benchmark_model as load_dynamical_model_from_dir
     from CytoBridge.tl.downstream.evaluation import compute_distribution_metrics
-    from CytoBridge.tl.downstream.simulation import simulate_sde_from_x0
+    from reproduction.agist.attraction_simulation import simulate_sde_from_x0
 
     data_dir = Path(args.data_dir).expanduser().resolve()
     direct_model_dir = getattr(args, "model_dir", None)

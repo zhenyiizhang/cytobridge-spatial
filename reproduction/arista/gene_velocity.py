@@ -34,7 +34,7 @@ def project_gene_velocity(gene_state, intrinsic_velocity):
             np.asarray(population.obsm['velocity_pca'], dtype=np.float32))
 
 
-def calculate_gene_velocity(data_dir, output_dir, device='cuda'):
+def calculate_gene_velocity(data_dir, output_dir, device='cuda', *, model_dir=None):
     """Evaluate the downloaded model and write the numerical Figure 5d input.
 
     This is the selected ``--velocity-component drift`` calculation from
@@ -52,7 +52,8 @@ def calculate_gene_velocity(data_dir, output_dir, device='cuda'):
     genes = np.asarray(population.obsm['X_latent'], dtype=np.float32)
     spatial = np.asarray(population.obsm['spatial_aligned'], dtype=np.float32)
     state = np.concatenate([spatial, genes], axis=1)
-    loaded = cb.tl.load_dynamical_model_from_dir(data / 'model', dim=state.shape[1], device=device)
+    selected_model = data / 'model' if model_dir is None else Path(model_dir)
+    loaded = cb.tl.load_dynamical_model_from_dir(selected_model, dim=state.shape[1], device=device)
     intrinsic = np.empty_like(genes)
     for time in np.unique(times):
         selected = np.isclose(times, time)
@@ -76,5 +77,6 @@ if __name__ == '__main__':
     parser.add_argument('--data-dir', type=Path, default=Path('data/arista'))
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--device', default='cuda')
+    parser.add_argument('--model-dir', type=Path)
     args = parser.parse_args()
-    print(calculate_gene_velocity(args.data_dir, args.output_dir, args.device))
+    print(calculate_gene_velocity(args.data_dir, args.output_dir, args.device, model_dir=args.model_dir))

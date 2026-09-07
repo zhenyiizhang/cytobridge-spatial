@@ -54,13 +54,22 @@ def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str
         'admouse': ('simulate_sde_points_split', 'predict_labels_for_trajectories', 'summarize_label_composition'),
         'zebrafish': ('model_state_adata', 'evaluate_growth_by_timepoint'),
     }
-    for function in ('load_dynamical_model_from_dir', *required[dataset]):
-        assert f"cb.tl.{function}(" in code
+    if dataset == 'arista':
+        assert 'from reproduction.arista.simulate_paper_populations import generate' in code
+        assert 'generate(data, populations, classifier' in code
+        producer = (ROOT / 'reproduction/arista/simulate_paper_populations.py').read_text()
+        assert 'cb.tl.load_dynamical_model_from_dir(' in producer
+        assert 'cb.tl.run_interpolation_workflow(' in producer
+        assert 'calculate_growth(data, populations,' in code
+    else:
+        for function in ('load_dynamical_model_from_dir', *required[dataset]):
+            assert f"cb.tl.{function}(" in code
     assert "run_workflow(" not in code
     assert "RUN_TRAINING" not in code
     assert "build_workflow_plan" not in code
-    assert '.to_csv(' in code
-    assert 'Image(filename=' not in code
+    assert '.to_csv(' in code or dataset == 'arista' and 'calculate_growth(data, populations,' in code
+    if dataset != 'arista':
+        assert 'Image(filename=' not in code
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(cell["execution_count"] is not None for cell in code_cells)
     assert sum("image/png" in out.get("data", {})
@@ -75,8 +84,8 @@ def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]))
     # Each dataset teaches its own paper analysis, not an identical generic recipe.
-    assert '## Load' in markdown
-    assert '## Draw' in markdown or '## Spatial' in markdown
+    assert '## Load' in markdown or dataset == 'arista' and '## Check the' in markdown
+    assert '## Draw' in markdown or '## Spatial' in markdown or dataset == 'arista' and 'draw S20' in markdown
     assert "data_checkpoints.md" in markdown
     if dataset == "admouse":
         assert "cb.tl.fit(" in code  # Training is explained on this page.
@@ -84,7 +93,7 @@ def test_dataset_notebook_is_executable_and_portable(filename: str, dataset: str
     elif dataset == "zebrafish":
         assert "../paper_figures/zebrafish_si_s31_s38.ipynb" in markdown
         assert notebook["metadata"]["nbsphinx"]["orphan"] is True
-    else:
+    elif dataset != 'arista':
         assert "training.md" in markdown
     assert "PROJECT_DIR" in markdown and "PROJECT_DIR" in code
     text = (code + markdown).lower()
@@ -118,7 +127,7 @@ def test_dataset_notebook_generator_matches_public_notebooks() -> None:
     assert "Learning goals" not in source
     assert "Notes and interpretation" not in source
     assert "handoff" not in source.casefold()
-    assert "build_analysis_notebook" in source
+    assert 'return nbformat.read(NOTEBOOK_DIR / f"{tutorial.dataset}.ipynb", as_version=4)' in source
     assert "build_own_data_notebook" in source
     assert "build_synthetic_preprocessing_notebook" in source
 

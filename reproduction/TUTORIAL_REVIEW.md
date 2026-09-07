@@ -129,11 +129,30 @@ as independent verification.
 
 ## Before delivering
 
+Keep optional training when simplifying a dataset notebook. Verify that its
+chosen model directory and classifier continue into every later calculation.
+A successful default download route does not test new training. Test changed
+input propagation separately from execution with the paper model.
+
+For random-group evaluation, distinguish a new calculation from a redraw of
+original values. Do not choose a convenient seed or call similar plots exact
+reproduction. Identify missing generator references by quantity and filename.
+Velocity arrays cannot substitute for growth or attention. Check what supports
+a reported statistic rather than trusting its manifest label.
+
+Historical weights may require their original model architecture. Compare
+that runtime with the original implementation, rather than judging success by
+whether a different current architecture produces a plot.
+
 Read every edited page from beginning to end as a new reader. Inspect its
 actual browser output and called code, not just a text diff. Check links and
 make sure removed examples have also disappeared from recorded outputs.
 Rebuild the website, verify the pushed GitHub commit, and check the published
 page. Report local verification, publication, and remaining work separately.
+
+Verify automatic GitHub-to-Read-the-Docs deployment with a real push. A local
+build, a manual remote build and automatic deployment are separate checks.
+An earlier deployed commit does not publish later local edits.
 
 Check notebook-generation scripts as well as the notebooks they produce.
 An older generator must not restore removed text, stale input choices, or

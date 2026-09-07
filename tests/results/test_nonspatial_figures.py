@@ -272,14 +272,14 @@ def test_nonspatial_notebook_documents_the_route_and_shows_outputs() -> None:
         for cell in notebook["cells"]
         if cell["cell_type"] == "markdown"
     ]
-    assert any(text.startswith("## Before you start") for text in markdown)
-    assert "## Load figure inputs" in markdown
-    assert any("reference/figure_sources/nonspatial.md" in text for text in markdown)
+    source = "\n".join("".join(cell["source"]) for cell in notebook["cells"])
+    assert "cb.datasets.download(" in source
+    assert "collect_nonspatial_inputs(" in source
+    assert "calculate_nonspatial_panels(data)" in source
     guide = (REPOSITORY_ROOT / "docs/reference/figure_sources/nonspatial.md").read_text()
-    assert "Start with:" in guide and "Writes:" in guide
-    assert "## Recalculate panel values" in markdown
-    assert "## Draw and save the figure" in markdown
-    assert any(text.startswith("## Preview the generated figures") for text in markdown)
+    assert "nonspatial_figures.ipynb" in guide
+    assert "data=data, panels=panels" in source
+    assert "results_dir=data.source_dir" in source
     code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
     assert all(isinstance(cell["execution_count"], int) for cell in code_cells)
     image_outputs = [

@@ -1954,8 +1954,11 @@ def evaluate(name, cfg, args):
 
 
 def main(argv=None):
+    global CONFIG_DIR
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--datasets", nargs="+", choices=DATASETS, default=list(DATASETS))
+    parser.add_argument("--config-dir", type=Path, default=CONFIG_DIR,
+                        help="directory containing the dataset YAML files, with input and model paths for this computer")
     parser.add_argument(
         "--formal-root",
         "--model-runs",
@@ -1983,7 +1986,9 @@ def main(argv=None):
     run.add_argument("--python", action="append", default=[]); run.add_argument("--source", action="append", default=[])
     report = sub.add_parser("evaluate")
     report.add_argument("--tracks", nargs="+", choices=("loto", "full_data"), default=["loto", "full_data"])
-    args = parser.parse_args(argv); configs = load_datasets(args.datasets)
+    args = parser.parse_args(argv)
+    CONFIG_DIR = args.config_dir.expanduser().resolve()
+    configs = load_datasets(args.datasets)
     if args.action == "prepare":
         for name, cfg in configs.items(): prepare(name, cfg, args)
     elif args.action == "run":

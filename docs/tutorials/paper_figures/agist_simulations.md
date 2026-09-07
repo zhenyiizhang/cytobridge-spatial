@@ -56,5 +56,8 @@ Wasserstein-2 distances at times 1, 2 and 3, and writes:
 
 The STORIES and stVCR values in this panel are the paper's saved benchmark
 values. This command recalculates the CytoBridge trajectories and distances.
-The [Figure 2 notebook](main_figure_2.ipynb) assembles the complete page from
-its saved panel-e results and existing panels a–d.
+The [Figure 2 notebook](main_figure_2.ipynb) contains the same simulation and
+distance calculation, and passes those new panel-e results directly to its
+renderer. It also calculates the numerical snapshots and velocity displays
+in a/b. The model predictions for c/d are calculated, but their comparisons
+still require two missing original generator truth arrays.

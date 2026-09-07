@@ -1,0 +1,80 @@
+{
+  "bundles": [
+    {
+      "filename": "nonspatial_paper_inputs.zip",
+      "dataset": "nonspatial",
+      "purpose": "paper_inputs",
+      "files": [
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed42_full/model/config.yaml",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed42/model/config.yaml"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed42_full/model/Finetune/best_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed42/model/Finetune/best_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed42_full/model/Score_Refine/score_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed42/model/Score_Refine/score_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed43_full/model/config.yaml",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed43/model/config.yaml"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed43_full/model/Finetune/best_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed43/model/Finetune/best_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed43_full/model/Score_Refine/score_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed43/model/Score_Refine/score_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed44_full/model/config.yaml",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed44/model/config.yaml"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed44_full/model/Finetune/best_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed44/model/Finetune/best_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-cellchat-lr/20260718/runs/lr_seed44_full/model/Score_Refine/score_model.pth",
+          "destination": "data/nonspatial/paper/weinreb/lr_seed44/model/Score_Refine/score_model.pth"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-ccc-multimethod/20260722/figure_weinreb_nonspatial_interaction_20260810/panel_data/cellchat_joined_directed_edges.csv",
+          "destination": "data/nonspatial/paper/weinreb/cellchat_joined_directed_edges.csv"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/weinreb-ccc-multimethod/20260722/figure_weinreb_nonspatial_interaction_20260810/panel_data/cytobridge_pathway_scores.csv",
+          "destination": "data/nonspatial/paper/weinreb/cytobridge_pathway_scores.csv"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/full_distribution_metrics.csv",
+          "destination": "data/nonspatial/paper/scnt/full_distribution_metrics.csv"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/full_paired_dense_trajectory.npz",
+          "destination": "data/nonspatial/paper/scnt/full_paired_dense_trajectory.npz"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/exact_message_summary.csv",
+          "destination": "data/nonspatial/paper/scnt/exact_message_summary.csv"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/cell_type_interaction_network.csv",
+          "destination": "data/nonspatial/paper/scnt/cell_type_interaction_network.csv"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/cell_type_pathway_scores.csv.gz",
+          "destination": "data/nonspatial/paper/scnt/cell_type_pathway_scores.csv.gz"
+        },
+        {
+          "source": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/neuron-full-cortex/20260811/reviews/figure_scnt_nonspatial_interaction_a4_20260815/panel_data/cellchat_edge_summary.csv",
+          "destination": "data/nonspatial/paper/scnt/cellchat_edge_summary.csv"
+        }
+      ],
+      "instructions": "Original S4b three-model LR ensemble and numerical model-analysis outputs preceding the S4/S5 display selection. No finished plots. Use with weinreb/scnt_cortex analysis and model downloads; do not substitute the radius Full model for S4b."
+    }
+  ]
+}

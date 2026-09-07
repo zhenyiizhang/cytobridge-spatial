@@ -119,18 +119,19 @@ def draw_lineage(data, output, palette):
     return paths
 
 
-def draw_gene_programs(output):
+def draw_gene_programs(output, tables_dir=TABLES):
+    tables_dir = Path(tables_dir)
     genes._configure_legacy_style()
     mpl.rcParams.update({'font.family': 'Arial', 'text.color': 'black',
                          'axes.labelcolor': 'black', 'xtick.color': 'black', 'ytick.color': 'black'})
-    expression = pd.read_csv(TABLES / 'gene_trajectories.csv', index_col=0)
+    expression = pd.read_csv(tables_dir / 'gene_trajectories.csv', index_col=0)
     expression.columns = expression.columns.astype(float)
-    roster = pd.read_csv(TABLES / 'gene_display_roster.csv')
+    roster = pd.read_csv(tables_dir / 'gene_display_roster.csv')
     paths = {letter: output / f'S22{letter}.svg' for letter in 'abcd'}
     genes._plot_s15a(expression, roster.head(18), paths['a'])
-    genes._plot_s15b(pd.read_csv(TABLES / 'gene_program_prototypes.csv'), paths['b'])
-    genes._plot_s15c(pd.read_csv(TABLES / 'gene_program_1_GO_terms.csv'), paths['c'], output / 'S22c.png')
-    genes._plot_s15d(pd.read_csv(TABLES / 'gene_program_2_GO_terms.csv'), paths['d'], output / 'S22d.png')
+    genes._plot_s15b(pd.read_csv(tables_dir / 'gene_program_prototypes.csv'), paths['b'])
+    genes._plot_s15c(pd.read_csv(tables_dir / 'gene_program_1_GO_terms.csv'), paths['c'], output / 'S22c.png')
+    genes._plot_s15d(pd.read_csv(tables_dir / 'gene_program_2_GO_terms.csv'), paths['d'], output / 'S22d.png')
     document = fitz.open()
     page = document.new_page(width=576, height=372.96)
     for letter, placement in genes.S15_LEGACY_PLACEMENTS.items():
@@ -148,7 +149,8 @@ def draw_gene_programs(output):
     return result
 
 
-def draw_supplementary(data_dir, output_dir, figures=(19, 20, 21, 22, 23, 24)):
+def draw_supplementary(data_dir, output_dir, figures=(19, 20, 21, 22, 23, 24),
+                       *, tables_dir=None, lr_panels=None):
     data, output = Path(data_dir).resolve(), Path(output_dir).resolve()
     if output == data or data in output.parents:
         raise ValueError('Choose an output directory outside the inputs.')
@@ -163,22 +165,40 @@ def draw_supplementary(data_dir, output_dir, figures=(19, 20, 21, 22, 23, 24)):
         elif number == 21:
             result[number] = draw_lineage(data, output, palette)
         elif number == 22:
-            result[number] = draw_gene_programs(output)
+            result[number] = draw_gene_programs(output, TABLES if tables_dir is None else tables_dir)
         elif number in (23, 24):
-            from CytoBridge.results import load_arista_supplementary_figures, plot_arista_ligand_receptor_figures
-            plots = plot_arista_ligand_receptor_figures(load_arista_supplementary_figures(),
-                                                       output_dir=output / f'S{number}')
+            if lr_panels is None:
+                from CytoBridge.results import load_arista_supplementary_figures, plot_arista_ligand_receptor_figures
+                plots = plot_arista_ligand_receptor_figures(load_arista_supplementary_figures(),
+                                                           output_dir=output / f'S{number}')
+            else:
+                from CytoBridge.results._arista_supplementary_figures_plot import render_arista_ligand_receptor_figures
+                plots = render_arista_ligand_receptor_figures(lr_panels, output / f'S{number}')
             result[number] = list(plots[f'S{number}'])
         else:
             raise ValueError('Choose Supplementary Figures 19 through 24.')
     return result
 
 
-if __name__ == '__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, default=Path('data/arista/paper'))
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--figures', nargs='+', type=int, default=[19, 20, 21, 22, 23, 24])
-    args = parser.parse_args()
-    for number, paths in draw_supplementary(args.data_dir, args.output_dir, args.figures).items():
+    parser.add_argument('--tables-dir', type=Path,
+                        help='Directory of calculated gene tables for S22.')
+    parser.add_argument('--lr-input', type=Path,
+                        help='Calculated pair_timecourse.csv used to calculate S23/S24 panels.')
+    args = parser.parse_args(argv)
+    lr_panels = None
+    if args.lr_input is not None:
+        from .analysis import calculate_lr_panels
+        lr_panels = calculate_lr_panels(pd.read_csv(args.lr_input))
+    for number, paths in draw_supplementary(
+            args.data_dir, args.output_dir, args.figures,
+            tables_dir=args.tables_dir, lr_panels=lr_panels).items():
         print(number, [str(path) for path in paths])
+
+
+if __name__ == '__main__':
+    main()

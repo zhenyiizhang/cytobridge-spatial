@@ -69,3 +69,26 @@ def test_observed_times_are_derived_from_saved_slice_origins():
             }
         }
     ) == [0.0, 1.0]
+
+
+def test_legacy_observed_time_declaration_never_guesses_or_overrides_known_origins():
+    legacy = {"time_points": [0., .5, 1.], "simulation": {}}
+    with pytest.raises(ValueError, match="provide --observed-time-points"):
+        runner._observed_times(legacy)
+    assert runner._observed_times(legacy, [0., 1.]) == [0., 1.]
+    with pytest.raises(ValueError, match="outside"):
+        runner._observed_times(legacy, [0., 2.])
+    known = {**legacy, "simulation": {"slice_origins_by_time": {"0": "observed_real", "1": "observed_real"}}}
+    with pytest.raises(ValueError, match="disagree"):
+        runner._observed_times(known, [0., .5])
+
+
+def test_native_snapshot_annotation_uses_summary_key(tmp_path):
+    import anndata as ad
+    import numpy as np
+    path = tmp_path / "heart.h5ad"
+    data = ad.AnnData(np.ones((2, 3)))
+    data.obs["celltype_prediction"] = ["Valve", "Myocardium"]
+    data.write_h5ad(path)
+    result, _ = runner._snapshot_dict({"snapshots": [str(path)], "annotation_key": "celltype_prediction"}, [0.])
+    assert result["0.0"].obs.celltype_prediction.tolist() == ["Valve", "Myocardium"]

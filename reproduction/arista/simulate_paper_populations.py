@@ -7,11 +7,12 @@ from pathlib import Path
 
 import anndata as ad
 import numpy as np
+import torch
 import yaml
 import CytoBridge as cb
 
 
-def generate(data_dir, output_dir, classifier_cache, device='cuda'):
+def generate(data_dir, output_dir, classifier_cache, device='cuda', *, model_dir=None):
     data, output = Path(data_dir).resolve(), Path(output_dir).resolve()
     if output.exists():
         raise FileExistsError(f'Choose a new output directory: {output}')
@@ -19,7 +20,8 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
     frame, time_key = cb.tl.adata_to_aligned_dataframe(
         population, time_key='time_point_processed', obsm_key='X_latent',
         spatial_key='spatial_aligned', concat_spatial=True, annotation_key='Annotation')
-    loaded = cb.tl.load_dynamical_model_from_dir(data / 'model', dim=52, device=device)
+    selected_model = (data / 'model' if model_dir is None else Path(model_dir)).resolve()
+    loaded = cb.tl.load_dynamical_model_from_dir(selected_model, dim=52, device=device)
     runtime = cb.tl.build_dynamical_runtime(loaded)
     output.mkdir(parents=True)
     result = cb.tl.run_interpolation_workflow(
@@ -37,6 +39,13 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
         spatial_warp_to_observed_piecewise=False,
         random_seed=42,
         separate_interaction_random_stream=False)
+    # The original downstream evaluates observed vector fields immediately
+    # after simulation. Preserve that random-group continuation explicitly;
+    # resetting to seed 42 would evaluate different interaction neighborhoods.
+    rng = {'cpu': torch.get_rng_state().cpu().numpy()}
+    if str(device).startswith('cuda'):
+        rng['cuda'] = torch.cuda.get_rng_state(device).cpu().numpy()
+    np.savez(output / 'post_simulation_rng.npz', **rng)
     for folder in ('display_states', 'model_states', 'generated_display_states', 'slice_data'):
         (output / folder).mkdir()
     records = []
@@ -72,6 +81,10 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda'):
     (output / 'communication_settings.json').write_text(
         json.dumps(communication_settings, indent=2) + '\n')
     (output / 'population_sizes.json').write_text(json.dumps(records, indent=2) + '\n')
+    (output / 'model_selection.json').write_text(json.dumps({
+        'model_dir': str(selected_model),
+        'classifier_cache': str(Path(classifier_cache).resolve()),
+        'aligned_h5ad': str(data / 'aligned.h5ad')}, indent=2) + '\n')
     return output
 
 
@@ -81,5 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--classifier-cache', type=Path, required=True)
     parser.add_argument('--device', default='cuda')
+    parser.add_argument('--model-dir', type=Path)
     args = parser.parse_args()
-    print(generate(args.data_dir, args.output_dir, args.classifier_cache, args.device))
+    print(generate(args.data_dir, args.output_dir, args.classifier_cache, args.device,
+                   model_dir=args.model_dir))

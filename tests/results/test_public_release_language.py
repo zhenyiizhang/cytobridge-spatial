@@ -139,7 +139,8 @@ def _public_text(path: Path) -> str:
 
 @pytest.mark.parametrize("path", PUBLIC_TEXT_FILES, ids=lambda path: str(path.name))
 def test_public_files_do_not_expose_local_or_audit_markers(path: Path) -> None:
-    text = _public_text(path).lower()
+    # PYTHONHASHSEED is an executable reproducibility setting, not audit prose.
+    text = _public_text(path).lower().replace("pythonhashseed", "")
     markers = LOCAL_OR_AUDIT_MARKERS
     if path == REPOSITORY_ROOT / "CytoBridge/results/data/downloads/manifest.json":
         # This machine-readable field verifies downloaded archives. It is not
@@ -199,9 +200,13 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
                    and node.module == NUMERICAL_DATA_NOTEBOOKS[notebook_name]
                    and any(name.name.startswith(('draw_', 'plot_')) for name in node.names)
                    for node in ast.walk(ast.parse(code)))
-        assert "cb.datasets.download(" in source
+        if notebook_name in {"main_figure_5.ipynb", "arista_figures.ipynb"}:
+            assert "../dataset_workflows/arista.ipynb" in source
+            assert 'analysis / "populations"' in code
+        else:
+            assert "cb.datasets.download(" in source
         assert 'project / "data/' in source
-        assert "installation.md" in lowered
+        assert "installation.md" in lowered or "../dataset_workflows/arista.ipynb" in source
         if notebook_name == "main_figure_4.ipynb":
             assert 'project / "outputs/figure4_from_model"' in code
             assert 'cb.tl.run_interpolation_workflow(' in code
@@ -212,7 +217,29 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
         assert not any(token in source for token in ("export_mosta", "export_arista", "assemble_main_figure_4"))
         assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
         return
+    if notebook_name == "main_figure_2.ipynb":
+        for token in ("cb.datasets.download(", "evaluate_velocity(",
+                      "calculate_velocity_display(", "evaluate_growth_attention(",
+                      "main_figure_2_from_evaluation(distances)",
+                      "draw_distance_panels(figure_data, figures)",
+                      "attn_matrix_time0.npy", "g_values.npy"):
+            assert token in source
+        assert "assemble_main_figure_2" not in source
+        assert "CYTOBRIDGE_PROJECT_DIR" in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
     assert "from cytobridge.results" in lowered
+    if notebook_name in {"agist_figures.ipynb", "nonspatial_figures.ipynb", "main_figure_2.ipynb", "arista_local_domains.ipynb"}:
+        required = {
+            "agist_figures.ipynb": ("cb.datasets.download(", "collect_agist_inputs(", "data=data, panels=panels"),
+            "nonspatial_figures.ipynb": ("cb.datasets.download(", "collect_nonspatial_inputs(", "data=data, panels=panels"),
+            "arista_local_domains.ipynb": ("arista_figures.ipynb", "calculate_arista_local_domain_panels(domain_data)", "data=domain_data, panels=panels"),
+        }[notebook_name]
+        assert all(token in source for token in required)
+        assert "CYTOBRIDGE_PROJECT_DIR" in source
+        assert "outputs/" in source or 'project / "outputs"' in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
     assert any(heading in lowered for heading in ("## before you start", "## run the notebook"))
     assert "## where the inputs come from" not in lowered
     # Check the linked guide's structure. This does not establish that its
@@ -223,9 +250,10 @@ def test_figure_notebooks_document_inputs_and_portable_outputs(
     guide = (path.parent / guide_target).resolve()
     assert guide.is_file()
     guide_text = guide.read_text(encoding="utf-8").lower()
-    assert "## calculation programs" in guide_text
-    assert "start with:" in guide_text
-    assert "writes:" in guide_text
+    # Followable commands and explicit files, not a compulsory prose template.
+    assert "python " in guide_text or "cytobridge " in guide_text
+    assert "--output-dir" in guide_text
+    assert any(extension in guide_text for extension in (".csv", ".json", ".npz", ".h5ad"))
     assert "..." not in source
     assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
     assert 'Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", ".")) / "outputs"' in source
@@ -289,6 +317,22 @@ def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
             assert source.index("figures = draw_") < source.rindex("show(")
         return
     assert "display(Image(filename" in source
+    if notebook_name == "main_figure_2.ipynb":
+        # The reusable display helper is defined before the plots. Its Image
+        # call is not execution of a preview until show_calculated is called.
+        for producer, consumer in (
+            ("snapshot_pdf = draw_observed_snapshots(", "show_calculated(snapshot_pdf)"),
+            ("velocity_display = calculate_velocity_display(", "velocity_figures = draw_velocity_display(velocity_display,"),
+            ("velocity_figures = draw_velocity_display(", "show_calculated(path)"),
+            ("figure_data = main_figure_2_from_evaluation(distances)", "draw_distance_panels(figure_data, figures)"),
+        ):
+            assert source.index(producer) < source.index(consumer)
+        assert source.index("draw_distance_panels(figure_data, figures)") < source.index("display(Image(filename=str(png)")
+        return
+    if notebook_name == "arista_local_domains.ipynb":
+        assert source.index("figures = draw_supplementary(") < source.index("show(paths)", source.index("figures = draw_supplementary("))
+        assert "data=domain_data, panels=panels" in source
+        return
     notebook = json.loads(path.read_text())
     code = '\n'.join(''.join(c['source']) for c in notebook['cells'] if c['cell_type']=='code')
     calls = [node for node in ast.walk(ast.parse(code)) if isinstance(node, ast.Call)]

@@ -128,10 +128,19 @@ def _communications_from_table(
     return records
 
 
-def _observed_times(summary: dict[str, Any]) -> list[float]:
+def _observed_times(summary: dict[str, Any], explicit: list[float] | None = None) -> list[float]:
     origins = summary.get("simulation", {}).get("slice_origins_by_time", {})
+    if explicit is not None:
+        values = list(map(float, explicit))
+        if not values or values != sorted(set(values)) or not np.isfinite(values).all():
+            raise ValueError("Explicit observed time points must be finite, unique and increasing")
+        if not set(values).issubset(set(map(float, summary.get("time_points", [])))):
+            raise ValueError("Explicit observed time points are outside the summary time grid")
+        if origins and values != _observed_times(summary):
+            raise ValueError("Explicit observed time points disagree with recorded slice origins")
+        return values
     if not isinstance(origins, dict) or not origins:
-        raise ValueError("Workflow summary lacks simulation.slice_origins_by_time.")
+        raise ValueError("Workflow summary lacks simulation.slice_origins_by_time; provide --observed-time-points from its original producer.")
     observed = sorted(
         float(time_value)
         for time_value, origin in origins.items()
@@ -149,11 +158,12 @@ def _snapshot_dict(
     if not isinstance(raw_paths, list) or len(raw_paths) != len(time_points):
         raise ValueError("Workflow summary snapshot list does not match time_points.")
     paths = [_required_file(value, "snapshot") for value in raw_paths]
+    annotation_key = summary.get("annotation_key", "Annotation")
     snapshots: dict[str, ad.AnnData] = {}
     for time_value, path in zip(time_points, paths):
         snapshot = ad.read_h5ad(path)
-        if "Annotation" not in snapshot.obs:
-            raise KeyError(f"Snapshot lacks obs['Annotation']: {path}")
+        if annotation_key not in snapshot.obs:
+            raise KeyError(f"Snapshot lacks obs[{annotation_key!r}]: {path}")
         snapshots[str(float(time_value))] = snapshot
     return snapshots, paths
 
@@ -253,7 +263,7 @@ def _run_comparator(
     )
 
 
-def run(summary_path: Path, output_dir: Path) -> Path:
+def run(summary_path: Path, output_dir: Path, *, observed_time_points: list[float] | None = None) -> Path:
     summary_path = _required_file(summary_path, "workflow summary")
     output_dir = _fresh_output_dir(output_dir)
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -289,14 +299,14 @@ def run(summary_path: Path, output_dir: Path) -> Path:
         communications=communications,
         lr_database=database_path,
         time_points=time_points,
-        annotation_key="Annotation",
+        annotation_key=summary.get("annotation_key", "Annotation"),
         spatial_dim=2,
         expression_space="log1p",
         require_all_subunits=True,
         preferred_species_tag=lr_summary.get("preferred_species_tag"),
         observed_adata=reference,
-        observed_time_points=_observed_times(summary),
-        observed_annotation_key="Annotation",
+        observed_time_points=_observed_times(summary, observed_time_points),
+        observed_annotation_key=summary.get("annotation_key", "Annotation"),
         observed_expression_space="log1p",
     )
     minimum = project_communication_to_lr_timecourses(**shared, complex_mode="min")
@@ -332,6 +342,9 @@ def run(summary_path: Path, output_dir: Path) -> Path:
         "status": "complete",
         "dataset": summary.get("dataset"),
         "scientific_contract": {
+            "observed_time_points": shared["observed_time_points"],
+            "observed_time_points_source": "explicit caller declaration" if observed_time_points is not None else "summary slice origins",
+            "observed_annotation_key": shared["observed_annotation_key"],
             "primary_rule": "minimum expression across every required subunit",
             "sensitivity_rule": "zero-preserving geometric mean across every required subunit",
             "require_all_subunits": True,
@@ -364,8 +377,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflow-summary", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--observed-time-points", type=float, nargs="+",
+                        help="Only for older summaries without slice origins; declare the original producer's observed time grid")
     args = parser.parse_args(argv)
-    print(run(args.workflow_summary, args.output_dir))
+    print(run(args.workflow_summary, args.output_dir, observed_time_points=args.observed_time_points))
     return 0
 
 

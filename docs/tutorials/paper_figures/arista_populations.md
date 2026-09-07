@@ -1,8 +1,8 @@
 # Generate the ARISTA paper populations
 
-This page generates the populations used in Figure 5a–b and Supplementary
-Figure S19 from the trained ARISTA model. For a shorter introduction to the
-analysis APIs, start with the [ARISTA tutorial](../dataset_workflows/arista.ipynb).
+The [ARISTA tutorial](../dataset_workflows/arista.ipynb) is the primary route
+from model selection through simulation and analysis. This reference gives
+the equivalent population-generation command for Figure 5a–b and S19.
 
 ## Download the model and aligned data
 
@@ -15,8 +15,7 @@ cb.datasets.download("arista", destination=".", kind="analysis")
 ```
 
 The downloaded `data/arista/` directory contains the aligned H5AD, dynamical
-model, edge classifier and cell-type classifier. No additional training is
-needed to continue from this model.
+model, edge classifier and cell-type classifier used by the following command.
 
 ## Simulate the populations
 
@@ -24,13 +23,12 @@ needed to continue from this model.
 python -m reproduction.arista.simulate_paper_populations \
   --data-dir data/arista \
   --classifier-cache data/arista/classifier_cache/classifier_resmlp_dedb1d6442f4d3d3.pt \
-  --output-dir outputs/arista_populations \
+  --output-dir outputs/arista/populations \
   --device cuda
 ```
 
 This uses the paper's time grid, integration step, noise level, classifier and
-random seed. It also uses the original shared random stream for interaction
-grouping and diffusion. New analyses use separate streams by default.
+random seed, with a shared random stream for interaction grouping and diffusion.
 
 The command writes four sets of H5AD files:
 
@@ -51,6 +49,11 @@ for lineage analysis. The command also evaluates attention on the separate
 the attention matrices used by Figure 5a. The settings come from
 `CytoBridge/configs/arista_downstream.yaml`: self loops are retained and the
 winsorization quantile is 0.995. `communication_settings.json` records those settings.
+`post_simulation_rng.npz` records the random-state continuation used by the
+observed-only field calculation in Figure 5c. It is generated during simulation,
+before attention and expression analysis. `model_selection.json` records the
+model directory used by the simulation. Supply `--model-dir` to continue from
+a newly trained model instead of the downloaded model.
 
 ## Draw the populations
 
@@ -58,7 +61,7 @@ winsorization quantile is 0.995. `communication_settings.json` records those set
 from reproduction.arista.supplementary import draw_supplementary
 
 draw_supplementary(
-    "outputs/arista_populations",
+    "outputs/arista/populations",
     "outputs/arista_population_figures",
     figures=[19],
 )
@@ -72,7 +75,7 @@ communication matrices for Figure 5a–b:
 from reproduction.arista.main_figure import draw_main_figure
 
 draw_main_figure(
-    "outputs/arista_populations",
+    "outputs/arista/populations",
     "outputs/arista_main_figure",
     panels="ab",
 )
@@ -85,5 +88,5 @@ For Figure 5c–e, continue with the
 [velocity and growth calculations](arista_model_fields.md).
 
 The [Figure 5 tutorial](main_figure_5.ipynb) and
-[S19–S24 tutorial](arista_figures.ipynb) also provide the saved numerical paper
-inputs for drawing the remaining panels.
+[S19–S24 tutorial](arista_figures.ipynb) continue from these same outputs and
+calculate the model fields, gene programs and LR time courses before drawing.

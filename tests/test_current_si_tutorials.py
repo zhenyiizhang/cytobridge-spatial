@@ -24,7 +24,8 @@ def notebook_source(name):
 def test_tutorial_uses_current_numerical_renderer(name,numbers):
     source = notebook_source('paper_figures/'+name)
     assert 'from reproduction.paper_figures import' in source
-    assert f'draw_supplementary({numbers},' in source
+    import re
+    assert f'draw_supplementary({numbers.replace(" ", "")},' in re.sub(r'\s+', '', source)
 
 def test_lr_tutorial_uses_current_ranking_cutoff():
     source = notebook_source('paper_figures/lr_complex_aggregation')
@@ -77,13 +78,17 @@ def test_training_continues_at_real_generic_analysis_section():
 
 
 @pytest.mark.parametrize('name,variable', [
-    ('agist_figures','data'), ('nonspatial_figures','results'),
-    ('arista_local_domains','data'), ('classifier_smoothing','results'),
+    ('agist_figures','data'), ('nonspatial_figures','data'),
+    ('arista_local_domains','domain_data'), ('classifier_smoothing','results'),
     ('training_histories','results'), ('loto_benchmark','data'),
 ])
 def test_plotter_reads_the_input_directory_selected_above(name, variable):
     source = notebook_source('paper_figures/'+name)
-    assert f'results_dir={variable}.source_dir' in source
+    if name == 'arista_local_domains':
+        assert 'data=domain_data, panels=panels' in source
+        assert 'calculate_arista_local_domain_panels(domain_data)' in source
+    else:
+        assert f'results_dir={variable}.source_dir' in source
 
 def test_current_renderer_rejects_source_overwrite(tmp_path):
     from reproduction.paper_figures import draw_supplementary

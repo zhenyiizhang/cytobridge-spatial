@@ -19,7 +19,7 @@ cytobridge workflow --config <dataset> --step preprocess --step train --train --
 
 Start with: `one raw H5AD and manuscript model configuration per dataset`
 
-Writes: `training_run_summary.json with elapsed seconds, peak host RSS and peak PyTorch allocation`
+Writes: `<run>/training/training_run_summary.json` with elapsed seconds, peak host RSS and peak PyTorch allocation. The raw H5AD is preprocessed once by this command; preprocessing time is excluded from the reported training time.
 
 Next: `collect the five measured runs`
 
@@ -33,6 +33,8 @@ python scripts/collect_full_model_compute_cost.py --run admouse=<admouse-trainin
 ```
 
 Start with: `five manuscript training_run_summary.json files`
+
+The paper-format collector requires one NVIDIA GeForce RTX 4090 D for every run, the hardware recorded in Supplementary Table 2. Measurements made on another GPU are separate measurements. To collect those, add `--new-measurements` to this command. That mode writes `new_compute_cost_measurements.csv`, `new_compute_cost_table.csv` (including each row's actual GPU), and `new_measurements_manifest.json`; it does not create paper-table inputs or replace Supplementary Table 2. The numerical units and formatting remain seconds→minutes and MiB→GiB.
 
 Writes: `full_model_compute_cost.csv and manifest.json`
 
@@ -59,11 +61,17 @@ Next: `format the display values in the notebook`
 ### 4. format the table (Supplementary Table 2)
 
 ```text
-python scripts/execute_paper_notebooks.py --notebook compute_cost --output-dir <notebook-run>
+CYTOBRIDGE_COMPUTE_COST_RESULTS=<compute-cost-results> \
+  python scripts/execute_paper_notebooks.py --notebook compute_cost --output-dir <notebook-run>
 ```
+
+Use the absolute path for `<compute-cost-results>`: the notebook runner changes
+the kernel's working directory to its separate run folder.
 
 Start with: `full_model_compute_cost.csv`
 
-Writes: `full_model_compute_cost_formatted.csv/.md`
+The notebook reads this environment variable in its first cell and keeps that selected result object through formatting and export. Omit the variable only when redrawing the included paper measurements.
 
-Next: `copy the displayed values to the TeX-native table`
+Writes: `outputs/full_model_compute_cost_notebook/full_model_compute_cost_table.csv` and `.md` within the notebook run directory.
+
+The independent `--new-measurements` output can be inspected directly with `pd.read_csv("<new-measurements>/new_compute_cost_table.csv")`; it is not an input to the paper-only notebook loader.

@@ -1,88 +1,112 @@
 # Numerical-input review — 7 September 2026
 
-Maintenance record. This is not a public tutorial or a package-wide completion
-statement. Apply [the tutorial review rules](TUTORIAL_REVIEW.md) before editing
-the pages below.
+Maintenance record, not tutorial prose. Apply [the review rules](TUTORIAL_REVIEW.md).
+This records actual execution, not a package-wide claim of complete reproduction.
 
-## The recurring error
+## Repairs and execution
 
-The Figure 4 page linked a general MOSTA tutorial but loaded precomputed
-population, communication and lineage files. Its download instructions did
-not explain how to calculate those files. The user had repeatedly requested
-the calculation, not just an archive and a redraw command.
+The recurring error was treating an available result table as an explanation of
+its calculation. Figure 4 exposed this clearly. These repairs connect input,
+model calculation, numerical output and plotting. Paper results were not changed.
 
-The repair must include the actual producer, its measured inputs and selected
-model, its returned object or saved filename, and the plotting call that reads
-that result. Adding another link does not complete this repair.
-
-## Changes checked in this review
-
-- Figure 4 now calculates populations, communication, LR scores, fixed-particle
-  lineage and velocity fields from the measured inputs and trained model.
-  The complete notebook ran in a fresh server kernel. No training was rerun.
-  All seven population counts and labels matched the paper inputs. The 1,282
-  selected lineage identities and destination labels also matched. LR score
-  differences were below `9e-10`, and velocity-array differences below `2e-7`.
-  The trajectories are not byte-identical: at E15, seven of 100,871 population
-  cells differ in a spatial coordinate by more than 0.001, with maximum 0.00404.
-  The separate lineage background has a maximum coordinate difference of
-  0.0292; selected-lineage coordinates differ by less than `4.1e-6`.
-  Do not report these fresh stochastic/numerical runs as exact array identity.
-- Figure 5c/e, S2–S5 and S25 now pass the newly calculated objects to the
-  accepted plotting functions. Their notebooks ran in fresh server kernels
-  using the paper's saved numerical inputs. This is not a test of new training.
-- S39, S43 and S44 now pass the selected input directories throughout plotting.
-  S39's separate COMMOT directory is explicit. All eight cells across these
-  three notebooks ran in fresh kernels, and their PNG outputs matched the
-  accepted archive byte for byte. External methods were not rerun.
-- S39 now has a collector connecting the actual analysis outputs to the plot
-  input format. Its collector-to-plot route was executed separately.
-- ARISTA's population generator now exports its returned states to `slice_data`
-  and calculates communication from its model populations. The export and
-  settings have focused tests. The complete GPU simulation was not rerun.
-- Figure 4's generator matches the published cells in a regression test.
-  ARISTA generator calls no longer restore the adjusted Figure 5b coordinates
-  or the disconnected Figure 5c/e calculation.
+- Figure 4 ran from measured inputs and weights through all panels. All seven
+  population counts and labels and 1,282 selected lineage identities matched.
+  LR differences were below 9e-10 and velocity differences below 2e-7.
+  Stochastic coordinates were not identical: E15 maximum difference 0.00404,
+  separate lineage background 0.0292, selected lineage below 4.1e-6.
+- ARISTA's four notebooks ran in fresh kernels: 21 cells, 13 PNGs, no errors.
+  Population counts and labels matched. S25 recovered the same 203/77 domain
+  cells and 419/122 edges. Optional new training was not performed.
+- AD used 53,615 starting cells and 26 simulated times. Recalculated gene
+  profiles differed by at most 1.33e-15, LR by 8.55e-10, and Trem2/Spp1 module
+  scores by less than 9e-8. Figure 6b–g/S30 producers and plots ran.
+  R GO and NicheNet commands were reviewed but not executed in this pass.
+- S2/S3 and S4/S5 notebooks ran in fresh kernels. S3 raw generation reproduced
+  both original CSVs and reference NPZ arrays exactly. Five inference seeds ran
+  with the original model architecture. S4b evaluated three LR models over five
+  groupings each, maximum field difference 5.87e-8. Other S4/S5 panels explicitly
+  reuse original model-analysis outputs, not finished figures.
+- S6 trained five held-out classifiers and one trajectory classifier, generated
+  growing/fixed-cohort trajectories and evaluated smoothing. S39 reran its
+  analysis and 10,000-label spatial permutations. S41 reran four-dataset
+  min/geometric-mean comparisons. S43 recalculated summaries from saved external
+  outputs. Five sensitivity/table notebooks ran with explicit selected inputs.
+- S7/S8 preparation ran on released heart data. All six transformed coordinate
+  arrays matched the paper input exactly. Portable training/comparison commands
+  were added; seven full training variants were not repeated in this pass.
+- Portable LOTO configuration, heart preparation/verification, CytoBridge
+  preflight and two linear-control predictions ran. The complete five-dataset,
+  all-method training benchmark was not repeated.
+- Selected Zebrafish classifiers now reach removal/daughter analyses. Older
+  generators cannot restore obsolete cells. An additional non-spatial model/
+  numerical-input archive was uploaded from the server to the data release.
 
 ## All 27 notebooks
 
-Every row was reviewed in source together with the called implementation.
-“Executed” below refers only to this review. Earlier execution records are not
-treated as a new run. A connected default route may still have an untested
-optional training or custom-data branch.
+“Executed” means execution in this review. Earlier saved outputs alone do not
+count. Optional training and native external-method inference are separate.
 
-| Notebook under `docs/tutorials/` | Calculation route and next action |
+| Notebook under docs/tutorials/ | Current route and verification |
 | --- | --- |
-| `paper_figures/main_figure_4.ipynb` | Executed from measured inputs and model weights through all five panels. New outputs stay separate from the paper inputs. |
-| `paper_figures/main_figure_5.ipynb` | Executed from saved numerical inputs. c/e object continuity fixed. Test the new population producer and its connection to a/b with an actual model run. |
-| `paper_figures/main_figure_2.ipynb` | a–d still use included artwork. Connect the existing numerical analysis to these panels. The separate e calculation does not yet feed this page. |
-| `paper_figures/mosta_figures.ipynb` | Current calculation and explicit trajectory-file continuation are connected. Retire or update the older notebook generators so they cannot overwrite this route. |
-| `paper_figures/arista_figures.ipynb` | S19 has explicit population inputs. S20 and S22–S24 still need the model-to-table continuation checked and completed. |
-| `paper_figures/arista_local_domains.ipynb` | Executed from saved numerical inputs; calculated objects now reach S25. Provide the domain/control generation and six-file export from a new model run. |
-| `paper_figures/agist_figures.ipynb` | Executed from saved numerical inputs; calculated objects now reach S2/S3. Connect newly generated simulation/training results to the compact input format. |
-| `paper_figures/nonspatial_figures.ipynb` | Executed from saved numerical inputs; calculated objects now reach S4/S5. Complete the trained-model-to-plot-input conversion. |
-| `paper_figures/chicken_heart_daily.ipynb` | Reads the stated upstream populations and calculates downstream quantities. Record the exact current paper panels for each displayed output. |
-| `paper_figures/classifier_smoothing.ipynb` | S6 needs the actual held-out predictions, generated-frame and fixed-cohort sensitivity producers. The guide currently begins with undefined arrays. |
-| `paper_figures/compute_cost.ipynb` | Recorded measurements are formatted correctly. The optional guide's final notebook step resets the input directory; fix it and explain the collector's hardware requirement. |
-| `paper_figures/interaction_ablation.ipynb` | Selected files reach S42. Inference-on/off has a producer. Full/No-LR needs complete preparation/training/evaluation commands and portable benchmark paths. |
-| `paper_figures/loto_benchmark.ipynb` | Selected files reach S45. Benchmark preparation still reads absolute server paths and needs explicit input/model configuration. |
-| `paper_figures/loto_benchmark_summary.ipynb` | Executed from completed comparisons; explicit input reaches S44. The upstream benchmark preparation gaps also apply here. |
-| `paper_figures/lr_complex_aggregation.ipynb` | S41 calculates agreement from LR scores. Its existing sensitivity runner needs the preceding downstream workflow command that produces `downstream/summary.json`. |
-| `paper_figures/training_histories.ipynb` | S46 has training-history generation, collection and plotting commands using the selected directory. No fresh training run in this review. |
-| `paper_figures/zebrafish_attention.ipynb` | Executed from saved analysis outputs; S39 collection and explicit COMMOT input fixed. Full model and external-method inference not rerun. |
-| `paper_figures/spatial_communication.ipynb` | Executed from saved method comparisons; explicit inputs reach S43. Complete the external-method-output-to-summary commands. |
-| `paper_figures/zebrafish_si_s31_s38.ipynb` | Default model-to-analysis route is connected. Propagate a reader's custom classifier selection to S33/S34/S37 as well as S31/S38. |
-| `dataset_workflows/admouse.ipynb` | Training choice, model simulation, cell labels and S26 plotting are connected. The later AD page must consume these outputs for its gene/LR/perturbation analyses. |
-| `dataset_workflows/arista.ipynb` | Simulation and growth values reach S20. Resolve its classifier selection against the paper-population route before declaring one common model-to-figure route. |
-| `dataset_workflows/chicken_heart.ipynb` | Simulation/growth values reach S9 and save the stated H5ADs for later analysis. Clean up remaining internal wording. |
-| `dataset_workflows/mosta.ipynb` | Simulation, classification and growth are calculated; explicit outputs continue to S11–S18. Check the older generator against the current notebook. |
-| `dataset_workflows/zebrafish.ipynb` | Model growth evaluation reaches S32. Correct the final description of S31–S38, which now calculates results rather than only drawing saved inputs. |
-| `data_preparation/synthetic_preprocessing.ipynb` | Self-contained count generation and preprocessing example; no paper figure or hidden result input. |
-| `your_data.ipynb` | Raw-input preparation, configuration, training and downstream command are connected. No new full training test in this review. |
-| `model_analysis.ipynb` | Model-derived velocity and growth use the stated inputs. No unrelated scientific figures are displayed. |
+| paper_figures/main_figure_4.ipynb | Measured data/model → populations, communication, LR, lineage and fields → all five panels. Executed. |
+| paper_figures/main_figure_5.ipynb | Prerequisite dataset output → fresh c/d/e fields and a/b plots. Executed. Displayed e redraws original per-cell values; original random groups are missing, as detailed below. |
+| paper_figures/main_figure_2.ipynb | Actual a snapshots, b fields and e ten-seed W2. Seven cells executed. Predicted c/d calculated, but comparison needs two missing truth arrays. No old c/d image used as calculation. |
+| paper_figures/mosta_figures.ipynb | Explicit model/trajectory calculations → S11–S18. Older standalone generators retired. |
+| paper_figures/arista_figures.ipynb | Dataset populations/growth → S19–21; new gene reconstruction, clustering, GO and LR → S22–24. All six figures executed and displayed. |
+| paper_figures/arista_local_domains.ipynb | Same-run Figure 5c fields/attention and S23 LR → segmentation/permutations → six tables → S25. Executed. |
+| paper_figures/agist_figures.ipynb | New clustering/model fields → S2. Original reference/weights → five-seed attraction evaluation → S3. Executed; original failed diagnostic outcomes retained internally. |
+| paper_figures/nonspatial_figures.ipynb | S4b three-model evaluation executed. Measured cells plus explicit model trajectories/messages and saved arm evaluations → 24 new plotting inputs → S4/S5. Other upstream model evaluations not rerun. |
+| paper_figures/chicken_heart_daily.ipynb | Declared population/model inputs → paper velocity, composition, transition and interaction plots. Non-paper daily transition removed in earlier repair. |
+| paper_figures/classifier_smoothing.ipynb | Classifiers → trajectories → smoothing evaluation → selected plotting inputs. Producers and notebook executed. |
+| paper_figures/compute_cost.ipynb | Actual run summaries → table. Selected directory persists. New-hardware measurements are separate; no new training timing claimed. Executed. |
+| paper_figures/interaction_ablation.ipynb | Explicit Full/No-LR and inference-on/off inputs reach S42. Inference producer connected. Fresh Full/No-LR training matrix not run here. |
+| paper_figures/loto_benchmark.ipynb | Completed target summaries → S45. Portable new training route documented and heart preparation/control-tested. Full repeated benchmark not run here. |
+| paper_figures/loto_benchmark_summary.ipynb | Explicit completed comparisons → S44. Selected-input plotting executed. Same new-run distinction as S45. |
+| paper_figures/lr_complex_aggregation.ipynb | Explicit workflow summaries → four-dataset min/geometric-mean calculation → S41. Executed from original downstream states/communication. |
+| paper_figures/training_histories.ipynb | Explicit logs → history collection → S46. No new full training here. |
+| paper_figures/zebrafish_attention.ipynb | Named model/external outputs → analysis/JAM controls/spatial permutations → collector → S39. Executed. Native inference and full matched training not repeated. |
+| paper_figures/spatial_communication.ipynb | Original external outputs/selection → new aggregate/molecular summaries → collector → S43. Executed. External methods themselves not rerun. |
+| paper_figures/zebrafish_si_s31_s38.ipynb | Model simulation/perturbation → analysis → figures. Explicit classifier now propagates to removal/daughter analyses as well as populations. |
+| dataset_workflows/admouse.ipynb | Inline training choice → selected model simulation/classification → S26. Later AD page now has real gene/LR/perturbation producers. |
+| dataset_workflows/arista.ipynb | Optional inline training or downloaded model → populations/communication/growth → S20. Five cells executed with downloaded weights. Model selection saved for later pages. |
+| dataset_workflows/chicken_heart.ipynb | Simulation/growth → S9, with named H5AD continuation. No new full training in this pass. |
+| dataset_workflows/mosta.ipynb | Simulation/classification/growth → named S11–18 continuation. Canonical notebook preserved by generator repair. |
+| dataset_workflows/zebrafish.ipynb | Model growth → S32. Final description correctly identifies the S31–38 calculation route. |
+| data_preparation/synthetic_preprocessing.ipynb | Self-contained count generation/preprocessing. No paper-figure claim. |
+| your_data.ipynb | Raw data → preparation/configuration → training/downstream calls. No new full training claimed here. |
+| model_analysis.ipynb | Declared model/data → velocity/growth arrays. No unrelated scientific figures. |
 
-The linked Markdown routes were also read. Further work includes portable
-S7/S8 input generation and the later AD gene/LR/perturbation calculations.
-These entries must not be closed solely because a notebook or Sphinx build
-finishes successfully. Do not replace paper figures to make them match an
-incorrect tutorial.
+Linked AD, alignment, simulation, benchmark and sensitivity Markdown routes
+were reviewed alongside these notebooks.
+
+## Original information still needed for exact reproduction
+
+1. **Figure 2c/d:** original generator files `attn_matrix_time0.npy` and
+   `g_values.npy` from `mosta_interaction_1017_tiaocan` were not found in the
+   server project, released ZIPs or local figure archives. Three available
+   velocity arrays do not replace attention or growth. The original renderer
+   was located and ported; it can draw c/d with the matching arrays.
+2. **Figure 2d source record:** the later `r = 0.96` label cites
+   `simulation_gradients_np_gt.npy/pearson_r`, a 31,816 × 52 base-velocity
+   array, not growth. That record cannot establish the growth correlation.
+   Resolve against original growth, not by substituting another quantity.
+   The manuscript figure and label were not changed here.
+3. **Figure 5e:** original per-cell scores exist, but original random 1,024-cell
+   groups/RNG state do not. Original values are redrawn and a real new model
+   calculation is supplied separately. Five preselected seeds retained broad
+   early/late patterns and all 14/14 matched growth-increase directions. Only
+   120/177 original group means were within the five-draw range. This is not
+   exact per-group reproduction or a confidence interval. No best seed chosen.
+
+## Records and publication
+
+Detailed execution commands/comparisons are in the author's workspace under
+`output/notebook_input_review_20260907/`: `arista_reader_repair_20260907.md`,
+`simulation_nonspatial_execution_review.md`, `sensitivity_reader_repair.md`
+and `portable_benchmark_reader_repair.md`. AD is also summarized in
+[AD_READER_CHECK_20260907.md](AD_READER_CHECK_20260907.md).
+
+Automatic GitHub-to-Read-the-Docs deployment was repaired and verified on
+commit `8462c54`. Later changes require their own push, build and page check.
+Full-suite execution and publication are verified separately from scientific
+input-to-figure execution.

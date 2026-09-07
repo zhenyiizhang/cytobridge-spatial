@@ -152,29 +152,8 @@ def code(text: str, *, cell_id: str | None = None):
 
 
 def build_notebook(tutorial: Tutorial):
-    if tutorial.dataset == "admouse":
-        from build_admouse_population_tutorial import build_notebook as build_admouse
-
-        return build_admouse()
-    if tutorial.dataset == "arista":
-        from build_arista_growth_tutorial import build_notebook as build_arista
-
-        return build_arista()
-    if tutorial.dataset == "mosta":
-        from build_mosta_trajectory_tutorial import build_notebook as build_mosta
-
-        return build_mosta()
-    if tutorial.dataset == "zebrafish":
-        from build_zebrafish_growth_tutorial import build_notebook as build_zebrafish
-
-        return build_zebrafish()
-    if tutorial.dataset == "chicken_heart":
-        from build_chicken_heart_tutorial import build_notebook as build_heart
-
-        return build_heart()
-    from build_analysis_tutorials import build_analysis_notebook
-
-    return build_analysis_notebook(tutorial)
+    """Read the maintained notebook instead of rebuilding an earlier draft."""
+    return nbformat.read(NOTEBOOK_DIR / f"{tutorial.dataset}.ipynb", as_version=4)
 
 
 def build_own_data_notebook():

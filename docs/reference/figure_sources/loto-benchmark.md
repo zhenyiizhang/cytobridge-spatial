@@ -2,90 +2,132 @@
 orphan: true
 ---
 
-# Analysis inputs: Supplementary Figure S45: five-dataset LOTO benchmark
+# Five-dataset leave-one-timepoint-out benchmark
 
-The [figure notebook](../../tutorials/paper_figures/loto_benchmark.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
+This tutorial prepares the data, trains models with one time point held out,
+and draws S45 from the resulting comparisons. The downloaded models can be
+used directly for inference in the dataset tutorials. Here, each CytoBridge
+LOTO model is trained from scratch using the downloaded training configuration.
+All calculations write to new directories under `outputs/`.
 
-## Calculation programs
+Follow [Installation](../../installation.md), then run the commands below in
+the CytoBridge code folder. They process zebrafish, MOSTA, ARISTA, AD mouse,
+and chicken heart.
 
-Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
+## 1. Download the data and model configurations
 
-
-### 1. prepare held-out benchmark inputs (S45)
-
-```text
-python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare
+```bash
+for dataset in zebrafish mosta arista admouse chicken_heart; do
+  python -m CytoBridge.datasets "$dataset" --output-dir paper_run
+done
 ```
 
-Start with: `the same held-out target stages and fixed starting states for all methods`
+Each download creates `paper_run/data/<dataset>/` with `aligned.h5ad`,
+`workflow.json`, and `model/config.yaml`. The [data page](../../data_checkpoints.md)
+also provides the archives for manual download. Allow about 20 GB for
+downloading and extracting MOSTA, plus space for the benchmark splits below.
 
-Writes: `held-out inputs and fixed starting states for every target stage`
+## 2. Create the benchmark configurations
 
-Next: `run the compared methods`
-
-
-
-
-### 2. run the compared methods (S45)
-
-```text
-python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> --software-root <method-checkouts> run --methods cytobridge stvcr stories mioflow moscot wot paste spateo linear_centroid_shift exact_ot_displacement random_independent_pairs --tracks loto --device cuda
+```bash
+python -m scripts.spatiotemporal_benchmark.prepare_reader_configs \
+  --data-root paper_run/data --output-dir outputs/benchmark_reader
 ```
 
-Start with: `held-out inputs, fixed starting states, and installed comparison methods`
+This writes one YAML per dataset under `outputs/benchmark_reader/configs/`.
+Each YAML selects that dataset's aligned data, time and annotation fields,
+and training configuration. The `formal/<dataset>/training` links point to
+the downloaded model directories without copying them.
 
-Writes: `one prediction folder for each method, dataset, and target stage`
+Use this same configuration directory throughout the remaining steps.
+Choose a different output directory when starting another benchmark run.
 
-Next: `evaluate the predictions`
+## 3. Split the data by held-out time point
 
-
-
-
-### 3. evaluate held-out predictions (S45)
-
-```text
-python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> evaluate --tracks loto
+```bash
+python -m scripts.spatiotemporal_benchmark.run_unified_benchmark \
+  --config-dir outputs/benchmark_reader/configs \
+  --run-root outputs/benchmark_new prepare
 ```
 
-Start with: `held-out truth and method predictions`
+For each dataset, `outputs/benchmark_new/<dataset>/inputs/` contains the
+split files. For example, chicken heart has `loto_t1/` and `loto_t2/`.
+Each folder contains a `train.h5ad` without the held-out cells,
+`training_reference.npz`, `source_roster.npz`, and separate truth files.
 
-Writes: `repeat-level metrics and a table showing which method completed each target`
+Methods share a support of up to 800 source cells and a bootstrap of 5,000
+starting particles. The 50 PCA features and two aligned spatial coordinates
+remain fixed across folds. Because these representations were prepared using
+all time points, this is a transductive LOTO comparison.
 
-Next: `merge the updated ARISTA and heart results`
+## 4. Train and predict
 
+Set up the comparison methods using the instructions for
+[dynamic methods](https://github.com/zhenyiizhang/cytobridge-spatial/blob/main/scripts/spatiotemporal_benchmark/dynamic/README.md)
+and [static methods](https://github.com/zhenyiizhang/cytobridge-spatial/blob/main/scripts/spatiotemporal_benchmark/static_baselines/README.md).
+The command below expects their code in `software/<method>/`. For a separate
+Python environment, add a `--python METHOD=/path/to/env/bin/python` argument
+after `run`. Change `cuda:2` to the GPU you want to use.
 
+```bash
+python -m scripts.spatiotemporal_benchmark.run_unified_benchmark \
+  --config-dir outputs/benchmark_reader/configs \
+  --run-root outputs/benchmark_new --software-root software run \
+  --methods cytobridge stvcr stories mioflow moscot wot paste spateo \
+  linear_centroid_shift exact_ot_displacement random_independent_pairs \
+  --tracks loto --device cuda:2
+```
 
+For each CytoBridge fold, this calculates interaction graphs from the training
+cells, fits an edge predictor, trains the six model stages, and predicts the
+held-out time point. The training configuration supplies the architecture,
+losses, and training schedule.
 
-### 4. collect the five completed target summaries (S45)
+Fitted models are saved under `outputs/benchmark_new/<dataset>/fits/` and
+predictions under `predictions/loto/<method>/t<target>/`. Check
+`status/method_target_status.csv` and the corresponding `logs/` files for
+failed or unfinished runs before continuing.
 
-```text
+## 5. Evaluate the predictions
+
+```bash
+python -m scripts.spatiotemporal_benchmark.run_unified_benchmark \
+  --config-dir outputs/benchmark_reader/configs \
+  --run-root outputs/benchmark_new evaluate --tracks loto
+```
+
+This compares predictions with the held-out cells using five repeats of
+1,024 projection directions for Sliced-W2. It writes repeat-level metrics to
+`outputs/benchmark_new/<dataset>/evaluation/loto/` and target-level means to
+`reports/loto/loto_target_summary.csv`. Methods that did not produce predictions
+are recorded with their status instead of a numerical score.
+
+## 6. Collect the results and draw S45
+
+Use the five target-summary files from the preceding step:
+
+```bash
 python scripts/collect_figure_inputs.py s45 \
-  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \
-  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \
-  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \
-  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \
-  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \
-  --protocol <s45-protocol.json> \
-  --output-dir <s45-inputs>
+  --dataset-summary zebrafish=outputs/benchmark_new/zebrafish/reports/loto/loto_target_summary.csv \
+  --dataset-summary mosta=outputs/benchmark_new/mosta/reports/loto/loto_target_summary.csv \
+  --dataset-summary arista=outputs/benchmark_new/arista/reports/loto/loto_target_summary.csv \
+  --dataset-summary admouse=outputs/benchmark_new/admouse/reports/loto/loto_target_summary.csv \
+  --dataset-summary chicken_heart=outputs/benchmark_new/chicken_heart/reports/loto/loto_target_summary.csv \
+  --protocol CytoBridge/results/data/loto_benchmark/protocol.json \
+  --output-dir outputs/benchmark_tables
+cytobridge figure loto-benchmark --results-dir outputs/benchmark_tables \
+  --output-dir outputs/benchmark_figures
 ```
 
-Start with: `the loto_target_summary.csv written for each dataset by the benchmark summarizer`
+The collector writes `loto_target_stage_means.csv`,
+`native_output_support.csv`, and `protocol.json` to `outputs/benchmark_tables/`.
+The plot divides each method's Sliced-W2 by CytoBridge's value for the same
+dataset, target, and space, then averages these ratios within each dataset.
+The PDF and PNG are saved as `outputs/benchmark_figures/five_dataset_loto_benchmark.*`,
+alongside `paired_loto_ratios.csv` and `loto_dataset_summary.csv`.
 
-Writes: `<s45-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json`
-
-Next: `draw S45`
-
-
-Use the protocol.json included with the S45 paper results unless the benchmark contract itself has changed. Replace the ARISTA or chicken-heart summary path with a retrained run to update that dataset without changing the other three.
-
-
-
-### 5. calculate paired ratios and draw (S45)
-
-```text
-cytobridge figure loto-benchmark --results-dir <s45-inputs> --output-dir <figure-dir>
-```
-
-Start with: `the collected S45 input directory`
-
-Writes: `five_dataset_loto_benchmark.pdf/.png and ratio/summary tables`
+To add SpaTrack for S44, continue with the
+[SpaTrack tutorial](../../tutorials/paper_figures/spatrack_benchmark.md), using
+the same `outputs/benchmark_new/<dataset>/inputs/` folders and these new
+CytoBridge summaries. To draw S45 from the included paper results, run the
+[S45 notebook](../../tutorials/paper_figures/loto_benchmark.ipynb).

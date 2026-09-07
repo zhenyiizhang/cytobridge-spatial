@@ -6,6 +6,7 @@ import pickle
 from types import SimpleNamespace
 
 import numpy as np
+import numpy.testing
 import pandas as pd
 import pytest
 
@@ -24,13 +25,17 @@ def cell_source(book, marker):
 
 def test_figure5_notebook_passes_calculated_velocity_and_growth(monkeypatch, tmp_path):
     ad = pytest.importorskip('anndata')
-    from reproduction.arista import main_figure, plotting
+    from reproduction.arista import main_figure, plotting, model_fields, spatial_velocity
 
     book = notebook('main_figure_5')
     scope = dict(np=np, pd=pd, ad=ad, SOURCE=main_figure.SOURCE, output=tmp_path,
                  plotting=plotting, ROI=main_figure.ROI, FOCUS=main_figure.FOCUS,
-                 palette={}, display=lambda value: None, show=lambda value: None)
-    exec(cell_source(book, 'with np.load(SOURCE'), scope)
+                 palette={}, display=lambda value: None, show=lambda value: None,
+                 data=tmp_path / 'data', analysis=tmp_path / 'analysis',
+                 populations=tmp_path / 'populations', device='cpu', model_dir=tmp_path / 'selected_model')
+    monkeypatch.setattr(model_fields, 'calculate_observed_fields', lambda *a, **k: tmp_path)
+    monkeypatch.setattr(spatial_velocity, 'calculate_spatial_velocity', lambda *a, **k: main_figure.SOURCE)
+    exec(cell_source(book, 'from reproduction.arista.model_fields import calculate_observed_fields'), scope)
     # A reader's changed calculation must survive the following plotting cell.
     scope['velocity_table']['cosine_full_vs_interaction'] *= -1
     expected = scope['velocity_table']['cosine_full_vs_interaction'].copy()
@@ -46,26 +51,29 @@ def test_figure5_notebook_passes_calculated_velocity_and_growth(monkeypatch, tmp
     np.testing.assert_allclose(pd.read_csv(tmp_path / 'Figure5c_spatial_velocity.csv')
                                .cosine_full_vs_interaction, expected)
 
-    exec(cell_source(book, 'values = pd.read_csv('), scope)
-    assert len(scope['values']) == 82306 and len(scope['means']) == 177
-    scope['means']['growth_mean'] += .125
-    expected_means = scope['means'].copy()
+    values = pd.read_csv(main_figure.SOURCE / 'figure5e_growth_interaction_by_cell.csv')
+    grouped = values.groupby(['time', 'celltype'], as_index=False).agg(
+        growth_mean=('growth', 'mean'), interaction_mean=('interaction', 'mean'), n=('growth', 'size'))
+    grouped['growth_mean'] += .125
+    monkeypatch.setattr(model_fields, 'calculate_fields', lambda *a, **k: grouped)
 
+    exec(cell_source(book, 'from reproduction.arista.model_fields import calculate_fields'), scope)
+    assert scope['means'] is grouped
     def growth_plot(table, stem):
-        assert table is scope['means']
-        pd.testing.assert_frame_equal(table, expected_means)
+        assert table is scope['paper_means']
+        assert table is not grouped
+        assert len(table) == 177
         return []
-
     scope['plot_growth_interaction'] = growth_plot
-    exec(cell_source(book, 'means.to_csv('), scope)
-    pd.testing.assert_frame_equal(pd.read_csv(tmp_path / 'Figure5e_growth_interaction.csv'),
-                                  expected_means, check_dtype=False)
+    exec(cell_source(book, 'paper_values = pd.read_csv('), scope)
+    pd.testing.assert_frame_equal(pd.read_csv(tmp_path / 'Figure5e_paper_group_means.csv'),
+                                  scope['paper_means'], check_dtype=False)
 
 
 @pytest.mark.parametrize('name,data_variable,numbers', [
     ('agist_figures', 'data', [2, 3]),
-    ('nonspatial_figures', 'results', [4, 5]),
-    ('arista_local_domains', 'data', [25]),
+    ('nonspatial_figures', 'data', [4, 5]),
+    ('arista_local_domains', 'domain_data', [25]),
 ])
 def test_notebook_transports_its_calculated_objects(monkeypatch, tmp_path, name, data_variable, numbers):
     from reproduction import paper_figures
@@ -90,9 +98,14 @@ def test_notebook_transports_its_calculated_objects(monkeypatch, tmp_path, name,
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(paper_figures.subprocess, 'run', plot_process)
-    scope = {data_variable: data, 'panels': panels, 'output_dir': tmp_path / 'figures',
+    scope = {data_variable: data, 'panels': panels, 'output_dir': tmp_path / 'figures', 'output': tmp_path,
              'write_arista_local_domain_tables': lambda *args: {},
-             'Image': lambda **kwargs: None, 'display': lambda value: None}
+             'Image': lambda **kwargs: None, 'display': lambda value: None,
+             'analysis': tmp_path, 'show': lambda paths: None}
+    if name == 'arista_local_domains':
+        import CytoBridge.results
+        monkeypatch.setattr(CytoBridge.results, 'calculate_arista_local_domain_panels', lambda value: panels)
+        panels.attention = pd.DataFrame()
     exec(cell_source(notebook(name), 'from reproduction.paper_figures import'), scope)
     assert len(transported) == 1
     assert not transported[0].exists()
@@ -163,22 +176,23 @@ def test_arista_generator_keeps_current_population_and_calculation_routes(monkey
         new_markdown_cell=lambda text: SimpleNamespace(cell_type='markdown', source=text),
         new_code_cell=lambda text: SimpleNamespace(cell_type='code', source=text)))
     monkeypatch.setitem(sys.modules, 'nbformat', fake_nbf)
-    spec = importlib.util.spec_from_file_location(module_name, ROOT / 'scripts/build_numerical_paper_tutorials.py')
+    spec = importlib.util.spec_from_file_location(module_name, ROOT / 'scripts/build_arista_reader_tutorials.py')
     generator = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(generator)
     generated = {}
     monkeypatch.setattr(generator, 'write', lambda name, cells: generated.update({name: cells}))
-    generator.arista_main()
-    generator.arista_supplementary()
-    main = generated['main_figure_5.ipynb']
+    generator.main_figure()
+    generator.supplementary()
+    main = generated['paper_figures/main_figure_5.ipynb']
     source = '\n'.join(cell.source for cell in main)
-    assert '7,780' in source and '7,798' not in source
+    assert '7,798' not in source and 'calculate_observed_fields' in source
     assert 'spatially anchored display coordinates' not in source
-    for marker in ('velocity_table.to_csv(', 'means.to_csv('):
+    for marker in ('velocity_table.to_csv(', 'from reproduction.arista.model_fields import calculate_fields'):
         emitted = next(cell.source for cell in main if marker in cell.source)
         assert emitted == cell_source(notebook('main_figure_5'), marker)
-    si_source = '\n'.join(cell.source for cell in generated['arista_figures.ipynb'])
-    assert 'draw_supplementary(populations, output, figures=[19])' in si_source
+    si_source = '\n'.join(cell.source for cell in generated['paper_figures/arista_figures.ipynb'])
+    assert 'calculate_gene_programs' in si_source and 'lr_panels=lr_panels' in si_source
+    assert 'selected = analysis / "growth" if number == 20 else populations' in si_source
 
 
 def test_calculated_panel_contract_rejects_incomplete_or_mismatched_inputs(tmp_path):

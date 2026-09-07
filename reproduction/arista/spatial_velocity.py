@@ -13,7 +13,10 @@ def project_velocity(features, coordinates, velocity):
     population.layers['Ms'] = np.asarray(features, dtype=np.float32)
     population.layers['velocity'] = np.asarray(velocity, dtype=np.float32)
     population.obsm['X_spatial'] = np.asarray(coordinates, dtype=np.float32)
-    sc.pp.neighbors(population, n_neighbors=30, use_rep='X', random_state=0)
+    # The accepted v2 field uses physical neighbors for both 52D directions.
+    # X/layers retain all 52 dimensions for the transition-cosine calculation;
+    # using X for the neighbor graph instead would change the local field.
+    sc.pp.neighbors(population, n_neighbors=30, use_rep='X_spatial', random_state=0)
     scv.tl.velocity_graph(population, vkey='velocity', xkey='Ms',
                           n_jobs=1, show_progress_bar=False)
     scv.tl.velocity_embedding(population, basis='spatial', vkey='velocity')
@@ -25,7 +28,7 @@ def calculate_spatial_velocity(velocity_path, output_dir):
 
     The left field uses the first two spatial components. The selected paper
     inset compares the full and interaction 52D fields after independently
-    projecting them onto the spatial coordinates. The coordinate reference
+    projecting them on the same 30-neighbor spatial graph. The coordinate reference
     fixes the displayed tissue orientation and the grey ROI only.
     """
     from .main_figure import SOURCE, ROI

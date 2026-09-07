@@ -97,6 +97,17 @@ def collect_panel_data(panel_data_dir: Path, cytobridge_pairs: Path,
         collected.mkdir()
         for name in filenames:
             shutil.copy2(source / name, collected / name)
+        # The current native JAM producer spells out the technical/descriptive
+        # scope in its Fisher-p column. Retain it and expose the historical
+        # loader alias with identical values; this is not a new statistical test.
+        quartile_path = collected / "jam_quartile_compatibility.csv"
+        quartiles = pd.read_csv(quartile_path, float_precision="round_trip")
+        native_p = "fisher_exact_two_sided_p_descriptive_technical"
+        loader_p = "fisher_exact_two_sided_p"
+        if native_p in quartiles and loader_p not in quartiles:
+            quartiles[loader_p] = quartiles[native_p]
+            quartiles.to_csv(quartile_path, index=False, float_format="%.17g")
+            manifest["schema_aliases"] = {loader_p: native_p}
         (collected / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         (collected / "commot_comparison").mkdir()
         for name, path in comparison_files.items():
