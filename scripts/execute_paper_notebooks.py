@@ -16,7 +16,8 @@ from nbclient import NotebookClient
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "docs" / "tutorials" / "paper_figures"
 OPERATIONS = {
-    "main_figure_2": "calculate AGIST snapshots, model fields and W2; c/d require original generator references",
+    "main_figure_2": "calculate AGIST snapshots, model fields, attention, growth and W2 before drawing panels",
+    "agist_attention_recovery": "infer attention at four times and calculate per-time Spearman correlations",
     "agist_figures": "evaluate simulated states and model fields, then calculate and draw S2-S3",
     "nonspatial_figures": "evaluate three LR models and calculate S4-S5 panels from named analysis outputs",
     "main_figure_4": "simulate populations and lineage, calculate communication/LR and velocity fields, then draw Figure 4",
@@ -29,7 +30,7 @@ OPERATIONS = {
 }
 DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures",
                       "chicken_heart_daily", "zebrafish_si_s31_s38", "arista_local_domains",
-                      "agist_figures", "main_figure_2", "nonspatial_figures"}
+                      "agist_figures", "main_figure_2", "agist_attention_recovery", "nonspatial_figures"}
 EXCLUDED_NOTEBOOKS = {"lr_prior_ablation_stvcr"}  # Superseded by interaction_ablation.
 
 # The kernels run in temporary output directories. Keep the CytoBridge code folder on

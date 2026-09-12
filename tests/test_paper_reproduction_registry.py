@@ -88,8 +88,9 @@ def test_registry_states_what_each_entry_can_do() -> None:
     by_location = {row["paper_location"]: row for row in rows}
     assert (
         by_location["Main Figure 2"]["reproduction_mode"]
-        == "redraw included summary + assemble included panels"
+        == "full new-run calculation"
     )
+    assert by_location["Main Figure 2"]["wheel_runnable"] == "false"
     assert (
         by_location["Main Figure 4"]["reproduction_mode"]
         == "draw numerical inputs"

@@ -172,20 +172,32 @@ def main2():
     cells = [md("""
 # Main Figure 2: AGIST benchmark
 
-This notebook reproduces a's snapshots, b and e. The c/d comparisons require
-two missing generator files: `attn_matrix_time0.npy` and `g_values.npy`.
+Calculate the model outputs and draw the numerical panels a–e. Start with the
+downloaded observations, trained models and generator references, then run
+the cells in order. No finished panel image is used as a plotting input.
 
-Evaluate the model, reconstruct its velocity display and calculate ten-replicate
-distances. The predicted attention and growth are calculated too; the c/d cells
-complete their comparisons when the two reference files are supplied.
+| Panel | Calculation | Trained model |
+| --- | --- | --- |
+| a | Four observed spatial snapshots | None |
+| b | Velocity and its displayed projection | Released six-stage model |
+| c | T0 attention and spatial flow | Original Figure 2 attention model (`1214`) |
+| d | Growth compared with the generator | Released six-stage model |
+| e | Ten seeded populations and Wasserstein-2 distances | Released six-stage model |
+
+The attention model is supplied separately because panel c retains the original
+attention analysis. The revised growth comparison uses the released model,
+giving Pearson r = 0.9553 (0.96 to two decimal places).
 
 Run these cells with the CytoBridge code folder available. The AGIST download
-provides observations, model and edge predictor.
+provides observations, models, edge predictors and both generator arrays.
 Choose a new `CYTOBRIDGE_RUN_LABEL` for a new simulation.
 """), code(SETUP + """
 agist_root = Path(os.environ.get("CYTOBRIDGE_AGIST_DATA", project / "data/agist"))
 if not (agist_root / "model/model_final").is_file():
     cb.datasets.download("agist", destination=project)
+figure2_root = Path(os.environ.get("CYTOBRIDGE_AGIST_FIGURE2", agist_root / "figure2"))
+if not (figure2_root / "reference/g_values.npy").is_file():
+    cb.datasets.download("agist", destination=project, kind="agist_figure2_inputs.zip")
 output = project / "outputs" / ("main_figure_2_" + run_name)
 output.mkdir(parents=True, exist_ok=False)
 figures = output / "figures"
@@ -238,53 +250,52 @@ for space, path in velocity_figures.items():
     print(space)
     show_calculated(path)
 """), md("""
-## c/d. Calculate attention and growth, then compare with generator truth
+## c. Calculate time-zero attention and draw the spatial flow
 
 The c calculation uses all time-zero cells in one graph, not the random
 groups used for simulation. It averages the absolute first-layer attention
 over eight heads, sums outgoing edges, and forms the original 50×50 flow grid
 from the top 5,000 positive edges. Sparse edges avoid storing a dense matrix.
-The d calculation evaluates growth on every observed cell, independently
-clips each distribution at its 1st/99th percentiles, and fits the regression.
-
-Put the original generator files
-in `data/agist/generator_reference/`, or set `CYTOBRIDGE_AGIST_GENERATOR_REFERENCE`
-to their directory. They were produced by the generator checkpoint used for
-these simulated observations.
+The original `1214` model and the matching generator arrays are included in
+the Figure 2 download. The model is evaluated here, rather than loading the
+saved prediction matrix.
 """), code("""
 from reproduction.agist.main_figure import (
     evaluate_growth_attention, calculate_attention_display,
     draw_attention_display, draw_growth_correlation,
 )
 
-growth, attention_edges = evaluate_growth_attention(
-    agist_root / "mouse_brain_simulation.csv", agist_root / "config.yaml",
-    agist_root / "model", agist_root / "edge_classifier/mouse.pt",
-    output / "growth_attention", device=device)
+attention_model = figure2_root / "model_1214"
+_, attention_edges = evaluate_growth_attention(
+    agist_root / "mouse_brain_simulation.csv", attention_model / "params.yml",
+    attention_model, figure2_root / "edge_classifier/mouse.pt",
+    output / "original_attention", device=device)
 coordinates_t0 = observed.loc[observed["samples"].eq(0), ["x1", "x2"]].to_numpy()
 predicted_attention = calculate_attention_display(attention_edges, coordinates_t0)
 np.savez_compressed(output / "predicted_attention_display.npz", **predicted_attention)
 reference = Path(os.environ.get("CYTOBRIDGE_AGIST_GENERATOR_REFERENCE",
-                               agist_root / "generator_reference"))
-required = [reference / "attn_matrix_time0.npy", reference / "g_values.npy"]
-missing = [path for path in required if not path.is_file()]
-if missing:
-    display({
-        "c/d comparison": "Not drawn: matching generator inputs are unavailable",
-        "missing files": [str(path) for path in missing],
-        "calculated growth values": len(growth),
-        "calculated attention edges": len(attention_edges["attention"]),
-    })
-else:
-    truth_attention = calculate_attention_display(
-        np.load(required[0], allow_pickle=False), coordinates_t0)
-    attention_pdf = draw_attention_display(
-        coordinates_t0, predicted_attention, truth_attention, figures)
-    growth_pdf, growth_metrics = draw_growth_correlation(
-        growth, np.load(required[1], allow_pickle=False), figures)
-    show_calculated(attention_pdf)
-    show_calculated(growth_pdf)
-    display(growth_metrics)
+                               figure2_root / "reference"))
+truth_attention = calculate_attention_display(
+    np.load(reference / "attn_matrix_time0.npy", allow_pickle=False), coordinates_t0)
+attention_pdf = draw_attention_display(
+    coordinates_t0, predicted_attention, truth_attention, figures)
+show_calculated(attention_pdf)
+"""), md("""
+## d. Calculate growth and compare with the generator
+
+Evaluate the released six-stage model on all 31,816 observed cells. Clip each
+growth distribution at its 1st and 99th percentiles, scale to 0–1, then
+calculate Pearson correlation and the fitted line. The truth and prediction
+remain paired in the original CSV row order.
+"""), code("""
+growth, _ = evaluate_growth_attention(
+    agist_root / "mouse_brain_simulation.csv", agist_root / "config.yaml",
+    agist_root / "model", agist_root / "edge_classifier/mouse.pt",
+    output / "released_growth", device=device)
+growth_pdf, growth_metrics = draw_growth_correlation(
+    growth, np.load(reference / "g_values.npy", allow_pickle=False), figures)
+show_calculated(growth_pdf)
+display(growth_metrics)
 """), md("""
 ## e. Simulate ten independently seeded populations
 
@@ -346,8 +357,64 @@ display(figure_data.summary)
 pdf, png = draw_distance_panels(figure_data, figures)
 display(Image(filename=str(png), width=720))
 pdf, png
+"""), md("""
+## Related analysis: attention strength across four time points
+
+The [attention-strength notebook](agist_attention_recovery.ipynb) evaluates
+the separate 6,707-cell simulation and its matching model. Its four Spearman
+correlations average to 0.77746 (0.78). That statistic is not the correlation
+of the T0 maps in panel c, which use the 31,816-cell experiment.
 """)]
     write("main_figure_2.ipynb", cells)
+
+
+def attention_recovery():
+    write("agist_attention_recovery.ipynb", [md("""
+# AGIST attention strength across time
+
+Use the 6,707-cell simulation and its trained model to calculate attention at
+each of the four observed times. This is a separate experiment from the
+31,816-cell simulation shown in [Figure 2](main_figure_2.ipynb).
+
+The original analysis compares the mean outgoing attention of each cell
+with the generator. It uses Spearman correlation among cells with nonzero
+strength. Prediction and reference must select the same cells.
+
+Run the cells below from the CytoBridge code environment. The additional
+Figure 2 download supplies the observations, model, edge predictor and
+generator matrices. No saved predicted attention is used by these cells.
+"""), code(SETUP + """
+figure2_root = Path(os.environ.get("CYTOBRIDGE_AGIST_FIGURE2", project / "data/agist/figure2"))
+if not (figure2_root / "attention_recovery/model/model_final").is_file():
+    cb.datasets.download("agist", destination=project, kind="agist_figure2_inputs.zip")
+inputs = figure2_root / "attention_recovery"
+output = project / "outputs" / ("agist_attention_" + run_name)
+"""), md("""
+## Infer attention from the model
+
+At each time, build the graph from all observed cells. Average the absolute
+first-layer attention over its eight heads, then calculate each cell's mean
+outgoing attention. Save the predicted edges, paired strengths and one
+correlation per time.
+"""), code("""
+from reproduction.agist.main_figure import evaluate_attention_recovery
+
+correlations, summary = evaluate_attention_recovery(
+    inputs / "mouse_brain_simulation_new.csv", inputs / "model/params.yml",
+    inputs / "model", inputs / "mouse_new.pt", inputs / "reference",
+    output, device=device)
+display(correlations.round({"spearman": 4}))
+"""), md("""
+## Summarize the four correlations
+
+Give each time point equal weight. This is the arithmetic mean of four
+correlations, not one correlation calculated after pooling all cells.
+The original notebook recorded the four values separately. Their mean is
+calculated explicitly here.
+"""), code("""
+print(f"Mean Spearman correlation: {summary['mean_spearman']:.5f}")
+print(f"Rounded to two decimal places: {summary['mean_spearman']:.2f}")
+""")])
 
 
 def nonspatial():
@@ -545,4 +612,5 @@ for name, (_, png) in figures.items():
 if __name__ == "__main__":
     agist()
     main2()
+    attention_recovery()
     nonspatial()

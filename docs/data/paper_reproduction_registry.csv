@@ -1,6 +1,6 @@
 paper_location,dataset_or_topic,reproduction_entry,processed_input,reproduction_mode,wheel_runnable,dependencies,availability
 Main Figure 1,Model overview,Static diagram; no computational entry,Published vector artwork,static artwork,false,Manuscript artwork,static-only
-Main Figure 2,AGIST benchmark,docs/tutorials/paper_figures/main_figure_2.ipynb,CytoBridge.results main_figure_2,redraw included summary + assemble included panels,true,CytoBridge[plot]; included tables and completed panels,ready-to-redraw
+Main Figure 2,AGIST benchmark,docs/tutorials/paper_figures/main_figure_2.ipynb,reproduction.agist.main_figure,full new-run calculation,false,Source checkout; AGIST downloads and Figure 2 inputs; CUDA,model-to-panel tutorial
 Main Figure 3,Chicken heart,docs/tutorials/dataset_workflows/chicken_heart.ipynb,Manuscript aligned data; retrained model; paper downstream files,new-run analysis,false,Source checkout; manuscript model and aligned H5AD,analysis-ready; missing-assembly
 Main Figure 4,MOSTA,docs/tutorials/paper_figures/main_figure_4.ipynb,Downloaded mosta cell states and included numerical arrays,draw numerical inputs,false,Source checkout; public figure-data downloads,ready-to-redraw
 Main Figure 5,ARISTA,docs/tutorials/paper_figures/main_figure_5.ipynb,Downloaded arista cell states and included numerical arrays,draw numerical inputs,false,Source checkout; public figure-data downloads,ready-to-redraw

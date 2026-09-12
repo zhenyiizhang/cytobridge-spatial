@@ -53,6 +53,8 @@ def load_models(
     checkpoint_dir: Path,
     device: str,
     edge_predictor: Path | None = None,
+    *,
+    load_score: bool = True,
 ):
     sys.path.insert(0, str(project_root))
     from CytoBridge.tl.downstream.legacy_models import (
@@ -83,22 +85,23 @@ def load_models(
         edge_predictor_path=str(model_config["edge_predictor_path"]),
         edge_predictor_thre=float(model_config.get("edge_predictor_thre", 0.45)),
     ).to(device)
-    score_net = LegacyScoreNet2(
-        in_out_dim=int(model_config["in_out_dim"]),
-        hidden_dim=int(model_config["score_hidden_dim"]),
-        activation=str(model_config["activation"]),
-    ).float().to(device)
-
     model_path = checkpoint_dir / "model_final"
     score_path = checkpoint_dir / "score_model"
     f_net.load_state_dict(torch.load(model_path, map_location=device, weights_only=False))
-    score_net.load_state_dict(torch.load(score_path, map_location=device, weights_only=False))
     f_net.eval()
-    score_net.eval()
     for parameter in f_net.parameters():
         parameter.requires_grad_(False)
-    for parameter in score_net.parameters():
-        parameter.requires_grad_(False)
+    score_net = None
+    if load_score:
+        score_net = LegacyScoreNet2(
+            in_out_dim=int(model_config["in_out_dim"]),
+            hidden_dim=int(model_config["score_hidden_dim"]),
+            activation=str(model_config["activation"]),
+        ).float().to(device)
+        score_net.load_state_dict(torch.load(score_path, map_location=device, weights_only=False))
+        score_net.eval()
+        for parameter in score_net.parameters():
+            parameter.requires_grad_(False)
     return config, f_net, score_net, model_path, score_path
 
 

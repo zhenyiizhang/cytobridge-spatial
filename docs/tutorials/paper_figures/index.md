@@ -83,6 +83,7 @@ runs analyses and plotting, not model training.
 :maxdepth: 1
 
 Figure 2: AGIST <main_figure_2>
+AGIST attention strength <agist_attention_recovery>
 AGIST model simulations <agist_simulations>
 Chicken-heart lineage and velocity <chicken_heart_daily>
 Figure 4: MOSTA <main_figure_4>

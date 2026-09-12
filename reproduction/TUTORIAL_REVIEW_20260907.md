@@ -70,7 +70,7 @@ count. Optional training and native external-method inference are separate.
 | --- | --- |
 | paper_figures/main_figure_4.ipynb | Measured data/model → populations, communication, LR, lineage and fields → all five panels. Executed. |
 | paper_figures/main_figure_5.ipynb | Prerequisite dataset output → fresh c/d/e fields and a/b plots. Executed. Displayed e redraws original per-cell values; original random groups are missing, as detailed below. |
-| paper_figures/main_figure_2.ipynb | Actual a snapshots, b fields and e ten-seed W2. Seven cells executed. Predicted c/d calculated, but comparison needs two missing truth arrays. No old c/d image used as calculation. |
+| paper_figures/main_figure_2.ipynb | September 7 check: a snapshots, b fields and e ten-seed W2 executed, with c/d references missing then. The September 12 update supplies both references and the original attention model. See `agist/FIGURE2_REPRODUCTION.md` for the subsequent model and notebook checks. |
 | paper_figures/mosta_figures.ipynb | Explicit model/trajectory calculations → S11–S18. Older standalone generators retired. |
 | paper_figures/arista_figures.ipynb | Dataset populations/growth → S19–21; new gene reconstruction, clustering, GO and LR → S22–24. All six figures executed and displayed. |
 | paper_figures/arista_local_domains.ipynb | Same-run Figure 5c fields/attention and S23 LR → segmentation/permutations → six tables → S25. Executed. |

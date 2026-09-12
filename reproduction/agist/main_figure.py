@@ -41,7 +41,7 @@ def evaluate_growth_attention(data_csv, config, model_dir, edge_predictor, outpu
     frame = pd.read_csv(data_csv)
     _, model, _, _, _ = load_models(
         Path(__file__).resolve().parents[2], Path(config), Path(model_dir), device,
-        edge_predictor=Path(edge_predictor),
+        edge_predictor=Path(edge_predictor), load_score=False,
     )
     growth = np.empty(len(frame), dtype=np.float32)
     features = frame[[f"x{i}" for i in range(1, 53)]].to_numpy(np.float32)
@@ -53,14 +53,92 @@ def evaluate_growth_attention(data_csv, config, model_dir, edge_predictor, outpu
             growth[rows] = model.g_net(t, data).cpu().numpy().reshape(-1)
         rows = np.flatnonzero(frame["samples"].to_numpy() == 0)
         data = torch.tensor(features[rows], device=device)
-        log_weight = torch.log(torch.ones(len(rows), 1, device=device) / len(rows))
-        model.interaction_net(data, log_weight, torch.tensor([0.], device=device), return_attn=True)
-        attention = model.interaction_net.gnn_layers[0].attn.abs().mean(dim=1).cpu().numpy()
-        edge_index = model.interaction_net.edge_index.cpu().numpy()
-    edges = dict(source=edge_index[0], target=edge_index[1], attention=attention)
+        edges = _attention_edges(model, data, 0., device)
     np.savez_compressed(output / "predicted_attention_time0.npz", **edges, row_index=rows)
     np.save(output / "predicted_growth.npy", growth)
     return growth, edges
+
+
+def _attention_edges(model, data, time, device):
+    import torch
+    with torch.no_grad():
+        log_weight = torch.log(torch.ones(len(data), 1, device=device) / len(data))
+        model.interaction_net(data, log_weight, torch.tensor([float(time)], device=device), return_attn=True)
+        values = model.interaction_net.gnn_layers[0].attn.abs().mean(dim=1).cpu().numpy()
+        indices = model.interaction_net.edge_index.cpu().numpy()
+    return dict(source=indices[0], target=indices[1], attention=values)
+
+
+def attention_strength_correlation(edges, truth):
+    """Compare outgoing row means on the same nonzero cells as the original analysis.
+
+    The original notebook removed zero rows independently. Require identical
+    masks before doing so, to prevent comparisons between different cells.
+    """
+    truth = np.asarray(truth)
+    if truth.ndim != 2 or truth.shape[0] != truth.shape[1] or not np.isfinite(truth).all():
+        raise ValueError("Reference attention must be a finite square matrix")
+    n = len(truth)
+    rows, cols = np.asarray(edges["source"]), np.asarray(edges["target"])
+    values = np.asarray(edges["attention"], dtype=float)
+    if rows.shape != cols.shape or rows.shape != values.shape or values.ndim != 1:
+        raise ValueError("Attention edge arrays must have the same one-dimensional shape")
+    if (not np.isfinite(values).all() or np.any(values < 0) or np.any(truth < 0)
+            or not np.issubdtype(rows.dtype, np.integer) or not np.issubdtype(cols.dtype, np.integer)):
+        raise ValueError("Attention values must be finite and nonnegative, with integer indices")
+    if len(rows) and (min(rows.min(), cols.min()) < 0 or max(rows.max(), cols.max()) >= n):
+        raise ValueError("Attention edge index is outside the reference matrix")
+    if len(np.unique(rows * n + cols)) != len(rows):
+        raise ValueError("Duplicate attention edges")
+    predicted = np.bincount(rows, weights=values, minlength=n) / n
+    reference = truth.mean(axis=1)
+    mask = reference != 0
+    if not np.array_equal(predicted != 0, mask):
+        raise ValueError("Prediction and reference have different nonzero cells")
+    if mask.sum() < 2 or np.ptp(predicted[mask]) == 0 or np.ptp(reference[mask]) == 0:
+        raise ValueError("At least two nonconstant paired strengths are required")
+    result = dict(n_cells=n, n_compared=int(mask.sum()),
+                  spearman=float(stats.spearmanr(predicted[mask], reference[mask]).statistic))
+    return result, predicted, reference, mask
+
+
+def evaluate_attention_recovery(data_csv, config, model_dir, edge_predictor, reference_dir,
+                                output_dir, *, device="cuda"):
+    """Infer attention at each observed time and compare with generator matrices.
+
+    This is the separate 6,707-cell experiment (0210 model / 0207 generator).
+    The table contains one Spearman correlation per time. Its arithmetic mean
+    is not a pooled-cell correlation or the Figure 2c time-zero statistic.
+    """
+    import pandas as pd
+    import torch
+    from scripts.run_agist_split_sde_replicates import load_models
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=False)
+    frame = pd.read_csv(data_csv)
+    _, model, _, _, _ = load_models(
+        Path(__file__).resolve().parents[2], Path(config), Path(model_dir), device,
+        edge_predictor=Path(edge_predictor), load_score=False,
+    )
+    records = []
+    for time in sorted(frame["samples"].unique()):
+        rows = np.flatnonzero(frame["samples"].eq(time).to_numpy())
+        data = torch.tensor(frame.iloc[rows, 1:].to_numpy(np.float32), device=device)
+        edges = _attention_edges(model, data, time, device)
+        np.savez_compressed(output / f"attention_time{int(time)}.npz", **edges, row_index=rows)
+        truth = np.load(Path(reference_dir) / f"attn_matrix_time{int(time)}_brain_gt.npy", allow_pickle=False)
+        if truth.shape != (len(rows), len(rows)):
+            raise ValueError("Reference attention does not match the observed cells")
+        metrics, predicted, reference, mask = attention_strength_correlation(edges, truth)
+        pd.DataFrame(dict(row_index=rows, predicted=predicted, reference=reference,
+                          compared=mask)).to_csv(output / f"strength_time{int(time)}.csv", index=False)
+        records.append(dict(time=float(time), **metrics))
+    table = pd.DataFrame(records)
+    table.to_csv(output / "attention_by_time.csv", index=False)
+    summary = dict(mean_spearman=float(table["spearman"].mean()), n_times=len(table),
+                   summary="Equal-weight arithmetic mean of per-time Spearman correlations")
+    (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    return table, summary
 
 
 def calculate_velocity_display(frame, predicted, reference_fields, output_dir, *, n_jobs=16):
@@ -346,8 +424,8 @@ def plot_growth_correlation_box_style(g_pred, g_gt, out_path):
     # 使用 Patch 创建纯文本图例，更整洁
     legend = ax.legend(
         handles=[
-            mpatches.Patch(color='none', label=f'$Pearson\'s\ r = {pearson_r:.2f}$'),
-            mpatches.Patch(color='none', label=f'$Slope = {slope:.2f}$')
+            mpatches.Patch(color='none', label=f"Pearson's r = {pearson_r:.2f}"),
+            mpatches.Patch(color='none', label=f'Slope = {slope:.2f}')
         ],
         loc='upper left',
         frameon=False,
@@ -380,7 +458,7 @@ def plot_growth_correlation_box_style(g_pred, g_gt, out_path):
     # 直接在 colorbar 的轴上用 text 标注，坐标系用 transAxes (0在底, 1在顶)
     cbar.ax.text(0.5, 1.02, 'High', transform=cbar.ax.transAxes, 
                  ha='center', va='bottom', fontsize=12, fontweight='bold')
-    cbar.ax.text(0.5, -0.02, 'Low', transform=cbar.ax.transAxes, 
+    cbar.ax.text(0.5, -0.065, 'Low', transform=cbar.ax.transAxes,
                  ha='center', va='top', fontsize=12, fontweight='bold')
 
     # 保存

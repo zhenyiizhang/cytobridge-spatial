@@ -192,7 +192,7 @@ FIGURE_WORKFLOWS = (
         "package resource: main_figure_2/manifest.json",
         None,
         "cytobridge figure main-figure-2 --output-dir outputs/main_figure_2",
-        "Redraws panel e and assembles the page. Panels a-d are reused from the existing vector page.",
+        "This archive-page command redraws panel e and reuses the existing vector panels a-d. To calculate a-e from models and generator data, run docs/tutorials/paper_figures/main_figure_2.ipynb.",
     ),
     FigureWorkflow(
         "main-figure-5-reference",

@@ -59,5 +59,6 @@ values. This command recalculates the CytoBridge trajectories and distances.
 The [Figure 2 notebook](main_figure_2.ipynb) contains the same simulation and
 distance calculation, and passes those new panel-e results directly to its
 renderer. It also calculates the numerical snapshots and velocity displays
-in a/b. The model predictions for c/d are calculated, but their comparisons
-still require two missing original generator truth arrays.
+in a/b and downloads the original attention model and generator arrays for
+c/d. Each panel identifies its model and passes freshly calculated values
+to the drawing function.

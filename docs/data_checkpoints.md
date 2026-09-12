@@ -48,6 +48,13 @@ You can also download and extract the files manually:
 | Spatial simulation (S3) | [simulation_model.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_model.zip) | [simulation_analysis_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/simulation_analysis_data.zip) |
 | AGIST (Figure 2) | [agist_model.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_model.zip) | [agist_analysis_data.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_analysis_data.zip) |
 
+The [Figure 2 notebook](tutorials/paper_figures/main_figure_2.ipynb) also downloads
+[agist_figure2_inputs.zip](https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_figure2_inputs.zip).
+It supplies the original attention model, its edge predictor, and the generator
+attention and growth arrays. The same archive includes the separate four-time-point
+experiment used in the [attention-strength analysis](tutorials/paper_figures/agist_attention_recovery.ipynb).
+The notebook specifies which model is used for each panel.
+
 For the five spatial datasets, the model archive contains the final dynamical model, score model, LR edge
 predictor, fitted cell-type classifier, and settings. The analysis-data archive
 contains the matching aligned H5AD.

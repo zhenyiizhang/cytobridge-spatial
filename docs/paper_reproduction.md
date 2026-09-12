@@ -11,7 +11,10 @@ dedicated plotting programs. Their tutorials identify the required downloads.
 The MOSTA supplementary notebook also evaluates the model and recalculates
 gene programs, enrichment and LR scores, with separate calculation and
 plotting cells.
-Figure 2 still reuses its earlier panels a–d while drawing panel e from numbers.
+The Figure 2 notebook calculates snapshots, model fields, attention, growth
+and distances before drawing panels a–e. Its original attention model and
+generator references are included in the downloads. The hand-drawn
+illustration in panel a is separate from these numerical panels.
 
 ## Continue from a new model run
 

@@ -3,6 +3,20 @@
   "tag": "paper-data-20260905",
   "archives": [
     {
+      "archive": "agist_figure2_inputs.zip",
+      "bytes": 39173894,
+      "sha256": "af533c8e6be188f6b98a68c4d372644fe827d46cd0605731edce8a0cd630539f",
+      "parts": [
+        {
+          "name": "agist_figure2_inputs.zip",
+          "bytes": 39173894,
+          "sha256": "af533c8e6be188f6b98a68c4d372644fe827d46cd0605731edce8a0cd630539f",
+          "url": "https://github.com/zhenyiizhang/cytobridge-spatial/releases/download/paper-data-20260905/agist_figure2_inputs.zip",
+          "asset_id": 559518598
+        }
+      ]
+    },
+    {
       "archive": "nonspatial_training_code.zip",
       "bytes": 1720687,
       "sha256": "c1d56e503f9644ffb769faf0b6b903fb09c59d9f7139eee28eeb14df76ff7274",
