@@ -146,7 +146,7 @@ def _plot_s15c(table: pd.DataFrame, svg_path: Path, png_path: Path) -> pd.DataFr
         color=cmap(norm(selected["adjusted_p_value"].to_numpy(dtype=float))),
         edgecolor="none",
     )
-    ax.set_title("arista_pattern_1_genes.csv - GO (BP) - Barplot", fontsize=14)
+    ax.set_title("GO biological processes: pattern 1", fontsize=14)
     ax.set_xlabel("Count", fontsize=12)
     ax.set_ylabel("")
     ax.xaxis.set_major_locator(MaxNLocator(nbins=4, integer=True))
@@ -207,7 +207,7 @@ def _plot_s15d(table: pd.DataFrame, svg_path: Path, png_path: Path) -> pd.DataFr
         edgecolor="black",
         linewidth=0.55,
     )
-    ax.set_title("arista_pattern_2_genes.csv - GO (BP) - Dotplot", fontsize=14)
+    ax.set_title("GO biological processes: pattern 2", fontsize=14)
     ax.set_xlabel("GeneRatio", fontsize=12)
     ax.set_ylabel("")
     ax.xaxis.set_minor_locator(AutoMinorLocator(2))

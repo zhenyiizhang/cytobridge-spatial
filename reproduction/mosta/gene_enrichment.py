@@ -176,7 +176,7 @@ def render_s9(go_dir: Path, output_dir: Path) -> tuple[dict[str, Path], dict[str
     vmin1, vmax1 = plot_go_axes(
         ax1,
         p1,
-        title="brain_pattern_1_genes.txt - GO (ALL) - Barplot",
+        title="GO enrichment: pattern 1",
         wrap_width=30,
         title_size=13.0,
         tick_size=8.0,
@@ -188,7 +188,7 @@ def render_s9(go_dir: Path, output_dir: Path) -> tuple[dict[str, Path], dict[str
     vmin2, vmax2 = plot_go_axes(
         ax2,
         p2,
-        title="brain_pattern_2_genes.txt - GO (ALL) - Barplot",
+        title="GO enrichment: pattern 2",
         wrap_width=30,
         title_size=13.0,
         tick_size=8.0,
@@ -260,7 +260,7 @@ def render_wave_axes(
     ax.set_xticklabels([f"{times[index]:.2f}" for index in tick_indices], rotation=35, ha="right", fontsize=7)
     ax.set_xlabel("Time", fontsize=8)
     ax.set_title(
-        "Developmental wave map ordered by peak time with phase annotation (k=3)",
+        "Developmental expression ordered by peak time",
         fontsize=10.8,
         loc="left",
         pad=7,
@@ -309,7 +309,7 @@ def render_s10(shared: Path, go_dir: Path, output_dir: Path) -> tuple[dict[str, 
         vmin, vmax = plot_go_axes(
             ax,
             tables[phase],
-            title=f"brain_wave_phase_{phase}_genes.txt - GO (ALL) - Barplot",
+            title=f"GO enrichment: phase {phase}",
             wrap_width=32,
             title_size=8.6 if phase < 3 else 10.0,
             tick_size=4.3 if phase < 3 else 6.0,

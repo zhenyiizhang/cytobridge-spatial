@@ -7,6 +7,9 @@ from __future__ import annotations
 import argparse
 import json
 import pickle
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import anndata as ad
@@ -15,7 +18,6 @@ import pandas as pd
 import CytoBridge as cb
 
 TIMES = np.arange(0., 4.01, .5)
-GO_LIBRARY = Path(__file__).parent / 'data/GO_Biological_Process_2023.gmt'
 
 
 def load_states(population_dir):
@@ -39,14 +41,17 @@ def calculate_growth(data_dir, population_dir, output_dir, device='cuda', *, mod
     return growth
 
 
-def calculate_gene_programs(data_dir, population_dir, output_dir, gene_set_gmt=GO_LIBRARY):
-    """Persisted-center inverse PCA, top-2000 clustering, expression-background ORA."""
+def calculate_gene_programs(data_dir, population_dir, output_dir, *, rscript=None):
+    """Inverse PCA, top-2000 clustering, and mouse-ortholog clusterProfiler GO analysis."""
     from scripts.reviewer_arista_20260824.build_s15_s17_strict_legacy_style import (
-        _build_corrected_gene_programs, _load_gmt, _gene_symbol,
-        _unique_display_map, _ora_expression_background)
+        _build_corrected_gene_programs, _gene_symbol, _unique_display_map)
     output = Path(output_dir)
     if output.exists():
         raise FileExistsError(f'Choose a new output directory: {output}')
+    rscript = rscript or os.environ.get('RSCRIPT') or shutil.which('Rscript')
+    if not rscript:
+        raise RuntimeError('This analysis requires R with clusterProfiler and org.Mm.eg.db. '
+                           'Install them and make Rscript available, or pass rscript="/path/to/Rscript".')
     reference = ad.read_h5ad(Path(data_dir) / 'aligned.h5ad')
     result = cb.tl.summarize_temporal_gene_patterns(
         load_states(population_dir), reference, time_points=TIMES, spatial_dim=2,
@@ -57,8 +62,6 @@ def calculate_gene_programs(data_dir, population_dir, output_dir, gene_set_gmt=G
     roster = ranking.head(18).copy()
     roster['display_gene'] = roster.raw_gene.map(_unique_display_map(roster.raw_gene))
     roster['gene_symbol'] = roster.raw_gene.map(_gene_symbol)
-    library = _load_gmt(Path(gene_set_gmt))
-    background = {s for s in map(_gene_symbol, expression.index) if s}
     output.mkdir(parents=True)
     expression.to_csv(output / 'gene_trajectories.csv')
     result.signed_expression.to_csv(output / 'signed_mean_expression.csv')
@@ -67,12 +70,17 @@ def calculate_gene_programs(data_dir, population_dir, output_dir, gene_set_gmt=G
     assignments.to_csv(output / 'gene_program_assignments.csv', index=False)
     normalized.to_csv(output / 'gene_program_normalized_profiles.csv')
     prototypes.to_csv(output / 'gene_program_prototypes.csv', index=False)
-    for pattern, subset in assignments.groupby('pattern', sort=True):
-        enriched = _ora_expression_background(
-            [s for s in subset.gene_symbol if isinstance(s, str)], library, background,
-            alpha=.05, min_set_size=5, max_set_size=5000, min_overlap=2)
-        enriched.insert(0, 'pattern', int(pattern))
-        enriched.to_csv(output / f'gene_program_{pattern}_GO_terms.csv', index=False)
+    go = output / 'clusterprofiler'
+    subprocess.run([
+        str(rscript), str(Path(__file__).with_name('enrich_go.R')),
+        str(output / 'gene_program_assignments.csv'),
+        str(output / 'gene_trajectories.csv'), str(go),
+        os.environ.get('R_LIBS_USER', ''), 'all_detected',
+    ], check=True)
+    for pattern in sorted(assignments.pattern.unique()):
+        shutil.copy2(go / f'pattern_{pattern}_enrichGO_all.csv',
+                     output / f'gene_program_{pattern}_GO_terms.csv')
+    shutil.copy2(go / 'analysis_summary.csv', output / 'GO_analysis_summary.csv')
     return prototypes
 
 

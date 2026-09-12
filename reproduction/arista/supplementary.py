@@ -130,8 +130,17 @@ def draw_gene_programs(output, tables_dir=TABLES):
     paths = {letter: output / f'S22{letter}.svg' for letter in 'abcd'}
     genes._plot_s15a(expression, roster.head(18), paths['a'])
     genes._plot_s15b(pd.read_csv(tables_dir / 'gene_program_prototypes.csv'), paths['b'])
-    genes._plot_s15c(pd.read_csv(tables_dir / 'gene_program_1_GO_terms.csv'), paths['c'], output / 'S22c.png')
-    genes._plot_s15d(pd.read_csv(tables_dir / 'gene_program_2_GO_terms.csv'), paths['d'], output / 'S22d.png')
+    from . import clusterprofiler_plots as go
+    go_dir = (Path(__file__).parent / 'data/s22_clusterprofiler'
+              if tables_dir.resolve() == TABLES.resolve() else tables_dir / 'clusterprofiler')
+    table1 = pd.read_csv(go_dir / 'pattern_1_enrichGO_all.csv')
+    table2 = pd.read_csv(go_dir / 'pattern_2_enrichGO_all.csv')
+    if not {'ID', 'Description', 'pvalue', 'p.adjust'}.issubset(table1.columns):
+        raise ValueError('S22 uses clusterProfiler GO results. Run calculate_gene_programs '
+                         'with R before plotting, rather than supplying GMT-based enrichment tables.')
+    summary = pd.read_csv(go_dir / 'analysis_summary.csv')
+    go.plot_pattern1(table1, paths['c'], output / 'S22c.png')
+    go.plot_pattern2(table2, summary, paths['d'], output / 'S22d.png')
     document = fitz.open()
     page = document.new_page(width=576, height=372.96)
     for letter, placement in genes.S15_LEGACY_PLACEMENTS.items():
