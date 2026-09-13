@@ -161,7 +161,7 @@ This calculation follows the paper's deterministic trajectories, with diffusion
 and the score term disabled. It is separate from the growing populations in
 panel a.
 
-Classify the trajectories without spatial smoothing, select cartilage-primordium particles at E15, and
+Classify the trajectories, select cartilage-primordium particles at E15, and
 find the labels of the same particles at E15.5. Count those labels and divide
 by the number selected. `cartilage_lineage_inputs` selects these rows and adds
 the observed E15.5 coordinates as the background. The plot uses that returned

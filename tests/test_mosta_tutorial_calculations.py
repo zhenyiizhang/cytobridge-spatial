@@ -68,11 +68,15 @@ def test_lineage_export_selects_half_steps_from_the_dense_grid():
     tree = ast.parse(source)
     assignment = next(node for node in ast.walk(tree)
                       if isinstance(node, ast.Assign)
-                      and any(isinstance(target, ast.Name) and target.id == 'fixed_labels'
+                      and any(isinstance(target, ast.Name) and target.id == 'fixed_states'
                               for target in node.targets))
     from types import SimpleNamespace
     times = tuple(np.arange(0, 3.001, .25))
-    result = SimpleNamespace(predicted_labels_list=list(range(13)))
+    result = SimpleNamespace(sde_points=list(range(13)))
     selected = eval(compile(ast.Expression(assignment.value), '<lineage-test>', 'eval'),
                     {'TIMES': times, 'result': result, 'fixed_times': np.arange(0, 3.001, .5)})
     assert selected == [0, 2, 4, 6, 8, 10, 12]
+    prediction = next(node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                      and ast.unparse(node.func) == 'cb.tl.predict_labels_for_trajectories')
+    assert ast.unparse(next(k.value for k in prediction.keywords if k.arg == 'sde_points')) == 'fixed_states'
+    assert ast.literal_eval(next(k.value for k in prediction.keywords if k.arg == 'knn_neighbors')) == 1

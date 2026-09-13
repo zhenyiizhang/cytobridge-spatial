@@ -478,12 +478,14 @@ def assemble_panel(
                     color="black", ha="left", va="baseline", zorder=7)
 
     placements = {'Cartilage primordium': (.40, -12.),
-                  'Cartilage': (.61, 26.), 'Connective tissue': (.30, 16.)}
+                  'Cartilage': (.58, 3.2), 'Connective tissue': (.30, 16.)}
     for label, (fraction, offset) in placements.items():
         x, y = page_to_panel(cubic_point(current_cubic_page[label], fraction))
         ax.text(x, y+offset, f"{100.*transition_by_label[label].probability:.1f}%",
                 fontsize=9, fontproperties=regular, color="black",
-                ha="center", va="baseline", zorder=7)
+                ha="center", va="baseline", zorder=7,
+                bbox=dict(facecolor="white", edgecolor="none", pad=.8)
+                if label == 'Cartilage' else None)
 
     fig.savefig(outputs["pdf"], facecolor="white")
     fig.savefig(outputs["svg"], facecolor="white")

@@ -64,7 +64,7 @@ def test_cartilage_plot_accepts_new_arrays_without_reopening_archive(monkeypatch
         received.append(arrays)
         return {}, None
     monkeypatch.setattr(cartilage, 'create_scatter_layer', scatter)
-    monkeypatch.setattr(cartilage, 'assemble_panel', lambda *a: None)
+    monkeypatch.setattr(cartilage, 'assemble_panel', lambda *a, **kw: None)
     main_figure.draw_cartilage(tmp_path, {}, arrays=supplied)
     assert received == [supplied]
 

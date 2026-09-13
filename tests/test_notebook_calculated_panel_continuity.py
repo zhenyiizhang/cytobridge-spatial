@@ -223,6 +223,7 @@ def test_arista_simulation_exports_same_states_and_calculates_communication(monk
         communication[str(time)] = cells.copy()
     result = SimpleNamespace(
         ts_points=times, adata_dict=selected, communication_adata_dict=communication,
+        sde_points=[selected[str(time)].X.copy() for time in times],
         sde_points_split=[selected[str(time)].X.copy() for time in times],
         slice_labels_split=[['first', 'second'] for time in times],
         predicted_labels_list=[['first', 'second'] for time in times])
@@ -246,7 +247,16 @@ def test_arista_simulation_exports_same_states_and_calculates_communication(monk
 
     monkeypatch.setattr(producer.cb.tl, 'run_interpolation_workflow', simulation)
     monkeypatch.setattr(producer.cb.tl, 'compute_timepoint_communications', compute_communication)
+    from CytoBridge.tl.downstream import classification
+    monkeypatch.setattr(classification, 'load_cached_mlp_classifier', lambda *a, **kw: object())
+    def classify(states, lineage_times, classifier, device):
+        assert states is result.sde_points
+        assert lineage_times == times
+        return [np.array(['lineage_first', 'lineage_second']) for _ in times]
+    monkeypatch.setattr(producer, 'classify_lineage', classify)
     output = producer.generate(data, tmp_path / 'new_run', data / 'selected_classifier.pt', device='cpu')
+    with np.load(output / 'fixed_particle_lineage_labels_unsmoothed.npz') as labels:
+        np.testing.assert_array_equal(labels['labels_0'], ['lineage_first', 'lineage_second'])
     assert captured['simulation']['classifier_cache_path'] == str(data / 'selected_classifier.pt')
     assert captured['simulation']['spatial_warp_to_observed'] is False
     assert captured['communication']['adata_dict'] is communication
