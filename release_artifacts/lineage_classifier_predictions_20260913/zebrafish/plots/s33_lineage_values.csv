@@ -1,0 +1,121 @@
+source_celltype,target_celltype,fraction,daughter_noise_std,seed
+EVL,Nervous System,0.39,0.0,42
+EVL,"Musculature System, Yolk Syncytial Layer",0.0945454545454545,0.0,42
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2711555959963603,0.0,42
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2465878070973612,0.0,42
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.4768089053803339,0.0,42
+Presumptive Mesoderm,Nervous System,0.3518005540166205,0.0,42
+EVL,Nervous System,0.3753637245392822,0.0,43
+EVL,"Musculature System, Yolk Syncytial Layer",0.0703200775945683,0.0,43
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2579681274900398,0.0,43
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.298804780876494,0.0,43
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.5676567656765676,0.0,43
+Presumptive Mesoderm,Nervous System,0.2854122621564482,0.0,43
+EVL,Nervous System,0.401553220648698,0.0,44
+EVL,"Musculature System, Yolk Syncytial Layer",0.0730927364093193,0.0,44
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.284393063583815,0.0,44
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2774566473988439,0.0,44
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.6642228739002932,0.0,44
+Presumptive Mesoderm,Nervous System,0.4145873320537428,0.0,44
+EVL,Nervous System,0.4085395439107229,0.0,45
+EVL,"Musculature System, Yolk Syncytial Layer",0.0800582241630276,0.0,45
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.3213920163766632,0.0,45
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2835209825997953,0.0,45
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.702054794520548,0.0,45
+Presumptive Mesoderm,Nervous System,0.3699284009546539,0.0,45
+EVL,Nervous System,0.4143851508120649,0.0,46
+EVL,"Musculature System, Yolk Syncytial Layer",0.0552204176334106,0.0,46
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.1994106090373281,0.0,46
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2642436149312377,0.0,46
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.7158273381294964,0.0,46
+Presumptive Mesoderm,Nervous System,0.2989010989010989,0.0,46
+EVL,Nervous System,0.3997246443322625,0.01,42
+EVL,"Musculature System, Yolk Syncytial Layer",0.0628728774667278,0.01,42
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2097053726169844,0.01,42
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.3128249566724437,0.01,42
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.579047619047619,0.01,42
+Presumptive Mesoderm,Nervous System,0.2774869109947644,0.01,42
+EVL,Nervous System,0.3527667984189723,0.01,43
+EVL,"Musculature System, Yolk Syncytial Layer",0.0711462450592885,0.01,43
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2213822894168466,0.01,43
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2710583153347732,0.01,43
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.5219941348973607,0.01,43
+Presumptive Mesoderm,Nervous System,0.3475609756097561,0.01,43
+EVL,Nervous System,0.3866552609067579,0.01,44
+EVL,"Musculature System, Yolk Syncytial Layer",0.0799828913601368,0.01,44
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2628205128205128,0.01,44
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.232051282051282,0.01,44
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.637956204379562,0.01,44
+Presumptive Mesoderm,Nervous System,0.3222222222222222,0.01,44
+EVL,Nervous System,0.3883583447021373,0.01,45
+EVL,"Musculature System, Yolk Syncytial Layer",0.0741246020918599,0.01,45
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.3427419354838709,0.01,45
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2631048387096774,0.01,45
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.671957671957672,0.01,45
+Presumptive Mesoderm,Nervous System,0.3762376237623762,0.01,45
+EVL,Nervous System,0.4023136246786632,0.01,46
+EVL,"Musculature System, Yolk Syncytial Layer",0.0522707797772065,0.01,46
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2465753424657534,0.01,46
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2488584474885844,0.01,46
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.5478841870824054,0.01,46
+Presumptive Mesoderm,Nervous System,0.4428274428274428,0.01,46
+EVL,Nervous System,0.3324968632371393,0.03,42
+EVL,"Musculature System, Yolk Syncytial Layer",0.0493517356754496,0.03,42
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2572038420490928,0.03,42
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2198505869797225,0.03,42
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.4940711462450592,0.03,42
+Presumptive Mesoderm,Nervous System,0.2313829787234042,0.03,42
+EVL,Nervous System,0.3180798564378645,0.03,43
+EVL,"Musculature System, Yolk Syncytial Layer",0.0547330641543293,0.03,43
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2419006479481641,0.03,43
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2904967602591792,0.03,43
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.5857988165680473,0.03,43
+Presumptive Mesoderm,Nervous System,0.3689956331877729,0.03,43
+EVL,Nervous System,0.3276648693488179,0.03,44
+EVL,"Musculature System, Yolk Syncytial Layer",0.0829531314807134,0.03,44
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2615933412604043,0.03,44
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.1985731272294887,0.03,44
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.751358695652174,0.03,44
+Presumptive Mesoderm,Nervous System,0.3426724137931034,0.03,44
+EVL,Nervous System,0.352686308492201,0.03,45
+EVL,"Musculature System, Yolk Syncytial Layer",0.0576256499133448,0.03,45
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2403282532239156,0.03,45
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2438452520515826,0.03,45
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.6806201550387597,0.03,45
+Presumptive Mesoderm,Nervous System,0.2422907488986784,0.03,45
+EVL,Nervous System,0.3473818646232439,0.03,46
+EVL,"Musculature System, Yolk Syncytial Layer",0.0621541081311196,0.03,46
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2403177755710029,0.03,46
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2770605759682224,0.03,46
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.6846986089644513,0.03,46
+Presumptive Mesoderm,Nervous System,0.28125,0.03,46
+EVL,Nervous System,0.175187969924812,0.06,42
+EVL,"Musculature System, Yolk Syncytial Layer",0.075187969924812,0.06,42
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.1991803278688524,0.06,42
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.3057377049180327,0.06,42
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.5956006768189509,0.06,42
+Presumptive Mesoderm,Nervous System,0.1937639198218262,0.06,42
+EVL,Nervous System,0.2067545304777594,0.06,43
+EVL,"Musculature System, Yolk Syncytial Layer",0.0667215815485996,0.06,43
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.1754237288135593,0.06,43
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.285593220338983,0.06,43
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.3488943488943489,0.06,43
+Presumptive Mesoderm,Nervous System,0.1268939393939394,0.06,43
+EVL,Nervous System,0.1890268321986383,0.06,44
+EVL,"Musculature System, Yolk Syncytial Layer",0.1077292751301561,0.06,44
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.270931326434619,0.06,44
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2634054562558796,0.06,44
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.72375,0.06,44
+Presumptive Mesoderm,Nervous System,0.110655737704918,0.06,44
+EVL,Nervous System,0.1981785063752277,0.06,45
+EVL,"Musculature System, Yolk Syncytial Layer",0.0812386156648451,0.06,45
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.3113456464379947,0.06,45
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.2647317502198769,0.06,45
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.6353591160220995,0.06,45
+Presumptive Mesoderm,Nervous System,0.1396303901437371,0.06,45
+EVL,Nervous System,0.202954898911353,0.06,46
+EVL,"Musculature System, Yolk Syncytial Layer",0.0719284603421461,0.06,46
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.2306397306397306,0.06,46
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.3627946127946128,0.06,46
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.7290132547864506,0.06,46
+Presumptive Mesoderm,Nervous System,0.173109243697479,0.06,46

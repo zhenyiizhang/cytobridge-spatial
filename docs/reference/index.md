@@ -16,4 +16,5 @@ Non-spatial analyses <../nonspatial_workflows>
 Benchmark methods <../benchmarks>
 Training time and memory <../training_compute>
 Figure source index <../paper_reproduction>
+Export Figure 5a <figure5a_export>
 ```

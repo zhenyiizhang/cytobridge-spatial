@@ -39,6 +39,7 @@ def plot_sankey(
     title: Optional[str] = None,
     width: Optional[int] = None,
     height: Optional[int] = None,
+    min_flow_before_cumulative: bool = False,
 ):
     """Create a Sankey diagram showing cell lineage transitions.
     
@@ -66,6 +67,9 @@ def plot_sankey(
         Normalization mode: None, 'source', or 'global'.
     min_flow : float, optional
         Minimum flow threshold to display.
+    min_flow_before_cumulative : bool
+        Apply the minimum flow before selecting the cumulative fraction. The
+        default preserves the previous filtering order.
     label_to_color : Dict[str, str], optional
         Mapping of labels to colors.
     lineage_anchor_mode : bool
@@ -179,6 +183,8 @@ def plot_sankey(
                 total = counts["value"].sum()
                 if total > 0:
                     counts["value"] = counts["value"] / total
+            if min_flow_before_cumulative and min_flow is not None:
+                counts = counts[counts["value"] >= min_flow]
             if keep_source_cumfrac is not None:
                 counts = _filter_keep_source_cumfrac(
                     counts,
@@ -212,6 +218,8 @@ def plot_sankey(
                 total = counts["value"].sum()
                 if total > 0:
                     counts["value"] = counts["value"] / total
+            if min_flow_before_cumulative and min_flow is not None:
+                counts = counts[counts["value"] >= min_flow]
             if keep_source_cumfrac is not None:
                 counts = _filter_keep_source_cumfrac(
                     counts,

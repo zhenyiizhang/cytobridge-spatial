@@ -80,12 +80,34 @@ def generate(data_dir, output_dir, classifier_cache, device='cuda', *, model_dir
         save_pickle_path=str(output / 'all_time_communications.pkl'))
     (output / 'communication_settings.json').write_text(
         json.dumps(communication_settings, indent=2) + '\n')
+    # Reclassify these same particles, without spatial voting, for Figure 5a.
+    # Figure 5a and S21 use these labels. Spatial maps retain their annotations.
+    from CytoBridge.tl.downstream.classification import load_cached_mlp_classifier
+    classifier = load_cached_mlp_classifier(str(Path(classifier_cache).resolve()), device=device)
+    raw_labels = classify_lineage(result.sde_points, result.ts_points, classifier, device)
+    np.savez_compressed(output / 'fixed_particle_lineage_labels_unsmoothed.npz',
+                        time_points=np.asarray(result.ts_points),
+                        **{f'labels_{i}': labels for i, labels in enumerate(raw_labels)})
     (output / 'population_sizes.json').write_text(json.dumps(records, indent=2) + '\n')
     (output / 'model_selection.json').write_text(json.dumps({
         'model_dir': str(selected_model),
         'classifier_cache': str(Path(classifier_cache).resolve()),
         'aligned_h5ad': str(data / 'aligned.h5ad')}, indent=2) + '\n')
     return output
+
+
+def classify_lineage(states, times, classifier, device):
+    """Classify fixed particles directly, with no neighborhood label voting."""
+    labels = []
+    classifier.model.eval()
+    for time, points in zip(times, states):
+        x = np.asarray(points, dtype=np.float32)[:, :classifier.feature_dim]
+        if classifier.include_time_feature:
+            x = np.column_stack((np.full(len(x), time, dtype=np.float32), x))
+        with torch.no_grad():
+            predicted = classifier.model(torch.as_tensor(x, device=device)).argmax(1).cpu().numpy()
+        labels.append(classifier.label_encoder.inverse_transform(predicted).astype(str))
+    return labels
 
 
 if __name__ == '__main__':

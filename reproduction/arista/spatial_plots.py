@@ -387,9 +387,14 @@ def plot_s14b(
     name: str,
     directories: dict[str, Path],
     tables_dir: Path,
+    font_family: str = 'DejaVu Sans',
 ) -> tuple[dict[str, Path], pd.DataFrame]:
-    configure_review_legacy_style()
+    configure_review_legacy_style(font_family)
     validate_labels(fraction_table.columns, palette, "corrected S14b composition")
+    if font_family == 'Arial':
+        matplotlib.rcParams.update({'text.color': 'black', 'axes.labelcolor': 'black',
+                                    'xtick.color': 'black', 'ytick.color': 'black',
+                                    'pdf.fonttype': 42, 'ps.fonttype': 42})
     global_order = fraction_table.mean(axis=0).sort_values(ascending=False)
     selected = list(global_order.head(min(15, len(global_order))).index)
     display = fraction_table.copy()

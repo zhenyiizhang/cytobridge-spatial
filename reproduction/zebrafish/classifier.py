@@ -17,13 +17,17 @@ def load_classifier(data_dir, device="cpu", classifier_path=None):
     return classifier
 
 
-def assign_cell_types(points, time, classifier, device="cpu"):
-    """Predict from the original 52-dimensional state, then use 10-neighbor voting."""
+def assign_cell_types(points, time, classifier, device="cpu", *, spatial_smoothing=True):
+    """Classify cell states, optionally refining spatial-map labels by neighbor voting.
+
+    Set ``spatial_smoothing=False`` for lineage transitions. This preserves the
+    classifier's prediction for each descendant regardless of nearby cells.
+    """
     points = np.asarray(points, dtype=np.float32)
     if points.ndim != 2 or points.shape[1] != 52 or not np.isfinite(points).all():
         raise ValueError("Expected finite states with two spatial coordinates followed by 50 expression PCs")
     return np.asarray(cb.tl.predict_labels_for_points(
         points=points, time_value=float(time), model=classifier.model,
         label_encoder=classifier.label_encoder, feature_dim=52,
-        device=device, knn_neighbors=10, include_time_feature=True,
+        device=device, knn_neighbors=10 if spatial_smoothing else 1, include_time_feature=True,
     )).astype(str)

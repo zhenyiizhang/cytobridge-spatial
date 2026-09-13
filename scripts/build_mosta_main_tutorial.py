@@ -161,7 +161,7 @@ This calculation follows the paper's deterministic trajectories, with diffusion
 and the score term disabled. It is separate from the growing populations in
 panel a.
 
-Classify the trajectories, select cartilage-primordium particles at E15, and
+Classify the trajectories without spatial smoothing, select cartilage-primordium particles at E15, and
 find the labels of the same particles at E15.5. Count those labels and divide
 by the number selected. `cartilage_lineage_inputs` selects these rows and adds
 the observed E15.5 coordinates as the background. The plot uses that returned
@@ -175,7 +175,7 @@ states, weights = cb.tl.simulate_sde_points(
 labels = cb.tl.predict_labels_for_trajectories(
     sde_points=states, ts_points=times, model=classifier.model,
     label_encoder=classifier.label_encoder, feature_dim=classifier.feature_dim,
-    device=device, knn_neighbors=10, include_time_feature=classifier.include_time_feature,
+    device=device, knn_neighbors=1, include_time_feature=classifier.include_time_feature,
     feature_indices=None, spatial_indices=(0, 1),
 )
 lineage = cartilage_lineage_inputs(states, labels, times, reference)

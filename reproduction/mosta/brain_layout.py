@@ -6,6 +6,7 @@ import fitz
 from matplotlib import font_manager
 
 from .figures import SOURCE
+from .brain_arrows import ARROWS, draw_arrow
 
 
 def source_module(name):
@@ -34,11 +35,11 @@ def assemble_brain_fields(fields, output):
     layout = source_module('assemble_fig4e_exact_ai_layout')
     panel_root = SOURCE / 'main_fig4_panels'
     annotations = json.loads((panel_root / 'fig4e/evidence/annotation_semantics_audit.json').read_text())
-    with fitz.open(panel_root / 'style_authority/Figure_mouse1.ai') as document:
-        page = document[0]
-        # Remove the old numerical field and its callouts, then draw new fields.
-        page.add_redact_annot(layout.NUMERICAL_FIELD_KNOCKOUT, fill=(1, 1, 1))
-        page.apply_redactions(images=2, graphics=2, text=0)
+    with fitz.open(panel_root / 'style_authority/Figure_mouse1.ai') as original, fitz.open() as document:
+        page = document.new_page(width=original[0].rect.width, height=original[0].rect.height)
+        page.show_pdf_page(page.rect, original, 0)
+        # Cover the old field rectangle without removing neighboring layout objects.
+        page.draw_rect(layout.NUMERICAL_FIELD_KNOCKOUT, color=(1, 1, 1), fill=(1, 1, 1), width=0)
         for name, path in fields.items():
             with fitz.open(path) as field:
                 rectangle = layout.fit_inside(layout.PANEL_RECTS[name], field[0].rect)
@@ -57,7 +58,12 @@ def assemble_brain_fields(fields, output):
         arrows = {item['id']: item for group in annotations['final_arrow_geometry'].values()
                   for item in group}
         for name, glyph in layout.ARROW_GLYPHS.items():
-            layout.draw_annotation_arrow(page, glyph, arrows[name]['tail'], arrows[name]['tip'])
+            if name in ('pi_3', 'pi_4'):
+                continue
+            if name in ARROWS:
+                draw_arrow(page, glyph, *ARROWS[name])
+            else:
+                layout.draw_annotation_arrow(page, glyph, arrows[name]['tail'], arrows[name]['tip'])
         for label, point in layout.TISSUE_LABELS:
             page.insert_text(point, label, fontname='ArialFigure', fontsize=12, color=(0, 0, 0))
         for label, rectangle, origin, size, color in layout.CALLOUTS:

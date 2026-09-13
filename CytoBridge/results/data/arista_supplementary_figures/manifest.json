@@ -2,8 +2,22 @@
   "schema_version": 1,
   "analysis": "arista_supplementary_figures",
   "dataset": "ARISTA",
-  "figure_set": ["S19", "S20", "S21", "S22", "S23", "S24"],
-  "source_figure_set": ["S17", "S18", "S19", "S20", "S21", "S22"],
+  "figure_set": [
+    "S19",
+    "S20",
+    "S21",
+    "S22",
+    "S23",
+    "S24"
+  ],
+  "source_figure_set": [
+    "S17",
+    "S18",
+    "S19",
+    "S20",
+    "S21",
+    "S22"
+  ],
   "files": {
     "FigureS17_ARISTA_interpolation.png": "retained compact source for current S19",
     "FigureS18_ARISTA_growth.png": "retained compact source for current S20",
@@ -30,30 +44,111 @@
     "ligand_receptor_cluster_diagnostics.csv": "diagnostics for the selected k=2 solution",
     "ligand_receptor_all_pair_timecourse.csv": "strict scores for all 531 pairs at all nine time points",
     "ligand_receptor_display_roster.csv": "balanced 25-per-cluster representative roster",
-    "ligand_receptor_pair_timecourse.csv": "450 displayed strict ligand-receptor time-course rows"
+    "ligand_receptor_pair_timecourse.csv": "450 displayed strict ligand-receptor time-course rows",
+    "fixed_particle_lineage_labels_unsmoothed.npz": "Direct classifier predictions for Figure 5a and S21, without spatial label smoothing",
+    "lineage_transitions.csv": "All adjacent-time transition counts for S21"
   },
   "tables": {
-    "interpolation_panel_inventory": {"figure": "S19", "source_figure": "S17", "file": "interpolation_panel_inventory.csv"},
-    "growth_panel_scale": {"figure": "S20", "source_figure": "S18", "file": "growth_panel_scale.csv"},
-    "lineage_composition_counts": {"figure": "S21", "source_figure": "S19", "file": "lineage_composition_counts.csv"},
-    "lineage_composition_fractions": {"figure": "S21", "source_figure": "S19", "file": "lineage_composition_fractions.csv"},
-    "lineage_composition_display_percent": {"figure": "S21", "source_figure": "S19", "file": "lineage_composition_display_percent.csv"},
-    "gene_trajectories": {"figure": "S22", "source_figure": "S20", "file": "gene_trajectories.csv"},
-    "gene_program_prototypes": {"figure": "S22", "source_figure": "S20", "file": "gene_program_prototypes.csv"},
-    "gene_display_roster": {"figure": "S22", "source_figure": "S20", "file": "gene_display_roster.csv"},
-    "gene_program_1_GO_terms": {"figure": "S22", "source_figure": "S20", "file": "gene_program_1_GO_terms.csv"},
-    "gene_program_2_GO_terms": {"figure": "S22", "source_figure": "S20", "file": "gene_program_2_GO_terms.csv"},
-    "ligand_receptor_cluster_prototypes": {"figure": "S23", "source_figure": "S21", "file": "ligand_receptor_cluster_prototypes.csv"},
-    "ligand_receptor_cluster_assignments": {"figure": "S23", "source_figure": "S21", "file": "ligand_receptor_cluster_assignments.csv"},
-    "ligand_receptor_normalized_profiles": {"figure": "S24", "source_figure": "S22", "file": "ligand_receptor_normalized_profiles.csv"},
-    "ligand_receptor_k_selection": {"figure": "S23", "source_figure": "S21", "file": "ligand_receptor_k_selection.csv"},
-    "ligand_receptor_cluster_diagnostics": {"figure": "S23", "source_figure": "S21", "file": "ligand_receptor_cluster_diagnostics.csv"},
-    "ligand_receptor_all_pair_timecourse": {"figure": "S23", "source_figure": "S21", "file": "ligand_receptor_all_pair_timecourse.csv"},
-    "ligand_receptor_display_roster": {"figure": "S24", "source_figure": "S22", "file": "ligand_receptor_display_roster.csv"},
-    "ligand_receptor_pair_timecourse": {"figure": "S24", "source_figure": "S22", "file": "ligand_receptor_pair_timecourse.csv"}
+    "interpolation_panel_inventory": {
+      "figure": "S19",
+      "source_figure": "S17",
+      "file": "interpolation_panel_inventory.csv"
+    },
+    "growth_panel_scale": {
+      "figure": "S20",
+      "source_figure": "S18",
+      "file": "growth_panel_scale.csv"
+    },
+    "lineage_composition_counts": {
+      "figure": "S21",
+      "source_figure": "S19",
+      "file": "lineage_composition_counts.csv"
+    },
+    "lineage_composition_fractions": {
+      "figure": "S21",
+      "source_figure": "S19",
+      "file": "lineage_composition_fractions.csv"
+    },
+    "lineage_composition_display_percent": {
+      "figure": "S21",
+      "source_figure": "S19",
+      "file": "lineage_composition_display_percent.csv"
+    },
+    "gene_trajectories": {
+      "figure": "S22",
+      "source_figure": "S20",
+      "file": "gene_trajectories.csv"
+    },
+    "gene_program_prototypes": {
+      "figure": "S22",
+      "source_figure": "S20",
+      "file": "gene_program_prototypes.csv"
+    },
+    "gene_display_roster": {
+      "figure": "S22",
+      "source_figure": "S20",
+      "file": "gene_display_roster.csv"
+    },
+    "gene_program_1_GO_terms": {
+      "figure": "S22",
+      "source_figure": "S20",
+      "file": "gene_program_1_GO_terms.csv"
+    },
+    "gene_program_2_GO_terms": {
+      "figure": "S22",
+      "source_figure": "S20",
+      "file": "gene_program_2_GO_terms.csv"
+    },
+    "ligand_receptor_cluster_prototypes": {
+      "figure": "S23",
+      "source_figure": "S21",
+      "file": "ligand_receptor_cluster_prototypes.csv"
+    },
+    "ligand_receptor_cluster_assignments": {
+      "figure": "S23",
+      "source_figure": "S21",
+      "file": "ligand_receptor_cluster_assignments.csv"
+    },
+    "ligand_receptor_normalized_profiles": {
+      "figure": "S24",
+      "source_figure": "S22",
+      "file": "ligand_receptor_normalized_profiles.csv"
+    },
+    "ligand_receptor_k_selection": {
+      "figure": "S23",
+      "source_figure": "S21",
+      "file": "ligand_receptor_k_selection.csv"
+    },
+    "ligand_receptor_cluster_diagnostics": {
+      "figure": "S23",
+      "source_figure": "S21",
+      "file": "ligand_receptor_cluster_diagnostics.csv"
+    },
+    "ligand_receptor_all_pair_timecourse": {
+      "figure": "S23",
+      "source_figure": "S21",
+      "file": "ligand_receptor_all_pair_timecourse.csv"
+    },
+    "ligand_receptor_display_roster": {
+      "figure": "S24",
+      "source_figure": "S22",
+      "file": "ligand_receptor_display_roster.csv"
+    },
+    "ligand_receptor_pair_timecourse": {
+      "figure": "S24",
+      "source_figure": "S22",
+      "file": "ligand_receptor_pair_timecourse.csv"
+    }
   },
   "equivalence": {
     "png": "The packaged rasters retain their source filenames; the figure index maps them to current S19-S24 output filenames. S23 and S24 use the corrected deterministic k-means and balanced representative release.",
     "pdf": "Reference exports place each retained raster on its page geometry under the current output name. The public table-driven plotting function independently redraws S23 and S24 as vector PDFs and PNGs."
+  },
+  "lineage_classification": {
+    "smoothing": false,
+    "particles": 7668,
+    "time_points": 9,
+    "script": "reproduction/arista/supplementary.py",
+    "input": "fixed_particle_lineage_labels_unsmoothed.npz"
   }
 }

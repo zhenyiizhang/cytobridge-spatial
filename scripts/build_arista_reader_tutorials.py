@@ -115,7 +115,10 @@ times. Coordinates remain unwarped.
 
 The call exports the populations to `slice_data/`, `model_states/`,
 `display_states/` and `generated_display_states/`.
-`fixed_particle_lineage_labels.npz` tracks particle labels across time.
+`fixed_particle_lineage_labels_unsmoothed.npz` contains direct classifier
+predictions for Figure 5a and the lineage/composition analysis in S21.
+The spatial maps keep their existing annotations. The separate
+`fixed_particle_lineage_labels.npz` retains spatially smoothed labels.
 `all_time_communications.pkl` and `attention/*.npy` are computed from these model
 states with self-loops retained and winsor quantile 0.995.
 `post_simulation_rng.npz` stores the random state for Figure 5c's observed-field
@@ -171,18 +174,23 @@ palette = json.loads((SOURCE / "label_to_color.json").read_text())
 output = analysis / "figures/main5"
 output.mkdir(parents=True, exist_ok=True)
 for relative in ["slice_data/time_0p5.h5ad", "all_time_communications.pkl",
-                 "fixed_particle_lineage_labels.npz", "post_simulation_rng.npz", "model_selection.json"]:
+                 "fixed_particle_lineage_labels_unsmoothed.npz", "post_simulation_rng.npz", "model_selection.json"]:
     if not (populations / relative).is_file():
         raise FileNotFoundError(f"Run the ARISTA dataset notebook first: {populations / relative}")
 model_dir = Path(json.loads((populations / "model_selection.json").read_text())["model_dir"])
 '''), md('''
 ## a–b. Spatial dynamics and the generated 3.5-DPI population
 
-Count fixed-particle label transitions for lineage, use the calculated
+Count transitions between direct classifier predictions, without spatial
+label smoothing, for the lineage links. Use the calculated
 cell-type communication matrices, and derive spatial anchors from each cell
 type's coordinates. Panels a and b both read `slice_data/time_0p5.h5ad`.
 It uses unwarped simulated coordinates; the renderer adjusts the canvas and
 camera for display.
+
+The panel is exported directly to PDF before adding its labels. For the
+renderer versions and the standalone export command, see
+[Figure 5a export](../../reference/figure5a_export.md).
 '''), code('''
 figures = draw_main_figure(populations, output, panels="ab")
 show(figures["a"])
@@ -297,8 +305,9 @@ for path in [populations / "model_states/time_0p5.h5ad",
 ## S19–S21. Populations, growth, lineage and composition
 
 S19 reads observed and generated states at all nine times. S20 samples the
-per-cell growth table. S21 counts transitions in the fixed-particle labels
-and calculates cell-type fractions; these particles are a separate cohort from
+per-cell growth table. S21 counts transitions and cell-type fractions from
+`fixed_particle_lineage_labels_unsmoothed.npz`, using direct classifier predictions
+without spatial label smoothing. These particles are a separate cohort from
 the growth-dependent split populations. Coordinates remain unwarped.
 '''), code('''
 for number in [19, 20, 21]:

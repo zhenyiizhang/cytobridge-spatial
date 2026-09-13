@@ -54,7 +54,7 @@ def test_packaged_arista_supplementary_contract() -> None:
     assert [page.raster_crc32 for page in pages] == [
         "573fd645",
         "b3d4f41c",
-        "d48a9fbf",
+        "c9033803",
         "1893c30e",
         "8d4787c1",
         "e36de1fc",
@@ -62,7 +62,7 @@ def test_packaged_arista_supplementary_contract() -> None:
     assert [(page.width_pixels, page.height_pixels) for page in pages] == [
         (2106, 2093),
         (3751, 3606),
-        (2333, 2400),
+        (2240, 2304),
         (2400, 1554),
         (2372, 1322),
         (3222, 3857),
@@ -124,7 +124,7 @@ def test_formal_arista_release_uses_current_numbers_and_checkout_sources() -> No
         f"Supplementary Figure S{number}" for number in range(19, 25)
     ]
     assert index["release_location"].tolist() == [
-        f"Supplementary Figure S{number}" for number in range(12, 18)
+        f"Supplementary Figure S{number}" for number in [12, 13, 21, 15, 16, 17]
     ]
     assert index["content"].tolist() == [
         "Spatial interpolation",
@@ -192,8 +192,7 @@ def test_formal_arista_release_records_vector_boundaries() -> None:
         "optional display settings"
     )
     assert index.loc["Supplementary Figure S21", "input_scope"] == (
-        "release retains derived fixed-particle tables; the upstream "
-        "fixed-particle file is external"
+        "raw classifier labels and derived tables are included"
     )
 
 
@@ -258,11 +257,8 @@ def test_arista_supplementary_pages_render_with_release_geometry(
             )
         with Image.open(png_path) as source:
             source_rgb = source.convert("RGB")
-        if page.figure == "S21":
-            assert rendered.size == (source_rgb.width + 1, source_rgb.height)
-        else:
-            assert rendered.size == source_rgb.size
-            assert ImageChops.difference(source_rgb, rendered).getbbox() is None
+        assert rendered.size == source_rgb.size
+        assert ImageChops.difference(source_rgb, rendered).getbbox() is None
 
 
 def test_corrected_arista_lr_figures_are_drawn_from_tables(tmp_path: Path) -> None:

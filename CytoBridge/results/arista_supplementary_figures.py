@@ -171,49 +171,25 @@ _FORMAL_SOURCE_SPECS = (
     },
     {
         "figure": "S21",
-        "release_figure": "S14",
+        "release_figure": "S21",
         "topic": "Lineage and composition",
-        "formal_pdf": (
-            f"{_S13_S14_DIRECTORY}/figures/pdf/"
-            "FigureS14_ARISTA_package_native_oldstyle_FINAL.pdf"
-        ),
-        "formal_svg": (
-            f"{_S13_S14_DIRECTORY}/figures/vector/"
-            "FigureS14_ARISTA_package_native_oldstyle_FINAL.svg"
-        ),
-        "formal_png": (
-            f"{_S13_S14_DIRECTORY}/figures/png/"
-            "FigureS14_ARISTA_package_native_oldstyle_FINAL.png"
-        ),
+        "formal_pdf": "S21_unsmoothed_filter85_20260913/Figure_S21_ARISTA_lineage_composition.pdf",
+        "formal_svg": "S21_unsmoothed_filter85_20260913/Figure_S21_ARISTA_lineage_composition.svg",
+        "formal_png": "S21_unsmoothed_filter85_20260913/Figure_S21_ARISTA_lineage_composition.png",
         "vector_scope": "full-page PDF and SVG",
-        "canonical_scripts": ";".join(
-            (
-                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
-                "build_s13_s14_package_native_oldstyle.py",
-                f"{_CANONICAL_SCRIPT_DIRECTORY}/"
-                "build_s12_s14_legacy_style_corrected.py",
-            )
-        ),
-        "release_build_snapshot": (
-            f"{_S13_S14_DIRECTORY}/scripts/build_s13_s14_package_native_oldstyle.py"
-        ),
-        "build_scope": (
-            "release snapshot is the exact page builder; repository script adds "
-            "optional display settings"
-        ),
-        "release_manifest": f"{_S13_S14_DIRECTORY}/MANIFEST.json",
+        "canonical_scripts": "reproduction/arista/supplementary.py;reproduction/arista/spatial_plots.py",
+        "calculation_entrypoints": "reproduction/arista/simulate_paper_populations.py",
+        "release_build_snapshot": "S21_unsmoothed_filter85_20260913/supplementary.py",
+        "build_scope": "direct classifier labels, transition counts and cell-type fractions",
+        "release_manifest": "S21_unsmoothed_filter85_20260913/MANIFEST.json",
         "downstream_inputs": ";".join(
-            (
-                f"{_S13_S14_DIRECTORY}/tables/s14_fixed_particle_counts.csv",
-                f"{_S13_S14_DIRECTORY}/tables/s14_fixed_particle_fractions.csv",
-                f"{_S13_S14_DIRECTORY}/tables/"
-                "s14b_corrected_top15_other_percent.csv",
+            "S21_unsmoothed_filter85_20260913/" + name for name in (
+                "fixed_particle_lineage_labels_unsmoothed.npz",
+                "S21_cell_counts.csv", "S21_cell_fractions.csv",
+                "S21_lineage_transitions.csv",
             )
         ),
-        "input_scope": (
-            "release retains derived fixed-particle tables; the upstream "
-            "fixed-particle file is external"
-        ),
+        "input_scope": "raw classifier labels and derived tables are included",
     },
     {
         "figure": "S22",
@@ -485,7 +461,7 @@ def _arista_formal_source_index(root: Path) -> pd.DataFrame:
             "formal_png": specification["formal_png"],
             "vector_scope": specification["vector_scope"],
             "canonical_scripts": specification["canonical_scripts"],
-            "calculation_entrypoints": ";".join(_CALCULATION_ENTRYPOINTS),
+            "calculation_entrypoints": specification.get("calculation_entrypoints", ";".join(_CALCULATION_ENTRYPOINTS)),
             "release_build_snapshot": specification["release_build_snapshot"],
             "build_scope": specification["build_scope"],
             "release_manifest": specification["release_manifest"],

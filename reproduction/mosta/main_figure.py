@@ -88,10 +88,11 @@ def draw_interaction_maps(data, output, mapping=None):
     return paths
 
 
-def draw_cartilage(output, palette, *, arrays=None):
+def draw_cartilage(output, palette, *, arrays=None, source_stage="E15.0", target_stage="E15.5"):
     from . import cartilage as plot
     if arrays is None:
-        with np.load(PANELS / 'fig4c/evidence/numeric_render_state.npz', allow_pickle=False) as archive:
+        from .figures import LINEAGE_INPUTS
+        with np.load(LINEAGE_INPUTS / 'cartilage_lineage.npz', allow_pickle=False) as archive:
             arrays = {key: np.asarray(archive[key]) for key in archive.files}
     labels = arrays['target_labels'].astype(str)
     if len(labels) != len(arrays['selected_lineage_id']):
@@ -104,7 +105,8 @@ def draw_cartilage(output, palette, *, arrays=None):
     scatter = output / 'Figure4c_cell_coordinates.png'
     centroids, _ = plot.create_scatter_layer(arrays, transitions, palette, scatter)
     paths = {extension: output / f'Figure4c_cartilage_lineage.{extension}' for extension in ('pdf', 'svg', 'png')}
-    plot.assemble_panel(scatter, centroids, transitions, palette, paths)
+    plot.assemble_panel(scatter, centroids, transitions, palette, paths,
+                        source_stage=source_stage, target_stage=target_stage)
     pd.DataFrame([{'cell_type': t.target_label, 'cells': t.count, 'fraction': t.probability}
                   for t in transitions]).to_csv(output / 'Figure4c_lineage_fractions.csv', index=False)
     return list(paths.values())

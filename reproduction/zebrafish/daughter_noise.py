@@ -81,7 +81,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None, cla
             initial_lineage_ids=np.arange(len(x0)), return_lineage_ids=True,
             interaction_seed=seed+10001,
         )
-        labels = []
+        labels, lineage_labels = [], []
         for i in DISPLAY:
             frame, ancestors = np.asarray(points[i]), np.asarray(ids[i], dtype=int)
             if not np.isfinite(frame).all() or len(frame) == 0:
@@ -89,13 +89,16 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None, cla
             assigned = initial_labels.copy() if i == 0 else assign_cell_types(
                 frame, TIMES[i], classifier, device)
             labels.append(assigned)
+            descendant_labels = initial_labels.copy() if i == 0 else assign_cell_types(
+                frame, TIMES[i], classifier, device, spatial_smoothing=False)
+            lineage_labels.append(descendant_labels)
             counts = pd.Series(assigned).value_counts()
             for celltype, count in counts.items():
                 composition.append(dict(daughter_noise_std=noise, seed=seed, time=TIMES[i],
                                         celltype=celltype, count=count, fraction=count/len(frame),
                                         n_particles=len(frame)))
             transitions = pd.DataFrame({"source_celltype": initial_labels[ancestors],
-                                        "target_celltype": assigned}).value_counts().rename("count").reset_index()
+                                        "target_celltype": descendant_labels}).value_counts().rename("count").reset_index()
             descendants = transitions.groupby("source_celltype")["count"].transform("sum")
             transitions["fraction_within_source"] = transitions["count"] / descendants
             transitions["n_source_descendants"] = descendants
@@ -105,6 +108,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None, cla
         np.savez_compressed(output / f"daughter_noise_{str(noise).replace('.', 'p')}_trajectory.npz",
                             dense_times=TIMES, points=object_array(points), lineage_ids=object_array(ids),
                             display_times=TIMES[DISPLAY], display_labels=object_array(labels),
+                            display_lineage_labels=object_array(lineage_labels),
                             display_lineage_ids=object_array([ids[i] for i in DISPLAY]))
     pd.DataFrame(composition).to_csv(output / "composition_long.csv", index=False)
     pd.concat(lineage).to_csv(output / "lineage_transition_long.csv", index=False)
@@ -118,6 +122,7 @@ def simulate(data_dir, output_dir, seed=42, device="cuda:0", model_dir=None, cla
         status="complete", seed=seed, data_dir=str(data.resolve()), model=str(model.weight_path),
         classifier=str(Path(classifier_path).resolve()) if classifier_path is not None else str((data / "classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt").resolve()),
         initial_time=0, initial_count=len(x0), final_time=4, daughter_noise_std=NOISES,
+        lineage_spatial_smoothing=False, composition_spatial_smoothing=True,
         dt=.005, resample_dt=.05, sigma=.03, growth_alpha=1., interaction_seed=seed+10001,
     ), indent=2) + "\n")
 

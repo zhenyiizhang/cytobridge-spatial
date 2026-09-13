@@ -71,6 +71,8 @@ class InterpolationResult:
     classifier_metadata: Optional[dict]
     classifier_evaluation: Optional[dict]
     simulation_seeds: dict[str, Any]
+    # Fixed-particle states allow additional label analyses without re-simulation.
+    sde_points: Optional[np.ndarray] = None
 
 
 def run_interpolation_workflow(
@@ -254,6 +256,7 @@ def run_interpolation_workflow(
     classifier_accuracy = None
     classifier_balanced_accuracy = None
     classifier_metadata = None
+    sde_points = None
     classifier_evaluation = None
     nonsplit_seed = None if random_seed is None else int(random_seed)
     split_seed = None if random_seed is None else int(random_seed) + 1
@@ -772,6 +775,7 @@ def run_interpolation_workflow(
         communication_adata_dict[key] = communication_adata_t
 
     return InterpolationResult(
+        sde_points=sde_points,
         adata_dict=adata_dict,
         communication_adata_dict=communication_adata_dict,
         ts_points=list(ts_points),

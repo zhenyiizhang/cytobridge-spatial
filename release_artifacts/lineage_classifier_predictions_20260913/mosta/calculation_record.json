@@ -1,0 +1,29 @@
+{
+  "trajectory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4c-k10-all-forward-timepairs-global-t0-50k-2b3c79e-seed42-20260825-v5/fixed_lineage_all_times_k10_cap50000.npz",
+  "classifier": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/classifier_cache/classifier_resmlp_6d2d7acf7d0ed92d.pt",
+  "spatial_smoothing": false,
+  "changed_labels": [
+    6332,
+    13666,
+    17419,
+    19634,
+    20421,
+    21149,
+    22183
+  ],
+  "cartilage_particles": 1464,
+  "cartilage_targets": {
+    "Cartilage primordium": 941,
+    "Cartilage": 407,
+    "Connective tissue": 44,
+    "Adipose tissue": 26,
+    "Meninges": 16,
+    "Spinal cord": 13,
+    "Jaw and tooth": 12,
+    "Cavity": 1,
+    "GI tract": 1,
+    "Mucosal epithelium": 1,
+    "Epidermis": 1,
+    "Lung": 1
+  }
+}

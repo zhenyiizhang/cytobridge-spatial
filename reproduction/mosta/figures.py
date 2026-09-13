@@ -15,6 +15,8 @@ from scipy.interpolate import PchipInterpolator
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / 'release_artifacts/mosta_package_native_corrected_20260826_v1/reproduction'
 PALETTE_FILE = SOURCE / 'main_fig4_panels/style_authority/label_to_color.json'
+LINEAGE_INPUTS = ROOT / 'release_artifacts/lineage_classifier_predictions_20260913/mosta'
+LINEAGE_LABELS = LINEAGE_INPUTS / 'fixed_particle_labels.csv.gz'
 TIMES = tuple(float(t) for t in np.arange(0, 3.0001, .25))
 CELL_TYPES = (
     'Brain', 'Connective tissue', 'Cavity', 'Epidermis', 'Muscle', 'Jaw and tooth',
@@ -125,10 +127,10 @@ def plot_composition(table: pd.DataFrame, output: Path):
     return save(fig, output, 'Figure_S13_MOSTA_composition')
 
 
-def draw_lineage(shared: Path, output: Path):
+def draw_lineage(shared: Path, output: Path, *, labels_path=None):
     """S14: count transitions between labels of the same simulated particles."""
     from CytoBridge.pl import plot_sankey
-    table = pd.read_csv(shared / 's7_lineage/fixed_particle_labels.csv.gz')
+    table = pd.read_csv(labels_path if labels_path is not None else LINEAGE_LABELS)
     times = np.arange(0, 3.001, .5)
     labels, particle_ids = [], None
     transitions = []

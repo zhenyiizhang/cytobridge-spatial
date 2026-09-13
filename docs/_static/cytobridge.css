@@ -86,6 +86,19 @@ div.nboutput.container div.output_area.rendered_html table.dataframe tbody tr:nt
   background: var(--color-background-secondary) !important;
 }
 
+/* These AGIST tables contain numbers, so they do not need the wide cells used
+   for descriptive dataset tables. Keep the correlation column in view. */
+section[id="AGIST-attention-strength-across-time"] table.dataframe,
+section[id="Main-Figure-2:-AGIST-benchmark"] table.dataframe {
+  table-layout: auto;
+  max-width: 100%;
+}
+
+section[id="AGIST-attention-strength-across-time"] div.nboutput.container div.output_area.rendered_html table.dataframe :is(th, td),
+section[id="Main-Figure-2:-AGIST-benchmark"] div.nboutput.container div.output_area.rendered_html table.dataframe :is(th, td) {
+  min-width: 0;
+}
+
 /* Furo normally moves the page outline into a drawer below 82rem. Keep it on
    screen on ordinary laptop displays while leaving the mobile layout intact. */
 @media (min-width: 72em) and (max-width: 82em) {

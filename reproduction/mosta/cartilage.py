@@ -324,6 +324,7 @@ def assemble_panel(
     transitions: list[Transition],
     palette: dict[str, str],
     outputs: dict[str, Path],
+    *, source_stage: str = "E15.0", target_stage: str = "E15.5",
 ) -> None:
     import matplotlib
 
@@ -378,39 +379,22 @@ def assemble_panel(
     transition_by_label = {item.target_label: item for item in transitions[:3]}
     source_color = strip_hex_alpha(palette[SOURCE_LABEL])
 
-    # Preserve the original AI's same-color, no-arrow cubic lane grammar.  The
-    # endpoints are current numerical centroids; only the old lane residual is
-    # transferred to the otherwise straight connection.
+    # Retain the Illustrator figure's curved connections and label arrangement.
     current_cubic_page: dict[str, tuple[tuple[float, float], ...]] = {}
     for label in ("Cartilage primordium", "Connective tissue", "Cartilage"):
         transition = transition_by_label[label]
         target = page_to_panel(page_centroids[label])
         lane = ORIGINAL_CUBIC_LANE_TEMPLATE[label]
-        x_fraction_1, x_fraction_2 = lane["control_x_fraction"]
-        y_offset_1, y_offset_2 = lane["control_y_offset_from_source_pt"]
-        if label == "Connective tissue":
-            # The E15.5 CT and Cartilage endpoints are 14.85 pt closer vertically
-            # than in the old AI.  Add that missing *lane* separation gradually
-            # to the CT control points (1/3 and 2/3), but leave the endpoint exact.
-            old_separation = (
-                ORIGINAL_CUBIC_POINTS_PAGE["Connective tissue"][-1][1]
-                - ORIGINAL_CUBIC_POINTS_PAGE["Cartilage"][-1][1]
-            )
-            current_separation = (
-                page_centroids["Connective tissue"][1]
-                - page_centroids["Cartilage"][1]
-            )
-            missing_lane_separation = max(0.0, old_separation - current_separation)
-            y_offset_1 += missing_lane_separation / 3.0
-            y_offset_2 += 2.0 * missing_lane_separation / 3.0
-        control_1 = (
-            source[0] + (target[0] - source[0]) * x_fraction_1,
-            source[1] + y_offset_1,
-        )
-        control_2 = (
-            source[0] + (target[0] - source[0]) * x_fraction_2,
-            source[1] + y_offset_2,
-        )
+        fx1, fx2 = lane['control_x_fraction']
+        dy1, dy2 = lane['control_y_offset_from_source_pt']
+        # Current destination centroids are closer together than in the
+        # original figure. Separate the interiors, not their endpoints.
+        separation = {'Cartilage primordium': 0., 'Cartilage': 8.,
+                      'Connective tissue': 18.}[label]
+        control_1 = (source[0] + (target[0]-source[0]) * fx1,
+                     source[1] + dy1 + separation)
+        control_2 = (source[0] + (target[0]-source[0]) * fx2,
+                     source[1] + dy2 + separation)
         path = MplPath(
             [source, control_1, control_2, target],
             [MplPath.MOVETO, MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4],
@@ -422,7 +406,7 @@ def assemble_panel(
         ribbon = PathPatch(
             path,
             fill=False,
-            linewidth=2.0 + 18.0 * transition.probability,
+            linewidth=2.0 + 12.0 * transition.probability,
             edgecolor=source_color,
             alpha=1.0,
             capstyle="round",
@@ -479,75 +463,27 @@ def assemble_panel(
     original_text("title", "Predicted transition probability", 14, bold)
     original_text("generated", "Generated", 12)
     original_text("observed", "Observed", 12)
-    original_text("stage_source", "E15.0", 12, color="#231815")
-    original_text("stage_target", "E15.5", 12)
-    original_text("source_label", "Cartilage primordium", 9)
-    # Keep the old x anchor but retain the exact old label-to-centroid vertical
-    # offset after the current CP target centroid moves upward.
-    old_cp_dot_y = 327.79119873046875
-    old_cp_label_x, old_cp_label_y = TEXT_BASELINES["label_cartilage_primordium"]
-    current_cp_label_page = (
-        old_cp_label_x,
-        page_centroids["Cartilage primordium"][1] + (old_cp_label_y - old_cp_dot_y),
-    )
-    current_cp_label_x, current_cp_label_y = page_to_panel(current_cp_label_page)
-    ax.text(
-        current_cp_label_x,
-        current_cp_label_y,
-        "Cartilage primordium",
-        fontsize=9,
-        fontproperties=regular,
-        color="#000000",
-        ha="left",
-        va="baseline",
-        zorder=7,
-    )
-    original_text("label_cartilage", "Cartilage", 9)
-    original_text("label_connective_tissue_1", "Connective ", 9)
-    original_text("label_connective_tissue_2", "tissue", 9)
+    original_text("stage_source", source_stage, 12)
+    original_text("stage_target", target_stage, 12)
+    ax.text(5., source[1]+21., "Cartilage primordium",
+            fontsize=9, fontproperties=regular, color="black", ha="left", va="baseline", zorder=7)
+    for label, lines in [('Cartilage primordium', ['Cartilage primordium']),
+                         ('Cartilage', ['Cartilage']),
+                         ('Connective tissue', ['Connective', 'tissue'])]:
+        x, y = page_to_panel(page_centroids[label])
+        dx, dy = {'Cartilage primordium': (-82., -16.),
+                  'Cartilage': (7., 5.), 'Connective tissue': (-25., 29.)}[label]
+        for row, text in enumerate(lines):
+            ax.text(x+dx, y+dy+row*10., text, fontsize=9, fontproperties=regular,
+                    color="black", ha="left", va="baseline", zorder=7)
 
-    probability_keys = {
-        "Cartilage primordium": "pct_cartilage_primordium",
-        "Connective tissue": "pct_connective_tissue",
-        "Cartilage": "pct_cartilage",
-    }
-    for label, key in probability_keys.items():
-        if label == "Connective tissue":
-            # The old 26.5% anchor was tied to the old source marker.  Preserve
-            # that exact marker-relative offset after the current centroid moves.
-            old_source = (379.9425964355469, 344.8217315673828)
-            old_anchor = TEXT_BASELINES[key]
-            current_x = source_page[0] + (old_anchor[0] - old_source[0])
-            current_y = source_page[1] + (old_anchor[1] - old_source[1])
-            x, y = page_to_panel((current_x, current_y))
-            ax.text(
-                x, y,
-                f"{100.0 * transition_by_label[label].probability:.1f}%",
-                fontsize=9,
-                fontproperties=regular,
-                color="#000000",
-                ha="left",
-                va="baseline",
-                zorder=7,
-            )
-        else:
-            # Keep the old x anchor and the old vertical offset above its own
-            # ribbon, now evaluated on the routed current cubic.
-            anchor_x, old_anchor_y = TEXT_BASELINES[key]
-            old_curve_y = cubic_y_at_x(ORIGINAL_CUBIC_POINTS_PAGE[label], anchor_x)
-            current_curve_y = cubic_y_at_x(current_cubic_page[label], anchor_x)
-            current_anchor = (anchor_x, current_curve_y - (old_curve_y - old_anchor_y))
-            x, y = page_to_panel(current_anchor)
-            ax.text(
-                x, y,
-                f"{100.0 * transition_by_label[label].probability:.1f}%",
-                fontsize=9,
-                fontproperties=regular,
-                color="#000000",
-                ha="left",
-                va="baseline",
-                zorder=7,
-            )
+    placements = {'Cartilage primordium': (.40, -12.),
+                  'Cartilage': (.61, 26.), 'Connective tissue': (.30, 16.)}
+    for label, (fraction, offset) in placements.items():
+        x, y = page_to_panel(cubic_point(current_cubic_page[label], fraction))
+        ax.text(x, y+offset, f"{100.*transition_by_label[label].probability:.1f}%",
+                fontsize=9, fontproperties=regular, color="black",
+                ha="center", va="baseline", zorder=7)
 
     fig.savefig(outputs["pdf"], facecolor="white")
     fig.savefig(outputs["svg"], facecolor="white")

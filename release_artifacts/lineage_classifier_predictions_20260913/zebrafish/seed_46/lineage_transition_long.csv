@@ -1,0 +1,2263 @@
+source_celltype,target_celltype,count,fraction_within_source,n_source_descendants,n_source_initial,daughter_noise_std,seed,time
+EVL,EVL,272,1.0,272,272,0.01,46,0.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",100,1.0,100,100,0.01,46,0.0
+Proliferative Like Cell,Proliferative Like Cell,69,1.0,69,69,0.01,46,0.0
+Presumptive Mesoderm,Presumptive Mesoderm,47,1.0,47,47,0.01,46,0.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,29,1.0,29,29,0.01,46,0.0
+Hypoblast,Hypoblast,24,1.0,24,24,0.01,46,0.0
+Margin,Margin,22,1.0,22,22,0.01,46,0.0
+EVL,Notochord,77,0.21212121212121213,363,272,0.01,46,0.5
+EVL,"Paraxial Mesoderm, Neural Keel",59,0.162534435261708,363,272,0.01,46,0.5
+EVL,EVL,58,0.15977961432506887,363,272,0.01,46,0.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,54,1.0,54,29,0.01,46,0.5
+EVL,Proliferative Like Cell,47,0.12947658402203857,363,272,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",40,0.28368794326241137,141,100,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",38,0.2695035460992908,141,100,0.01,46,0.5
+EVL,Periderm,36,0.09917355371900827,363,272,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",30,0.2127659574468085,141,100,0.01,46,0.5
+EVL,"Presumptive Mesoderm, Presumptive Ectoderm",26,0.07162534435261708,363,272,0.01,46,0.5
+EVL,"Segmental Plate, Tail Bud",26,0.07162534435261708,363,272,0.01,46,0.5
+Presumptive Mesoderm,Yolk Syncytial Layer,25,0.38461538461538464,65,47,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,25,0.1773049645390071,141,100,0.01,46,0.5
+EVL,Presumptive Mesoderm,25,0.06887052341597796,363,272,0.01,46,0.5
+Proliferative Like Cell,Notochord,22,0.2619047619047619,84,69,0.01,46,0.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",19,0.2261904761904762,84,69,0.01,46,0.5
+Proliferative Like Cell,"Presumptive Mesoderm, Presumptive Ectoderm",15,0.17857142857142858,84,69,0.01,46,0.5
+Margin,Yolk Syncytial Layer,13,0.5,26,22,0.01,46,0.5
+Proliferative Like Cell,Proliferative Like Cell,13,0.15476190476190477,84,69,0.01,46,0.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",11,0.16923076923076924,65,47,0.01,46,0.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",9,0.10714285714285714,84,69,0.01,46,0.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",9,0.13846153846153847,65,47,0.01,46,0.5
+Hypoblast,"Segmental Plate, Tail Bud",8,0.27586206896551724,29,24,0.01,46,0.5
+Hypoblast,Notochord,7,0.2413793103448276,29,24,0.01,46,0.5
+Margin,"Segmental Plate, Tail Bud",7,0.2692307692307692,26,22,0.01,46,0.5
+Presumptive Mesoderm,Presumptive Mesoderm,7,0.1076923076923077,65,47,0.01,46,0.5
+EVL,Anterior Neural Keel,5,0.013774104683195593,363,272,0.01,46,0.5
+Hypoblast,"Presumptive Mesoderm, Presumptive Ectoderm",4,0.13793103448275862,29,24,0.01,46,0.5
+Presumptive Mesoderm,Notochord,4,0.06153846153846154,65,47,0.01,46,0.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.13793103448275862,29,24,0.01,46,0.5
+EVL,Yolk Syncytial Layer,3,0.008264462809917356,363,272,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,3,0.02127659574468085,141,100,0.01,46,0.5
+Proliferative Like Cell,Anterior Neural Keel,3,0.03571428571428571,84,69,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,3,0.02127659574468085,141,100,0.01,46,0.5
+Presumptive Mesoderm,Anterior Neural Keel,3,0.046153846153846156,65,47,0.01,46,0.5
+Presumptive Mesoderm,"Presumptive Mesoderm, Presumptive Ectoderm",3,0.046153846153846156,65,47,0.01,46,0.5
+Margin,Presumptive Mesoderm,3,0.11538461538461539,26,22,0.01,46,0.5
+Presumptive Mesoderm,Periderm,3,0.046153846153846156,65,47,0.01,46,0.5
+Hypoblast,Anterior Neural Keel,2,0.06896551724137931,29,24,0.01,46,0.5
+Hypoblast,Periderm,2,0.06896551724137931,29,24,0.01,46,0.5
+Proliferative Like Cell,Periderm,2,0.023809523809523808,84,69,0.01,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Presumptive Mesoderm,2,0.014184397163120567,141,100,0.01,46,0.5
+Margin,Periderm,2,0.07692307692307693,26,22,0.01,46,0.5
+EVL,Hypoblast,1,0.0027548209366391185,363,272,0.01,46,0.5
+Hypoblast,Presumptive Mesoderm,1,0.034482758620689655,29,24,0.01,46,0.5
+Hypoblast,Proliferative Like Cell,1,0.034482758620689655,29,24,0.01,46,0.5
+Margin,Margin,1,0.038461538461538464,26,22,0.01,46,0.5
+Proliferative Like Cell,Presumptive Mesoderm,1,0.011904761904761904,84,69,0.01,46,0.5
+EVL,"Segmental Plate, Tail Bud",224,0.4618556701030928,485,272,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",122,0.6559139784946236,186,100,0.01,46,1.0
+EVL,Periderm,115,0.23711340206185566,485,272,0.01,46,1.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",85,0.7024793388429752,121,69,0.01,46,1.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,78,0.975,80,29,0.01,46,1.0
+EVL,"Paraxial Mesoderm, Neural Keel",66,0.1360824742268041,485,272,0.01,46,1.0
+EVL,Notochord,53,0.10927835051546392,485,272,0.01,46,1.0
+Presumptive Mesoderm,Yolk Syncytial Layer,44,0.4731182795698925,93,47,0.01,46,1.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",25,0.26881720430107525,93,47,0.01,46,1.0
+Hypoblast,"Segmental Plate, Tail Bud",23,0.5609756097560976,41,24,0.01,46,1.0
+EVL,Yolk Syncytial Layer,22,0.04536082474226804,485,272,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,20,0.10752688172043011,186,100,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",19,0.10215053763440861,186,100,0.01,46,1.0
+Margin,Yolk Syncytial Layer,19,0.5588235294117647,34,22,0.01,46,1.0
+Proliferative Like Cell,Notochord,13,0.10743801652892562,121,69,0.01,46,1.0
+Margin,"Segmental Plate, Tail Bud",9,0.2647058823529412,34,22,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,9,0.04838709677419355,186,100,0.01,46,1.0
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",9,0.0743801652892562,121,69,0.01,46,1.0
+Presumptive Mesoderm,Periderm,9,0.0967741935483871,93,47,0.01,46,1.0
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",8,0.08602150537634409,93,47,0.01,46,1.0
+Proliferative Like Cell,Periderm,8,0.06611570247933884,121,69,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,7,0.03763440860215054,186,100,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,7,0.03763440860215054,186,100,0.01,46,1.0
+Hypoblast,Periderm,6,0.14634146341463414,41,24,0.01,46,1.0
+Presumptive Mesoderm,Notochord,6,0.06451612903225806,93,47,0.01,46,1.0
+EVL,Anterior Neural Keel,5,0.010309278350515464,485,272,0.01,46,1.0
+Margin,Periderm,5,0.14705882352941177,34,22,0.01,46,1.0
+Hypoblast,Notochord,4,0.0975609756097561,41,24,0.01,46,1.0
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.0975609756097561,41,24,0.01,46,1.0
+Proliferative Like Cell,Yolk Syncytial Layer,4,0.03305785123966942,121,69,0.01,46,1.0
+Yolk Syncytial Layer,Polster,2,0.025,80,29,0.01,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,2,0.010752688172043012,186,100,0.01,46,1.0
+Hypoblast,Yolk Syncytial Layer,2,0.04878048780487805,41,24,0.01,46,1.0
+Hypoblast,Anterior Neural Keel,2,0.04878048780487805,41,24,0.01,46,1.0
+Presumptive Mesoderm,Anterior Neural Keel,1,0.010752688172043012,93,47,0.01,46,1.0
+Margin,"Paraxial Mesoderm, Neural Keel",1,0.029411764705882353,34,22,0.01,46,1.0
+Proliferative Like Cell,Anterior Neural Keel,1,0.008264462809917356,121,69,0.01,46,1.0
+Proliferative Like Cell,Neural Rod,1,0.008264462809917356,121,69,0.01,46,1.0
+EVL,"Segmental Plate, Tail Bud",300,0.45045045045045046,666,272,0.01,46,1.5
+EVL,Periderm,176,0.26426426426426425,666,272,0.01,46,1.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",107,0.6045197740112994,177,69,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",106,0.3940520446096654,269,100,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,75,0.2788104089219331,269,100,0.01,46,1.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,70,0.5426356589147286,129,29,0.01,46,1.5
+EVL,Adaxial Cell,64,0.0960960960960961,666,272,0.01,46,1.5
+EVL,Neural Rod,62,0.09309309309309309,666,272,0.01,46,1.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",40,0.31007751937984496,129,29,0.01,46,1.5
+Presumptive Mesoderm,Periderm,38,0.2923076923076923,130,47,0.01,46,1.5
+Presumptive Mesoderm,Yolk Syncytial Layer,34,0.26153846153846155,130,47,0.01,46,1.5
+Proliferative Like Cell,Adaxial Cell,32,0.1807909604519774,177,69,0.01,46,1.5
+EVL,Yolk Syncytial Layer,26,0.03903903903903904,666,272,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,26,0.09665427509293681,269,100,0.01,46,1.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",24,0.18461538461538463,130,47,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,24,0.08921933085501858,269,100,0.01,46,1.5
+EVL,"Paraxial Mesoderm, Neural Keel",23,0.03453453453453453,666,272,0.01,46,1.5
+Presumptive Mesoderm,Adaxial Cell,22,0.16923076923076924,130,47,0.01,46,1.5
+Yolk Syncytial Layer,Polster,17,0.13178294573643412,129,29,0.01,46,1.5
+Hypoblast,Adaxial Cell,16,0.2711864406779661,59,24,0.01,46,1.5
+Margin,Periderm,16,0.34782608695652173,46,22,0.01,46,1.5
+Hypoblast,"Segmental Plate, Tail Bud",15,0.2542372881355932,59,24,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,14,0.05204460966542751,269,100,0.01,46,1.5
+Proliferative Like Cell,Periderm,12,0.06779661016949153,177,69,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,12,0.04460966542750929,269,100,0.01,46,1.5
+Margin,"Segmental Plate, Tail Bud",12,0.2608695652173913,46,22,0.01,46,1.5
+Margin,Yolk Syncytial Layer,12,0.2608695652173913,46,22,0.01,46,1.5
+EVL,Notochord,12,0.018018018018018018,666,272,0.01,46,1.5
+Hypoblast,Neural Rod,11,0.1864406779661017,59,24,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,11,0.040892193308550186,269,100,0.01,46,1.5
+Proliferative Like Cell,Neural Rod,9,0.05084745762711865,177,69,0.01,46,1.5
+Hypoblast,Notochord,8,0.13559322033898305,59,24,0.01,46,1.5
+Proliferative Like Cell,Notochord,8,0.04519774011299435,177,69,0.01,46,1.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",6,0.046153846153846156,130,47,0.01,46,1.5
+Hypoblast,Periderm,5,0.0847457627118644,59,24,0.01,46,1.5
+Hypoblast,Yolk Syncytial Layer,4,0.06779661016949153,59,24,0.01,46,1.5
+Proliferative Like Cell,Somite,4,0.022598870056497175,177,69,0.01,46,1.5
+Margin,Polster,3,0.06521739130434782,46,22,0.01,46,1.5
+EVL,Somite,3,0.0045045045045045045,666,272,0.01,46,1.5
+Presumptive Mesoderm,Neural Rod,3,0.023076923076923078,130,47,0.01,46,1.5
+Proliferative Like Cell,Yolk Syncytial Layer,3,0.01694915254237288,177,69,0.01,46,1.5
+Presumptive Mesoderm,Polster,3,0.023076923076923078,130,47,0.01,46,1.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",2,0.011299435028248588,177,69,0.01,46,1.5
+Yolk Syncytial Layer,Periderm,2,0.015503875968992248,129,29,0.01,46,1.5
+Margin,"Paraxial Mesoderm, Neural Keel",2,0.043478260869565216,46,22,0.01,46,1.5
+Margin,Neural Rod,1,0.021739130434782608,46,22,0.01,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",1,0.0037174721189591076,269,100,0.01,46,1.5
+EVL,Adaxial Cell,353,0.39178690344062156,901,272,0.01,46,2.0
+EVL,Neural Rod,271,0.30077691453940064,901,272,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,188,0.5497076023391813,342,100,0.01,46,2.0
+Proliferative Like Cell,Adaxial Cell,127,0.5695067264573991,223,69,0.01,46,2.0
+EVL,"Segmental Plate, Tail Bud",125,0.13873473917869034,901,272,0.01,46,2.0
+Yolk Syncytial Layer,Polster,79,0.4340659340659341,182,29,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,74,0.21637426900584794,342,100,0.01,46,2.0
+EVL,Periderm,70,0.07769145394006659,901,272,0.01,46,2.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",65,0.35714285714285715,182,29,0.01,46,2.0
+Presumptive Mesoderm,Adaxial Cell,55,0.291005291005291,189,47,0.01,46,2.0
+Presumptive Mesoderm,Periderm,52,0.2751322751322751,189,47,0.01,46,2.0
+Hypoblast,Adaxial Cell,44,0.5714285714285714,77,24,0.01,46,2.0
+EVL,Somite,42,0.04661487236403995,901,272,0.01,46,2.0
+Presumptive Mesoderm,Neural Rod,38,0.20105820105820105,189,47,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,37,0.10818713450292397,342,100,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",36,0.10526315789473684,342,100,0.01,46,2.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",36,0.16143497757847533,223,69,0.01,46,2.0
+Margin,Periderm,30,0.4411764705882353,68,22,0.01,46,2.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,25,0.13736263736263737,182,29,0.01,46,2.0
+Presumptive Mesoderm,Polster,21,0.1111111111111111,189,47,0.01,46,2.0
+Proliferative Like Cell,Neural Rod,21,0.09417040358744394,223,69,0.01,46,2.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",21,0.1111111111111111,189,47,0.01,46,2.0
+Proliferative Like Cell,Notochord,18,0.08071748878923767,223,69,0.01,46,2.0
+Hypoblast,Neural Rod,17,0.22077922077922077,77,24,0.01,46,2.0
+EVL,Yolk Syncytial Layer,16,0.017758046614872364,901,272,0.01,46,2.0
+Margin,Neural Rod,13,0.19117647058823528,68,22,0.01,46,2.0
+Yolk Syncytial Layer,Periderm,13,0.07142857142857142,182,29,0.01,46,2.0
+EVL,Optic Vesicle,11,0.01220865704772475,901,272,0.01,46,2.0
+Proliferative Like Cell,Periderm,10,0.04484304932735426,223,69,0.01,46,2.0
+Margin,"Segmental Plate, Tail Bud",9,0.1323529411764706,68,22,0.01,46,2.0
+Proliferative Like Cell,Somite,9,0.04035874439461883,223,69,0.01,46,2.0
+Margin,Polster,7,0.10294117647058823,68,22,0.01,46,2.0
+EVL,Notochord,6,0.006659267480577136,901,272,0.01,46,2.0
+EVL,Polster,6,0.006659267480577136,901,272,0.01,46,2.0
+Hypoblast,"Segmental Plate, Tail Bud",4,0.05194805194805195,77,24,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,4,0.011695906432748537,342,100,0.01,46,2.0
+Margin,Adaxial Cell,4,0.058823529411764705,68,22,0.01,46,2.0
+Margin,Yolk Syncytial Layer,3,0.04411764705882353,68,22,0.01,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,3,0.008771929824561403,342,100,0.01,46,2.0
+Hypoblast,"Neural Crest, Otic Vesicle",3,0.03896103896103896,77,24,0.01,46,2.0
+Hypoblast,Erythroid Lineage Cell,3,0.03896103896103896,77,24,0.01,46,2.0
+Hypoblast,Angioblastic Mesenchymal Cell,2,0.025974025974025976,77,24,0.01,46,2.0
+Hypoblast,Somite,2,0.025974025974025976,77,24,0.01,46,2.0
+Presumptive Mesoderm,Somite,2,0.010582010582010581,189,47,0.01,46,2.0
+Hypoblast,Notochord,1,0.012987012987012988,77,24,0.01,46,2.0
+EVL,Neural Crest,1,0.0011098779134295228,901,272,0.01,46,2.0
+Hypoblast,Polster,1,0.012987012987012988,77,24,0.01,46,2.0
+Margin,Optic Vesicle,1,0.014705882352941176,68,22,0.01,46,2.0
+Margin,Erythroid Lineage Cell,1,0.014705882352941176,68,22,0.01,46,2.0
+Proliferative Like Cell,Neural Crest,1,0.004484304932735426,223,69,0.01,46,2.0
+Proliferative Like Cell,Yolk Syncytial Layer,1,0.004484304932735426,223,69,0.01,46,2.0
+EVL,Adaxial Cell,312,0.2775800711743772,1124,272,0.01,46,2.5
+EVL,Neural Rod,301,0.2677935943060498,1124,272,0.01,46,2.5
+EVL,Somite,165,0.14679715302491103,1124,272,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,135,0.3268765133171913,413,100,0.01,46,2.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",108,0.4595744680851064,235,29,0.01,46,2.5
+Proliferative Like Cell,Notochord,97,0.3489208633093525,278,69,0.01,46,2.5
+EVL,"Segmental Plate, Tail Bud",80,0.0711743772241993,1124,272,0.01,46,2.5
+EVL,Notochord,77,0.06850533807829182,1124,272,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,75,0.18159806295399517,413,100,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,74,0.1791767554479419,413,100,0.01,46,2.5
+Proliferative Like Cell,Adaxial Cell,72,0.2589928057553957,278,69,0.01,46,2.5
+EVL,Neural Crest,54,0.04804270462633452,1124,272,0.01,46,2.5
+EVL,Forebrain,49,0.04359430604982206,1124,272,0.01,46,2.5
+Proliferative Like Cell,Somite,47,0.16906474820143885,278,69,0.01,46,2.5
+Presumptive Mesoderm,Neural Crest,41,0.18141592920353983,226,47,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,38,0.09200968523002422,413,100,0.01,46,2.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,37,0.1574468085106383,235,29,0.01,46,2.5
+Yolk Syncytial Layer,Forebrain,32,0.13617021276595745,235,29,0.01,46,2.5
+EVL,Angioblastic Mesenchymal Cell,31,0.027580071174377226,1124,272,0.01,46,2.5
+Presumptive Mesoderm,Neural Rod,30,0.13274336283185842,226,47,0.01,46,2.5
+Yolk Syncytial Layer,Polster,29,0.12340425531914893,235,29,0.01,46,2.5
+EVL,Optic Vesicle,29,0.025800711743772242,1124,272,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,29,0.07021791767554479,413,100,0.01,46,2.5
+Hypoblast,Notochord,25,0.2717391304347826,92,24,0.01,46,2.5
+Presumptive Mesoderm,Somite,24,0.10619469026548672,226,47,0.01,46,2.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,24,0.10619469026548672,226,47,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,23,0.05569007263922518,413,100,0.01,46,2.5
+Presumptive Mesoderm,Notochord,23,0.10176991150442478,226,47,0.01,46,2.5
+Presumptive Mesoderm,Forebrain,23,0.10176991150442478,226,47,0.01,46,2.5
+Presumptive Mesoderm,Adaxial Cell,22,0.09734513274336283,226,47,0.01,46,2.5
+Margin,"Yolk Syncytial Layer, Periderm",21,0.24705882352941178,85,22,0.01,46,2.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",21,0.09292035398230089,226,47,0.01,46,2.5
+Yolk Syncytial Layer,Periderm,20,0.0851063829787234,235,29,0.01,46,2.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",19,0.0683453237410072,278,69,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,19,0.04600484261501211,413,100,0.01,46,2.5
+Hypoblast,Adaxial Cell,17,0.18478260869565216,92,24,0.01,46,2.5
+Proliferative Like Cell,Neural Crest,14,0.050359712230215826,278,69,0.01,46,2.5
+EVL,Erythroid Lineage Cell,14,0.012455516014234875,1124,272,0.01,46,2.5
+Presumptive Mesoderm,Periderm,14,0.061946902654867256,226,47,0.01,46,2.5
+Hypoblast,Somite,13,0.14130434782608695,92,24,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,13,0.031476997578692496,413,100,0.01,46,2.5
+EVL,Nervous System,12,0.010676156583629894,1124,272,0.01,46,2.5
+Proliferative Like Cell,Neural Rod,12,0.04316546762589928,278,69,0.01,46,2.5
+Margin,Erythroid Lineage Cell,12,0.1411764705882353,85,22,0.01,46,2.5
+Margin,Hatching Gland,10,0.11764705882352941,85,22,0.01,46,2.5
+Margin,Periderm,10,0.11764705882352941,85,22,0.01,46,2.5
+Yolk Syncytial Layer,Hatching Gland,9,0.03829787234042553,235,29,0.01,46,2.5
+Hypoblast,Erythroid Lineage Cell,8,0.08695652173913043,92,24,0.01,46,2.5
+Hypoblast,Angioblastic Mesenchymal Cell,8,0.08695652173913043,92,24,0.01,46,2.5
+Hypoblast,Neural Crest,8,0.08695652173913043,92,24,0.01,46,2.5
+Margin,Angioblastic Mesenchymal Cell,7,0.08235294117647059,85,22,0.01,46,2.5
+Margin,Forebrain,7,0.08235294117647059,85,22,0.01,46,2.5
+Margin,Neural Rod,7,0.08235294117647059,85,22,0.01,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",7,0.01694915254237288,413,100,0.01,46,2.5
+Hypoblast,Neural Rod,7,0.07608695652173914,92,24,0.01,46,2.5
+Proliferative Like Cell,Forebrain,6,0.02158273381294964,278,69,0.01,46,2.5
+Proliferative Like Cell,Erythroid Lineage Cell,6,0.02158273381294964,278,69,0.01,46,2.5
+Margin,Neural Crest,6,0.07058823529411765,85,22,0.01,46,2.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,4,0.014388489208633094,278,69,0.01,46,2.5
+Hypoblast,"Segmental Plate, Tail Bud",3,0.03260869565217391,92,24,0.01,46,2.5
+Presumptive Mesoderm,Polster,2,0.008849557522123894,226,47,0.01,46,2.5
+Margin,Adaxial Cell,2,0.023529411764705882,85,22,0.01,46,2.5
+Hypoblast,"Neural Crest, Otic Vesicle",2,0.021739130434782608,92,24,0.01,46,2.5
+Margin,"Segmental Plate, Tail Bud",1,0.011764705882352941,85,22,0.01,46,2.5
+Margin,Notochord,1,0.011764705882352941,85,22,0.01,46,2.5
+Hypoblast,Polster,1,0.010869565217391304,92,24,0.01,46,2.5
+Proliferative Like Cell,Nervous System,1,0.0035971223021582736,278,69,0.01,46,2.5
+Margin,Polster,1,0.011764705882352941,85,22,0.01,46,2.5
+Presumptive Mesoderm,Erythroid Lineage Cell,1,0.004424778761061947,226,47,0.01,46,2.5
+Presumptive Mesoderm,"Immature Eye, Midbrain",1,0.004424778761061947,226,47,0.01,46,2.5
+EVL,Notochord,438,0.3290758827948911,1331,272,0.01,46,3.0
+Proliferative Like Cell,Notochord,204,0.6126126126126126,333,69,0.01,46,3.0
+EVL,Neural Crest,197,0.14800901577761083,1331,272,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,195,0.40540540540540543,481,100,0.01,46,3.0
+EVL,Nervous System,193,0.1450037565740045,1331,272,0.01,46,3.0
+EVL,Somite,173,0.12997746055597295,1331,272,0.01,46,3.0
+EVL,Forebrain,164,0.12321562734785875,1331,272,0.01,46,3.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",103,0.36395759717314485,283,29,0.01,46,3.0
+EVL,Angioblastic Mesenchymal Cell,95,0.07137490608564989,1331,272,0.01,46,3.0
+Presumptive Mesoderm,Neural Crest,85,0.3079710144927536,276,47,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,84,0.17463617463617465,481,100,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,71,0.14760914760914762,481,100,0.01,46,3.0
+Yolk Syncytial Layer,Hatching Gland,52,0.18374558303886926,283,29,0.01,46,3.0
+Yolk Syncytial Layer,Forebrain,50,0.17667844522968199,283,29,0.01,46,3.0
+Hypoblast,Notochord,48,0.4444444444444444,108,24,0.01,46,3.0
+Presumptive Mesoderm,Forebrain,47,0.17028985507246377,276,47,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,46,0.09563409563409564,481,100,0.01,46,3.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,43,0.1519434628975265,283,29,0.01,46,3.0
+Proliferative Like Cell,Somite,40,0.12012012012012012,333,69,0.01,46,3.0
+Presumptive Mesoderm,Notochord,40,0.14492753623188406,276,47,0.01,46,3.0
+EVL,Erythroid Lineage Cell,37,0.02779864763335838,1331,272,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,34,0.07068607068607069,481,100,0.01,46,3.0
+Margin,Erythroid Lineage Cell,33,0.3235294117647059,102,22,0.01,46,3.0
+Presumptive Mesoderm,Nervous System,33,0.11956521739130435,276,47,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,31,0.06444906444906445,481,100,0.01,46,3.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,31,0.11231884057971014,276,47,0.01,46,3.0
+Proliferative Like Cell,Nervous System,29,0.08708708708708708,333,69,0.01,46,3.0
+Presumptive Mesoderm,Somite,29,0.10507246376811594,276,47,0.01,46,3.0
+Proliferative Like Cell,Neural Crest,27,0.08108108108108109,333,69,0.01,46,3.0
+Yolk Syncytial Layer,Erythroid Lineage Cell,25,0.08833922261484099,283,29,0.01,46,3.0
+Margin,Hatching Gland,18,0.17647058823529413,102,22,0.01,46,3.0
+Margin,Forebrain,17,0.16666666666666666,102,22,0.01,46,3.0
+Margin,Neural Crest,16,0.1568627450980392,102,22,0.01,46,3.0
+Hypoblast,Nervous System,16,0.14814814814814814,108,24,0.01,46,3.0
+Hypoblast,Neural Crest,16,0.14814814814814814,108,24,0.01,46,3.0
+Proliferative Like Cell,Forebrain,15,0.04504504504504504,333,69,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,15,0.031185031185031187,481,100,0.01,46,3.0
+Hypoblast,Somite,15,0.1388888888888889,108,24,0.01,46,3.0
+EVL,Adaxial Cell,14,0.010518407212622089,1331,272,0.01,46,3.0
+EVL,Neural Rod,12,0.009015777610818933,1331,272,0.01,46,3.0
+Margin,Angioblastic Mesenchymal Cell,12,0.11764705882352941,102,22,0.01,46,3.0
+Hypoblast,Erythroid Lineage Cell,9,0.08333333333333333,108,24,0.01,46,3.0
+Proliferative Like Cell,Erythroid Lineage Cell,9,0.02702702702702703,333,69,0.01,46,3.0
+EVL,"Segmental Plate, Tail Bud",8,0.006010518407212622,1331,272,0.01,46,3.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",7,0.025362318840579712,276,47,0.01,46,3.0
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,5,0.015015015015015015,333,69,0.01,46,3.0
+Yolk Syncytial Layer,Neural Crest,4,0.014134275618374558,283,29,0.01,46,3.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,3,0.01060070671378092,283,29,0.01,46,3.0
+Presumptive Mesoderm,Erythroid Lineage Cell,3,0.010869565217391304,276,47,0.01,46,3.0
+Proliferative Like Cell,Adaxial Cell,3,0.009009009009009009,333,69,0.01,46,3.0
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,2,0.007067137809187279,283,29,0.01,46,3.0
+Margin,Nervous System,2,0.0196078431372549,102,22,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,2,0.004158004158004158,481,100,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,2,0.004158004158004158,481,100,0.01,46,3.0
+Hypoblast,Angioblastic Mesenchymal Cell,2,0.018518518518518517,108,24,0.01,46,3.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",1,0.0035335689045936395,283,29,0.01,46,3.0
+Margin,Notochord,1,0.00980392156862745,102,22,0.01,46,3.0
+Margin,Pronephros,1,0.00980392156862745,102,22,0.01,46,3.0
+Margin,Anterior Erythroid Lineage Cell,1,0.00980392156862745,102,22,0.01,46,3.0
+Presumptive Mesoderm,Hatching Gland,1,0.0036231884057971015,276,47,0.01,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,1,0.002079002079002079,481,100,0.01,46,3.0
+Margin,Epidermis,1,0.00980392156862745,102,22,0.01,46,3.0
+Hypoblast,Forebrain,1,0.009259259259259259,108,24,0.01,46,3.0
+Hypoblast,"Neural Crest, Otic Vesicle",1,0.009259259259259259,108,24,0.01,46,3.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",1,0.003003003003003003,333,69,0.01,46,3.0
+EVL,Nervous System,704,0.4215568862275449,1670,272,0.01,46,3.5
+EVL,Notochord,488,0.29221556886227545,1670,272,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,225,0.3652597402597403,616,100,0.01,46,3.5
+Proliferative Like Cell,Notochord,224,0.5125858123569794,437,69,0.01,46,3.5
+Presumptive Mesoderm,Nervous System,174,0.4943181818181818,352,47,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,172,0.2792207792207792,616,100,0.01,46,3.5
+EVL,Forebrain,115,0.0688622754491018,1670,272,0.01,46,3.5
+EVL,Somite,106,0.06347305389221557,1670,272,0.01,46,3.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",84,0.2441860465116279,344,29,0.01,46,3.5
+Proliferative Like Cell,Nervous System,82,0.18764302059496568,437,69,0.01,46,3.5
+EVL,Spinal Cord Dorsal Region,66,0.03952095808383234,1670,272,0.01,46,3.5
+Hypoblast,Notochord,60,0.4166666666666667,144,24,0.01,46,3.5
+Yolk Syncytial Layer,Hatching Gland,57,0.16569767441860464,344,29,0.01,46,3.5
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",56,0.16279069767441862,344,29,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,55,0.08928571428571429,616,100,0.01,46,3.5
+Yolk Syncytial Layer,Forebrain,54,0.1569767441860465,344,29,0.01,46,3.5
+Presumptive Mesoderm,Forebrain,53,0.15056818181818182,352,47,0.01,46,3.5
+Proliferative Like Cell,Spinal Cord Dorsal Region,50,0.11441647597254005,437,69,0.01,46,3.5
+Hypoblast,Nervous System,49,0.3402777777777778,144,24,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,43,0.0698051948051948,616,100,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,40,0.06493506493506493,616,100,0.01,46,3.5
+EVL,Neural Crest,39,0.023353293413173652,1670,272,0.01,46,3.5
+Margin,Nervous System,38,0.31666666666666665,120,22,0.01,46,3.5
+EVL,Anterior Erythroid Lineage Cell,38,0.022754491017964073,1670,272,0.01,46,3.5
+EVL,Angioblastic Mesenchymal Cell,37,0.02215568862275449,1670,272,0.01,46,3.5
+Presumptive Mesoderm,Notochord,35,0.09943181818181818,352,47,0.01,46,3.5
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,33,0.09593023255813954,344,29,0.01,46,3.5
+Proliferative Like Cell,Epidermis,28,0.06407322654462243,437,69,0.01,46,3.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,26,0.0755813953488372,344,29,0.01,46,3.5
+Margin,Anterior Erythroid Lineage Cell,24,0.2,120,22,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,22,0.03571428571428571,616,100,0.01,46,3.5
+Proliferative Like Cell,Somite,20,0.04576659038901602,437,69,0.01,46,3.5
+EVL,Epidermis,20,0.011976047904191617,1670,272,0.01,46,3.5
+EVL,Fast Muscle Cell,18,0.010778443113772455,1670,272,0.01,46,3.5
+Margin,Forebrain,17,0.14166666666666666,120,22,0.01,46,3.5
+Presumptive Mesoderm,Pronephros,17,0.048295454545454544,352,47,0.01,46,3.5
+Margin,"Musculature System, Yolk Syncytial Layer",17,0.14166666666666666,120,22,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",15,0.024350649350649352,616,100,0.01,46,3.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,13,0.0377906976744186,344,29,0.01,46,3.5
+Yolk Syncytial Layer,Pronephros,13,0.0377906976744186,344,29,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,13,0.021103896103896104,616,100,0.01,46,3.5
+Margin,Epidermis,13,0.10833333333333334,120,22,0.01,46,3.5
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",12,0.03409090909090909,352,47,0.01,46,3.5
+Hypoblast,Somite,11,0.0763888888888889,144,24,0.01,46,3.5
+Presumptive Mesoderm,Pigment Cell,11,0.03125,352,47,0.01,46,3.5
+EVL,Pronephros,10,0.005988023952095809,1670,272,0.01,46,3.5
+Proliferative Like Cell,Fast Muscle Cell,10,0.02288329519450801,437,69,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,10,0.016233766233766232,616,100,0.01,46,3.5
+EVL,Eye,9,0.005389221556886228,1670,272,0.01,46,3.5
+Hypoblast,Fast Muscle Cell,9,0.0625,144,24,0.01,46,3.5
+Presumptive Mesoderm,Neural Crest,9,0.02556818181818182,352,47,0.01,46,3.5
+Presumptive Mesoderm,Somite,8,0.022727272727272728,352,47,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,8,0.012987012987012988,616,100,0.01,46,3.5
+EVL,Spinal Cord Ventral Region,8,0.004790419161676647,1670,272,0.01,46,3.5
+Presumptive Mesoderm,Epidermis,8,0.022727272727272728,352,47,0.01,46,3.5
+Margin,Hatching Gland,7,0.058333333333333334,120,22,0.01,46,3.5
+Hypoblast,Anterior Erythroid Lineage Cell,7,0.04861111111111111,144,24,0.01,46,3.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,7,0.016018306636155607,437,69,0.01,46,3.5
+Proliferative Like Cell,Myotome,7,0.016018306636155607,437,69,0.01,46,3.5
+Presumptive Mesoderm,Myotome,7,0.019886363636363636,352,47,0.01,46,3.5
+Hypoblast,Pronephros,7,0.04861111111111111,144,24,0.01,46,3.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,6,0.017045454545454544,352,47,0.01,46,3.5
+Presumptive Mesoderm,Spinal Cord Dorsal Region,6,0.017045454545454544,352,47,0.01,46,3.5
+EVL,Spinal Cord Anterior Region,6,0.003592814371257485,1670,272,0.01,46,3.5
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,5,0.014204545454545454,352,47,0.01,46,3.5
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,5,0.011441647597254004,437,69,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,5,0.008116883116883116,616,100,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,4,0.006493506493506494,616,100,0.01,46,3.5
+EVL,Myotome,4,0.0023952095808383233,1670,272,0.01,46,3.5
+Yolk Syncytial Layer,Neural Crest,3,0.00872093023255814,344,29,0.01,46,3.5
+Yolk Syncytial Layer,Epidermis,3,0.00872093023255814,344,29,0.01,46,3.5
+Proliferative Like Cell,Pronephros,2,0.004576659038901602,437,69,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,2,0.003246753246753247,616,100,0.01,46,3.5
+Proliferative Like Cell,Neural Crest,2,0.004576659038901602,437,69,0.01,46,3.5
+Margin,Erythroid Lineage Cell,2,0.016666666666666666,120,22,0.01,46,3.5
+Yolk Syncytial Layer,Nervous System,1,0.0029069767441860465,344,29,0.01,46,3.5
+EVL,"Musculature System, Yolk Syncytial Layer",1,0.0005988023952095808,1670,272,0.01,46,3.5
+Hypoblast,Spinal Cord Dorsal Region,1,0.006944444444444444,144,24,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,1,0.0016233766233766235,616,100,0.01,46,3.5
+Margin,Pronephros,1,0.008333333333333333,120,22,0.01,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,1,0.0016233766233766235,616,100,0.01,46,3.5
+Presumptive Mesoderm,Hatching Gland,1,0.002840909090909091,352,47,0.01,46,3.5
+Margin,Angioblastic Mesenchymal Cell,1,0.008333333333333333,120,22,0.01,46,3.5
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,1,0.0029069767441860465,344,29,0.01,46,3.5
+EVL,Erythroid Lineage Cell,1,0.0005988023952095808,1670,272,0.01,46,3.5
+EVL,Nervous System,939,0.4023136246786632,2334,272,0.01,46,4.0
+EVL,Spinal Cord Dorsal Region,303,0.12982005141388175,2334,272,0.01,46,4.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",246,0.5478841870824054,449,29,0.01,46,4.0
+EVL,Notochord,220,0.09425878320479864,2334,272,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,218,0.24885844748858446,876,100,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",216,0.2465753424657534,876,100,0.01,46,4.0
+Presumptive Mesoderm,Nervous System,213,0.44282744282744285,481,47,0.01,46,4.0
+Proliferative Like Cell,Pronephros,204,0.3148148148148148,648,69,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,162,0.18493150684931506,876,100,0.01,46,4.0
+EVL,Pronephros,158,0.0676949443016281,2334,272,0.01,46,4.0
+EVL,Fast Muscle Cell,156,0.06683804627249357,2334,272,0.01,46,4.0
+EVL,"Musculature System, Yolk Syncytial Layer",122,0.05227077977720651,2334,272,0.01,46,4.0
+EVL,Myotome,105,0.04498714652956298,2334,272,0.01,46,4.0
+EVL,Forebrain,104,0.044558697514995714,2334,272,0.01,46,4.0
+Proliferative Like Cell,Spinal Cord Dorsal Region,100,0.15432098765432098,648,69,0.01,46,4.0
+Proliferative Like Cell,Nervous System,98,0.15123456790123457,648,69,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,98,0.11187214611872145,876,100,0.01,46,4.0
+Proliferative Like Cell,Myotome,95,0.14660493827160495,648,69,0.01,46,4.0
+EVL,Spinal Cord Ventral Region,92,0.03941730934018852,2334,272,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,77,0.08789954337899543,876,100,0.01,46,4.0
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",74,0.15384615384615385,481,47,0.01,46,4.0
+Margin,Nervous System,70,0.41420118343195267,169,22,0.01,46,4.0
+Margin,"Musculature System, Yolk Syncytial Layer",68,0.40236686390532544,169,22,0.01,46,4.0
+Proliferative Like Cell,Fast Muscle Cell,54,0.08333333333333333,648,69,0.01,46,4.0
+Yolk Syncytial Layer,Forebrain,52,0.11581291759465479,449,29,0.01,46,4.0
+Yolk Syncytial Layer,Hatching Gland,51,0.11358574610244988,449,29,0.01,46,4.0
+Hypoblast,Nervous System,50,0.25380710659898476,197,24,0.01,46,4.0
+Presumptive Mesoderm,Pigment Cell,48,0.0997920997920998,481,47,0.01,46,4.0
+Hypoblast,Fast Muscle Cell,45,0.22842639593908629,197,24,0.01,46,4.0
+Presumptive Mesoderm,Forebrain,43,0.0893970893970894,481,47,0.01,46,4.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,43,0.0957683741648107,449,29,0.01,46,4.0
+Yolk Syncytial Layer,Pronephros,41,0.09131403118040089,449,29,0.01,46,4.0
+EVL,Spinal Cord Anterior Region,40,0.01713796058269066,2334,272,0.01,46,4.0
+Hypoblast,Pronephros,38,0.19289340101522842,197,24,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,33,0.03767123287671233,876,100,0.01,46,4.0
+Proliferative Like Cell,Notochord,32,0.04938271604938271,648,69,0.01,46,4.0
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",31,0.047839506172839504,648,69,0.01,46,4.0
+EVL,Anterior Erythroid Lineage Cell,25,0.010711225364181662,2334,272,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,24,0.0273972602739726,876,100,0.01,46,4.0
+Presumptive Mesoderm,Pronephros,24,0.0498960498960499,481,47,0.01,46,4.0
+Hypoblast,"Musculature System, Yolk Syncytial Layer",23,0.116751269035533,197,24,0.01,46,4.0
+Proliferative Like Cell,Spinal Cord Ventral Region,22,0.033950617283950615,648,69,0.01,46,4.0
+Presumptive Mesoderm,Notochord,20,0.04158004158004158,481,47,0.01,46,4.0
+Hypoblast,Notochord,20,0.10152284263959391,197,24,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,19,0.021689497716894976,876,100,0.01,46,4.0
+Presumptive Mesoderm,Spinal Cord Dorsal Region,18,0.037422037422037424,481,47,0.01,46,4.0
+EVL,Pigment Cell,18,0.007712082262210797,2334,272,0.01,46,4.0
+EVL,Somite,17,0.00728363324764353,2334,272,0.01,46,4.0
+EVL,Epidermis,17,0.00728363324764353,2334,272,0.01,46,4.0
+Yolk Syncytial Layer,Nervous System,14,0.031180400890868598,449,29,0.01,46,4.0
+EVL,Eye,13,0.005569837189374464,2334,272,0.01,46,4.0
+Margin,Forebrain,12,0.07100591715976332,169,22,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,11,0.012557077625570776,876,100,0.01,46,4.0
+Presumptive Mesoderm,Eye,9,0.018711018711018712,481,47,0.01,46,4.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,9,0.018711018711018712,481,47,0.01,46,4.0
+Hypoblast,Spinal Cord Dorsal Region,9,0.04568527918781726,197,24,0.01,46,4.0
+Margin,Anterior Erythroid Lineage Cell,8,0.047337278106508875,169,22,0.01,46,4.0
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,7,0.010802469135802469,648,69,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,7,0.007990867579908675,876,100,0.01,46,4.0
+Hypoblast,Spinal Cord Ventral Region,7,0.03553299492385787,197,24,0.01,46,4.0
+Margin,Pigment Cell,7,0.04142011834319527,169,22,0.01,46,4.0
+Presumptive Mesoderm,Somite,6,0.012474012474012475,481,47,0.01,46,4.0
+Presumptive Mesoderm,Myotome,6,0.012474012474012475,481,47,0.01,46,4.0
+EVL,Hatching Gland,5,0.0021422450728363325,2334,272,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,5,0.005707762557077625,876,100,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pigment Cell,4,0.0045662100456621,876,100,0.01,46,4.0
+Presumptive Mesoderm,Fast Muscle Cell,4,0.008316008316008316,481,47,0.01,46,4.0
+Presumptive Mesoderm,Spinal Cord Ventral Region,4,0.008316008316008316,481,47,0.01,46,4.0
+Proliferative Like Cell,Epidermis,3,0.004629629629629629,648,69,0.01,46,4.0
+Hypoblast,Eye,3,0.015228426395939087,197,24,0.01,46,4.0
+Margin,Myotome,3,0.01775147928994083,169,22,0.01,46,4.0
+Presumptive Mesoderm,Hatching Gland,3,0.006237006237006237,481,47,0.01,46,4.0
+Proliferative Like Cell,Somite,2,0.0030864197530864196,648,69,0.01,46,4.0
+Yolk Syncytial Layer,Eye,2,0.004454342984409799,449,29,0.01,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,2,0.00228310502283105,876,100,0.01,46,4.0
+Hypoblast,Anterior Erythroid Lineage Cell,2,0.01015228426395939,197,24,0.01,46,4.0
+Margin,Hatching Gland,1,0.005917159763313609,169,22,0.01,46,4.0
+EVL,EVL,272,1.0,272,272,0.03,46,0.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",100,1.0,100,100,0.03,46,0.0
+Proliferative Like Cell,Proliferative Like Cell,69,1.0,69,69,0.03,46,0.0
+Presumptive Mesoderm,Presumptive Mesoderm,47,1.0,47,47,0.03,46,0.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,29,1.0,29,29,0.03,46,0.0
+Hypoblast,Hypoblast,24,1.0,24,24,0.03,46,0.0
+Margin,Margin,22,1.0,22,22,0.03,46,0.0
+EVL,Notochord,70,0.19662921348314608,356,272,0.03,46,0.5
+EVL,EVL,65,0.18258426966292135,356,272,0.03,46,0.5
+EVL,"Paraxial Mesoderm, Neural Keel",56,0.15730337078651685,356,272,0.03,46,0.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,56,1.0,56,29,0.03,46,0.5
+EVL,Proliferative Like Cell,49,0.13764044943820225,356,272,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",35,0.2517985611510791,139,100,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",32,0.2302158273381295,139,100,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,31,0.22302158273381295,139,100,0.03,46,0.5
+EVL,Periderm,27,0.07584269662921349,356,272,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",26,0.18705035971223022,139,100,0.03,46,0.5
+Presumptive Mesoderm,Yolk Syncytial Layer,26,0.4,65,47,0.03,46,0.5
+EVL,"Segmental Plate, Tail Bud",25,0.0702247191011236,356,272,0.03,46,0.5
+EVL,"Presumptive Mesoderm, Presumptive Ectoderm",25,0.0702247191011236,356,272,0.03,46,0.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",24,0.2727272727272727,88,69,0.03,46,0.5
+Proliferative Like Cell,Notochord,23,0.26136363636363635,88,69,0.03,46,0.5
+EVL,Presumptive Mesoderm,22,0.06179775280898876,356,272,0.03,46,0.5
+Proliferative Like Cell,"Presumptive Mesoderm, Presumptive Ectoderm",14,0.1590909090909091,88,69,0.03,46,0.5
+Margin,Yolk Syncytial Layer,12,0.46153846153846156,26,22,0.03,46,0.5
+Proliferative Like Cell,Proliferative Like Cell,12,0.13636363636363635,88,69,0.03,46,0.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",10,0.11363636363636363,88,69,0.03,46,0.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",10,0.15384615384615385,65,47,0.03,46,0.5
+EVL,Yolk Syncytial Layer,9,0.025280898876404494,356,272,0.03,46,0.5
+Hypoblast,"Segmental Plate, Tail Bud",9,0.2903225806451613,31,24,0.03,46,0.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",9,0.13846153846153847,65,47,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,9,0.06474820143884892,139,100,0.03,46,0.5
+EVL,Anterior Neural Keel,7,0.019662921348314606,356,272,0.03,46,0.5
+Hypoblast,"Presumptive Mesoderm, Presumptive Ectoderm",7,0.22580645161290322,31,24,0.03,46,0.5
+Hypoblast,Notochord,7,0.22580645161290322,31,24,0.03,46,0.5
+Presumptive Mesoderm,Presumptive Mesoderm,5,0.07692307692307693,65,47,0.03,46,0.5
+Presumptive Mesoderm,Periderm,4,0.06153846153846154,65,47,0.03,46,0.5
+Presumptive Mesoderm,Notochord,4,0.06153846153846154,65,47,0.03,46,0.5
+Margin,"Segmental Plate, Tail Bud",4,0.15384615384615385,26,22,0.03,46,0.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",3,0.0967741935483871,31,24,0.03,46,0.5
+Presumptive Mesoderm,Anterior Neural Keel,3,0.046153846153846156,65,47,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Presumptive Mesoderm,3,0.02158273381294964,139,100,0.03,46,0.5
+Proliferative Like Cell,Anterior Neural Keel,3,0.03409090909090909,88,69,0.03,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,3,0.02158273381294964,139,100,0.03,46,0.5
+Margin,Margin,3,0.11538461538461539,26,22,0.03,46,0.5
+Margin,Presumptive Mesoderm,3,0.11538461538461539,26,22,0.03,46,0.5
+Presumptive Mesoderm,"Presumptive Mesoderm, Presumptive Ectoderm",3,0.046153846153846156,65,47,0.03,46,0.5
+Hypoblast,Anterior Neural Keel,2,0.06451612903225806,31,24,0.03,46,0.5
+Margin,Periderm,2,0.07692307692307693,26,22,0.03,46,0.5
+EVL,Hypoblast,1,0.0028089887640449437,356,272,0.03,46,0.5
+Hypoblast,Proliferative Like Cell,1,0.03225806451612903,31,24,0.03,46,0.5
+Hypoblast,Presumptive Mesoderm,1,0.03225806451612903,31,24,0.03,46,0.5
+Hypoblast,Periderm,1,0.03225806451612903,31,24,0.03,46,0.5
+Margin,"Paraxial Mesoderm, Neural Keel",1,0.038461538461538464,26,22,0.03,46,0.5
+Presumptive Mesoderm,Proliferative Like Cell,1,0.015384615384615385,65,47,0.03,46,0.5
+Margin,Notochord,1,0.038461538461538464,26,22,0.03,46,0.5
+Proliferative Like Cell,Presumptive Mesoderm,1,0.011363636363636364,88,69,0.03,46,0.5
+Proliferative Like Cell,Periderm,1,0.011363636363636364,88,69,0.03,46,0.5
+EVL,"Segmental Plate, Tail Bud",198,0.41509433962264153,477,272,0.03,46,1.0
+EVL,Periderm,110,0.23060796645702306,477,272,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",104,0.5652173913043478,184,100,0.03,46,1.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,91,0.978494623655914,93,29,0.03,46,1.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",80,0.64,125,69,0.03,46,1.0
+EVL,"Paraxial Mesoderm, Neural Keel",72,0.1509433962264151,477,272,0.03,46,1.0
+EVL,Notochord,68,0.14255765199161424,477,272,0.03,46,1.0
+Presumptive Mesoderm,Yolk Syncytial Layer,40,0.43956043956043955,91,47,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",25,0.1358695652173913,184,100,0.03,46,1.0
+EVL,Yolk Syncytial Layer,24,0.050314465408805034,477,272,0.03,46,1.0
+Proliferative Like Cell,Notochord,23,0.184,125,69,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,23,0.125,184,100,0.03,46,1.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",21,0.23076923076923078,91,47,0.03,46,1.0
+Hypoblast,"Segmental Plate, Tail Bud",20,0.46511627906976744,43,24,0.03,46,1.0
+Margin,Yolk Syncytial Layer,18,0.5142857142857142,35,22,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,16,0.08695652173913043,184,100,0.03,46,1.0
+Presumptive Mesoderm,Periderm,11,0.12087912087912088,91,47,0.03,46,1.0
+Margin,"Segmental Plate, Tail Bud",11,0.3142857142857143,35,22,0.03,46,1.0
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",9,0.072,125,69,0.03,46,1.0
+Presumptive Mesoderm,Notochord,8,0.08791208791208792,91,47,0.03,46,1.0
+Hypoblast,Periderm,8,0.18604651162790697,43,24,0.03,46,1.0
+Proliferative Like Cell,Periderm,7,0.056,125,69,0.03,46,1.0
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",7,0.07692307692307693,91,47,0.03,46,1.0
+Hypoblast,Notochord,6,0.13953488372093023,43,24,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,6,0.03260869565217391,184,100,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,5,0.02717391304347826,184,100,0.03,46,1.0
+Margin,Periderm,5,0.14285714285714285,35,22,0.03,46,1.0
+Presumptive Mesoderm,Anterior Neural Keel,4,0.04395604395604396,91,47,0.03,46,1.0
+EVL,Anterior Neural Keel,4,0.008385744234800839,477,272,0.03,46,1.0
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.09302325581395349,43,24,0.03,46,1.0
+Proliferative Like Cell,Yolk Syncytial Layer,4,0.032,125,69,0.03,46,1.0
+Hypoblast,Yolk Syncytial Layer,3,0.06976744186046512,43,24,0.03,46,1.0
+Yolk Syncytial Layer,Polster,2,0.021505376344086023,93,29,0.03,46,1.0
+Hypoblast,Anterior Neural Keel,2,0.046511627906976744,43,24,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,2,0.010869565217391304,184,100,0.03,46,1.0
+EVL,Adaxial Cell,1,0.0020964360587002098,477,272,0.03,46,1.0
+Margin,Polster,1,0.02857142857142857,35,22,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,1,0.005434782608695652,184,100,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,1,0.005434782608695652,184,100,0.03,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,1,0.005434782608695652,184,100,0.03,46,1.0
+Proliferative Like Cell,Adaxial Cell,1,0.008,125,69,0.03,46,1.0
+Proliferative Like Cell,Anterior Neural Keel,1,0.008,125,69,0.03,46,1.0
+EVL,"Segmental Plate, Tail Bud",265,0.40706605222734255,651,272,0.03,46,1.5
+EVL,Periderm,171,0.2626728110599078,651,272,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",117,0.41935483870967744,279,100,0.03,46,1.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",115,0.6084656084656085,189,69,0.03,46,1.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,73,0.4866666666666667,150,29,0.03,46,1.5
+EVL,Adaxial Cell,67,0.10291858678955453,651,272,0.03,46,1.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",56,0.37333333333333335,150,29,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,52,0.1863799283154122,279,100,0.03,46,1.5
+EVL,Neural Rod,47,0.07219662058371736,651,272,0.03,46,1.5
+Presumptive Mesoderm,Yolk Syncytial Layer,42,0.3333333333333333,126,47,0.03,46,1.5
+EVL,Notochord,35,0.053763440860215055,651,272,0.03,46,1.5
+Presumptive Mesoderm,Periderm,31,0.24603174603174602,126,47,0.03,46,1.5
+EVL,"Paraxial Mesoderm, Neural Keel",28,0.043010752688172046,651,272,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,27,0.0967741935483871,279,100,0.03,46,1.5
+Proliferative Like Cell,Adaxial Cell,27,0.14285714285714285,189,69,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,23,0.08243727598566308,279,100,0.03,46,1.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",21,0.16666666666666666,126,47,0.03,46,1.5
+Yolk Syncytial Layer,Polster,20,0.13333333333333333,150,29,0.03,46,1.5
+EVL,Yolk Syncytial Layer,20,0.030721966205837174,651,272,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,20,0.07168458781362007,279,100,0.03,46,1.5
+Proliferative Like Cell,Notochord,17,0.08994708994708994,189,69,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,16,0.05734767025089606,279,100,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,16,0.05734767025089606,279,100,0.03,46,1.5
+Hypoblast,"Segmental Plate, Tail Bud",16,0.27586206896551724,58,24,0.03,46,1.5
+Proliferative Like Cell,Periderm,14,0.07407407407407407,189,69,0.03,46,1.5
+Margin,Periderm,14,0.3181818181818182,44,22,0.03,46,1.5
+Margin,Yolk Syncytial Layer,13,0.29545454545454547,44,22,0.03,46,1.5
+EVL,Somite,12,0.018433179723502304,651,272,0.03,46,1.5
+Margin,"Segmental Plate, Tail Bud",11,0.25,44,22,0.03,46,1.5
+Presumptive Mesoderm,Adaxial Cell,10,0.07936507936507936,126,47,0.03,46,1.5
+Proliferative Like Cell,Neural Rod,10,0.05291005291005291,189,69,0.03,46,1.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",9,0.07142857142857142,126,47,0.03,46,1.5
+Hypoblast,Adaxial Cell,9,0.15517241379310345,58,24,0.03,46,1.5
+Hypoblast,Neural Rod,9,0.15517241379310345,58,24,0.03,46,1.5
+Hypoblast,Yolk Syncytial Layer,9,0.15517241379310345,58,24,0.03,46,1.5
+Hypoblast,Notochord,6,0.10344827586206896,58,24,0.03,46,1.5
+Presumptive Mesoderm,Polster,6,0.047619047619047616,126,47,0.03,46,1.5
+Hypoblast,Periderm,6,0.10344827586206896,58,24,0.03,46,1.5
+EVL,Optic Vesicle,4,0.006144393241167435,651,272,0.03,46,1.5
+Margin,Polster,4,0.09090909090909091,44,22,0.03,46,1.5
+Proliferative Like Cell,Yolk Syncytial Layer,4,0.021164021164021163,189,69,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",3,0.010752688172043012,279,100,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,3,0.010752688172043012,279,100,0.03,46,1.5
+Presumptive Mesoderm,Notochord,3,0.023809523809523808,126,47,0.03,46,1.5
+EVL,Anterior Neural Keel,2,0.0030721966205837174,651,272,0.03,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,2,0.007168458781362007,279,100,0.03,46,1.5
+Presumptive Mesoderm,Somite,2,0.015873015873015872,126,47,0.03,46,1.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",2,0.034482758620689655,58,24,0.03,46,1.5
+Margin,Adaxial Cell,1,0.022727272727272728,44,22,0.03,46,1.5
+Hypoblast,Somite,1,0.017241379310344827,58,24,0.03,46,1.5
+Margin,Neural Rod,1,0.022727272727272728,44,22,0.03,46,1.5
+Presumptive Mesoderm,Anterior Neural Keel,1,0.007936507936507936,126,47,0.03,46,1.5
+Presumptive Mesoderm,Neural Rod,1,0.007936507936507936,126,47,0.03,46,1.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",1,0.005291005291005291,189,69,0.03,46,1.5
+Proliferative Like Cell,Somite,1,0.005291005291005291,189,69,0.03,46,1.5
+Yolk Syncytial Layer,Periderm,1,0.006666666666666667,150,29,0.03,46,1.5
+EVL,Adaxial Cell,280,0.31927023945267957,877,272,0.03,46,2.0
+EVL,Neural Rod,253,0.28848346636259975,877,272,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,161,0.44722222222222224,360,100,0.03,46,2.0
+Proliferative Like Cell,Adaxial Cell,121,0.491869918699187,246,69,0.03,46,2.0
+EVL,"Segmental Plate, Tail Bud",115,0.13112884834663627,877,272,0.03,46,2.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",95,0.43577981651376146,218,29,0.03,46,2.0
+EVL,Periderm,82,0.09350057012542759,877,272,0.03,46,2.0
+Yolk Syncytial Layer,Polster,75,0.3440366972477064,218,29,0.03,46,2.0
+EVL,Somite,74,0.08437856328392246,877,272,0.03,46,2.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",67,0.27235772357723576,246,69,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,61,0.16944444444444445,360,100,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,53,0.14722222222222223,360,100,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",49,0.1361111111111111,360,100,0.03,46,2.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,41,0.18807339449541285,218,29,0.03,46,2.0
+Presumptive Mesoderm,Neural Rod,38,0.2159090909090909,176,47,0.03,46,2.0
+EVL,Notochord,36,0.04104903078677309,877,272,0.03,46,2.0
+Presumptive Mesoderm,Polster,35,0.19886363636363635,176,47,0.03,46,2.0
+Presumptive Mesoderm,Adaxial Cell,28,0.1590909090909091,176,47,0.03,46,2.0
+Presumptive Mesoderm,Periderm,27,0.1534090909090909,176,47,0.03,46,2.0
+Proliferative Like Cell,Neural Rod,26,0.10569105691056911,246,69,0.03,46,2.0
+Hypoblast,Neural Rod,25,0.33783783783783783,74,24,0.03,46,2.0
+Margin,Periderm,24,0.35294117647058826,68,22,0.03,46,2.0
+Hypoblast,Adaxial Cell,22,0.2972972972972973,74,24,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,22,0.06111111111111111,360,100,0.03,46,2.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",21,0.11931818181818182,176,47,0.03,46,2.0
+EVL,Optic Vesicle,16,0.018244013683010263,877,272,0.03,46,2.0
+Margin,Polster,14,0.20588235294117646,68,22,0.03,46,2.0
+Proliferative Like Cell,Somite,14,0.056910569105691054,246,69,0.03,46,2.0
+Proliferative Like Cell,Notochord,14,0.056910569105691054,246,69,0.03,46,2.0
+Presumptive Mesoderm,Yolk Syncytial Layer,12,0.06818181818181818,176,47,0.03,46,2.0
+Margin,Neural Rod,9,0.1323529411764706,68,22,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,9,0.025,360,100,0.03,46,2.0
+EVL,Polster,8,0.009122006841505131,877,272,0.03,46,2.0
+Margin,Optic Vesicle,7,0.10294117647058823,68,22,0.03,46,2.0
+Presumptive Mesoderm,Somite,7,0.03977272727272727,176,47,0.03,46,2.0
+Yolk Syncytial Layer,Periderm,7,0.03211009174311927,218,29,0.03,46,2.0
+Hypoblast,Notochord,7,0.0945945945945946,74,24,0.03,46,2.0
+Margin,"Segmental Plate, Tail Bud",7,0.10294117647058823,68,22,0.03,46,2.0
+Hypoblast,"Segmental Plate, Tail Bud",6,0.08108108108108109,74,24,0.03,46,2.0
+EVL,Yolk Syncytial Layer,6,0.0068415051311288486,877,272,0.03,46,2.0
+Hypoblast,Somite,5,0.06756756756756757,74,24,0.03,46,2.0
+Hypoblast,Periderm,5,0.06756756756756757,74,24,0.03,46,2.0
+Presumptive Mesoderm,Notochord,5,0.028409090909090908,176,47,0.03,46,2.0
+Margin,Adaxial Cell,4,0.058823529411764705,68,22,0.03,46,2.0
+EVL,Erythroid Lineage Cell,3,0.0034207525655644243,877,272,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,3,0.008333333333333333,360,100,0.03,46,2.0
+Presumptive Mesoderm,Optic Vesicle,2,0.011363636363636364,176,47,0.03,46,2.0
+Proliferative Like Cell,Neural Crest,2,0.008130081300813009,246,69,0.03,46,2.0
+Hypoblast,Polster,2,0.02702702702702703,74,24,0.03,46,2.0
+EVL,"Paraxial Mesoderm, Neural Keel",2,0.002280501710376283,877,272,0.03,46,2.0
+EVL,Neural Crest,1,0.0011402508551881414,877,272,0.03,46,2.0
+EVL,Anterior Neural Keel,1,0.0011402508551881414,877,272,0.03,46,2.0
+Hypoblast,Optic Vesicle,1,0.013513513513513514,74,24,0.03,46,2.0
+Hypoblast,Erythroid Lineage Cell,1,0.013513513513513514,74,24,0.03,46,2.0
+Margin,Erythroid Lineage Cell,1,0.014705882352941176,68,22,0.03,46,2.0
+Margin,Forebrain,1,0.014705882352941176,68,22,0.03,46,2.0
+Presumptive Mesoderm,Neural Crest,1,0.005681818181818182,176,47,0.03,46,2.0
+Margin,Yolk Syncytial Layer,1,0.014705882352941176,68,22,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,1,0.002777777777777778,360,100,0.03,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,1,0.002777777777777778,360,100,0.03,46,2.0
+Proliferative Like Cell,Yolk Syncytial Layer,1,0.0040650406504065045,246,69,0.03,46,2.0
+Proliferative Like Cell,Periderm,1,0.0040650406504065045,246,69,0.03,46,2.0
+EVL,Adaxial Cell,274,0.24796380090497738,1105,272,0.03,46,2.5
+EVL,Neural Rod,252,0.22805429864253393,1105,272,0.03,46,2.5
+EVL,Somite,203,0.18371040723981902,1105,272,0.03,46,2.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",143,0.5088967971530249,281,29,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,142,0.31981981981981983,444,100,0.03,46,2.5
+EVL,Notochord,121,0.10950226244343891,1105,272,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,95,0.21396396396396397,444,100,0.03,46,2.5
+Proliferative Like Cell,Notochord,94,0.2974683544303797,316,69,0.03,46,2.5
+EVL,"Segmental Plate, Tail Bud",87,0.07873303167420814,1105,272,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,76,0.17117117117117117,444,100,0.03,46,2.5
+Proliferative Like Cell,Adaxial Cell,74,0.23417721518987342,316,69,0.03,46,2.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,55,0.19572953736654805,281,29,0.03,46,2.5
+Yolk Syncytial Layer,Polster,54,0.19217081850533807,281,29,0.03,46,2.5
+EVL,Neural Crest,50,0.04524886877828054,1105,272,0.03,46,2.5
+Proliferative Like Cell,Somite,46,0.14556962025316456,316,69,0.03,46,2.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",36,0.11392405063291139,316,69,0.03,46,2.5
+Presumptive Mesoderm,Somite,36,0.17142857142857143,210,47,0.03,46,2.5
+EVL,Forebrain,35,0.03167420814479638,1105,272,0.03,46,2.5
+Presumptive Mesoderm,Neural Crest,33,0.15714285714285714,210,47,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,31,0.06981981981981981,444,100,0.03,46,2.5
+Presumptive Mesoderm,Neural Rod,26,0.12380952380952381,210,47,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,23,0.0518018018018018,444,100,0.03,46,2.5
+Proliferative Like Cell,Neural Crest,23,0.07278481012658228,316,69,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,23,0.0518018018018018,444,100,0.03,46,2.5
+EVL,Erythroid Lineage Cell,22,0.019909502262443438,1105,272,0.03,46,2.5
+EVL,Optic Vesicle,22,0.019909502262443438,1105,272,0.03,46,2.5
+Hypoblast,Neural Rod,22,0.24444444444444444,90,24,0.03,46,2.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,21,0.1,210,47,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,19,0.04279279279279279,444,100,0.03,46,2.5
+Presumptive Mesoderm,Notochord,19,0.09047619047619047,210,47,0.03,46,2.5
+Hypoblast,Somite,18,0.2,90,24,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",18,0.04054054054054054,444,100,0.03,46,2.5
+Presumptive Mesoderm,Periderm,17,0.08095238095238096,210,47,0.03,46,2.5
+Margin,Forebrain,17,0.18478260869565216,92,22,0.03,46,2.5
+Proliferative Like Cell,Neural Rod,16,0.05063291139240506,316,69,0.03,46,2.5
+Presumptive Mesoderm,Polster,14,0.06666666666666667,210,47,0.03,46,2.5
+Margin,"Yolk Syncytial Layer, Periderm",13,0.14130434782608695,92,22,0.03,46,2.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",13,0.06190476190476191,210,47,0.03,46,2.5
+Proliferative Like Cell,Forebrain,13,0.04113924050632911,316,69,0.03,46,2.5
+Yolk Syncytial Layer,Forebrain,13,0.046263345195729534,281,29,0.03,46,2.5
+Margin,Erythroid Lineage Cell,13,0.14130434782608695,92,22,0.03,46,2.5
+EVL,Periderm,12,0.01085972850678733,1105,272,0.03,46,2.5
+Hypoblast,Adaxial Cell,12,0.13333333333333333,90,24,0.03,46,2.5
+Hypoblast,Notochord,11,0.12222222222222222,90,24,0.03,46,2.5
+Margin,Optic Vesicle,11,0.11956521739130435,92,22,0.03,46,2.5
+Presumptive Mesoderm,Forebrain,11,0.05238095238095238,210,47,0.03,46,2.5
+Yolk Syncytial Layer,Periderm,11,0.03914590747330961,281,29,0.03,46,2.5
+EVL,Nervous System,10,0.00904977375565611,1105,272,0.03,46,2.5
+EVL,Angioblastic Mesenchymal Cell,10,0.00904977375565611,1105,272,0.03,46,2.5
+Hypoblast,Neural Crest,10,0.1111111111111111,90,24,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,10,0.02252252252252252,444,100,0.03,46,2.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,9,0.028481012658227847,316,69,0.03,46,2.5
+Presumptive Mesoderm,Adaxial Cell,8,0.0380952380952381,210,47,0.03,46,2.5
+Margin,Neural Rod,7,0.07608695652173914,92,22,0.03,46,2.5
+Presumptive Mesoderm,Optic Vesicle,6,0.02857142857142857,210,47,0.03,46,2.5
+Hypoblast,"Segmental Plate, Tail Bud",6,0.06666666666666667,90,24,0.03,46,2.5
+Margin,Neural Crest,6,0.06521739130434782,92,22,0.03,46,2.5
+Proliferative Like Cell,Erythroid Lineage Cell,5,0.015822784810126583,316,69,0.03,46,2.5
+Margin,Hatching Gland,5,0.05434782608695652,92,22,0.03,46,2.5
+Margin,Polster,5,0.05434782608695652,92,22,0.03,46,2.5
+Margin,Periderm,5,0.05434782608695652,92,22,0.03,46,2.5
+Presumptive Mesoderm,Erythroid Lineage Cell,4,0.01904761904761905,210,47,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,4,0.009009009009009009,444,100,0.03,46,2.5
+EVL,Polster,3,0.0027149321266968325,1105,272,0.03,46,2.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,3,0.010676156583629894,281,29,0.03,46,2.5
+EVL,"Immature Eye, Midbrain",3,0.0027149321266968325,1105,272,0.03,46,2.5
+Margin,"Segmental Plate, Tail Bud",3,0.03260869565217391,92,22,0.03,46,2.5
+Margin,Angioblastic Mesenchymal Cell,3,0.03260869565217391,92,22,0.03,46,2.5
+Hypoblast,Forebrain,3,0.03333333333333333,90,24,0.03,46,2.5
+Hypoblast,"Neural Crest, Otic Vesicle",3,0.03333333333333333,90,24,0.03,46,2.5
+Margin,Notochord,3,0.03260869565217391,92,22,0.03,46,2.5
+Hypoblast,Nervous System,2,0.022222222222222223,90,24,0.03,46,2.5
+Hypoblast,Polster,2,0.022222222222222223,90,24,0.03,46,2.5
+EVL,"Neural Crest, Otic Vesicle",1,0.0009049773755656109,1105,272,0.03,46,2.5
+Presumptive Mesoderm,Nervous System,1,0.004761904761904762,210,47,0.03,46,2.5
+Margin,Adaxial Cell,1,0.010869565217391304,92,22,0.03,46,2.5
+Presumptive Mesoderm,Hatching Gland,1,0.004761904761904762,210,47,0.03,46,2.5
+Yolk Syncytial Layer,Neural Crest,1,0.0035587188612099642,281,29,0.03,46,2.5
+Yolk Syncytial Layer,Hatching Gland,1,0.0035587188612099642,281,29,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Yolk Syncytial Layer, Periderm",1,0.0022522522522522522,444,100,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,1,0.0022522522522522522,444,100,0.03,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Neural Crest, Otic Vesicle",1,0.0022522522522522522,444,100,0.03,46,2.5
+Hypoblast,Erythroid Lineage Cell,1,0.011111111111111112,90,24,0.03,46,2.5
+EVL,Notochord,350,0.2641509433962264,1325,272,0.03,46,3.0
+EVL,Somite,277,0.2090566037735849,1325,272,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,223,0.4084249084249084,546,100,0.03,46,3.0
+Proliferative Like Cell,Notochord,195,0.5038759689922481,387,69,0.03,46,3.0
+EVL,Nervous System,186,0.14037735849056604,1325,272,0.03,46,3.0
+EVL,Forebrain,159,0.12,1325,272,0.03,46,3.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",146,0.4147727272727273,352,29,0.03,46,3.0
+EVL,Neural Crest,135,0.1018867924528302,1325,272,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,120,0.21978021978021978,546,100,0.03,46,3.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,83,0.23579545454545456,352,29,0.03,46,3.0
+EVL,Angioblastic Mesenchymal Cell,82,0.061886792452830186,1325,272,0.03,46,3.0
+Presumptive Mesoderm,Neural Crest,82,0.33884297520661155,242,47,0.03,46,3.0
+Proliferative Like Cell,Somite,58,0.14987080103359174,387,69,0.03,46,3.0
+EVL,Erythroid Lineage Cell,52,0.03924528301886793,1325,272,0.03,46,3.0
+Proliferative Like Cell,Nervous System,49,0.12661498708010335,387,69,0.03,46,3.0
+Yolk Syncytial Layer,Hatching Gland,49,0.13920454545454544,352,29,0.03,46,3.0
+Presumptive Mesoderm,Notochord,47,0.19421487603305784,242,47,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,47,0.08608058608058608,546,100,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,40,0.07326007326007326,546,100,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,39,0.07142857142857142,546,100,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,38,0.0695970695970696,546,100,0.03,46,3.0
+Presumptive Mesoderm,Forebrain,36,0.1487603305785124,242,47,0.03,46,3.0
+EVL,Neural Rod,36,0.027169811320754716,1325,272,0.03,46,3.0
+Margin,Forebrain,36,0.3076923076923077,117,22,0.03,46,3.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,32,0.1322314049586777,242,47,0.03,46,3.0
+Hypoblast,Notochord,29,0.27884615384615385,104,24,0.03,46,3.0
+Proliferative Like Cell,Neural Crest,28,0.07235142118863049,387,69,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,26,0.047619047619047616,546,100,0.03,46,3.0
+Hypoblast,Neural Crest,25,0.2403846153846154,104,24,0.03,46,3.0
+Yolk Syncytial Layer,Erythroid Lineage Cell,25,0.07102272727272728,352,29,0.03,46,3.0
+EVL,Adaxial Cell,22,0.01660377358490566,1325,272,0.03,46,3.0
+Margin,Hatching Gland,21,0.1794871794871795,117,22,0.03,46,3.0
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,20,0.05167958656330749,387,69,0.03,46,3.0
+Proliferative Like Cell,Forebrain,19,0.04909560723514212,387,69,0.03,46,3.0
+Margin,Erythroid Lineage Cell,19,0.1623931623931624,117,22,0.03,46,3.0
+Presumptive Mesoderm,Somite,18,0.0743801652892562,242,47,0.03,46,3.0
+Hypoblast,Somite,17,0.16346153846153846,104,24,0.03,46,3.0
+Yolk Syncytial Layer,Forebrain,17,0.048295454545454544,352,29,0.03,46,3.0
+Yolk Syncytial Layer,Neural Crest,16,0.045454545454545456,352,29,0.03,46,3.0
+Hypoblast,Nervous System,15,0.14423076923076922,104,24,0.03,46,3.0
+Margin,Neural Crest,14,0.11965811965811966,117,22,0.03,46,3.0
+Margin,Angioblastic Mesenchymal Cell,12,0.10256410256410256,117,22,0.03,46,3.0
+EVL,"Segmental Plate, Tail Bud",10,0.007547169811320755,1325,272,0.03,46,3.0
+Presumptive Mesoderm,Nervous System,9,0.0371900826446281,242,47,0.03,46,3.0
+Proliferative Like Cell,Erythroid Lineage Cell,8,0.020671834625323,387,69,0.03,46,3.0
+Presumptive Mesoderm,Erythroid Lineage Cell,8,0.03305785123966942,242,47,0.03,46,3.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",8,0.022727272727272728,352,29,0.03,46,3.0
+Hypoblast,Angioblastic Mesenchymal Cell,7,0.0673076923076923,104,24,0.03,46,3.0
+Margin,Notochord,5,0.042735042735042736,117,22,0.03,46,3.0
+Margin,Nervous System,5,0.042735042735042736,117,22,0.03,46,3.0
+EVL,Anterior Erythroid Lineage Cell,4,0.0030188679245283017,1325,272,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,4,0.007326007326007326,546,100,0.03,46,3.0
+EVL,Epidermis,4,0.0030188679245283017,1325,272,0.03,46,3.0
+Hypoblast,Forebrain,4,0.038461538461538464,104,24,0.03,46,3.0
+Proliferative Like Cell,Adaxial Cell,4,0.0103359173126615,387,69,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,4,0.007326007326007326,546,100,0.03,46,3.0
+Proliferative Like Cell,Epidermis,4,0.0103359173126615,387,69,0.03,46,3.0
+Presumptive Mesoderm,"Immature Eye, Midbrain",4,0.01652892561983471,242,47,0.03,46,3.0
+EVL,"Neural Crest, Otic Vesicle",4,0.0030188679245283017,1325,272,0.03,46,3.0
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,3,0.008522727272727272,352,29,0.03,46,3.0
+Margin,"Yolk Syncytial Layer, Periderm",3,0.02564102564102564,117,22,0.03,46,3.0
+Yolk Syncytial Layer,Polster,3,0.008522727272727272,352,29,0.03,46,3.0
+EVL,"Immature Eye, Midbrain",2,0.0015094339622641509,1325,272,0.03,46,3.0
+Hypoblast,Erythroid Lineage Cell,2,0.019230769230769232,104,24,0.03,46,3.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",2,0.008264462809917356,242,47,0.03,46,3.0
+Hypoblast,"Neural Crest, Otic Vesicle",2,0.019230769230769232,104,24,0.03,46,3.0
+Hypoblast,Anterior Erythroid Lineage Cell,2,0.019230769230769232,104,24,0.03,46,3.0
+EVL,Optic Vesicle,1,0.0007547169811320754,1325,272,0.03,46,3.0
+Yolk Syncytial Layer,Notochord,1,0.002840909090909091,352,29,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Neural Crest, Otic Vesicle",1,0.0018315018315018315,546,100,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Hatching Gland,1,0.0018315018315018315,546,100,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,1,0.0018315018315018315,546,100,0.03,46,3.0
+Yolk Syncytial Layer,Pronephros,1,0.002840909090909091,352,29,0.03,46,3.0
+Presumptive Mesoderm,Hatching Gland,1,0.004132231404958678,242,47,0.03,46,3.0
+Presumptive Mesoderm,Pronephros,1,0.004132231404958678,242,47,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,1,0.0018315018315018315,546,100,0.03,46,3.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,1,0.004132231404958678,242,47,0.03,46,3.0
+Proliferative Like Cell,Myotome,1,0.002583979328165375,387,69,0.03,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,1,0.0018315018315018315,546,100,0.03,46,3.0
+Presumptive Mesoderm,Neural Rod,1,0.004132231404958678,242,47,0.03,46,3.0
+Margin,Pronephros,1,0.008547008547008548,117,22,0.03,46,3.0
+Margin,Anterior Erythroid Lineage Cell,1,0.008547008547008548,117,22,0.03,46,3.0
+Hypoblast,Pronephros,1,0.009615384615384616,104,24,0.03,46,3.0
+EVL,Pigment Cell,1,0.0007547169811320754,1325,272,0.03,46,3.0
+Proliferative Like Cell,Neural Rod,1,0.002583979328165375,387,69,0.03,46,3.0
+EVL,Nervous System,576,0.33962264150943394,1696,272,0.03,46,3.5
+EVL,Notochord,450,0.2653301886792453,1696,272,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,252,0.37058823529411766,680,100,0.03,46,3.5
+Proliferative Like Cell,Notochord,184,0.36507936507936506,504,69,0.03,46,3.5
+EVL,Somite,163,0.09610849056603774,1696,272,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,145,0.21323529411764705,680,100,0.03,46,3.5
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",143,0.32134831460674157,445,29,0.03,46,3.5
+Proliferative Like Cell,Nervous System,131,0.25992063492063494,504,69,0.03,46,3.5
+EVL,Forebrain,130,0.07665094339622641,1696,272,0.03,46,3.5
+Presumptive Mesoderm,Nervous System,114,0.35185185185185186,324,47,0.03,46,3.5
+Yolk Syncytial Layer,Hatching Gland,94,0.21123595505617979,445,29,0.03,46,3.5
+EVL,Fast Muscle Cell,79,0.04658018867924528,1696,272,0.03,46,3.5
+EVL,Angioblastic Mesenchymal Cell,78,0.045990566037735846,1696,272,0.03,46,3.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",65,0.14606741573033707,445,29,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,59,0.08676470588235294,680,100,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,58,0.08529411764705883,680,100,0.03,46,3.5
+EVL,Neural Crest,50,0.0294811320754717,1696,272,0.03,46,3.5
+Hypoblast,Nervous System,48,0.3582089552238806,134,24,0.03,46,3.5
+Proliferative Like Cell,Somite,45,0.08928571428571429,504,69,0.03,46,3.5
+Presumptive Mesoderm,Forebrain,45,0.1388888888888889,324,47,0.03,46,3.5
+Presumptive Mesoderm,Notochord,44,0.13580246913580246,324,47,0.03,46,3.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,44,0.09887640449438202,445,29,0.03,46,3.5
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,37,0.08314606741573034,445,29,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",36,0.052941176470588235,680,100,0.03,46,3.5
+Presumptive Mesoderm,Neural Crest,33,0.10185185185185185,324,47,0.03,46,3.5
+Margin,Nervous System,33,0.22916666666666666,144,22,0.03,46,3.5
+Margin,Forebrain,33,0.22916666666666666,144,22,0.03,46,3.5
+Hypoblast,Notochord,30,0.22388059701492538,134,24,0.03,46,3.5
+EVL,Anterior Erythroid Lineage Cell,29,0.017099056603773585,1696,272,0.03,46,3.5
+Proliferative Like Cell,Pronephros,29,0.057539682539682536,504,69,0.03,46,3.5
+Proliferative Like Cell,Fast Muscle Cell,25,0.0496031746031746,504,69,0.03,46,3.5
+EVL,Spinal Cord Dorsal Region,25,0.01474056603773585,1696,272,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,24,0.03529411764705882,680,100,0.03,46,3.5
+EVL,Pronephros,22,0.012971698113207548,1696,272,0.03,46,3.5
+Margin,Hatching Gland,22,0.1527777777777778,144,22,0.03,46,3.5
+Presumptive Mesoderm,Pronephros,21,0.06481481481481481,324,47,0.03,46,3.5
+Proliferative Like Cell,Epidermis,21,0.041666666666666664,504,69,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,21,0.030882352941176472,680,100,0.03,46,3.5
+Proliferative Like Cell,Spinal Cord Dorsal Region,20,0.03968253968253968,504,69,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,20,0.029411764705882353,680,100,0.03,46,3.5
+EVL,Erythroid Lineage Cell,20,0.01179245283018868,1696,272,0.03,46,3.5
+Proliferative Like Cell,Myotome,17,0.03373015873015873,504,69,0.03,46,3.5
+Margin,Epidermis,17,0.11805555555555555,144,22,0.03,46,3.5
+Yolk Syncytial Layer,Pronephros,17,0.038202247191011236,445,29,0.03,46,3.5
+EVL,Eye,16,0.009433962264150943,1696,272,0.03,46,3.5
+EVL,"Musculature System, Yolk Syncytial Layer",16,0.009433962264150943,1696,272,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,15,0.022058823529411766,680,100,0.03,46,3.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,14,0.03146067415730337,445,29,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,13,0.01911764705882353,680,100,0.03,46,3.5
+Margin,"Musculature System, Yolk Syncytial Layer",13,0.09027777777777778,144,22,0.03,46,3.5
+Yolk Syncytial Layer,Forebrain,13,0.029213483146067417,445,29,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,12,0.01764705882352941,680,100,0.03,46,3.5
+Presumptive Mesoderm,Somite,12,0.037037037037037035,324,47,0.03,46,3.5
+EVL,Spinal Cord Ventral Region,11,0.006485849056603774,1696,272,0.03,46,3.5
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,11,0.033950617283950615,324,47,0.03,46,3.5
+Presumptive Mesoderm,Spinal Cord Dorsal Region,10,0.030864197530864196,324,47,0.03,46,3.5
+Hypoblast,Fast Muscle Cell,10,0.07462686567164178,134,24,0.03,46,3.5
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,10,0.01984126984126984,504,69,0.03,46,3.5
+Hypoblast,Neural Crest,10,0.07462686567164178,134,24,0.03,46,3.5
+Proliferative Like Cell,Forebrain,9,0.017857142857142856,504,69,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,9,0.013235294117647059,680,100,0.03,46,3.5
+Hypoblast,Somite,9,0.06716417910447761,134,24,0.03,46,3.5
+Hypoblast,Pronephros,9,0.06716417910447761,134,24,0.03,46,3.5
+EVL,Myotome,9,0.005306603773584905,1696,272,0.03,46,3.5
+Hypoblast,"Musculature System, Yolk Syncytial Layer",9,0.06716417910447761,134,24,0.03,46,3.5
+EVL,Epidermis,8,0.0047169811320754715,1696,272,0.03,46,3.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,8,0.024691358024691357,324,47,0.03,46,3.5
+Presumptive Mesoderm,Hatching Gland,8,0.024691358024691357,324,47,0.03,46,3.5
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",7,0.021604938271604937,324,47,0.03,46,3.5
+Margin,Erythroid Lineage Cell,7,0.04861111111111111,144,22,0.03,46,3.5
+Yolk Syncytial Layer,Nervous System,7,0.015730337078651686,445,29,0.03,46,3.5
+Yolk Syncytial Layer,Neural Crest,6,0.01348314606741573,445,29,0.03,46,3.5
+Margin,Pronephros,6,0.041666666666666664,144,22,0.03,46,3.5
+Margin,Anterior Erythroid Lineage Cell,6,0.041666666666666664,144,22,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,6,0.008823529411764706,680,100,0.03,46,3.5
+EVL,Spinal Cord Anterior Region,6,0.003537735849056604,1696,272,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,5,0.007352941176470588,680,100,0.03,46,3.5
+Presumptive Mesoderm,Myotome,4,0.012345679012345678,324,47,0.03,46,3.5
+EVL,Pigment Cell,4,0.0023584905660377358,1696,272,0.03,46,3.5
+Yolk Syncytial Layer,Notochord,4,0.008988764044943821,445,29,0.03,46,3.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,4,0.007936507936507936,504,69,0.03,46,3.5
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",4,0.007936507936507936,504,69,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,3,0.004411764705882353,680,100,0.03,46,3.5
+Margin,Pigment Cell,2,0.013888888888888888,144,22,0.03,46,3.5
+Hypoblast,Forebrain,2,0.014925373134328358,134,24,0.03,46,3.5
+Margin,Angioblastic Mesenchymal Cell,2,0.013888888888888888,144,22,0.03,46,3.5
+Hypoblast,Anterior Erythroid Lineage Cell,2,0.014925373134328358,134,24,0.03,46,3.5
+Hypoblast,Erythroid Lineage Cell,2,0.014925373134328358,134,24,0.03,46,3.5
+Proliferative Like Cell,Erythroid Lineage Cell,2,0.003968253968253968,504,69,0.03,46,3.5
+Presumptive Mesoderm,Erythroid Lineage Cell,2,0.006172839506172839,324,47,0.03,46,3.5
+Proliferative Like Cell,Neural Crest,2,0.003968253968253968,504,69,0.03,46,3.5
+Hypoblast,Spinal Cord Dorsal Region,2,0.014925373134328358,134,24,0.03,46,3.5
+EVL,Hatching Gland,2,0.0011792452830188679,1696,272,0.03,46,3.5
+EVL,"Neural Crest, Otic Vesicle",1,0.0005896226415094339,1696,272,0.03,46,3.5
+Presumptive Mesoderm,Spinal Cord Ventral Region,1,0.0030864197530864196,324,47,0.03,46,3.5
+Margin,Notochord,1,0.006944444444444444,144,22,0.03,46,3.5
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,1,0.0022471910112359553,445,29,0.03,46,3.5
+Presumptive Mesoderm,Pigment Cell,1,0.0030864197530864196,324,47,0.03,46,3.5
+Margin,Eye,1,0.006944444444444444,144,22,0.03,46,3.5
+EVL,Slow Muscle Cell,1,0.0005896226415094339,1696,272,0.03,46,3.5
+Presumptive Mesoderm,Fast Muscle Cell,1,0.0030864197530864196,324,47,0.03,46,3.5
+Presumptive Mesoderm,Epidermis,1,0.0030864197530864196,324,47,0.03,46,3.5
+Proliferative Like Cell,Eye,1,0.001984126984126984,504,69,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,1,0.0014705882352941176,680,100,0.03,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,1,0.0014705882352941176,680,100,0.03,46,3.5
+Margin,Spinal Cord Dorsal Region,1,0.006944444444444444,144,22,0.03,46,3.5
+Presumptive Mesoderm,Eye,1,0.0030864197530864196,324,47,0.03,46,3.5
+Hypoblast,Eye,1,0.007462686567164179,134,24,0.03,46,3.5
+EVL,Nervous System,816,0.34738186462324394,2349,272,0.03,46,4.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",443,0.6846986089644513,647,29,0.03,46,4.0
+EVL,Notochord,308,0.13111962537249894,2349,272,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,279,0.2770605759682224,1007,100,0.03,46,4.0
+EVL,Fast Muscle Cell,259,0.11025968497232864,2349,272,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",242,0.24031777557100298,1007,100,0.03,46,4.0
+EVL,Spinal Cord Dorsal Region,186,0.07918263090676884,2349,272,0.03,46,4.0
+Proliferative Like Cell,Pronephros,176,0.24410540915395285,721,69,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,169,0.16782522343594836,1007,100,0.03,46,4.0
+EVL,Pronephros,149,0.06343124733929331,2349,272,0.03,46,4.0
+EVL,"Musculature System, Yolk Syncytial Layer",146,0.06215410813111963,2349,272,0.03,46,4.0
+Presumptive Mesoderm,Nervous System,126,0.28125,448,47,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,118,0.11717974180734857,1007,100,0.03,46,4.0
+Proliferative Like Cell,Nervous System,109,0.15117891816920942,721,69,0.03,46,4.0
+EVL,Spinal Cord Ventral Region,108,0.04597701149425287,2349,272,0.03,46,4.0
+Proliferative Like Cell,Spinal Cord Dorsal Region,96,0.13314840499306518,721,69,0.03,46,4.0
+EVL,Forebrain,92,0.039165602383993185,2349,272,0.03,46,4.0
+EVL,Myotome,79,0.033631332481907195,2349,272,0.03,46,4.0
+Proliferative Like Cell,Notochord,77,0.10679611650485436,721,69,0.03,46,4.0
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",71,0.15848214285714285,448,47,0.03,46,4.0
+Proliferative Like Cell,Fast Muscle Cell,68,0.09431345353675451,721,69,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,68,0.06752730883813307,1007,100,0.03,46,4.0
+Proliferative Like Cell,Myotome,65,0.09015256588072122,721,69,0.03,46,4.0
+Yolk Syncytial Layer,Hatching Gland,64,0.09891808346213292,647,29,0.03,46,4.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,63,0.0973724884080371,647,29,0.03,46,4.0
+Hypoblast,Nervous System,62,0.3315508021390374,187,24,0.03,46,4.0
+Margin,"Musculature System, Yolk Syncytial Layer",56,0.29015544041450775,193,22,0.03,46,4.0
+Margin,Nervous System,54,0.27979274611398963,193,22,0.03,46,4.0
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",49,0.06796116504854369,721,69,0.03,46,4.0
+EVL,Anterior Erythroid Lineage Cell,48,0.020434227330779056,2349,272,0.03,46,4.0
+EVL,Spinal Cord Anterior Region,42,0.017879948914431672,2349,272,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,41,0.0407149950347567,1007,100,0.03,46,4.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,40,0.08928571428571429,448,47,0.03,46,4.0
+Hypoblast,Pronephros,40,0.21390374331550802,187,24,0.03,46,4.0
+Hypoblast,Fast Muscle Cell,39,0.20855614973262032,187,24,0.03,46,4.0
+Presumptive Mesoderm,Pronephros,39,0.08705357142857142,448,47,0.03,46,4.0
+Proliferative Like Cell,Spinal Cord Ventral Region,36,0.049930651872399444,721,69,0.03,46,4.0
+Yolk Syncytial Layer,Pronephros,34,0.05255023183925812,647,29,0.03,46,4.0
+EVL,Somite,32,0.01362281822051937,2349,272,0.03,46,4.0
+Presumptive Mesoderm,Hatching Gland,32,0.07142857142857142,448,47,0.03,46,4.0
+Presumptive Mesoderm,Forebrain,31,0.06919642857142858,448,47,0.03,46,4.0
+EVL,Eye,31,0.01319710515112814,2349,272,0.03,46,4.0
+Presumptive Mesoderm,Notochord,30,0.06696428571428571,448,47,0.03,46,4.0
+Margin,Forebrain,27,0.13989637305699482,193,22,0.03,46,4.0
+Presumptive Mesoderm,Pigment Cell,25,0.05580357142857143,448,47,0.03,46,4.0
+EVL,Pigment Cell,21,0.008939974457215836,2349,272,0.03,46,4.0
+Hypoblast,"Musculature System, Yolk Syncytial Layer",20,0.10695187165775401,187,24,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,20,0.019860973187686197,1007,100,0.03,46,4.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,19,0.02936630602782071,647,29,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,18,0.01787487586891758,1007,100,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,18,0.01787487586891758,1007,100,0.03,46,4.0
+Proliferative Like Cell,Epidermis,17,0.023578363384188627,721,69,0.03,46,4.0
+Presumptive Mesoderm,Eye,15,0.033482142857142856,448,47,0.03,46,4.0
+Presumptive Mesoderm,Spinal Cord Dorsal Region,15,0.033482142857142856,448,47,0.03,46,4.0
+EVL,Epidermis,14,0.005959982971477224,2349,272,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,13,0.012909632571996028,1007,100,0.03,46,4.0
+Proliferative Like Cell,Somite,12,0.016643550624133148,721,69,0.03,46,4.0
+Margin,Anterior Erythroid Lineage Cell,12,0.06217616580310881,193,22,0.03,46,4.0
+Margin,Pigment Cell,12,0.06217616580310881,193,22,0.03,46,4.0
+Presumptive Mesoderm,Fast Muscle Cell,11,0.024553571428571428,448,47,0.03,46,4.0
+Yolk Syncytial Layer,Forebrain,11,0.017001545595054096,647,29,0.03,46,4.0
+EVL,Angioblastic Mesenchymal Cell,10,0.004257130693912303,2349,272,0.03,46,4.0
+Hypoblast,Notochord,10,0.053475935828877004,187,24,0.03,46,4.0
+Margin,Hatching Gland,8,0.04145077720207254,193,22,0.03,46,4.0
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,8,0.011095700416088766,721,69,0.03,46,4.0
+Margin,Myotome,8,0.04145077720207254,193,22,0.03,46,4.0
+EVL,Hatching Gland,7,0.002979991485738612,2349,272,0.03,46,4.0
+Margin,Epidermis,7,0.03626943005181347,193,22,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,7,0.006951340615690168,1007,100,0.03,46,4.0
+Presumptive Mesoderm,Spinal Cord Ventral Region,6,0.013392857142857142,448,47,0.03,46,4.0
+Hypoblast,Anterior Erythroid Lineage Cell,6,0.03208556149732621,187,24,0.03,46,4.0
+Yolk Syncytial Layer,Erythroid Lineage Cell,5,0.0077279752704791345,647,29,0.03,46,4.0
+Proliferative Like Cell,Pigment Cell,5,0.006934812760055479,721,69,0.03,46,4.0
+Margin,Eye,5,0.025906735751295335,193,22,0.03,46,4.0
+Hypoblast,Spinal Cord Ventral Region,5,0.026737967914438502,187,24,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,5,0.004965243296921549,1007,100,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,4,0.003972194637537239,1007,100,0.03,46,4.0
+Yolk Syncytial Layer,Nervous System,4,0.0061823802163833074,647,29,0.03,46,4.0
+Presumptive Mesoderm,Somite,3,0.006696428571428571,448,47,0.03,46,4.0
+Margin,Pronephros,3,0.015544041450777202,193,22,0.03,46,4.0
+Presumptive Mesoderm,Spinal Cord Anterior Region,3,0.006696428571428571,448,47,0.03,46,4.0
+Proliferative Like Cell,Eye,3,0.004160887656033287,721,69,0.03,46,4.0
+Hypoblast,Eye,2,0.0106951871657754,187,24,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,2,0.0019860973187686196,1007,100,0.03,46,4.0
+Hypoblast,Spinal Cord Dorsal Region,2,0.0106951871657754,187,24,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pigment Cell,2,0.0019860973187686196,1007,100,0.03,46,4.0
+EVL,Erythroid Lineage Cell,1,0.0004257130693912303,2349,272,0.03,46,4.0
+Hypoblast,Spinal Cord Anterior Region,1,0.0053475935828877,187,24,0.03,46,4.0
+Presumptive Mesoderm,Myotome,1,0.002232142857142857,448,47,0.03,46,4.0
+Yolk Syncytial Layer,Epidermis,1,0.0015455950540958269,647,29,0.03,46,4.0
+Yolk Syncytial Layer,Eye,1,0.0015455950540958269,647,29,0.03,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Slow Muscle Cell,1,0.0009930486593843098,1007,100,0.03,46,4.0
+Margin,Spinal Cord Anterior Region,1,0.0051813471502590676,193,22,0.03,46,4.0
+Yolk Syncytial Layer,Neural Crest,1,0.0015455950540958269,647,29,0.03,46,4.0
+Yolk Syncytial Layer,Spinal Cord Dorsal Region,1,0.0015455950540958269,647,29,0.03,46,4.0
+EVL,EVL,272,1.0,272,272,0.06,46,0.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",100,1.0,100,100,0.06,46,0.0
+Proliferative Like Cell,Proliferative Like Cell,69,1.0,69,69,0.06,46,0.0
+Presumptive Mesoderm,Presumptive Mesoderm,47,1.0,47,47,0.06,46,0.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,29,1.0,29,29,0.06,46,0.0
+Hypoblast,Hypoblast,24,1.0,24,24,0.06,46,0.0
+Margin,Margin,22,1.0,22,22,0.06,46,0.0
+EVL,Notochord,64,0.18285714285714286,350,272,0.06,46,0.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,58,1.0,58,29,0.06,46,0.5
+EVL,EVL,55,0.15714285714285714,350,272,0.06,46,0.5
+EVL,"Paraxial Mesoderm, Neural Keel",54,0.15428571428571428,350,272,0.06,46,0.5
+EVL,Proliferative Like Cell,53,0.15142857142857144,350,272,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,38,0.2676056338028169,142,100,0.06,46,0.5
+EVL,"Segmental Plate, Tail Bud",32,0.09142857142857143,350,272,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",30,0.2112676056338028,142,100,0.06,46,0.5
+EVL,Periderm,28,0.08,350,272,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",28,0.19718309859154928,142,100,0.06,46,0.5
+EVL,Presumptive Mesoderm,27,0.07714285714285714,350,272,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",27,0.19014084507042253,142,100,0.06,46,0.5
+Presumptive Mesoderm,Yolk Syncytial Layer,25,0.38461538461538464,65,47,0.06,46,0.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",24,0.25806451612903225,93,69,0.06,46,0.5
+EVL,"Presumptive Mesoderm, Presumptive Ectoderm",22,0.06285714285714286,350,272,0.06,46,0.5
+Proliferative Like Cell,Notochord,20,0.21505376344086022,93,69,0.06,46,0.5
+Proliferative Like Cell,"Presumptive Mesoderm, Presumptive Ectoderm",18,0.1935483870967742,93,69,0.06,46,0.5
+Margin,Yolk Syncytial Layer,13,0.41935483870967744,31,22,0.06,46,0.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",12,0.12903225806451613,93,69,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,11,0.07746478873239436,142,100,0.06,46,0.5
+Hypoblast,Notochord,10,0.3448275862068966,29,24,0.06,46,0.5
+Proliferative Like Cell,Proliferative Like Cell,10,0.10752688172043011,93,69,0.06,46,0.5
+Presumptive Mesoderm,Notochord,9,0.13846153846153847,65,47,0.06,46,0.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",9,0.13846153846153847,65,47,0.06,46,0.5
+EVL,Yolk Syncytial Layer,9,0.025714285714285714,350,272,0.06,46,0.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",9,0.13846153846153847,65,47,0.06,46,0.5
+Hypoblast,"Presumptive Mesoderm, Presumptive Ectoderm",6,0.20689655172413793,29,24,0.06,46,0.5
+EVL,Anterior Neural Keel,6,0.017142857142857144,350,272,0.06,46,0.5
+Hypoblast,"Segmental Plate, Tail Bud",6,0.20689655172413793,29,24,0.06,46,0.5
+Margin,Presumptive Mesoderm,5,0.16129032258064516,31,22,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,4,0.028169014084507043,142,100,0.06,46,0.5
+Presumptive Mesoderm,"Presumptive Mesoderm, Presumptive Ectoderm",4,0.06153846153846154,65,47,0.06,46,0.5
+Presumptive Mesoderm,Presumptive Mesoderm,4,0.06153846153846154,65,47,0.06,46,0.5
+Margin,"Segmental Plate, Tail Bud",4,0.12903225806451613,31,22,0.06,46,0.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.13793103448275862,29,24,0.06,46,0.5
+Margin,Margin,3,0.0967741935483871,31,22,0.06,46,0.5
+Proliferative Like Cell,Periderm,3,0.03225806451612903,93,69,0.06,46,0.5
+Presumptive Mesoderm,Anterior Neural Keel,3,0.046153846153846156,65,47,0.06,46,0.5
+Margin,Periderm,3,0.0967741935483871,31,22,0.06,46,0.5
+Proliferative Like Cell,Presumptive Mesoderm,2,0.021505376344086023,93,69,0.06,46,0.5
+Presumptive Mesoderm,Periderm,2,0.03076923076923077,65,47,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Presumptive Mesoderm,2,0.014084507042253521,142,100,0.06,46,0.5
+Proliferative Like Cell,Anterior Neural Keel,2,0.021505376344086023,93,69,0.06,46,0.5
+Hypoblast,Proliferative Like Cell,1,0.034482758620689655,29,24,0.06,46,0.5
+Hypoblast,Presumptive Mesoderm,1,0.034482758620689655,29,24,0.06,46,0.5
+Margin,"Paraxial Mesoderm, Neural Keel",1,0.03225806451612903,31,22,0.06,46,0.5
+Margin,Notochord,1,0.03225806451612903,31,22,0.06,46,0.5
+Margin,Anterior Neural Keel,1,0.03225806451612903,31,22,0.06,46,0.5
+Hypoblast,Yolk Syncytial Layer,1,0.034482758620689655,29,24,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Margin,1,0.007042253521126761,142,100,0.06,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,1,0.007042253521126761,142,100,0.06,46,0.5
+Proliferative Like Cell,EVL,1,0.010752688172043012,93,69,0.06,46,0.5
+Proliferative Like Cell,Yolk Syncytial Layer,1,0.010752688172043012,93,69,0.06,46,0.5
+EVL,"Segmental Plate, Tail Bud",166,0.3562231759656652,466,272,0.06,46,1.0
+EVL,Periderm,111,0.23819742489270387,466,272,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",100,0.5025125628140703,199,100,0.06,46,1.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,97,1.0,97,29,0.06,46,1.0
+EVL,Notochord,83,0.1781115879828326,466,272,0.06,46,1.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",75,0.5555555555555556,135,69,0.06,46,1.0
+EVL,"Paraxial Mesoderm, Neural Keel",66,0.14163090128755365,466,272,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,40,0.20100502512562815,199,100,0.06,46,1.0
+Presumptive Mesoderm,Yolk Syncytial Layer,39,0.4431818181818182,88,47,0.06,46,1.0
+Proliferative Like Cell,Notochord,33,0.24444444444444444,135,69,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,27,0.135678391959799,199,100,0.06,46,1.0
+EVL,Yolk Syncytial Layer,27,0.05793991416309013,466,272,0.06,46,1.0
+Margin,Yolk Syncytial Layer,23,0.5348837209302325,43,22,0.06,46,1.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",22,0.25,88,47,0.06,46,1.0
+Hypoblast,"Segmental Plate, Tail Bud",21,0.525,40,24,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",18,0.09045226130653267,199,100,0.06,46,1.0
+EVL,Anterior Neural Keel,11,0.023605150214592276,466,272,0.06,46,1.0
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",11,0.125,88,47,0.06,46,1.0
+Presumptive Mesoderm,Periderm,11,0.125,88,47,0.06,46,1.0
+Margin,Periderm,10,0.23255813953488372,43,22,0.06,46,1.0
+Proliferative Like Cell,Yolk Syncytial Layer,9,0.06666666666666667,135,69,0.06,46,1.0
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",8,0.05925925925925926,135,69,0.06,46,1.0
+Proliferative Like Cell,Periderm,8,0.05925925925925926,135,69,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,7,0.035175879396984924,199,100,0.06,46,1.0
+Hypoblast,Periderm,5,0.125,40,24,0.06,46,1.0
+Hypoblast,Yolk Syncytial Layer,5,0.125,40,24,0.06,46,1.0
+Margin,"Segmental Plate, Tail Bud",5,0.11627906976744186,43,22,0.06,46,1.0
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.1,40,24,0.06,46,1.0
+Hypoblast,Notochord,4,0.1,40,24,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,3,0.01507537688442211,199,100,0.06,46,1.0
+Margin,Lateral Plate Mesoderm,2,0.046511627906976744,43,22,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,2,0.010050251256281407,199,100,0.06,46,1.0
+Presumptive Mesoderm,Anterior Neural Keel,2,0.022727272727272728,88,47,0.06,46,1.0
+Margin,Adaxial Cell,2,0.046511627906976744,43,22,0.06,46,1.0
+Proliferative Like Cell,Adaxial Cell,2,0.014814814814814815,135,69,0.06,46,1.0
+Presumptive Mesoderm,Notochord,2,0.022727272727272728,88,47,0.06,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,2,0.010050251256281407,199,100,0.06,46,1.0
+EVL,EVL,1,0.002145922746781116,466,272,0.06,46,1.0
+EVL,"Presumptive Mesoderm, Presumptive Ectoderm",1,0.002145922746781116,466,272,0.06,46,1.0
+Presumptive Mesoderm,Adaxial Cell,1,0.011363636363636364,88,47,0.06,46,1.0
+Hypoblast,Somite,1,0.025,40,24,0.06,46,1.0
+Margin,Notochord,1,0.023255813953488372,43,22,0.06,46,1.0
+EVL,"Segmental Plate, Tail Bud",195,0.3027950310559006,644,272,0.06,46,1.5
+EVL,Periderm,183,0.2841614906832298,644,272,0.06,46,1.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,92,0.6216216216216216,148,29,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",85,0.2951388888888889,288,100,0.06,46,1.5
+EVL,Notochord,81,0.12577639751552794,644,272,0.06,46,1.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",75,0.42134831460674155,178,69,0.06,46,1.5
+EVL,Adaxial Cell,57,0.08850931677018634,644,272,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,55,0.1909722222222222,288,100,0.06,46,1.5
+Proliferative Like Cell,Notochord,42,0.23595505617977527,178,69,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,42,0.14583333333333334,288,100,0.06,46,1.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",40,0.2702702702702703,148,29,0.06,46,1.5
+Presumptive Mesoderm,Periderm,39,0.291044776119403,134,47,0.06,46,1.5
+Presumptive Mesoderm,Yolk Syncytial Layer,39,0.291044776119403,134,47,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,37,0.1284722222222222,288,100,0.06,46,1.5
+EVL,"Paraxial Mesoderm, Neural Keel",34,0.052795031055900624,644,272,0.06,46,1.5
+EVL,Yolk Syncytial Layer,31,0.04813664596273292,644,272,0.06,46,1.5
+EVL,Neural Rod,26,0.040372670807453416,644,272,0.06,46,1.5
+Margin,Periderm,25,0.3787878787878788,66,22,0.06,46,1.5
+EVL,Somite,23,0.03571428571428571,644,272,0.06,46,1.5
+Proliferative Like Cell,Adaxial Cell,22,0.12359550561797752,178,69,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,20,0.06944444444444445,288,100,0.06,46,1.5
+Hypoblast,"Segmental Plate, Tail Bud",20,0.35714285714285715,56,24,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,19,0.06597222222222222,288,100,0.06,46,1.5
+Margin,Yolk Syncytial Layer,19,0.2878787878787879,66,22,0.06,46,1.5
+Presumptive Mesoderm,Adaxial Cell,18,0.13432835820895522,134,47,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,18,0.0625,288,100,0.06,46,1.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",17,0.12686567164179105,134,47,0.06,46,1.5
+Yolk Syncytial Layer,Polster,16,0.10810810810810811,148,29,0.06,46,1.5
+Hypoblast,Periderm,14,0.25,56,24,0.06,46,1.5
+Proliferative Like Cell,Periderm,12,0.06741573033707865,178,69,0.06,46,1.5
+Margin,Polster,11,0.16666666666666666,66,22,0.06,46,1.5
+Proliferative Like Cell,Neural Rod,10,0.056179775280898875,178,69,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",10,0.034722222222222224,288,100,0.06,46,1.5
+Proliferative Like Cell,Yolk Syncytial Layer,9,0.05056179775280899,178,69,0.06,46,1.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",6,0.04477611940298507,134,47,0.06,46,1.5
+EVL,Polster,6,0.009316770186335404,644,272,0.06,46,1.5
+Hypoblast,Adaxial Cell,6,0.10714285714285714,56,24,0.06,46,1.5
+Hypoblast,Yolk Syncytial Layer,6,0.10714285714285714,56,24,0.06,46,1.5
+Margin,"Segmental Plate, Tail Bud",6,0.09090909090909091,66,22,0.06,46,1.5
+Hypoblast,Notochord,5,0.08928571428571429,56,24,0.06,46,1.5
+Presumptive Mesoderm,Notochord,5,0.03731343283582089,134,47,0.06,46,1.5
+EVL,Anterior Neural Keel,4,0.006211180124223602,644,272,0.06,46,1.5
+EVL,Optic Vesicle,4,0.006211180124223602,644,272,0.06,46,1.5
+Proliferative Like Cell,Somite,3,0.016853932584269662,178,69,0.06,46,1.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",3,0.016853932584269662,178,69,0.06,46,1.5
+Presumptive Mesoderm,Somite,3,0.022388059701492536,134,47,0.06,46,1.5
+Presumptive Mesoderm,Neural Rod,3,0.022388059701492536,134,47,0.06,46,1.5
+Presumptive Mesoderm,Polster,3,0.022388059701492536,134,47,0.06,46,1.5
+Margin,Adaxial Cell,3,0.045454545454545456,66,22,0.06,46,1.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",2,0.03571428571428571,56,24,0.06,46,1.5
+Hypoblast,Somite,2,0.03571428571428571,56,24,0.06,46,1.5
+Margin,Neural Rod,1,0.015151515151515152,66,22,0.06,46,1.5
+Margin,Notochord,1,0.015151515151515152,66,22,0.06,46,1.5
+Hypoblast,Neural Rod,1,0.017857142857142856,56,24,0.06,46,1.5
+Presumptive Mesoderm,Anterior Neural Keel,1,0.007462686567164179,134,47,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Polster,1,0.003472222222222222,288,100,0.06,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,1,0.003472222222222222,288,100,0.06,46,1.5
+Proliferative Like Cell,Optic Vesicle,1,0.0056179775280898875,178,69,0.06,46,1.5
+Proliferative Like Cell,Polster,1,0.0056179775280898875,178,69,0.06,46,1.5
+EVL,Adaxial Cell,199,0.22334455667789002,891,272,0.06,46,2.0
+EVL,Neural Rod,178,0.19977553310886645,891,272,0.06,46,2.0
+EVL,"Segmental Plate, Tail Bud",137,0.1537598204264871,891,272,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,125,0.3306878306878307,378,100,0.06,46,2.0
+EVL,Periderm,118,0.1324354657687991,891,272,0.06,46,2.0
+EVL,Somite,108,0.12121212121212122,891,272,0.06,46,2.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",98,0.43946188340807174,223,29,0.06,46,2.0
+EVL,Notochord,82,0.0920314253647587,891,272,0.06,46,2.0
+Proliferative Like Cell,Adaxial Cell,79,0.3319327731092437,238,69,0.06,46,2.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,65,0.2914798206278027,223,29,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,57,0.15079365079365079,378,100,0.06,46,2.0
+Presumptive Mesoderm,Periderm,51,0.25757575757575757,198,47,0.06,46,2.0
+Proliferative Like Cell,Notochord,50,0.21008403361344538,238,69,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,49,0.12962962962962962,378,100,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,48,0.12698412698412698,378,100,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",47,0.12433862433862433,378,100,0.06,46,2.0
+Yolk Syncytial Layer,Polster,44,0.19730941704035873,223,29,0.06,46,2.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",43,0.18067226890756302,238,69,0.06,46,2.0
+EVL,Polster,32,0.03591470258136925,891,272,0.06,46,2.0
+Presumptive Mesoderm,Polster,31,0.15656565656565657,198,47,0.06,46,2.0
+Presumptive Mesoderm,Adaxial Cell,31,0.15656565656565657,198,47,0.06,46,2.0
+Proliferative Like Cell,Somite,27,0.1134453781512605,238,69,0.06,46,2.0
+Margin,Periderm,24,0.27586206896551724,87,22,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,24,0.06349206349206349,378,100,0.06,46,2.0
+Hypoblast,Adaxial Cell,22,0.2894736842105263,76,24,0.06,46,2.0
+EVL,Optic Vesicle,21,0.02356902356902357,891,272,0.06,46,2.0
+Presumptive Mesoderm,Neural Rod,20,0.10101010101010101,198,47,0.06,46,2.0
+Margin,Polster,20,0.22988505747126436,87,22,0.06,46,2.0
+Proliferative Like Cell,Neural Rod,19,0.07983193277310924,238,69,0.06,46,2.0
+Presumptive Mesoderm,Notochord,18,0.09090909090909091,198,47,0.06,46,2.0
+Hypoblast,"Segmental Plate, Tail Bud",17,0.2236842105263158,76,24,0.06,46,2.0
+Presumptive Mesoderm,Yolk Syncytial Layer,14,0.0707070707070707,198,47,0.06,46,2.0
+Presumptive Mesoderm,Somite,14,0.0707070707070707,198,47,0.06,46,2.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",14,0.0707070707070707,198,47,0.06,46,2.0
+Yolk Syncytial Layer,Periderm,14,0.06278026905829596,223,29,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Polster,12,0.031746031746031744,378,100,0.06,46,2.0
+Margin,"Segmental Plate, Tail Bud",10,0.11494252873563218,87,22,0.06,46,2.0
+Proliferative Like Cell,Periderm,10,0.04201680672268908,238,69,0.06,46,2.0
+Hypoblast,Neural Rod,9,0.11842105263157894,76,24,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,9,0.023809523809523808,378,100,0.06,46,2.0
+EVL,"Paraxial Mesoderm, Neural Keel",8,0.008978675645342313,891,272,0.06,46,2.0
+Margin,Optic Vesicle,8,0.09195402298850575,87,22,0.06,46,2.0
+Hypoblast,Somite,7,0.09210526315789473,76,24,0.06,46,2.0
+Hypoblast,Periderm,6,0.07894736842105263,76,24,0.06,46,2.0
+Margin,Yolk Syncytial Layer,6,0.06896551724137931,87,22,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,6,0.015873015873015872,378,100,0.06,46,2.0
+Hypoblast,Optic Vesicle,5,0.06578947368421052,76,24,0.06,46,2.0
+EVL,Yolk Syncytial Layer,5,0.005611672278338945,891,272,0.06,46,2.0
+Margin,Erythroid Lineage Cell,4,0.04597701149425287,87,22,0.06,46,2.0
+Hypoblast,Notochord,4,0.05263157894736842,76,24,0.06,46,2.0
+Hypoblast,Polster,4,0.05263157894736842,76,24,0.06,46,2.0
+Proliferative Like Cell,Neural Crest,4,0.01680672268907563,238,69,0.06,46,2.0
+Margin,"Yolk Syncytial Layer, Periderm",3,0.034482758620689655,87,22,0.06,46,2.0
+Margin,Adaxial Cell,3,0.034482758620689655,87,22,0.06,46,2.0
+Margin,Somite,3,0.034482758620689655,87,22,0.06,46,2.0
+Proliferative Like Cell,Polster,3,0.012605042016806723,238,69,0.06,46,2.0
+EVL,Anterior Neural Keel,2,0.002244668911335578,891,272,0.06,46,2.0
+Presumptive Mesoderm,Erythroid Lineage Cell,2,0.010101010101010102,198,47,0.06,46,2.0
+Margin,Neural Rod,2,0.022988505747126436,87,22,0.06,46,2.0
+Margin,Notochord,2,0.022988505747126436,87,22,0.06,46,2.0
+Proliferative Like Cell,Yolk Syncytial Layer,2,0.008403361344537815,238,69,0.06,46,2.0
+Yolk Syncytial Layer,"Segmental Plate, Tail Bud",1,0.004484304932735426,223,29,0.06,46,2.0
+Yolk Syncytial Layer,Hatching Gland,1,0.004484304932735426,223,29,0.06,46,2.0
+EVL,Erythroid Lineage Cell,1,0.001122334455667789,891,272,0.06,46,2.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,1,0.005050505050505051,198,47,0.06,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,1,0.0026455026455026454,378,100,0.06,46,2.0
+Presumptive Mesoderm,Optic Vesicle,1,0.005050505050505051,198,47,0.06,46,2.0
+Margin,Hatching Gland,1,0.011494252873563218,87,22,0.06,46,2.0
+Presumptive Mesoderm,Neural Crest,1,0.005050505050505051,198,47,0.06,46,2.0
+Hypoblast,Yolk Syncytial Layer,1,0.013157894736842105,76,24,0.06,46,2.0
+Margin,Forebrain,1,0.011494252873563218,87,22,0.06,46,2.0
+Hypoblast,Neural Crest,1,0.013157894736842105,76,24,0.06,46,2.0
+Proliferative Like Cell,Optic Vesicle,1,0.004201680672268907,238,69,0.06,46,2.0
+EVL,Neural Rod,229,0.1980968858131488,1156,272,0.06,46,2.5
+EVL,Notochord,212,0.18339100346020762,1156,272,0.06,46,2.5
+EVL,Somite,205,0.1773356401384083,1156,272,0.06,46,2.5
+EVL,Adaxial Cell,187,0.16176470588235295,1156,272,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,121,0.2515592515592516,481,100,0.06,46,2.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",120,0.41379310344827586,290,29,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,112,0.23284823284823286,481,100,0.06,46,2.5
+EVL,"Segmental Plate, Tail Bud",111,0.09602076124567474,1156,272,0.06,46,2.5
+Proliferative Like Cell,Notochord,111,0.3651315789473684,304,69,0.06,46,2.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,103,0.35517241379310344,290,29,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,77,0.1600831600831601,481,100,0.06,46,2.5
+Proliferative Like Cell,Adaxial Cell,66,0.21710526315789475,304,69,0.06,46,2.5
+Proliferative Like Cell,Somite,52,0.17105263157894737,304,69,0.06,46,2.5
+Presumptive Mesoderm,Somite,41,0.16532258064516128,248,47,0.06,46,2.5
+EVL,Neural Crest,40,0.03460207612456748,1156,272,0.06,46,2.5
+Yolk Syncytial Layer,Polster,39,0.13448275862068965,290,29,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,35,0.07276507276507277,481,100,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",35,0.07276507276507277,481,100,0.06,46,2.5
+EVL,Optic Vesicle,34,0.029411764705882353,1156,272,0.06,46,2.5
+Presumptive Mesoderm,Polster,34,0.13709677419354838,248,47,0.06,46,2.5
+Presumptive Mesoderm,Notochord,33,0.13306451612903225,248,47,0.06,46,2.5
+EVL,Polster,32,0.02768166089965398,1156,272,0.06,46,2.5
+Presumptive Mesoderm,Periderm,30,0.12096774193548387,248,47,0.06,46,2.5
+EVL,Forebrain,29,0.025086505190311418,1156,272,0.06,46,2.5
+EVL,Periderm,28,0.02422145328719723,1156,272,0.06,46,2.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",27,0.08881578947368421,304,69,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,27,0.056133056133056136,481,100,0.06,46,2.5
+Presumptive Mesoderm,Neural Crest,22,0.08870967741935484,248,47,0.06,46,2.5
+Hypoblast,Adaxial Cell,22,0.2222222222222222,99,24,0.06,46,2.5
+Hypoblast,Somite,20,0.20202020202020202,99,24,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,20,0.04158004158004158,481,100,0.06,46,2.5
+Presumptive Mesoderm,Neural Rod,20,0.08064516129032258,248,47,0.06,46,2.5
+Proliferative Like Cell,Neural Crest,18,0.05921052631578947,304,69,0.06,46,2.5
+Margin,Forebrain,16,0.13675213675213677,117,22,0.06,46,2.5
+Margin,Polster,16,0.13675213675213677,117,22,0.06,46,2.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",16,0.06451612903225806,248,47,0.06,46,2.5
+Hypoblast,Notochord,15,0.15151515151515152,99,24,0.06,46,2.5
+EVL,Erythroid Lineage Cell,15,0.012975778546712802,1156,272,0.06,46,2.5
+EVL,Angioblastic Mesenchymal Cell,15,0.012975778546712802,1156,272,0.06,46,2.5
+Presumptive Mesoderm,Forebrain,15,0.06048387096774194,248,47,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,14,0.029106029106029108,481,100,0.06,46,2.5
+Hypoblast,"Segmental Plate, Tail Bud",13,0.13131313131313133,99,24,0.06,46,2.5
+Presumptive Mesoderm,Adaxial Cell,12,0.04838709677419355,248,47,0.06,46,2.5
+Margin,"Segmental Plate, Tail Bud",12,0.10256410256410256,117,22,0.06,46,2.5
+EVL,Nervous System,12,0.010380622837370242,1156,272,0.06,46,2.5
+Margin,Yolk Syncytial Layer,11,0.09401709401709402,117,22,0.06,46,2.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,11,0.04435483870967742,248,47,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,10,0.02079002079002079,481,100,0.06,46,2.5
+Margin,Erythroid Lineage Cell,9,0.07692307692307693,117,22,0.06,46,2.5
+Margin,Periderm,9,0.07692307692307693,117,22,0.06,46,2.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,8,0.02631578947368421,304,69,0.06,46,2.5
+Margin,Optic Vesicle,8,0.06837606837606838,117,22,0.06,46,2.5
+Hypoblast,Erythroid Lineage Cell,8,0.08080808080808081,99,24,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,8,0.016632016632016633,481,100,0.06,46,2.5
+Margin,Neural Crest,7,0.05982905982905983,117,22,0.06,46,2.5
+Yolk Syncytial Layer,Periderm,7,0.02413793103448276,290,29,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Polster,7,0.014553014553014554,481,100,0.06,46,2.5
+Proliferative Like Cell,Neural Rod,7,0.023026315789473683,304,69,0.06,46,2.5
+Yolk Syncytial Layer,Hatching Gland,6,0.020689655172413793,290,29,0.06,46,2.5
+Presumptive Mesoderm,Erythroid Lineage Cell,6,0.024193548387096774,248,47,0.06,46,2.5
+Margin,Neural Rod,6,0.05128205128205128,117,22,0.06,46,2.5
+Margin,Adaxial Cell,6,0.05128205128205128,117,22,0.06,46,2.5
+Margin,Notochord,5,0.042735042735042736,117,22,0.06,46,2.5
+Margin,"Yolk Syncytial Layer, Periderm",5,0.042735042735042736,117,22,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Hatching Gland,5,0.010395010395010396,481,100,0.06,46,2.5
+Hypoblast,Neural Rod,5,0.050505050505050504,99,24,0.06,46,2.5
+Proliferative Like Cell,Polster,5,0.01644736842105263,304,69,0.06,46,2.5
+Presumptive Mesoderm,Optic Vesicle,4,0.016129032258064516,248,47,0.06,46,2.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,4,0.013793103448275862,290,29,0.06,46,2.5
+Proliferative Like Cell,Erythroid Lineage Cell,4,0.013157894736842105,304,69,0.06,46,2.5
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,3,0.010344827586206896,290,29,0.06,46,2.5
+EVL,Fast Muscle Cell,3,0.0025951557093425604,1156,272,0.06,46,2.5
+Yolk Syncytial Layer,Forebrain,3,0.010344827586206896,290,29,0.06,46,2.5
+Hypoblast,Angioblastic Mesenchymal Cell,3,0.030303030303030304,99,24,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Optic Vesicle,3,0.006237006237006237,481,100,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,2,0.004158004158004158,481,100,0.06,46,2.5
+Proliferative Like Cell,Periderm,2,0.006578947368421052,304,69,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Yolk Syncytial Layer, Periderm",2,0.004158004158004158,481,100,0.06,46,2.5
+Hypoblast,Polster,2,0.020202020202020204,99,24,0.06,46,2.5
+Margin,Hatching Gland,2,0.017094017094017096,117,22,0.06,46,2.5
+Yolk Syncytial Layer,Neural Crest,2,0.006896551724137931,290,29,0.06,46,2.5
+Margin,Somite,2,0.017094017094017096,117,22,0.06,46,2.5
+Yolk Syncytial Layer,"Segmental Plate, Tail Bud",2,0.006896551724137931,290,29,0.06,46,2.5
+EVL,"Immature Eye, Midbrain",2,0.0017301038062283738,1156,272,0.06,46,2.5
+Hypoblast,Optic Vesicle,2,0.020202020202020204,99,24,0.06,46,2.5
+Presumptive Mesoderm,"Neural Crest, Otic Vesicle",2,0.008064516129032258,248,47,0.06,46,2.5
+Margin,Angioblastic Mesenchymal Cell,2,0.017094017094017096,117,22,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,2,0.004158004158004158,481,100,0.06,46,2.5
+Hypoblast,Fast Muscle Cell,2,0.020202020202020204,99,24,0.06,46,2.5
+Hypoblast,Neural Crest,2,0.020202020202020204,99,24,0.06,46,2.5
+Hypoblast,Periderm,2,0.020202020202020204,99,24,0.06,46,2.5
+Proliferative Like Cell,Forebrain,2,0.006578947368421052,304,69,0.06,46,2.5
+EVL,Hatching Gland,1,0.0008650519031141869,1156,272,0.06,46,2.5
+Presumptive Mesoderm,Hatching Gland,1,0.004032258064516129,248,47,0.06,46,2.5
+Yolk Syncytial Layer,Notochord,1,0.0034482758620689655,290,29,0.06,46,2.5
+Margin,Pronephros,1,0.008547008547008548,117,22,0.06,46,2.5
+Presumptive Mesoderm,Yolk Syncytial Layer,1,0.004032258064516129,248,47,0.06,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Neural Crest, Otic Vesicle",1,0.002079002079002079,481,100,0.06,46,2.5
+Proliferative Like Cell,"Immature Eye, Midbrain",1,0.003289473684210526,304,69,0.06,46,2.5
+Hypoblast,Forebrain,1,0.010101010101010102,99,24,0.06,46,2.5
+Hypoblast,"Immature Eye, Midbrain",1,0.010101010101010102,99,24,0.06,46,2.5
+Proliferative Like Cell,Optic Vesicle,1,0.003289473684210526,304,69,0.06,46,2.5
+Hypoblast,Nervous System,1,0.010101010101010102,99,24,0.06,46,2.5
+EVL,Pigment Cell,1,0.0008650519031141869,1156,272,0.06,46,2.5
+EVL,Notochord,370,0.2592852137351086,1427,272,0.06,46,3.0
+EVL,Somite,300,0.2102312543798178,1427,272,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,184,0.30666666666666664,600,100,0.06,46,3.0
+Proliferative Like Cell,Notochord,170,0.4271356783919598,398,69,0.06,46,3.0
+EVL,Forebrain,152,0.10651716888577435,1427,272,0.06,46,3.0
+EVL,Nervous System,141,0.09880868955851436,1427,272,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,139,0.23166666666666666,600,100,0.06,46,3.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,120,0.3380281690140845,355,29,0.06,46,3.0
+EVL,Neural Crest,91,0.06377014716187807,1427,272,0.06,46,3.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",88,0.24788732394366197,355,29,0.06,46,3.0
+EVL,Adaxial Cell,72,0.050455501051156273,1427,272,0.06,46,3.0
+Proliferative Like Cell,Somite,69,0.17336683417085427,398,69,0.06,46,3.0
+EVL,Angioblastic Mesenchymal Cell,63,0.04414856341976174,1427,272,0.06,46,3.0
+EVL,Neural Rod,60,0.04204625087596356,1427,272,0.06,46,3.0
+Presumptive Mesoderm,Forebrain,59,0.19281045751633988,306,47,0.06,46,3.0
+Presumptive Mesoderm,Neural Crest,58,0.1895424836601307,306,47,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,50,0.08333333333333333,600,100,0.06,46,3.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",48,0.1352112676056338,355,29,0.06,46,3.0
+Presumptive Mesoderm,Somite,47,0.15359477124183007,306,47,0.06,46,3.0
+Presumptive Mesoderm,Notochord,44,0.1437908496732026,306,47,0.06,46,3.0
+Yolk Syncytial Layer,Hatching Gland,43,0.12112676056338029,355,29,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,43,0.07166666666666667,600,100,0.06,46,3.0
+EVL,"Segmental Plate, Tail Bud",42,0.02943237561317449,1427,272,0.06,46,3.0
+Hypoblast,Somite,41,0.3228346456692913,127,24,0.06,46,3.0
+Margin,Forebrain,37,0.24342105263157895,152,22,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,37,0.06166666666666667,600,100,0.06,46,3.0
+Hypoblast,Notochord,35,0.2755905511811024,127,24,0.06,46,3.0
+Proliferative Like Cell,Neural Crest,35,0.08793969849246232,398,69,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,34,0.056666666666666664,600,100,0.06,46,3.0
+EVL,Erythroid Lineage Cell,33,0.023125437981779958,1427,272,0.06,46,3.0
+Margin,Hatching Gland,27,0.17763157894736842,152,22,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,25,0.041666666666666664,600,100,0.06,46,3.0
+EVL,Optic Vesicle,24,0.016818500350385426,1427,272,0.06,46,3.0
+EVL,Polster,23,0.0161177295024527,1427,272,0.06,46,3.0
+Proliferative Like Cell,Adaxial Cell,23,0.05778894472361809,398,69,0.06,46,3.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,23,0.07516339869281045,306,47,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,22,0.03666666666666667,600,100,0.06,46,3.0
+Proliferative Like Cell,Nervous System,21,0.052763819095477386,398,69,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,19,0.03166666666666667,600,100,0.06,46,3.0
+EVL,Fast Muscle Cell,18,0.012613875262789068,1427,272,0.06,46,3.0
+Yolk Syncytial Layer,Polster,18,0.05070422535211268,355,29,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Hatching Gland,16,0.02666666666666667,600,100,0.06,46,3.0
+Margin,Neural Crest,16,0.10526315789473684,152,22,0.06,46,3.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",15,0.03768844221105527,398,69,0.06,46,3.0
+Presumptive Mesoderm,Pronephros,14,0.0457516339869281,306,47,0.06,46,3.0
+Proliferative Like Cell,Fast Muscle Cell,14,0.035175879396984924,398,69,0.06,46,3.0
+Presumptive Mesoderm,Erythroid Lineage Cell,14,0.0457516339869281,306,47,0.06,46,3.0
+EVL,Pronephros,13,0.009110021023125438,1427,272,0.06,46,3.0
+Margin,Erythroid Lineage Cell,12,0.07894736842105263,152,22,0.06,46,3.0
+Hypoblast,Erythroid Lineage Cell,12,0.09448818897637795,127,24,0.06,46,3.0
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,11,0.02763819095477387,398,69,0.06,46,3.0
+Proliferative Like Cell,Forebrain,10,0.02512562814070352,398,69,0.06,46,3.0
+Proliferative Like Cell,Erythroid Lineage Cell,10,0.02512562814070352,398,69,0.06,46,3.0
+Yolk Syncytial Layer,Erythroid Lineage Cell,10,0.028169014084507043,355,29,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",9,0.015,600,100,0.06,46,3.0
+Margin,Somite,9,0.05921052631578947,152,22,0.06,46,3.0
+Hypoblast,Neural Crest,9,0.07086614173228346,127,24,0.06,46,3.0
+Margin,Pronephros,9,0.05921052631578947,152,22,0.06,46,3.0
+Presumptive Mesoderm,Nervous System,8,0.026143790849673203,306,47,0.06,46,3.0
+Yolk Syncytial Layer,Notochord,8,0.022535211267605635,355,29,0.06,46,3.0
+Margin,Angioblastic Mesenchymal Cell,8,0.05263157894736842,152,22,0.06,46,3.0
+Margin,Yolk Syncytial Layer,8,0.05263157894736842,152,22,0.06,46,3.0
+EVL,Hatching Gland,7,0.004905395935529082,1427,272,0.06,46,3.0
+Presumptive Mesoderm,Hatching Gland,7,0.02287581699346405,306,47,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",6,0.01,600,100,0.06,46,3.0
+Yolk Syncytial Layer,Neural Crest,6,0.016901408450704224,355,29,0.06,46,3.0
+Presumptive Mesoderm,Periderm,6,0.0196078431372549,306,47,0.06,46,3.0
+Hypoblast,Nervous System,6,0.047244094488188976,127,24,0.06,46,3.0
+Yolk Syncytial Layer,Forebrain,5,0.014084507042253521,355,29,0.06,46,3.0
+Hypoblast,Angioblastic Mesenchymal Cell,5,0.03937007874015748,127,24,0.06,46,3.0
+Proliferative Like Cell,Hatching Gland,5,0.01256281407035176,398,69,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,5,0.008333333333333333,600,100,0.06,46,3.0
+Margin,"Segmental Plate, Tail Bud",5,0.03289473684210526,152,22,0.06,46,3.0
+Presumptive Mesoderm,Polster,5,0.016339869281045753,306,47,0.06,46,3.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",5,0.016339869281045753,306,47,0.06,46,3.0
+EVL,"Immature Eye, Midbrain",4,0.002803083391730904,1427,272,0.06,46,3.0
+Presumptive Mesoderm,Neural Rod,4,0.013071895424836602,306,47,0.06,46,3.0
+Proliferative Like Cell,Spinal Cord Dorsal Region,4,0.010050251256281407,398,69,0.06,46,3.0
+Margin,Notochord,4,0.02631578947368421,152,22,0.06,46,3.0
+Proliferative Like Cell,Neural Rod,4,0.010050251256281407,398,69,0.06,46,3.0
+Hypoblast,Fast Muscle Cell,4,0.031496062992125984,127,24,0.06,46,3.0
+Hypoblast,"Segmental Plate, Tail Bud",3,0.023622047244094488,127,24,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,3,0.005,600,100,0.06,46,3.0
+Presumptive Mesoderm,Adaxial Cell,3,0.00980392156862745,306,47,0.06,46,3.0
+Margin,Epidermis,3,0.019736842105263157,152,22,0.06,46,3.0
+Margin,Nervous System,3,0.019736842105263157,152,22,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Yolk Syncytial Layer, Periderm",3,0.005,600,100,0.06,46,3.0
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,3,0.008450704225352112,355,29,0.06,46,3.0
+EVL,"Musculature System, Yolk Syncytial Layer",3,0.002102312543798178,1427,272,0.06,46,3.0
+EVL,Periderm,3,0.002102312543798178,1427,272,0.06,46,3.0
+Proliferative Like Cell,Pronephros,3,0.007537688442211055,398,69,0.06,46,3.0
+Hypoblast,Forebrain,3,0.023622047244094488,127,24,0.06,46,3.0
+Hypoblast,Hatching Gland,2,0.015748031496062992,127,24,0.06,46,3.0
+EVL,"Neural Crest, Otic Vesicle",2,0.001401541695865452,1427,272,0.06,46,3.0
+Margin,Anterior Erythroid Lineage Cell,2,0.013157894736842105,152,22,0.06,46,3.0
+Presumptive Mesoderm,Optic Vesicle,2,0.006535947712418301,306,47,0.06,46,3.0
+Yolk Syncytial Layer,"Segmental Plate, Tail Bud",2,0.005633802816901409,355,29,0.06,46,3.0
+EVL,Pigment Cell,2,0.001401541695865452,1427,272,0.06,46,3.0
+Margin,Optic Vesicle,2,0.013157894736842105,152,22,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,2,0.0033333333333333335,600,100,0.06,46,3.0
+Hypoblast,Adaxial Cell,2,0.015748031496062992,127,24,0.06,46,3.0
+EVL,Spinal Cord Ventral Region,2,0.001401541695865452,1427,272,0.06,46,3.0
+Proliferative Like Cell,Epidermis,2,0.005025125628140704,398,69,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,2,0.0033333333333333335,600,100,0.06,46,3.0
+Presumptive Mesoderm,Fast Muscle Cell,2,0.006535947712418301,306,47,0.06,46,3.0
+Presumptive Mesoderm,Myotome,2,0.006535947712418301,306,47,0.06,46,3.0
+Margin,"Yolk Syncytial Layer, Periderm",1,0.006578947368421052,152,22,0.06,46,3.0
+Presumptive Mesoderm,Yolk Syncytial Layer,1,0.0032679738562091504,306,47,0.06,46,3.0
+Hypoblast,Polster,1,0.007874015748031496,127,24,0.06,46,3.0
+Hypoblast,Optic Vesicle,1,0.007874015748031496,127,24,0.06,46,3.0
+Presumptive Mesoderm,"Neural Crest, Otic Vesicle",1,0.0032679738562091504,306,47,0.06,46,3.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,1,0.0028169014084507044,355,29,0.06,46,3.0
+EVL,Myotome,1,0.000700770847932726,1427,272,0.06,46,3.0
+Yolk Syncytial Layer,Pronephros,1,0.0028169014084507044,355,29,0.06,46,3.0
+Margin,Periderm,1,0.006578947368421052,152,22,0.06,46,3.0
+Margin,Neural Rod,1,0.006578947368421052,152,22,0.06,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Neural Crest, Otic Vesicle",1,0.0016666666666666668,600,100,0.06,46,3.0
+Hypoblast,Neural Rod,1,0.007874015748031496,127,24,0.06,46,3.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,1,0.0032679738562091504,306,47,0.06,46,3.0
+Hypoblast,"Neural Crest, Otic Vesicle",1,0.007874015748031496,127,24,0.06,46,3.0
+Proliferative Like Cell,"Immature Eye, Midbrain",1,0.002512562814070352,398,69,0.06,46,3.0
+Margin,Polster,1,0.006578947368421052,152,22,0.06,46,3.0
+Margin,Myotome,1,0.006578947368421052,152,22,0.06,46,3.0
+Margin,"Musculature System, Yolk Syncytial Layer",1,0.006578947368421052,152,22,0.06,46,3.0
+Margin,"Immature Eye, Midbrain",1,0.006578947368421052,152,22,0.06,46,3.0
+Yolk Syncytial Layer,Spinal Cord Dorsal Region,1,0.0028169014084507044,355,29,0.06,46,3.0
+Yolk Syncytial Layer,Somite,1,0.0028169014084507044,355,29,0.06,46,3.0
+Hypoblast,Anterior Erythroid Lineage Cell,1,0.007874015748031496,127,24,0.06,46,3.0
+Proliferative Like Cell,Polster,1,0.002512562814070352,398,69,0.06,46,3.0
+EVL,Epidermis,1,0.000700770847932726,1427,272,0.06,46,3.0
+EVL,Notochord,423,0.23331494760066188,1813,272,0.06,46,3.5
+EVL,Nervous System,328,0.18091560948703805,1813,272,0.06,46,3.5
+EVL,Somite,251,0.13844456701599558,1813,272,0.06,46,3.5
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",224,0.46764091858037576,479,29,0.06,46,3.5
+EVL,Forebrain,197,0.10865968008825151,1813,272,0.06,46,3.5
+EVL,Fast Muscle Cell,171,0.0943188086045229,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,163,0.20451693851944794,797,100,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,159,0.19949811794228356,797,100,0.06,46,3.5
+Proliferative Like Cell,Notochord,129,0.2388888888888889,540,69,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,114,0.14303638644918445,797,100,0.06,46,3.5
+EVL,Angioblastic Mesenchymal Cell,96,0.052950910093767234,1813,272,0.06,46,3.5
+Proliferative Like Cell,Fast Muscle Cell,90,0.16666666666666666,540,69,0.06,46,3.5
+Yolk Syncytial Layer,Hatching Gland,86,0.17954070981210857,479,29,0.06,46,3.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,73,0.1524008350730689,479,29,0.06,46,3.5
+EVL,Pronephros,72,0.039713182570325425,1813,272,0.06,46,3.5
+Presumptive Mesoderm,Forebrain,72,0.183206106870229,393,47,0.06,46,3.5
+Presumptive Mesoderm,Nervous System,70,0.178117048346056,393,47,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,69,0.08657465495608532,797,100,0.06,46,3.5
+Proliferative Like Cell,Nervous System,68,0.1259259259259259,540,69,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",65,0.08155583437892096,797,100,0.06,46,3.5
+Proliferative Like Cell,Somite,62,0.11481481481481481,540,69,0.06,46,3.5
+Proliferative Like Cell,Pronephros,60,0.1111111111111111,540,69,0.06,46,3.5
+EVL,Neural Crest,58,0.031991174848317705,1813,272,0.06,46,3.5
+Hypoblast,Notochord,47,0.28313253012048195,166,24,0.06,46,3.5
+Margin,Forebrain,47,0.23737373737373738,198,22,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,47,0.05897114178168131,797,100,0.06,46,3.5
+Presumptive Mesoderm,Pronephros,45,0.11450381679389313,393,47,0.06,46,3.5
+EVL,Myotome,40,0.02206287920573635,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,38,0.04767879548306148,797,100,0.06,46,3.5
+Presumptive Mesoderm,Notochord,35,0.089058524173028,393,47,0.06,46,3.5
+Presumptive Mesoderm,Neural Crest,34,0.08651399491094147,393,47,0.06,46,3.5
+EVL,Erythroid Lineage Cell,31,0.01709873138444567,1813,272,0.06,46,3.5
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",30,0.07633587786259542,393,47,0.06,46,3.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",30,0.06263048016701461,479,29,0.06,46,3.5
+Hypoblast,Somite,29,0.1746987951807229,166,24,0.06,46,3.5
+Margin,Hatching Gland,28,0.1414141414141414,198,22,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,28,0.03513174404015056,797,100,0.06,46,3.5
+Margin,"Musculature System, Yolk Syncytial Layer",25,0.12626262626262627,198,22,0.06,46,3.5
+EVL,"Musculature System, Yolk Syncytial Layer",25,0.013789299503585218,1813,272,0.06,46,3.5
+EVL,Hatching Gland,23,0.0126861555432984,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,22,0.027603513174404015,797,100,0.06,46,3.5
+EVL,Spinal Cord Dorsal Region,22,0.012134583563154992,1813,272,0.06,46,3.5
+Presumptive Mesoderm,Somite,22,0.05597964376590331,393,47,0.06,46,3.5
+Hypoblast,Nervous System,22,0.13253012048192772,166,24,0.06,46,3.5
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,21,0.04384133611691023,479,29,0.06,46,3.5
+Proliferative Like Cell,Forebrain,21,0.03888888888888889,540,69,0.06,46,3.5
+Presumptive Mesoderm,Fast Muscle Cell,20,0.05089058524173028,393,47,0.06,46,3.5
+Margin,Nervous System,19,0.09595959595959595,198,22,0.06,46,3.5
+Presumptive Mesoderm,Hatching Gland,19,0.04834605597964377,393,47,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,17,0.02132998745294856,797,100,0.06,46,3.5
+Proliferative Like Cell,Neural Crest,17,0.03148148148148148,540,69,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,17,0.02132998745294856,797,100,0.06,46,3.5
+EVL,Anterior Erythroid Lineage Cell,17,0.009376723662437948,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Hatching Gland,16,0.020075282308657464,797,100,0.06,46,3.5
+Proliferative Like Cell,Myotome,14,0.025925925925925925,540,69,0.06,46,3.5
+Hypoblast,Erythroid Lineage Cell,13,0.0783132530120482,166,24,0.06,46,3.5
+Margin,Anterior Erythroid Lineage Cell,13,0.06565656565656566,198,22,0.06,46,3.5
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",13,0.024074074074074074,540,69,0.06,46,3.5
+Yolk Syncytial Layer,Pronephros,12,0.025052192066805846,479,29,0.06,46,3.5
+Margin,Neural Crest,12,0.06060606060606061,198,22,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,12,0.015056461731493099,797,100,0.06,46,3.5
+Hypoblast,Pronephros,12,0.07228915662650602,166,24,0.06,46,3.5
+Margin,Pronephros,12,0.06060606060606061,198,22,0.06,46,3.5
+Yolk Syncytial Layer,Notochord,12,0.025052192066805846,479,29,0.06,46,3.5
+Proliferative Like Cell,Epidermis,11,0.020370370370370372,540,69,0.06,46,3.5
+EVL,Epidermis,11,0.006067291781577496,1813,272,0.06,46,3.5
+Hypoblast,Forebrain,10,0.060240963855421686,166,24,0.06,46,3.5
+Presumptive Mesoderm,Erythroid Lineage Cell,10,0.02544529262086514,393,47,0.06,46,3.5
+Proliferative Like Cell,Hatching Gland,10,0.018518518518518517,540,69,0.06,46,3.5
+EVL,Eye,10,0.005515719801434087,1813,272,0.06,46,3.5
+Proliferative Like Cell,Spinal Cord Dorsal Region,10,0.018518518518518517,540,69,0.06,46,3.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,10,0.02544529262086514,393,47,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,9,0.011292346298619825,797,100,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,9,0.011292346298619825,797,100,0.06,46,3.5
+EVL,Spinal Cord Ventral Region,9,0.004964147821290678,1813,272,0.06,46,3.5
+EVL,"Segmental Plate, Tail Bud",9,0.004964147821290678,1813,272,0.06,46,3.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,9,0.016666666666666666,540,69,0.06,46,3.5
+Proliferative Like Cell,Erythroid Lineage Cell,8,0.014814814814814815,540,69,0.06,46,3.5
+Hypoblast,"Musculature System, Yolk Syncytial Layer",8,0.04819277108433735,166,24,0.06,46,3.5
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,8,0.020356234096692113,393,47,0.06,46,3.5
+Hypoblast,Anterior Erythroid Lineage Cell,7,0.04216867469879518,166,24,0.06,46,3.5
+Margin,Notochord,7,0.03535353535353535,198,22,0.06,46,3.5
+Yolk Syncytial Layer,Forebrain,7,0.014613778705636743,479,29,0.06,46,3.5
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,7,0.012962962962962963,540,69,0.06,46,3.5
+Margin,Yolk Syncytial Layer,7,0.03535353535353535,198,22,0.06,46,3.5
+EVL,Pigment Cell,7,0.003861003861003861,1813,272,0.06,46,3.5
+Margin,Somite,6,0.030303030303030304,198,22,0.06,46,3.5
+Yolk Syncytial Layer,Neural Crest,6,0.012526096033402923,479,29,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,6,0.0075282308657465494,797,100,0.06,46,3.5
+Margin,Angioblastic Mesenchymal Cell,5,0.025252525252525252,198,22,0.06,46,3.5
+Margin,Erythroid Lineage Cell,5,0.025252525252525252,198,22,0.06,46,3.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",5,0.009259259259259259,540,69,0.06,46,3.5
+Presumptive Mesoderm,Myotome,5,0.01272264631043257,393,47,0.06,46,3.5
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,4,0.008350730688935281,479,29,0.06,46,3.5
+Margin,Epidermis,4,0.020202020202020204,198,22,0.06,46,3.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,3,0.006263048016701462,479,29,0.06,46,3.5
+EVL,Polster,3,0.001654715940430226,1813,272,0.06,46,3.5
+Hypoblast,Spinal Cord Anterior Region,3,0.018072289156626505,166,24,0.06,46,3.5
+Proliferative Like Cell,Spinal Cord Ventral Region,3,0.005555555555555556,540,69,0.06,46,3.5
+Presumptive Mesoderm,Slow Muscle Cell,3,0.007633587786259542,393,47,0.06,46,3.5
+Hypoblast,Hatching Gland,3,0.018072289156626505,166,24,0.06,46,3.5
+Hypoblast,Epidermis,3,0.018072289156626505,166,24,0.06,46,3.5
+Hypoblast,Fast Muscle Cell,3,0.018072289156626505,166,24,0.06,46,3.5
+EVL,Adaxial Cell,3,0.001654715940430226,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,3,0.0037641154328732747,797,100,0.06,46,3.5
+EVL,Optic Vesicle,2,0.0011031439602868175,1813,272,0.06,46,3.5
+Margin,Myotome,2,0.010101010101010102,198,22,0.06,46,3.5
+Presumptive Mesoderm,Spinal Cord Dorsal Region,2,0.005089058524173028,393,47,0.06,46,3.5
+Presumptive Mesoderm,Spinal Cord Anterior Region,2,0.005089058524173028,393,47,0.06,46,3.5
+Hypoblast,Myotome,2,0.012048192771084338,166,24,0.06,46,3.5
+EVL,"Immature Eye, Midbrain",2,0.0011031439602868175,1813,272,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,2,0.002509410288582183,797,100,0.06,46,3.5
+Margin,Eye,2,0.010101010101010102,198,22,0.06,46,3.5
+Proliferative Like Cell,Slow Muscle Cell,2,0.003703703703703704,540,69,0.06,46,3.5
+Presumptive Mesoderm,Polster,2,0.005089058524173028,393,47,0.06,46,3.5
+Margin,Pigment Cell,2,0.010101010101010102,198,22,0.06,46,3.5
+EVL,Spinal Cord Anterior Region,2,0.0011031439602868175,1813,272,0.06,46,3.5
+Presumptive Mesoderm,Yolk Syncytial Layer,1,0.002544529262086514,393,47,0.06,46,3.5
+Hypoblast,Spinal Cord Dorsal Region,1,0.006024096385542169,166,24,0.06,46,3.5
+Hypoblast,Neural Crest,1,0.006024096385542169,166,24,0.06,46,3.5
+Hypoblast,"Immature Eye, Midbrain",1,0.006024096385542169,166,24,0.06,46,3.5
+Hypoblast,Spinal Cord Ventral Region,1,0.006024096385542169,166,24,0.06,46,3.5
+Presumptive Mesoderm,"Yolk Syncytial Layer, Periderm",1,0.002544529262086514,393,47,0.06,46,3.5
+Presumptive Mesoderm,"Immature Eye, Midbrain",1,0.002544529262086514,393,47,0.06,46,3.5
+Presumptive Mesoderm,Eye,1,0.002544529262086514,393,47,0.06,46,3.5
+Proliferative Like Cell,Adaxial Cell,1,0.001851851851851852,540,69,0.06,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Slow Muscle Cell,1,0.0012547051442910915,797,100,0.06,46,3.5
+EVL,Slow Muscle Cell,1,0.0005515719801434088,1813,272,0.06,46,3.5
+Margin,Slow Muscle Cell,1,0.005050505050505051,198,22,0.06,46,3.5
+Margin,"Segmental Plate, Tail Bud",1,0.005050505050505051,198,22,0.06,46,3.5
+Yolk Syncytial Layer,Epidermis,1,0.0020876826722338203,479,29,0.06,46,3.5
+EVL,Nervous System,522,0.20295489891135304,2572,272,0.06,46,4.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",495,0.7290132547864506,679,29,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,431,0.3627946127946128,1188,100,0.06,46,4.0
+EVL,Fast Muscle Cell,395,0.1535769828926905,2572,272,0.06,46,4.0
+EVL,Pronephros,342,0.13297045101088648,2572,272,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",274,0.23063973063973064,1188,100,0.06,46,4.0
+EVL,Notochord,271,0.10536547433903577,2572,272,0.06,46,4.0
+Proliferative Like Cell,Pronephros,199,0.25126262626262624,792,69,0.06,46,4.0
+EVL,Forebrain,189,0.0734836702954899,2572,272,0.06,46,4.0
+EVL,"Musculature System, Yolk Syncytial Layer",185,0.07192846034214619,2572,272,0.06,46,4.0
+Proliferative Like Cell,Fast Muscle Cell,164,0.20707070707070707,792,69,0.06,46,4.0
+EVL,Somite,131,0.05093312597200622,2572,272,0.06,46,4.0
+EVL,Myotome,126,0.048989113530326596,2572,272,0.06,46,4.0
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",114,0.1915966386554622,595,47,0.06,46,4.0
+Presumptive Mesoderm,Pronephros,103,0.173109243697479,595,47,0.06,46,4.0
+Presumptive Mesoderm,Nervous System,103,0.173109243697479,595,47,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,100,0.08417508417508418,1188,100,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,97,0.08164983164983165,1188,100,0.06,46,4.0
+EVL,Spinal Cord Dorsal Region,96,0.03732503888024884,2572,272,0.06,46,4.0
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",90,0.11363636363636363,792,69,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,86,0.0723905723905724,1188,100,0.06,46,4.0
+Proliferative Like Cell,Nervous System,82,0.10353535353535354,792,69,0.06,46,4.0
+Presumptive Mesoderm,Forebrain,77,0.12941176470588237,595,47,0.06,46,4.0
+Yolk Syncytial Layer,Hatching Gland,70,0.10309278350515463,679,29,0.06,46,4.0
+Proliferative Like Cell,Notochord,69,0.08712121212121213,792,69,0.06,46,4.0
+Margin,"Musculature System, Yolk Syncytial Layer",64,0.24334600760456274,263,22,0.06,46,4.0
+EVL,Spinal Cord Ventral Region,60,0.02332814930015552,2572,272,0.06,46,4.0
+EVL,Angioblastic Mesenchymal Cell,58,0.02255054432348367,2572,272,0.06,46,4.0
+Presumptive Mesoderm,Hatching Gland,52,0.08739495798319327,595,47,0.06,46,4.0
+EVL,Anterior Erythroid Lineage Cell,47,0.01827371695178849,2572,272,0.06,46,4.0
+Hypoblast,Pronephros,42,0.1810344827586207,232,24,0.06,46,4.0
+Hypoblast,"Musculature System, Yolk Syncytial Layer",39,0.16810344827586207,232,24,0.06,46,4.0
+EVL,Hatching Gland,38,0.014774494556765163,2572,272,0.06,46,4.0
+Margin,Pronephros,37,0.14068441064638784,263,22,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,37,0.031144781144781145,1188,100,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,37,0.031144781144781145,1188,100,0.06,46,4.0
+Hypoblast,Notochord,36,0.15517241379310345,232,24,0.06,46,4.0
+Margin,Nervous System,35,0.13307984790874525,263,22,0.06,46,4.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,35,0.05154639175257732,679,29,0.06,46,4.0
+Proliferative Like Cell,Somite,33,0.041666666666666664,792,69,0.06,46,4.0
+EVL,Eye,33,0.012830482115085537,2572,272,0.06,46,4.0
+Margin,Anterior Erythroid Lineage Cell,31,0.11787072243346007,263,22,0.06,46,4.0
+Proliferative Like Cell,Epidermis,30,0.03787878787878788,792,69,0.06,46,4.0
+Proliferative Like Cell,Myotome,30,0.03787878787878788,792,69,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,29,0.02441077441077441,1188,100,0.06,46,4.0
+Proliferative Like Cell,Spinal Cord Dorsal Region,29,0.036616161616161616,792,69,0.06,46,4.0
+Presumptive Mesoderm,Notochord,29,0.04873949579831933,595,47,0.06,46,4.0
+Margin,Hatching Gland,29,0.11026615969581749,263,22,0.06,46,4.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,28,0.047058823529411764,595,47,0.06,46,4.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,27,0.039764359351988215,679,29,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,26,0.021885521885521887,1188,100,0.06,46,4.0
+Hypoblast,Nervous System,25,0.10775862068965517,232,24,0.06,46,4.0
+EVL,Epidermis,24,0.00933125972006221,2572,272,0.06,46,4.0
+Margin,Forebrain,23,0.08745247148288973,263,22,0.06,46,4.0
+Yolk Syncytial Layer,Pronephros,23,0.033873343151693665,679,29,0.06,46,4.0
+Presumptive Mesoderm,Pigment Cell,23,0.03865546218487395,595,47,0.06,46,4.0
+EVL,Pigment Cell,21,0.008164852255054433,2572,272,0.06,46,4.0
+Hypoblast,Fast Muscle Cell,18,0.07758620689655173,232,24,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,18,0.015151515151515152,1188,100,0.06,46,4.0
+Presumptive Mesoderm,Fast Muscle Cell,16,0.02689075630252101,595,47,0.06,46,4.0
+Hypoblast,Spinal Cord Ventral Region,14,0.0603448275862069,232,24,0.06,46,4.0
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,14,0.017676767676767676,792,69,0.06,46,4.0
+EVL,Erythroid Lineage Cell,13,0.00505443234836703,2572,272,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,13,0.010942760942760943,1188,100,0.06,46,4.0
+EVL,Spinal Cord Anterior Region,12,0.004665629860031105,2572,272,0.06,46,4.0
+Proliferative Like Cell,Hatching Gland,12,0.015151515151515152,792,69,0.06,46,4.0
+Margin,Eye,12,0.045627376425855515,263,22,0.06,46,4.0
+Hypoblast,Somite,12,0.05172413793103448,232,24,0.06,46,4.0
+Margin,Epidermis,11,0.04182509505703422,263,22,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,11,0.009259259259259259,1188,100,0.06,46,4.0
+Yolk Syncytial Layer,Notochord,10,0.014727540500736377,679,29,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Hatching Gland,10,0.008417508417508417,1188,100,0.06,46,4.0
+Presumptive Mesoderm,Somite,10,0.01680672268907563,595,47,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,9,0.007575757575757576,1188,100,0.06,46,4.0
+Proliferative Like Cell,Eye,8,0.010101010101010102,792,69,0.06,46,4.0
+Proliferative Like Cell,Forebrain,8,0.010101010101010102,792,69,0.06,46,4.0
+Hypoblast,Anterior Erythroid Lineage Cell,8,0.034482758620689655,232,24,0.06,46,4.0
+Margin,Pigment Cell,8,0.030418250950570342,263,22,0.06,46,4.0
+Margin,Yolk Syncytial Layer,7,0.026615969581749048,263,22,0.06,46,4.0
+Presumptive Mesoderm,Neural Crest,7,0.011764705882352941,595,47,0.06,46,4.0
+Hypoblast,Eye,7,0.03017241379310345,232,24,0.06,46,4.0
+Proliferative Like Cell,Spinal Cord Ventral Region,7,0.008838383838383838,792,69,0.06,46,4.0
+Presumptive Mesoderm,Spinal Cord Dorsal Region,7,0.011764705882352941,595,47,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,6,0.005050505050505051,1188,100,0.06,46,4.0
+Presumptive Mesoderm,Myotome,6,0.010084033613445379,595,47,0.06,46,4.0
+Yolk Syncytial Layer,Forebrain,6,0.008836524300441826,679,29,0.06,46,4.0
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,6,0.007575757575757576,792,69,0.06,46,4.0
+Hypoblast,Slow Muscle Cell,6,0.02586206896551724,232,24,0.06,46,4.0
+Hypoblast,Erythroid Lineage Cell,6,0.02586206896551724,232,24,0.06,46,4.0
+Presumptive Mesoderm,Eye,6,0.010084033613445379,595,47,0.06,46,4.0
+Presumptive Mesoderm,Spinal Cord Anterior Region,5,0.008403361344537815,595,47,0.06,46,4.0
+Yolk Syncytial Layer,Spinal Cord Dorsal Region,5,0.007363770250368188,679,29,0.06,46,4.0
+EVL,Neural Crest,5,0.0019440124416796269,2572,272,0.06,46,4.0
+Hypoblast,Hatching Gland,4,0.017241379310344827,232,24,0.06,46,4.0
+Hypoblast,Spinal Cord Dorsal Region,4,0.017241379310344827,232,24,0.06,46,4.0
+Hypoblast,Forebrain,4,0.017241379310344827,232,24,0.06,46,4.0
+Proliferative Like Cell,Pigment Cell,3,0.003787878787878788,792,69,0.06,46,4.0
+Presumptive Mesoderm,Epidermis,3,0.005042016806722689,595,47,0.06,46,4.0
+Margin,Somite,3,0.011406844106463879,263,22,0.06,46,4.0
+Proliferative Like Cell,Erythroid Lineage Cell,3,0.003787878787878788,792,69,0.06,46,4.0
+Yolk Syncytial Layer,Epidermis,3,0.004418262150220913,679,29,0.06,46,4.0
+EVL,Slow Muscle Cell,3,0.0011664074650077762,2572,272,0.06,46,4.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,3,0.005042016806722689,595,47,0.06,46,4.0
+Hypoblast,Myotome,3,0.01293103448275862,232,24,0.06,46,4.0
+Yolk Syncytial Layer,Nervous System,2,0.0029455081001472753,679,29,0.06,46,4.0
+Presumptive Mesoderm,Yolk Syncytial Layer,2,0.0033613445378151263,595,47,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,2,0.0016835016835016834,1188,100,0.06,46,4.0
+Proliferative Like Cell,Neural Crest,2,0.0025252525252525255,792,69,0.06,46,4.0
+Proliferative Like Cell,Slow Muscle Cell,2,0.0025252525252525255,792,69,0.06,46,4.0
+Hypoblast,Pigment Cell,2,0.008620689655172414,232,24,0.06,46,4.0
+Presumptive Mesoderm,Slow Muscle Cell,1,0.0016806722689075631,595,47,0.06,46,4.0
+Yolk Syncytial Layer,Neural Crest,1,0.0014727540500736377,679,29,0.06,46,4.0
+Margin,Erythroid Lineage Cell,1,0.0038022813688212928,263,22,0.06,46,4.0
+Yolk Syncytial Layer,Pigment Cell,1,0.0014727540500736377,679,29,0.06,46,4.0
+EVL,"Segmental Plate, Tail Bud",1,0.00038880248833592535,2572,272,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Slow Muscle Cell,1,0.0008417508417508417,1188,100,0.06,46,4.0
+Hypoblast,Spinal Cord Anterior Region,1,0.004310344827586207,232,24,0.06,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,1,0.0008417508417508417,1188,100,0.06,46,4.0
+Hypoblast,Angioblastic Mesenchymal Cell,1,0.004310344827586207,232,24,0.06,46,4.0
+Margin,Slow Muscle Cell,1,0.0038022813688212928,263,22,0.06,46,4.0
+Margin,Neural Crest,1,0.0038022813688212928,263,22,0.06,46,4.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",1,0.0012626262626262627,792,69,0.06,46,4.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",1,0.0014727540500736377,679,29,0.06,46,4.0
+EVL,EVL,272,1.0,272,272,0.0,46,0.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",100,1.0,100,100,0.0,46,0.0
+Proliferative Like Cell,Proliferative Like Cell,69,1.0,69,69,0.0,46,0.0
+Presumptive Mesoderm,Presumptive Mesoderm,47,1.0,47,47,0.0,46,0.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,29,1.0,29,29,0.0,46,0.0
+Hypoblast,Hypoblast,24,1.0,24,24,0.0,46,0.0
+Margin,Margin,22,1.0,22,22,0.0,46,0.0
+EVL,Notochord,68,0.19825072886297376,343,272,0.0,46,0.5
+EVL,EVL,64,0.18658892128279883,343,272,0.0,46,0.5
+EVL,"Paraxial Mesoderm, Neural Keel",59,0.17201166180758018,343,272,0.0,46,0.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,55,1.0,55,29,0.0,46,0.5
+EVL,Proliferative Like Cell,45,0.13119533527696792,343,272,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",44,0.2953020134228188,149,100,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Presumptive Mesoderm, Presumptive Ectoderm",42,0.28187919463087246,149,100,0.0,46,0.5
+EVL,Periderm,33,0.09620991253644315,343,272,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,28,0.18791946308724833,149,100,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",25,0.16778523489932887,149,100,0.0,46,0.5
+Presumptive Mesoderm,Yolk Syncytial Layer,24,0.36363636363636365,66,47,0.0,46,0.5
+Proliferative Like Cell,Notochord,23,0.26744186046511625,86,69,0.0,46,0.5
+EVL,"Segmental Plate, Tail Bud",23,0.06705539358600583,343,272,0.0,46,0.5
+EVL,"Presumptive Mesoderm, Presumptive Ectoderm",21,0.061224489795918366,343,272,0.0,46,0.5
+EVL,Presumptive Mesoderm,20,0.05830903790087463,343,272,0.0,46,0.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",17,0.19767441860465115,86,69,0.0,46,0.5
+Proliferative Like Cell,Proliferative Like Cell,15,0.1744186046511628,86,69,0.0,46,0.5
+Proliferative Like Cell,"Presumptive Mesoderm, Presumptive Ectoderm",14,0.16279069767441862,86,69,0.0,46,0.5
+Margin,Yolk Syncytial Layer,13,0.4642857142857143,28,22,0.0,46,0.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",12,0.18181818181818182,66,47,0.0,46,0.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",9,0.10465116279069768,86,69,0.0,46,0.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",9,0.13636363636363635,66,47,0.0,46,0.5
+Margin,"Segmental Plate, Tail Bud",8,0.2857142857142857,28,22,0.0,46,0.5
+Presumptive Mesoderm,"Presumptive Mesoderm, Presumptive Ectoderm",7,0.10606060606060606,66,47,0.0,46,0.5
+Hypoblast,"Segmental Plate, Tail Bud",7,0.25925925925925924,27,24,0.0,46,0.5
+EVL,Anterior Neural Keel,6,0.01749271137026239,343,272,0.0,46,0.5
+Hypoblast,Notochord,6,0.2222222222222222,27,24,0.0,46,0.5
+Hypoblast,"Presumptive Mesoderm, Presumptive Ectoderm",6,0.2222222222222222,27,24,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,5,0.03355704697986577,149,100,0.0,46,0.5
+Presumptive Mesoderm,Periderm,4,0.06060606060606061,66,47,0.0,46,0.5
+Presumptive Mesoderm,Presumptive Mesoderm,4,0.06060606060606061,66,47,0.0,46,0.5
+Presumptive Mesoderm,Anterior Neural Keel,4,0.06060606060606061,66,47,0.0,46,0.5
+Hypoblast,"Paraxial Mesoderm, Neural Keel",4,0.14814814814814814,27,24,0.0,46,0.5
+EVL,Yolk Syncytial Layer,3,0.008746355685131196,343,272,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,3,0.020134228187919462,149,100,0.0,46,0.5
+Margin,Presumptive Mesoderm,3,0.10714285714285714,28,22,0.0,46,0.5
+Proliferative Like Cell,Anterior Neural Keel,3,0.03488372093023256,86,69,0.0,46,0.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Presumptive Mesoderm,2,0.013422818791946308,149,100,0.0,46,0.5
+Proliferative Like Cell,Presumptive Mesoderm,2,0.023255813953488372,86,69,0.0,46,0.5
+Proliferative Like Cell,Periderm,2,0.023255813953488372,86,69,0.0,46,0.5
+Presumptive Mesoderm,Notochord,2,0.030303030303030304,66,47,0.0,46,0.5
+Margin,Periderm,2,0.07142857142857142,28,22,0.0,46,0.5
+Hypoblast,Proliferative Like Cell,1,0.037037037037037035,27,24,0.0,46,0.5
+Hypoblast,Presumptive Mesoderm,1,0.037037037037037035,27,24,0.0,46,0.5
+Hypoblast,Periderm,1,0.037037037037037035,27,24,0.0,46,0.5
+Hypoblast,Anterior Neural Keel,1,0.037037037037037035,27,24,0.0,46,0.5
+EVL,Hypoblast,1,0.0029154518950437317,343,272,0.0,46,0.5
+Margin,Margin,1,0.03571428571428571,28,22,0.0,46,0.5
+Margin,Notochord,1,0.03571428571428571,28,22,0.0,46,0.5
+Proliferative Like Cell,Yolk Syncytial Layer,1,0.011627906976744186,86,69,0.0,46,0.5
+EVL,"Segmental Plate, Tail Bud",209,0.46238938053097345,452,272,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",143,0.7009803921568627,204,100,0.0,46,1.0
+EVL,Periderm,109,0.2411504424778761,452,272,0.0,46,1.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",103,0.7686567164179104,134,69,0.0,46,1.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,85,0.9770114942528736,87,29,0.0,46,1.0
+EVL,Notochord,58,0.12831858407079647,452,272,0.0,46,1.0
+EVL,"Paraxial Mesoderm, Neural Keel",54,0.11946902654867257,452,272,0.0,46,1.0
+Presumptive Mesoderm,Yolk Syncytial Layer,43,0.4725274725274725,91,47,0.0,46,1.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",24,0.26373626373626374,91,47,0.0,46,1.0
+Hypoblast,"Segmental Plate, Tail Bud",22,0.5789473684210527,38,24,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,18,0.08823529411764706,204,100,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Paraxial Mesoderm, Neural Keel",18,0.08823529411764706,204,100,0.0,46,1.0
+EVL,Yolk Syncytial Layer,17,0.03761061946902655,452,272,0.0,46,1.0
+Margin,Yolk Syncytial Layer,16,0.47058823529411764,34,22,0.0,46,1.0
+Margin,"Segmental Plate, Tail Bud",12,0.35294117647058826,34,22,0.0,46,1.0
+Proliferative Like Cell,Notochord,12,0.08955223880597014,134,69,0.0,46,1.0
+Presumptive Mesoderm,Periderm,10,0.10989010989010989,91,47,0.0,46,1.0
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",9,0.0989010989010989,91,47,0.0,46,1.0
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",9,0.06716417910447761,134,69,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,8,0.0392156862745098,204,100,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Neural Keel,8,0.0392156862745098,204,100,0.0,46,1.0
+Proliferative Like Cell,Periderm,6,0.04477611940298507,134,69,0.0,46,1.0
+Hypoblast,Periderm,6,0.15789473684210525,38,24,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,6,0.029411764705882353,204,100,0.0,46,1.0
+EVL,Anterior Neural Keel,5,0.011061946902654867,452,272,0.0,46,1.0
+Margin,Periderm,5,0.14705882352941177,34,22,0.0,46,1.0
+Presumptive Mesoderm,Notochord,4,0.04395604395604396,91,47,0.0,46,1.0
+Hypoblast,Yolk Syncytial Layer,3,0.07894736842105263,38,24,0.0,46,1.0
+Hypoblast,Anterior Neural Keel,3,0.07894736842105263,38,24,0.0,46,1.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,3,0.014705882352941176,204,100,0.0,46,1.0
+Proliferative Like Cell,Yolk Syncytial Layer,3,0.022388059701492536,134,69,0.0,46,1.0
+Hypoblast,"Paraxial Mesoderm, Neural Keel",2,0.05263157894736842,38,24,0.0,46,1.0
+Hypoblast,Notochord,2,0.05263157894736842,38,24,0.0,46,1.0
+Yolk Syncytial Layer,Polster,2,0.022988505747126436,87,29,0.0,46,1.0
+Margin,"Paraxial Mesoderm, Neural Keel",1,0.029411764705882353,34,22,0.0,46,1.0
+Presumptive Mesoderm,Anterior Neural Keel,1,0.01098901098901099,91,47,0.0,46,1.0
+Proliferative Like Cell,Neural Rod,1,0.007462686567164179,134,69,0.0,46,1.0
+EVL,"Segmental Plate, Tail Bud",289,0.463884430176565,623,272,0.0,46,1.5
+EVL,Periderm,170,0.27287319422150885,623,272,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",135,0.451505016722408,299,100,0.0,46,1.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",127,0.625615763546798,203,69,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,80,0.26755852842809363,299,100,0.0,46,1.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",62,0.4397163120567376,141,29,0.0,46,1.5
+EVL,Adaxial Cell,58,0.09309791332263243,623,272,0.0,46,1.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,58,0.41134751773049644,141,29,0.0,46,1.5
+EVL,Neural Rod,50,0.08025682182985554,623,272,0.0,46,1.5
+Proliferative Like Cell,Adaxial Cell,40,0.19704433497536947,203,69,0.0,46,1.5
+Presumptive Mesoderm,Yolk Syncytial Layer,36,0.2926829268292683,123,47,0.0,46,1.5
+Presumptive Mesoderm,Periderm,30,0.24390243902439024,123,47,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,27,0.0903010033444816,299,100,0.0,46,1.5
+Yolk Syncytial Layer,Polster,21,0.14893617021276595,141,29,0.0,46,1.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",20,0.16260162601626016,123,47,0.0,46,1.5
+EVL,"Paraxial Mesoderm, Neural Keel",18,0.028892455858747994,623,272,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Yolk Syncytial Layer,18,0.06020066889632107,299,100,0.0,46,1.5
+EVL,Yolk Syncytial Layer,18,0.028892455858747994,623,272,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,17,0.056856187290969896,299,100,0.0,46,1.5
+Presumptive Mesoderm,Adaxial Cell,17,0.13821138211382114,123,47,0.0,46,1.5
+Margin,Periderm,16,0.3404255319148936,47,22,0.0,46,1.5
+EVL,Notochord,15,0.024077046548956663,623,272,0.0,46,1.5
+Proliferative Like Cell,Periderm,15,0.07389162561576355,203,69,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,13,0.043478260869565216,299,100,0.0,46,1.5
+Hypoblast,Adaxial Cell,13,0.2708333333333333,48,24,0.0,46,1.5
+Hypoblast,Neural Rod,12,0.25,48,24,0.0,46,1.5
+Margin,"Segmental Plate, Tail Bud",12,0.2553191489361702,47,22,0.0,46,1.5
+Hypoblast,"Segmental Plate, Tail Bud",12,0.25,48,24,0.0,46,1.5
+Proliferative Like Cell,Neural Rod,11,0.054187192118226604,203,69,0.0,46,1.5
+Margin,Yolk Syncytial Layer,11,0.23404255319148937,47,22,0.0,46,1.5
+Presumptive Mesoderm,Neural Rod,9,0.07317073170731707,123,47,0.0,46,1.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,9,0.030100334448160536,299,100,0.0,46,1.5
+Presumptive Mesoderm,Polster,8,0.06504065040650407,123,47,0.0,46,1.5
+EVL,Somite,5,0.008025682182985553,623,272,0.0,46,1.5
+Hypoblast,Notochord,5,0.10416666666666667,48,24,0.0,46,1.5
+Proliferative Like Cell,Notochord,4,0.019704433497536946,203,69,0.0,46,1.5
+Hypoblast,Periderm,3,0.0625,48,24,0.0,46,1.5
+Hypoblast,Yolk Syncytial Layer,3,0.0625,48,24,0.0,46,1.5
+Presumptive Mesoderm,"Paraxial Mesoderm, Neural Keel",3,0.024390243902439025,123,47,0.0,46,1.5
+Margin,Polster,3,0.06382978723404255,47,22,0.0,46,1.5
+Margin,Neural Rod,3,0.06382978723404255,47,22,0.0,46,1.5
+Proliferative Like Cell,Somite,3,0.014778325123152709,203,69,0.0,46,1.5
+Margin,"Paraxial Mesoderm, Neural Keel",2,0.0425531914893617,47,22,0.0,46,1.5
+Proliferative Like Cell,Yolk Syncytial Layer,2,0.009852216748768473,203,69,0.0,46,1.5
+Proliferative Like Cell,"Paraxial Mesoderm, Neural Keel",1,0.0049261083743842365,203,69,0.0,46,1.5
+EVL,Adaxial Cell,329,0.3912009512485137,841,272,0.0,46,2.0
+EVL,Neural Rod,266,0.3162901307966706,841,272,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,232,0.6041666666666666,384,100,0.0,46,2.0
+Proliferative Like Cell,Adaxial Cell,173,0.6407407407407407,270,69,0.0,46,2.0
+EVL,"Segmental Plate, Tail Bud",103,0.12247324613555291,841,272,0.0,46,2.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",98,0.460093896713615,213,29,0.0,46,2.0
+Yolk Syncytial Layer,Polster,81,0.38028169014084506,213,29,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,76,0.19791666666666666,384,100,0.0,46,2.0
+EVL,Periderm,61,0.07253269916765755,841,272,0.0,46,2.0
+EVL,Somite,57,0.06777645659928656,841,272,0.0,46,2.0
+Presumptive Mesoderm,Adaxial Cell,46,0.26136363636363635,176,47,0.0,46,2.0
+Presumptive Mesoderm,Neural Rod,40,0.22727272727272727,176,47,0.0,46,2.0
+Presumptive Mesoderm,Periderm,38,0.2159090909090909,176,47,0.0,46,2.0
+Proliferative Like Cell,"Segmental Plate, Tail Bud",35,0.12962962962962962,270,69,0.0,46,2.0
+Proliferative Like Cell,Neural Rod,33,0.12222222222222222,270,69,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",33,0.0859375,384,100,0.0,46,2.0
+Presumptive Mesoderm,Polster,32,0.18181818181818182,176,47,0.0,46,2.0
+Hypoblast,Adaxial Cell,26,0.45614035087719296,57,24,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,25,0.06510416666666667,384,100,0.0,46,2.0
+Margin,Periderm,23,0.323943661971831,71,22,0.0,46,2.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,18,0.08450704225352113,213,29,0.0,46,2.0
+Yolk Syncytial Layer,Periderm,16,0.07511737089201878,213,29,0.0,46,2.0
+Margin,Neural Rod,15,0.2112676056338028,71,22,0.0,46,2.0
+Hypoblast,Neural Rod,15,0.2631578947368421,57,24,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,15,0.0390625,384,100,0.0,46,2.0
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",15,0.08522727272727272,176,47,0.0,46,2.0
+Margin,"Segmental Plate, Tail Bud",14,0.19718309859154928,71,22,0.0,46,2.0
+Proliferative Like Cell,Periderm,12,0.044444444444444446,270,69,0.0,46,2.0
+EVL,Optic Vesicle,12,0.014268727705112961,841,272,0.0,46,2.0
+Proliferative Like Cell,Notochord,9,0.03333333333333333,270,69,0.0,46,2.0
+Margin,Polster,7,0.09859154929577464,71,22,0.0,46,2.0
+EVL,Yolk Syncytial Layer,6,0.007134363852556481,841,272,0.0,46,2.0
+Hypoblast,Notochord,6,0.10526315789473684,57,24,0.0,46,2.0
+Hypoblast,"Segmental Plate, Tail Bud",6,0.10526315789473684,57,24,0.0,46,2.0
+EVL,Notochord,5,0.005945303210463734,841,272,0.0,46,2.0
+Proliferative Like Cell,Somite,5,0.018518518518518517,270,69,0.0,46,2.0
+Margin,Adaxial Cell,4,0.056338028169014086,71,22,0.0,46,2.0
+Margin,Optic Vesicle,4,0.056338028169014086,71,22,0.0,46,2.0
+Margin,Yolk Syncytial Layer,4,0.056338028169014086,71,22,0.0,46,2.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Periderm,3,0.0078125,384,100,0.0,46,2.0
+Presumptive Mesoderm,Somite,3,0.017045454545454544,176,47,0.0,46,2.0
+EVL,Polster,2,0.0023781212841854932,841,272,0.0,46,2.0
+Hypoblast,Polster,2,0.03508771929824561,57,24,0.0,46,2.0
+Hypoblast,Somite,2,0.03508771929824561,57,24,0.0,46,2.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,2,0.011363636363636364,176,47,0.0,46,2.0
+Proliferative Like Cell,Yolk Syncytial Layer,2,0.007407407407407408,270,69,0.0,46,2.0
+Proliferative Like Cell,Neural Crest,1,0.003703703703703704,270,69,0.0,46,2.0
+EVL,Neural Rod,322,0.30813397129186604,1045,272,0.0,46,2.5
+EVL,Adaxial Cell,291,0.2784688995215311,1045,272,0.0,46,2.5
+EVL,Somite,188,0.1799043062200957,1045,272,0.0,46,2.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",152,0.5714285714285714,266,29,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,145,0.3172866520787746,457,100,0.0,46,2.5
+Proliferative Like Cell,Notochord,112,0.32748538011695905,342,69,0.0,46,2.5
+Proliferative Like Cell,Adaxial Cell,112,0.32748538011695905,342,69,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,102,0.22319474835886213,457,100,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,93,0.20350109409190373,457,100,0.0,46,2.5
+EVL,Notochord,76,0.07272727272727272,1045,272,0.0,46,2.5
+EVL,Forebrain,52,0.049760765550239235,1045,272,0.0,46,2.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,48,0.18045112781954886,266,29,0.0,46,2.5
+EVL,"Segmental Plate, Tail Bud",40,0.03827751196172249,1045,272,0.0,46,2.5
+Yolk Syncytial Layer,Periderm,39,0.14661654135338345,266,29,0.0,46,2.5
+Presumptive Mesoderm,Neural Rod,33,0.14732142857142858,224,47,0.0,46,2.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,30,0.13392857142857142,224,47,0.0,46,2.5
+Presumptive Mesoderm,Somite,30,0.13392857142857142,224,47,0.0,46,2.5
+Presumptive Mesoderm,Notochord,29,0.12946428571428573,224,47,0.0,46,2.5
+Presumptive Mesoderm,Forebrain,29,0.12946428571428573,224,47,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,28,0.061269146608315096,457,100,0.0,46,2.5
+Presumptive Mesoderm,Neural Crest,27,0.12053571428571429,224,47,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Rod,27,0.05908096280087528,457,100,0.0,46,2.5
+Proliferative Like Cell,Neural Rod,27,0.07894736842105263,342,69,0.0,46,2.5
+EVL,Neural Crest,27,0.02583732057416268,1045,272,0.0,46,2.5
+Proliferative Like Cell,Neural Crest,24,0.07017543859649122,342,69,0.0,46,2.5
+Proliferative Like Cell,"Segmental Plate, Tail Bud",23,0.06725146198830409,342,69,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,22,0.04814004376367615,457,100,0.0,46,2.5
+Presumptive Mesoderm,Adaxial Cell,21,0.09375,224,47,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,20,0.0437636761487965,457,100,0.0,46,2.5
+Proliferative Like Cell,Somite,19,0.05555555555555555,342,69,0.0,46,2.5
+Margin,"Yolk Syncytial Layer, Periderm",18,0.20689655172413793,87,22,0.0,46,2.5
+EVL,Angioblastic Mesenchymal Cell,16,0.015311004784688996,1045,272,0.0,46,2.5
+EVL,Nervous System,16,0.015311004784688996,1045,272,0.0,46,2.5
+Yolk Syncytial Layer,Polster,14,0.05263157894736842,266,29,0.0,46,2.5
+Hypoblast,Neural Rod,14,0.2,70,24,0.0,46,2.5
+Margin,Forebrain,13,0.14942528735632185,87,22,0.0,46,2.5
+Hypoblast,Notochord,13,0.18571428571428572,70,24,0.0,46,2.5
+Presumptive Mesoderm,"Segmental Plate, Tail Bud",12,0.05357142857142857,224,47,0.0,46,2.5
+Hypoblast,Somite,11,0.15714285714285714,70,24,0.0,46,2.5
+EVL,Optic Vesicle,11,0.010526315789473684,1045,272,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,11,0.024070021881838075,457,100,0.0,46,2.5
+Hypoblast,"Segmental Plate, Tail Bud",10,0.14285714285714285,70,24,0.0,46,2.5
+Hypoblast,Neural Crest,10,0.14285714285714285,70,24,0.0,46,2.5
+Margin,Angioblastic Mesenchymal Cell,9,0.10344827586206896,87,22,0.0,46,2.5
+Margin,Erythroid Lineage Cell,9,0.10344827586206896,87,22,0.0,46,2.5
+Hypoblast,Adaxial Cell,9,0.12857142857142856,70,24,0.0,46,2.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Segmental Plate, Tail Bud",9,0.019693654266958426,457,100,0.0,46,2.5
+Proliferative Like Cell,Forebrain,9,0.02631578947368421,342,69,0.0,46,2.5
+Proliferative Like Cell,Erythroid Lineage Cell,9,0.02631578947368421,342,69,0.0,46,2.5
+Presumptive Mesoderm,Periderm,9,0.04017857142857143,224,47,0.0,46,2.5
+Margin,Neural Crest,9,0.10344827586206896,87,22,0.0,46,2.5
+Margin,Adaxial Cell,8,0.09195402298850575,87,22,0.0,46,2.5
+Yolk Syncytial Layer,Forebrain,8,0.03007518796992481,266,29,0.0,46,2.5
+Margin,Neural Rod,7,0.08045977011494253,87,22,0.0,46,2.5
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,7,0.02046783625730994,342,69,0.0,46,2.5
+EVL,Erythroid Lineage Cell,6,0.005741626794258373,1045,272,0.0,46,2.5
+Yolk Syncytial Layer,Hatching Gland,5,0.018796992481203006,266,29,0.0,46,2.5
+Presumptive Mesoderm,Polster,4,0.017857142857142856,224,47,0.0,46,2.5
+Margin,Hatching Gland,4,0.04597701149425287,87,22,0.0,46,2.5
+Margin,Polster,3,0.034482758620689655,87,22,0.0,46,2.5
+Margin,Notochord,2,0.022988505747126436,87,22,0.0,46,2.5
+Hypoblast,Erythroid Lineage Cell,2,0.02857142857142857,70,24,0.0,46,2.5
+Margin,Periderm,2,0.022988505747126436,87,22,0.0,46,2.5
+Margin,"Segmental Plate, Tail Bud",1,0.011494252873563218,87,22,0.0,46,2.5
+Margin,Optic Vesicle,1,0.011494252873563218,87,22,0.0,46,2.5
+Margin,Yolk Syncytial Layer,1,0.011494252873563218,87,22,0.0,46,2.5
+Hypoblast,Angioblastic Mesenchymal Cell,1,0.014285714285714285,70,24,0.0,46,2.5
+EVL,Notochord,391,0.32101806239737274,1218,272,0.0,46,3.0
+Proliferative Like Cell,Notochord,269,0.6513317191283293,413,69,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,265,0.488929889298893,542,100,0.0,46,3.0
+EVL,Nervous System,209,0.17159277504105092,1218,272,0.0,46,3.0
+EVL,Somite,200,0.16420361247947454,1218,272,0.0,46,3.0
+EVL,Forebrain,162,0.1330049261083744,1218,272,0.0,46,3.0
+EVL,Neural Crest,143,0.1174055829228243,1218,272,0.0,46,3.0
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",110,0.3374233128834356,326,29,0.0,46,3.0
+Yolk Syncytial Layer,Yolk Syncytial Layer,82,0.25153374233128833,326,29,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,78,0.14391143911439114,542,100,0.0,46,3.0
+Presumptive Mesoderm,Notochord,75,0.2798507462686567,268,47,0.0,46,3.0
+EVL,Angioblastic Mesenchymal Cell,68,0.05582922824302135,1218,272,0.0,46,3.0
+Presumptive Mesoderm,Forebrain,62,0.23134328358208955,268,47,0.0,46,3.0
+Yolk Syncytial Layer,Hatching Gland,62,0.1901840490797546,326,29,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Neural Crest,53,0.09778597785977859,542,100,0.0,46,3.0
+Presumptive Mesoderm,Neural Crest,53,0.19776119402985073,268,47,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,49,0.09040590405904059,542,100,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,46,0.08487084870848709,542,100,0.0,46,3.0
+Yolk Syncytial Layer,Erythroid Lineage Cell,45,0.13803680981595093,326,29,0.0,46,3.0
+Proliferative Like Cell,Nervous System,39,0.09443099273607748,413,69,0.0,46,3.0
+Margin,Erythroid Lineage Cell,38,0.38,100,22,0.0,46,3.0
+Proliferative Like Cell,Neural Crest,34,0.08232445520581114,413,69,0.0,46,3.0
+Presumptive Mesoderm,Nervous System,32,0.11940298507462686,268,47,0.0,46,3.0
+Proliferative Like Cell,Somite,32,0.0774818401937046,413,69,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Angioblastic Mesenchymal Cell,32,0.05904059040590406,542,100,0.0,46,3.0
+EVL,Erythroid Lineage Cell,31,0.025451559934318555,1218,272,0.0,46,3.0
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,29,0.10820895522388059,268,47,0.0,46,3.0
+Hypoblast,Notochord,28,0.3333333333333333,84,24,0.0,46,3.0
+Hypoblast,Neural Crest,21,0.25,84,24,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,16,0.02952029520295203,542,100,0.0,46,3.0
+Presumptive Mesoderm,Somite,16,0.05970149253731343,268,47,0.0,46,3.0
+Margin,Forebrain,16,0.16,100,22,0.0,46,3.0
+Yolk Syncytial Layer,Neural Crest,14,0.04294478527607362,326,29,0.0,46,3.0
+Margin,Angioblastic Mesenchymal Cell,14,0.14,100,22,0.0,46,3.0
+Hypoblast,Somite,13,0.15476190476190477,84,24,0.0,46,3.0
+Proliferative Like Cell,Forebrain,12,0.029055690072639227,413,69,0.0,46,3.0
+Margin,Hatching Gland,11,0.11,100,22,0.0,46,3.0
+Yolk Syncytial Layer,Forebrain,11,0.03374233128834356,326,29,0.0,46,3.0
+Proliferative Like Cell,Erythroid Lineage Cell,10,0.024213075060532687,413,69,0.0,46,3.0
+Margin,Neural Crest,9,0.09,100,22,0.0,46,3.0
+Proliferative Like Cell,Angioblastic Mesenchymal Cell,9,0.021791767554479417,413,69,0.0,46,3.0
+Margin,Nervous System,9,0.09,100,22,0.0,46,3.0
+Hypoblast,Nervous System,9,0.10714285714285714,84,24,0.0,46,3.0
+EVL,Adaxial Cell,8,0.006568144499178982,1218,272,0.0,46,3.0
+Hypoblast,Angioblastic Mesenchymal Cell,8,0.09523809523809523,84,24,0.0,46,3.0
+Proliferative Like Cell,Adaxial Cell,8,0.01937046004842615,413,69,0.0,46,3.0
+EVL,Neural Rod,6,0.0049261083743842365,1218,272,0.0,46,3.0
+Hypoblast,Erythroid Lineage Cell,5,0.05952380952380952,84,24,0.0,46,3.0
+Margin,Notochord,2,0.02,100,22,0.0,46,3.0
+Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,2,0.006134969325153374,326,29,0.0,46,3.0
+Margin,Anterior Erythroid Lineage Cell,1,0.01,100,22,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,1,0.0018450184501845018,542,100,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,1,0.0018450184501845018,542,100,0.0,46,3.0
+Presumptive Mesoderm,"Neural Crest, Otic Vesicle",1,0.0037313432835820895,268,47,0.0,46,3.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Adaxial Cell,1,0.0018450184501845018,542,100,0.0,46,3.0
+EVL,Nervous System,690,0.44834307992202727,1539,272,0.0,46,3.5
+EVL,Notochord,472,0.30669265756985054,1539,272,0.0,46,3.5
+Proliferative Like Cell,Notochord,288,0.5454545454545454,528,69,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,272,0.3869132290184922,703,100,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,214,0.30440967283072545,703,100,0.0,46,3.5
+Presumptive Mesoderm,Nervous System,140,0.42042042042042044,333,47,0.0,46,3.5
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",116,0.2907268170426065,399,29,0.0,46,3.5
+Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",88,0.22055137844611528,399,29,0.0,46,3.5
+Proliferative Like Cell,Nervous System,84,0.1590909090909091,528,69,0.0,46,3.5
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,80,0.20050125313283207,399,29,0.0,46,3.5
+EVL,Somite,79,0.051332033788174136,1539,272,0.0,46,3.5
+EVL,Forebrain,69,0.04483430799220273,1539,272,0.0,46,3.5
+Proliferative Like Cell,Epidermis,66,0.125,528,69,0.0,46,3.5
+Presumptive Mesoderm,Notochord,63,0.1891891891891892,333,47,0.0,46,3.5
+Yolk Syncytial Layer,Hatching Gland,53,0.13283208020050125,399,29,0.0,46,3.5
+Margin,Nervous System,50,0.4065040650406504,123,22,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Somite,47,0.06685633001422475,703,100,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,47,0.06685633001422475,703,100,0.0,46,3.5
+Hypoblast,Nervous System,47,0.4392523364485981,107,24,0.0,46,3.5
+EVL,Spinal Cord Dorsal Region,45,0.029239766081871343,1539,272,0.0,46,3.5
+Proliferative Like Cell,Spinal Cord Dorsal Region,45,0.08522727272727272,528,69,0.0,46,3.5
+Presumptive Mesoderm,Forebrain,45,0.13513513513513514,333,47,0.0,46,3.5
+EVL,Neural Crest,38,0.024691358024691357,1539,272,0.0,46,3.5
+EVL,Angioblastic Mesenchymal Cell,36,0.023391812865497075,1539,272,0.0,46,3.5
+EVL,Epidermis,36,0.023391812865497075,1539,272,0.0,46,3.5
+Hypoblast,Notochord,35,0.32710280373831774,107,24,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Epidermis,30,0.04267425320056899,703,100,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,29,0.041251778093883355,703,100,0.0,46,3.5
+Proliferative Like Cell,Somite,28,0.05303030303030303,528,69,0.0,46,3.5
+Yolk Syncytial Layer,Erythroid Lineage Cell,26,0.06516290726817042,399,29,0.0,46,3.5
+Presumptive Mesoderm,Pronephros,25,0.07507507507507508,333,47,0.0,46,3.5
+Margin,Anterior Erythroid Lineage Cell,21,0.17073170731707318,123,22,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,18,0.025604551920341393,703,100,0.0,46,3.5
+Margin,"Musculature System, Yolk Syncytial Layer",17,0.13821138211382114,123,22,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Erythroid Lineage Cell,16,0.02275960170697013,703,100,0.0,46,3.5
+EVL,Anterior Erythroid Lineage Cell,15,0.009746588693957114,1539,272,0.0,46,3.5
+Yolk Syncytial Layer,Forebrain,14,0.03508771929824561,399,29,0.0,46,3.5
+Yolk Syncytial Layer,Yolk Syncytial Layer,14,0.03508771929824561,399,29,0.0,46,3.5
+Margin,Epidermis,13,0.10569105691056911,123,22,0.0,46,3.5
+Presumptive Mesoderm,Epidermis,12,0.036036036036036036,333,47,0.0,46,3.5
+EVL,Myotome,12,0.007797270955165692,1539,272,0.0,46,3.5
+Margin,Forebrain,12,0.0975609756097561,123,22,0.0,46,3.5
+EVL,Spinal Cord Anterior Region,11,0.007147498375568551,1539,272,0.0,46,3.5
+EVL,Fast Muscle Cell,11,0.007147498375568551,1539,272,0.0,46,3.5
+Presumptive Mesoderm,Angioblastic Mesenchymal Cell,10,0.03003003003003003,333,47,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",10,0.01422475106685633,703,100,0.0,46,3.5
+Hypoblast,Spinal Cord Dorsal Region,10,0.09345794392523364,107,24,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,9,0.012802275960170697,703,100,0.0,46,3.5
+Hypoblast,Somite,9,0.08411214953271028,107,24,0.0,46,3.5
+Presumptive Mesoderm,Hatching Gland,9,0.02702702702702703,333,47,0.0,46,3.5
+Presumptive Mesoderm,Neural Crest,8,0.024024024024024024,333,47,0.0,46,3.5
+Yolk Syncytial Layer,Pronephros,8,0.020050125313283207,399,29,0.0,46,3.5
+Presumptive Mesoderm,Spinal Cord Dorsal Region,7,0.021021021021021023,333,47,0.0,46,3.5
+EVL,Pronephros,7,0.004548408057179987,1539,272,0.0,46,3.5
+EVL,Spinal Cord Ventral Region,6,0.003898635477582846,1539,272,0.0,46,3.5
+Margin,Hatching Gland,6,0.04878048780487805,123,22,0.0,46,3.5
+EVL,Erythroid Lineage Cell,5,0.003248862897985705,1539,272,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,5,0.007112375533428165,703,100,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,5,0.007112375533428165,703,100,0.0,46,3.5
+Proliferative Like Cell,Myotome,5,0.00946969696969697,528,69,0.0,46,3.5
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,5,0.015015015015015015,333,47,0.0,46,3.5
+EVL,Eye,5,0.003248862897985705,1539,272,0.0,46,3.5
+Proliferative Like Cell,Fast Muscle Cell,5,0.00946969696969697,528,69,0.0,46,3.5
+Presumptive Mesoderm,Somite,4,0.012012012012012012,333,47,0.0,46,3.5
+Proliferative Like Cell,Forebrain,3,0.005681818181818182,528,69,0.0,46,3.5
+EVL,"Musculature System, Yolk Syncytial Layer",2,0.001299545159194282,1539,272,0.0,46,3.5
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",2,0.006006006006006006,333,47,0.0,46,3.5
+Presumptive Mesoderm,Pigment Cell,2,0.006006006006006006,333,47,0.0,46,3.5
+Margin,Myotome,2,0.016260162601626018,123,22,0.0,46,3.5
+Margin,Pronephros,2,0.016260162601626018,123,22,0.0,46,3.5
+Proliferative Like Cell,Pronephros,2,0.003787878787878788,528,69,0.0,46,3.5
+Hypoblast,Pronephros,2,0.018691588785046728,107,24,0.0,46,3.5
+Hypoblast,Fast Muscle Cell,2,0.018691588785046728,107,24,0.0,46,3.5
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,2,0.003787878787878788,528,69,0.0,46,3.5
+Presumptive Mesoderm,Myotome,1,0.003003003003003003,333,47,0.0,46,3.5
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,1,0.001422475106685633,703,100,0.0,46,3.5
+Hypoblast,Neural Crest,1,0.009345794392523364,107,24,0.0,46,3.5
+Hypoblast,Anterior Erythroid Lineage Cell,1,0.009345794392523364,107,24,0.0,46,3.5
+EVL,Nervous System,893,0.41438515081206495,2155,272,0.0,46,4.0
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",398,0.7158273381294964,556,29,0.0,46,4.0
+EVL,Notochord,276,0.12807424593967517,2155,272,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,269,0.2642436149312377,1018,100,0.0,46,4.0
+EVL,Spinal Cord Dorsal Region,226,0.1048723897911833,2155,272,0.0,46,4.0
+Proliferative Like Cell,Pronephros,219,0.2900662251655629,755,69,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Nervous System,218,0.21414538310412573,1018,100,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",203,0.1994106090373281,1018,100,0.0,46,4.0
+Proliferative Like Cell,Myotome,144,0.19072847682119207,755,69,0.0,46,4.0
+Presumptive Mesoderm,Nervous System,136,0.2989010989010989,455,47,0.0,46,4.0
+EVL,Pronephros,132,0.06125290023201856,2155,272,0.0,46,4.0
+Proliferative Like Cell,Spinal Cord Dorsal Region,123,0.1629139072847682,755,69,0.0,46,4.0
+EVL,"Musculature System, Yolk Syncytial Layer",119,0.05522041763341067,2155,272,0.0,46,4.0
+EVL,Fast Muscle Cell,108,0.05011600928074246,2155,272,0.0,46,4.0
+Presumptive Mesoderm,"Musculature System, Yolk Syncytial Layer",107,0.23516483516483516,455,47,0.0,46,4.0
+EVL,Spinal Cord Ventral Region,106,0.04918793503480278,2155,272,0.0,46,4.0
+EVL,Myotome,95,0.04408352668213457,2155,272,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Notochord,85,0.08349705304518663,1018,100,0.0,46,4.0
+Proliferative Like Cell,Nervous System,83,0.10993377483443709,755,69,0.0,46,4.0
+EVL,Forebrain,81,0.03758700696055684,2155,272,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Dorsal Region,79,0.07760314341846758,1018,100,0.0,46,4.0
+Yolk Syncytial Layer,Pronephros,78,0.14028776978417265,556,29,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Fast Muscle Cell,76,0.07465618860510806,1018,100,0.0,46,4.0
+Presumptive Mesoderm,Pigment Cell,65,0.14285714285714285,455,47,0.0,46,4.0
+Margin,Nervous System,65,0.39634146341463417,164,22,0.0,46,4.0
+Proliferative Like Cell,Fast Muscle Cell,59,0.0781456953642384,755,69,0.0,46,4.0
+Margin,"Musculature System, Yolk Syncytial Layer",58,0.35365853658536583,164,22,0.0,46,4.0
+Hypoblast,Nervous System,55,0.3741496598639456,147,24,0.0,46,4.0
+Presumptive Mesoderm,Notochord,53,0.11648351648351649,455,47,0.0,46,4.0
+Yolk Syncytial Layer,Anterior Erythroid Lineage Cell,50,0.08992805755395683,556,29,0.0,46,4.0
+Proliferative Like Cell,"Musculature System, Yolk Syncytial Layer",45,0.059602649006622516,755,69,0.0,46,4.0
+EVL,Spinal Cord Anterior Region,37,0.01716937354988399,2155,272,0.0,46,4.0
+Proliferative Like Cell,Spinal Cord Ventral Region,37,0.04900662251655629,755,69,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Myotome,34,0.03339882121807466,1018,100,0.0,46,4.0
+Presumptive Mesoderm,Forebrain,31,0.06813186813186813,455,47,0.0,46,4.0
+EVL,Pigment Cell,29,0.01345707656612529,2155,272,0.0,46,4.0
+Proliferative Like Cell,Epidermis,27,0.03576158940397351,755,69,0.0,46,4.0
+Hypoblast,"Musculature System, Yolk Syncytial Layer",22,0.14965986394557823,147,24,0.0,46,4.0
+EVL,Somite,21,0.00974477958236659,2155,272,0.0,46,4.0
+Hypoblast,Fast Muscle Cell,21,0.14285714285714285,147,24,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Ventral Region,20,0.019646365422396856,1018,100,0.0,46,4.0
+Presumptive Mesoderm,Eye,18,0.03956043956043956,455,47,0.0,46,4.0
+Hypoblast,Spinal Cord Dorsal Region,17,0.11564625850340136,147,24,0.0,46,4.0
+Margin,Myotome,16,0.0975609756097561,164,22,0.0,46,4.0
+Hypoblast,Pronephros,16,0.10884353741496598,147,24,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Eye,14,0.0137524557956778,1018,100,0.0,46,4.0
+EVL,Eye,13,0.0060324825986078886,2155,272,0.0,46,4.0
+Yolk Syncytial Layer,Forebrain,13,0.023381294964028777,556,29,0.0,46,4.0
+Margin,Forebrain,12,0.07317073170731707,164,22,0.0,46,4.0
+Yolk Syncytial Layer,Hatching Gland,10,0.017985611510791366,556,29,0.0,46,4.0
+Proliferative Like Cell,Notochord,10,0.013245033112582781,755,69,0.0,46,4.0
+Presumptive Mesoderm,Spinal Cord Dorsal Region,9,0.01978021978021978,455,47,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Anterior Erythroid Lineage Cell,9,0.008840864440078585,1018,100,0.0,46,4.0
+Margin,Anterior Erythroid Lineage Cell,9,0.054878048780487805,164,22,0.0,46,4.0
+Hypoblast,Notochord,9,0.061224489795918366,147,24,0.0,46,4.0
+Presumptive Mesoderm,Pronephros,8,0.017582417582417582,455,47,0.0,46,4.0
+Proliferative Like Cell,Anterior Erythroid Lineage Cell,8,0.010596026490066225,755,69,0.0,46,4.0
+EVL,Anterior Erythroid Lineage Cell,8,0.0037122969837587007,2155,272,0.0,46,4.0
+EVL,Epidermis,7,0.0032482598607888632,2155,272,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Spinal Cord Anterior Region,6,0.005893909626719057,1018,100,0.0,46,4.0
+Yolk Syncytial Layer,Eye,5,0.008992805755395683,556,29,0.0,46,4.0
+Presumptive Mesoderm,Anterior Erythroid Lineage Cell,5,0.01098901098901099,455,47,0.0,46,4.0
+Presumptive Mesoderm,Somite,5,0.01098901098901099,455,47,0.0,46,4.0
+Presumptive Mesoderm,Hatching Gland,5,0.01098901098901099,455,47,0.0,46,4.0
+Hypoblast,Spinal Cord Ventral Region,4,0.027210884353741496,147,24,0.0,46,4.0
+Presumptive Mesoderm,Myotome,4,0.008791208791208791,455,47,0.0,46,4.0
+Margin,Pigment Cell,4,0.024390243902439025,164,22,0.0,46,4.0
+Presumptive Mesoderm,Spinal Cord Anterior Region,4,0.008791208791208791,455,47,0.0,46,4.0
+Presumptive Mesoderm,Spinal Cord Ventral Region,4,0.008791208791208791,455,47,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Forebrain,3,0.0029469548133595285,1018,100,0.0,46,4.0
+Hypoblast,Eye,3,0.02040816326530612,147,24,0.0,46,4.0
+EVL,Angioblastic Mesenchymal Cell,3,0.0013921113689095127,2155,272,0.0,46,4.0
+"Presumptive Mesoderm, Presumptive Ectoderm",Pigment Cell,2,0.0019646365422396855,1018,100,0.0,46,4.0
+Presumptive Mesoderm,Fast Muscle Cell,1,0.002197802197802198,455,47,0.0,46,4.0
+EVL,Slow Muscle Cell,1,0.0004640371229698376,2155,272,0.0,46,4.0
+Yolk Syncytial Layer,Nervous System,1,0.0017985611510791368,556,29,0.0,46,4.0
+Yolk Syncytial Layer,Pigment Cell,1,0.0017985611510791368,556,29,0.0,46,4.0

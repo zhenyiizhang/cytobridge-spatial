@@ -49,7 +49,7 @@ def test_packaged_main_figure_5_contract() -> None:
     assert page.width_points == pytest.approx(595.276)
     assert page.height_points == pytest.approx(841.89)
     assert page.reference_dpi == 300
-    assert page.raster_crc32 == "1331a768"
+    assert page.raster_crc32 == "bbc7219b"
     assert page.panel_count == 5
     assert data.manifest["scientific_label_release"] == "v5"
     assert data.manifest["reader_action"] == "reference-export"
@@ -101,7 +101,7 @@ def test_main_figure_5_reference_export_is_png_exact_and_a4(tmp_path: Path) -> N
     page = validate_main_figure_5_reference_page(data)
     pdf, png = export_main_figure_5_reference_page(data, tmp_path, page)
     assert png.read_bytes() == data.raster_path.read_bytes()
-    assert _crc32(png) == "1331a768"
+    assert _crc32(png) == "bbc7219b"
     with Image.open(png) as image:
         assert image.size == (2481, 3508)
         image.verify()

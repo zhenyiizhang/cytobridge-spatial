@@ -21,7 +21,10 @@
       841.89
     ],
     "reference_dpi": 300,
-    "compact_raster_crc32": "1331a768"
+    "compact_raster_crc32": "bbc7219b",
+    "figure5a_export": "Plotly 6.5.2, Kaleido 1.2.0, Chrome 135.0.7011.0, PDF scale 3",
+    "injury_arrow": "Vector pointer from (48, 348) to (96, 366) PDF points, drawn by reproduction/arista/pdf_layout.py.",
+    "lineage_labels": "Direct classifier predictions without spatial label smoothing. Spatial maps and communication traces unchanged."
   },
   "scientific_labels": {
     "Spatial migration velocity": "Spatial velocity",
@@ -30,10 +33,14 @@
   },
   "vector_rebuild": {
     "script": "scripts/results/build_main_figure_5_vector.py",
-    "external_inputs": ["formal_vector_pdf", "formal_vector_manifest", "label_font"]
+    "external_inputs": [
+      "formal_vector_pdf",
+      "formal_vector_manifest",
+      "label_font"
+    ]
   },
   "equivalence": {
-    "png": "The packaged raster is the same exported page payload used by the current Word figure.",
+    "png": "300-dpi export of the current Figure 5 PDF. The Word image uses the same page at 600 dpi.",
     "pdf": "The default generated PDF places that raster on the same A4 page. It preserves page appearance and scientific labels, but not the source PDF's vector objects or selectable text.",
     "vector_pdf": "The portable vector script requires the external formal base inputs and changes only the three registered label areas."
   }

@@ -124,6 +124,25 @@ for time, values, celltypes in zip(TIMES, points, labels):
     generated[str(time)] = population
     population.write_h5ad(state_dir / f"time_{time:g}.h5ad")
 pd.Series({time: population.n_obs for time, population in generated.items()}, name="Generated cells")
+
+fixed_times = np.arange(0, 3.001, 0.5)
+classifier = cb.tl.load_cached_mlp_classifier(str(classifier_cache), device=DEVICE)
+fixed_states = [result.sde_points[TIMES.index(float(t))] for t in fixed_times]
+fixed_labels = cb.tl.predict_labels_for_trajectories(
+    sde_points=fixed_states, ts_points=fixed_times, model=classifier.model,
+    label_encoder=classifier.label_encoder, feature_dim=classifier.feature_dim,
+    device=DEVICE, knn_neighbors=1, include_time_feature=classifier.include_time_feature,
+    feature_indices=None, spatial_indices=(0, 1),
+)
+particle_tables = []
+for time, tissue_labels in zip(fixed_times, fixed_labels):
+    particle_tables.append(pd.DataFrame({
+        "time": time, "particle_id": np.arange(len(tissue_labels)),
+        "celltype": tissue_labels,
+    }))
+pd.concat(particle_tables, ignore_index=True).to_csv(
+    output / "fixed_particle_labels.csv.gz", index=False,
+)
 """), md("""
 ## Spatial organization — S11
 

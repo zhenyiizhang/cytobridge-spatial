@@ -69,7 +69,8 @@ def draw_stack(data_dir, output, palette):
             np.asarray(population.obsm['spatial']), float(time))
     with (data_dir / 'all_time_communications.pkl').open('rb') as handle:
         communication = pickle.load(handle)
-    with np.load(data_dir / 'fixed_particle_lineage_labels.npz', allow_pickle=False) as state:
+    # Spatial maps retain their annotations. Only lineage counts use raw predictions.
+    with np.load(data_dir / 'fixed_particle_lineage_labels_unsmoothed.npz', allow_pickle=False) as state:
         labels = []
         for time in TIMES:
             index = np.flatnonzero(np.isclose(state['time_points'], time))
@@ -99,8 +100,8 @@ def draw_stack(data_dir, output, palette):
         trace.z = [None if z is None else float(z) + .04 for z in trace.z]
     paths = [output / 'Figure5a_spatiotemporal_map.pdf', output / 'Figure5a_spatiotemporal_map.png']
     fig.write_html(output / 'Figure5a_spatiotemporal_map.html')
-    core = output / 'Figure5a_calculated_core.png'
-    fig.write_image(str(core), scale=2)
+    core = output / 'Figure5a_calculated_core.pdf'
+    fig.write_image(str(core), scale=3)
     _place_stack_in_paper_layout(core, paths)
     pd.DataFrame({'time': TIMES, 'cells': [a.n_obs for a in populations.values()]}).to_csv(
         output / 'Figure5a_population_counts.csv', index=False)
@@ -108,28 +109,9 @@ def draw_stack(data_dir, output, palette):
 
 
 def _place_stack_in_paper_layout(core_path, paths):
-    """Apply the archived Figure 5a canvas placement to a freshly drawn core."""
-    import fitz
-    from PIL import Image
-    from io import BytesIO
-    transform = np.array([[1.16519507, -.00272857794, -1326.42311],
-                          [-.00257634855, 1.17106427, -26.494962], [0., 0., 1.]])
-    with Image.open(core_path) as image:
-        image = image.convert('RGB').resize((7014, 4962), Image.Resampling.LANCZOS)
-        image = image.transform((5723, 5761), Image.Transform.AFFINE,
-                                 tuple(np.linalg.inv(transform)[:2].ravel()),
-                                 resample=Image.Resampling.BICUBIC, fillcolor='white')
-        buffer = BytesIO()
-        image.save(buffer, format='PNG')
-    # This PDF contains labels and arrows only. Its former population image
-    # and all lower panels were removed when this layout asset was archived.
-    document = fitz.open(SOURCE / 'figure5a_labels.pdf')
-    page = document[0]
-    page.insert_image(fitz.Rect(23.7819900513, 14.293762207, 441.495361328, 434.780700684),
-                      stream=buffer.getvalue(), overlay=False)
-    document.save(paths[0], garbage=4, deflate=True)
-    page.get_pixmap(matrix=fitz.Matrix(3, 3), alpha=False).save(paths[1])
-    document.close()
+    """Keep the exported PDF artwork intact while adding the panel labels."""
+    from .pdf_layout import place_stack
+    place_stack(core_path, SOURCE / 'figure5a_labels.pdf', paths[0], paths[1])
 
 
 def draw_generated_population(data_dir, output, palette):

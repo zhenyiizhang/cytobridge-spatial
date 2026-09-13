@@ -177,7 +177,7 @@ def test_zebrafish_si_recalculates_panel_values() -> None:
         endpoint["composition_tv_from_reference_mean"], 0.2839330886226318
     )
     assert np.isclose(
-        endpoint["lineage_weighted_tv_from_reference_mean"], 0.348301333749273
+        endpoint["lineage_weighted_tv_from_reference_mean"], 0.33848884732893547
     )
 
     inverse = panels.inverse_pca_metrics.set_index("time")

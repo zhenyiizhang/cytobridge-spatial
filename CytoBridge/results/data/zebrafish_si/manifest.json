@@ -28,7 +28,9 @@
     },
     "s37": {
       "title": "Daughter-state perturbation sensitivity",
-      "source_figure": "s33"
+      "source_figure": "s33",
+      "lineage_inputs": "release_artifacts/lineage_classifier_predictions_20260913/zebrafish",
+      "lineage_cell_types": "MLP classifier predictions"
     },
     "s38": {
       "title": "Inverse-PCA expression reconstruction",
@@ -136,7 +138,7 @@
       "rows": 6
     },
     "s33_lineage_values.csv.gz": {
-      "bytes": 1517,
+      "bytes": 1712,
       "rows": 120
     },
     "s33_observed_composition.csv.gz": {
@@ -148,7 +150,7 @@
       "rows": 180
     },
     "s33_sensitivity.csv.gz": {
-      "bytes": 4833,
+      "bytes": 4835,
       "rows": 180
     },
     "s34_observed_expression.csv.gz": {
