@@ -350,6 +350,7 @@ def run_interpolation_workflow(
         classifier_metadata = dict(cached_classifier.metadata)
         classifier_metadata["prediction_smoothing"] = {
             "api": "smooth_spatial_labels",
+            "applies_to": "split_population_spatial_summaries",
             "requested_k": int(classifier_knn_neighbors),
             "include_self": True,
             "weights": "uniform",
@@ -363,6 +364,7 @@ def run_interpolation_workflow(
                 else [int(value) for value in classifier_feature_indices]
             ),
         }
+        classifier_metadata["lineage_labels"] = {"source": "classifier", "knn_neighbors": 1}
         classifier_evaluation = dict(cached_classifier.evaluation)
         _ = (
             cached_classifier.balanced_accuracy
@@ -613,6 +615,7 @@ def run_interpolation_workflow(
         print(f"Split SDE done in {time.perf_counter() - t_sde_split0:.1f}s")
 
         if sde_points is not None:
+            # Fixed particle identities supply lineage transitions.
             predicted_labels_list = predict_labels_for_trajectories(
                 sde_points=sde_points,
                 ts_points=ts_points,
@@ -620,7 +623,7 @@ def run_interpolation_workflow(
                 label_encoder=label_encoder,
                 feature_dim=classifier_feature_dim,
                 device=device,
-                knn_neighbors=int(classifier_knn_neighbors),
+                knn_neighbors=1,
                 include_time_feature=cached_classifier.include_time_feature,
                 feature_indices=classifier_feature_indices,
                 spatial_indices=classifier_spatial_indices,

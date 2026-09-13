@@ -11,6 +11,46 @@ class _UntouchableRuntime:
         raise AssertionError("runtime must not be accessed before argument validation")
 
 
+@pytest.mark.parametrize("map_neighbors", [1, 10, 50])
+def test_lineage_labels_keep_classifier_predictions(tmp_path, monkeypatch, map_neighbors):
+    import numpy as np
+    from CytoBridge.tl.downstream import workflows
+
+    cache = tmp_path / "classifier.pt"
+    cache.write_bytes(b"test classifier")
+    loaded = SimpleNamespace(
+        model=None, label_encoder=None, feature_dim=2,
+        feature_cols=("samples", "x1", "x2"), accuracy=.8,
+        balanced_accuracy=.7, metadata={}, evaluation={}, include_time_feature=True,
+    )
+    monkeypatch.setattr(workflows, "load_cached_mlp_classifier", lambda *a, **kw: loaded)
+    states = np.zeros((3, 2, 2))
+    monkeypatch.setattr(workflows, "simulate_sde_points", lambda **kw: (states, None))
+    monkeypatch.setattr(workflows, "simulate_sde_points_split", lambda **kw: states)
+    calls = []
+
+    class LabelsChecked(Exception):
+        pass
+
+    def predict(**kwargs):
+        calls.append(kwargs["knn_neighbors"])
+        if len(calls) == 2:
+            raise LabelsChecked
+        return [np.array(["A", "B"])] * 3
+
+    monkeypatch.setattr(workflows, "predict_labels_for_trajectories", predict)
+    frame = pd.DataFrame({"samples": [0., 1.], "x1": [0., 1.],
+                          "x2": [1., 0.], "Annotation": ["A", "B"]})
+    with pytest.raises(LabelsChecked):
+        run_interpolation_workflow(
+            df=frame, dim=2, annotation_key="Annotation",
+            runtime=SimpleNamespace(f_net=None, score_net=None), device="cpu",
+            output_dir=str(tmp_path), interp_time_points=[.5],
+            classifier_cache_path=str(cache), classifier_knn_neighbors=map_neighbors,
+        )
+    assert calls == [1, map_neighbors]
+
+
 def test_supplied_classifier_is_read_only_even_with_training_data(tmp_path, monkeypatch):
     from CytoBridge.tl.downstream import workflows
 
