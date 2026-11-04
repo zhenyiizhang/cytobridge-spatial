@@ -1,0 +1,38 @@
+{
+  "description": "Plot-only coordinate bundle for the S7/S8 style review",
+  "coordinate_keys": {
+    "input": "spatial_ot_input",
+    "aligned": "spatial_aligned"
+  },
+  "observation_alignment": "All arrays reordered to source obs_names; exact set equality required.",
+  "n_observations": 3550,
+  "variants": [
+    "baseline_repeat",
+    "translate_low",
+    "translate_moderate",
+    "rotate_low",
+    "rotate_moderate",
+    "translate_rotate_low",
+    "translate_rotate_moderate"
+  ],
+  "sources": {
+    "source_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-ot-alignment-20260822-f5550e1-r1/result/chicken_heart_ot_aligned.h5ad",
+    "accepted_aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-ot-20260823-r2/preprocess/chicken_heart_aligned.h5ad",
+    "baseline_repeat__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-ot-alignment-20260822-f5550e1-r1/result/chicken_heart_ot_aligned.h5ad",
+    "baseline_repeat__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/baseline_repeat/preprocess/chicken_heart_aligned.h5ad",
+    "translate_low__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_low.h5ad",
+    "translate_low__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/translate_low/preprocess/chicken_heart_aligned.h5ad",
+    "translate_moderate__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_moderate.h5ad",
+    "translate_moderate__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/translate_moderate/preprocess/chicken_heart_aligned.h5ad",
+    "rotate_low__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/rotate_low.h5ad",
+    "rotate_low__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/rotate_low/preprocess/chicken_heart_aligned.h5ad",
+    "rotate_moderate__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/rotate_moderate.h5ad",
+    "rotate_moderate__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/rotate_moderate/preprocess/chicken_heart_aligned.h5ad",
+    "translate_rotate_low__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_rotate_low.h5ad",
+    "translate_rotate_low__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/translate_rotate_low/preprocess/chicken_heart_aligned.h5ad",
+    "translate_rotate_moderate__input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/inputs/translate_rotate_moderate.h5ad",
+    "translate_rotate_moderate__aligned": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/runs/translate_rotate_moderate/preprocess/chicken_heart_aligned.h5ad"
+  },
+  "bundle": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-alignment-sensitivity-audit-20260831-r1/summary/plot_inputs.npz",
+  "bundle_sha256": "42d76a537fc6f573483edbba17024c89b2898d2822fd225551ba7983be522c38"
+}

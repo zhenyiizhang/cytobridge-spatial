@@ -1,0 +1,25 @@
+{
+  "errors": [],
+  "warnings": [],
+  "details": {
+    "pdf_sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+    "page_count": 1,
+    "pages": [
+      {
+        "width_pt": 574.56,
+        "height_pt": 792.0,
+        "embedded_images": 0
+      }
+    ],
+    "fonts": [
+      "GOFYPY+Arial-BoldMT",
+      "GOFYPY+ArialMT"
+    ],
+    "embedded_image_count": 0,
+    "png_sha256": "d6cb4b1bde80294b588f7738172a909292d7ca2bc5ff0473a9f2583305af2823",
+    "png_pixels": [
+      1596,
+      2200
+    ]
+  }
+}

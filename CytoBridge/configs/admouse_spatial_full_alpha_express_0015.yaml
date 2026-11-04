@@ -1,0 +1,147 @@
+# AD mouse corrected six-stage production profile at alpha_express=0.015.
+#
+# The targeted expression panel supports seven complete ligand-receptor pairs
+# under strict all-subunit matching.  Those database-derived graph labels fit
+# the learned edge predictor used by the production model.  The small panel is
+# an explicit biological limitation, not a reason to silently replace the
+# learned prior with a different radius-only model.  The threshold below is the
+# validation-selected value from the corrected de novo run.
+model:
+  components: [velocity, growth, score, interaction]
+  interaction_type: gnn
+  interaction_group_size: 1024
+  velocity_net:
+    hidden_dim: 256
+    n_layers: 5
+    residual: false
+    activation: leaky_relu
+    use_spatial: true
+  growth_net:
+    hidden_dim: 256
+    n_layers: 3
+    residual: false
+    activation: leaky_relu
+  score_net:
+    hidden_dim: 256
+    n_layers: 5
+    activation: leaky_relu
+  interaction_net:
+    hidden_dim: 256
+    num_heads: 8
+    num_layers: 1
+    activation: leakyrelu
+    num_rbf: 8
+    cutoff: 0.012106042891492197
+    use_spatial: true
+    edge_prior_mode: learned
+    edge_predictor_path: edge_classifier/admouse.pt
+    edge_predictor_thre: 0.9956824779510498
+
+ckpt_dir: results/admouse_spatial_full_alpha_express_0015
+reverse: true
+seed: 42
+
+matched_ablation:
+  schema_version: 1
+  family: admouse-full-no-lr-no-interaction-v1
+  dataset: admouse
+  arm: full
+  protocol: isolated-interaction-crn-v1
+  shared_seed: 42
+  interaction_grouping_seed_offset: 10000
+  input_contract: exact-shared-aligned-h5ad
+  implementation_contract: exact-shared-training-code-sha256
+
+training:
+  defaults:
+    lr: 0.0001
+    lambda_ot: 10.0
+    lambda_mass: 10.0
+    lambda_energy: 0.01
+    sigma: 0.03
+    batch_size: 512
+    scheduler_step_size: 100
+    scheduler_gamma: 0.5
+    alpha_spatial: 10.0
+    alpha_express: 0.015
+    global_mass: true
+    score_energy_objective: velocity_score_cross_term
+
+  plan:
+    - name: Pretrain
+      mode: neural_ode
+      epochs: 100
+      batch_size: 512
+      OT_loss: weighted_emd_detach
+      train_strategy: v+g
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: false
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+
+    - name: Refine
+      mode: neural_ode
+      epochs: 100
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: true
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+
+    - name: Init_interaction
+      mode: neural_ode
+      epochs: 50
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g+i
+      lambda_ot: 10.0
+      lambda_mass: 10.0
+      lambda_energy: 0.01
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+
+    - name: Train_Score
+      mode: score_matching
+      epochs: 3001
+      batch_size: 256
+      sigma: 0.03
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      scheduler_type: cosine
+      scheduler_eta_min: 0.00001
+
+    - name: Finetune
+      mode: neural_ode
+      epochs: 1000
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g+i
+      score_use: true
+      lr: 0.0001
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+      scheduler_type: cosine
+      scheduler_patience: 50
+      save_strategy: last
+
+    - name: Score_Refine
+      mode: score_matching
+      epochs: 3001
+      batch_size: 256
+      sigma: 0.03
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      scheduler_type: cosine
+      scheduler_eta_min: 0.00001

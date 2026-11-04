@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0.0",
+  "methods": {
+    "stvcr": {
+      "repository": "https://github.com/QiangweiPeng/stVCR.git",
+      "commit": "26aa79a63eba7a5e21726b1eb95bf6bb61cfe699",
+      "package_subdir": "src",
+      "python_requires": ">=3.10",
+      "official_api": [
+        "stvcr.training.train.train_stvcr",
+        "stvcr.downstream.utils.evolution_forward_sim_rgb_data"
+      ]
+    },
+    "stories": {
+      "repository": "https://github.com/cantinilab/stories.git",
+      "commit": "7d8269b8cc940b3d85c34729dd1f715822e74a97",
+      "package_subdir": ".",
+      "python_requires": ">=3.10,<4.0",
+      "official_api": [
+        "stories.SpaceTime.fit",
+        "stories.SpaceTime.transform"
+      ]
+    },
+    "mioflow": {
+      "repository": "https://github.com/KrishnaswamyLab/MIOFlow.git",
+      "commit": "36365403d0f23cc3ad1065781c7331bf81debf4e",
+      "package_subdir": ".",
+      "python_requires": ">=3.8",
+      "official_api": [
+        "mioflow.mioflow.MIOFlow.fit"
+      ]
+    }
+  }
+}

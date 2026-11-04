@@ -1,0 +1,7 @@
+先看 source_data/target_means.csv（297 行，所有 11 种方法）和 first_place_counts.csv；loto_target_stage_means_with_spatrack.csv 与 loto_win_counts.csv 是相同数据的兼容命名。
+当前结果包含 PASTE2 和 MIOFlow 2.0，不使用九月旧表替代。
+查看 protocol.json 和 fold_start_times.csv 可逐项核对预测从哪个阶段开始；input_manifests 是从服务器收集的 11 个原始输入记录。
+重画当前 S44/S45：在本目录执行 python build_figures.py，再执行 python plot_s45.py。依赖 numpy、pandas、matplotlib 和 Arial 字体；输出在 figures。
+run_code 是实际运行代码和数值实现，路径沿用原服务器记录，重跑训练需另备数据和完整 CytoBridge 环境。optional 包含清单中可选的小型表格与代码。
+
+SI按正文首次引用重新编号后，S44、S45分别为Supplementary Fig. S7、S8；本文件夹的文件名和说明沿用旧号。

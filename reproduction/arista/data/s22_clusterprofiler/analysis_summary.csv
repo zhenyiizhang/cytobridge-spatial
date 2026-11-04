@@ -1,0 +1,3 @@
+"pattern","assigned_raw_genes","mapped_gene_symbols","mapped_entrez_query","tested_terms","significant_terms_fdr_0p05","simplified_significant_terms_fdr_0p05","universe_mode","mapped_universe_entrez"
+1,421,420,388,3497,10,6,"all_detected",1736
+2,1362,1362,1235,3826,0,0,"all_detected",1736

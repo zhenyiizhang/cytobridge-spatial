@@ -1,0 +1,33 @@
+{
+  "errors": [],
+  "warnings": [
+    "The PDF contains embedded raster images. Confirm that rasterization is intentional.",
+    "The PNG preview has a dimension below 1500 pixels."
+  ],
+  "details": {
+    "pdf_sha256": "46714b8a416c634ff132f2706cfbf2d5f5d1106ac36eeba1216bdecf2cc589f7",
+    "page_count": 1,
+    "pages": [
+      {
+        "width_pt": 595.28,
+        "height_pt": 192.0,
+        "embedded_images": 24
+      }
+    ],
+    "fonts": [
+      "Arial Regular",
+      "VWIMGH+Arial-BoldMT",
+      "VWIMGH+ArialMT"
+    ],
+    "embedded_image_count": 24,
+    "png_sha256": "239919478519293857404d3650858f58a8055d15c23f43acf806c7209189864c",
+    "png_pixels": [
+      2646,
+      854
+    ]
+  },
+  "warning_review": {
+    "embedded_raster_images": "intentional high-density cell/scatter layers inherited from the original visual grammar",
+    "small_png_dimension": "standalone panel aspect ratio; actual PDF was rendered at 240 dpi and inspected"
+  }
+}

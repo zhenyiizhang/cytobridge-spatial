@@ -1,0 +1,62 @@
+{
+  "review_date": "2026-08-25",
+  "status": "PASS_READY_FOR_AUTHORIZED_SERVER_EXECUTION",
+  "purpose": "Calculation-only shared numerical truth for MOSTA SI Figures S4-S10",
+  "runner": {
+    "path": "source/server_compute_mosta_si_shared.py",
+    "sha256": "f0df78316a961e1d0525d5bd5992dd6e47f32f4f4668f8365564e563c2aab5f9",
+    "python_compile": "PASS"
+  },
+  "launcher": {
+    "path": "source/launch_server_mosta_si_shared.sh",
+    "sha256": "27be8664ef9f6e9b500509cf4e181c824d6638439c355609e370c490be109c0f",
+    "bash_syntax": "PASS"
+  },
+  "package_api_review": {
+    "source_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "import_and_signature_check": "PASS",
+    "reviewed_apis": [
+      "run_interpolation_workflow",
+      "evaluate_growth_by_timepoint",
+      "summarize_label_composition",
+      "summarize_temporal_gene_patterns",
+      "analyze_developmental_wave"
+    ]
+  },
+  "server_preflight": {
+    "release_commit_marker": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "release_archive_sha256_marker": "06852992db0d8ebedd8f0baa19a3f539bcdd271dfc0c6fae9774dd553c8fe55e",
+    "aligned_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "finetune_checkpoint_sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+    "score_checkpoint_sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a",
+    "classifier_cache_sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+    "output_absent": true,
+    "available_disk": "600G",
+    "available_gpu_memory": "24050 MiB on each of GPUs 0-7 at preflight"
+  },
+  "scientific_contract": {
+    "trajectory_origin": "single global t0 start",
+    "split_particle_count_initial": 50000,
+    "dense_times": [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0],
+    "generated_state_policy": "extract native split-SDE states at all 13 times; never substitute observed anchors",
+    "lineage_policy": "same 50000 non-split particle identities at seven half-step stages",
+    "classifier": "latest accepted 52D cache with k=10 spatial majority vote",
+    "spatial_warp": false,
+    "piecewise_restart": false,
+    "rotation": false,
+    "anisotropic_stretch": false,
+    "s8_scope": "Brain-only original 2000 statistical HVGs, gene-wise z-score, Ward k=2",
+    "s10_scope": "same Brain matrix, top 1000 temporal-variance genes, exact DP3"
+  },
+  "hard_failure_gates": [
+    "release marker, aligned H5AD, checkpoints, and classifier hashes",
+    "52 model features and observed times exactly 0,1,2,3",
+    "all 13 native generated states finite with matching k10 labels",
+    "S5 Brain growth present at all 13 generated times with one finite common p5-p95 scale",
+    "S6 all generated totals positive with exactly 50000 at t0",
+    "S7 fixed particle count and every adjacent flow total exactly 50000",
+    "S8 exactly 2000 eligible genes and exactly two Ward programs",
+    "S10 exactly three DP phases"
+  ],
+  "rendering": "None. Styling and PDF/SVG rendering are intentionally separate."
+}

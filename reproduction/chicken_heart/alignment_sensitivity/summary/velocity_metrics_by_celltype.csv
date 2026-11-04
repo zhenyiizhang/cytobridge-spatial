@@ -1,0 +1,554 @@
+variant,reference,timepoint,velocity_key,celltype,n_cells,mean_cosine_rigid_adjusted,median_cosine_rigid_adjusted
+baseline_repeat,accepted_baseline,D4,full,Cardiomyocytes-1,1,0.9830761239520981,0.9830761239520981
+baseline_repeat,accepted_baseline,D4,full,Endocardial cells,32,0.9934749380010519,0.9979953012483849
+baseline_repeat,accepted_baseline,D4,full,Epi-epithelial cells,2,0.803084726264081,0.803084726264081
+baseline_repeat,accepted_baseline,D4,full,Immature myocardial cells,61,0.9925218253922244,0.997770995000904
+baseline_repeat,accepted_baseline,D4,full,TMSB4X high cells,5,0.999671809995388,0.9996831485221104
+baseline_repeat,accepted_baseline,D4,full,Valve cells,46,0.9166235635753095,0.9934834261282246
+baseline_repeat,accepted_baseline,D4,interaction,Cardiomyocytes-1,1,0.9958213477227412,0.9958213477227412
+baseline_repeat,accepted_baseline,D4,interaction,Endocardial cells,32,0.9335732159121283,0.9827239124877709
+baseline_repeat,accepted_baseline,D4,interaction,Epi-epithelial cells,2,0.31218382198277306,0.31218382198277306
+baseline_repeat,accepted_baseline,D4,interaction,Immature myocardial cells,61,0.8762629646845402,0.9859875771184212
+baseline_repeat,accepted_baseline,D4,interaction,TMSB4X high cells,5,0.9962335184314691,0.9989387886837481
+baseline_repeat,accepted_baseline,D4,interaction,Valve cells,46,0.8507068047425755,0.9871658785341465
+baseline_repeat,accepted_baseline,D7,full,Cardiomyocytes-1,79,0.9587687941233237,0.9973075623144168
+baseline_repeat,accepted_baseline,D7,full,Cardiomyocytes-2,10,0.9865874908010965,0.9974480377627513
+baseline_repeat,accepted_baseline,D7,full,Endocardial cells,89,0.9361497436944786,0.9946960427482741
+baseline_repeat,accepted_baseline,D7,full,Epi-epithelial cells,36,0.9795657661925272,0.9954525193466851
+baseline_repeat,accepted_baseline,D7,full,Erythrocytes,34,0.9797551876896191,0.9967842432891225
+baseline_repeat,accepted_baseline,D7,full,Fibroblast cells,1,0.9080638303157953,0.9080638303157953
+baseline_repeat,accepted_baseline,D7,full,Immature myocardial cells,202,0.9810289713383074,0.9952584013913743
+baseline_repeat,accepted_baseline,D7,full,MT-enriched cardiomyocytes,18,0.9983969319375805,0.9991674107017985
+baseline_repeat,accepted_baseline,D7,full,Macrophages,3,0.9950043128015175,0.9994063314852843
+baseline_repeat,accepted_baseline,D7,full,Valve cells,54,0.9933681575978771,0.9977785844516103
+baseline_repeat,accepted_baseline,D7,full,Vascular endothelial cells,2,0.870510978294276,0.870510978294276
+baseline_repeat,accepted_baseline,D7,interaction,Cardiomyocytes-1,79,0.9153820120886187,0.9959187288998719
+baseline_repeat,accepted_baseline,D7,interaction,Cardiomyocytes-2,10,0.9811060374455414,0.9944060297604975
+baseline_repeat,accepted_baseline,D7,interaction,Endocardial cells,89,0.9609186131131637,0.9939349394540364
+baseline_repeat,accepted_baseline,D7,interaction,Epi-epithelial cells,36,0.9849419835853102,0.9977818208805759
+baseline_repeat,accepted_baseline,D7,interaction,Erythrocytes,34,0.8632377300173963,0.9935769330630804
+baseline_repeat,accepted_baseline,D7,interaction,Fibroblast cells,1,0.9994918706541966,0.9994918706541966
+baseline_repeat,accepted_baseline,D7,interaction,Immature myocardial cells,202,0.9192885989666829,0.9929221152547513
+baseline_repeat,accepted_baseline,D7,interaction,MT-enriched cardiomyocytes,18,0.9807679110131795,0.9986575558658799
+baseline_repeat,accepted_baseline,D7,interaction,Macrophages,1,0.9998205485245014,0.9998205485245014
+baseline_repeat,accepted_baseline,D7,interaction,Valve cells,54,0.9761478763757334,0.9947226555423396
+baseline_repeat,accepted_baseline,D7,interaction,Vascular endothelial cells,2,0.9957531373664119,0.9957531373664119
+baseline_repeat,accepted_baseline,D10,full,Cardiomyocytes-1,225,0.9821283645226645,0.9968584704349409
+baseline_repeat,accepted_baseline,D10,full,Endocardial cells,65,0.9895823237797902,0.9977921756097411
+baseline_repeat,accepted_baseline,D10,full,Epi-epithelial cells,84,0.9821935274769331,0.9966422233348097
+baseline_repeat,accepted_baseline,D10,full,Erythrocytes,133,0.9930197415498724,0.9984954729770754
+baseline_repeat,accepted_baseline,D10,full,Fibroblast cells,12,0.9860081868541758,0.9967187078018998
+baseline_repeat,accepted_baseline,D10,full,Immature myocardial cells,263,0.9741352944139314,0.9947085027968363
+baseline_repeat,accepted_baseline,D10,full,MT-enriched cardiomyocytes,11,0.9803787625727067,0.9945155561244471
+baseline_repeat,accepted_baseline,D10,full,Macrophages,3,0.9449611918432873,0.9387573041351644
+baseline_repeat,accepted_baseline,D10,full,Mural cells,3,0.9589067120585932,0.9656703742659997
+baseline_repeat,accepted_baseline,D10,full,TMSB4X high cells,13,0.9851331988922415,0.9982671370182562
+baseline_repeat,accepted_baseline,D10,full,Valve cells,46,0.9881237311339001,0.9967488819029151
+baseline_repeat,accepted_baseline,D10,full,Vascular endothelial cells,50,0.9933897598998597,0.9966241268805418
+baseline_repeat,accepted_baseline,D10,interaction,Cardiomyocytes-1,225,0.73484201494205,0.9315524156671262
+baseline_repeat,accepted_baseline,D10,interaction,Endocardial cells,65,0.7914615300652645,0.9663243042415064
+baseline_repeat,accepted_baseline,D10,interaction,Epi-epithelial cells,84,0.2677917028867859,0.6409502700915148
+baseline_repeat,accepted_baseline,D10,interaction,Erythrocytes,133,0.6986591687693773,0.9544919346338494
+baseline_repeat,accepted_baseline,D10,interaction,Fibroblast cells,11,0.27204310013485355,0.08833652829688046
+baseline_repeat,accepted_baseline,D10,interaction,Immature myocardial cells,263,0.713073792675545,0.9451495152885446
+baseline_repeat,accepted_baseline,D10,interaction,MT-enriched cardiomyocytes,11,0.7006618682515106,0.9846613888693577
+baseline_repeat,accepted_baseline,D10,interaction,Mural cells,3,0.29766617610144736,0.8645970056612081
+baseline_repeat,accepted_baseline,D10,interaction,TMSB4X high cells,13,0.906936101899164,0.9402821404181129
+baseline_repeat,accepted_baseline,D10,interaction,Valve cells,46,0.2002431360086883,0.5326287433958897
+baseline_repeat,accepted_baseline,D10,interaction,Vascular endothelial cells,50,0.6012761114781167,0.9101514903667034
+baseline_repeat,accepted_baseline,D14,full,Cardiomyocytes-1,977,0.9825936609567552,0.9982658302305466
+baseline_repeat,accepted_baseline,D14,full,Cardiomyocytes-2,1,0.9631777368209484,0.9631777368209484
+baseline_repeat,accepted_baseline,D14,full,Endocardial cells,28,0.9898044024846745,0.9971708109905097
+baseline_repeat,accepted_baseline,D14,full,Epi-epithelial cells,6,0.9991228293828233,0.9994002789611163
+baseline_repeat,accepted_baseline,D14,full,Erythrocytes,241,0.9952268137544247,0.9986799675089262
+baseline_repeat,accepted_baseline,D14,full,Fibroblast cells,264,0.99217327903619,0.9973541883546264
+baseline_repeat,accepted_baseline,D14,full,Immature myocardial cells,203,0.9896328971141695,0.9983728149176306
+baseline_repeat,accepted_baseline,D14,full,Macrophages,3,0.9964049094778082,0.999725960292598
+baseline_repeat,accepted_baseline,D14,full,Mural cells,46,0.9780675704281768,0.9979379841777178
+baseline_repeat,accepted_baseline,D14,full,TMSB4X high cells,101,0.9969079672040712,0.9995380134644063
+baseline_repeat,accepted_baseline,D14,full,Valve cells,20,0.985981785579588,0.9979588974678392
+baseline_repeat,accepted_baseline,D14,full,Vascular endothelial cells,77,0.9867863643505269,0.9948681372816991
+baseline_repeat,accepted_baseline,D14,interaction,Cardiomyocytes-1,977,0.8450718513430692,0.9735620482722679
+baseline_repeat,accepted_baseline,D14,interaction,Endocardial cells,28,0.7700414780872006,0.9764629380069404
+baseline_repeat,accepted_baseline,D14,interaction,Epi-epithelial cells,6,0.8999150327492496,0.9677741951156253
+baseline_repeat,accepted_baseline,D14,interaction,Erythrocytes,241,0.8528182118605666,0.9788582358502784
+baseline_repeat,accepted_baseline,D14,interaction,Fibroblast cells,264,0.78681831408944,0.9643436643223151
+baseline_repeat,accepted_baseline,D14,interaction,Immature myocardial cells,203,0.8323137286287068,0.9703546745250429
+baseline_repeat,accepted_baseline,D14,interaction,Mural cells,46,0.7966254427238436,0.974823236472307
+baseline_repeat,accepted_baseline,D14,interaction,TMSB4X high cells,101,0.830564629807618,0.9559621355779009
+baseline_repeat,accepted_baseline,D14,interaction,Valve cells,20,0.7838404718743409,0.9192490117430948
+baseline_repeat,accepted_baseline,D14,interaction,Vascular endothelial cells,77,0.8448597255808292,0.9763430156530671
+translate_low,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.998573776696597,0.998573776696597
+translate_low,baseline_repeat,D4,full,Endocardial cells,32,0.996395549592285,0.9985150961735783
+translate_low,baseline_repeat,D4,full,Epi-epithelial cells,2,0.9964125973578771,0.9964125973578771
+translate_low,baseline_repeat,D4,full,Immature myocardial cells,61,0.9968849991134603,0.9994811975864089
+translate_low,baseline_repeat,D4,full,TMSB4X high cells,5,0.9982063818134644,0.9994794319682497
+translate_low,baseline_repeat,D4,full,Valve cells,46,0.9145267476268736,0.9959258966910359
+translate_low,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9999504651071065,0.9999504651071065
+translate_low,baseline_repeat,D4,interaction,Endocardial cells,32,0.9970354143812064,0.9999546760847395
+translate_low,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9999830732313764,0.9999830732313764
+translate_low,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.9989133361766803,0.9999646884149471
+translate_low,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9999970274756944,0.9999975315094312
+translate_low,baseline_repeat,D4,interaction,Valve cells,46,0.9893933336500149,0.9982016285364534
+translate_low,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.9623465910813581,0.9972284640276607
+translate_low,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.9926379711426572,0.9967487358398627
+translate_low,baseline_repeat,D7,full,Endocardial cells,89,0.9594387730688454,0.9962346112083543
+translate_low,baseline_repeat,D7,full,Epi-epithelial cells,36,0.9932105513901727,0.9975392687489442
+translate_low,baseline_repeat,D7,full,Erythrocytes,34,0.9805788079023064,0.9971394969774422
+translate_low,baseline_repeat,D7,full,Fibroblast cells,1,0.9073985217205724,0.9073985217205724
+translate_low,baseline_repeat,D7,full,Immature myocardial cells,202,0.977316075134926,0.9970305444492091
+translate_low,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9950080150156353,0.9982279868876169
+translate_low,baseline_repeat,D7,full,Macrophages,3,0.9996365782130274,0.9999799837481044
+translate_low,baseline_repeat,D7,full,Valve cells,54,0.9952704536017539,0.9990518725300997
+translate_low,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9993634944738977,0.9993634944738977
+translate_low,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.995965345540068,0.9998044249285919
+translate_low,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.9991553501650813,0.9995108330422835
+translate_low,baseline_repeat,D7,interaction,Endocardial cells,89,0.9985696027542578,0.9997170323779833
+translate_low,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.9941402674636485,0.9999333513619126
+translate_low,baseline_repeat,D7,interaction,Erythrocytes,34,0.9412960460558911,0.9996671327714903
+translate_low,baseline_repeat,D7,interaction,Fibroblast cells,1,0.9998160460805995,0.9998160460805995
+translate_low,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.9930028967322729,0.99976344465813
+translate_low,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.9998741189403783,0.9999447736864613
+translate_low,baseline_repeat,D7,interaction,Macrophages,1,0.9999534449956498,0.9999534449956498
+translate_low,baseline_repeat,D7,interaction,Valve cells,54,0.9872036908704274,0.9968440355554149
+translate_low,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.9979748705832294,0.9979748705832294
+translate_low,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9935466796828706,0.99876910709461
+translate_low,baseline_repeat,D10,full,Endocardial cells,65,0.9806129951573898,0.9989021248698046
+translate_low,baseline_repeat,D10,full,Epi-epithelial cells,84,0.9961986042942638,0.9991514078335568
+translate_low,baseline_repeat,D10,full,Erythrocytes,133,0.9970682710579801,0.9986833330695377
+translate_low,baseline_repeat,D10,full,Fibroblast cells,12,0.9954944951329566,0.9965299868179929
+translate_low,baseline_repeat,D10,full,Immature myocardial cells,263,0.9848684533664643,0.9983232378985059
+translate_low,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.9937424525735278,0.9982501211066975
+translate_low,baseline_repeat,D10,full,Macrophages,3,0.952223604141475,0.9710846952730681
+translate_low,baseline_repeat,D10,full,Mural cells,3,0.9965550883881455,0.9958173465180514
+translate_low,baseline_repeat,D10,full,TMSB4X high cells,13,0.9945478404968026,0.9989553520030725
+translate_low,baseline_repeat,D10,full,Valve cells,46,0.9971473001770473,0.9989550746230411
+translate_low,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9974147589154023,0.9993426268401884
+translate_low,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.9624528911297133,0.9958816947793621
+translate_low,baseline_repeat,D10,interaction,Endocardial cells,65,0.9723395790029188,0.9973050599606585
+translate_low,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.7051580531815903,0.9766634995700427
+translate_low,baseline_repeat,D10,interaction,Erythrocytes,133,0.8590695642920632,0.9941349066550179
+translate_low,baseline_repeat,D10,interaction,Fibroblast cells,11,0.8517065683483659,0.9800728861460565
+translate_low,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.9698353955557967,0.9946400800191665
+translate_low,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.9607968845833526,0.9986772015074126
+translate_low,baseline_repeat,D10,interaction,Mural cells,3,0.840841019418002,0.9855904976400486
+translate_low,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.9852282023778396,0.9930760460295616
+translate_low,baseline_repeat,D10,interaction,Valve cells,46,0.9216641718919267,0.9840727937720272
+translate_low,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.9673524747673465,0.9935934302235142
+translate_low,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9894387915822858,0.999313067553132
+translate_low,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.9930618662817188,0.9930618662817188
+translate_low,baseline_repeat,D14,full,Endocardial cells,28,0.997255981724397,0.9987251213946926
+translate_low,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9998275865441372,0.9999196900344046
+translate_low,baseline_repeat,D14,full,Erythrocytes,241,0.9932398565085442,0.9995821246952096
+translate_low,baseline_repeat,D14,full,Fibroblast cells,264,0.9936943004091151,0.9990668323735907
+translate_low,baseline_repeat,D14,full,Immature myocardial cells,203,0.9956145145387566,0.9996963463811044
+translate_low,baseline_repeat,D14,full,Macrophages,3,0.9532876860244371,0.9570001356504784
+translate_low,baseline_repeat,D14,full,Mural cells,46,0.9864301912031833,0.9987921747332237
+translate_low,baseline_repeat,D14,full,TMSB4X high cells,101,0.9989630407307074,0.9998149148766649
+translate_low,baseline_repeat,D14,full,Valve cells,20,0.997849078610362,0.9997014182420966
+translate_low,baseline_repeat,D14,full,Vascular endothelial cells,77,0.9952557047758457,0.9973513859492439
+translate_low,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.9575590665423475,0.9963042184723566
+translate_low,baseline_repeat,D14,interaction,Endocardial cells,28,0.915671322168479,0.9989060165312434
+translate_low,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.9767237147410911,0.9927820372447184
+translate_low,baseline_repeat,D14,interaction,Erythrocytes,241,0.8765174638495354,0.9910349630128107
+translate_low,baseline_repeat,D14,interaction,Fibroblast cells,264,0.8919690864629952,0.9884965204853977
+translate_low,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.9627549226275733,0.9959685894452136
+translate_low,baseline_repeat,D14,interaction,Mural cells,46,0.8747140589289041,0.9877580064136564
+translate_low,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.949290426933751,0.9922716004072187
+translate_low,baseline_repeat,D14,interaction,Valve cells,20,0.7965535567172742,0.9613571074405212
+translate_low,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.9660849007930904,0.9963073557071618
+translate_moderate,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.9937221345083196,0.9937221345083196
+translate_moderate,baseline_repeat,D4,full,Endocardial cells,32,0.9966893249774025,0.998361933067064
+translate_moderate,baseline_repeat,D4,full,Epi-epithelial cells,2,0.9988468929177443,0.9988468929177443
+translate_moderate,baseline_repeat,D4,full,Immature myocardial cells,61,0.9985824139275273,0.999701226480272
+translate_moderate,baseline_repeat,D4,full,TMSB4X high cells,5,0.9996531758716246,0.9995995921282994
+translate_moderate,baseline_repeat,D4,full,Valve cells,46,0.9754405197918069,0.9971425484539622
+translate_moderate,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9945917687612698,0.9945917687612698
+translate_moderate,baseline_repeat,D4,interaction,Endocardial cells,32,0.9952333809360129,0.9995272824758517
+translate_moderate,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9999857982355678,0.9999857982355678
+translate_moderate,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.9933975017276949,0.9998792467330874
+translate_moderate,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9998432418759524,0.999889754635012
+translate_moderate,baseline_repeat,D4,interaction,Valve cells,46,0.9924336817871268,0.9972298089779041
+translate_moderate,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.9936354352539399,0.9981444733582808
+translate_moderate,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.9910472064290061,0.9960442801569587
+translate_moderate,baseline_repeat,D7,full,Endocardial cells,89,0.9623457446219458,0.9956378480655798
+translate_moderate,baseline_repeat,D7,full,Epi-epithelial cells,36,0.994320124723975,0.998419722541583
+translate_moderate,baseline_repeat,D7,full,Erythrocytes,34,0.987381808261608,0.9934294443552971
+translate_moderate,baseline_repeat,D7,full,Fibroblast cells,1,0.9997987597897308,0.9997987597897308
+translate_moderate,baseline_repeat,D7,full,Immature myocardial cells,202,0.981676947984694,0.9964361359842154
+translate_moderate,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9989875179959946,0.9996987817304663
+translate_moderate,baseline_repeat,D7,full,Macrophages,3,0.997830106392529,0.9973257265191637
+translate_moderate,baseline_repeat,D7,full,Valve cells,54,0.9951197683443682,0.9983250031810325
+translate_moderate,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9891588208502795,0.9891588208502795
+translate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.9842128757085556,0.9991915590892507
+translate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.9492654603228209,0.9815287592579689
+translate_moderate,baseline_repeat,D7,interaction,Endocardial cells,89,0.9960359001332797,0.9994108548240972
+translate_moderate,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.9983883234723859,0.9997191040181321
+translate_moderate,baseline_repeat,D7,interaction,Erythrocytes,34,0.9327429477735176,0.9988951736316161
+translate_moderate,baseline_repeat,D7,interaction,Fibroblast cells,1,0.999912191984883,0.999912191984883
+translate_moderate,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.961992126542354,0.9981794968221412
+translate_moderate,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.999177611042295,0.9999572969576369
+translate_moderate,baseline_repeat,D7,interaction,Macrophages,1,0.9999993850380595,0.9999993850380595
+translate_moderate,baseline_repeat,D7,interaction,Valve cells,54,0.9640534182739031,0.9920438823873754
+translate_moderate,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.9977084541413147,0.9977084541413147
+translate_moderate,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9855428641046515,0.9976608581508074
+translate_moderate,baseline_repeat,D10,full,Endocardial cells,65,0.9936098708704332,0.9987384116514983
+translate_moderate,baseline_repeat,D10,full,Epi-epithelial cells,84,0.981948967974498,0.9986342001840147
+translate_moderate,baseline_repeat,D10,full,Erythrocytes,133,0.9946777948419132,0.9986795208737237
+translate_moderate,baseline_repeat,D10,full,Fibroblast cells,12,0.9947440117658776,0.9971569613462645
+translate_moderate,baseline_repeat,D10,full,Immature myocardial cells,263,0.980784637154978,0.9980978815136083
+translate_moderate,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.9953148643110539,0.9974175570581124
+translate_moderate,baseline_repeat,D10,full,Macrophages,3,0.9746449889125349,0.9840326145658245
+translate_moderate,baseline_repeat,D10,full,Mural cells,3,0.9965595909462394,0.9968500658126209
+translate_moderate,baseline_repeat,D10,full,TMSB4X high cells,13,0.9935586331371749,0.9985751062982395
+translate_moderate,baseline_repeat,D10,full,Valve cells,46,0.9981026715217357,0.9995944599635571
+translate_moderate,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9955509754626746,0.9976802715872711
+translate_moderate,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.8707799679137657,0.9866273498088003
+translate_moderate,baseline_repeat,D10,interaction,Endocardial cells,65,0.9059176299663639,0.9878110692082902
+translate_moderate,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.76365545845915,0.994968510865135
+translate_moderate,baseline_repeat,D10,interaction,Erythrocytes,133,0.8487661030624782,0.9848487433246467
+translate_moderate,baseline_repeat,D10,interaction,Fibroblast cells,11,0.8129482293453457,0.9857402640153652
+translate_moderate,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.9015685691984138,0.9864093271932844
+translate_moderate,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.8977201621603996,0.9974709388268783
+translate_moderate,baseline_repeat,D10,interaction,Mural cells,3,0.7624110589212004,0.8358627117993983
+translate_moderate,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.9694946128134957,0.9932344799701242
+translate_moderate,baseline_repeat,D10,interaction,Valve cells,46,0.7467063035610334,0.9139999198097064
+translate_moderate,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.9244003873046541,0.9814151077370302
+translate_moderate,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9891508569313774,0.9991738891300161
+translate_moderate,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.989681341696894,0.989681341696894
+translate_moderate,baseline_repeat,D14,full,Endocardial cells,28,0.9972892735869724,0.9987915709549394
+translate_moderate,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9983496100959002,0.998448908888222
+translate_moderate,baseline_repeat,D14,full,Erythrocytes,241,0.9964268149959846,0.9990571567603926
+translate_moderate,baseline_repeat,D14,full,Fibroblast cells,264,0.9918147427903452,0.9986325578148398
+translate_moderate,baseline_repeat,D14,full,Immature myocardial cells,203,0.9965905786468094,0.9992993509734228
+translate_moderate,baseline_repeat,D14,full,Macrophages,3,0.5724213005752532,0.9874070733734895
+translate_moderate,baseline_repeat,D14,full,Mural cells,46,0.9897317203857977,0.9993814415155644
+translate_moderate,baseline_repeat,D14,full,TMSB4X high cells,101,0.9983786310693011,0.9994291939375263
+translate_moderate,baseline_repeat,D14,full,Valve cells,20,0.9957577184283524,0.9971918048975372
+translate_moderate,baseline_repeat,D14,full,Vascular endothelial cells,77,0.9936222866114559,0.9983650109434868
+translate_moderate,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.8874275267115813,0.9899131568127348
+translate_moderate,baseline_repeat,D14,interaction,Endocardial cells,28,0.9440482434640849,0.9949732804087672
+translate_moderate,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.9336109490335297,0.9716467049179942
+translate_moderate,baseline_repeat,D14,interaction,Erythrocytes,241,0.8733653881573232,0.9965320944584558
+translate_moderate,baseline_repeat,D14,interaction,Fibroblast cells,264,0.8578501045674376,0.9752071265585707
+translate_moderate,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.8858412426962053,0.9897610557551565
+translate_moderate,baseline_repeat,D14,interaction,Mural cells,46,0.7924388674634748,0.9832623794248775
+translate_moderate,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.8769303800098412,0.9726975071771562
+translate_moderate,baseline_repeat,D14,interaction,Valve cells,20,0.8045294059830874,0.9713246979802735
+translate_moderate,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.9690781412812626,0.9973693334587728
+rotate_low,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.9998877173947966,0.9998877173947966
+rotate_low,baseline_repeat,D4,full,Endocardial cells,32,0.9970596718355261,0.9987645727782548
+rotate_low,baseline_repeat,D4,full,Epi-epithelial cells,2,0.9998126684682365,0.9998126684682365
+rotate_low,baseline_repeat,D4,full,Immature myocardial cells,61,0.9952908697362225,0.9991088448474239
+rotate_low,baseline_repeat,D4,full,TMSB4X high cells,5,0.9995275623306364,0.999879195653097
+rotate_low,baseline_repeat,D4,full,Valve cells,46,0.9108378718388582,0.9903084802198475
+rotate_low,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9993139610104553,0.9993139610104553
+rotate_low,baseline_repeat,D4,interaction,Endocardial cells,32,0.931872564147104,0.9936628748104552
+rotate_low,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9999406250762652,0.9999406250762652
+rotate_low,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.9802684579377869,0.9982355560963335
+rotate_low,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9983322505460877,0.9992482117644425
+rotate_low,baseline_repeat,D4,interaction,Valve cells,46,0.9135460273421387,0.9938183434073168
+rotate_low,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.992836823303036,0.9980995973027915
+rotate_low,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.992862829241183,0.9952337710164688
+rotate_low,baseline_repeat,D7,full,Endocardial cells,89,0.9801350331936054,0.9984264376530569
+rotate_low,baseline_repeat,D7,full,Epi-epithelial cells,36,0.9886765308116902,0.9962247719937618
+rotate_low,baseline_repeat,D7,full,Erythrocytes,34,0.9859661184780137,0.9960881510387125
+rotate_low,baseline_repeat,D7,full,Fibroblast cells,1,0.9454855040629494,0.9454855040629494
+rotate_low,baseline_repeat,D7,full,Immature myocardial cells,202,0.9885265708405757,0.9979689890409957
+rotate_low,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9947459803994398,0.9963208909958251
+rotate_low,baseline_repeat,D7,full,Macrophages,3,0.9960426885391032,0.9952203658327173
+rotate_low,baseline_repeat,D7,full,Valve cells,54,0.9926421064169454,0.9986395741900962
+rotate_low,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9411593213396325,0.9411593213396325
+rotate_low,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.7409997251642781,0.9305187964010382
+rotate_low,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.9845487017472973,0.9948688972961192
+rotate_low,baseline_repeat,D7,interaction,Endocardial cells,89,0.9257160176308131,0.9774209384322914
+rotate_low,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.8429811445484501,0.9773414079083714
+rotate_low,baseline_repeat,D7,interaction,Erythrocytes,34,0.922885135187151,0.9924825353176234
+rotate_low,baseline_repeat,D7,interaction,Fibroblast cells,1,0.9944617384366615,0.9944617384366615
+rotate_low,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.9051571284268737,0.9879879463486865
+rotate_low,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.9259777164809277,0.9927261438799202
+rotate_low,baseline_repeat,D7,interaction,Macrophages,1,0.9727263446216418,0.9727263446216418
+rotate_low,baseline_repeat,D7,interaction,Valve cells,54,0.9310823574645322,0.9861393717234006
+rotate_low,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.8411239970804063,0.8411239970804063
+rotate_low,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9684751058489787,0.9976491610473207
+rotate_low,baseline_repeat,D10,full,Endocardial cells,65,0.9875577400035028,0.996599489301801
+rotate_low,baseline_repeat,D10,full,Epi-epithelial cells,84,0.9752033786933577,0.9983862126162273
+rotate_low,baseline_repeat,D10,full,Erythrocytes,133,0.9935896119583265,0.9977313665769146
+rotate_low,baseline_repeat,D10,full,Fibroblast cells,12,0.9913400234949249,0.9982999633327357
+rotate_low,baseline_repeat,D10,full,Immature myocardial cells,263,0.9663233499628794,0.9947826737506432
+rotate_low,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.985999155893126,0.9994007855659892
+rotate_low,baseline_repeat,D10,full,Macrophages,3,0.9780495223053535,0.9962589825145947
+rotate_low,baseline_repeat,D10,full,Mural cells,3,0.9721772443753798,0.9745047282151756
+rotate_low,baseline_repeat,D10,full,TMSB4X high cells,13,0.9847689551792614,0.9980655933497649
+rotate_low,baseline_repeat,D10,full,Valve cells,46,0.9920276678003097,0.9943566775547268
+rotate_low,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9932390049131786,0.9970758026244322
+rotate_low,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.7073414731095343,0.9511345116427181
+rotate_low,baseline_repeat,D10,interaction,Endocardial cells,65,0.8336244706460441,0.9489687338413069
+rotate_low,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.6102554454866742,0.984613207077172
+rotate_low,baseline_repeat,D10,interaction,Erythrocytes,133,0.5194738205181577,0.9363541931832293
+rotate_low,baseline_repeat,D10,interaction,Fibroblast cells,11,0.5407938893669333,0.9522793684634127
+rotate_low,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.724289045353198,0.9479573777490037
+rotate_low,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.9107846990651821,0.9764051290920972
+rotate_low,baseline_repeat,D10,interaction,Mural cells,3,0.45977127286391006,0.689517862961
+rotate_low,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.9094369529220118,0.9606457059944279
+rotate_low,baseline_repeat,D10,interaction,Valve cells,46,0.020676639870321943,0.13716639707112727
+rotate_low,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.6012776459447464,0.8201823106111
+rotate_low,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9746713068510481,0.9981862654580054
+rotate_low,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.9397918091514341,0.9397918091514341
+rotate_low,baseline_repeat,D14,full,Endocardial cells,28,0.9923423981618773,0.9965405502819805
+rotate_low,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9991451753709208,0.9996963651409507
+rotate_low,baseline_repeat,D14,full,Erythrocytes,241,0.987259679489472,0.9979703088186307
+rotate_low,baseline_repeat,D14,full,Fibroblast cells,264,0.9868024022086246,0.99764471376136
+rotate_low,baseline_repeat,D14,full,Immature myocardial cells,203,0.9845299187485617,0.9990486636119204
+rotate_low,baseline_repeat,D14,full,Macrophages,3,0.9594340477608289,0.9674950539775754
+rotate_low,baseline_repeat,D14,full,Mural cells,46,0.9589875355210031,0.9948749778730139
+rotate_low,baseline_repeat,D14,full,TMSB4X high cells,101,0.9951365920575468,0.9987494207170564
+rotate_low,baseline_repeat,D14,full,Valve cells,20,0.993271393504968,0.9966166752692225
+rotate_low,baseline_repeat,D14,full,Vascular endothelial cells,77,0.9914994151666306,0.9979765045960594
+rotate_low,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.7848332630641943,0.9626262397723604
+rotate_low,baseline_repeat,D14,interaction,Endocardial cells,28,0.659631730318417,0.9815314678437295
+rotate_low,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.8760500139785466,0.9449563832801651
+rotate_low,baseline_repeat,D14,interaction,Erythrocytes,241,0.6009969498042539,0.9410867607457386
+rotate_low,baseline_repeat,D14,interaction,Fibroblast cells,264,0.7416581035399306,0.9458893093331353
+rotate_low,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.7884394968607626,0.9491245281001732
+rotate_low,baseline_repeat,D14,interaction,Mural cells,46,0.8025467941880826,0.9196291730843951
+rotate_low,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.820675939683391,0.9683749796030003
+rotate_low,baseline_repeat,D14,interaction,Valve cells,20,0.6075218922611046,0.9320390947214363
+rotate_low,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.834339273959596,0.9740842741715349
+rotate_moderate,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.9089355326635445,0.9089355326635445
+rotate_moderate,baseline_repeat,D4,full,Endocardial cells,32,0.9522937521504343,0.9725745046999268
+rotate_moderate,baseline_repeat,D4,full,Epi-epithelial cells,2,0.9767576204359909,0.9767576204359909
+rotate_moderate,baseline_repeat,D4,full,Immature myocardial cells,61,0.966206571490863,0.9815998885621487
+rotate_moderate,baseline_repeat,D4,full,TMSB4X high cells,5,0.9779182977198004,0.9778156721908847
+rotate_moderate,baseline_repeat,D4,full,Valve cells,46,0.8560328142516896,0.9692583743175643
+rotate_moderate,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9835489283782561,0.9835489283782561
+rotate_moderate,baseline_repeat,D4,interaction,Endocardial cells,32,0.9851589223354114,0.992938402673087
+rotate_moderate,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9897590044715748,0.9897590044715748
+rotate_moderate,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.9332326025988158,0.9955400554065437
+rotate_moderate,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9989212837816146,0.9990031508660361
+rotate_moderate,baseline_repeat,D4,interaction,Valve cells,46,0.7663973092192519,0.9627432280119335
+rotate_moderate,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.9839560211555932,0.996791952989667
+rotate_moderate,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.9772512177733403,0.9923012847848005
+rotate_moderate,baseline_repeat,D7,full,Endocardial cells,89,0.9132785873383271,0.9920917386204526
+rotate_moderate,baseline_repeat,D7,full,Epi-epithelial cells,36,0.9874224322929293,0.9985462141318143
+rotate_moderate,baseline_repeat,D7,full,Erythrocytes,34,0.9550711389264298,0.9967884818315769
+rotate_moderate,baseline_repeat,D7,full,Fibroblast cells,1,0.9494261613266427,0.9494261613266427
+rotate_moderate,baseline_repeat,D7,full,Immature myocardial cells,202,0.9605134588092611,0.9945431245634276
+rotate_moderate,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9965797997391113,0.9973735047888705
+rotate_moderate,baseline_repeat,D7,full,Macrophages,3,0.986277477880614,0.9947030790888575
+rotate_moderate,baseline_repeat,D7,full,Valve cells,54,0.9861951161346035,0.9951107465264095
+rotate_moderate,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9568053752185526,0.9568053752185526
+rotate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.8960746468523446,0.9924406764628679
+rotate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.9864083360858604,0.9981730166601992
+rotate_moderate,baseline_repeat,D7,interaction,Endocardial cells,89,0.9569418929175528,0.9919650387708174
+rotate_moderate,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.9865046869403196,0.9976631141690873
+rotate_moderate,baseline_repeat,D7,interaction,Erythrocytes,34,0.9294485377338821,0.9960830835935117
+rotate_moderate,baseline_repeat,D7,interaction,Fibroblast cells,1,0.9960156868295921,0.9960156868295921
+rotate_moderate,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.9128950047673626,0.9945074586915974
+rotate_moderate,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.9873709227799863,0.9970291054313857
+rotate_moderate,baseline_repeat,D7,interaction,Macrophages,1,0.9936499385635742,0.9936499385635742
+rotate_moderate,baseline_repeat,D7,interaction,Valve cells,54,0.9018669431615641,0.9770482373511564
+rotate_moderate,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.8988471446389167,0.8988471446389167
+rotate_moderate,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9662889288198401,0.9939110281461669
+rotate_moderate,baseline_repeat,D10,full,Endocardial cells,65,0.9790050763143743,0.9956186732215956
+rotate_moderate,baseline_repeat,D10,full,Epi-epithelial cells,84,0.9726133411432668,0.9956003315608384
+rotate_moderate,baseline_repeat,D10,full,Erythrocytes,133,0.9861620147156173,0.9963570115219934
+rotate_moderate,baseline_repeat,D10,full,Fibroblast cells,12,0.9874178809056987,0.9967817584862873
+rotate_moderate,baseline_repeat,D10,full,Immature myocardial cells,263,0.9595599377124641,0.9937665282454274
+rotate_moderate,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.9767616697535637,0.9956071742177031
+rotate_moderate,baseline_repeat,D10,full,Macrophages,3,0.953380447136453,0.9406201912816422
+rotate_moderate,baseline_repeat,D10,full,Mural cells,3,0.9826991903654507,0.9832672993959247
+rotate_moderate,baseline_repeat,D10,full,TMSB4X high cells,13,0.997538036042627,0.9991966804273464
+rotate_moderate,baseline_repeat,D10,full,Valve cells,46,0.9816813775861282,0.9953290270515924
+rotate_moderate,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9874264309282438,0.9925583953429917
+rotate_moderate,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.6311794682767469,0.9002669696410923
+rotate_moderate,baseline_repeat,D10,interaction,Endocardial cells,65,0.5676571469995109,0.9185949064826617
+rotate_moderate,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.689850341184198,0.9587446675959459
+rotate_moderate,baseline_repeat,D10,interaction,Erythrocytes,133,0.5935005198550797,0.874783674262719
+rotate_moderate,baseline_repeat,D10,interaction,Fibroblast cells,11,0.0718454643413652,0.11233865241270623
+rotate_moderate,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.5645256364760065,0.9043712584093329
+rotate_moderate,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.7889305007129745,0.9498863187307169
+rotate_moderate,baseline_repeat,D10,interaction,Mural cells,3,0.6009015786390274,0.769304263486075
+rotate_moderate,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.14404592314692977,0.0801963961980302
+rotate_moderate,baseline_repeat,D10,interaction,Valve cells,46,0.0025037631072243327,0.20376899952350264
+rotate_moderate,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.440946760060777,0.8337051948441139
+rotate_moderate,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9685797143452018,0.9924331103352175
+rotate_moderate,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.9247915552207144,0.9247915552207144
+rotate_moderate,baseline_repeat,D14,full,Endocardial cells,28,0.9741678159831378,0.9900107623981804
+rotate_moderate,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9908489251950189,0.9953639976348548
+rotate_moderate,baseline_repeat,D14,full,Erythrocytes,241,0.9866419845140183,0.9977260847717723
+rotate_moderate,baseline_repeat,D14,full,Fibroblast cells,264,0.98312086074875,0.9927917123054124
+rotate_moderate,baseline_repeat,D14,full,Immature myocardial cells,203,0.9823972701395753,0.9950191518524315
+rotate_moderate,baseline_repeat,D14,full,Macrophages,3,0.5678852141792922,0.9907098570862559
+rotate_moderate,baseline_repeat,D14,full,Mural cells,46,0.9344104202726173,0.9942061086128415
+rotate_moderate,baseline_repeat,D14,full,TMSB4X high cells,101,0.9903361004257643,0.993561790929538
+rotate_moderate,baseline_repeat,D14,full,Valve cells,20,0.9828193928076715,0.9942898265377849
+rotate_moderate,baseline_repeat,D14,full,Vascular endothelial cells,77,0.970801435529143,0.9895555077384385
+rotate_moderate,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.7820108042513171,0.9644601463497454
+rotate_moderate,baseline_repeat,D14,interaction,Endocardial cells,28,0.6564231296122596,0.9710753272946205
+rotate_moderate,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.8911521235702131,0.9605072018209335
+rotate_moderate,baseline_repeat,D14,interaction,Erythrocytes,241,0.8010153954109691,0.974924312813704
+rotate_moderate,baseline_repeat,D14,interaction,Fibroblast cells,264,0.7845204019945338,0.9520006843431337
+rotate_moderate,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.808563465028637,0.9644556954672416
+rotate_moderate,baseline_repeat,D14,interaction,Mural cells,46,0.7844042448831385,0.9711518128897116
+rotate_moderate,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.8096270371372001,0.9566986874848558
+rotate_moderate,baseline_repeat,D14,interaction,Valve cells,20,0.7476570447090942,0.9527425527776054
+rotate_moderate,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.8167199864535245,0.9845137768749029
+translate_rotate_low,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.9999600637526094,0.9999600637526094
+translate_rotate_low,baseline_repeat,D4,full,Endocardial cells,32,0.985110756893899,0.9985018526527869
+translate_rotate_low,baseline_repeat,D4,full,Epi-epithelial cells,2,0.7853871152588885,0.7853871152588885
+translate_rotate_low,baseline_repeat,D4,full,Immature myocardial cells,61,0.98456301609699,0.9979919712014277
+translate_rotate_low,baseline_repeat,D4,full,TMSB4X high cells,5,0.9966744336019261,0.9992526425588876
+translate_rotate_low,baseline_repeat,D4,full,Valve cells,46,0.8979747770854662,0.9917510677110907
+translate_rotate_low,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9997432911372498,0.9997432911372498
+translate_rotate_low,baseline_repeat,D4,interaction,Endocardial cells,32,0.9390358683437052,0.9965296816356441
+translate_rotate_low,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9999700347912448,0.9999700347912448
+translate_rotate_low,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.975930284805776,0.9981272454696238
+translate_rotate_low,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9992276221411618,0.9995700259870439
+translate_rotate_low,baseline_repeat,D4,interaction,Valve cells,46,0.9341827941410716,0.9903174199603908
+translate_rotate_low,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.9883853058182885,0.9976734788533534
+translate_rotate_low,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.9875221917728869,0.993692851884222
+translate_rotate_low,baseline_repeat,D7,full,Endocardial cells,89,0.9547067940860239,0.9966584783866201
+translate_rotate_low,baseline_repeat,D7,full,Epi-epithelial cells,36,0.9927978706826295,0.9967064440748692
+translate_rotate_low,baseline_repeat,D7,full,Erythrocytes,34,0.983013674671897,0.9965009469787205
+translate_rotate_low,baseline_repeat,D7,full,Fibroblast cells,1,0.9187288662161037,0.9187288662161037
+translate_rotate_low,baseline_repeat,D7,full,Immature myocardial cells,202,0.9677658411826567,0.9945785356548726
+translate_rotate_low,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9978190527827397,0.998865353454325
+translate_rotate_low,baseline_repeat,D7,full,Macrophages,3,0.9899899545982723,0.9902167547080257
+translate_rotate_low,baseline_repeat,D7,full,Valve cells,54,0.9908233680242342,0.9981638225054604
+translate_rotate_low,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9324118262386553,0.9324118262386553
+translate_rotate_low,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.6909336566799258,0.9061648429686858
+translate_rotate_low,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.977963641378745,0.9939800348921674
+translate_rotate_low,baseline_repeat,D7,interaction,Endocardial cells,89,0.9063777662230553,0.9766171564089685
+translate_rotate_low,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.8185902834255984,0.9802601203453255
+translate_rotate_low,baseline_repeat,D7,interaction,Erythrocytes,34,0.9322799472627034,0.9929387932915753
+translate_rotate_low,baseline_repeat,D7,interaction,Fibroblast cells,1,0.9942206997973113,0.9942206997973113
+translate_rotate_low,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.8802723019349266,0.9874804780148736
+translate_rotate_low,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.8924838871235663,0.9902588764762155
+translate_rotate_low,baseline_repeat,D7,interaction,Macrophages,1,0.9650561666998614,0.9650561666998614
+translate_rotate_low,baseline_repeat,D7,interaction,Valve cells,54,0.9152951645947334,0.9836437623056727
+translate_rotate_low,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.8180991280730754,0.8180991280730754
+translate_rotate_low,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9735387821805771,0.9970077492214977
+translate_rotate_low,baseline_repeat,D10,full,Endocardial cells,65,0.9816230757639324,0.9972692091014803
+translate_rotate_low,baseline_repeat,D10,full,Epi-epithelial cells,84,0.9735680963237636,0.9975006264544963
+translate_rotate_low,baseline_repeat,D10,full,Erythrocytes,133,0.9916120400227957,0.9977324569859893
+translate_rotate_low,baseline_repeat,D10,full,Fibroblast cells,12,0.9878091357580981,0.994157554809431
+translate_rotate_low,baseline_repeat,D10,full,Immature myocardial cells,263,0.951257329664572,0.9926124719521555
+translate_rotate_low,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.9855412863596794,0.9976057468380654
+translate_rotate_low,baseline_repeat,D10,full,Macrophages,3,0.9484884993006527,0.972612398975358
+translate_rotate_low,baseline_repeat,D10,full,Mural cells,3,0.9929598160282093,0.991217266966515
+translate_rotate_low,baseline_repeat,D10,full,TMSB4X high cells,13,0.9820935292562611,0.9989807596584349
+translate_rotate_low,baseline_repeat,D10,full,Valve cells,46,0.9920259059466179,0.9961356908878858
+translate_rotate_low,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9883854575438542,0.9968071008201504
+translate_rotate_low,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.7449948053227157,0.9441310821164999
+translate_rotate_low,baseline_repeat,D10,interaction,Endocardial cells,65,0.8313067193798368,0.9515886405750352
+translate_rotate_low,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.6275855909427988,0.987308836961784
+translate_rotate_low,baseline_repeat,D10,interaction,Erythrocytes,133,0.6113319996321825,0.9471169727571919
+translate_rotate_low,baseline_repeat,D10,interaction,Fibroblast cells,11,0.5821798314502528,0.9468287541232536
+translate_rotate_low,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.7587580192456304,0.9521766345521476
+translate_rotate_low,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.8075348444610578,0.977017907809495
+translate_rotate_low,baseline_repeat,D10,interaction,Mural cells,3,0.4859883445300704,0.6766741916047176
+translate_rotate_low,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.8273443708467265,0.9061372981627203
+translate_rotate_low,baseline_repeat,D10,interaction,Valve cells,46,0.1234544869244884,0.2813575512399643
+translate_rotate_low,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.7089216981289834,0.9314515764965667
+translate_rotate_low,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9793217458055439,0.9985213290575989
+translate_rotate_low,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.9460293846145664,0.9460293846145664
+translate_rotate_low,baseline_repeat,D14,full,Endocardial cells,28,0.9878596858111596,0.9947887922822705
+translate_rotate_low,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9953492313797413,0.9966476399314836
+translate_rotate_low,baseline_repeat,D14,full,Erythrocytes,241,0.9827563545544441,0.9979401159900751
+translate_rotate_low,baseline_repeat,D14,full,Fibroblast cells,264,0.9847836155368662,0.996905903716065
+translate_rotate_low,baseline_repeat,D14,full,Immature myocardial cells,203,0.9891998094404155,0.998732605725454
+translate_rotate_low,baseline_repeat,D14,full,Macrophages,3,0.9781805865634841,0.9805567281917901
+translate_rotate_low,baseline_repeat,D14,full,Mural cells,46,0.9638324430947361,0.9979525796286277
+translate_rotate_low,baseline_repeat,D14,full,TMSB4X high cells,101,0.991138050201761,0.9986788166794852
+translate_rotate_low,baseline_repeat,D14,full,Valve cells,20,0.9875343967276704,0.9921416724871944
+translate_rotate_low,baseline_repeat,D14,full,Vascular endothelial cells,77,0.9854794494264352,0.9974735307827921
+translate_rotate_low,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.7842300862599413,0.9591751378619696
+translate_rotate_low,baseline_repeat,D14,interaction,Endocardial cells,28,0.7159416715662763,0.9750500411772648
+translate_rotate_low,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.8526166191798983,0.9495721824639538
+translate_rotate_low,baseline_repeat,D14,interaction,Erythrocytes,241,0.6327205653149703,0.938453640101896
+translate_rotate_low,baseline_repeat,D14,interaction,Fibroblast cells,264,0.7271109958785066,0.9425633230442121
+translate_rotate_low,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.7820579865354892,0.9542619398701172
+translate_rotate_low,baseline_repeat,D14,interaction,Mural cells,46,0.7746322613601943,0.9254429216981547
+translate_rotate_low,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.8504665127004525,0.9492838287849806
+translate_rotate_low,baseline_repeat,D14,interaction,Valve cells,20,0.6146410104605036,0.9331731595286701
+translate_rotate_low,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.8522982845393365,0.9709976468975725
+translate_rotate_moderate,baseline_repeat,D4,full,Cardiomyocytes-1,1,0.8961231683780793,0.8961231683780793
+translate_rotate_moderate,baseline_repeat,D4,full,Endocardial cells,32,0.9204300735005368,0.9530936458928176
+translate_rotate_moderate,baseline_repeat,D4,full,Epi-epithelial cells,2,0.9864833846682155,0.9864833846682155
+translate_rotate_moderate,baseline_repeat,D4,full,Immature myocardial cells,61,0.9624133483272997,0.9825953191162916
+translate_rotate_moderate,baseline_repeat,D4,full,TMSB4X high cells,5,0.9621742243209208,0.9658507740478548
+translate_rotate_moderate,baseline_repeat,D4,full,Valve cells,46,0.8723151566058024,0.9724375573327293
+translate_rotate_moderate,baseline_repeat,D4,interaction,Cardiomyocytes-1,1,0.9875226275170447,0.9875226275170447
+translate_rotate_moderate,baseline_repeat,D4,interaction,Endocardial cells,32,0.9714827681388964,0.9858768409644125
+translate_rotate_moderate,baseline_repeat,D4,interaction,Epi-epithelial cells,2,0.9985073176857051,0.9985073176857051
+translate_rotate_moderate,baseline_repeat,D4,interaction,Immature myocardial cells,61,0.9192081574227845,0.9948493201605929
+translate_rotate_moderate,baseline_repeat,D4,interaction,TMSB4X high cells,5,0.9975688747855491,0.9972690064294356
+translate_rotate_moderate,baseline_repeat,D4,interaction,Valve cells,46,0.7920773855039841,0.9696933271877387
+translate_rotate_moderate,baseline_repeat,D7,full,Cardiomyocytes-1,79,0.9783231394093832,0.9977474560776667
+translate_rotate_moderate,baseline_repeat,D7,full,Cardiomyocytes-2,10,0.988086426352137,0.9953553759857705
+translate_rotate_moderate,baseline_repeat,D7,full,Endocardial cells,89,0.9488031619830005,0.9966807335158469
+translate_rotate_moderate,baseline_repeat,D7,full,Epi-epithelial cells,36,0.9911327670053096,0.998507147441169
+translate_rotate_moderate,baseline_repeat,D7,full,Erythrocytes,34,0.9597908621159318,0.9950119616304698
+translate_rotate_moderate,baseline_repeat,D7,full,Fibroblast cells,1,0.9160015504775623,0.9160015504775623
+translate_rotate_moderate,baseline_repeat,D7,full,Immature myocardial cells,202,0.9774985280725057,0.9974954506684883
+translate_rotate_moderate,baseline_repeat,D7,full,MT-enriched cardiomyocytes,18,0.9970168389282351,0.997952668414221
+translate_rotate_moderate,baseline_repeat,D7,full,Macrophages,3,0.9900303156106492,0.9908861120958671
+translate_rotate_moderate,baseline_repeat,D7,full,Valve cells,54,0.9915006045525568,0.9976568255196216
+translate_rotate_moderate,baseline_repeat,D7,full,Vascular endothelial cells,2,0.9452071353273908,0.9452071353273908
+translate_rotate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-1,79,0.8976996867722967,0.9934225708110044
+translate_rotate_moderate,baseline_repeat,D7,interaction,Cardiomyocytes-2,10,0.9674077638346343,0.9952489765207232
+translate_rotate_moderate,baseline_repeat,D7,interaction,Endocardial cells,89,0.954492850064767,0.9909246995311061
+translate_rotate_moderate,baseline_repeat,D7,interaction,Epi-epithelial cells,36,0.9862405023378962,0.9971861068631676
+translate_rotate_moderate,baseline_repeat,D7,interaction,Erythrocytes,34,0.8780585588052284,0.9962177170312831
+translate_rotate_moderate,baseline_repeat,D7,interaction,Fibroblast cells,1,0.9962941822352559,0.9962941822352559
+translate_rotate_moderate,baseline_repeat,D7,interaction,Immature myocardial cells,202,0.910583606133033,0.9955824751899618
+translate_rotate_moderate,baseline_repeat,D7,interaction,MT-enriched cardiomyocytes,18,0.9864999138854744,0.9967311802176515
+translate_rotate_moderate,baseline_repeat,D7,interaction,Macrophages,1,0.9930635961481771,0.9930635961481771
+translate_rotate_moderate,baseline_repeat,D7,interaction,Valve cells,54,0.934363122822738,0.9834288780035523
+translate_rotate_moderate,baseline_repeat,D7,interaction,Vascular endothelial cells,2,0.9611604824196356,0.9611604824196356
+translate_rotate_moderate,baseline_repeat,D10,full,Cardiomyocytes-1,225,0.9672226699672632,0.9936510443927025
+translate_rotate_moderate,baseline_repeat,D10,full,Endocardial cells,65,0.9811526290761217,0.9945295279347875
+translate_rotate_moderate,baseline_repeat,D10,full,Epi-epithelial cells,84,0.9844201481402818,0.9960323917308442
+translate_rotate_moderate,baseline_repeat,D10,full,Erythrocytes,133,0.9866644862953095,0.9960118373397978
+translate_rotate_moderate,baseline_repeat,D10,full,Fibroblast cells,12,0.99258103998365,0.9972205287011204
+translate_rotate_moderate,baseline_repeat,D10,full,Immature myocardial cells,263,0.9644405230510645,0.9938429396290456
+translate_rotate_moderate,baseline_repeat,D10,full,MT-enriched cardiomyocytes,11,0.9826857398189262,0.9933368589848439
+translate_rotate_moderate,baseline_repeat,D10,full,Macrophages,3,0.9585877103980464,0.9902651366317932
+translate_rotate_moderate,baseline_repeat,D10,full,Mural cells,3,0.9878116800643193,0.9925075078791381
+translate_rotate_moderate,baseline_repeat,D10,full,TMSB4X high cells,13,0.9972730766088869,0.9992046838203463
+translate_rotate_moderate,baseline_repeat,D10,full,Valve cells,46,0.9883602814017457,0.9943182617265132
+translate_rotate_moderate,baseline_repeat,D10,full,Vascular endothelial cells,50,0.9862853388774009,0.9938714065006804
+translate_rotate_moderate,baseline_repeat,D10,interaction,Cardiomyocytes-1,225,0.6407779016535682,0.8935908535351323
+translate_rotate_moderate,baseline_repeat,D10,interaction,Endocardial cells,65,0.6661212379736257,0.9469807094909677
+translate_rotate_moderate,baseline_repeat,D10,interaction,Epi-epithelial cells,84,0.6386999623166961,0.9328738680972272
+translate_rotate_moderate,baseline_repeat,D10,interaction,Erythrocytes,133,0.6861315199919278,0.9461452097450551
+translate_rotate_moderate,baseline_repeat,D10,interaction,Fibroblast cells,11,0.16153419131066052,0.35527427281472085
+translate_rotate_moderate,baseline_repeat,D10,interaction,Immature myocardial cells,263,0.598262000337242,0.8944648418600173
+translate_rotate_moderate,baseline_repeat,D10,interaction,MT-enriched cardiomyocytes,11,0.7955127660705202,0.9730361834200882
+translate_rotate_moderate,baseline_repeat,D10,interaction,Mural cells,3,0.6680978003042868,0.6067442252804401
+translate_rotate_moderate,baseline_repeat,D10,interaction,TMSB4X high cells,13,0.14224999767355007,-0.03393481963568878
+translate_rotate_moderate,baseline_repeat,D10,interaction,Valve cells,46,-0.040669131676815046,-0.16322915670283306
+translate_rotate_moderate,baseline_repeat,D10,interaction,Vascular endothelial cells,50,0.4661524758940886,0.8329943194368543
+translate_rotate_moderate,baseline_repeat,D14,full,Cardiomyocytes-1,977,0.9625684861023236,0.9889537248796544
+translate_rotate_moderate,baseline_repeat,D14,full,Cardiomyocytes-2,1,0.8675164516767785,0.8675164516767785
+translate_rotate_moderate,baseline_repeat,D14,full,Endocardial cells,28,0.9780528337894517,0.9906074830887182
+translate_rotate_moderate,baseline_repeat,D14,full,Epi-epithelial cells,6,0.9935114530839456,0.9966749206821304
+translate_rotate_moderate,baseline_repeat,D14,full,Erythrocytes,241,0.9864068444523301,0.996991576662238
+translate_rotate_moderate,baseline_repeat,D14,full,Fibroblast cells,264,0.9821661409609387,0.9914615149129142
+translate_rotate_moderate,baseline_repeat,D14,full,Immature myocardial cells,203,0.9777119389146018,0.9924405451022463
+translate_rotate_moderate,baseline_repeat,D14,full,Macrophages,3,0.36623544744819525,0.9824840300885843
+translate_rotate_moderate,baseline_repeat,D14,full,Mural cells,46,0.9309761335019814,0.9911334739245561
+translate_rotate_moderate,baseline_repeat,D14,full,TMSB4X high cells,101,0.9878443905852052,0.9902490054220269
+translate_rotate_moderate,baseline_repeat,D14,full,Valve cells,20,0.9843862592413372,0.9895624946427012
+translate_rotate_moderate,baseline_repeat,D14,full,Vascular endothelial cells,77,0.9798087248191171,0.9915566520554939
+translate_rotate_moderate,baseline_repeat,D14,interaction,Cardiomyocytes-1,977,0.8303344583623149,0.9726234192585784
+translate_rotate_moderate,baseline_repeat,D14,interaction,Endocardial cells,28,0.6331541669456098,0.9796053994038472
+translate_rotate_moderate,baseline_repeat,D14,interaction,Epi-epithelial cells,6,0.8927588821218461,0.9505184963029893
+translate_rotate_moderate,baseline_repeat,D14,interaction,Erythrocytes,241,0.8226604919344445,0.9806221851985348
+translate_rotate_moderate,baseline_repeat,D14,interaction,Fibroblast cells,264,0.7917533076316177,0.957195910704043
+translate_rotate_moderate,baseline_repeat,D14,interaction,Immature myocardial cells,203,0.8382019125869085,0.973601435732929
+translate_rotate_moderate,baseline_repeat,D14,interaction,Mural cells,46,0.8300420688340135,0.978399040359269
+translate_rotate_moderate,baseline_repeat,D14,interaction,TMSB4X high cells,101,0.8528235055613592,0.9658913502078864
+translate_rotate_moderate,baseline_repeat,D14,interaction,Valve cells,20,0.7219967599638439,0.9507616566902444
+translate_rotate_moderate,baseline_repeat,D14,interaction,Vascular endothelial cells,77,0.8412664989745923,0.9858313624619164

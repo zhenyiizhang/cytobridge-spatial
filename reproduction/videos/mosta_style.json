@@ -1,0 +1,21 @@
+{
+  "draw_focus_interactions": true,
+  "focus_celltype": "Brain",
+  "focus_mode": "both",
+  "focus_top_k": 3,
+  "focus_min_weight": 0,
+  "focus_edge_quantile": null,
+  "focus_edge_width_min": 1,
+  "focus_edge_width_max": 2.6,
+  "focus_edge_alpha_min": 0.25,
+  "focus_edge_alpha_max": 0.85,
+  "focus_edge_curve": 0.18,
+  "focus_edge_curve_bi": 0.35,
+  "focus_neighbor_pct": 0.2,
+  "focus_other_desaturate": 0,
+  "focus_show_endpoints": true,
+  "focus_endpoint_size": 26,
+  "focus_endpoint_alpha": 0.95,
+  "focus_endpoint_edgecolor": "#ffffff",
+  "focus_endpoint_linewidth": 0.8
+}

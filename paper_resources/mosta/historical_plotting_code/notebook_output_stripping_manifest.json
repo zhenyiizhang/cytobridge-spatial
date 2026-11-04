@@ -1,0 +1,86 @@
+[
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_LR_interaction_v0.ipynb",
+    "source_sha256": "19c31123b2d8614d6360fbeeb4ea922925e6dbca255a358a0dc3ca216f3f7cb9",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_LR_interaction_v0.ipynb",
+    "released_sha256": "24aaa0e2866c53e72b2cc526ae1c3e2a5f8a7c2a0e783933fdfa6e66b1cb5430",
+    "cleared_output_objects": 28
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_cell_fate_transition.ipynb",
+    "source_sha256": "24323d7f20a59aec91813c9771ece15d9b0055d3929e0076f37078d801b52648",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_cell_fate_transition.ipynb",
+    "released_sha256": "a2279fc95b3b3fd3c57fcd7bdadf7428b63efa48170d525c8c566679836642eb",
+    "cleared_output_objects": 8
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_growth.ipynb",
+    "source_sha256": "85b66ed06bcceabeeb32f02a08d6f54f2fc0057d7b81cae75cd0e0edca714213",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_growth.ipynb",
+    "released_sha256": "d8fd2201e7cac3554fc4aa18cb1deeaf6ae4e092011f3d76b7dc160ab1181c7a",
+    "cleared_output_objects": 3
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_growth_and_gene.ipynb",
+    "source_sha256": "16bd048470929bed71ffc3186b654dfdd304a7038db27f267dd69e6ab414336b",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_growth_and_gene.ipynb",
+    "released_sha256": "0eb6e69fdf681260b4734f6e7cacf8c89082e9d6cc23c0f1bd4b5db7cf071f9e",
+    "cleared_output_objects": 62
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_multilayer_communication.ipynb",
+    "source_sha256": "d6dd1b575a45216162fbf53e74bf16b2f90a3f38af04420fa274fd918d407ffd",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_multilayer_communication.ipynb",
+    "released_sha256": "d6dd1b575a45216162fbf53e74bf16b2f90a3f38af04420fa274fd918d407ffd",
+    "cleared_output_objects": 0
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_velocity.ipynb",
+    "source_sha256": "2d1bbf88ef5493202f85a68739f755dbffd9304d1f141b7487c0951bca649660",
+    "released": "historical_plotting_code/evaluation_mosta/mosta_velocity.ipynb",
+    "released_sha256": "51de31320c9ec5fe6f5e96721f44008aae33234e851dcd1cb513a17dede2bb44",
+    "cleared_output_objects": 71
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_interpolated_slices.ipynb",
+    "source_sha256": "3f941d2b3d589161e0a01db7f2cee419685c7ed6dcd6de6160f04d3f5719968a",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_interpolated_slices.ipynb",
+    "released_sha256": "4e284d0901179715dffcf052447f1d3dc9d1d9ff28d6ce28decb9b062094c7af",
+    "cleared_output_objects": 7
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_lineage_sankey_3d.ipynb",
+    "source_sha256": "bb659054242ea1a5eed173fe917460591711f6f9de0bc9bfd4d0a48232c0efce",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_lineage_sankey_3d.ipynb",
+    "released_sha256": "b60012eb1a622c4cbfb04917700f1e0e7d6a2886b83b15281c4021bad5fb4d4b",
+    "cleared_output_objects": 7
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_telencephalon_velocity_stream_grid.ipynb",
+    "source_sha256": "ab1ee780f57ac6868804a642e70004d238b36c50a79efed74dbb3df666f6423b",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_telencephalon_velocity_stream_grid.ipynb",
+    "released_sha256": "60649d0baf0456f7cedb27306a6bcc2016c609a87641d1383ba6be8969180eac",
+    "cleared_output_objects": 12
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_velocity_communication_focus_brain_t3.ipynb",
+    "source_sha256": "fadc76e187cd570c85d928dbddefcca514e8a7ca968466c2e8104429e05add97",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_velocity_communication_focus_brain_t3.ipynb",
+    "released_sha256": "e5c96b223a6b23d7ec9026e11264548baaec7593ac11215cef29b645f8d7f1b9",
+    "cleared_output_objects": 12
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_virtual_video.ipynb",
+    "source_sha256": "dce3d172acc3de635907c4c7df413720a8276a93b372bd7a3a4ceb5d78dc8a68",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_virtual_video.ipynb",
+    "released_sha256": "489cefbe9ce1cf41d844804dd722457d0b3c93151a929cd55f7607ad17953167",
+    "cleared_output_objects": 8
+  },
+  {
+    "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/repositories/cb_reproducibility/notebooks/mosta/mosta_wnt3a_fzd7_lrp6_total_hotspot_triptych.ipynb",
+    "source_sha256": "dd8a4c24cef859aa2e102ba454b0704e61b6c7412eb29959037a9e0c20a1c577",
+    "released": "historical_plotting_code/cb_reproducibility/mosta_wnt3a_fzd7_lrp6_total_hotspot_triptych.ipynb",
+    "released_sha256": "9b9cc727f3f9f384b112facaf5530ddc588496f614f1d61d3db10e911fd12c56",
+    "cleared_output_objects": 6
+  }
+]

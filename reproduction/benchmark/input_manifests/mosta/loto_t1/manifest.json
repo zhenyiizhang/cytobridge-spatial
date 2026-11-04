@@ -1,0 +1,129 @@
+{
+  "contract_uns_key": "cytobridge_benchmark_contract",
+  "contract_version": "cytobridge-spatiotemporal-benchmark-input-v1",
+  "dataset_id": "mosta",
+  "evaluation_targets": [
+    1
+  ],
+  "held_out_benchmark_time": 1,
+  "held_out_source_times": [
+    1
+  ],
+  "prediction_n": 5000,
+  "prediction_n_policy": "fixed_before_truth_access",
+  "protocol": "leave_one_timepoint_out",
+  "representation_refit_per_fold": false,
+  "source_roster_algorithm": "ranked-support-bootstrap-v1",
+  "source_roster_npz": {
+    "algorithm": "ranked-support-bootstrap-v1",
+    "available_n": 51365,
+    "base_seed": 20260718,
+    "bootstrap_seed": 166666997,
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/source_roster.npz",
+    "prediction_n": 5000,
+    "relative_path": "loto_t1/source_roster.npz",
+    "roster_row_id_sha256": "4daf00428be09688b154bd72682cd4e3944395f22124bcef31ccdedab3f74a7c",
+    "sha256": "33a8e981b2320b16275ff7479da092928d9c2a0e580f612d5156d211c9a0818b",
+    "size_bytes": 817832,
+    "source_time": 0,
+    "support_n": 800,
+    "support_row_id_sha256": "c5fc3541a75ae92a4794dfc47d64782605fc56914aca8badf5153a7230438e41"
+  },
+  "source_roster_seed": 20260718,
+  "source_roster_support_n": 800,
+  "source_time": 0,
+  "split": "loto_t1",
+  "storage_mode": "independent_train_and_truth",
+  "target_rows_physically_removed_from_train": true,
+  "train": {
+    "csv": {
+      "columns": 123,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/train.csv",
+      "relative_path": "loto_t1/train.csv",
+      "rows": 267234,
+      "sha256": "e4e70058228bc3bcb0727f5a19906b1fd80e996cc9da98989da95df45216892b",
+      "size_bytes": 356671243
+    },
+    "h5ad": {
+      "columns": 23761,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/train.h5ad",
+      "relative_path": "loto_t1/train.h5ad",
+      "rows": 267234,
+      "sha256": "b459e40b8953793317234ce1fa2b55bbfa43dcae2636ca970b00e829c8f86bfa",
+      "size_bytes": 2949057586
+    },
+    "source_roster_npz": {
+      "algorithm": "ranked-support-bootstrap-v1",
+      "available_n": 51365,
+      "base_seed": 20260718,
+      "bootstrap_seed": 166666997,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/source_roster.npz",
+      "prediction_n": 5000,
+      "relative_path": "loto_t1/source_roster.npz",
+      "roster_row_id_sha256": "4daf00428be09688b154bd72682cd4e3944395f22124bcef31ccdedab3f74a7c",
+      "sha256": "33a8e981b2320b16275ff7479da092928d9c2a0e580f612d5156d211c9a0818b",
+      "size_bytes": 817832,
+      "source_time": 0,
+      "support_n": 800,
+      "support_row_id_sha256": "c5fc3541a75ae92a4794dfc47d64782605fc56914aca8badf5153a7230438e41"
+    },
+    "training_reference_npz": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/training_reference.npz",
+      "relative_path": "loto_t1/training_reference.npz",
+      "rows": 267234,
+      "sha256": "6ea9adfce8955590a53152ac310bb2826d7d103de988fc7ac11c6a44c81ece59",
+      "size_bytes": 52515127
+    }
+  },
+  "train_time_counts": {
+    "0": 51365,
+    "1": 0,
+    "2": 102519,
+    "3": 113350
+  },
+  "training_reference_npz": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/training_reference.npz",
+  "transductive_frozen_representation": true,
+  "truth": {
+    "csv": {
+      "columns": 123,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/truth.csv",
+      "relative_path": "loto_t1/truth.csv",
+      "rows": 77369,
+      "sha256": "2eb0dc5b584dbb47f8a948ca1ccaf9608da50e36d03817c6832e2d18cfc9f71b",
+      "size_bytes": 103090815
+    },
+    "h5ad": {
+      "columns": 23761,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/truth.h5ad",
+      "relative_path": "loto_t1/truth.h5ad",
+      "rows": 77369,
+      "sha256": "392b2c0b7d8636e834dc370fdef6475f29cdb697c674fd27f8de0e286c03df8f",
+      "size_bytes": 791511552
+    },
+    "truth_npz": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/truth.npz",
+      "relative_path": "loto_t1/truth.npz",
+      "rows": 77369,
+      "sha256": "a8a158dea0800f4a42a00fe01ee2912105c587497cbd40a5430c0ce2ed62ad89",
+      "size_bytes": 15188906
+    }
+  },
+  "truth_by_time_npz": {
+    "1": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/truth_t1.npz",
+      "relative_path": "loto_t1/truth_t1.npz",
+      "rows": 77369,
+      "sha256": "a8a158dea0800f4a42a00fe01ee2912105c587497cbd40a5430c0ce2ed62ad89",
+      "size_bytes": 15188906,
+      "target": 1
+    }
+  },
+  "truth_cell_count_must_not_control_prediction_n": true,
+  "truth_npz": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/truth.npz",
+  "truth_time_counts": {
+    "0": 0,
+    "1": 77369,
+    "2": 0,
+    "3": 0
+  }
+}

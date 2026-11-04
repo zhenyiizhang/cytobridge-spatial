@@ -1,0 +1,1336 @@
+{
+  "schema_version": 1,
+  "panel": "Fig4a",
+  "status": "PASS",
+  "purpose": "Calculation-only 30k/40k/50k particle-cap audit before manuscript styling.",
+  "trajectory_contract": {
+    "mode": "global_t0_extrapolation",
+    "generated_anchors": 0.0,
+    "restart_from_preceding_observed_stage": false,
+    "spatial_warp": false
+  },
+  "visual_message_gate": "E15 must not be made to appear contracted by per-panel fitting when raw q99/covariance areas show growth versus E14 and comparable scale to E14.5.",
+  "checks": [
+    {
+      "name": "run complete n=30000",
+      "status": "PASS",
+      "detail": "complete"
+    },
+    {
+      "name": "particle request n=30000",
+      "status": "PASS",
+      "detail": 30000
+    },
+    {
+      "name": "global-t0 n=30000",
+      "status": "PASS",
+      "detail": "global_t0_extrapolation"
+    },
+    {
+      "name": "no preceding-stage restart n=30000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "no warp n=30000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "current package n=30000",
+      "status": "PASS",
+      "detail": {
+        "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+        "module_path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py"
+      }
+    },
+    {
+      "name": "run complete n=40000",
+      "status": "PASS",
+      "detail": "complete"
+    },
+    {
+      "name": "particle request n=40000",
+      "status": "PASS",
+      "detail": 40000
+    },
+    {
+      "name": "global-t0 n=40000",
+      "status": "PASS",
+      "detail": "global_t0_extrapolation"
+    },
+    {
+      "name": "no preceding-stage restart n=40000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "no warp n=40000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "current package n=40000",
+      "status": "PASS",
+      "detail": {
+        "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+        "module_path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py"
+      }
+    },
+    {
+      "name": "server immutable copy n=40000",
+      "status": "PASS",
+      "detail": {
+        "verified": 13,
+        "total": 13
+      }
+    },
+    {
+      "name": "GPU memory headroom n=40000",
+      "status": "PASS",
+      "detail": {
+        "peak_reserved_GiB": 6.005859375,
+        "gate_GiB": 20.0
+      }
+    },
+    {
+      "name": "run complete n=50000",
+      "status": "PASS",
+      "detail": "complete"
+    },
+    {
+      "name": "particle request n=50000",
+      "status": "PASS",
+      "detail": 50000
+    },
+    {
+      "name": "global-t0 n=50000",
+      "status": "PASS",
+      "detail": "global_t0_extrapolation"
+    },
+    {
+      "name": "no preceding-stage restart n=50000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "no warp n=50000",
+      "status": "PASS",
+      "detail": false
+    },
+    {
+      "name": "current package n=50000",
+      "status": "PASS",
+      "detail": {
+        "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+        "module_path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py"
+      }
+    },
+    {
+      "name": "server immutable copy n=50000",
+      "status": "PASS",
+      "detail": {
+        "verified": 13,
+        "total": 13
+      }
+    },
+    {
+      "name": "GPU memory headroom n=50000",
+      "status": "PASS",
+      "detail": {
+        "peak_reserved_GiB": 7.470703125,
+        "gate_GiB": 20.0
+      }
+    },
+    {
+      "name": "observed state unchanged across particle caps t=0",
+      "status": "PASS",
+      "detail": {
+        "30000": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8",
+        "40000": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8",
+        "50000": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8"
+      }
+    },
+    {
+      "name": "observed state unchanged across particle caps t=1",
+      "status": "PASS",
+      "detail": {
+        "30000": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6",
+        "40000": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6",
+        "50000": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6"
+      }
+    },
+    {
+      "name": "observed state unchanged across particle caps t=2",
+      "status": "PASS",
+      "detail": {
+        "30000": "b200ce09b73aabe0757b68a229a858e1625806d7b342c0ea1099d95dc0e2902f",
+        "40000": "b200ce09b73aabe0757b68a229a858e1625806d7b342c0ea1099d95dc0e2902f",
+        "50000": "b200ce09b73aabe0757b68a229a858e1625806d7b342c0ea1099d95dc0e2902f"
+      }
+    },
+    {
+      "name": "observed state unchanged across particle caps t=3",
+      "status": "PASS",
+      "detail": {
+        "30000": "b9e2f4ff286c99e38c05b917fd356cb78e21add021b3a53fc6bec8b18d7a5a06",
+        "40000": "b9e2f4ff286c99e38c05b917fd356cb78e21add021b3a53fc6bec8b18d7a5a06",
+        "50000": "b9e2f4ff286c99e38c05b917fd356cb78e21add021b3a53fc6bec8b18d7a5a06"
+      }
+    },
+    {
+      "name": "finite 52D state n=30000 t=0",
+      "status": "PASS",
+      "detail": [
+        51365,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=0",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=0",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=0",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 51365,
+        "summary": 51365
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=0",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=1",
+      "status": "PASS",
+      "detail": [
+        77369,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=1",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=1",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 1.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=1",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 77369,
+        "summary": 77369
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=1",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=2",
+      "status": "PASS",
+      "detail": [
+        102519,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=2",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=2",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 2.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=2",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 102519,
+        "summary": 102519
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=2",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=3",
+      "status": "PASS",
+      "detail": [
+        113350,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=3",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=3",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 3.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=3",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 113350,
+        "summary": 113350
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=3",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=0.5",
+      "status": "PASS",
+      "detail": [
+        38046,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=0.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 38046,
+        "summary": 38046
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=0.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=1.5",
+      "status": "PASS",
+      "detail": [
+        52021,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=1.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 52021,
+        "summary": 52021
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=1.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=30000 t=2.5",
+      "status": "PASS",
+      "detail": [
+        60467,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=30000 t=2.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=30000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=30000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 60467,
+        "summary": 60467
+      }
+    },
+    {
+      "name": "palette coverage n=30000 t=2.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=0",
+      "status": "PASS",
+      "detail": [
+        51365,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=0",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=0",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=0",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 51365,
+        "summary": 51365
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=0",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=1",
+      "status": "PASS",
+      "detail": [
+        77369,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=1",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=1",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 1.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=1",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 77369,
+        "summary": 77369
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=1",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=2",
+      "status": "PASS",
+      "detail": [
+        102519,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=2",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=2",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 2.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=2",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 102519,
+        "summary": 102519
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=2",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=3",
+      "status": "PASS",
+      "detail": [
+        113350,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=3",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=3",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 3.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=3",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 113350,
+        "summary": 113350
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=3",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=0.5",
+      "status": "PASS",
+      "detail": [
+        50829,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=0.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 50829,
+        "summary": 50829
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=0.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=1.5",
+      "status": "PASS",
+      "detail": [
+        69405,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=1.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 69405,
+        "summary": 69405
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=1.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=40000 t=2.5",
+      "status": "PASS",
+      "detail": [
+        80883,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=40000 t=2.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 80883,
+        "summary": 80883
+      }
+    },
+    {
+      "name": "palette coverage n=40000 t=2.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=0",
+      "status": "PASS",
+      "detail": [
+        51365,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=0",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=0",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=0",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 51365,
+        "summary": 51365
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=0",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=1",
+      "status": "PASS",
+      "detail": [
+        77369,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=1",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=1",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 1.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=1",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 77369,
+        "summary": 77369
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=1",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=2",
+      "status": "PASS",
+      "detail": [
+        102519,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=2",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=2",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 2.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=2",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 102519,
+        "summary": 102519
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=2",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=3",
+      "status": "PASS",
+      "detail": [
+        113350,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=3",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=3",
+      "status": "PASS",
+      "detail": {
+        "origin": "observed_real",
+        "anchor": 3.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=3",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 113350,
+        "summary": 113350
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=3",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=0.5",
+      "status": "PASS",
+      "detail": [
+        63533,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=0.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 63533,
+        "summary": 63533
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=0.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=1.5",
+      "status": "PASS",
+      "detail": [
+        86610,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=1.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 86610,
+        "summary": 86610
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=1.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "finite 52D state n=50000 t=2.5",
+      "status": "PASS",
+      "detail": [
+        100871,
+        52
+      ]
+    },
+    {
+      "name": "unaltered spatial basis n=50000 t=2.5",
+      "status": "PASS",
+      "detail": "X[:,0:2] == obsm[spatial]"
+    },
+    {
+      "name": "origin/anchor n=50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "origin": "generated_global_t0",
+        "anchor": 0.0
+      }
+    },
+    {
+      "name": "summary count n=50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "h5ad": 100871,
+        "summary": 100871
+      }
+    },
+    {
+      "name": "palette coverage n=50000 t=2.5",
+      "status": "PASS",
+      "detail": []
+    },
+    {
+      "name": "composition stable 30000/40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.010203032118889703,
+        "normalized_spatial_mean_shift": 0.0012260855874046683,
+        "normalized_covariance_frobenius_shift": 0.0005106663464829008,
+        "normalized_quantile_max_shift": 0.0021737635720381716
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.010203032118889703,
+        "normalized_spatial_mean_shift": 0.0012260855874046683,
+        "normalized_covariance_frobenius_shift": 0.0005106663464829008,
+        "normalized_quantile_max_shift": 0.0021737635720381716
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.010203032118889703,
+        "normalized_spatial_mean_shift": 0.0012260855874046683,
+        "normalized_covariance_frobenius_shift": 0.0005106663464829008,
+        "normalized_quantile_max_shift": 0.0021737635720381716
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/40000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.010203032118889703,
+        "normalized_spatial_mean_shift": 0.0012260855874046683,
+        "normalized_covariance_frobenius_shift": 0.0005106663464829008,
+        "normalized_quantile_max_shift": 0.0021737635720381716
+      }
+    },
+    {
+      "name": "composition stable 40000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.008022433567946676,
+        "normalized_spatial_mean_shift": 0.0006376762175932527,
+        "normalized_covariance_frobenius_shift": 0.0001585424974163227,
+        "normalized_quantile_max_shift": 0.0015764938988418933
+      }
+    },
+    {
+      "name": "spatial mean stable 40000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.008022433567946676,
+        "normalized_spatial_mean_shift": 0.0006376762175932527,
+        "normalized_covariance_frobenius_shift": 0.0001585424974163227,
+        "normalized_quantile_max_shift": 0.0015764938988418933
+      }
+    },
+    {
+      "name": "spatial covariance stable 40000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.008022433567946676,
+        "normalized_spatial_mean_shift": 0.0006376762175932527,
+        "normalized_covariance_frobenius_shift": 0.0001585424974163227,
+        "normalized_quantile_max_shift": 0.0015764938988418933
+      }
+    },
+    {
+      "name": "spatial quantiles stable 40000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.008022433567946676,
+        "normalized_spatial_mean_shift": 0.0006376762175932527,
+        "normalized_covariance_frobenius_shift": 0.0001585424974163227,
+        "normalized_quantile_max_shift": 0.0015764938988418933
+      }
+    },
+    {
+      "name": "composition stable 30000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.012499742064762178,
+        "normalized_spatial_mean_shift": 0.001694293925538659,
+        "normalized_covariance_frobenius_shift": 0.0004228710065802043,
+        "normalized_quantile_max_shift": 0.002788298717114684
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.012499742064762178,
+        "normalized_spatial_mean_shift": 0.001694293925538659,
+        "normalized_covariance_frobenius_shift": 0.0004228710065802043,
+        "normalized_quantile_max_shift": 0.002788298717114684
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.012499742064762178,
+        "normalized_spatial_mean_shift": 0.001694293925538659,
+        "normalized_covariance_frobenius_shift": 0.0004228710065802043,
+        "normalized_quantile_max_shift": 0.002788298717114684
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/50000 t=0.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.012499742064762178,
+        "normalized_spatial_mean_shift": 0.001694293925538659,
+        "normalized_covariance_frobenius_shift": 0.0004228710065802043,
+        "normalized_quantile_max_shift": 0.002788298717114684
+      }
+    },
+    {
+      "name": "composition stable 30000/40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01696409750546271,
+        "normalized_spatial_mean_shift": 0.0020033549517393112,
+        "normalized_covariance_frobenius_shift": 0.0008349083379873318,
+        "normalized_quantile_max_shift": 0.003043612682474552
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01696409750546271,
+        "normalized_spatial_mean_shift": 0.0020033549517393112,
+        "normalized_covariance_frobenius_shift": 0.0008349083379873318,
+        "normalized_quantile_max_shift": 0.003043612682474552
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01696409750546271,
+        "normalized_spatial_mean_shift": 0.0020033549517393112,
+        "normalized_covariance_frobenius_shift": 0.0008349083379873318,
+        "normalized_quantile_max_shift": 0.003043612682474552
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/40000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01696409750546271,
+        "normalized_spatial_mean_shift": 0.0020033549517393112,
+        "normalized_covariance_frobenius_shift": 0.0008349083379873318,
+        "normalized_quantile_max_shift": 0.003043612682474552
+      }
+    },
+    {
+      "name": "composition stable 40000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016851481444023386,
+        "normalized_spatial_mean_shift": 0.0006997216260060668,
+        "normalized_covariance_frobenius_shift": 0.0003635505631698711,
+        "normalized_quantile_max_shift": 0.0023797567591146854
+      }
+    },
+    {
+      "name": "spatial mean stable 40000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016851481444023386,
+        "normalized_spatial_mean_shift": 0.0006997216260060668,
+        "normalized_covariance_frobenius_shift": 0.0003635505631698711,
+        "normalized_quantile_max_shift": 0.0023797567591146854
+      }
+    },
+    {
+      "name": "spatial covariance stable 40000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016851481444023386,
+        "normalized_spatial_mean_shift": 0.0006997216260060668,
+        "normalized_covariance_frobenius_shift": 0.0003635505631698711,
+        "normalized_quantile_max_shift": 0.0023797567591146854
+      }
+    },
+    {
+      "name": "spatial quantiles stable 40000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016851481444023386,
+        "normalized_spatial_mean_shift": 0.0006997216260060668,
+        "normalized_covariance_frobenius_shift": 0.0003635505631698711,
+        "normalized_quantile_max_shift": 0.0023797567591146854
+      }
+    },
+    {
+      "name": "composition stable 30000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016790977325972706,
+        "normalized_spatial_mean_shift": 0.0026608991902321577,
+        "normalized_covariance_frobenius_shift": 0.0005264035320562816,
+        "normalized_quantile_max_shift": 0.004078040960403023
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016790977325972706,
+        "normalized_spatial_mean_shift": 0.0026608991902321577,
+        "normalized_covariance_frobenius_shift": 0.0005264035320562816,
+        "normalized_quantile_max_shift": 0.004078040960403023
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016790977325972706,
+        "normalized_spatial_mean_shift": 0.0026608991902321577,
+        "normalized_covariance_frobenius_shift": 0.0005264035320562816,
+        "normalized_quantile_max_shift": 0.004078040960403023
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/50000 t=1.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.016790977325972706,
+        "normalized_spatial_mean_shift": 0.0026608991902321577,
+        "normalized_covariance_frobenius_shift": 0.0005264035320562816,
+        "normalized_quantile_max_shift": 0.004078040960403023
+      }
+    },
+    {
+      "name": "composition stable 30000/40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.019514929596738985,
+        "normalized_spatial_mean_shift": 0.0017068757442757487,
+        "normalized_covariance_frobenius_shift": 0.0009367032021653322,
+        "normalized_quantile_max_shift": 0.0057151503005360696
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.019514929596738985,
+        "normalized_spatial_mean_shift": 0.0017068757442757487,
+        "normalized_covariance_frobenius_shift": 0.0009367032021653322,
+        "normalized_quantile_max_shift": 0.0057151503005360696
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.019514929596738985,
+        "normalized_spatial_mean_shift": 0.0017068757442757487,
+        "normalized_covariance_frobenius_shift": 0.0009367032021653322,
+        "normalized_quantile_max_shift": 0.0057151503005360696
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/40000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.019514929596738985,
+        "normalized_spatial_mean_shift": 0.0017068757442757487,
+        "normalized_covariance_frobenius_shift": 0.0009367032021653322,
+        "normalized_quantile_max_shift": 0.0057151503005360696
+      }
+    },
+    {
+      "name": "composition stable 40000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01704227356609066,
+        "normalized_spatial_mean_shift": 0.0006178532494232059,
+        "normalized_covariance_frobenius_shift": 0.00038431448409965735,
+        "normalized_quantile_max_shift": 0.0035574650836016843
+      }
+    },
+    {
+      "name": "spatial mean stable 40000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01704227356609066,
+        "normalized_spatial_mean_shift": 0.0006178532494232059,
+        "normalized_covariance_frobenius_shift": 0.00038431448409965735,
+        "normalized_quantile_max_shift": 0.0035574650836016843
+      }
+    },
+    {
+      "name": "spatial covariance stable 40000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01704227356609066,
+        "normalized_spatial_mean_shift": 0.0006178532494232059,
+        "normalized_covariance_frobenius_shift": 0.00038431448409965735,
+        "normalized_quantile_max_shift": 0.0035574650836016843
+      }
+    },
+    {
+      "name": "spatial quantiles stable 40000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01704227356609066,
+        "normalized_spatial_mean_shift": 0.0006178532494232059,
+        "normalized_covariance_frobenius_shift": 0.00038431448409965735,
+        "normalized_quantile_max_shift": 0.0035574650836016843
+      }
+    },
+    {
+      "name": "composition stable 30000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01424943432041594,
+        "normalized_spatial_mean_shift": 0.0021681501530110836,
+        "normalized_covariance_frobenius_shift": 0.0006048468269382552,
+        "normalized_quantile_max_shift": 0.0048490891522691105
+      }
+    },
+    {
+      "name": "spatial mean stable 30000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01424943432041594,
+        "normalized_spatial_mean_shift": 0.0021681501530110836,
+        "normalized_covariance_frobenius_shift": 0.0006048468269382552,
+        "normalized_quantile_max_shift": 0.0048490891522691105
+      }
+    },
+    {
+      "name": "spatial covariance stable 30000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01424943432041594,
+        "normalized_spatial_mean_shift": 0.0021681501530110836,
+        "normalized_covariance_frobenius_shift": 0.0006048468269382552,
+        "normalized_quantile_max_shift": 0.0048490891522691105
+      }
+    },
+    {
+      "name": "spatial quantiles stable 30000/50000 t=2.5",
+      "status": "PASS",
+      "detail": {
+        "label_fraction_total_variation": 0.01424943432041594,
+        "normalized_spatial_mean_shift": 0.0021681501530110836,
+        "normalized_covariance_frobenius_shift": 0.0006048468269382552,
+        "normalized_quantile_max_shift": 0.0048490891522691105
+      }
+    },
+    {
+      "name": "no true E15 contraction versus E14 n=30000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 30000,
+        "E15_over_E14_q99_area": 1.2434620042516216,
+        "E15_over_E14_range_area": 1.35851086671044,
+        "E15_over_E14_covariance_area": 1.203129677983944,
+        "E15_over_E14p5_q99_area": 0.9687716296034474,
+        "E15_over_E14p5_covariance_area": 0.9858314164774383
+      }
+    },
+    {
+      "name": "E15 central scale comparable to E14.5 n=30000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 30000,
+        "E15_over_E14_q99_area": 1.2434620042516216,
+        "E15_over_E14_range_area": 1.35851086671044,
+        "E15_over_E14_covariance_area": 1.203129677983944,
+        "E15_over_E14p5_q99_area": 0.9687716296034474,
+        "E15_over_E14p5_covariance_area": 0.9858314164774383
+      }
+    },
+    {
+      "name": "no true E15 contraction versus E14 n=40000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 40000,
+        "E15_over_E14_q99_area": 1.2429916530414875,
+        "E15_over_E14_range_area": 1.3249223420183258,
+        "E15_over_E14_covariance_area": 1.1994354252076993,
+        "E15_over_E14p5_q99_area": 0.9576368798558162,
+        "E15_over_E14p5_covariance_area": 0.9756533499072635
+      }
+    },
+    {
+      "name": "E15 central scale comparable to E14.5 n=40000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 40000,
+        "E15_over_E14_q99_area": 1.2429916530414875,
+        "E15_over_E14_range_area": 1.3249223420183258,
+        "E15_over_E14_covariance_area": 1.1994354252076993,
+        "E15_over_E14p5_q99_area": 0.9576368798558162,
+        "E15_over_E14p5_covariance_area": 0.9756533499072635
+      }
+    },
+    {
+      "name": "no true E15 contraction versus E14 n=50000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 50000,
+        "E15_over_E14_q99_area": 1.2461002843769629,
+        "E15_over_E14_range_area": 1.335604095419759,
+        "E15_over_E14_covariance_area": 1.2012511277394455,
+        "E15_over_E14p5_q99_area": 0.959692629828675,
+        "E15_over_E14p5_covariance_area": 0.9783637795018698
+      }
+    },
+    {
+      "name": "E15 central scale comparable to E14.5 n=50000",
+      "status": "PASS",
+      "detail": {
+        "n_initial": 50000,
+        "E15_over_E14_q99_area": 1.2461002843769629,
+        "E15_over_E14_range_area": 1.335604095419759,
+        "E15_over_E14_covariance_area": 1.2012511277394455,
+        "E15_over_E14p5_q99_area": 0.959692629828675,
+        "E15_over_E14p5_covariance_area": 0.9783637795018698
+      }
+    }
+  ],
+  "failures": [],
+  "artifacts": [
+    "particle_cap_snapshot_metrics.csv",
+    "particle_cap_distribution_stability.csv",
+    "E15_no_contraction_gate.csv",
+    "particle_cap_spatial_contact.png",
+    "particle_cap_spatial_contact.pdf"
+  ]
+}

@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "scope": "Main-text Fig. 4a-e MOSTA panels",
+  "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "reference_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+  "style_ai_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+  "panels": {
+    "fig4a": {
+      "status": "PASS",
+      "claim": "The latest accepted global-t0 MOSTA model generates the three unseen stages while preserving the observed-stage geometry and avoiding a false E15.0 contraction.",
+      "selected_source_paths": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.png"
+      },
+      "archived_outputs": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/figures/fig4a.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/figures/fig4a.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/figures/fig4a.png",
+        "render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/qa/selected_pdf_poppler_240dpi.png",
+        "contact": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/qa/original_vs_corrected_pdf_contact.png",
+        "evidence": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/evidence",
+        "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4a/source"
+      },
+      "output_sha256": {
+        "pdf": "46714b8a416c634ff132f2706cfbf2d5f5d1106ac36eeba1216bdecf2cc589f7",
+        "svg": "6cf2272f8fd0d498cf331d6332b3f567915e7db3b08382d6a780a921bfcc6da0",
+        "png": "239919478519293857404d3650858f58a8055d15c23f43acf806c7209189864c",
+        "direct_pdf_render": "4925a92327bec3ab5e2ef327f9b5708d70a76b9cc961c55a8bd057b86b659a0f",
+        "style_contact": "48bee2d60f7e314303e7b8fee7b0dae5c26fc151a38f20735d97fa0ec36695b8"
+      },
+      "numeric_summary": {
+        "trajectory": "global t0; generated stages never restart from the preceding observation",
+        "initial_particles": 50000,
+        "generated_stages": [
+          "E13.0",
+          "E14.0",
+          "E15.0"
+        ],
+        "observed_stages": [
+          "E12.5",
+          "E13.5",
+          "E14.5",
+          "E15.5"
+        ],
+        "false_contraction_gate": "PASS",
+        "E15_over_E14_visible_height": 1.0154897100047342,
+        "E15_over_E14p5_visible_height": 1.00272890510742
+      },
+      "raster_policy": "Original Illustrator panel uses raster embryo point-cloud layers; layout, labels, brackets, and legend remain vector.",
+      "calculation_gate": "PASS",
+      "style_equivalence": "PASS",
+      "pdf_render_qa": "PASS",
+      "validator_errors": [],
+      "forbidden_transform_gate": "PASS"
+    },
+    "fig4b": {
+      "status": "PASS",
+      "claim": "Wnt3a-Fzd7/Lrp6 interaction hotspots are shown across observed E12.5, generated E13.0, and observed E13.5 using the corrected package-native interaction calculation.",
+      "selected_source_paths": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4b_wnt3a_fzd7_lrp6_global_t0_n50000_20260825_v1/figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4b_wnt3a_fzd7_lrp6_global_t0_n50000_20260825_v1/figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4b_wnt3a_fzd7_lrp6_global_t0_n50000_20260825_v1/figures/Fig4b_MOSTA_Wnt3a_Fzd7_Lrp6_total_accepted_compute_display50k_per_panel_q1_q99_ai_xrefs_annotated_v6.png"
+      },
+      "archived_outputs": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/figures/fig4b.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/figures/fig4b.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/figures/fig4b.png",
+        "render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/qa/selected_pdf_poppler_240dpi.png",
+        "contact": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/qa/original_vs_corrected_pdf_contact.png",
+        "evidence": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/evidence",
+        "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4b/source"
+      },
+      "output_sha256": {
+        "pdf": "b6f565b16b1c603f5f51df65ad2fb3edca9b17c38ce17cf6c002a927fbba5350",
+        "svg": "348706ed6438b7d78230b9454f9623aace79aaa0b47bd11b212e37816a9f3274",
+        "png": "89e889399d14de94ef447ce72dfb566b523d0061ecb5541a68398a516f503208",
+        "direct_pdf_render": "e37aeb61fcadb993d9c13fae45c57953beb80b27117290c53b96a7440052a1a2",
+        "style_contact": "8570b484dea441e36df13421303b0debc9cd79cce867e052832d7f1d0289af14"
+      },
+      "numeric_summary": {
+        "interaction": "Wnt3a to Fzd7/Lrp6, total incoming plus outgoing, complex=min",
+        "primary_compute_cells_E13": 15144,
+        "display_cells_E13": 63533,
+        "display_only_50k_reason": "radius-neighbor edge density changes with particle density; the accepted 12k-contract computation remains quantitative truth",
+        "normalization": "historical per-panel q1/q99; cross-time color magnitude is not absolute",
+        "unavailable_generated_cells": 40,
+        "unavailable_policy": "NaN/base grey; never zero-imputed"
+      },
+      "raster_policy": "The original hotspot maps are raster spatial layers; typography, arrows, ellipses, time axis, and color bar remain vector.",
+      "calculation_gate": "PASS",
+      "style_equivalence": "PASS",
+      "pdf_render_qa": "PASS",
+      "validator_errors": [],
+      "forbidden_transform_gate": "PASS"
+    },
+    "fig4c": {
+      "status": "PASS",
+      "claim": "At E15.0 to E15.5, Cartilage, Cartilage primordium, and Connective tissue are the three largest k=10-smoothed predicted identities from the Cartilage primordium source population.",
+      "selected_source_paths": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/figures/k10_E15_E15p5_original_AI_assembly_v5/Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/figures/k10_E15_E15p5_original_AI_assembly_v5/Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/figures/k10_E15_E15p5_original_AI_assembly_v5/Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.png"
+      },
+      "archived_outputs": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/figures/fig4c.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/figures/fig4c.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/figures/fig4c.png",
+        "render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/qa/selected_pdf_poppler_240dpi.png",
+        "contact": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/qa/original_vs_corrected_pdf_contact.png",
+        "evidence": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/evidence",
+        "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4c/source"
+      },
+      "output_sha256": {
+        "pdf": "bc387a82c0409c976cf977f44d91f7b6d0fda54fa2a6b01d31429aea70dc1737",
+        "svg": "c8ea47101d249cb9b9b3497bfa44c0f22022c3327432cb1b9ffed07a4d989c38",
+        "png": "c911753bbdf430366677dba716a75f8b7e07ae52b55dd49213ad5f5fc8d2c462",
+        "direct_pdf_render": "3a9b8975bb28f8bcd7f7f9244412de45c3fabc50f1af5d503846a6b46804404b",
+        "style_contact": "e6dcf7ff015a9fcd0ab20d815853f31598f1b0f75a707ba647cfc40e2dacde44"
+      },
+      "numeric_summary": {
+        "stage": "E15.0 to E15.5",
+        "trajectory": "global t0 fixed 50k; no restart",
+        "classifier": "latest accepted 52D classifier cache; k=10 spatial majority vote",
+        "source_count": 1282,
+        "targets": {
+          "Cartilage": {
+            "count": 348,
+            "percent": 27.1450858034
+          },
+          "Cartilage primordium": {
+            "count": 253,
+            "percent": 19.7347893916
+          },
+          "Connective tissue": {
+            "count": 243,
+            "percent": 18.9547581903
+          }
+        },
+        "label_anchor_note": "The 19.0% text retains the old Illustrator lane-relative anchor near the source, but its endpoint and CSV identity are Connective tissue."
+      },
+      "raster_policy": "Only the dense spatial scatter is intentionally rasterized; ribbons, markers, percentages, labels, and headings remain vector.",
+      "calculation_gate": "PASS",
+      "style_equivalence": "PASS",
+      "pdf_render_qa": "PASS",
+      "validator_errors": [],
+      "forbidden_transform_gate": "PASS"
+    },
+    "fig4d": {
+      "status": "PASS",
+      "claim": "The corrected same-state interaction-induced gene velocity and communication graph identify directed communication among Brain, Choroid plexus, and Meninges at observed E15.5.",
+      "selected_source_paths": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.png"
+      },
+      "archived_outputs": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/figures/fig4d.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/figures/fig4d.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/figures/fig4d.png",
+        "render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/qa/selected_pdf_poppler_240dpi.png",
+        "contact": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/qa/original_vs_corrected_pdf_contact.png",
+        "evidence": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/evidence",
+        "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4d/source"
+      },
+      "output_sha256": {
+        "pdf": "52c84b237a1944fea2f1cbf0352b64b5b82a2307317752337161b168105c8992",
+        "svg": "3f4328299174744489c155385e94fd70903e86ac3275ce5c2016bf0e8aa369eb",
+        "png": "55a20fcf41aa616f2877300179439e495b082352d80ecc403ca9c420cf88da33",
+        "direct_pdf_render": "53a186f483b14ce4e5c1ad9695b329c0566262bca3682dcb4ee1b9f82f8bdf0d",
+        "style_contact": "182bd04e1d50083ac260ecba80ef09b7fa7e9b69ec42f6636592d43a1ed9abe8"
+      },
+      "numeric_summary": {
+        "state": "complete observed real E15.5",
+        "background_cells": 113350,
+        "quantitative_velocity_cells": 8000,
+        "same_state_velocity_and_communication": true,
+        "velocity_component": "interaction expression-state derivative projected package-natively to observed spatial_aligned",
+        "communication_nodes": [
+          "Brain",
+          "Choroid plexus",
+          "Meninges"
+        ],
+        "brain_self_loop": 0.6642,
+        "self_loop_visual_identity": "the large orange highlighted arc is the Brain to Brain self-loop"
+      },
+      "raster_policy": "The complete observed E15.5 cell-type background is intentionally rasterized; streamlines, communication edges/nodes, boxes, labels, and title remain vector.",
+      "calculation_gate": "PASS",
+      "style_equivalence": "PASS",
+      "pdf_render_qa": "PASS",
+      "validator_errors": [],
+      "forbidden_transform_gate": "PASS"
+    },
+    "fig4e": {
+      "status": "PASS",
+      "claim": "Full and interaction velocity fields in gene and physical space support developmental progression, interaction drive, tissue expansion, and cortical plate consolidation in the E15.5 telencephalon.",
+      "selected_source_paths": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_old_code_AI_stroke_parity_annotated_v4_m1024/Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_old_code_AI_stroke_parity_annotated_v4_m1024/Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4e_velocity_latest52D_20260825_v1/figures/exact_old_code_AI_stroke_parity_annotated_v4_m1024/Fig4e_MOSTA_latest52D_m1024_exact_old_code_AI_layout_600dpi.png"
+      },
+      "archived_outputs": {
+        "pdf": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/figures/fig4e.pdf",
+        "svg": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/figures/fig4e.svg",
+        "png": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/figures/fig4e.png",
+        "render": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/qa/selected_pdf_poppler_240dpi.png",
+        "contact": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/qa/original_vs_corrected_pdf_contact.png",
+        "evidence": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/evidence",
+        "source": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_main_fig4_completion_20260825_v1/archive_v1/panels/fig4e/source"
+      },
+      "output_sha256": {
+        "pdf": "de1ae3596088fb560f2bf0f817c4cca2b3984dcd7d191793c198d097d78083a5",
+        "svg": "7ec1599860027c5a963389d88ccb0140da4e4324cf3d329fb4fa70311e63b8b5",
+        "png": "1b961fb7cb99c069f9122243b191c675dfa5cb29940282ee52f4376624397d6a",
+        "direct_pdf_render": "297aecc2d7eb9c81913a6dadfd2d75905b63d8ead24a663f1a5fa5de36037205",
+        "style_contact": "bd47f74479521cb9968cda54adab392d5b0489a0b1ef02712c82b45b8e87cbc4"
+      },
+      "numeric_summary": {
+        "state": "complete observed real E15.5 Brain",
+        "brain_cells": 17071,
+        "interaction_m": 1024,
+        "sampling": "none",
+        "decomposition_max_abs_error": 1.1915108188986778e-07,
+        "gene_projection_fallback": false,
+        "forbidden_transforms": {
+          "rotation": false,
+          "anisotropic_stretch": false,
+          "warp": false
+        },
+        "legacy_helper_policy": "style helper only; no ARISTA data, labels, model, palette, or analysis result is imported"
+      },
+      "raster_policy": "The exact historical notebook helper embeds high-density scatter layers; streams, arrows, labels, legend, boxes, border, and headings remain vector.",
+      "calculation_gate": "PASS",
+      "style_equivalence": "PASS",
+      "pdf_render_qa": "PASS",
+      "validator_errors": [],
+      "forbidden_transform_gate": "PASS"
+    }
+  },
+  "global_guards": {
+    "calculation_style_separated": true,
+    "latest_accepted_package_model": true,
+    "corrected_package_native_downstream": true,
+    "arista_data_labels_palette_model_analysis_used": false,
+    "data_rotation": false,
+    "data_anisotropic_stretch": false,
+    "data_warp": false,
+    "actual_pdf_rendered": true,
+    "validator_errors": 0
+  }
+}

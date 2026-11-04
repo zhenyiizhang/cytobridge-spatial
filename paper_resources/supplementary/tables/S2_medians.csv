@@ -1,0 +1,15 @@
+panel,space,partition,category,median,n_cells
+a,physical,time,0.0,0.9938167333602904,5023
+a,physical,time,1.0,0.9995065927505492,7325
+a,physical,time,2.0,0.999038815498352,9432
+a,physical,time,3.0,0.9794298410415649,10036
+b,gene,time,0.0,0.9675261974334716,5023
+b,gene,time,1.0,0.9511532187461852,7325
+b,gene,time,2.0,0.934167742729187,9432
+b,gene,time,3.0,0.99396151304245,10036
+c,physical,state_cluster,C1,0.9978601038455963,17244
+c,physical,state_cluster,C2,0.9975666403770448,6581
+c,physical,state_cluster,C3,0.9971309304237366,7991
+d,gene,state_cluster,C1,0.961482137441635,17244
+d,gene,state_cluster,C2,0.9722896218299866,6581
+d,gene,state_cluster,C3,0.9762043952941896,7991

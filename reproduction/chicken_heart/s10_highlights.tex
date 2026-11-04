@@ -1,0 +1,16 @@
+% Annotation layer for the accepted assembled S10 artwork.
+% Run: latexmk -pdf s10_highlights.tex
+% The supplied base figure is unchanged. Both boxes have identical dimensions.
+\documentclass[border=0pt]{standalone}
+\usepackage{graphicx}
+\usepackage{tikz}
+\begin{document}
+\begin{tikzpicture}
+  \node[anchor=south west,inner sep=0] (figure) at (0,0)
+    {\includegraphics[width=190mm]{data/s10_before_highlights.png}};
+  \begin{scope}[x={(figure.south east)},y={(figure.north west)}]
+    \draw[black,line width=0.8pt] (0.0618,0.0544) rectangle (0.2232,0.1754);
+    \draw[black,line width=0.8pt] (0.4271,0.0544) rectangle (0.5885,0.1754);
+  \end{scope}
+\end{tikzpicture}
+\end{document}

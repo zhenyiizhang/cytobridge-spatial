@@ -1,0 +1,61 @@
+method,sender_type,receiver_type,display_score,display_rank,display_top_n
+CytoBridge D,Baso,Monocyte,1.6769149252944384,1,30
+CytoBridge D,Monocyte,Neutrophil,1.406057050831044,2,30
+CytoBridge D,Undifferentiated,Neutrophil,1.0162285264835376,3,30
+CytoBridge D,Undifferentiated,Lymphoid,0.940880616326544,4,30
+CytoBridge D,Baso,Neutrophil,0.9119098137439656,5,30
+CytoBridge D,Undifferentiated,Monocyte,0.7158991211439631,6,30
+CytoBridge D,Neutrophil,Monocyte,0.702454844994473,7,30
+CytoBridge D,Monocyte,Undifferentiated,0.6603761306987795,8,30
+CytoBridge D,Baso,Undifferentiated,0.4873032595948118,9,30
+CytoBridge D,Undifferentiated,pDC,0.4829083886718209,10,30
+CytoBridge D,Baso,Meg,0.3336091012955179,11,30
+CytoBridge D,Monocyte,Eos,0.2780231025118149,12,30
+CytoBridge D,Mast,pDC,0.2468263016853326,13,30
+CytoBridge D,Neutrophil,Undifferentiated,0.2420386507768828,14,30
+CytoBridge D,Neutrophil,Eos,0.2320631734206106,15,30
+CytoBridge D,Baso,Eos,0.2243044743163235,16,30
+CytoBridge D,Baso,pDC,0.1984683722501238,17,30
+CytoBridge D,Mast,Monocyte,0.1950370020163167,18,30
+CytoBridge D,Mast,Lymphoid,0.1784884621420869,19,30
+CytoBridge D,Monocyte,Meg,0.1742166550399635,20,30
+CytoBridge D,Undifferentiated,Meg,0.1656111856361997,21,30
+CytoBridge D,Monocyte,pDC,0.1575923105096567,22,30
+CytoBridge D,Mast,Neutrophil,0.1433104021107098,23,30
+CytoBridge D,Baso,Lymphoid,0.1194596014910669,24,30
+CytoBridge D,Undifferentiated,Ccr7_DC,0.1145730467843762,25,30
+CytoBridge D,Neutrophil,Meg,0.1094405433716182,26,30
+CytoBridge D,Undifferentiated,Eos,0.1088843584447661,27,30
+CytoBridge D,Baso,Mast,0.0583535195731735,28,30
+CytoBridge D,Erythroid,Lymphoid,0.047239224298949,29,30
+CytoBridge D,Mast,Undifferentiated,0.0370646559719801,30,30
+CellChat,Baso,Monocyte,0.816367282173403,1,30
+CellChat,Eos,Monocyte,0.584550254806179,2,30
+CellChat,Mast,pDC,0.382489594296188,3,30
+CellChat,Erythroid,pDC,0.378946488194377,4,30
+CellChat,Meg,pDC,0.356944909240537,5,30
+CellChat,Mast,Monocyte,0.348260628931534,6,30
+CellChat,Erythroid,Monocyte,0.312072452409516,7,30
+CellChat,Baso,pDC,0.303098623491871,8,30
+CellChat,Meg,Monocyte,0.298463944199434,9,30
+CellChat,Mast,Neutrophil,0.294213557910214,10,30
+CellChat,Mast,Lymphoid,0.28439193174213,11,30
+CellChat,Erythroid,Lymphoid,0.281489715336249,12,30
+CellChat,Undifferentiated,Meg,0.275352657195458,13,30
+CellChat,Undifferentiated,Monocyte,0.266591288009538,14,30
+CellChat,Meg,Lymphoid,0.266467618763736,15,30
+CellChat,Baso,Neutrophil,0.264475621147491,16,30
+CellChat,Monocyte,Neutrophil,0.26082609014552,17,30
+CellChat,Undifferentiated,pDC,0.252462815074052,18,30
+CellChat,Eos,pDC,0.245165362302337,19,30
+CellChat,Meg,Neutrophil,0.234347662682805,20,30
+CellChat,Erythroid,Neutrophil,0.230384510743924,21,30
+CellChat,Neutrophil,Monocyte,0.225365491080714,22,30
+CellChat,Eos,Neutrophil,0.211291995496878,23,30
+CellChat,Baso,Eos,0.208478814514796,24,30
+CellChat,Undifferentiated,Neutrophil,0.186563574143631,25,30
+CellChat,Mast,Meg,0.182836821369287,26,30
+CellChat,Undifferentiated,Baso,0.182139048348887,27,30
+CellChat,Baso,Lymphoid,0.179999357999948,28,30
+CellChat,Mast,Undifferentiated,0.17399934266594,29,30
+CellChat,Eos,Baso,0.169789477066467,30,30

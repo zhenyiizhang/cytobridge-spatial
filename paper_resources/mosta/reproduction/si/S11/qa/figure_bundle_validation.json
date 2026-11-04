@@ -1,0 +1,27 @@
+{
+  "errors": [],
+  "warnings": [
+    {
+      "message": "Arial was not detected among the embedded PDF fonts.",
+      "resolution": "Accepted because the pinned submitted S11 notebook and SVG style oracle explicitly use DejaVu Sans; changing to Arial would violate the style-truth contract."
+    }
+  ],
+  "details": {
+    "pdf_sha256": "e3aed96eacb8e14019a181d32f070158dfec19c283ed826cda7bf51056570484",
+    "page_count": 1,
+    "page_width_pt": 971.92,
+    "page_height_pt": 1689.52,
+    "embedded_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans"
+    ],
+    "rendered_png_sha256": "11d2dbd5d2bb544f059f0cda8beb15e303f848facf140f107d50e6fd7ac8412b",
+    "rendered_png_pixels": [
+      2430,
+      4224
+    ],
+    "render_dpi": 180
+  },
+  "validator": "/Users/zhenyizhang/.codex/skills/cytobridge-scientific-figures/scripts/validate_figure_bundle.py",
+  "status": "PASS"
+}

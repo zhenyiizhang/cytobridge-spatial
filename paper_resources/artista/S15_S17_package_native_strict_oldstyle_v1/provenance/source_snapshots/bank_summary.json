@@ -1,0 +1,145 @@
+{
+  "dataset": "arista",
+  "seed": 42,
+  "alpha_spatial": 10.0,
+  "alpha_express": 0.015,
+  "classifier_k": 10,
+  "reference_h5ad": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/preprocess/arista_aligned.h5ad",
+  "model": {
+    "format": "current",
+    "directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/training",
+    "weight_stage": "Finetune",
+    "score_stage": "Score_Refine",
+    "scientific_contract": {
+      "status": "matches requested preset",
+      "alpha_express": 0.015,
+      "alpha_spatial": 10.0,
+      "seed": 42,
+      "interaction_cutoff": 0.03154105148551745,
+      "edge_predictor_threshold": 0.6523735523223877,
+      "edge_predictor_threshold_check": "validation-selected during this training run",
+      "weight_stage": "Finetune",
+      "score_stage": "Score_Refine"
+    }
+  },
+  "time_points": [
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0,
+    3.5,
+    4.0
+  ],
+  "simulation": {
+    "initial_particles": 7668,
+    "configured_particle_cap": 7668,
+    "split_dt": 0.01,
+    "sigma": 0.03,
+    "growth_alpha": 1.0,
+    "non_split_lineage_rollout": false
+  },
+  "classifier_accuracy": 0.7729437229437229,
+  "classifier_balanced_accuracy": 0.6877649953746441,
+  "snapshots": [
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_0.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_0p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_1.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_1p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_2.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_2p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_3.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_3p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/slice_data/time_4.h5ad"
+  ],
+  "analyses": {
+    "velocity": {
+      "status": "completed",
+      "component_archive": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/velocity_components.npz",
+      "interaction_cutoff": 0.03154105148551745,
+      "figures": [
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/drift_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/interaction_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/full_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/drift_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/interaction_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/full_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/drift_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/interaction_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/full_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/drift_time_3.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/interaction_time_3.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/full_time_3.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/drift_time_4.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/interaction_time_4.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/velocity/full_time_4.pdf"
+      ]
+    },
+    "growth": {
+      "status": "completed",
+      "state_source": "unwarped model state",
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/growth/growth_by_cell.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/growth/growth_timepoint_grid.pdf"
+    },
+    "composition": {
+      "status": "completed",
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/composition/celltype_composition.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/composition/celltype_composition.pdf"
+    },
+    "communication": {
+      "status": "completed",
+      "representation": "sparse model-edge attention",
+      "remove_self_loop": false,
+      "winsor_quantile": 0.995,
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/communication_by_celltype.csv",
+      "attention_directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/communication/sparse_attention"
+    },
+    "figures": {
+      "status": "completed",
+      "snapshots": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/figures/spatial_snapshots",
+      "lineage": {
+        "status": "not applicable",
+        "reason": "persistent fixed-particle lineage was not enabled for this dataset"
+      },
+      "spatiotemporal_3d": {
+        "status": "completed",
+        "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/figures/spatiotemporal_communication_3d.html",
+        "lineage_ribbons": "omitted"
+      }
+    },
+    "gene_dynamics": {
+      "status": "completed",
+      "pca_loadings_key": "varm['PCs']",
+      "pca_center_source": "reference var['pca_center']",
+      "clip_min": 0.0,
+      "preferred_species_tag": "hs",
+      "expression": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/gene_dynamics/mean_expression.csv",
+      "top_variable_genes": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/gene_dynamics/top_variable_genes.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/gene_dynamics/temporal_gene_programs.pdf"
+    },
+    "ligand_receptor": {
+      "status": "completed",
+      "database": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-arista-rootfix-b0a9faa-20260824/CytoBridge/workflow_databases/CellChatDB.ligrec.human.csv",
+      "complex_mode": "min",
+      "require_all_subunits": true,
+      "pca_loadings_key": "varm['PCs']",
+      "pca_center_source": "reference var['pca_center']",
+      "preferred_species_tag": "hs",
+      "tables": {
+        "pair_timecourse": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/pair_timecourse.csv",
+        "celltype_timecourse": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/celltype_timecourse.csv",
+        "pattern_summary": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/pattern_summary.csv",
+        "coverage": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/coverage.csv",
+        "trajectory_coverage": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/trajectory_coverage.csv",
+        "dropped_trajectories": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/ligand_receptor/dropped_trajectories.csv"
+      }
+    },
+    "reconstruction_diagnostic": {
+      "status": "not requested",
+      "claim": "not a training holdout or cross-method benchmark"
+    }
+  },
+  "summary_file": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/arista-package-native-spatialqc-z50-20260824-r1/downstream/summary.json"
+}

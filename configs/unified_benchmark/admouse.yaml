@@ -1,0 +1,40 @@
+# Shared benchmark hand-off from the corrected package run.
+dataset_id: admouse
+input_h5ad: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/preprocess/admouse_aligned.h5ad
+expected_source_sha256: 26d9a68acde90afc09d11b9c17de38525e37b1ee6b2e0290ddbda3efbe9ab968
+time_key: time_point_processed
+time_map: [[0, 0], [1, 1], [2, 2]]
+state_key: X_latent
+state_dim: 50
+spatial_key: spatial_aligned
+spatial_dim: 2
+annotation_key: major_annotation
+loto_targets: [1]
+full_data_targets: [1, 2]
+prediction_n: 5000
+source_roster_support_n: 800
+source_roster_seed: 20260718
+preprocess_contract:
+  uns_key: preprocess_info
+  required_layers: [counts]
+  counts_layer: counts
+  required_exact:
+    expression_layer: counts
+    dim_reduction: pca
+    n_pcs: 50
+  matrix_checks: {x_finite: true, counts_finite: true, counts_nonnegative: true}
+  external_audits:
+    - name: canonical_matched_ablation_acceptance
+      path: /data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/matched_ablation_acceptance.json
+      sha256: c4f8e203e2da73fe78e28525516bbec192d3cbbd35d423dcd64080a0f83a10df
+      required_exact:
+        status: PASS
+        datasets:
+          admouse: {status: PASS}
+        matched_families:
+          admouse: {status: PASS}
+benchmark:
+  training_config: training/config.yaml
+  edge_prior_mode: learned
+  graph_database: CytoBridge/workflow_databases/CellChatDB.ligrec.mouse.csv
+  expression_layer: counts

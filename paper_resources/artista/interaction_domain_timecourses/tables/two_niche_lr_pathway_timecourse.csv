@@ -1,0 +1,1601 @@
+niche,time,dpi,condition,pathway,interaction_class,lr_score
+N1_sfrpEGC_VLMC,0.0,2,inj,ACTIVIN,Secreted Signaling,0.022625572510424012
+N1_sfrpEGC_VLMC,0.0,2,inj,ADIPONECTIN,Secreted Signaling,0.00288664766469766
+N1_sfrpEGC_VLMC,0.0,2,inj,AGRN,ECM-Receptor,6.164037137914688
+N1_sfrpEGC_VLMC,0.0,2,inj,AGT,Secreted Signaling,0.1221969610571001
+N1_sfrpEGC_VLMC,0.0,2,inj,ANGPT,Secreted Signaling,0.007215155125941549
+N1_sfrpEGC_VLMC,0.0,2,inj,ANGPTL,Secreted Signaling,23.904696276301447
+N1_sfrpEGC_VLMC,0.0,2,inj,BAG,Secreted Signaling,0.006488572857888935
+N1_sfrpEGC_VLMC,0.0,2,inj,BMP,Secreted Signaling,0.10994453194004791
+N1_sfrpEGC_VLMC,0.0,2,inj,CALCR,Secreted Signaling,0.05681706661952542
+N1_sfrpEGC_VLMC,0.0,2,inj,CCK,Secreted Signaling,0.013563977403627386
+N1_sfrpEGC_VLMC,0.0,2,inj,CCL,Secreted Signaling,0.007268651672766633
+N1_sfrpEGC_VLMC,0.0,2,inj,CD34,Cell-Cell Contact,0.05079513382125363
+N1_sfrpEGC_VLMC,0.0,2,inj,CD40,Secreted Signaling,0.00739716487495594
+N1_sfrpEGC_VLMC,0.0,2,inj,CD45,Cell-Cell Contact,0.0016918378001468813
+N1_sfrpEGC_VLMC,0.0,2,inj,CDH,Cell-Cell Contact,12.922334804202166
+N1_sfrpEGC_VLMC,0.0,2,inj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,0.0,2,inj,CDH5,Cell-Cell Contact,0.11777335983408284
+N1_sfrpEGC_VLMC,0.0,2,inj,CLDN,Cell-Cell Contact,0.016979593435196727
+N1_sfrpEGC_VLMC,0.0,2,inj,CNTN,Cell-Cell Contact,6.7619936721921565
+N1_sfrpEGC_VLMC,0.0,2,inj,COLLAGEN,ECM-Receptor,6.69337925066306
+N1_sfrpEGC_VLMC,0.0,2,inj,CSPG4,Cell-Cell Contact,0.007966172391525654
+N1_sfrpEGC_VLMC,0.0,2,inj,CXCL,Secreted Signaling,0.028224948341929023
+N1_sfrpEGC_VLMC,0.0,2,inj,EDN,Secreted Signaling,0.08036186149537317
+N1_sfrpEGC_VLMC,0.0,2,inj,EGF,Secreted Signaling,1.1673997493129873
+N1_sfrpEGC_VLMC,0.0,2,inj,EPHA,Cell-Cell Contact,6.735311478598239
+N1_sfrpEGC_VLMC,0.0,2,inj,EPHB,Cell-Cell Contact,9.87728653755965
+N1_sfrpEGC_VLMC,0.0,2,inj,ESAM,Cell-Cell Contact,0.05027739152940476
+N1_sfrpEGC_VLMC,0.0,2,inj,FGF,Secreted Signaling,2.2174038486116934
+N1_sfrpEGC_VLMC,0.0,2,inj,FN1,ECM-Receptor,1.2586620014659182
+N1_sfrpEGC_VLMC,0.0,2,inj,GALANIN,Secreted Signaling,0.00013657062652721127
+N1_sfrpEGC_VLMC,0.0,2,inj,GAS,Secreted Signaling,0.9445049507879574
+N1_sfrpEGC_VLMC,0.0,2,inj,GDF,Secreted Signaling,0.5229365792871169
+N1_sfrpEGC_VLMC,0.0,2,inj,GDNF,Secreted Signaling,0.0009491564126339091
+N1_sfrpEGC_VLMC,0.0,2,inj,GPR,Secreted Signaling,0.06383109933407158
+N1_sfrpEGC_VLMC,0.0,2,inj,GRN,Secreted Signaling,4.465260098668529
+N1_sfrpEGC_VLMC,0.0,2,inj,HH,Secreted Signaling,0.0038875590903304723
+N1_sfrpEGC_VLMC,0.0,2,inj,HSPG,ECM-Receptor,0.3565951369868084
+N1_sfrpEGC_VLMC,0.0,2,inj,JAM,Cell-Cell Contact,2.7407211387529093
+N1_sfrpEGC_VLMC,0.0,2,inj,L1CAM,Cell-Cell Contact,10.183870504060513
+N1_sfrpEGC_VLMC,0.0,2,inj,LAMININ,ECM-Receptor,15.55849751260419
+N1_sfrpEGC_VLMC,0.0,2,inj,MAG,Cell-Cell Contact,2.7260039808918443e-05
+N1_sfrpEGC_VLMC,0.0,2,inj,MPZ,Cell-Cell Contact,0.026027274309954523
+N1_sfrpEGC_VLMC,0.0,2,inj,MSTN,Secreted Signaling,0.007110996395901178
+N1_sfrpEGC_VLMC,0.0,2,inj,NCAM,Cell-Cell Contact,5.093882940242946
+N1_sfrpEGC_VLMC,0.0,2,inj,NEGR,Cell-Cell Contact,0.4120361402160743
+N1_sfrpEGC_VLMC,0.0,2,inj,NGL,Cell-Cell Contact,0.420507822463482
+N1_sfrpEGC_VLMC,0.0,2,inj,NMU,Secreted Signaling,0.0025670499442827844
+N1_sfrpEGC_VLMC,0.0,2,inj,NOTCH,Cell-Cell Contact,0.009033076968813622
+N1_sfrpEGC_VLMC,0.0,2,inj,NPFF,Secreted Signaling,0.0020479104294995726
+N1_sfrpEGC_VLMC,0.0,2,inj,NPR2,Secreted Signaling,0.012939896578135282
+N1_sfrpEGC_VLMC,0.0,2,inj,NPW-B,Secreted Signaling,0.0013175124657214756
+N1_sfrpEGC_VLMC,0.0,2,inj,NPY,Secreted Signaling,0.29131751745080414
+N1_sfrpEGC_VLMC,0.0,2,inj,NRG,Secreted Signaling,1.6085488392409981
+N1_sfrpEGC_VLMC,0.0,2,inj,NRXN,Cell-Cell Contact,15.91888248761555
+N1_sfrpEGC_VLMC,0.0,2,inj,NTS,Secreted Signaling,0.6529761108158156
+N1_sfrpEGC_VLMC,0.0,2,inj,PARs,Secreted Signaling,0.040760865028746325
+N1_sfrpEGC_VLMC,0.0,2,inj,PDGF,Secreted Signaling,0.07819184412930674
+N1_sfrpEGC_VLMC,0.0,2,inj,PECAM1,Cell-Cell Contact,0.03302377872204623
+N1_sfrpEGC_VLMC,0.0,2,inj,PROS,Secreted Signaling,0.8733720468721121
+N1_sfrpEGC_VLMC,0.0,2,inj,PSAP,Secreted Signaling,19.330095345897433
+N1_sfrpEGC_VLMC,0.0,2,inj,PTH,Secreted Signaling,0.0009626408386084035
+N1_sfrpEGC_VLMC,0.0,2,inj,PTPRM,Cell-Cell Contact,0.09293378123202127
+N1_sfrpEGC_VLMC,0.0,2,inj,RELN,ECM-Receptor,0.053375539014689284
+N1_sfrpEGC_VLMC,0.0,2,inj,SEMA3,Secreted Signaling,3.2720522851488463
+N1_sfrpEGC_VLMC,0.0,2,inj,SEMA4,Cell-Cell Contact,1.8003428688957508
+N1_sfrpEGC_VLMC,0.0,2,inj,SEMA5,Cell-Cell Contact,13.740577694613005
+N1_sfrpEGC_VLMC,0.0,2,inj,SEMA6,Cell-Cell Contact,5.647609836021859
+N1_sfrpEGC_VLMC,0.0,2,inj,SEMATOSTATIN,Secreted Signaling,0.769823549834568
+N1_sfrpEGC_VLMC,0.0,2,inj,TAC,Secreted Signaling,0.010951623321362567
+N1_sfrpEGC_VLMC,0.0,2,inj,TENASCIN,ECM-Receptor,14.974659873510657
+N1_sfrpEGC_VLMC,0.0,2,inj,TGFb,Secreted Signaling,0.06580758619377193
+N1_sfrpEGC_VLMC,0.0,2,inj,THBS,ECM-Receptor,13.933064466836992
+N1_sfrpEGC_VLMC,0.0,2,inj,THY1,Cell-Cell Contact,0.0024484615616311954
+N1_sfrpEGC_VLMC,0.0,2,inj,UCN,Secreted Signaling,0.029097227891334038
+N1_sfrpEGC_VLMC,0.0,2,inj,UROTENSIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,inj,VEGF,Secreted Signaling,0.376600261724243
+N1_sfrpEGC_VLMC,0.0,2,inj,VIP,Secreted Signaling,0.0004758223275371129
+N1_sfrpEGC_VLMC,0.0,2,inj,VISTA,Cell-Cell Contact,0.5957062299648308
+N1_sfrpEGC_VLMC,0.0,2,inj,WNT,Secreted Signaling,22.515936312432977
+N1_sfrpEGC_VLMC,0.0,2,inj,ncWNT,Secreted Signaling,0.611776270570704
+N2_reaEGC_wntEGC,0.0,2,inj,ACTIVIN,Secreted Signaling,0.00784050987187962
+N2_reaEGC_wntEGC,0.0,2,inj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,AGRN,ECM-Receptor,0.5414909931923191
+N2_reaEGC_wntEGC,0.0,2,inj,AGT,Secreted Signaling,0.002871048915673675
+N2_reaEGC_wntEGC,0.0,2,inj,ANGPT,Secreted Signaling,0.001061852349617884
+N2_reaEGC_wntEGC,0.0,2,inj,ANGPTL,Secreted Signaling,5.705770532209146
+N2_reaEGC_wntEGC,0.0,2,inj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,BMP,Secreted Signaling,0.019356975597893497
+N2_reaEGC_wntEGC,0.0,2,inj,CALCR,Secreted Signaling,0.027934302276643022
+N2_reaEGC_wntEGC,0.0,2,inj,CCK,Secreted Signaling,0.008065448698140508
+N2_reaEGC_wntEGC,0.0,2,inj,CCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,CD34,Cell-Cell Contact,0.0005181262643103952
+N2_reaEGC_wntEGC,0.0,2,inj,CD40,Secreted Signaling,0.00043604814367595966
+N2_reaEGC_wntEGC,0.0,2,inj,CD45,Cell-Cell Contact,0.0007100814663595224
+N2_reaEGC_wntEGC,0.0,2,inj,CDH,Cell-Cell Contact,5.132492319447155
+N2_reaEGC_wntEGC,0.0,2,inj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,CDH5,Cell-Cell Contact,0.0015925004584054522
+N2_reaEGC_wntEGC,0.0,2,inj,CLDN,Cell-Cell Contact,0.004411840691989432
+N2_reaEGC_wntEGC,0.0,2,inj,CNTN,Cell-Cell Contact,1.7312147185745521
+N2_reaEGC_wntEGC,0.0,2,inj,COLLAGEN,ECM-Receptor,2.113977604151139
+N2_reaEGC_wntEGC,0.0,2,inj,CSPG4,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,CXCL,Secreted Signaling,0.003106016710180959
+N2_reaEGC_wntEGC,0.0,2,inj,EDN,Secreted Signaling,0.04813012941303133
+N2_reaEGC_wntEGC,0.0,2,inj,EGF,Secreted Signaling,0.236411893780545
+N2_reaEGC_wntEGC,0.0,2,inj,EPHA,Cell-Cell Contact,3.7779324534628014
+N2_reaEGC_wntEGC,0.0,2,inj,EPHB,Cell-Cell Contact,1.9144246252846806
+N2_reaEGC_wntEGC,0.0,2,inj,ESAM,Cell-Cell Contact,6.726445130100744e-05
+N2_reaEGC_wntEGC,0.0,2,inj,FGF,Secreted Signaling,0.2489362093904691
+N2_reaEGC_wntEGC,0.0,2,inj,FN1,ECM-Receptor,0.6703666698960029
+N2_reaEGC_wntEGC,0.0,2,inj,GALANIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,GAS,Secreted Signaling,0.526356400728176
+N2_reaEGC_wntEGC,0.0,2,inj,GDF,Secreted Signaling,0.037332172590804895
+N2_reaEGC_wntEGC,0.0,2,inj,GDNF,Secreted Signaling,0.0005578780228453167
+N2_reaEGC_wntEGC,0.0,2,inj,GPR,Secreted Signaling,0.03543098012080816
+N2_reaEGC_wntEGC,0.0,2,inj,GRN,Secreted Signaling,0.6197954137472288
+N2_reaEGC_wntEGC,0.0,2,inj,HH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,HSPG,ECM-Receptor,0.04229822852396657
+N2_reaEGC_wntEGC,0.0,2,inj,JAM,Cell-Cell Contact,0.9714343710402049
+N2_reaEGC_wntEGC,0.0,2,inj,L1CAM,Cell-Cell Contact,2.77776134837241
+N2_reaEGC_wntEGC,0.0,2,inj,LAMININ,ECM-Receptor,4.0661379580040995
+N2_reaEGC_wntEGC,0.0,2,inj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,MPZ,Cell-Cell Contact,0.011226116728333315
+N2_reaEGC_wntEGC,0.0,2,inj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,NCAM,Cell-Cell Contact,1.4204406746419191
+N2_reaEGC_wntEGC,0.0,2,inj,NEGR,Cell-Cell Contact,0.034324428490294344
+N2_reaEGC_wntEGC,0.0,2,inj,NGL,Cell-Cell Contact,0.10775674524444677
+N2_reaEGC_wntEGC,0.0,2,inj,NMU,Secreted Signaling,0.0010485009286378614
+N2_reaEGC_wntEGC,0.0,2,inj,NOTCH,Cell-Cell Contact,0.008590498896323878
+N2_reaEGC_wntEGC,0.0,2,inj,NPFF,Secreted Signaling,0.001458325405698882
+N2_reaEGC_wntEGC,0.0,2,inj,NPR2,Secreted Signaling,0.001497313859728283
+N2_reaEGC_wntEGC,0.0,2,inj,NPW-B,Secreted Signaling,0.0002585534292098953
+N2_reaEGC_wntEGC,0.0,2,inj,NPY,Secreted Signaling,0.08161494310305364
+N2_reaEGC_wntEGC,0.0,2,inj,NRG,Secreted Signaling,0.38759554296343357
+N2_reaEGC_wntEGC,0.0,2,inj,NRXN,Cell-Cell Contact,3.9336374528026177
+N2_reaEGC_wntEGC,0.0,2,inj,NTS,Secreted Signaling,0.09132662858711875
+N2_reaEGC_wntEGC,0.0,2,inj,PARs,Secreted Signaling,0.0068748902225677765
+N2_reaEGC_wntEGC,0.0,2,inj,PDGF,Secreted Signaling,0.007665426632051409
+N2_reaEGC_wntEGC,0.0,2,inj,PECAM1,Cell-Cell Contact,9.257638664937479e-05
+N2_reaEGC_wntEGC,0.0,2,inj,PROS,Secreted Signaling,0.11323759358258842
+N2_reaEGC_wntEGC,0.0,2,inj,PSAP,Secreted Signaling,3.3158176661160437
+N2_reaEGC_wntEGC,0.0,2,inj,PTH,Secreted Signaling,0.00043654752872236257
+N2_reaEGC_wntEGC,0.0,2,inj,PTPRM,Cell-Cell Contact,0.01662305951997821
+N2_reaEGC_wntEGC,0.0,2,inj,RELN,ECM-Receptor,0.022181961179835057
+N2_reaEGC_wntEGC,0.0,2,inj,SEMA3,Secreted Signaling,0.8534866605436746
+N2_reaEGC_wntEGC,0.0,2,inj,SEMA4,Cell-Cell Contact,0.645566828877176
+N2_reaEGC_wntEGC,0.0,2,inj,SEMA5,Cell-Cell Contact,3.357723797117137
+N2_reaEGC_wntEGC,0.0,2,inj,SEMA6,Cell-Cell Contact,1.415729604941679
+N2_reaEGC_wntEGC,0.0,2,inj,SEMATOSTATIN,Secreted Signaling,0.34312755523561744
+N2_reaEGC_wntEGC,0.0,2,inj,TAC,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,TENASCIN,ECM-Receptor,9.009521596246277
+N2_reaEGC_wntEGC,0.0,2,inj,TGFb,Secreted Signaling,0.006773179974348522
+N2_reaEGC_wntEGC,0.0,2,inj,THBS,ECM-Receptor,4.9710093134606845
+N2_reaEGC_wntEGC,0.0,2,inj,THY1,Cell-Cell Contact,0.00022496896720054847
+N2_reaEGC_wntEGC,0.0,2,inj,UCN,Secreted Signaling,0.0007934080919765296
+N2_reaEGC_wntEGC,0.0,2,inj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,VEGF,Secreted Signaling,0.045852213750224954
+N2_reaEGC_wntEGC,0.0,2,inj,VIP,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,inj,VISTA,Cell-Cell Contact,0.09727042020668149
+N2_reaEGC_wntEGC,0.0,2,inj,WNT,Secreted Signaling,3.5246375986459797
+N2_reaEGC_wntEGC,0.0,2,inj,ncWNT,Secreted Signaling,0.21911528982788223
+N1_sfrpEGC_VLMC,0.0,2,uninj,ACTIVIN,Secreted Signaling,0.11029267585615649
+N1_sfrpEGC_VLMC,0.0,2,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,AGRN,ECM-Receptor,10.37384315323918
+N1_sfrpEGC_VLMC,0.0,2,uninj,AGT,Secreted Signaling,0.014347426141436918
+N1_sfrpEGC_VLMC,0.0,2,uninj,ANGPT,Secreted Signaling,0.009055980804120782
+N1_sfrpEGC_VLMC,0.0,2,uninj,ANGPTL,Secreted Signaling,6.968856241828137
+N1_sfrpEGC_VLMC,0.0,2,uninj,BAG,Secreted Signaling,0.0015008828947976293
+N1_sfrpEGC_VLMC,0.0,2,uninj,BMP,Secreted Signaling,0.03531495088013532
+N1_sfrpEGC_VLMC,0.0,2,uninj,CALCR,Secreted Signaling,0.017348817463647647
+N1_sfrpEGC_VLMC,0.0,2,uninj,CCK,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,CCL,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,CD34,Cell-Cell Contact,0.013320641044346881
+N1_sfrpEGC_VLMC,0.0,2,uninj,CD40,Secreted Signaling,0.0032590574521803367
+N1_sfrpEGC_VLMC,0.0,2,uninj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,CDH,Cell-Cell Contact,11.875504926023298
+N1_sfrpEGC_VLMC,0.0,2,uninj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,CDH5,Cell-Cell Contact,0.06584937816408486
+N1_sfrpEGC_VLMC,0.0,2,uninj,CLDN,Cell-Cell Contact,0.00933449670815652
+N1_sfrpEGC_VLMC,0.0,2,uninj,CNTN,Cell-Cell Contact,13.5082212994587
+N1_sfrpEGC_VLMC,0.0,2,uninj,COLLAGEN,ECM-Receptor,2.390899240102727
+N1_sfrpEGC_VLMC,0.0,2,uninj,CSPG4,Cell-Cell Contact,0.006802218082354622
+N1_sfrpEGC_VLMC,0.0,2,uninj,CXCL,Secreted Signaling,0.09017753143459817
+N1_sfrpEGC_VLMC,0.0,2,uninj,EDN,Secreted Signaling,0.39550203933855865
+N1_sfrpEGC_VLMC,0.0,2,uninj,EGF,Secreted Signaling,0.03447106386991257
+N1_sfrpEGC_VLMC,0.0,2,uninj,EPHA,Cell-Cell Contact,3.6591595800726213
+N1_sfrpEGC_VLMC,0.0,2,uninj,EPHB,Cell-Cell Contact,11.852914262386394
+N1_sfrpEGC_VLMC,0.0,2,uninj,ESAM,Cell-Cell Contact,0.017574998168993848
+N1_sfrpEGC_VLMC,0.0,2,uninj,FGF,Secreted Signaling,3.0817714450240143
+N1_sfrpEGC_VLMC,0.0,2,uninj,FN1,ECM-Receptor,0.38829398203243515
+N1_sfrpEGC_VLMC,0.0,2,uninj,GALANIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,GAS,Secreted Signaling,0.12625119284427827
+N1_sfrpEGC_VLMC,0.0,2,uninj,GDF,Secreted Signaling,0.34120960535999345
+N1_sfrpEGC_VLMC,0.0,2,uninj,GDNF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,GPR,Secreted Signaling,0.049596906263059175
+N1_sfrpEGC_VLMC,0.0,2,uninj,GRN,Secreted Signaling,3.963674188857833
+N1_sfrpEGC_VLMC,0.0,2,uninj,HH,Secreted Signaling,0.0061463036762441445
+N1_sfrpEGC_VLMC,0.0,2,uninj,HSPG,ECM-Receptor,0.14601284181343716
+N1_sfrpEGC_VLMC,0.0,2,uninj,JAM,Cell-Cell Contact,6.003197782522856
+N1_sfrpEGC_VLMC,0.0,2,uninj,L1CAM,Cell-Cell Contact,5.035646683905815
+N1_sfrpEGC_VLMC,0.0,2,uninj,LAMININ,ECM-Receptor,20.106262405646707
+N1_sfrpEGC_VLMC,0.0,2,uninj,MAG,Cell-Cell Contact,0.0001957587991430158
+N1_sfrpEGC_VLMC,0.0,2,uninj,MPZ,Cell-Cell Contact,0.008834081650844202
+N1_sfrpEGC_VLMC,0.0,2,uninj,MSTN,Secreted Signaling,0.017805750287583202
+N1_sfrpEGC_VLMC,0.0,2,uninj,NCAM,Cell-Cell Contact,3.919467093316331
+N1_sfrpEGC_VLMC,0.0,2,uninj,NEGR,Cell-Cell Contact,0.7769669012317459
+N1_sfrpEGC_VLMC,0.0,2,uninj,NGL,Cell-Cell Contact,0.30739020458058075
+N1_sfrpEGC_VLMC,0.0,2,uninj,NMU,Secreted Signaling,0.00012152058958381465
+N1_sfrpEGC_VLMC,0.0,2,uninj,NOTCH,Cell-Cell Contact,0.007042950102341328
+N1_sfrpEGC_VLMC,0.0,2,uninj,NPFF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,NPR2,Secreted Signaling,0.030552242389859267
+N1_sfrpEGC_VLMC,0.0,2,uninj,NPW-B,Secreted Signaling,7.775664446143568e-05
+N1_sfrpEGC_VLMC,0.0,2,uninj,NPY,Secreted Signaling,0.18737966099194098
+N1_sfrpEGC_VLMC,0.0,2,uninj,NRG,Secreted Signaling,2.2537970723470186
+N1_sfrpEGC_VLMC,0.0,2,uninj,NRXN,Cell-Cell Contact,25.324093917114823
+N1_sfrpEGC_VLMC,0.0,2,uninj,NTS,Secreted Signaling,0.6731246431467415
+N1_sfrpEGC_VLMC,0.0,2,uninj,PARs,Secreted Signaling,0.3517249834643974
+N1_sfrpEGC_VLMC,0.0,2,uninj,PDGF,Secreted Signaling,0.05815938430678848
+N1_sfrpEGC_VLMC,0.0,2,uninj,PECAM1,Cell-Cell Contact,0.010051528387557775
+N1_sfrpEGC_VLMC,0.0,2,uninj,PROS,Secreted Signaling,0.9644485233451627
+N1_sfrpEGC_VLMC,0.0,2,uninj,PSAP,Secreted Signaling,47.359451742435105
+N1_sfrpEGC_VLMC,0.0,2,uninj,PTH,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,0.0,2,uninj,PTPRM,Cell-Cell Contact,0.3254192666793568
+N1_sfrpEGC_VLMC,0.0,2,uninj,RELN,ECM-Receptor,0.04333262379229778
+N1_sfrpEGC_VLMC,0.0,2,uninj,SEMA3,Secreted Signaling,3.6425919869528123
+N1_sfrpEGC_VLMC,0.0,2,uninj,SEMA4,Cell-Cell Contact,4.043782233956504
+N1_sfrpEGC_VLMC,0.0,2,uninj,SEMA5,Cell-Cell Contact,26.285821145043027
+N1_sfrpEGC_VLMC,0.0,2,uninj,SEMA6,Cell-Cell Contact,5.780477093858318
+N1_sfrpEGC_VLMC,0.0,2,uninj,SEMATOSTATIN,Secreted Signaling,0.2562010313018264
+N1_sfrpEGC_VLMC,0.0,2,uninj,TAC,Secreted Signaling,0.0038878321226792968
+N1_sfrpEGC_VLMC,0.0,2,uninj,TENASCIN,ECM-Receptor,2.7451273307072523
+N1_sfrpEGC_VLMC,0.0,2,uninj,TGFb,Secreted Signaling,0.048191684079607035
+N1_sfrpEGC_VLMC,0.0,2,uninj,THBS,ECM-Receptor,3.4898673364481105
+N1_sfrpEGC_VLMC,0.0,2,uninj,THY1,Cell-Cell Contact,0.0006113268968686281
+N1_sfrpEGC_VLMC,0.0,2,uninj,UCN,Secreted Signaling,0.025991966249682332
+N1_sfrpEGC_VLMC,0.0,2,uninj,UROTENSIN,Secreted Signaling,0.0004954551135097603
+N1_sfrpEGC_VLMC,0.0,2,uninj,VEGF,Secreted Signaling,0.04573901601087105
+N1_sfrpEGC_VLMC,0.0,2,uninj,VIP,Secreted Signaling,0.00019641604236038027
+N1_sfrpEGC_VLMC,0.0,2,uninj,VISTA,Cell-Cell Contact,0.4701530478771029
+N1_sfrpEGC_VLMC,0.0,2,uninj,WNT,Secreted Signaling,42.94090188995881
+N1_sfrpEGC_VLMC,0.0,2,uninj,ncWNT,Secreted Signaling,0.6003134691934318
+N2_reaEGC_wntEGC,0.0,2,uninj,ACTIVIN,Secreted Signaling,0.15953447231050763
+N2_reaEGC_wntEGC,0.0,2,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,AGRN,ECM-Receptor,6.272711374525665
+N2_reaEGC_wntEGC,0.0,2,uninj,AGT,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,ANGPT,Secreted Signaling,0.024393268057755428
+N2_reaEGC_wntEGC,0.0,2,uninj,ANGPTL,Secreted Signaling,8.807035300087716
+N2_reaEGC_wntEGC,0.0,2,uninj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,BMP,Secreted Signaling,0.29358437174773244
+N2_reaEGC_wntEGC,0.0,2,uninj,CALCR,Secreted Signaling,0.026877266135060373
+N2_reaEGC_wntEGC,0.0,2,uninj,CCK,Secreted Signaling,0.00941283701884496
+N2_reaEGC_wntEGC,0.0,2,uninj,CCL,Secreted Signaling,0.004777278835959884
+N2_reaEGC_wntEGC,0.0,2,uninj,CD34,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,CD40,Secreted Signaling,0.008492010437245533
+N2_reaEGC_wntEGC,0.0,2,uninj,CD45,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,CDH,Cell-Cell Contact,3.7650400097120587
+N2_reaEGC_wntEGC,0.0,2,uninj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,CDH5,Cell-Cell Contact,0.004717726545402279
+N2_reaEGC_wntEGC,0.0,2,uninj,CLDN,Cell-Cell Contact,0.04048815539044515
+N2_reaEGC_wntEGC,0.0,2,uninj,CNTN,Cell-Cell Contact,14.185149257815217
+N2_reaEGC_wntEGC,0.0,2,uninj,COLLAGEN,ECM-Receptor,0.9327078977155018
+N2_reaEGC_wntEGC,0.0,2,uninj,CSPG4,Cell-Cell Contact,0.02375325968176824
+N2_reaEGC_wntEGC,0.0,2,uninj,CXCL,Secreted Signaling,0.030643418859539223
+N2_reaEGC_wntEGC,0.0,2,uninj,EDN,Secreted Signaling,0.33669628104568156
+N2_reaEGC_wntEGC,0.0,2,uninj,EGF,Secreted Signaling,0.16933789029277735
+N2_reaEGC_wntEGC,0.0,2,uninj,EPHA,Cell-Cell Contact,9.064048318154875
+N2_reaEGC_wntEGC,0.0,2,uninj,EPHB,Cell-Cell Contact,9.572865294489247
+N2_reaEGC_wntEGC,0.0,2,uninj,ESAM,Cell-Cell Contact,0.018175656550899286
+N2_reaEGC_wntEGC,0.0,2,uninj,FGF,Secreted Signaling,2.288433334704468
+N2_reaEGC_wntEGC,0.0,2,uninj,FN1,ECM-Receptor,0.46794752522985694
+N2_reaEGC_wntEGC,0.0,2,uninj,GALANIN,Secreted Signaling,0.004970604632606479
+N2_reaEGC_wntEGC,0.0,2,uninj,GAS,Secreted Signaling,0.7600649830314001
+N2_reaEGC_wntEGC,0.0,2,uninj,GDF,Secreted Signaling,0.35074648030899463
+N2_reaEGC_wntEGC,0.0,2,uninj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,GPR,Secreted Signaling,0.24170052657323216
+N2_reaEGC_wntEGC,0.0,2,uninj,GRN,Secreted Signaling,5.3645719801441185
+N2_reaEGC_wntEGC,0.0,2,uninj,HH,Secreted Signaling,0.0029958744664989796
+N2_reaEGC_wntEGC,0.0,2,uninj,HSPG,ECM-Receptor,1.0289589290093943
+N2_reaEGC_wntEGC,0.0,2,uninj,JAM,Cell-Cell Contact,6.508330955357405
+N2_reaEGC_wntEGC,0.0,2,uninj,L1CAM,Cell-Cell Contact,15.320701452761144
+N2_reaEGC_wntEGC,0.0,2,uninj,LAMININ,ECM-Receptor,12.638400907149949
+N2_reaEGC_wntEGC,0.0,2,uninj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,MPZ,Cell-Cell Contact,0.06691431146563581
+N2_reaEGC_wntEGC,0.0,2,uninj,MSTN,Secreted Signaling,0.01763670009894373
+N2_reaEGC_wntEGC,0.0,2,uninj,NCAM,Cell-Cell Contact,9.848908453492507
+N2_reaEGC_wntEGC,0.0,2,uninj,NEGR,Cell-Cell Contact,0.10541655553886117
+N2_reaEGC_wntEGC,0.0,2,uninj,NGL,Cell-Cell Contact,0.11721272016989026
+N2_reaEGC_wntEGC,0.0,2,uninj,NMU,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,NOTCH,Cell-Cell Contact,0.3493883870457314
+N2_reaEGC_wntEGC,0.0,2,uninj,NPFF,Secreted Signaling,0.0011629642837752737
+N2_reaEGC_wntEGC,0.0,2,uninj,NPR2,Secreted Signaling,0.0008466350015049185
+N2_reaEGC_wntEGC,0.0,2,uninj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,NPY,Secreted Signaling,0.18146438651722205
+N2_reaEGC_wntEGC,0.0,2,uninj,NRG,Secreted Signaling,1.4648476480494497
+N2_reaEGC_wntEGC,0.0,2,uninj,NRXN,Cell-Cell Contact,16.747895383705227
+N2_reaEGC_wntEGC,0.0,2,uninj,NTS,Secreted Signaling,0.09149336567983032
+N2_reaEGC_wntEGC,0.0,2,uninj,PARs,Secreted Signaling,0.052545378062468395
+N2_reaEGC_wntEGC,0.0,2,uninj,PDGF,Secreted Signaling,0.4932344494847306
+N2_reaEGC_wntEGC,0.0,2,uninj,PECAM1,Cell-Cell Contact,0.0002901605057998232
+N2_reaEGC_wntEGC,0.0,2,uninj,PROS,Secreted Signaling,1.1451780006692518
+N2_reaEGC_wntEGC,0.0,2,uninj,PSAP,Secreted Signaling,29.42348642400792
+N2_reaEGC_wntEGC,0.0,2,uninj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,PTPRM,Cell-Cell Contact,0.11982253094863962
+N2_reaEGC_wntEGC,0.0,2,uninj,RELN,ECM-Receptor,0.060540577577989606
+N2_reaEGC_wntEGC,0.0,2,uninj,SEMA3,Secreted Signaling,3.0588626548951177
+N2_reaEGC_wntEGC,0.0,2,uninj,SEMA4,Cell-Cell Contact,2.0334347942389797
+N2_reaEGC_wntEGC,0.0,2,uninj,SEMA5,Cell-Cell Contact,11.78876038987229
+N2_reaEGC_wntEGC,0.0,2,uninj,SEMA6,Cell-Cell Contact,5.191254649365467
+N2_reaEGC_wntEGC,0.0,2,uninj,SEMATOSTATIN,Secreted Signaling,0.34269611612873896
+N2_reaEGC_wntEGC,0.0,2,uninj,TAC,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,TENASCIN,ECM-Receptor,4.201857418153107
+N2_reaEGC_wntEGC,0.0,2,uninj,TGFb,Secreted Signaling,0.04390839317889266
+N2_reaEGC_wntEGC,0.0,2,uninj,THBS,ECM-Receptor,7.166389315850442
+N2_reaEGC_wntEGC,0.0,2,uninj,THY1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,UCN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,0.0,2,uninj,VEGF,Secreted Signaling,0.08210209160916329
+N2_reaEGC_wntEGC,0.0,2,uninj,VIP,Secreted Signaling,0.0007703487351510135
+N2_reaEGC_wntEGC,0.0,2,uninj,VISTA,Cell-Cell Contact,2.3018565551959127
+N2_reaEGC_wntEGC,0.0,2,uninj,WNT,Secreted Signaling,45.27657008792599
+N2_reaEGC_wntEGC,0.0,2,uninj,ncWNT,Secreted Signaling,1.8119438524209777
+N1_sfrpEGC_VLMC,1.0,5,inj,ACTIVIN,Secreted Signaling,0.05145630557688622
+N1_sfrpEGC_VLMC,1.0,5,inj,ADIPONECTIN,Secreted Signaling,0.0015532369392774821
+N1_sfrpEGC_VLMC,1.0,5,inj,AGRN,ECM-Receptor,8.457883640205234
+N1_sfrpEGC_VLMC,1.0,5,inj,AGT,Secreted Signaling,0.04556839519573178
+N1_sfrpEGC_VLMC,1.0,5,inj,ANGPT,Secreted Signaling,0.0052317002505011785
+N1_sfrpEGC_VLMC,1.0,5,inj,ANGPTL,Secreted Signaling,7.918332248963133
+N1_sfrpEGC_VLMC,1.0,5,inj,BAG,Secreted Signaling,0.08911364269491925
+N1_sfrpEGC_VLMC,1.0,5,inj,BMP,Secreted Signaling,0.06436134765780317
+N1_sfrpEGC_VLMC,1.0,5,inj,CALCR,Secreted Signaling,0.14240167991345282
+N1_sfrpEGC_VLMC,1.0,5,inj,CCK,Secreted Signaling,0.09806276467560616
+N1_sfrpEGC_VLMC,1.0,5,inj,CCL,Secreted Signaling,0.0005350088277355166
+N1_sfrpEGC_VLMC,1.0,5,inj,CD34,Cell-Cell Contact,0.018766851648889703
+N1_sfrpEGC_VLMC,1.0,5,inj,CD40,Secreted Signaling,0.004457051766023342
+N1_sfrpEGC_VLMC,1.0,5,inj,CD45,Cell-Cell Contact,0.001542258070302641
+N1_sfrpEGC_VLMC,1.0,5,inj,CDH,Cell-Cell Contact,9.017380572458553
+N1_sfrpEGC_VLMC,1.0,5,inj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,1.0,5,inj,CDH5,Cell-Cell Contact,0.003883687220071484
+N1_sfrpEGC_VLMC,1.0,5,inj,CLDN,Cell-Cell Contact,0.0001957309770757909
+N1_sfrpEGC_VLMC,1.0,5,inj,CNTN,Cell-Cell Contact,8.911187469341408
+N1_sfrpEGC_VLMC,1.0,5,inj,COLLAGEN,ECM-Receptor,3.3483759853159327
+N1_sfrpEGC_VLMC,1.0,5,inj,CSPG4,Cell-Cell Contact,0.003242179033369433
+N1_sfrpEGC_VLMC,1.0,5,inj,CXCL,Secreted Signaling,0.13930937624741913
+N1_sfrpEGC_VLMC,1.0,5,inj,EDN,Secreted Signaling,0.04618274579538678
+N1_sfrpEGC_VLMC,1.0,5,inj,EGF,Secreted Signaling,0.44448449233961573
+N1_sfrpEGC_VLMC,1.0,5,inj,EPHA,Cell-Cell Contact,7.092357205495363
+N1_sfrpEGC_VLMC,1.0,5,inj,EPHB,Cell-Cell Contact,13.077327372537383
+N1_sfrpEGC_VLMC,1.0,5,inj,ESAM,Cell-Cell Contact,0.0019482455407898373
+N1_sfrpEGC_VLMC,1.0,5,inj,FGF,Secreted Signaling,3.923325758986367
+N1_sfrpEGC_VLMC,1.0,5,inj,FN1,ECM-Receptor,0.3578006069172105
+N1_sfrpEGC_VLMC,1.0,5,inj,GALANIN,Secreted Signaling,0.010559343539277953
+N1_sfrpEGC_VLMC,1.0,5,inj,GAS,Secreted Signaling,0.36726176766009583
+N1_sfrpEGC_VLMC,1.0,5,inj,GDF,Secreted Signaling,0.1394389105340161
+N1_sfrpEGC_VLMC,1.0,5,inj,GDNF,Secreted Signaling,0.00019609420541376137
+N1_sfrpEGC_VLMC,1.0,5,inj,GPR,Secreted Signaling,0.1303993184145647
+N1_sfrpEGC_VLMC,1.0,5,inj,GRN,Secreted Signaling,7.761372752074381
+N1_sfrpEGC_VLMC,1.0,5,inj,HH,Secreted Signaling,0.004881323087985883
+N1_sfrpEGC_VLMC,1.0,5,inj,HSPG,ECM-Receptor,0.19141238307277586
+N1_sfrpEGC_VLMC,1.0,5,inj,JAM,Cell-Cell Contact,4.033034262137728
+N1_sfrpEGC_VLMC,1.0,5,inj,L1CAM,Cell-Cell Contact,11.939382579162997
+N1_sfrpEGC_VLMC,1.0,5,inj,LAMININ,ECM-Receptor,12.148803160719302
+N1_sfrpEGC_VLMC,1.0,5,inj,MAG,Cell-Cell Contact,0.0025373328603553883
+N1_sfrpEGC_VLMC,1.0,5,inj,MPZ,Cell-Cell Contact,0.07052327857363079
+N1_sfrpEGC_VLMC,1.0,5,inj,MSTN,Secreted Signaling,0.008209114823997879
+N1_sfrpEGC_VLMC,1.0,5,inj,NCAM,Cell-Cell Contact,6.5339802521752475
+N1_sfrpEGC_VLMC,1.0,5,inj,NEGR,Cell-Cell Contact,0.2876725603394767
+N1_sfrpEGC_VLMC,1.0,5,inj,NGL,Cell-Cell Contact,0.43923939801666667
+N1_sfrpEGC_VLMC,1.0,5,inj,NMU,Secreted Signaling,0.00046131226558294774
+N1_sfrpEGC_VLMC,1.0,5,inj,NOTCH,Cell-Cell Contact,0.011769198041334673
+N1_sfrpEGC_VLMC,1.0,5,inj,NPFF,Secreted Signaling,0.0008452482162585519
+N1_sfrpEGC_VLMC,1.0,5,inj,NPR2,Secreted Signaling,0.004078420489117812
+N1_sfrpEGC_VLMC,1.0,5,inj,NPW-B,Secreted Signaling,0.0005316327141580666
+N1_sfrpEGC_VLMC,1.0,5,inj,NPY,Secreted Signaling,0.47795874182486464
+N1_sfrpEGC_VLMC,1.0,5,inj,NRG,Secreted Signaling,1.7679510468946897
+N1_sfrpEGC_VLMC,1.0,5,inj,NRXN,Cell-Cell Contact,29.177622601910404
+N1_sfrpEGC_VLMC,1.0,5,inj,NTS,Secreted Signaling,2.366935361060069
+N1_sfrpEGC_VLMC,1.0,5,inj,PARs,Secreted Signaling,0.018205927153327937
+N1_sfrpEGC_VLMC,1.0,5,inj,PDGF,Secreted Signaling,0.10036952604600913
+N1_sfrpEGC_VLMC,1.0,5,inj,PECAM1,Cell-Cell Contact,0.010739237629167014
+N1_sfrpEGC_VLMC,1.0,5,inj,PROS,Secreted Signaling,0.7833532173901493
+N1_sfrpEGC_VLMC,1.0,5,inj,PSAP,Secreted Signaling,46.300976010636184
+N1_sfrpEGC_VLMC,1.0,5,inj,PTH,Secreted Signaling,0.00043370212317379755
+N1_sfrpEGC_VLMC,1.0,5,inj,PTPRM,Cell-Cell Contact,0.12747735142479458
+N1_sfrpEGC_VLMC,1.0,5,inj,RELN,ECM-Receptor,0.0657186303194181
+N1_sfrpEGC_VLMC,1.0,5,inj,SEMA3,Secreted Signaling,3.933708777615027
+N1_sfrpEGC_VLMC,1.0,5,inj,SEMA4,Cell-Cell Contact,3.1924882222337856
+N1_sfrpEGC_VLMC,1.0,5,inj,SEMA5,Cell-Cell Contact,16.215878765764554
+N1_sfrpEGC_VLMC,1.0,5,inj,SEMA6,Cell-Cell Contact,4.4395746701474526
+N1_sfrpEGC_VLMC,1.0,5,inj,SEMATOSTATIN,Secreted Signaling,0.5554232313004335
+N1_sfrpEGC_VLMC,1.0,5,inj,TAC,Secreted Signaling,0.04398566086055155
+N1_sfrpEGC_VLMC,1.0,5,inj,TENASCIN,ECM-Receptor,3.955484370041449
+N1_sfrpEGC_VLMC,1.0,5,inj,TGFb,Secreted Signaling,0.022160032602245364
+N1_sfrpEGC_VLMC,1.0,5,inj,THBS,ECM-Receptor,6.398599447867023
+N1_sfrpEGC_VLMC,1.0,5,inj,THY1,Cell-Cell Contact,0.0008321704941789005
+N1_sfrpEGC_VLMC,1.0,5,inj,UCN,Secreted Signaling,0.03558357407739411
+N1_sfrpEGC_VLMC,1.0,5,inj,UROTENSIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,inj,VEGF,Secreted Signaling,0.056642054453323896
+N1_sfrpEGC_VLMC,1.0,5,inj,VIP,Secreted Signaling,0.016209310027222285
+N1_sfrpEGC_VLMC,1.0,5,inj,VISTA,Cell-Cell Contact,0.3990479426153481
+N1_sfrpEGC_VLMC,1.0,5,inj,WNT,Secreted Signaling,29.785441092227313
+N1_sfrpEGC_VLMC,1.0,5,inj,ncWNT,Secreted Signaling,0.42891735017013943
+N2_reaEGC_wntEGC,1.0,5,inj,ACTIVIN,Secreted Signaling,0.014255036449690991
+N2_reaEGC_wntEGC,1.0,5,inj,ADIPONECTIN,Secreted Signaling,0.024244891615046237
+N2_reaEGC_wntEGC,1.0,5,inj,AGRN,ECM-Receptor,4.98001968103469
+N2_reaEGC_wntEGC,1.0,5,inj,AGT,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,inj,ANGPT,Secreted Signaling,0.007881956299389476
+N2_reaEGC_wntEGC,1.0,5,inj,ANGPTL,Secreted Signaling,2.547280510438498
+N2_reaEGC_wntEGC,1.0,5,inj,BAG,Secreted Signaling,0.10713510047179794
+N2_reaEGC_wntEGC,1.0,5,inj,BMP,Secreted Signaling,0.18508083545802598
+N2_reaEGC_wntEGC,1.0,5,inj,CALCR,Secreted Signaling,0.17104050290224002
+N2_reaEGC_wntEGC,1.0,5,inj,CCK,Secreted Signaling,0.07375300548937042
+N2_reaEGC_wntEGC,1.0,5,inj,CCL,Secreted Signaling,0.0004722414753148395
+N2_reaEGC_wntEGC,1.0,5,inj,CD34,Cell-Cell Contact,0.005390770802897552
+N2_reaEGC_wntEGC,1.0,5,inj,CD40,Secreted Signaling,0.0016683192148157842
+N2_reaEGC_wntEGC,1.0,5,inj,CD45,Cell-Cell Contact,0.0015266621378580356
+N2_reaEGC_wntEGC,1.0,5,inj,CDH,Cell-Cell Contact,6.3411221127375725
+N2_reaEGC_wntEGC,1.0,5,inj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,inj,CDH5,Cell-Cell Contact,0.00032277840711944234
+N2_reaEGC_wntEGC,1.0,5,inj,CLDN,Cell-Cell Contact,8.834467928792783e-05
+N2_reaEGC_wntEGC,1.0,5,inj,CNTN,Cell-Cell Contact,6.154389563203218
+N2_reaEGC_wntEGC,1.0,5,inj,COLLAGEN,ECM-Receptor,2.0671278623211617
+N2_reaEGC_wntEGC,1.0,5,inj,CSPG4,Cell-Cell Contact,0.0014215087221062961
+N2_reaEGC_wntEGC,1.0,5,inj,CXCL,Secreted Signaling,0.010061047236073345
+N2_reaEGC_wntEGC,1.0,5,inj,EDN,Secreted Signaling,1.0440702350104845
+N2_reaEGC_wntEGC,1.0,5,inj,EGF,Secreted Signaling,0.117028555914493
+N2_reaEGC_wntEGC,1.0,5,inj,EPHA,Cell-Cell Contact,11.403626510730133
+N2_reaEGC_wntEGC,1.0,5,inj,EPHB,Cell-Cell Contact,5.3943459382902805
+N2_reaEGC_wntEGC,1.0,5,inj,ESAM,Cell-Cell Contact,0.017417418468793723
+N2_reaEGC_wntEGC,1.0,5,inj,FGF,Secreted Signaling,1.74560189672933
+N2_reaEGC_wntEGC,1.0,5,inj,FN1,ECM-Receptor,0.8435010646309726
+N2_reaEGC_wntEGC,1.0,5,inj,GALANIN,Secreted Signaling,0.02324780831188669
+N2_reaEGC_wntEGC,1.0,5,inj,GAS,Secreted Signaling,0.36179882176078465
+N2_reaEGC_wntEGC,1.0,5,inj,GDF,Secreted Signaling,0.128338402347353
+N2_reaEGC_wntEGC,1.0,5,inj,GDNF,Secreted Signaling,0.00014540023322850548
+N2_reaEGC_wntEGC,1.0,5,inj,GPR,Secreted Signaling,0.09015382749825304
+N2_reaEGC_wntEGC,1.0,5,inj,GRN,Secreted Signaling,5.799348165170844
+N2_reaEGC_wntEGC,1.0,5,inj,HH,Secreted Signaling,0.00435427214053022
+N2_reaEGC_wntEGC,1.0,5,inj,HSPG,ECM-Receptor,0.283826075149057
+N2_reaEGC_wntEGC,1.0,5,inj,JAM,Cell-Cell Contact,3.5628352549896913
+N2_reaEGC_wntEGC,1.0,5,inj,L1CAM,Cell-Cell Contact,16.205033169714486
+N2_reaEGC_wntEGC,1.0,5,inj,LAMININ,ECM-Receptor,8.994321921569615
+N2_reaEGC_wntEGC,1.0,5,inj,MAG,Cell-Cell Contact,5.916394318739988e-05
+N2_reaEGC_wntEGC,1.0,5,inj,MPZ,Cell-Cell Contact,0.0700786147520481
+N2_reaEGC_wntEGC,1.0,5,inj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,inj,NCAM,Cell-Cell Contact,7.247500810189795
+N2_reaEGC_wntEGC,1.0,5,inj,NEGR,Cell-Cell Contact,0.11431945678512592
+N2_reaEGC_wntEGC,1.0,5,inj,NGL,Cell-Cell Contact,0.3059582556170271
+N2_reaEGC_wntEGC,1.0,5,inj,NMU,Secreted Signaling,0.00015604106736409712
+N2_reaEGC_wntEGC,1.0,5,inj,NOTCH,Cell-Cell Contact,0.011515484858813829
+N2_reaEGC_wntEGC,1.0,5,inj,NPFF,Secreted Signaling,0.0008911039606387432
+N2_reaEGC_wntEGC,1.0,5,inj,NPR2,Secreted Signaling,0.0064260094719047435
+N2_reaEGC_wntEGC,1.0,5,inj,NPW-B,Secreted Signaling,0.002416909376897087
+N2_reaEGC_wntEGC,1.0,5,inj,NPY,Secreted Signaling,0.3631607415113818
+N2_reaEGC_wntEGC,1.0,5,inj,NRG,Secreted Signaling,1.32732829492583
+N2_reaEGC_wntEGC,1.0,5,inj,NRXN,Cell-Cell Contact,21.302436792256636
+N2_reaEGC_wntEGC,1.0,5,inj,NTS,Secreted Signaling,0.6500492669602247
+N2_reaEGC_wntEGC,1.0,5,inj,PARs,Secreted Signaling,0.002162603235338088
+N2_reaEGC_wntEGC,1.0,5,inj,PDGF,Secreted Signaling,0.5362264301873969
+N2_reaEGC_wntEGC,1.0,5,inj,PECAM1,Cell-Cell Contact,0.0001394419379110292
+N2_reaEGC_wntEGC,1.0,5,inj,PROS,Secreted Signaling,0.11359170755110626
+N2_reaEGC_wntEGC,1.0,5,inj,PSAP,Secreted Signaling,21.11446454141327
+N2_reaEGC_wntEGC,1.0,5,inj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,inj,PTPRM,Cell-Cell Contact,0.04381196300602229
+N2_reaEGC_wntEGC,1.0,5,inj,RELN,ECM-Receptor,0.07891547502745913
+N2_reaEGC_wntEGC,1.0,5,inj,SEMA3,Secreted Signaling,2.8589892485248463
+N2_reaEGC_wntEGC,1.0,5,inj,SEMA4,Cell-Cell Contact,2.4770149108521626
+N2_reaEGC_wntEGC,1.0,5,inj,SEMA5,Cell-Cell Contact,10.051602489127385
+N2_reaEGC_wntEGC,1.0,5,inj,SEMA6,Cell-Cell Contact,4.422011383589158
+N2_reaEGC_wntEGC,1.0,5,inj,SEMATOSTATIN,Secreted Signaling,0.9004588208620823
+N2_reaEGC_wntEGC,1.0,5,inj,TAC,Secreted Signaling,0.034916545867170086
+N2_reaEGC_wntEGC,1.0,5,inj,TENASCIN,ECM-Receptor,3.1847751077833304
+N2_reaEGC_wntEGC,1.0,5,inj,TGFb,Secreted Signaling,0.027349848817301493
+N2_reaEGC_wntEGC,1.0,5,inj,THBS,ECM-Receptor,4.982542649698083
+N2_reaEGC_wntEGC,1.0,5,inj,THY1,Cell-Cell Contact,0.00018757357707738183
+N2_reaEGC_wntEGC,1.0,5,inj,UCN,Secreted Signaling,0.0008253796684939816
+N2_reaEGC_wntEGC,1.0,5,inj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,inj,VEGF,Secreted Signaling,0.051608212859610945
+N2_reaEGC_wntEGC,1.0,5,inj,VIP,Secreted Signaling,0.012101094474549563
+N2_reaEGC_wntEGC,1.0,5,inj,VISTA,Cell-Cell Contact,1.2051176326736484
+N2_reaEGC_wntEGC,1.0,5,inj,WNT,Secreted Signaling,31.57561561655419
+N2_reaEGC_wntEGC,1.0,5,inj,ncWNT,Secreted Signaling,4.1943252386859795
+N1_sfrpEGC_VLMC,1.0,5,uninj,ACTIVIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,AGRN,ECM-Receptor,8.329607683261031
+N1_sfrpEGC_VLMC,1.0,5,uninj,AGT,Secreted Signaling,0.01728299077106236
+N1_sfrpEGC_VLMC,1.0,5,uninj,ANGPT,Secreted Signaling,0.004241354200378572
+N1_sfrpEGC_VLMC,1.0,5,uninj,ANGPTL,Secreted Signaling,2.556398273182794
+N1_sfrpEGC_VLMC,1.0,5,uninj,BAG,Secreted Signaling,0.013234025992728115
+N1_sfrpEGC_VLMC,1.0,5,uninj,BMP,Secreted Signaling,0.715215900312481
+N1_sfrpEGC_VLMC,1.0,5,uninj,CALCR,Secreted Signaling,0.12965622872043664
+N1_sfrpEGC_VLMC,1.0,5,uninj,CCK,Secreted Signaling,0.08798632776474176
+N1_sfrpEGC_VLMC,1.0,5,uninj,CCL,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,CD34,Cell-Cell Contact,0.06634557973315204
+N1_sfrpEGC_VLMC,1.0,5,uninj,CD40,Secreted Signaling,0.0006195923208613197
+N1_sfrpEGC_VLMC,1.0,5,uninj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,CDH,Cell-Cell Contact,7.603563083341446
+N1_sfrpEGC_VLMC,1.0,5,uninj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,CDH5,Cell-Cell Contact,0.024142516053206203
+N1_sfrpEGC_VLMC,1.0,5,uninj,CLDN,Cell-Cell Contact,0.005199486217648856
+N1_sfrpEGC_VLMC,1.0,5,uninj,CNTN,Cell-Cell Contact,7.815265912935969
+N1_sfrpEGC_VLMC,1.0,5,uninj,COLLAGEN,ECM-Receptor,0.7666239329356382
+N1_sfrpEGC_VLMC,1.0,5,uninj,CSPG4,Cell-Cell Contact,8.468017072989615e-05
+N1_sfrpEGC_VLMC,1.0,5,uninj,CXCL,Secreted Signaling,0.028903417909312473
+N1_sfrpEGC_VLMC,1.0,5,uninj,EDN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,EGF,Secreted Signaling,0.004862042831583283
+N1_sfrpEGC_VLMC,1.0,5,uninj,EPHA,Cell-Cell Contact,3.9453131908964805
+N1_sfrpEGC_VLMC,1.0,5,uninj,EPHB,Cell-Cell Contact,21.623674547828774
+N1_sfrpEGC_VLMC,1.0,5,uninj,ESAM,Cell-Cell Contact,0.04061688157006993
+N1_sfrpEGC_VLMC,1.0,5,uninj,FGF,Secreted Signaling,6.524257835006307
+N1_sfrpEGC_VLMC,1.0,5,uninj,FN1,ECM-Receptor,0.07944838706791928
+N1_sfrpEGC_VLMC,1.0,5,uninj,GALANIN,Secreted Signaling,0.01305654091370509
+N1_sfrpEGC_VLMC,1.0,5,uninj,GAS,Secreted Signaling,0.004768722875084144
+N1_sfrpEGC_VLMC,1.0,5,uninj,GDF,Secreted Signaling,0.6216221447428466
+N1_sfrpEGC_VLMC,1.0,5,uninj,GDNF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,GPR,Secreted Signaling,0.10121840822139572
+N1_sfrpEGC_VLMC,1.0,5,uninj,GRN,Secreted Signaling,8.369599874414511
+N1_sfrpEGC_VLMC,1.0,5,uninj,HH,Secreted Signaling,0.00029949145804528555
+N1_sfrpEGC_VLMC,1.0,5,uninj,HSPG,ECM-Receptor,0.23197124453448484
+N1_sfrpEGC_VLMC,1.0,5,uninj,JAM,Cell-Cell Contact,1.092499939366134
+N1_sfrpEGC_VLMC,1.0,5,uninj,L1CAM,Cell-Cell Contact,4.143363131356545
+N1_sfrpEGC_VLMC,1.0,5,uninj,LAMININ,ECM-Receptor,16.376184418413743
+N1_sfrpEGC_VLMC,1.0,5,uninj,MAG,Cell-Cell Contact,5.6234360605283966e-05
+N1_sfrpEGC_VLMC,1.0,5,uninj,MPZ,Cell-Cell Contact,0.00020392098563437746
+N1_sfrpEGC_VLMC,1.0,5,uninj,MSTN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,NCAM,Cell-Cell Contact,4.455681614771221
+N1_sfrpEGC_VLMC,1.0,5,uninj,NEGR,Cell-Cell Contact,0.4304917546550469
+N1_sfrpEGC_VLMC,1.0,5,uninj,NGL,Cell-Cell Contact,0.42418982241021325
+N1_sfrpEGC_VLMC,1.0,5,uninj,NMU,Secreted Signaling,0.006111905810923736
+N1_sfrpEGC_VLMC,1.0,5,uninj,NOTCH,Cell-Cell Contact,0.18114010775005582
+N1_sfrpEGC_VLMC,1.0,5,uninj,NPFF,Secreted Signaling,0.00046512895913816525
+N1_sfrpEGC_VLMC,1.0,5,uninj,NPR2,Secreted Signaling,0.001734695974491394
+N1_sfrpEGC_VLMC,1.0,5,uninj,NPW-B,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,NPY,Secreted Signaling,0.31747398401745325
+N1_sfrpEGC_VLMC,1.0,5,uninj,NRG,Secreted Signaling,2.3419469401907826
+N1_sfrpEGC_VLMC,1.0,5,uninj,NRXN,Cell-Cell Contact,35.34743262607638
+N1_sfrpEGC_VLMC,1.0,5,uninj,NTS,Secreted Signaling,1.4635548970408432
+N1_sfrpEGC_VLMC,1.0,5,uninj,PARs,Secreted Signaling,0.0007224671680512931
+N1_sfrpEGC_VLMC,1.0,5,uninj,PDGF,Secreted Signaling,0.06025855808143549
+N1_sfrpEGC_VLMC,1.0,5,uninj,PECAM1,Cell-Cell Contact,0.01611989211773087
+N1_sfrpEGC_VLMC,1.0,5,uninj,PROS,Secreted Signaling,0.6804114195640855
+N1_sfrpEGC_VLMC,1.0,5,uninj,PSAP,Secreted Signaling,36.74585741379467
+N1_sfrpEGC_VLMC,1.0,5,uninj,PTH,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,PTPRM,Cell-Cell Contact,0.17903681646345374
+N1_sfrpEGC_VLMC,1.0,5,uninj,RELN,ECM-Receptor,0.0014348143789003733
+N1_sfrpEGC_VLMC,1.0,5,uninj,SEMA3,Secreted Signaling,3.158821469798039
+N1_sfrpEGC_VLMC,1.0,5,uninj,SEMA4,Cell-Cell Contact,3.3078904894596155
+N1_sfrpEGC_VLMC,1.0,5,uninj,SEMA5,Cell-Cell Contact,13.360335889955467
+N1_sfrpEGC_VLMC,1.0,5,uninj,SEMA6,Cell-Cell Contact,8.468231219779494
+N1_sfrpEGC_VLMC,1.0,5,uninj,SEMATOSTATIN,Secreted Signaling,0.1259890752333609
+N1_sfrpEGC_VLMC,1.0,5,uninj,TAC,Secreted Signaling,0.005953969426416164
+N1_sfrpEGC_VLMC,1.0,5,uninj,TENASCIN,ECM-Receptor,3.3886480955184513
+N1_sfrpEGC_VLMC,1.0,5,uninj,TGFb,Secreted Signaling,0.004369223479649915
+N1_sfrpEGC_VLMC,1.0,5,uninj,THBS,ECM-Receptor,3.2651873294584304
+N1_sfrpEGC_VLMC,1.0,5,uninj,THY1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,UCN,Secreted Signaling,0.07743691721958615
+N1_sfrpEGC_VLMC,1.0,5,uninj,UROTENSIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,1.0,5,uninj,VEGF,Secreted Signaling,0.013953272268054531
+N1_sfrpEGC_VLMC,1.0,5,uninj,VIP,Secreted Signaling,0.0065987724485037915
+N1_sfrpEGC_VLMC,1.0,5,uninj,VISTA,Cell-Cell Contact,0.6617245992322336
+N1_sfrpEGC_VLMC,1.0,5,uninj,WNT,Secreted Signaling,56.30043035617111
+N1_sfrpEGC_VLMC,1.0,5,uninj,ncWNT,Secreted Signaling,1.4241567423364931
+N2_reaEGC_wntEGC,1.0,5,uninj,ACTIVIN,Secreted Signaling,0.06571452174761415
+N2_reaEGC_wntEGC,1.0,5,uninj,ADIPONECTIN,Secreted Signaling,0.007282430978043617
+N2_reaEGC_wntEGC,1.0,5,uninj,AGRN,ECM-Receptor,4.048437339625137
+N2_reaEGC_wntEGC,1.0,5,uninj,AGT,Secreted Signaling,0.0030960611215524645
+N2_reaEGC_wntEGC,1.0,5,uninj,ANGPT,Secreted Signaling,0.021759159890324502
+N2_reaEGC_wntEGC,1.0,5,uninj,ANGPTL,Secreted Signaling,1.677304869196252
+N2_reaEGC_wntEGC,1.0,5,uninj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,BMP,Secreted Signaling,0.18781941191522053
+N2_reaEGC_wntEGC,1.0,5,uninj,CALCR,Secreted Signaling,0.18698216073862145
+N2_reaEGC_wntEGC,1.0,5,uninj,CCK,Secreted Signaling,0.06625848574156037
+N2_reaEGC_wntEGC,1.0,5,uninj,CCL,Secreted Signaling,0.0002684351540780755
+N2_reaEGC_wntEGC,1.0,5,uninj,CD34,Cell-Cell Contact,0.013863162502694183
+N2_reaEGC_wntEGC,1.0,5,uninj,CD40,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,CD45,Cell-Cell Contact,0.001245781201606417
+N2_reaEGC_wntEGC,1.0,5,uninj,CDH,Cell-Cell Contact,4.8255400813388
+N2_reaEGC_wntEGC,1.0,5,uninj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,CDH5,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,CLDN,Cell-Cell Contact,0.0011288559816921295
+N2_reaEGC_wntEGC,1.0,5,uninj,CNTN,Cell-Cell Contact,5.7068574274488775
+N2_reaEGC_wntEGC,1.0,5,uninj,COLLAGEN,ECM-Receptor,1.6902400827821447
+N2_reaEGC_wntEGC,1.0,5,uninj,CSPG4,Cell-Cell Contact,0.01324481287235229
+N2_reaEGC_wntEGC,1.0,5,uninj,CXCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,EDN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,EGF,Secreted Signaling,0.024538852076523766
+N2_reaEGC_wntEGC,1.0,5,uninj,EPHA,Cell-Cell Contact,8.808016879916316
+N2_reaEGC_wntEGC,1.0,5,uninj,EPHB,Cell-Cell Contact,5.410655044326852
+N2_reaEGC_wntEGC,1.0,5,uninj,ESAM,Cell-Cell Contact,0.014078809525403678
+N2_reaEGC_wntEGC,1.0,5,uninj,FGF,Secreted Signaling,2.2783316526776956
+N2_reaEGC_wntEGC,1.0,5,uninj,FN1,ECM-Receptor,0.3774954118542725
+N2_reaEGC_wntEGC,1.0,5,uninj,GALANIN,Secreted Signaling,0.022864201440099152
+N2_reaEGC_wntEGC,1.0,5,uninj,GAS,Secreted Signaling,0.3028542405194322
+N2_reaEGC_wntEGC,1.0,5,uninj,GDF,Secreted Signaling,0.225200422646388
+N2_reaEGC_wntEGC,1.0,5,uninj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,GPR,Secreted Signaling,0.3733196388618157
+N2_reaEGC_wntEGC,1.0,5,uninj,GRN,Secreted Signaling,2.3608583993155503
+N2_reaEGC_wntEGC,1.0,5,uninj,HH,Secreted Signaling,0.008968205806862063
+N2_reaEGC_wntEGC,1.0,5,uninj,HSPG,ECM-Receptor,0.1870942404061313
+N2_reaEGC_wntEGC,1.0,5,uninj,JAM,Cell-Cell Contact,2.6155699061504487
+N2_reaEGC_wntEGC,1.0,5,uninj,L1CAM,Cell-Cell Contact,4.380321721350428
+N2_reaEGC_wntEGC,1.0,5,uninj,LAMININ,ECM-Receptor,8.272862364031646
+N2_reaEGC_wntEGC,1.0,5,uninj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,MPZ,Cell-Cell Contact,0.03986531809410392
+N2_reaEGC_wntEGC,1.0,5,uninj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,NCAM,Cell-Cell Contact,4.455204455971839
+N2_reaEGC_wntEGC,1.0,5,uninj,NEGR,Cell-Cell Contact,0.08737785818817372
+N2_reaEGC_wntEGC,1.0,5,uninj,NGL,Cell-Cell Contact,0.4793251363131581
+N2_reaEGC_wntEGC,1.0,5,uninj,NMU,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,NOTCH,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,NPFF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,NPR2,Secreted Signaling,0.0031007352331146594
+N2_reaEGC_wntEGC,1.0,5,uninj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,NPY,Secreted Signaling,0.3722364019989549
+N2_reaEGC_wntEGC,1.0,5,uninj,NRG,Secreted Signaling,2.210163287441755
+N2_reaEGC_wntEGC,1.0,5,uninj,NRXN,Cell-Cell Contact,19.1694185561078
+N2_reaEGC_wntEGC,1.0,5,uninj,NTS,Secreted Signaling,0.28536460809748054
+N2_reaEGC_wntEGC,1.0,5,uninj,PARs,Secreted Signaling,0.008305392522997756
+N2_reaEGC_wntEGC,1.0,5,uninj,PDGF,Secreted Signaling,0.005198356889655429
+N2_reaEGC_wntEGC,1.0,5,uninj,PECAM1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,PROS,Secreted Signaling,0.25644885529011663
+N2_reaEGC_wntEGC,1.0,5,uninj,PSAP,Secreted Signaling,14.754528811810548
+N2_reaEGC_wntEGC,1.0,5,uninj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,PTPRM,Cell-Cell Contact,0.12845188002078373
+N2_reaEGC_wntEGC,1.0,5,uninj,RELN,ECM-Receptor,0.05001435581483877
+N2_reaEGC_wntEGC,1.0,5,uninj,SEMA3,Secreted Signaling,2.866782396411104
+N2_reaEGC_wntEGC,1.0,5,uninj,SEMA4,Cell-Cell Contact,3.658169907630635
+N2_reaEGC_wntEGC,1.0,5,uninj,SEMA5,Cell-Cell Contact,9.476830273929231
+N2_reaEGC_wntEGC,1.0,5,uninj,SEMA6,Cell-Cell Contact,7.854389463028466
+N2_reaEGC_wntEGC,1.0,5,uninj,SEMATOSTATIN,Secreted Signaling,0.9947516050198055
+N2_reaEGC_wntEGC,1.0,5,uninj,TAC,Secreted Signaling,0.017904446980218446
+N2_reaEGC_wntEGC,1.0,5,uninj,TENASCIN,ECM-Receptor,2.023666486009326
+N2_reaEGC_wntEGC,1.0,5,uninj,TGFb,Secreted Signaling,0.018281994206089995
+N2_reaEGC_wntEGC,1.0,5,uninj,THBS,ECM-Receptor,4.349689437138091
+N2_reaEGC_wntEGC,1.0,5,uninj,THY1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,UCN,Secreted Signaling,0.006247787029120271
+N2_reaEGC_wntEGC,1.0,5,uninj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,1.0,5,uninj,VEGF,Secreted Signaling,0.036771916159972315
+N2_reaEGC_wntEGC,1.0,5,uninj,VIP,Secreted Signaling,0.0009060929689032871
+N2_reaEGC_wntEGC,1.0,5,uninj,VISTA,Cell-Cell Contact,0.8143080887489321
+N2_reaEGC_wntEGC,1.0,5,uninj,WNT,Secreted Signaling,24.226134421784472
+N2_reaEGC_wntEGC,1.0,5,uninj,ncWNT,Secreted Signaling,1.3311949486574919
+N1_sfrpEGC_VLMC,2.0,10,inj,ACTIVIN,Secreted Signaling,0.036196860764600255
+N1_sfrpEGC_VLMC,2.0,10,inj,ADIPONECTIN,Secreted Signaling,0.0006370771927703261
+N1_sfrpEGC_VLMC,2.0,10,inj,AGRN,ECM-Receptor,17.554270531833204
+N1_sfrpEGC_VLMC,2.0,10,inj,AGT,Secreted Signaling,0.192297528594684
+N1_sfrpEGC_VLMC,2.0,10,inj,ANGPT,Secreted Signaling,0.021021722654856235
+N1_sfrpEGC_VLMC,2.0,10,inj,ANGPTL,Secreted Signaling,10.935906626472022
+N1_sfrpEGC_VLMC,2.0,10,inj,BAG,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,inj,BMP,Secreted Signaling,0.06181400762407924
+N1_sfrpEGC_VLMC,2.0,10,inj,CALCR,Secreted Signaling,0.21015438470897224
+N1_sfrpEGC_VLMC,2.0,10,inj,CCK,Secreted Signaling,0.049454857927934984
+N1_sfrpEGC_VLMC,2.0,10,inj,CCL,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,inj,CD34,Cell-Cell Contact,0.07121926930274586
+N1_sfrpEGC_VLMC,2.0,10,inj,CD40,Secreted Signaling,0.012875624552898111
+N1_sfrpEGC_VLMC,2.0,10,inj,CD45,Cell-Cell Contact,0.0030405793626468456
+N1_sfrpEGC_VLMC,2.0,10,inj,CDH,Cell-Cell Contact,23.8140718939719
+N1_sfrpEGC_VLMC,2.0,10,inj,CDH1,Cell-Cell Contact,0.004772328615296091
+N1_sfrpEGC_VLMC,2.0,10,inj,CDH5,Cell-Cell Contact,0.11443518373120933
+N1_sfrpEGC_VLMC,2.0,10,inj,CLDN,Cell-Cell Contact,0.04207217918822655
+N1_sfrpEGC_VLMC,2.0,10,inj,CNTN,Cell-Cell Contact,5.8468919384159665
+N1_sfrpEGC_VLMC,2.0,10,inj,COLLAGEN,ECM-Receptor,13.53558986139745
+N1_sfrpEGC_VLMC,2.0,10,inj,CSPG4,Cell-Cell Contact,0.04303095847543574
+N1_sfrpEGC_VLMC,2.0,10,inj,CXCL,Secreted Signaling,0.5574425251878886
+N1_sfrpEGC_VLMC,2.0,10,inj,EDN,Secreted Signaling,0.02890570199862762
+N1_sfrpEGC_VLMC,2.0,10,inj,EGF,Secreted Signaling,0.4567393450918911
+N1_sfrpEGC_VLMC,2.0,10,inj,EPHA,Cell-Cell Contact,10.42151787254503
+N1_sfrpEGC_VLMC,2.0,10,inj,EPHB,Cell-Cell Contact,20.662346523772086
+N1_sfrpEGC_VLMC,2.0,10,inj,ESAM,Cell-Cell Contact,0.041279621819693815
+N1_sfrpEGC_VLMC,2.0,10,inj,FGF,Secreted Signaling,9.24125289905825
+N1_sfrpEGC_VLMC,2.0,10,inj,FN1,ECM-Receptor,2.155869668162194
+N1_sfrpEGC_VLMC,2.0,10,inj,GALANIN,Secreted Signaling,0.033577992384913845
+N1_sfrpEGC_VLMC,2.0,10,inj,GAS,Secreted Signaling,1.3102834417001037
+N1_sfrpEGC_VLMC,2.0,10,inj,GDF,Secreted Signaling,0.682910524286279
+N1_sfrpEGC_VLMC,2.0,10,inj,GDNF,Secreted Signaling,0.0002860880705493513
+N1_sfrpEGC_VLMC,2.0,10,inj,GPR,Secreted Signaling,0.04980429083933664
+N1_sfrpEGC_VLMC,2.0,10,inj,GRN,Secreted Signaling,8.819643610788727
+N1_sfrpEGC_VLMC,2.0,10,inj,HH,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,inj,HSPG,ECM-Receptor,1.681782094566654
+N1_sfrpEGC_VLMC,2.0,10,inj,JAM,Cell-Cell Contact,7.803427409957882
+N1_sfrpEGC_VLMC,2.0,10,inj,L1CAM,Cell-Cell Contact,5.057252946462557
+N1_sfrpEGC_VLMC,2.0,10,inj,LAMININ,ECM-Receptor,17.009385964928832
+N1_sfrpEGC_VLMC,2.0,10,inj,MAG,Cell-Cell Contact,0.00046521568767151207
+N1_sfrpEGC_VLMC,2.0,10,inj,MPZ,Cell-Cell Contact,0.01387216425699621
+N1_sfrpEGC_VLMC,2.0,10,inj,MSTN,Secreted Signaling,0.014948912373197133
+N1_sfrpEGC_VLMC,2.0,10,inj,NCAM,Cell-Cell Contact,5.102565683142677
+N1_sfrpEGC_VLMC,2.0,10,inj,NEGR,Cell-Cell Contact,0.2432432915923588
+N1_sfrpEGC_VLMC,2.0,10,inj,NGL,Cell-Cell Contact,0.915958188339046
+N1_sfrpEGC_VLMC,2.0,10,inj,NMU,Secreted Signaling,0.0027121963995110736
+N1_sfrpEGC_VLMC,2.0,10,inj,NOTCH,Cell-Cell Contact,0.40249830085644495
+N1_sfrpEGC_VLMC,2.0,10,inj,NPFF,Secreted Signaling,0.006308274581115507
+N1_sfrpEGC_VLMC,2.0,10,inj,NPR2,Secreted Signaling,0.007101125527562114
+N1_sfrpEGC_VLMC,2.0,10,inj,NPW-B,Secreted Signaling,0.0006482338997135036
+N1_sfrpEGC_VLMC,2.0,10,inj,NPY,Secreted Signaling,0.25669016542539264
+N1_sfrpEGC_VLMC,2.0,10,inj,NRG,Secreted Signaling,2.495496892975545
+N1_sfrpEGC_VLMC,2.0,10,inj,NRXN,Cell-Cell Contact,23.976565093584277
+N1_sfrpEGC_VLMC,2.0,10,inj,NTS,Secreted Signaling,1.0852511632861546
+N1_sfrpEGC_VLMC,2.0,10,inj,PARs,Secreted Signaling,0.09590579755947119
+N1_sfrpEGC_VLMC,2.0,10,inj,PDGF,Secreted Signaling,0.34152089326603075
+N1_sfrpEGC_VLMC,2.0,10,inj,PECAM1,Cell-Cell Contact,0.03289419200166269
+N1_sfrpEGC_VLMC,2.0,10,inj,PROS,Secreted Signaling,3.4866146084520753
+N1_sfrpEGC_VLMC,2.0,10,inj,PSAP,Secreted Signaling,81.03046078309983
+N1_sfrpEGC_VLMC,2.0,10,inj,PTH,Secreted Signaling,0.0017114204061307637
+N1_sfrpEGC_VLMC,2.0,10,inj,PTPRM,Cell-Cell Contact,0.5839038158248138
+N1_sfrpEGC_VLMC,2.0,10,inj,RELN,ECM-Receptor,0.18160062425834184
+N1_sfrpEGC_VLMC,2.0,10,inj,SEMA3,Secreted Signaling,7.141947777546117
+N1_sfrpEGC_VLMC,2.0,10,inj,SEMA4,Cell-Cell Contact,4.88019114186031
+N1_sfrpEGC_VLMC,2.0,10,inj,SEMA5,Cell-Cell Contact,26.060104523192624
+N1_sfrpEGC_VLMC,2.0,10,inj,SEMA6,Cell-Cell Contact,7.196555583224656
+N1_sfrpEGC_VLMC,2.0,10,inj,SEMATOSTATIN,Secreted Signaling,0.6009810705906502
+N1_sfrpEGC_VLMC,2.0,10,inj,TAC,Secreted Signaling,0.189120837289337
+N1_sfrpEGC_VLMC,2.0,10,inj,TENASCIN,ECM-Receptor,11.302613380294822
+N1_sfrpEGC_VLMC,2.0,10,inj,TGFb,Secreted Signaling,0.018936450986033342
+N1_sfrpEGC_VLMC,2.0,10,inj,THBS,ECM-Receptor,14.20123334485836
+N1_sfrpEGC_VLMC,2.0,10,inj,THY1,Cell-Cell Contact,0.0035551189055882315
+N1_sfrpEGC_VLMC,2.0,10,inj,UCN,Secreted Signaling,0.058298243342107425
+N1_sfrpEGC_VLMC,2.0,10,inj,UROTENSIN,Secreted Signaling,0.000529785753499959
+N1_sfrpEGC_VLMC,2.0,10,inj,VEGF,Secreted Signaling,0.1597468922240251
+N1_sfrpEGC_VLMC,2.0,10,inj,VIP,Secreted Signaling,0.023273462638404536
+N1_sfrpEGC_VLMC,2.0,10,inj,VISTA,Cell-Cell Contact,0.8318979547203967
+N1_sfrpEGC_VLMC,2.0,10,inj,WNT,Secreted Signaling,48.275224236506745
+N1_sfrpEGC_VLMC,2.0,10,inj,ncWNT,Secreted Signaling,2.185243219935911
+N2_reaEGC_wntEGC,2.0,10,inj,ACTIVIN,Secreted Signaling,0.02576934920038771
+N2_reaEGC_wntEGC,2.0,10,inj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,AGRN,ECM-Receptor,5.193276581148626
+N2_reaEGC_wntEGC,2.0,10,inj,AGT,Secreted Signaling,0.01213699208736717
+N2_reaEGC_wntEGC,2.0,10,inj,ANGPT,Secreted Signaling,0.0033495022947684066
+N2_reaEGC_wntEGC,2.0,10,inj,ANGPTL,Secreted Signaling,3.212345884310523
+N2_reaEGC_wntEGC,2.0,10,inj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,BMP,Secreted Signaling,0.02593654944008128
+N2_reaEGC_wntEGC,2.0,10,inj,CALCR,Secreted Signaling,0.05898989158556658
+N2_reaEGC_wntEGC,2.0,10,inj,CCK,Secreted Signaling,0.02249955892860235
+N2_reaEGC_wntEGC,2.0,10,inj,CCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,CD34,Cell-Cell Contact,0.009794850086858473
+N2_reaEGC_wntEGC,2.0,10,inj,CD40,Secreted Signaling,0.011459307137083883
+N2_reaEGC_wntEGC,2.0,10,inj,CD45,Cell-Cell Contact,0.0029849060820614725
+N2_reaEGC_wntEGC,2.0,10,inj,CDH,Cell-Cell Contact,13.675791874886848
+N2_reaEGC_wntEGC,2.0,10,inj,CDH1,Cell-Cell Contact,0.00438235425900225
+N2_reaEGC_wntEGC,2.0,10,inj,CDH5,Cell-Cell Contact,0.00010397498575315132
+N2_reaEGC_wntEGC,2.0,10,inj,CLDN,Cell-Cell Contact,0.020043091079674058
+N2_reaEGC_wntEGC,2.0,10,inj,CNTN,Cell-Cell Contact,1.149119815811022
+N2_reaEGC_wntEGC,2.0,10,inj,COLLAGEN,ECM-Receptor,2.2115856677692016
+N2_reaEGC_wntEGC,2.0,10,inj,CSPG4,Cell-Cell Contact,0.0059526592905561
+N2_reaEGC_wntEGC,2.0,10,inj,CXCL,Secreted Signaling,0.23658080269970488
+N2_reaEGC_wntEGC,2.0,10,inj,EDN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,EGF,Secreted Signaling,0.42635583548958167
+N2_reaEGC_wntEGC,2.0,10,inj,EPHA,Cell-Cell Contact,5.909082625435192
+N2_reaEGC_wntEGC,2.0,10,inj,EPHB,Cell-Cell Contact,7.714523722742512
+N2_reaEGC_wntEGC,2.0,10,inj,ESAM,Cell-Cell Contact,7.051590729279471e-05
+N2_reaEGC_wntEGC,2.0,10,inj,FGF,Secreted Signaling,2.597028405931173
+N2_reaEGC_wntEGC,2.0,10,inj,FN1,ECM-Receptor,0.5960510691324834
+N2_reaEGC_wntEGC,2.0,10,inj,GALANIN,Secreted Signaling,0.013910827323591977
+N2_reaEGC_wntEGC,2.0,10,inj,GAS,Secreted Signaling,0.3889934348357027
+N2_reaEGC_wntEGC,2.0,10,inj,GDF,Secreted Signaling,0.0749467154212257
+N2_reaEGC_wntEGC,2.0,10,inj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,GPR,Secreted Signaling,0.03021373242233895
+N2_reaEGC_wntEGC,2.0,10,inj,GRN,Secreted Signaling,3.095426554914752
+N2_reaEGC_wntEGC,2.0,10,inj,HH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,HSPG,ECM-Receptor,0.44536936661686094
+N2_reaEGC_wntEGC,2.0,10,inj,JAM,Cell-Cell Contact,3.3557807821292847
+N2_reaEGC_wntEGC,2.0,10,inj,L1CAM,Cell-Cell Contact,1.5395938585121802
+N2_reaEGC_wntEGC,2.0,10,inj,LAMININ,ECM-Receptor,6.867399957102582
+N2_reaEGC_wntEGC,2.0,10,inj,MAG,Cell-Cell Contact,0.00016314568124657912
+N2_reaEGC_wntEGC,2.0,10,inj,MPZ,Cell-Cell Contact,0.012376018246225117
+N2_reaEGC_wntEGC,2.0,10,inj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,NCAM,Cell-Cell Contact,1.0279909654177615
+N2_reaEGC_wntEGC,2.0,10,inj,NEGR,Cell-Cell Contact,0.04014856852905708
+N2_reaEGC_wntEGC,2.0,10,inj,NGL,Cell-Cell Contact,0.20401039027327492
+N2_reaEGC_wntEGC,2.0,10,inj,NMU,Secreted Signaling,0.0009975442035296258
+N2_reaEGC_wntEGC,2.0,10,inj,NOTCH,Cell-Cell Contact,0.017341198380033257
+N2_reaEGC_wntEGC,2.0,10,inj,NPFF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,NPR2,Secreted Signaling,0.002369976274616785
+N2_reaEGC_wntEGC,2.0,10,inj,NPW-B,Secreted Signaling,0.0002550329251915427
+N2_reaEGC_wntEGC,2.0,10,inj,NPY,Secreted Signaling,0.08084063421032175
+N2_reaEGC_wntEGC,2.0,10,inj,NRG,Secreted Signaling,0.4674126983934116
+N2_reaEGC_wntEGC,2.0,10,inj,NRXN,Cell-Cell Contact,5.941161271669474
+N2_reaEGC_wntEGC,2.0,10,inj,NTS,Secreted Signaling,0.13209239483584154
+N2_reaEGC_wntEGC,2.0,10,inj,PARs,Secreted Signaling,0.07492069940777318
+N2_reaEGC_wntEGC,2.0,10,inj,PDGF,Secreted Signaling,0.0969788622869258
+N2_reaEGC_wntEGC,2.0,10,inj,PECAM1,Cell-Cell Contact,0.0005024204901462314
+N2_reaEGC_wntEGC,2.0,10,inj,PROS,Secreted Signaling,0.6813213102800979
+N2_reaEGC_wntEGC,2.0,10,inj,PSAP,Secreted Signaling,28.028167305000174
+N2_reaEGC_wntEGC,2.0,10,inj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,PTPRM,Cell-Cell Contact,0.0964051609053687
+N2_reaEGC_wntEGC,2.0,10,inj,RELN,ECM-Receptor,0.048675141665773324
+N2_reaEGC_wntEGC,2.0,10,inj,SEMA3,Secreted Signaling,3.068781450628447
+N2_reaEGC_wntEGC,2.0,10,inj,SEMA4,Cell-Cell Contact,1.0522852744787765
+N2_reaEGC_wntEGC,2.0,10,inj,SEMA5,Cell-Cell Contact,7.493039933708191
+N2_reaEGC_wntEGC,2.0,10,inj,SEMA6,Cell-Cell Contact,2.0155561009886367
+N2_reaEGC_wntEGC,2.0,10,inj,SEMATOSTATIN,Secreted Signaling,0.21021432266455592
+N2_reaEGC_wntEGC,2.0,10,inj,TAC,Secreted Signaling,0.05822870210643435
+N2_reaEGC_wntEGC,2.0,10,inj,TENASCIN,ECM-Receptor,4.300943956069739
+N2_reaEGC_wntEGC,2.0,10,inj,TGFb,Secreted Signaling,0.011214993979172125
+N2_reaEGC_wntEGC,2.0,10,inj,THBS,ECM-Receptor,4.118096764816375
+N2_reaEGC_wntEGC,2.0,10,inj,THY1,Cell-Cell Contact,0.001918077306030466
+N2_reaEGC_wntEGC,2.0,10,inj,UCN,Secreted Signaling,0.0007021935794720574
+N2_reaEGC_wntEGC,2.0,10,inj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,inj,VEGF,Secreted Signaling,0.03189358491851327
+N2_reaEGC_wntEGC,2.0,10,inj,VIP,Secreted Signaling,0.00748911925595766
+N2_reaEGC_wntEGC,2.0,10,inj,VISTA,Cell-Cell Contact,0.3542860779854861
+N2_reaEGC_wntEGC,2.0,10,inj,WNT,Secreted Signaling,18.735846411747648
+N2_reaEGC_wntEGC,2.0,10,inj,ncWNT,Secreted Signaling,1.5629095413499972
+N1_sfrpEGC_VLMC,2.0,10,uninj,ACTIVIN,Secreted Signaling,0.06440216354899732
+N1_sfrpEGC_VLMC,2.0,10,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,AGRN,ECM-Receptor,25.326788466228038
+N1_sfrpEGC_VLMC,2.0,10,uninj,AGT,Secreted Signaling,1.2757145304585944
+N1_sfrpEGC_VLMC,2.0,10,uninj,ANGPT,Secreted Signaling,0.052063291078107525
+N1_sfrpEGC_VLMC,2.0,10,uninj,ANGPTL,Secreted Signaling,13.010394311863351
+N1_sfrpEGC_VLMC,2.0,10,uninj,BAG,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,BMP,Secreted Signaling,0.587176700200731
+N1_sfrpEGC_VLMC,2.0,10,uninj,CALCR,Secreted Signaling,0.24798974614287306
+N1_sfrpEGC_VLMC,2.0,10,uninj,CCK,Secreted Signaling,0.07644082852365139
+N1_sfrpEGC_VLMC,2.0,10,uninj,CCL,Secreted Signaling,0.0012951018683747513
+N1_sfrpEGC_VLMC,2.0,10,uninj,CD34,Cell-Cell Contact,0.11303309812636209
+N1_sfrpEGC_VLMC,2.0,10,uninj,CD40,Secreted Signaling,0.05153252846392143
+N1_sfrpEGC_VLMC,2.0,10,uninj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,CDH,Cell-Cell Contact,12.562470171038209
+N1_sfrpEGC_VLMC,2.0,10,uninj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,CDH5,Cell-Cell Contact,0.06396839500927161
+N1_sfrpEGC_VLMC,2.0,10,uninj,CLDN,Cell-Cell Contact,0.028067555814027353
+N1_sfrpEGC_VLMC,2.0,10,uninj,CNTN,Cell-Cell Contact,13.975881130033702
+N1_sfrpEGC_VLMC,2.0,10,uninj,COLLAGEN,ECM-Receptor,18.33731918566696
+N1_sfrpEGC_VLMC,2.0,10,uninj,CSPG4,Cell-Cell Contact,0.011119098521189932
+N1_sfrpEGC_VLMC,2.0,10,uninj,CXCL,Secreted Signaling,1.5772026553793128
+N1_sfrpEGC_VLMC,2.0,10,uninj,EDN,Secreted Signaling,0.029494037923277774
+N1_sfrpEGC_VLMC,2.0,10,uninj,EGF,Secreted Signaling,0.4749955313547742
+N1_sfrpEGC_VLMC,2.0,10,uninj,EPHA,Cell-Cell Contact,12.19828498451341
+N1_sfrpEGC_VLMC,2.0,10,uninj,EPHB,Cell-Cell Contact,59.2452324502158
+N1_sfrpEGC_VLMC,2.0,10,uninj,ESAM,Cell-Cell Contact,0.03328152107736957
+N1_sfrpEGC_VLMC,2.0,10,uninj,FGF,Secreted Signaling,15.954892748825207
+N1_sfrpEGC_VLMC,2.0,10,uninj,FN1,ECM-Receptor,4.411124435758261
+N1_sfrpEGC_VLMC,2.0,10,uninj,GALANIN,Secreted Signaling,0.04236381076672559
+N1_sfrpEGC_VLMC,2.0,10,uninj,GAS,Secreted Signaling,1.4295239186035924
+N1_sfrpEGC_VLMC,2.0,10,uninj,GDF,Secreted Signaling,0.5749962973620718
+N1_sfrpEGC_VLMC,2.0,10,uninj,GDNF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,GPR,Secreted Signaling,0.2312057062918481
+N1_sfrpEGC_VLMC,2.0,10,uninj,GRN,Secreted Signaling,5.706068821970946
+N1_sfrpEGC_VLMC,2.0,10,uninj,HH,Secreted Signaling,0.008608950417691599
+N1_sfrpEGC_VLMC,2.0,10,uninj,HSPG,ECM-Receptor,7.700314057643624
+N1_sfrpEGC_VLMC,2.0,10,uninj,JAM,Cell-Cell Contact,4.380656249095947
+N1_sfrpEGC_VLMC,2.0,10,uninj,L1CAM,Cell-Cell Contact,11.350371742681286
+N1_sfrpEGC_VLMC,2.0,10,uninj,LAMININ,ECM-Receptor,35.03914276678345
+N1_sfrpEGC_VLMC,2.0,10,uninj,MAG,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,MPZ,Cell-Cell Contact,0.005898975413849575
+N1_sfrpEGC_VLMC,2.0,10,uninj,MSTN,Secreted Signaling,0.007173669068314931
+N1_sfrpEGC_VLMC,2.0,10,uninj,NCAM,Cell-Cell Contact,9.376881873405155
+N1_sfrpEGC_VLMC,2.0,10,uninj,NEGR,Cell-Cell Contact,0.4012661154841026
+N1_sfrpEGC_VLMC,2.0,10,uninj,NGL,Cell-Cell Contact,1.6358654402315513
+N1_sfrpEGC_VLMC,2.0,10,uninj,NMU,Secreted Signaling,0.023316269800480918
+N1_sfrpEGC_VLMC,2.0,10,uninj,NOTCH,Cell-Cell Contact,0.07943389686330234
+N1_sfrpEGC_VLMC,2.0,10,uninj,NPFF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,NPR2,Secreted Signaling,0.017795437207618482
+N1_sfrpEGC_VLMC,2.0,10,uninj,NPW-B,Secreted Signaling,2.266053478713853e-06
+N1_sfrpEGC_VLMC,2.0,10,uninj,NPY,Secreted Signaling,0.23977773533621885
+N1_sfrpEGC_VLMC,2.0,10,uninj,NRG,Secreted Signaling,7.059688402879914
+N1_sfrpEGC_VLMC,2.0,10,uninj,NRXN,Cell-Cell Contact,56.982479534654125
+N1_sfrpEGC_VLMC,2.0,10,uninj,NTS,Secreted Signaling,0.9736605029375032
+N1_sfrpEGC_VLMC,2.0,10,uninj,PARs,Secreted Signaling,0.45764350353217526
+N1_sfrpEGC_VLMC,2.0,10,uninj,PDGF,Secreted Signaling,0.7321587874603797
+N1_sfrpEGC_VLMC,2.0,10,uninj,PECAM1,Cell-Cell Contact,0.04212704862721852
+N1_sfrpEGC_VLMC,2.0,10,uninj,PROS,Secreted Signaling,2.9720910767099373
+N1_sfrpEGC_VLMC,2.0,10,uninj,PSAP,Secreted Signaling,113.79702999467298
+N1_sfrpEGC_VLMC,2.0,10,uninj,PTH,Secreted Signaling,0.005709520875315026
+N1_sfrpEGC_VLMC,2.0,10,uninj,PTPRM,Cell-Cell Contact,1.4249531581688961
+N1_sfrpEGC_VLMC,2.0,10,uninj,RELN,ECM-Receptor,0.08708458596012626
+N1_sfrpEGC_VLMC,2.0,10,uninj,SEMA3,Secreted Signaling,10.464661464854052
+N1_sfrpEGC_VLMC,2.0,10,uninj,SEMA4,Cell-Cell Contact,9.750921298164245
+N1_sfrpEGC_VLMC,2.0,10,uninj,SEMA5,Cell-Cell Contact,53.728675548612614
+N1_sfrpEGC_VLMC,2.0,10,uninj,SEMA6,Cell-Cell Contact,19.952569829019122
+N1_sfrpEGC_VLMC,2.0,10,uninj,SEMATOSTATIN,Secreted Signaling,0.7517761547893184
+N1_sfrpEGC_VLMC,2.0,10,uninj,TAC,Secreted Signaling,0.08863778397424606
+N1_sfrpEGC_VLMC,2.0,10,uninj,TENASCIN,ECM-Receptor,11.503310382565918
+N1_sfrpEGC_VLMC,2.0,10,uninj,TGFb,Secreted Signaling,0.09552159760820532
+N1_sfrpEGC_VLMC,2.0,10,uninj,THBS,ECM-Receptor,19.77913879675102
+N1_sfrpEGC_VLMC,2.0,10,uninj,THY1,Cell-Cell Contact,0.0014891155599933866
+N1_sfrpEGC_VLMC,2.0,10,uninj,UCN,Secreted Signaling,0.1749589029527343
+N1_sfrpEGC_VLMC,2.0,10,uninj,UROTENSIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,2.0,10,uninj,VEGF,Secreted Signaling,0.9917448592736757
+N1_sfrpEGC_VLMC,2.0,10,uninj,VIP,Secreted Signaling,0.001512952415360174
+N1_sfrpEGC_VLMC,2.0,10,uninj,VISTA,Cell-Cell Contact,2.841240650705948
+N1_sfrpEGC_VLMC,2.0,10,uninj,WNT,Secreted Signaling,157.03813134464144
+N1_sfrpEGC_VLMC,2.0,10,uninj,ncWNT,Secreted Signaling,0.33453285547853007
+N2_reaEGC_wntEGC,2.0,10,uninj,ACTIVIN,Secreted Signaling,0.058860999198001855
+N2_reaEGC_wntEGC,2.0,10,uninj,ADIPONECTIN,Secreted Signaling,0.010215877529203403
+N2_reaEGC_wntEGC,2.0,10,uninj,AGRN,ECM-Receptor,5.541127519771507
+N2_reaEGC_wntEGC,2.0,10,uninj,AGT,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,ANGPT,Secreted Signaling,0.020095422592113978
+N2_reaEGC_wntEGC,2.0,10,uninj,ANGPTL,Secreted Signaling,3.7174214691858602
+N2_reaEGC_wntEGC,2.0,10,uninj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,BMP,Secreted Signaling,0.18851666478394752
+N2_reaEGC_wntEGC,2.0,10,uninj,CALCR,Secreted Signaling,0.15341088451286367
+N2_reaEGC_wntEGC,2.0,10,uninj,CCK,Secreted Signaling,0.03245619083954315
+N2_reaEGC_wntEGC,2.0,10,uninj,CCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,CD34,Cell-Cell Contact,0.00514499104962182
+N2_reaEGC_wntEGC,2.0,10,uninj,CD40,Secreted Signaling,0.003588419148805083
+N2_reaEGC_wntEGC,2.0,10,uninj,CD45,Cell-Cell Contact,0.0023961048696590596
+N2_reaEGC_wntEGC,2.0,10,uninj,CDH,Cell-Cell Contact,6.498977950614467
+N2_reaEGC_wntEGC,2.0,10,uninj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,CDH5,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,CLDN,Cell-Cell Contact,0.016493543058500204
+N2_reaEGC_wntEGC,2.0,10,uninj,CNTN,Cell-Cell Contact,6.323542884363218
+N2_reaEGC_wntEGC,2.0,10,uninj,COLLAGEN,ECM-Receptor,4.624380947902564
+N2_reaEGC_wntEGC,2.0,10,uninj,CSPG4,Cell-Cell Contact,0.0027645621926415064
+N2_reaEGC_wntEGC,2.0,10,uninj,CXCL,Secreted Signaling,0.3020936554434183
+N2_reaEGC_wntEGC,2.0,10,uninj,EDN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,EGF,Secreted Signaling,0.04362199678266136
+N2_reaEGC_wntEGC,2.0,10,uninj,EPHA,Cell-Cell Contact,12.773127103165018
+N2_reaEGC_wntEGC,2.0,10,uninj,EPHB,Cell-Cell Contact,5.103508660043233
+N2_reaEGC_wntEGC,2.0,10,uninj,ESAM,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,FGF,Secreted Signaling,4.720554094112932
+N2_reaEGC_wntEGC,2.0,10,uninj,FN1,ECM-Receptor,1.6746832332642319
+N2_reaEGC_wntEGC,2.0,10,uninj,GALANIN,Secreted Signaling,0.029510170146820502
+N2_reaEGC_wntEGC,2.0,10,uninj,GAS,Secreted Signaling,0.5237498982805524
+N2_reaEGC_wntEGC,2.0,10,uninj,GDF,Secreted Signaling,0.3938549902320811
+N2_reaEGC_wntEGC,2.0,10,uninj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,GPR,Secreted Signaling,0.09099991700457027
+N2_reaEGC_wntEGC,2.0,10,uninj,GRN,Secreted Signaling,7.014674850775639
+N2_reaEGC_wntEGC,2.0,10,uninj,HH,Secreted Signaling,0.004991357725054331
+N2_reaEGC_wntEGC,2.0,10,uninj,HSPG,ECM-Receptor,0.3369802249467514
+N2_reaEGC_wntEGC,2.0,10,uninj,JAM,Cell-Cell Contact,6.175981133225631
+N2_reaEGC_wntEGC,2.0,10,uninj,L1CAM,Cell-Cell Contact,11.261668991384237
+N2_reaEGC_wntEGC,2.0,10,uninj,LAMININ,ECM-Receptor,12.424608263558932
+N2_reaEGC_wntEGC,2.0,10,uninj,MAG,Cell-Cell Contact,0.0002690206028330544
+N2_reaEGC_wntEGC,2.0,10,uninj,MPZ,Cell-Cell Contact,0.05734191773023799
+N2_reaEGC_wntEGC,2.0,10,uninj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,NCAM,Cell-Cell Contact,6.521863133151989
+N2_reaEGC_wntEGC,2.0,10,uninj,NEGR,Cell-Cell Contact,0.052603717267204045
+N2_reaEGC_wntEGC,2.0,10,uninj,NGL,Cell-Cell Contact,0.34941368969679887
+N2_reaEGC_wntEGC,2.0,10,uninj,NMU,Secreted Signaling,0.001357814052540041
+N2_reaEGC_wntEGC,2.0,10,uninj,NOTCH,Cell-Cell Contact,0.07563315082396473
+N2_reaEGC_wntEGC,2.0,10,uninj,NPFF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,NPR2,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,NPY,Secreted Signaling,0.1464157835317132
+N2_reaEGC_wntEGC,2.0,10,uninj,NRG,Secreted Signaling,1.0054340242275959
+N2_reaEGC_wntEGC,2.0,10,uninj,NRXN,Cell-Cell Contact,32.4223189198981
+N2_reaEGC_wntEGC,2.0,10,uninj,NTS,Secreted Signaling,0.8657172528455274
+N2_reaEGC_wntEGC,2.0,10,uninj,PARs,Secreted Signaling,0.20278532593591483
+N2_reaEGC_wntEGC,2.0,10,uninj,PDGF,Secreted Signaling,0.942216380734356
+N2_reaEGC_wntEGC,2.0,10,uninj,PECAM1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,PROS,Secreted Signaling,0.29585105669887357
+N2_reaEGC_wntEGC,2.0,10,uninj,PSAP,Secreted Signaling,41.93193488876144
+N2_reaEGC_wntEGC,2.0,10,uninj,PTH,Secreted Signaling,0.00725973621273893
+N2_reaEGC_wntEGC,2.0,10,uninj,PTPRM,Cell-Cell Contact,0.1328816183149124
+N2_reaEGC_wntEGC,2.0,10,uninj,RELN,ECM-Receptor,0.0578732908853232
+N2_reaEGC_wntEGC,2.0,10,uninj,SEMA3,Secreted Signaling,3.937030874420358
+N2_reaEGC_wntEGC,2.0,10,uninj,SEMA4,Cell-Cell Contact,4.155532137573091
+N2_reaEGC_wntEGC,2.0,10,uninj,SEMA5,Cell-Cell Contact,13.834815325110334
+N2_reaEGC_wntEGC,2.0,10,uninj,SEMA6,Cell-Cell Contact,8.498370000593852
+N2_reaEGC_wntEGC,2.0,10,uninj,SEMATOSTATIN,Secreted Signaling,0.7864525087824533
+N2_reaEGC_wntEGC,2.0,10,uninj,TAC,Secreted Signaling,0.024674491511277204
+N2_reaEGC_wntEGC,2.0,10,uninj,TENASCIN,ECM-Receptor,7.673801357448118
+N2_reaEGC_wntEGC,2.0,10,uninj,TGFb,Secreted Signaling,0.03676469936634384
+N2_reaEGC_wntEGC,2.0,10,uninj,THBS,ECM-Receptor,13.33696414635821
+N2_reaEGC_wntEGC,2.0,10,uninj,THY1,Cell-Cell Contact,0.015509804660253833
+N2_reaEGC_wntEGC,2.0,10,uninj,UCN,Secreted Signaling,0.014941958073493444
+N2_reaEGC_wntEGC,2.0,10,uninj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,2.0,10,uninj,VEGF,Secreted Signaling,0.03558168876924574
+N2_reaEGC_wntEGC,2.0,10,uninj,VIP,Secreted Signaling,0.00238476849132358
+N2_reaEGC_wntEGC,2.0,10,uninj,VISTA,Cell-Cell Contact,0.6529338073150421
+N2_reaEGC_wntEGC,2.0,10,uninj,WNT,Secreted Signaling,33.37805428120019
+N2_reaEGC_wntEGC,2.0,10,uninj,ncWNT,Secreted Signaling,1.5803570817736206
+N1_sfrpEGC_VLMC,3.0,15,inj,ACTIVIN,Secreted Signaling,0.06739297512471941
+N1_sfrpEGC_VLMC,3.0,15,inj,ADIPONECTIN,Secreted Signaling,0.0007950555845587411
+N1_sfrpEGC_VLMC,3.0,15,inj,AGRN,ECM-Receptor,12.945210102081314
+N1_sfrpEGC_VLMC,3.0,15,inj,AGT,Secreted Signaling,0.1828528718320549
+N1_sfrpEGC_VLMC,3.0,15,inj,ANGPT,Secreted Signaling,0.007197676726166507
+N1_sfrpEGC_VLMC,3.0,15,inj,ANGPTL,Secreted Signaling,4.684283026646741
+N1_sfrpEGC_VLMC,3.0,15,inj,BAG,Secreted Signaling,0.04207566911738629
+N1_sfrpEGC_VLMC,3.0,15,inj,BMP,Secreted Signaling,0.1855045491641645
+N1_sfrpEGC_VLMC,3.0,15,inj,CALCR,Secreted Signaling,0.07218957870408792
+N1_sfrpEGC_VLMC,3.0,15,inj,CCK,Secreted Signaling,0.13778427864417359
+N1_sfrpEGC_VLMC,3.0,15,inj,CCL,Secreted Signaling,0.0006040172520765781
+N1_sfrpEGC_VLMC,3.0,15,inj,CD34,Cell-Cell Contact,0.0028304348433804607
+N1_sfrpEGC_VLMC,3.0,15,inj,CD40,Secreted Signaling,0.00391500744389938
+N1_sfrpEGC_VLMC,3.0,15,inj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,3.0,15,inj,CDH,Cell-Cell Contact,15.248129007211121
+N1_sfrpEGC_VLMC,3.0,15,inj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,3.0,15,inj,CDH5,Cell-Cell Contact,0.07036265984265382
+N1_sfrpEGC_VLMC,3.0,15,inj,CLDN,Cell-Cell Contact,0.018752990058711613
+N1_sfrpEGC_VLMC,3.0,15,inj,CNTN,Cell-Cell Contact,3.1458314228620963
+N1_sfrpEGC_VLMC,3.0,15,inj,COLLAGEN,ECM-Receptor,16.872343825846816
+N1_sfrpEGC_VLMC,3.0,15,inj,CSPG4,Cell-Cell Contact,0.04283332585321095
+N1_sfrpEGC_VLMC,3.0,15,inj,CXCL,Secreted Signaling,0.7800407900333526
+N1_sfrpEGC_VLMC,3.0,15,inj,EDN,Secreted Signaling,0.262212161092022
+N1_sfrpEGC_VLMC,3.0,15,inj,EGF,Secreted Signaling,0.259152040831345
+N1_sfrpEGC_VLMC,3.0,15,inj,EPHA,Cell-Cell Contact,8.703819399964136
+N1_sfrpEGC_VLMC,3.0,15,inj,EPHB,Cell-Cell Contact,5.843958809245121
+N1_sfrpEGC_VLMC,3.0,15,inj,ESAM,Cell-Cell Contact,0.02007976288996836
+N1_sfrpEGC_VLMC,3.0,15,inj,FGF,Secreted Signaling,1.38983773806339
+N1_sfrpEGC_VLMC,3.0,15,inj,FN1,ECM-Receptor,1.8536027130003243
+N1_sfrpEGC_VLMC,3.0,15,inj,GALANIN,Secreted Signaling,0.0248053314174236
+N1_sfrpEGC_VLMC,3.0,15,inj,GAS,Secreted Signaling,0.31807566105967566
+N1_sfrpEGC_VLMC,3.0,15,inj,GDF,Secreted Signaling,0.1715927970786977
+N1_sfrpEGC_VLMC,3.0,15,inj,GDNF,Secreted Signaling,0.0004993425488534093
+N1_sfrpEGC_VLMC,3.0,15,inj,GPR,Secreted Signaling,0.034310083751043594
+N1_sfrpEGC_VLMC,3.0,15,inj,GRN,Secreted Signaling,4.654059711228279
+N1_sfrpEGC_VLMC,3.0,15,inj,HH,Secreted Signaling,0.00271693782759262
+N1_sfrpEGC_VLMC,3.0,15,inj,HSPG,ECM-Receptor,2.2998832257558717
+N1_sfrpEGC_VLMC,3.0,15,inj,JAM,Cell-Cell Contact,6.063426788669175
+N1_sfrpEGC_VLMC,3.0,15,inj,L1CAM,Cell-Cell Contact,10.901007672343752
+N1_sfrpEGC_VLMC,3.0,15,inj,LAMININ,ECM-Receptor,15.443421391989736
+N1_sfrpEGC_VLMC,3.0,15,inj,MAG,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,3.0,15,inj,MPZ,Cell-Cell Contact,0.050403064748333774
+N1_sfrpEGC_VLMC,3.0,15,inj,MSTN,Secreted Signaling,0.019352107223909853
+N1_sfrpEGC_VLMC,3.0,15,inj,NCAM,Cell-Cell Contact,4.6719559084528095
+N1_sfrpEGC_VLMC,3.0,15,inj,NEGR,Cell-Cell Contact,0.07127708692242958
+N1_sfrpEGC_VLMC,3.0,15,inj,NGL,Cell-Cell Contact,0.24464365249327147
+N1_sfrpEGC_VLMC,3.0,15,inj,NMU,Secreted Signaling,0.004141354749781796
+N1_sfrpEGC_VLMC,3.0,15,inj,NOTCH,Cell-Cell Contact,0.05933265509352469
+N1_sfrpEGC_VLMC,3.0,15,inj,NPFF,Secreted Signaling,0.01574976043002652
+N1_sfrpEGC_VLMC,3.0,15,inj,NPR2,Secreted Signaling,0.002363345181558692
+N1_sfrpEGC_VLMC,3.0,15,inj,NPW-B,Secreted Signaling,0.0011037148811415352
+N1_sfrpEGC_VLMC,3.0,15,inj,NPY,Secreted Signaling,0.1746182539311939
+N1_sfrpEGC_VLMC,3.0,15,inj,NRG,Secreted Signaling,0.48299612769524786
+N1_sfrpEGC_VLMC,3.0,15,inj,NRXN,Cell-Cell Contact,7.39920918616299
+N1_sfrpEGC_VLMC,3.0,15,inj,NTS,Secreted Signaling,0.10792935240146573
+N1_sfrpEGC_VLMC,3.0,15,inj,PARs,Secreted Signaling,0.017663786604453974
+N1_sfrpEGC_VLMC,3.0,15,inj,PDGF,Secreted Signaling,0.1482823180898476
+N1_sfrpEGC_VLMC,3.0,15,inj,PECAM1,Cell-Cell Contact,0.024735082348811582
+N1_sfrpEGC_VLMC,3.0,15,inj,PROS,Secreted Signaling,0.5148687411585103
+N1_sfrpEGC_VLMC,3.0,15,inj,PSAP,Secreted Signaling,38.51062106691833
+N1_sfrpEGC_VLMC,3.0,15,inj,PTH,Secreted Signaling,0.0005641493987250436
+N1_sfrpEGC_VLMC,3.0,15,inj,PTPRM,Cell-Cell Contact,0.14426134230801377
+N1_sfrpEGC_VLMC,3.0,15,inj,RELN,ECM-Receptor,0.05161027325497277
+N1_sfrpEGC_VLMC,3.0,15,inj,SEMA3,Secreted Signaling,4.025841268144532
+N1_sfrpEGC_VLMC,3.0,15,inj,SEMA4,Cell-Cell Contact,1.450986693330352
+N1_sfrpEGC_VLMC,3.0,15,inj,SEMA5,Cell-Cell Contact,6.733703941649784
+N1_sfrpEGC_VLMC,3.0,15,inj,SEMA6,Cell-Cell Contact,3.7681996100418704
+N1_sfrpEGC_VLMC,3.0,15,inj,SEMATOSTATIN,Secreted Signaling,0.942425575018979
+N1_sfrpEGC_VLMC,3.0,15,inj,TAC,Secreted Signaling,0.13851588267125609
+N1_sfrpEGC_VLMC,3.0,15,inj,TENASCIN,ECM-Receptor,6.187093470378577
+N1_sfrpEGC_VLMC,3.0,15,inj,TGFb,Secreted Signaling,0.08392450536130514
+N1_sfrpEGC_VLMC,3.0,15,inj,THBS,ECM-Receptor,5.6160251773875105
+N1_sfrpEGC_VLMC,3.0,15,inj,THY1,Cell-Cell Contact,0.00038384188956070385
+N1_sfrpEGC_VLMC,3.0,15,inj,UCN,Secreted Signaling,0.0076518930193102755
+N1_sfrpEGC_VLMC,3.0,15,inj,UROTENSIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,3.0,15,inj,VEGF,Secreted Signaling,0.06853837669211102
+N1_sfrpEGC_VLMC,3.0,15,inj,VIP,Secreted Signaling,0.0037202387001546984
+N1_sfrpEGC_VLMC,3.0,15,inj,VISTA,Cell-Cell Contact,0.28915114161469674
+N1_sfrpEGC_VLMC,3.0,15,inj,WNT,Secreted Signaling,24.59227100617788
+N1_sfrpEGC_VLMC,3.0,15,inj,ncWNT,Secreted Signaling,1.5703721725989452
+N2_reaEGC_wntEGC,3.0,15,inj,ACTIVIN,Secreted Signaling,1.8390379068535385
+N2_reaEGC_wntEGC,3.0,15,inj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,inj,AGRN,ECM-Receptor,37.39809275233908
+N2_reaEGC_wntEGC,3.0,15,inj,AGT,Secreted Signaling,0.010616490893463513
+N2_reaEGC_wntEGC,3.0,15,inj,ANGPT,Secreted Signaling,0.0026825749955602723
+N2_reaEGC_wntEGC,3.0,15,inj,ANGPTL,Secreted Signaling,4.385911393822958
+N2_reaEGC_wntEGC,3.0,15,inj,BAG,Secreted Signaling,0.03950696698383239
+N2_reaEGC_wntEGC,3.0,15,inj,BMP,Secreted Signaling,0.16798118686032046
+N2_reaEGC_wntEGC,3.0,15,inj,CALCR,Secreted Signaling,0.03344134080862615
+N2_reaEGC_wntEGC,3.0,15,inj,CCK,Secreted Signaling,0.11320085689041923
+N2_reaEGC_wntEGC,3.0,15,inj,CCL,Secreted Signaling,0.0006040172520765781
+N2_reaEGC_wntEGC,3.0,15,inj,CD34,Cell-Cell Contact,0.0010450245937466806
+N2_reaEGC_wntEGC,3.0,15,inj,CD40,Secreted Signaling,0.0025130136713465722
+N2_reaEGC_wntEGC,3.0,15,inj,CD45,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,3.0,15,inj,CDH,Cell-Cell Contact,14.946219316201681
+N2_reaEGC_wntEGC,3.0,15,inj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,3.0,15,inj,CDH5,Cell-Cell Contact,0.009885622466797337
+N2_reaEGC_wntEGC,3.0,15,inj,CLDN,Cell-Cell Contact,0.0032909114470636774
+N2_reaEGC_wntEGC,3.0,15,inj,CNTN,Cell-Cell Contact,5.494552674808862
+N2_reaEGC_wntEGC,3.0,15,inj,COLLAGEN,ECM-Receptor,7.655899167083832
+N2_reaEGC_wntEGC,3.0,15,inj,CSPG4,Cell-Cell Contact,0.011286825481493791
+N2_reaEGC_wntEGC,3.0,15,inj,CXCL,Secreted Signaling,0.3057841049195841
+N2_reaEGC_wntEGC,3.0,15,inj,EDN,Secreted Signaling,0.2493950291552111
+N2_reaEGC_wntEGC,3.0,15,inj,EGF,Secreted Signaling,0.19794445374090552
+N2_reaEGC_wntEGC,3.0,15,inj,EPHA,Cell-Cell Contact,13.500797886715215
+N2_reaEGC_wntEGC,3.0,15,inj,EPHB,Cell-Cell Contact,5.569645586707062
+N2_reaEGC_wntEGC,3.0,15,inj,ESAM,Cell-Cell Contact,0.0005272879890404385
+N2_reaEGC_wntEGC,3.0,15,inj,FGF,Secreted Signaling,1.3758648801295092
+N2_reaEGC_wntEGC,3.0,15,inj,FN1,ECM-Receptor,0.46294320879515166
+N2_reaEGC_wntEGC,3.0,15,inj,GALANIN,Secreted Signaling,0.018891622940906364
+N2_reaEGC_wntEGC,3.0,15,inj,GAS,Secreted Signaling,0.19855008289791473
+N2_reaEGC_wntEGC,3.0,15,inj,GDF,Secreted Signaling,1.328878993186238
+N2_reaEGC_wntEGC,3.0,15,inj,GDNF,Secreted Signaling,0.0004993425488534093
+N2_reaEGC_wntEGC,3.0,15,inj,GPR,Secreted Signaling,0.15634357200719473
+N2_reaEGC_wntEGC,3.0,15,inj,GRN,Secreted Signaling,4.195012047633543
+N2_reaEGC_wntEGC,3.0,15,inj,HH,Secreted Signaling,0.002353743073210746
+N2_reaEGC_wntEGC,3.0,15,inj,HSPG,ECM-Receptor,4.735832030138447
+N2_reaEGC_wntEGC,3.0,15,inj,JAM,Cell-Cell Contact,43.88014334476741
+N2_reaEGC_wntEGC,3.0,15,inj,L1CAM,Cell-Cell Contact,10.023541447808578
+N2_reaEGC_wntEGC,3.0,15,inj,LAMININ,ECM-Receptor,12.556937924791963
+N2_reaEGC_wntEGC,3.0,15,inj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,3.0,15,inj,MPZ,Cell-Cell Contact,0.036182139193999985
+N2_reaEGC_wntEGC,3.0,15,inj,MSTN,Secreted Signaling,0.007972735403345525
+N2_reaEGC_wntEGC,3.0,15,inj,NCAM,Cell-Cell Contact,4.455306084715689
+N2_reaEGC_wntEGC,3.0,15,inj,NEGR,Cell-Cell Contact,0.06174811030454612
+N2_reaEGC_wntEGC,3.0,15,inj,NGL,Cell-Cell Contact,0.4584463783925714
+N2_reaEGC_wntEGC,3.0,15,inj,NMU,Secreted Signaling,0.0017943693903476469
+N2_reaEGC_wntEGC,3.0,15,inj,NOTCH,Cell-Cell Contact,0.12192568057141813
+N2_reaEGC_wntEGC,3.0,15,inj,NPFF,Secreted Signaling,0.0066923601071599515
+N2_reaEGC_wntEGC,3.0,15,inj,NPR2,Secreted Signaling,0.0018908887809448661
+N2_reaEGC_wntEGC,3.0,15,inj,NPW-B,Secreted Signaling,0.0007631102736447227
+N2_reaEGC_wntEGC,3.0,15,inj,NPY,Secreted Signaling,0.8317678604456248
+N2_reaEGC_wntEGC,3.0,15,inj,NRG,Secreted Signaling,0.39104545919879435
+N2_reaEGC_wntEGC,3.0,15,inj,NRXN,Cell-Cell Contact,9.28029284619279
+N2_reaEGC_wntEGC,3.0,15,inj,NTS,Secreted Signaling,0.07880603480549343
+N2_reaEGC_wntEGC,3.0,15,inj,PARs,Secreted Signaling,0.01515123601959225
+N2_reaEGC_wntEGC,3.0,15,inj,PDGF,Secreted Signaling,0.23137169119950823
+N2_reaEGC_wntEGC,3.0,15,inj,PECAM1,Cell-Cell Contact,0.005893399405843764
+N2_reaEGC_wntEGC,3.0,15,inj,PROS,Secreted Signaling,0.3346077779102683
+N2_reaEGC_wntEGC,3.0,15,inj,PSAP,Secreted Signaling,110.1740325215024
+N2_reaEGC_wntEGC,3.0,15,inj,PTH,Secreted Signaling,0.0005641493987250436
+N2_reaEGC_wntEGC,3.0,15,inj,PTPRM,Cell-Cell Contact,0.8962440747085881
+N2_reaEGC_wntEGC,3.0,15,inj,RELN,ECM-Receptor,0.04263341388993841
+N2_reaEGC_wntEGC,3.0,15,inj,SEMA3,Secreted Signaling,5.765609367864194
+N2_reaEGC_wntEGC,3.0,15,inj,SEMA4,Cell-Cell Contact,0.9735139665252751
+N2_reaEGC_wntEGC,3.0,15,inj,SEMA5,Cell-Cell Contact,14.819046768808963
+N2_reaEGC_wntEGC,3.0,15,inj,SEMA6,Cell-Cell Contact,16.06059397694937
+N2_reaEGC_wntEGC,3.0,15,inj,SEMATOSTATIN,Secreted Signaling,0.3353793316064264
+N2_reaEGC_wntEGC,3.0,15,inj,TAC,Secreted Signaling,0.1206204604902108
+N2_reaEGC_wntEGC,3.0,15,inj,TENASCIN,ECM-Receptor,12.089970089742248
+N2_reaEGC_wntEGC,3.0,15,inj,TGFb,Secreted Signaling,0.08255657570253898
+N2_reaEGC_wntEGC,3.0,15,inj,THBS,ECM-Receptor,20.71027489350681
+N2_reaEGC_wntEGC,3.0,15,inj,THY1,Cell-Cell Contact,0.00022441586908029698
+N2_reaEGC_wntEGC,3.0,15,inj,UCN,Secreted Signaling,0.0018478396710320346
+N2_reaEGC_wntEGC,3.0,15,inj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,inj,VEGF,Secreted Signaling,0.041953811345220735
+N2_reaEGC_wntEGC,3.0,15,inj,VIP,Secreted Signaling,0.0013627954186612673
+N2_reaEGC_wntEGC,3.0,15,inj,VISTA,Cell-Cell Contact,0.17827010526472312
+N2_reaEGC_wntEGC,3.0,15,inj,WNT,Secreted Signaling,49.38960099401076
+N2_reaEGC_wntEGC,3.0,15,inj,ncWNT,Secreted Signaling,1.562141445690074
+N1_sfrpEGC_VLMC,3.0,15,uninj,ACTIVIN,Secreted Signaling,0.012845187674291525
+N1_sfrpEGC_VLMC,3.0,15,uninj,ADIPONECTIN,Secreted Signaling,0.0067910915866235535
+N1_sfrpEGC_VLMC,3.0,15,uninj,AGRN,ECM-Receptor,10.861343508235718
+N1_sfrpEGC_VLMC,3.0,15,uninj,AGT,Secreted Signaling,0.03366037296473936
+N1_sfrpEGC_VLMC,3.0,15,uninj,ANGPT,Secreted Signaling,0.005741723838135704
+N1_sfrpEGC_VLMC,3.0,15,uninj,ANGPTL,Secreted Signaling,2.2442058879602556
+N1_sfrpEGC_VLMC,3.0,15,uninj,BAG,Secreted Signaling,0.044611704859440084
+N1_sfrpEGC_VLMC,3.0,15,uninj,BMP,Secreted Signaling,0.2045391915725545
+N1_sfrpEGC_VLMC,3.0,15,uninj,CALCR,Secreted Signaling,0.03733821330597141
+N1_sfrpEGC_VLMC,3.0,15,uninj,CCK,Secreted Signaling,0.17019918801045464
+N1_sfrpEGC_VLMC,3.0,15,uninj,CCL,Secreted Signaling,4.3281485622308216e-05
+N1_sfrpEGC_VLMC,3.0,15,uninj,CD34,Cell-Cell Contact,0.0034764917585605928
+N1_sfrpEGC_VLMC,3.0,15,uninj,CD40,Secreted Signaling,0.002734038040552081
+N1_sfrpEGC_VLMC,3.0,15,uninj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,3.0,15,uninj,CDH,Cell-Cell Contact,6.047736353246642
+N1_sfrpEGC_VLMC,3.0,15,uninj,CDH1,Cell-Cell Contact,0.0002701332949929318
+N1_sfrpEGC_VLMC,3.0,15,uninj,CDH5,Cell-Cell Contact,0.0171534218264202
+N1_sfrpEGC_VLMC,3.0,15,uninj,CLDN,Cell-Cell Contact,0.007585758505720059
+N1_sfrpEGC_VLMC,3.0,15,uninj,CNTN,Cell-Cell Contact,5.191219800913967
+N1_sfrpEGC_VLMC,3.0,15,uninj,COLLAGEN,ECM-Receptor,2.306396902209066
+N1_sfrpEGC_VLMC,3.0,15,uninj,CSPG4,Cell-Cell Contact,0.01972034419405485
+N1_sfrpEGC_VLMC,3.0,15,uninj,CXCL,Secreted Signaling,0.42289227058544876
+N1_sfrpEGC_VLMC,3.0,15,uninj,EDN,Secreted Signaling,0.15615414115309928
+N1_sfrpEGC_VLMC,3.0,15,uninj,EGF,Secreted Signaling,0.004813243738321442
+N1_sfrpEGC_VLMC,3.0,15,uninj,EPHA,Cell-Cell Contact,3.8462002958637673
+N1_sfrpEGC_VLMC,3.0,15,uninj,EPHB,Cell-Cell Contact,7.530925499684595
+N1_sfrpEGC_VLMC,3.0,15,uninj,ESAM,Cell-Cell Contact,0.003318552803642497
+N1_sfrpEGC_VLMC,3.0,15,uninj,FGF,Secreted Signaling,0.33680998178659605
+N1_sfrpEGC_VLMC,3.0,15,uninj,FN1,ECM-Receptor,0.20753109121306842
+N1_sfrpEGC_VLMC,3.0,15,uninj,GALANIN,Secreted Signaling,0.07300980665272351
+N1_sfrpEGC_VLMC,3.0,15,uninj,GAS,Secreted Signaling,0.24614439171024938
+N1_sfrpEGC_VLMC,3.0,15,uninj,GDF,Secreted Signaling,0.1711939421230843
+N1_sfrpEGC_VLMC,3.0,15,uninj,GDNF,Secreted Signaling,0.0002550568006913946
+N1_sfrpEGC_VLMC,3.0,15,uninj,GPR,Secreted Signaling,0.03431388435680069
+N1_sfrpEGC_VLMC,3.0,15,uninj,GRN,Secreted Signaling,3.4597057627623657
+N1_sfrpEGC_VLMC,3.0,15,uninj,HH,Secreted Signaling,0.0008091872696058521
+N1_sfrpEGC_VLMC,3.0,15,uninj,HSPG,ECM-Receptor,0.2249462913996757
+N1_sfrpEGC_VLMC,3.0,15,uninj,JAM,Cell-Cell Contact,2.683942594671067
+N1_sfrpEGC_VLMC,3.0,15,uninj,L1CAM,Cell-Cell Contact,9.427083051959109
+N1_sfrpEGC_VLMC,3.0,15,uninj,LAMININ,ECM-Receptor,14.291829000693848
+N1_sfrpEGC_VLMC,3.0,15,uninj,MAG,Cell-Cell Contact,0.0004907547819356236
+N1_sfrpEGC_VLMC,3.0,15,uninj,MPZ,Cell-Cell Contact,0.038446688013264986
+N1_sfrpEGC_VLMC,3.0,15,uninj,MSTN,Secreted Signaling,0.03092396190901034
+N1_sfrpEGC_VLMC,3.0,15,uninj,NCAM,Cell-Cell Contact,6.234812724510569
+N1_sfrpEGC_VLMC,3.0,15,uninj,NEGR,Cell-Cell Contact,0.15964586053346488
+N1_sfrpEGC_VLMC,3.0,15,uninj,NGL,Cell-Cell Contact,0.33200808198017184
+N1_sfrpEGC_VLMC,3.0,15,uninj,NMU,Secreted Signaling,0.0007168315547751197
+N1_sfrpEGC_VLMC,3.0,15,uninj,NOTCH,Cell-Cell Contact,0.10851603694102148
+N1_sfrpEGC_VLMC,3.0,15,uninj,NPFF,Secreted Signaling,0.002860807142135253
+N1_sfrpEGC_VLMC,3.0,15,uninj,NPR2,Secreted Signaling,0.0031076526556592012
+N1_sfrpEGC_VLMC,3.0,15,uninj,NPW-B,Secreted Signaling,0.00019408292338976853
+N1_sfrpEGC_VLMC,3.0,15,uninj,NPY,Secreted Signaling,0.2240554297442504
+N1_sfrpEGC_VLMC,3.0,15,uninj,NRG,Secreted Signaling,0.5132788533501962
+N1_sfrpEGC_VLMC,3.0,15,uninj,NRXN,Cell-Cell Contact,17.04502090864961
+N1_sfrpEGC_VLMC,3.0,15,uninj,NTS,Secreted Signaling,0.10017680126169234
+N1_sfrpEGC_VLMC,3.0,15,uninj,PARs,Secreted Signaling,0.024022581282622944
+N1_sfrpEGC_VLMC,3.0,15,uninj,PDGF,Secreted Signaling,0.10377175906670237
+N1_sfrpEGC_VLMC,3.0,15,uninj,PECAM1,Cell-Cell Contact,0.06708976468806244
+N1_sfrpEGC_VLMC,3.0,15,uninj,PROS,Secreted Signaling,0.779868957930542
+N1_sfrpEGC_VLMC,3.0,15,uninj,PSAP,Secreted Signaling,32.68958383853132
+N1_sfrpEGC_VLMC,3.0,15,uninj,PTH,Secreted Signaling,1.1934849995269626e-05
+N1_sfrpEGC_VLMC,3.0,15,uninj,PTPRM,Cell-Cell Contact,0.14475985857017273
+N1_sfrpEGC_VLMC,3.0,15,uninj,RELN,ECM-Receptor,0.009166277530748397
+N1_sfrpEGC_VLMC,3.0,15,uninj,SEMA3,Secreted Signaling,2.274753558850729
+N1_sfrpEGC_VLMC,3.0,15,uninj,SEMA4,Cell-Cell Contact,0.822005485063758
+N1_sfrpEGC_VLMC,3.0,15,uninj,SEMA5,Cell-Cell Contact,11.661636578584961
+N1_sfrpEGC_VLMC,3.0,15,uninj,SEMA6,Cell-Cell Contact,4.219271457047654
+N1_sfrpEGC_VLMC,3.0,15,uninj,SEMATOSTATIN,Secreted Signaling,0.4784292087163351
+N1_sfrpEGC_VLMC,3.0,15,uninj,TAC,Secreted Signaling,0.09387812021986564
+N1_sfrpEGC_VLMC,3.0,15,uninj,TENASCIN,ECM-Receptor,1.998108756189424
+N1_sfrpEGC_VLMC,3.0,15,uninj,TGFb,Secreted Signaling,0.0017283787668570631
+N1_sfrpEGC_VLMC,3.0,15,uninj,THBS,ECM-Receptor,3.6254290346910203
+N1_sfrpEGC_VLMC,3.0,15,uninj,THY1,Cell-Cell Contact,0.00032130904238342417
+N1_sfrpEGC_VLMC,3.0,15,uninj,UCN,Secreted Signaling,0.0009762460928356437
+N1_sfrpEGC_VLMC,3.0,15,uninj,UROTENSIN,Secreted Signaling,0.004719360285701592
+N1_sfrpEGC_VLMC,3.0,15,uninj,VEGF,Secreted Signaling,0.02459214162591419
+N1_sfrpEGC_VLMC,3.0,15,uninj,VIP,Secreted Signaling,0.016581867057813268
+N1_sfrpEGC_VLMC,3.0,15,uninj,VISTA,Cell-Cell Contact,0.7880857034484081
+N1_sfrpEGC_VLMC,3.0,15,uninj,WNT,Secreted Signaling,18.010585885514118
+N1_sfrpEGC_VLMC,3.0,15,uninj,ncWNT,Secreted Signaling,0.08157675426847848
+N2_reaEGC_wntEGC,3.0,15,uninj,ACTIVIN,Secreted Signaling,0.10413316883572087
+N2_reaEGC_wntEGC,3.0,15,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,AGRN,ECM-Receptor,9.624421032045099
+N2_reaEGC_wntEGC,3.0,15,uninj,AGT,Secreted Signaling,0.008607239937692615
+N2_reaEGC_wntEGC,3.0,15,uninj,ANGPT,Secreted Signaling,0.03902764388384381
+N2_reaEGC_wntEGC,3.0,15,uninj,ANGPTL,Secreted Signaling,4.2753685185617485
+N2_reaEGC_wntEGC,3.0,15,uninj,BAG,Secreted Signaling,0.10613720162115199
+N2_reaEGC_wntEGC,3.0,15,uninj,BMP,Secreted Signaling,0.2279023638050177
+N2_reaEGC_wntEGC,3.0,15,uninj,CALCR,Secreted Signaling,0.12714518946862394
+N2_reaEGC_wntEGC,3.0,15,uninj,CCK,Secreted Signaling,0.3111999717028316
+N2_reaEGC_wntEGC,3.0,15,uninj,CCL,Secreted Signaling,0.0019136027715282538
+N2_reaEGC_wntEGC,3.0,15,uninj,CD34,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,CD40,Secreted Signaling,0.005254350045375453
+N2_reaEGC_wntEGC,3.0,15,uninj,CD45,Cell-Cell Contact,0.0016942556374810389
+N2_reaEGC_wntEGC,3.0,15,uninj,CDH,Cell-Cell Contact,5.03007698112943
+N2_reaEGC_wntEGC,3.0,15,uninj,CDH1,Cell-Cell Contact,0.0007920420616316935
+N2_reaEGC_wntEGC,3.0,15,uninj,CDH5,Cell-Cell Contact,0.0003804587805382476
+N2_reaEGC_wntEGC,3.0,15,uninj,CLDN,Cell-Cell Contact,0.004816240012268065
+N2_reaEGC_wntEGC,3.0,15,uninj,CNTN,Cell-Cell Contact,14.34363876706733
+N2_reaEGC_wntEGC,3.0,15,uninj,COLLAGEN,ECM-Receptor,3.6981488353495555
+N2_reaEGC_wntEGC,3.0,15,uninj,CSPG4,Cell-Cell Contact,0.006184859371010031
+N2_reaEGC_wntEGC,3.0,15,uninj,CXCL,Secreted Signaling,0.2787106230305703
+N2_reaEGC_wntEGC,3.0,15,uninj,EDN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,EGF,Secreted Signaling,0.019463469192373843
+N2_reaEGC_wntEGC,3.0,15,uninj,EPHA,Cell-Cell Contact,13.759737035956654
+N2_reaEGC_wntEGC,3.0,15,uninj,EPHB,Cell-Cell Contact,8.374540413848404
+N2_reaEGC_wntEGC,3.0,15,uninj,ESAM,Cell-Cell Contact,0.004127310701613655
+N2_reaEGC_wntEGC,3.0,15,uninj,FGF,Secreted Signaling,1.7839536148191588
+N2_reaEGC_wntEGC,3.0,15,uninj,FN1,ECM-Receptor,1.1002153534873105
+N2_reaEGC_wntEGC,3.0,15,uninj,GALANIN,Secreted Signaling,0.043984751009204216
+N2_reaEGC_wntEGC,3.0,15,uninj,GAS,Secreted Signaling,0.24122863737323008
+N2_reaEGC_wntEGC,3.0,15,uninj,GDF,Secreted Signaling,0.47465044309703797
+N2_reaEGC_wntEGC,3.0,15,uninj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,GPR,Secreted Signaling,0.0380301195975536
+N2_reaEGC_wntEGC,3.0,15,uninj,GRN,Secreted Signaling,5.724016511475852
+N2_reaEGC_wntEGC,3.0,15,uninj,HH,Secreted Signaling,0.006697470853856455
+N2_reaEGC_wntEGC,3.0,15,uninj,HSPG,ECM-Receptor,0.4439486527174104
+N2_reaEGC_wntEGC,3.0,15,uninj,JAM,Cell-Cell Contact,7.5244039594154595
+N2_reaEGC_wntEGC,3.0,15,uninj,L1CAM,Cell-Cell Contact,12.093014419602605
+N2_reaEGC_wntEGC,3.0,15,uninj,LAMININ,ECM-Receptor,14.918771998643287
+N2_reaEGC_wntEGC,3.0,15,uninj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,MPZ,Cell-Cell Contact,0.061031331120848305
+N2_reaEGC_wntEGC,3.0,15,uninj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,NCAM,Cell-Cell Contact,7.800145969680779
+N2_reaEGC_wntEGC,3.0,15,uninj,NEGR,Cell-Cell Contact,0.0991105589815757
+N2_reaEGC_wntEGC,3.0,15,uninj,NGL,Cell-Cell Contact,0.40923328015462607
+N2_reaEGC_wntEGC,3.0,15,uninj,NMU,Secreted Signaling,0.0058407390956148894
+N2_reaEGC_wntEGC,3.0,15,uninj,NOTCH,Cell-Cell Contact,0.12724360708750898
+N2_reaEGC_wntEGC,3.0,15,uninj,NPFF,Secreted Signaling,0.004773531168996731
+N2_reaEGC_wntEGC,3.0,15,uninj,NPR2,Secreted Signaling,0.0005770469330183719
+N2_reaEGC_wntEGC,3.0,15,uninj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,NPY,Secreted Signaling,0.2828515904239066
+N2_reaEGC_wntEGC,3.0,15,uninj,NRG,Secreted Signaling,0.7470124405473423
+N2_reaEGC_wntEGC,3.0,15,uninj,NRXN,Cell-Cell Contact,19.219074201351585
+N2_reaEGC_wntEGC,3.0,15,uninj,NTS,Secreted Signaling,0.6989657264517039
+N2_reaEGC_wntEGC,3.0,15,uninj,PARs,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,3.0,15,uninj,PDGF,Secreted Signaling,0.17356450880272173
+N2_reaEGC_wntEGC,3.0,15,uninj,PECAM1,Cell-Cell Contact,0.043516998868985364
+N2_reaEGC_wntEGC,3.0,15,uninj,PROS,Secreted Signaling,0.8106185862386462
+N2_reaEGC_wntEGC,3.0,15,uninj,PSAP,Secreted Signaling,62.523994993848284
+N2_reaEGC_wntEGC,3.0,15,uninj,PTH,Secreted Signaling,0.0018084168567437042
+N2_reaEGC_wntEGC,3.0,15,uninj,PTPRM,Cell-Cell Contact,0.05222136091796143
+N2_reaEGC_wntEGC,3.0,15,uninj,RELN,ECM-Receptor,0.0172959071052085
+N2_reaEGC_wntEGC,3.0,15,uninj,SEMA3,Secreted Signaling,2.934956963708748
+N2_reaEGC_wntEGC,3.0,15,uninj,SEMA4,Cell-Cell Contact,2.07048085136207
+N2_reaEGC_wntEGC,3.0,15,uninj,SEMA5,Cell-Cell Contact,11.332748041256773
+N2_reaEGC_wntEGC,3.0,15,uninj,SEMA6,Cell-Cell Contact,8.547713929408083
+N2_reaEGC_wntEGC,3.0,15,uninj,SEMATOSTATIN,Secreted Signaling,1.5655739132903923
+N2_reaEGC_wntEGC,3.0,15,uninj,TAC,Secreted Signaling,0.16543808564527504
+N2_reaEGC_wntEGC,3.0,15,uninj,TENASCIN,ECM-Receptor,4.829819510280692
+N2_reaEGC_wntEGC,3.0,15,uninj,TGFb,Secreted Signaling,0.008281044292227802
+N2_reaEGC_wntEGC,3.0,15,uninj,THBS,ECM-Receptor,7.778303778536932
+N2_reaEGC_wntEGC,3.0,15,uninj,THY1,Cell-Cell Contact,0.001407998792173295
+N2_reaEGC_wntEGC,3.0,15,uninj,UCN,Secreted Signaling,0.0020108910357282458
+N2_reaEGC_wntEGC,3.0,15,uninj,UROTENSIN,Secreted Signaling,0.005174763979714129
+N2_reaEGC_wntEGC,3.0,15,uninj,VEGF,Secreted Signaling,0.06736142520271976
+N2_reaEGC_wntEGC,3.0,15,uninj,VIP,Secreted Signaling,0.004126403811070149
+N2_reaEGC_wntEGC,3.0,15,uninj,VISTA,Cell-Cell Contact,1.6353445692417754
+N2_reaEGC_wntEGC,3.0,15,uninj,WNT,Secreted Signaling,44.78798281499906
+N2_reaEGC_wntEGC,3.0,15,uninj,ncWNT,Secreted Signaling,2.4231286616547987
+N1_sfrpEGC_VLMC,4.0,20,inj,ACTIVIN,Secreted Signaling,0.010226696118418043
+N1_sfrpEGC_VLMC,4.0,20,inj,ADIPONECTIN,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,AGRN,ECM-Receptor,23.294196935750698
+N1_sfrpEGC_VLMC,4.0,20,inj,AGT,Secreted Signaling,0.03147267350977645
+N1_sfrpEGC_VLMC,4.0,20,inj,ANGPT,Secreted Signaling,0.010841173572390264
+N1_sfrpEGC_VLMC,4.0,20,inj,ANGPTL,Secreted Signaling,3.4740053193679805
+N1_sfrpEGC_VLMC,4.0,20,inj,BAG,Secreted Signaling,0.0664790108822528
+N1_sfrpEGC_VLMC,4.0,20,inj,BMP,Secreted Signaling,0.12694821484277682
+N1_sfrpEGC_VLMC,4.0,20,inj,CALCR,Secreted Signaling,0.11751551773060731
+N1_sfrpEGC_VLMC,4.0,20,inj,CCK,Secreted Signaling,0.04268304298323325
+N1_sfrpEGC_VLMC,4.0,20,inj,CCL,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,CD34,Cell-Cell Contact,0.004259253960306981
+N1_sfrpEGC_VLMC,4.0,20,inj,CD40,Secreted Signaling,0.0020356918386051958
+N1_sfrpEGC_VLMC,4.0,20,inj,CD45,Cell-Cell Contact,0.001815210198105425
+N1_sfrpEGC_VLMC,4.0,20,inj,CDH,Cell-Cell Contact,10.971053810464348
+N1_sfrpEGC_VLMC,4.0,20,inj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,CDH5,Cell-Cell Contact,0.002384022454113481
+N1_sfrpEGC_VLMC,4.0,20,inj,CLDN,Cell-Cell Contact,8.674194462729094e-05
+N1_sfrpEGC_VLMC,4.0,20,inj,CNTN,Cell-Cell Contact,13.355352989020762
+N1_sfrpEGC_VLMC,4.0,20,inj,COLLAGEN,ECM-Receptor,3.206847763382701
+N1_sfrpEGC_VLMC,4.0,20,inj,CSPG4,Cell-Cell Contact,0.017249700801926445
+N1_sfrpEGC_VLMC,4.0,20,inj,CXCL,Secreted Signaling,0.25732280088050974
+N1_sfrpEGC_VLMC,4.0,20,inj,EDN,Secreted Signaling,3.4795788901552243
+N1_sfrpEGC_VLMC,4.0,20,inj,EGF,Secreted Signaling,0.4203853280707076
+N1_sfrpEGC_VLMC,4.0,20,inj,EPHA,Cell-Cell Contact,24.589755764814267
+N1_sfrpEGC_VLMC,4.0,20,inj,EPHB,Cell-Cell Contact,26.18279946343759
+N1_sfrpEGC_VLMC,4.0,20,inj,ESAM,Cell-Cell Contact,0.0018896376544068588
+N1_sfrpEGC_VLMC,4.0,20,inj,FGF,Secreted Signaling,6.665972680329127
+N1_sfrpEGC_VLMC,4.0,20,inj,FN1,ECM-Receptor,0.15866684711966553
+N1_sfrpEGC_VLMC,4.0,20,inj,GALANIN,Secreted Signaling,0.11658974740515465
+N1_sfrpEGC_VLMC,4.0,20,inj,GAS,Secreted Signaling,0.22330037803604857
+N1_sfrpEGC_VLMC,4.0,20,inj,GDF,Secreted Signaling,0.2138364932910161
+N1_sfrpEGC_VLMC,4.0,20,inj,GDNF,Secreted Signaling,0.000246859758447514
+N1_sfrpEGC_VLMC,4.0,20,inj,GPR,Secreted Signaling,0.036133317181379854
+N1_sfrpEGC_VLMC,4.0,20,inj,GRN,Secreted Signaling,4.7617588793410555
+N1_sfrpEGC_VLMC,4.0,20,inj,HH,Secreted Signaling,0.0166883281292017
+N1_sfrpEGC_VLMC,4.0,20,inj,HSPG,ECM-Receptor,0.22548369787294098
+N1_sfrpEGC_VLMC,4.0,20,inj,JAM,Cell-Cell Contact,8.560794509354164
+N1_sfrpEGC_VLMC,4.0,20,inj,L1CAM,Cell-Cell Contact,16.561004406059325
+N1_sfrpEGC_VLMC,4.0,20,inj,LAMININ,ECM-Receptor,19.16001759330487
+N1_sfrpEGC_VLMC,4.0,20,inj,MAG,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,MPZ,Cell-Cell Contact,0.11235619743534025
+N1_sfrpEGC_VLMC,4.0,20,inj,MSTN,Secreted Signaling,0.2113916351352388
+N1_sfrpEGC_VLMC,4.0,20,inj,NCAM,Cell-Cell Contact,11.849466753478293
+N1_sfrpEGC_VLMC,4.0,20,inj,NEGR,Cell-Cell Contact,0.8740700734324232
+N1_sfrpEGC_VLMC,4.0,20,inj,NGL,Cell-Cell Contact,2.8752093765326494
+N1_sfrpEGC_VLMC,4.0,20,inj,NMU,Secreted Signaling,0.0013485477387022197
+N1_sfrpEGC_VLMC,4.0,20,inj,NOTCH,Cell-Cell Contact,0.059613002091624144
+N1_sfrpEGC_VLMC,4.0,20,inj,NPFF,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,NPR2,Secreted Signaling,0.0024101185667669265
+N1_sfrpEGC_VLMC,4.0,20,inj,NPW-B,Secreted Signaling,0.00015653972035327765
+N1_sfrpEGC_VLMC,4.0,20,inj,NPY,Secreted Signaling,0.6076496205844684
+N1_sfrpEGC_VLMC,4.0,20,inj,NRG,Secreted Signaling,2.2731780006086044
+N1_sfrpEGC_VLMC,4.0,20,inj,NRXN,Cell-Cell Contact,42.2576789572011
+N1_sfrpEGC_VLMC,4.0,20,inj,NTS,Secreted Signaling,1.0158303153182815
+N1_sfrpEGC_VLMC,4.0,20,inj,PARs,Secreted Signaling,0.044046085805341195
+N1_sfrpEGC_VLMC,4.0,20,inj,PDGF,Secreted Signaling,0.09514729789647439
+N1_sfrpEGC_VLMC,4.0,20,inj,PECAM1,Cell-Cell Contact,0.004743939885863401
+N1_sfrpEGC_VLMC,4.0,20,inj,PROS,Secreted Signaling,0.6523616582537082
+N1_sfrpEGC_VLMC,4.0,20,inj,PSAP,Secreted Signaling,103.05918786110165
+N1_sfrpEGC_VLMC,4.0,20,inj,PTH,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,4.0,20,inj,PTPRM,Cell-Cell Contact,0.8103822640318212
+N1_sfrpEGC_VLMC,4.0,20,inj,RELN,ECM-Receptor,0.15966182072588228
+N1_sfrpEGC_VLMC,4.0,20,inj,SEMA3,Secreted Signaling,7.448678649677608
+N1_sfrpEGC_VLMC,4.0,20,inj,SEMA4,Cell-Cell Contact,9.355422248683654
+N1_sfrpEGC_VLMC,4.0,20,inj,SEMA5,Cell-Cell Contact,35.314732633351554
+N1_sfrpEGC_VLMC,4.0,20,inj,SEMA6,Cell-Cell Contact,9.167255598568953
+N1_sfrpEGC_VLMC,4.0,20,inj,SEMATOSTATIN,Secreted Signaling,0.9038349855736512
+N1_sfrpEGC_VLMC,4.0,20,inj,TAC,Secreted Signaling,0.14536685198043098
+N1_sfrpEGC_VLMC,4.0,20,inj,TENASCIN,ECM-Receptor,5.080357666369905
+N1_sfrpEGC_VLMC,4.0,20,inj,TGFb,Secreted Signaling,0.028735811656004927
+N1_sfrpEGC_VLMC,4.0,20,inj,THBS,ECM-Receptor,4.906937047365788
+N1_sfrpEGC_VLMC,4.0,20,inj,THY1,Cell-Cell Contact,8.804073009084914e-07
+N1_sfrpEGC_VLMC,4.0,20,inj,UCN,Secreted Signaling,0.0978049933915586
+N1_sfrpEGC_VLMC,4.0,20,inj,UROTENSIN,Secreted Signaling,0.006891837893995695
+N1_sfrpEGC_VLMC,4.0,20,inj,VEGF,Secreted Signaling,0.11299638615274409
+N1_sfrpEGC_VLMC,4.0,20,inj,VIP,Secreted Signaling,0.01039905231373553
+N1_sfrpEGC_VLMC,4.0,20,inj,VISTA,Cell-Cell Contact,0.5737658937294516
+N1_sfrpEGC_VLMC,4.0,20,inj,WNT,Secreted Signaling,39.67767316386132
+N1_sfrpEGC_VLMC,4.0,20,inj,ncWNT,Secreted Signaling,0.1614826764096759
+N2_reaEGC_wntEGC,4.0,20,inj,ACTIVIN,Secreted Signaling,0.35659441935313013
+N2_reaEGC_wntEGC,4.0,20,inj,ADIPONECTIN,Secreted Signaling,0.005468398434356489
+N2_reaEGC_wntEGC,4.0,20,inj,AGRN,ECM-Receptor,11.896661364525427
+N2_reaEGC_wntEGC,4.0,20,inj,AGT,Secreted Signaling,0.005390186365188737
+N2_reaEGC_wntEGC,4.0,20,inj,ANGPT,Secreted Signaling,0.034084024143158816
+N2_reaEGC_wntEGC,4.0,20,inj,ANGPTL,Secreted Signaling,4.074639602407295
+N2_reaEGC_wntEGC,4.0,20,inj,BAG,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,BMP,Secreted Signaling,0.1873675703980463
+N2_reaEGC_wntEGC,4.0,20,inj,CALCR,Secreted Signaling,0.08335504893306733
+N2_reaEGC_wntEGC,4.0,20,inj,CCK,Secreted Signaling,0.1615963772124291
+N2_reaEGC_wntEGC,4.0,20,inj,CCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,CD34,Cell-Cell Contact,0.021511117468755125
+N2_reaEGC_wntEGC,4.0,20,inj,CD40,Secreted Signaling,0.004838123550370679
+N2_reaEGC_wntEGC,4.0,20,inj,CD45,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,CDH,Cell-Cell Contact,15.68642156910414
+N2_reaEGC_wntEGC,4.0,20,inj,CDH1,Cell-Cell Contact,0.025499988206900345
+N2_reaEGC_wntEGC,4.0,20,inj,CDH5,Cell-Cell Contact,0.0002031221437290061
+N2_reaEGC_wntEGC,4.0,20,inj,CLDN,Cell-Cell Contact,0.04417476248574703
+N2_reaEGC_wntEGC,4.0,20,inj,CNTN,Cell-Cell Contact,11.80908705335647
+N2_reaEGC_wntEGC,4.0,20,inj,COLLAGEN,ECM-Receptor,3.592152642840805
+N2_reaEGC_wntEGC,4.0,20,inj,CSPG4,Cell-Cell Contact,0.017240372431591697
+N2_reaEGC_wntEGC,4.0,20,inj,CXCL,Secreted Signaling,0.12548984220339085
+N2_reaEGC_wntEGC,4.0,20,inj,EDN,Secreted Signaling,5.8173181835948435
+N2_reaEGC_wntEGC,4.0,20,inj,EGF,Secreted Signaling,0.05724607477753656
+N2_reaEGC_wntEGC,4.0,20,inj,EPHA,Cell-Cell Contact,27.57354462338734
+N2_reaEGC_wntEGC,4.0,20,inj,EPHB,Cell-Cell Contact,18.060321519204784
+N2_reaEGC_wntEGC,4.0,20,inj,ESAM,Cell-Cell Contact,0.003045858839965983
+N2_reaEGC_wntEGC,4.0,20,inj,FGF,Secreted Signaling,7.524831285206352
+N2_reaEGC_wntEGC,4.0,20,inj,FN1,ECM-Receptor,1.0218417865036051
+N2_reaEGC_wntEGC,4.0,20,inj,GALANIN,Secreted Signaling,0.160690082514666
+N2_reaEGC_wntEGC,4.0,20,inj,GAS,Secreted Signaling,0.5232157296607498
+N2_reaEGC_wntEGC,4.0,20,inj,GDF,Secreted Signaling,0.7813220216147699
+N2_reaEGC_wntEGC,4.0,20,inj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,GPR,Secreted Signaling,0.02761481414945381
+N2_reaEGC_wntEGC,4.0,20,inj,GRN,Secreted Signaling,12.787353227585367
+N2_reaEGC_wntEGC,4.0,20,inj,HH,Secreted Signaling,0.0022170196048602723
+N2_reaEGC_wntEGC,4.0,20,inj,HSPG,ECM-Receptor,0.5684201064180421
+N2_reaEGC_wntEGC,4.0,20,inj,JAM,Cell-Cell Contact,20.67212485354373
+N2_reaEGC_wntEGC,4.0,20,inj,L1CAM,Cell-Cell Contact,34.03499765246305
+N2_reaEGC_wntEGC,4.0,20,inj,LAMININ,ECM-Receptor,22.087773064202246
+N2_reaEGC_wntEGC,4.0,20,inj,MAG,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,MPZ,Cell-Cell Contact,0.08558130703648074
+N2_reaEGC_wntEGC,4.0,20,inj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,NCAM,Cell-Cell Contact,16.925723261347784
+N2_reaEGC_wntEGC,4.0,20,inj,NEGR,Cell-Cell Contact,0.15886555454329804
+N2_reaEGC_wntEGC,4.0,20,inj,NGL,Cell-Cell Contact,1.0232285949489501
+N2_reaEGC_wntEGC,4.0,20,inj,NMU,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,NOTCH,Cell-Cell Contact,0.675654371772767
+N2_reaEGC_wntEGC,4.0,20,inj,NPFF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,NPR2,Secreted Signaling,0.0013397209405869533
+N2_reaEGC_wntEGC,4.0,20,inj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,NPY,Secreted Signaling,0.4634593989994135
+N2_reaEGC_wntEGC,4.0,20,inj,NRG,Secreted Signaling,2.44705096342416
+N2_reaEGC_wntEGC,4.0,20,inj,NRXN,Cell-Cell Contact,35.63926061926852
+N2_reaEGC_wntEGC,4.0,20,inj,NTS,Secreted Signaling,0.5606764883416171
+N2_reaEGC_wntEGC,4.0,20,inj,PARs,Secreted Signaling,0.24386456414762112
+N2_reaEGC_wntEGC,4.0,20,inj,PDGF,Secreted Signaling,1.2214360647294993
+N2_reaEGC_wntEGC,4.0,20,inj,PECAM1,Cell-Cell Contact,0.004176968158979331
+N2_reaEGC_wntEGC,4.0,20,inj,PROS,Secreted Signaling,0.8909107032000092
+N2_reaEGC_wntEGC,4.0,20,inj,PSAP,Secreted Signaling,179.4253476562344
+N2_reaEGC_wntEGC,4.0,20,inj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,inj,PTPRM,Cell-Cell Contact,0.21629046881475994
+N2_reaEGC_wntEGC,4.0,20,inj,RELN,ECM-Receptor,0.11069265694239012
+N2_reaEGC_wntEGC,4.0,20,inj,SEMA3,Secreted Signaling,9.141409901836289
+N2_reaEGC_wntEGC,4.0,20,inj,SEMA4,Cell-Cell Contact,7.950982144671717
+N2_reaEGC_wntEGC,4.0,20,inj,SEMA5,Cell-Cell Contact,35.85831669606042
+N2_reaEGC_wntEGC,4.0,20,inj,SEMA6,Cell-Cell Contact,16.73020782329169
+N2_reaEGC_wntEGC,4.0,20,inj,SEMATOSTATIN,Secreted Signaling,0.7789137412539542
+N2_reaEGC_wntEGC,4.0,20,inj,TAC,Secreted Signaling,0.20073502309214042
+N2_reaEGC_wntEGC,4.0,20,inj,TENASCIN,ECM-Receptor,12.990307935011622
+N2_reaEGC_wntEGC,4.0,20,inj,TGFb,Secreted Signaling,0.17775377824384206
+N2_reaEGC_wntEGC,4.0,20,inj,THBS,ECM-Receptor,18.26773474815863
+N2_reaEGC_wntEGC,4.0,20,inj,THY1,Cell-Cell Contact,0.0013713570893267408
+N2_reaEGC_wntEGC,4.0,20,inj,UCN,Secreted Signaling,0.006443351752101738
+N2_reaEGC_wntEGC,4.0,20,inj,UROTENSIN,Secreted Signaling,0.003088184069854236
+N2_reaEGC_wntEGC,4.0,20,inj,VEGF,Secreted Signaling,0.024185318833115668
+N2_reaEGC_wntEGC,4.0,20,inj,VIP,Secreted Signaling,0.014012463275889684
+N2_reaEGC_wntEGC,4.0,20,inj,VISTA,Cell-Cell Contact,4.035610150571773
+N2_reaEGC_wntEGC,4.0,20,inj,WNT,Secreted Signaling,71.380799239874
+N2_reaEGC_wntEGC,4.0,20,inj,ncWNT,Secreted Signaling,1.98724563763168
+N1_sfrpEGC_VLMC,4.0,20,uninj,ACTIVIN,Secreted Signaling,0.046028216928936855
+N1_sfrpEGC_VLMC,4.0,20,uninj,ADIPONECTIN,Secreted Signaling,0.0446269458141776
+N1_sfrpEGC_VLMC,4.0,20,uninj,AGRN,ECM-Receptor,45.32671595520319
+N1_sfrpEGC_VLMC,4.0,20,uninj,AGT,Secreted Signaling,0.05821124072732093
+N1_sfrpEGC_VLMC,4.0,20,uninj,ANGPT,Secreted Signaling,0.035379506392256364
+N1_sfrpEGC_VLMC,4.0,20,uninj,ANGPTL,Secreted Signaling,15.69003552209133
+N1_sfrpEGC_VLMC,4.0,20,uninj,BAG,Secreted Signaling,0.15540312376468235
+N1_sfrpEGC_VLMC,4.0,20,uninj,BMP,Secreted Signaling,0.22156012702059413
+N1_sfrpEGC_VLMC,4.0,20,uninj,CALCR,Secreted Signaling,0.42056216488913467
+N1_sfrpEGC_VLMC,4.0,20,uninj,CCK,Secreted Signaling,0.07476253823553072
+N1_sfrpEGC_VLMC,4.0,20,uninj,CCL,Secreted Signaling,3.54830171397464e-05
+N1_sfrpEGC_VLMC,4.0,20,uninj,CD34,Cell-Cell Contact,0.025617482996337385
+N1_sfrpEGC_VLMC,4.0,20,uninj,CD40,Secreted Signaling,0.002045653166091523
+N1_sfrpEGC_VLMC,4.0,20,uninj,CD45,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,4.0,20,uninj,CDH,Cell-Cell Contact,28.562787783738514
+N1_sfrpEGC_VLMC,4.0,20,uninj,CDH1,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,4.0,20,uninj,CDH5,Cell-Cell Contact,0.06690181848465855
+N1_sfrpEGC_VLMC,4.0,20,uninj,CLDN,Cell-Cell Contact,0.021572653664297635
+N1_sfrpEGC_VLMC,4.0,20,uninj,CNTN,Cell-Cell Contact,23.84246932248961
+N1_sfrpEGC_VLMC,4.0,20,uninj,COLLAGEN,ECM-Receptor,3.5632491788421365
+N1_sfrpEGC_VLMC,4.0,20,uninj,CSPG4,Cell-Cell Contact,0.06757295567594937
+N1_sfrpEGC_VLMC,4.0,20,uninj,CXCL,Secreted Signaling,0.08630978345351031
+N1_sfrpEGC_VLMC,4.0,20,uninj,EDN,Secreted Signaling,0.2696590935460021
+N1_sfrpEGC_VLMC,4.0,20,uninj,EGF,Secreted Signaling,0.15543436410009343
+N1_sfrpEGC_VLMC,4.0,20,uninj,EPHA,Cell-Cell Contact,8.219996456315709
+N1_sfrpEGC_VLMC,4.0,20,uninj,EPHB,Cell-Cell Contact,46.29506611412335
+N1_sfrpEGC_VLMC,4.0,20,uninj,ESAM,Cell-Cell Contact,0.012078041106789965
+N1_sfrpEGC_VLMC,4.0,20,uninj,FGF,Secreted Signaling,12.110195868733115
+N1_sfrpEGC_VLMC,4.0,20,uninj,FN1,ECM-Receptor,0.28838591809488856
+N1_sfrpEGC_VLMC,4.0,20,uninj,GALANIN,Secreted Signaling,0.10375503317390626
+N1_sfrpEGC_VLMC,4.0,20,uninj,GAS,Secreted Signaling,2.4450085995348134
+N1_sfrpEGC_VLMC,4.0,20,uninj,GDF,Secreted Signaling,0.1701436839312268
+N1_sfrpEGC_VLMC,4.0,20,uninj,GDNF,Secreted Signaling,6.000470057936918e-05
+N1_sfrpEGC_VLMC,4.0,20,uninj,GPR,Secreted Signaling,0.3561604107839445
+N1_sfrpEGC_VLMC,4.0,20,uninj,GRN,Secreted Signaling,5.177846236805692
+N1_sfrpEGC_VLMC,4.0,20,uninj,HH,Secreted Signaling,0.0028808061744784517
+N1_sfrpEGC_VLMC,4.0,20,uninj,HSPG,ECM-Receptor,0.6679449062571399
+N1_sfrpEGC_VLMC,4.0,20,uninj,JAM,Cell-Cell Contact,20.888953947332
+N1_sfrpEGC_VLMC,4.0,20,uninj,L1CAM,Cell-Cell Contact,19.879816431713806
+N1_sfrpEGC_VLMC,4.0,20,uninj,LAMININ,ECM-Receptor,48.87472946096351
+N1_sfrpEGC_VLMC,4.0,20,uninj,MAG,Cell-Cell Contact,0.0
+N1_sfrpEGC_VLMC,4.0,20,uninj,MPZ,Cell-Cell Contact,0.12016661429436755
+N1_sfrpEGC_VLMC,4.0,20,uninj,MSTN,Secreted Signaling,0.015959061685902685
+N1_sfrpEGC_VLMC,4.0,20,uninj,NCAM,Cell-Cell Contact,20.18938724787113
+N1_sfrpEGC_VLMC,4.0,20,uninj,NEGR,Cell-Cell Contact,0.6688293635849102
+N1_sfrpEGC_VLMC,4.0,20,uninj,NGL,Cell-Cell Contact,2.744986973986092
+N1_sfrpEGC_VLMC,4.0,20,uninj,NMU,Secreted Signaling,0.023673167069058452
+N1_sfrpEGC_VLMC,4.0,20,uninj,NOTCH,Cell-Cell Contact,0.32404560852858916
+N1_sfrpEGC_VLMC,4.0,20,uninj,NPFF,Secreted Signaling,0.0007293927708719386
+N1_sfrpEGC_VLMC,4.0,20,uninj,NPR2,Secreted Signaling,0.0
+N1_sfrpEGC_VLMC,4.0,20,uninj,NPW-B,Secreted Signaling,0.00176989697160243
+N1_sfrpEGC_VLMC,4.0,20,uninj,NPY,Secreted Signaling,1.254384910979976
+N1_sfrpEGC_VLMC,4.0,20,uninj,NRG,Secreted Signaling,3.5260568953111013
+N1_sfrpEGC_VLMC,4.0,20,uninj,NRXN,Cell-Cell Contact,56.175530873112685
+N1_sfrpEGC_VLMC,4.0,20,uninj,NTS,Secreted Signaling,1.3557938449019074
+N1_sfrpEGC_VLMC,4.0,20,uninj,PARs,Secreted Signaling,0.09941298197896745
+N1_sfrpEGC_VLMC,4.0,20,uninj,PDGF,Secreted Signaling,0.05891646482497719
+N1_sfrpEGC_VLMC,4.0,20,uninj,PECAM1,Cell-Cell Contact,0.007866774451487278
+N1_sfrpEGC_VLMC,4.0,20,uninj,PROS,Secreted Signaling,1.3090015721787835
+N1_sfrpEGC_VLMC,4.0,20,uninj,PSAP,Secreted Signaling,162.62976214334853
+N1_sfrpEGC_VLMC,4.0,20,uninj,PTH,Secreted Signaling,0.0010487180449074223
+N1_sfrpEGC_VLMC,4.0,20,uninj,PTPRM,Cell-Cell Contact,0.33302124351294854
+N1_sfrpEGC_VLMC,4.0,20,uninj,RELN,ECM-Receptor,0.06438171838218586
+N1_sfrpEGC_VLMC,4.0,20,uninj,SEMA3,Secreted Signaling,7.6567536210586855
+N1_sfrpEGC_VLMC,4.0,20,uninj,SEMA4,Cell-Cell Contact,9.28503212600303
+N1_sfrpEGC_VLMC,4.0,20,uninj,SEMA5,Cell-Cell Contact,31.45097257718935
+N1_sfrpEGC_VLMC,4.0,20,uninj,SEMA6,Cell-Cell Contact,10.560556902977288
+N1_sfrpEGC_VLMC,4.0,20,uninj,SEMATOSTATIN,Secreted Signaling,1.3397397531770805
+N1_sfrpEGC_VLMC,4.0,20,uninj,TAC,Secreted Signaling,0.08589777743377826
+N1_sfrpEGC_VLMC,4.0,20,uninj,TENASCIN,ECM-Receptor,12.202590281004696
+N1_sfrpEGC_VLMC,4.0,20,uninj,TGFb,Secreted Signaling,0.08817605356833504
+N1_sfrpEGC_VLMC,4.0,20,uninj,THBS,ECM-Receptor,12.848950977079257
+N1_sfrpEGC_VLMC,4.0,20,uninj,THY1,Cell-Cell Contact,0.004937644299302818
+N1_sfrpEGC_VLMC,4.0,20,uninj,UCN,Secreted Signaling,0.0019039415841031978
+N1_sfrpEGC_VLMC,4.0,20,uninj,UROTENSIN,Secreted Signaling,0.0018842005692548437
+N1_sfrpEGC_VLMC,4.0,20,uninj,VEGF,Secreted Signaling,0.09725250352813983
+N1_sfrpEGC_VLMC,4.0,20,uninj,VIP,Secreted Signaling,0.009701497857503905
+N1_sfrpEGC_VLMC,4.0,20,uninj,VISTA,Cell-Cell Contact,1.2781316264987268
+N1_sfrpEGC_VLMC,4.0,20,uninj,WNT,Secreted Signaling,56.12380197825428
+N1_sfrpEGC_VLMC,4.0,20,uninj,ncWNT,Secreted Signaling,0.7247800786652004
+N2_reaEGC_wntEGC,4.0,20,uninj,ACTIVIN,Secreted Signaling,0.30817078812072934
+N2_reaEGC_wntEGC,4.0,20,uninj,ADIPONECTIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,AGRN,ECM-Receptor,4.6589158051532875
+N2_reaEGC_wntEGC,4.0,20,uninj,AGT,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,ANGPT,Secreted Signaling,0.01821092589545279
+N2_reaEGC_wntEGC,4.0,20,uninj,ANGPTL,Secreted Signaling,1.2458132653235876
+N2_reaEGC_wntEGC,4.0,20,uninj,BAG,Secreted Signaling,0.05129065060236323
+N2_reaEGC_wntEGC,4.0,20,uninj,BMP,Secreted Signaling,0.07850933930118718
+N2_reaEGC_wntEGC,4.0,20,uninj,CALCR,Secreted Signaling,0.0645886792687417
+N2_reaEGC_wntEGC,4.0,20,uninj,CCK,Secreted Signaling,0.06712882100118692
+N2_reaEGC_wntEGC,4.0,20,uninj,CCL,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,CD34,Cell-Cell Contact,0.009754804662528335
+N2_reaEGC_wntEGC,4.0,20,uninj,CD40,Secreted Signaling,0.003930102713047761
+N2_reaEGC_wntEGC,4.0,20,uninj,CD45,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,CDH,Cell-Cell Contact,4.973831908884919
+N2_reaEGC_wntEGC,4.0,20,uninj,CDH1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,CDH5,Cell-Cell Contact,0.0001785067667736955
+N2_reaEGC_wntEGC,4.0,20,uninj,CLDN,Cell-Cell Contact,0.008363603800121496
+N2_reaEGC_wntEGC,4.0,20,uninj,CNTN,Cell-Cell Contact,6.66854444687061
+N2_reaEGC_wntEGC,4.0,20,uninj,COLLAGEN,ECM-Receptor,2.535408097117699
+N2_reaEGC_wntEGC,4.0,20,uninj,CSPG4,Cell-Cell Contact,0.011567129104176788
+N2_reaEGC_wntEGC,4.0,20,uninj,CXCL,Secreted Signaling,0.13528070473336828
+N2_reaEGC_wntEGC,4.0,20,uninj,EDN,Secreted Signaling,4.770458622187194
+N2_reaEGC_wntEGC,4.0,20,uninj,EGF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,EPHA,Cell-Cell Contact,13.450972000558394
+N2_reaEGC_wntEGC,4.0,20,uninj,EPHB,Cell-Cell Contact,6.804594354177608
+N2_reaEGC_wntEGC,4.0,20,uninj,ESAM,Cell-Cell Contact,0.0016574992226954049
+N2_reaEGC_wntEGC,4.0,20,uninj,FGF,Secreted Signaling,2.7427651360134644
+N2_reaEGC_wntEGC,4.0,20,uninj,FN1,ECM-Receptor,0.6074368695092861
+N2_reaEGC_wntEGC,4.0,20,uninj,GALANIN,Secreted Signaling,0.0639340363885949
+N2_reaEGC_wntEGC,4.0,20,uninj,GAS,Secreted Signaling,0.5945947012915292
+N2_reaEGC_wntEGC,4.0,20,uninj,GDF,Secreted Signaling,0.7556572337407049
+N2_reaEGC_wntEGC,4.0,20,uninj,GDNF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,GPR,Secreted Signaling,0.11351491918832733
+N2_reaEGC_wntEGC,4.0,20,uninj,GRN,Secreted Signaling,6.011250059611979
+N2_reaEGC_wntEGC,4.0,20,uninj,HH,Secreted Signaling,0.0029724152974771527
+N2_reaEGC_wntEGC,4.0,20,uninj,HSPG,ECM-Receptor,0.6140434501428228
+N2_reaEGC_wntEGC,4.0,20,uninj,JAM,Cell-Cell Contact,6.891868178965519
+N2_reaEGC_wntEGC,4.0,20,uninj,L1CAM,Cell-Cell Contact,16.91982296878147
+N2_reaEGC_wntEGC,4.0,20,uninj,LAMININ,ECM-Receptor,13.061831361867656
+N2_reaEGC_wntEGC,4.0,20,uninj,MAG,Cell-Cell Contact,0.0002140200140380919
+N2_reaEGC_wntEGC,4.0,20,uninj,MPZ,Cell-Cell Contact,0.10430100826389971
+N2_reaEGC_wntEGC,4.0,20,uninj,MSTN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,NCAM,Cell-Cell Contact,14.159770141551569
+N2_reaEGC_wntEGC,4.0,20,uninj,NEGR,Cell-Cell Contact,0.144450070089122
+N2_reaEGC_wntEGC,4.0,20,uninj,NGL,Cell-Cell Contact,0.4513224336337384
+N2_reaEGC_wntEGC,4.0,20,uninj,NMU,Secreted Signaling,0.007038235342310659
+N2_reaEGC_wntEGC,4.0,20,uninj,NOTCH,Cell-Cell Contact,0.08682544520280555
+N2_reaEGC_wntEGC,4.0,20,uninj,NPFF,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,NPR2,Secreted Signaling,0.000705170813738225
+N2_reaEGC_wntEGC,4.0,20,uninj,NPW-B,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,NPY,Secreted Signaling,0.29249966440796166
+N2_reaEGC_wntEGC,4.0,20,uninj,NRG,Secreted Signaling,1.0172796936683082
+N2_reaEGC_wntEGC,4.0,20,uninj,NRXN,Cell-Cell Contact,30.360461073173603
+N2_reaEGC_wntEGC,4.0,20,uninj,NTS,Secreted Signaling,0.31668389382208145
+N2_reaEGC_wntEGC,4.0,20,uninj,PARs,Secreted Signaling,0.014018165359621124
+N2_reaEGC_wntEGC,4.0,20,uninj,PDGF,Secreted Signaling,0.30410632769066853
+N2_reaEGC_wntEGC,4.0,20,uninj,PECAM1,Cell-Cell Contact,0.00895151307778214
+N2_reaEGC_wntEGC,4.0,20,uninj,PROS,Secreted Signaling,1.180934914993574
+N2_reaEGC_wntEGC,4.0,20,uninj,PSAP,Secreted Signaling,45.671074235985955
+N2_reaEGC_wntEGC,4.0,20,uninj,PTH,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,PTPRM,Cell-Cell Contact,0.08253526049747983
+N2_reaEGC_wntEGC,4.0,20,uninj,RELN,ECM-Receptor,0.11899468494743022
+N2_reaEGC_wntEGC,4.0,20,uninj,SEMA3,Secreted Signaling,2.809447029848551
+N2_reaEGC_wntEGC,4.0,20,uninj,SEMA4,Cell-Cell Contact,4.816050108651641
+N2_reaEGC_wntEGC,4.0,20,uninj,SEMA5,Cell-Cell Contact,12.311657085749749
+N2_reaEGC_wntEGC,4.0,20,uninj,SEMA6,Cell-Cell Contact,7.895836677591067
+N2_reaEGC_wntEGC,4.0,20,uninj,SEMATOSTATIN,Secreted Signaling,2.7184170338914333
+N2_reaEGC_wntEGC,4.0,20,uninj,TAC,Secreted Signaling,0.11878564427255912
+N2_reaEGC_wntEGC,4.0,20,uninj,TENASCIN,ECM-Receptor,2.478751438925961
+N2_reaEGC_wntEGC,4.0,20,uninj,TGFb,Secreted Signaling,0.08605074348093218
+N2_reaEGC_wntEGC,4.0,20,uninj,THBS,ECM-Receptor,6.541101452155522
+N2_reaEGC_wntEGC,4.0,20,uninj,THY1,Cell-Cell Contact,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,UCN,Secreted Signaling,0.001422501409663907
+N2_reaEGC_wntEGC,4.0,20,uninj,UROTENSIN,Secreted Signaling,0.0
+N2_reaEGC_wntEGC,4.0,20,uninj,VEGF,Secreted Signaling,0.03652626364186546
+N2_reaEGC_wntEGC,4.0,20,uninj,VIP,Secreted Signaling,0.010156025594702934
+N2_reaEGC_wntEGC,4.0,20,uninj,VISTA,Cell-Cell Contact,0.8012743223328456
+N2_reaEGC_wntEGC,4.0,20,uninj,WNT,Secreted Signaling,38.73648210284539
+N2_reaEGC_wntEGC,4.0,20,uninj,ncWNT,Secreted Signaling,3.019511192058432

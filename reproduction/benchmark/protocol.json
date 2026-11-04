@@ -1,0 +1,202 @@
+{
+  "version": "2026-11-03 restored share version",
+  "folds": [
+    {
+      "dataset": "admouse",
+      "held_out_time": 1.0,
+      "prediction_source_time": 0.0,
+      "left_transport_anchor": 0.0,
+      "right_transport_anchor": 2.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        2.0
+      ],
+      "manifest": "input_manifests/admouse/loto_t1/manifest.json"
+    },
+    {
+      "dataset": "arista",
+      "held_out_time": 1.0,
+      "prediction_source_time": 0.0,
+      "left_transport_anchor": 0.0,
+      "right_transport_anchor": 2.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "manifest": "input_manifests/arista/loto_t1/manifest.json"
+    },
+    {
+      "dataset": "arista",
+      "held_out_time": 2.0,
+      "prediction_source_time": 1.0,
+      "left_transport_anchor": 1.0,
+      "right_transport_anchor": 3.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        3.0,
+        4.0
+      ],
+      "manifest": "input_manifests/arista/loto_t2/manifest.json"
+    },
+    {
+      "dataset": "arista",
+      "held_out_time": 3.0,
+      "prediction_source_time": 2.0,
+      "left_transport_anchor": 2.0,
+      "right_transport_anchor": 4.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        2.0,
+        4.0
+      ],
+      "manifest": "input_manifests/arista/loto_t3/manifest.json"
+    },
+    {
+      "dataset": "chicken_heart",
+      "held_out_time": 1.0,
+      "prediction_source_time": 0.0,
+      "left_transport_anchor": 0.0,
+      "right_transport_anchor": 2.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        2.0,
+        3.0
+      ],
+      "manifest": "input_manifests/chicken_heart/loto_t1/manifest.json"
+    },
+    {
+      "dataset": "chicken_heart",
+      "held_out_time": 2.0,
+      "prediction_source_time": 1.0,
+      "left_transport_anchor": 1.0,
+      "right_transport_anchor": 3.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        3.0
+      ],
+      "manifest": "input_manifests/chicken_heart/loto_t2/manifest.json"
+    },
+    {
+      "dataset": "mosta",
+      "held_out_time": 1.0,
+      "prediction_source_time": 0.0,
+      "left_transport_anchor": 0.0,
+      "right_transport_anchor": 2.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        2.0,
+        3.0
+      ],
+      "manifest": "input_manifests/mosta/loto_t1/manifest.json"
+    },
+    {
+      "dataset": "mosta",
+      "held_out_time": 2.0,
+      "prediction_source_time": 1.0,
+      "left_transport_anchor": 1.0,
+      "right_transport_anchor": 3.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        3.0
+      ],
+      "manifest": "input_manifests/mosta/loto_t2/manifest.json"
+    },
+    {
+      "dataset": "zebrafish",
+      "held_out_time": 1.0,
+      "prediction_source_time": 0.0,
+      "left_transport_anchor": 0.0,
+      "right_transport_anchor": 2.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "manifest": "input_manifests/zebrafish/loto_t1/manifest.json"
+    },
+    {
+      "dataset": "zebrafish",
+      "held_out_time": 2.0,
+      "prediction_source_time": 1.0,
+      "left_transport_anchor": 1.0,
+      "right_transport_anchor": 3.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        3.0,
+        4.0
+      ],
+      "manifest": "input_manifests/zebrafish/loto_t2/manifest.json"
+    },
+    {
+      "dataset": "zebrafish",
+      "held_out_time": 3.0,
+      "prediction_source_time": 2.0,
+      "left_transport_anchor": 2.0,
+      "right_transport_anchor": 4.0,
+      "interpolation_fraction": 0.5,
+      "training_times": [
+        0.0,
+        1.0,
+        2.0,
+        4.0
+      ],
+      "manifest": "input_manifests/zebrafish/loto_t3/manifest.json"
+    }
+  ],
+  "methods": [
+    "CytoBridge-0.015",
+    "exact_ot_displacement",
+    "mioflow2",
+    "moscot",
+    "paste2",
+    "random_independent_pairs",
+    "spateo",
+    "spatrack_pca",
+    "stories",
+    "stvcr",
+    "wot"
+  ],
+  "source_roster_n": 5000,
+  "coupling_anchor_support_cap": 800,
+  "projection_repeats": 5,
+  "directions_per_repeat": 1024,
+  "representation": "shared PCA and aligned coordinates, prepared before folds and fixed across methods",
+  "prediction_start": "Each fold uses the nearest previous observed stage, as recorded in fold_start_times.csv and the actual manifests. Static coupling methods use that stage and the nearest following stage, then interpolate to the target. MIOFlow 2.0 integrates from the source stage to the target. Shared dynamic runner checks its source roster against the same source_time.",
+  "paste2": {
+    "paste2": "experiments/paste2_full_matching_20261031",
+    "overlap_fraction": 1,
+    "alpha": 0.1,
+    "expression_cost": "squared Euclidean PCA distance",
+    "norm": false,
+    "solver_cap": 200,
+    "linear_ot": "unchanged original all-training-reference scaling",
+    "mioflow2": "experiments/paste2_mioflow2_20261031",
+    "reference_policy": "Retain PASTE and PASTE2 citations in a single citation field. No EndNote records deleted.",
+    "partial_matching_comparison": "experiments/paste2_full_matching_20261031/results_summary/paired_comparison.csv",
+    "scope": "Replace PASTE panel with full-matching PASTE2. MIOFlow 2.0 remains the current new benchmark. Other checklist items not changed.",
+    "rebuild": "python build_figures.py && python plot_s45.py"
+  },
+  "mioflow2_code": "run_code/mioflow2/run_benchmark.py",
+  "spatrack_code": "run_code/spatrack/run_benchmark.py",
+  "shared_code": "run_code/shared/scripts/spatiotemporal_benchmark",
+  "metric": "mean Sliced-W2 over five projection repeats per dataset/target/method/output space",
+  "input_arrays": "Large input arrays and checkpoints are not requested in this source-files bundle; their original server paths and SHA256 hashes are recorded in the per-fold manifests."
+}

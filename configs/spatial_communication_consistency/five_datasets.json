@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "analysis": "five_dataset_spatial_communication_consistency",
+  "analysis_seed": 20260816,
+  "terminal_sample_n": 3000,
+  "comparison_unit": "complete directed terminal-stage sender-cell-type to receiver-cell-type grid",
+  "primary_cytobridge_view": "CytoBridge exact message",
+  "secondary_cytobridge_view": "CytoBridge attention",
+  "score_comparison": "within-method ranks only; native units are not pooled",
+  "top_fraction": 0.2,
+  "main_figure_inclusion_gate": {
+    "minimum_valid_datasets": 4,
+    "minimum_positive_datasets": 4,
+    "minimum_median_spearman_rho": 0.2,
+    "minimum_median_top_fraction_jaccard": 0.15,
+    "frozen_before_five_dataset_results": true
+  },
+  "method_reporting": {
+    "all_attempted_methods_retained_in_audit_tables": true,
+    "failed_or_weak_methods_may_be_absent_from_main_figure": true,
+    "main_figure_exclusion_must_be_reported": true
+  },
+  "molecular_attribution": {
+    "cell_type_pair_scores_do_not_identify_ligand_receptor_or_target_genes": true,
+    "ligand_receptor_and_pathway_labels_must_name_the_supporting_external_method": true,
+    "target_gene_programs_must_be_labelled_nichenet_supported": true,
+    "model_linked_lr_axis": {
+      "candidate_universe": "frozen shared LR database crossed with all terminal off-diagonal model cell-type pairs",
+      "selection": "abundance-normalized exact CytoBridge message magnitude times sender-ligand and receiver-receptor activity",
+      "minimum_active_model_edges": 10,
+      "external_methods_used_after_selection_only": true,
+      "external_method_candidate_universes_are_zero_filled": true,
+      "lr_label_is_post_hoc_molecular_compatibility_not_native_gnn_identity": true
+    }
+  },
+  "datasets": [
+    "zebrafish",
+    "mosta",
+    "arista",
+    "admouse",
+    "chicken_heart"
+  ]
+}

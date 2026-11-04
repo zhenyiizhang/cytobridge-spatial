@@ -1,0 +1,483 @@
+{
+  "schema_version": 1,
+  "panel": "Fig4a",
+  "status": "complete",
+  "calculation_gate": "qc/particle_sensitivity_gate.json",
+  "style_oracle": "provenance/Figure_mouse1_style_oracle.ai",
+  "style_oracle_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+  "style_oracle_creator": "Adobe Illustrator 30.2 (Macintosh)",
+  "trajectory_mode": "global_t0_extrapolation",
+  "n_initial_particles": 50000,
+  "server_run": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1",
+  "server_summary_sha256": "63ea1da89b075dab6115e21a3171c6563f5e36dbf51942ddb81c76ceb2ae5827",
+  "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+  "render_version": "n50000_fine_points_isotropic_E15_original_zorder_v3",
+  "point_size_pt2": 0.35,
+  "palette_contract": {
+    "legacy_labels": "exact RGB extracted from Figure_mouse1.ai circle objects",
+    "legacy_order": [
+      "Blood vessel",
+      "Brain",
+      "Cartilage primordium",
+      "Cavity",
+      "Choroid plexus",
+      "Connective tissue",
+      "Dorsal root ganglion",
+      "Epidermis",
+      "GI tract",
+      "Heart",
+      "Jaw and tooth",
+      "Kidney",
+      "Liver",
+      "Lung",
+      "Lung primordium",
+      "Meninges",
+      "Mesentery",
+      "Mesothelium",
+      "Mucosal epithelium",
+      "Muscle",
+      "Ovary",
+      "Pancreas",
+      "Spinal cord",
+      "Sympathetic nerve",
+      "Urogenital ridge"
+    ],
+    "additional_labels": [
+      "Adipose tissue",
+      "Adrenal gland",
+      "Cartilage",
+      "Facial nerve",
+      "Inner ear",
+      "Olfactory epithelium",
+      "Smooth muscle",
+      "Thymus"
+    ],
+    "additional_label_source": "canonical MOSTA label_to_color.json because these labels are absent from the Fig. 4a Illustrator legend",
+    "canonical_vs_ai_differences": {
+      "Lung": {
+        "canonical": "#7ec136ff",
+        "illustrator": "#7dc243ff"
+      },
+      "Urogenital ridge": {
+        "canonical": "#9e7bffff",
+        "illustrator": "#887ab8ff"
+      }
+    }
+  },
+  "restart_from_preceding_observed_stage": false,
+  "spatial_warp": false,
+  "false_contraction_visual_gate": {
+    "status": "PASS",
+    "criterion": "E15 visible point-cloud height must be at least 98% of both E14 and E14.5 after isotropic placement",
+    "visible_content_height_points": {
+      "0.0": 89.52,
+      "0.5": 94.28139284314608,
+      "1.0": 94.79999880604534,
+      "1.5": 91.00190222089888,
+      "2.0": 92.15999940310881,
+      "2.5": 92.41149529617978,
+      "3.0": 96.23999693061728
+    },
+    "ratios": {
+      "E15_over_E14": 1.0154897100047342,
+      "E15_over_E14p5": 1.00272890510742
+    },
+    "numerical_source": "qc/E15_no_contraction_gate.csv proves corrected raw E15 q99/covariance area grows versus E14 and is comparable to E14.5"
+  },
+  "replacements": [
+    {
+      "time": 0.0,
+      "origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "xref": 39,
+      "original_pixel_size": [
+        281,
+        375
+      ],
+      "replacement_pixel_size": [
+        281,
+        375
+      ],
+      "original_illustrator_bbox_points": [
+        30.7846012,
+        64.1207886,
+        98.2245941,
+        154.1207886
+      ],
+      "replacement_illustrator_bbox_points": [
+        30.7846012,
+        64.1207886,
+        98.2245941,
+        154.1207886
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 0,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        67.43999481201172,
+        0.0,
+        -0.0,
+        90.0,
+        30.78460121154785,
+        64.12078857421875
+      ],
+      "preflipped_for_negative_ai_y_matrix": false,
+      "visible_content_points": {
+        "width": 60.23999365800712,
+        "height": 89.52
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.7029753122601353,
+        "replacement_alpha_mean": 0.606128662805573,
+        "original_coverage_alpha_gt_128": 0.7028422301304864,
+        "replacement_coverage_alpha_gt_128": 0.6170723606168446
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_0p0_xref39.png",
+      "replacement_sha256": "41063d766486fdc0d19cce9359e7e56682b8ec6ce011e790d55498dec5020f72"
+    },
+    {
+      "time": 0.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "xref": 169,
+      "original_pixel_size": [
+        609,
+        890
+      ],
+      "replacement_pixel_size": [
+        609,
+        890
+      ],
+      "original_illustrator_bbox_points": [
+        83.6306992,
+        64.1207886,
+        149.0263367,
+        159.6907654
+      ],
+      "replacement_illustrator_bbox_points": [
+        83.6306992,
+        64.1207886,
+        149.0263367,
+        159.6907654
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 24,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        65.39563751220703,
+        0.0,
+        -0.0,
+        -95.56997680664062,
+        83.63069915771484,
+        159.69076538085938
+      ],
+      "preflipped_for_negative_ai_y_matrix": true,
+      "visible_content_points": {
+        "width": 64.96610950328407,
+        "height": 94.28139284314608
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.6752322853460123,
+        "replacement_alpha_mean": 0.6301687798973392,
+        "original_coverage_alpha_gt_128": 0.681184848988026,
+        "replacement_coverage_alpha_gt_128": 0.6398239884872973
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_0p5_xref169.png",
+      "replacement_sha256": "fa43d4c64126f9475c4a0f59340f2b1e2764aee79e57a032eede4ad4c438c33e"
+    },
+    {
+      "time": 1.0,
+      "origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "xref": 40,
+      "original_pixel_size": [
+        314,
+        397
+      ],
+      "replacement_pixel_size": [
+        314,
+        397
+      ],
+      "original_illustrator_bbox_points": [
+        144.2082825,
+        70.2987366,
+        219.5682831,
+        165.5787354
+      ],
+      "replacement_illustrator_bbox_points": [
+        144.2082825,
+        70.2987366,
+        219.5682831,
+        165.5787354
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 0,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        75.36000061035156,
+        0.0,
+        -0.0,
+        95.27999877929688,
+        144.20828247070312,
+        70.29873657226562
+      ],
+      "preflipped_for_negative_ai_y_matrix": false,
+      "visible_content_points": {
+        "width": 66.24000052738855,
+        "height": 94.79999880604534
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.9965022418985403,
+        "replacement_alpha_mean": 0.6513754495043537,
+        "original_coverage_alpha_gt_128": 0.9967751768839545,
+        "replacement_coverage_alpha_gt_128": 0.6568130404787499
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_1p0_xref40.png",
+      "replacement_sha256": "cc6f4bfc1856891205c6d78785a8eeff26a55f0bc92de1c1abbab7dc29925c60"
+    },
+    {
+      "time": 1.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "xref": 172,
+      "original_pixel_size": [
+        645,
+        890
+      ],
+      "replacement_pixel_size": [
+        645,
+        890
+      ],
+      "original_illustrator_bbox_points": [
+        195.4359283,
+        68.3892822,
+        261.9849243,
+        160.2165985
+      ],
+      "replacement_illustrator_bbox_points": [
+        195.4359283,
+        68.3892822,
+        261.9849243,
+        160.2165985
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 25,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        66.54901123046875,
+        0.0,
+        -0.0,
+        -91.82731628417969,
+        195.43592834472656,
+        160.2165985107422
+      ],
+      "preflipped_for_negative_ai_y_matrix": true,
+      "visible_content_points": {
+        "width": 64.89816819224805,
+        "height": 91.00190222089888
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.7110394086734946,
+        "replacement_alpha_mean": 0.6465270190647463,
+        "original_coverage_alpha_gt_128": 0.715066631826496,
+        "replacement_coverage_alpha_gt_128": 0.6525616235519553
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_1p5_xref172.png",
+      "replacement_sha256": "8a8fb6a889f16138f24df29c049ccd1546da7a96c3daa066c627120e3f611d16"
+    },
+    {
+      "time": 2.0,
+      "origin": "observed_real",
+      "source_anchor_time": 2.0,
+      "xref": 41,
+      "original_pixel_size": [
+        284,
+        386
+      ],
+      "replacement_pixel_size": [
+        284,
+        386
+      ],
+      "original_illustrator_bbox_points": [
+        259.8041382,
+        71.6187897,
+        327.9641418,
+        164.2587891
+      ],
+      "replacement_illustrator_bbox_points": [
+        259.8041382,
+        71.6187897,
+        327.9641418,
+        164.2587891
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 0,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        68.15999603271484,
+        0.0,
+        -0.0,
+        92.63999938964844,
+        259.80413818359375,
+        71.61878967285156
+      ],
+      "preflipped_for_negative_ai_y_matrix": false,
+      "visible_content_points": {
+        "width": 60.48000319436618,
+        "height": 92.15999940310881
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.7321905322006202,
+        "replacement_alpha_mean": 0.6370586160465792,
+        "original_coverage_alpha_gt_128": 0.732157191855798,
+        "replacement_coverage_alpha_gt_128": 0.6383456177479384
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_2p0_xref41.png",
+      "replacement_sha256": "2e42aa7b0befc93544d83a3313297b81bd0c2f6a048f5cfc99d70b1744146ccf"
+    },
+    {
+      "time": 2.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "xref": 175,
+      "original_pixel_size": [
+        595,
+        890
+      ],
+      "replacement_pixel_size": [
+        644,
+        890
+      ],
+      "original_illustrator_bbox_points": [
+        316.9075928,
+        66.5596924,
+        379.2486877,
+        159.8093872
+      ],
+      "replacement_illustrator_bbox_points": [
+        314.33203153312843,
+        66.5596924,
+        381.82424896687155,
+        159.8093872
+      ],
+      "placement_mode": "isotropic_expand_x_to_corrected_raw_aspect",
+      "illustrator_form_xref": 26,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        62.341087341308594,
+        0.0,
+        -0.0,
+        -93.24969482421875,
+        316.9075927734375,
+        159.80938720703125
+      ],
+      "preflipped_for_negative_ai_y_matrix": true,
+      "visible_content_points": {
+        "width": 67.07301111427888,
+        "height": 92.41149529617978
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.7426607052602932,
+        "replacement_alpha_mean": 0.6370655081768908,
+        "original_coverage_alpha_gt_128": 0.7452591823246152,
+        "replacement_coverage_alpha_gt_128": 0.6419952543792309
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_2p5_xref175.png",
+      "replacement_sha256": "7d8d7ed613c78ce4b6b31e93c592bffcc0c004726b6b0e0bd9a76a7b99a6475a"
+    },
+    {
+      "time": 3.0,
+      "origin": "observed_real",
+      "source_anchor_time": 3.0,
+      "xref": 42,
+      "original_pixel_size": [
+        273,
+        405
+      ],
+      "replacement_pixel_size": [
+        273,
+        405
+      ],
+      "original_illustrator_bbox_points": [
+        380.575531,
+        68.3892975,
+        446.09552,
+        165.5892944
+      ],
+      "replacement_illustrator_bbox_points": [
+        380.575531,
+        68.3892975,
+        446.09552,
+        165.5892944
+      ],
+      "placement_mode": "exact_original_ai_bbox",
+      "illustrator_form_xref": 0,
+      "z_order_contract": "original Illustrator Form XObject content-stream order retained",
+      "illustrator_transform": [
+        65.5199966430664,
+        0.0,
+        -0.0,
+        97.19999694824219,
+        380.5755310058594,
+        68.38929748535156
+      ],
+      "preflipped_for_negative_ai_y_matrix": false,
+      "visible_content_points": {
+        "width": 62.159989564102574,
+        "height": 96.23999693061728
+      },
+      "alpha_density_calibration": {
+        "original_alpha_mean": 0.7724739683781078,
+        "replacement_alpha_mean": 0.7387203517051012,
+        "original_coverage_alpha_gt_128": 0.7722968389635056,
+        "replacement_coverage_alpha_gt_128": 0.7397096730430064
+      },
+      "replacement": "qa/n50000/replacement_pointclouds_rgba_n50000_fine_points_isotropic_E15_original_zorder_v3/time_3p0_xref42.png",
+      "replacement_sha256": "003ff5decfc0ee38ebdde6e244175f089dad27a80ee1c9ea3c5caa0ece12111e"
+    }
+  ],
+  "legend_labels": [
+    "Blood vessel",
+    "Brain",
+    "Cartilage primordium",
+    "Cavity",
+    "Choroid plexus",
+    "Connective tissue",
+    "Dorsal root ganglion",
+    "Epidermis",
+    "GI tract",
+    "Heart",
+    "Jaw and tooth",
+    "Kidney",
+    "Liver",
+    "Lung",
+    "Lung primordium",
+    "Meninges",
+    "Mesentery",
+    "Mesothelium",
+    "Mucosal epithelium",
+    "Muscle",
+    "Ovary",
+    "Pancreas",
+    "Spinal cord",
+    "Sympathetic nerve",
+    "Urogenital ridge",
+    "Adipose tissue",
+    "Adrenal gland",
+    "Cartilage",
+    "Facial nerve",
+    "Inner ear",
+    "Olfactory epithelium",
+    "Smooth muscle",
+    "Thymus"
+  ],
+  "legend_label_count": 33,
+  "outputs": [
+    "figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.pdf",
+    "figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.svg",
+    "figures/n50000/Fig4a_MOSTA_global_t0_original_AI_equivalent_n50000_fine_points_isotropic_E15_original_zorder_v3.png"
+  ],
+  "fullpage_qa_only": "qa/n50000/Figure_mouse1_fullpage_Fig4a_replaced_n50000_fine_points_isotropic_E15_original_zorder_v3_QA_ONLY.pdf",
+  "style_qa": "qa/n50000/ai_style_equivalence_qa_n50000_fine_points_isotropic_E15_original_zorder_v3.json",
+  "note": "The full-page QA file still contains legacy b-e values and is not a manuscript deliverable. Only the standalone Fig. 4a crop is panel-ready."
+}

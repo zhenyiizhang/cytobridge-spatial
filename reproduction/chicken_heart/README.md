@@ -1,0 +1,86 @@
+# Chicken-heart development: trajectories, cell types, and growth
+
+These four notebooks calculate daily populations, lineage transitions,
+interaction networks, growth, and velocity from the trained chicken-heart model.
+For an introduction to the Python API, start with the
+[chicken-heart tutorial](../../docs/tutorials/dataset_workflows/chicken_heart.ipynb).
+Continue with [trajectories and interactions](../../docs/tutorials/paper_figures/chicken_heart_daily.ipynb)
+to calculate the velocity, transition, and interaction panels. Both website
+notebooks show the calculations and their resulting figures.
+
+## Inputs
+
+Extract `chicken_heart_model.zip`, `chicken_heart_analysis_data.zip`, and
+`chicken_heart_training_inputs.zip` into one project folder. The last archive
+provides original coordinates and section metadata for the supplementary
+alignment plots. None of these notebooks trains a model.
+
+```text
+my_project/data/chicken_heart/
+├── aligned.h5ad
+├── workflow.json
+├── model/
+├── edge_classifier/
+├── classifier_cache/classifier_resmlp_432f09f20ff65c0d.pt
+└── raw/
+    ├── heart_pp.h5ad
+    └── chicken_heart_spatial_merged_with_meta.h5ad
+```
+
+Install the package and notebook dependencies from the CytoBridge code folder:
+
+```bash
+python -m pip install -e '.[all]' nbformat nbclient ipykernel
+```
+
+Run the four notebooks in order:
+
+```bash
+python scripts/run_chicken_heart_daily_notebooks.py --project-dir my_project
+```
+
+The executed notebooks are saved in `my_project/outputs/chicken_heart_paper/notebooks/`.
+Figures and tables are in the corresponding folders under
+`my_project/outputs/chicken_heart_paper/new_runs_formal_trained/`.
+Use `--output-dir` to keep another run separately.
+
+## Calculation order
+
+| Step | Notebook | Reads | Writes |
+| --- | --- | --- | --- |
+| 1 | [Daily interpolation](notebooks/formal_daily_piecewise_interpolation_celltypecorrected.ipynb) | Aligned data and trained model | Daily H5AD slices, communication slices, and `manifest.json` |
+| 2 | [Cell-state trajectories and lineage transitions](notebooks/formal_daily_piecewise_replot_celltypecorrected.ipynb) | Those slices and manifest | Spatial panels, velocity, interaction networks, and lineage plots |
+| 3 | [D10 velocity](notebooks/formal_d10_velocity_detail_celltypecorrected.ipynb) | The D10 slice | Regional velocity plots |
+| 4 | [Growth and supplementary plots](notebooks/formal_supplementary_replot_celltypecorrected.ipynb) | Daily slices and original section metadata | Growth, alignment, and velocity panels |
+
+For one step, add `--step interpolation`, `--step daily`, `--step d10`, or
+`--step supplementary`. The last three read the interpolation results in the
+same output directory. When opening a notebook manually, set `REPO_ROOT` to
+the CytoBridge code folder and `PROJECT_DIR` to the folder containing `data/`.
+
+## Model and analysis settings
+
+The notebooks use the chicken-heart model trained at commit `c72e592` and the
+classifier named above. The four observed stages D4, D7, D10, and D14 map to
+model times 0, 1, 2, and 3. Interpolation restarts at each observed stage and
+uses `split_resample_dt=1/12` for the daily output grid.
+
+The current S7–S8 sensitivity figures use the code in
+`reproduction/chicken_heart/alignment_sensitivity/`.
+
+## S10 comparison-region boxes
+
+`s10_highlights.tex` adds two black boxes to the accepted S10 assembly. They mark
+the corresponding lower-left ventricular region in the CytoBridge and veloAgent
+panels. This is an annotation step only. It does not calculate velocity or alter
+the existing streamlines.
+
+From this directory, run:
+
+```bash
+latexmk -pdf s10_highlights.tex
+```
+
+The unchanged base artwork is `data/s10_before_highlights.png`. The new boxes are
+vector elements in the resulting PDF. The base artwork retains its original
+resolution.

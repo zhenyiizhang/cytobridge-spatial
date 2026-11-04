@@ -1,0 +1,186 @@
+{
+  "created_unix": 1787656915.427445,
+  "cuda_device": "NVIDIA GeForce RTX 4090 D",
+  "dataset": "mosta",
+  "device": "cuda",
+  "host": "VM-32-6-ubuntu",
+  "inputs": {
+    "communication_compute": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/downstream/workflows.py",
+      "sha256": "2d6d35162b85fa5951feacee5f8224a8898d50ed4c16f7864765b3d85b0724e9",
+      "size_bytes": 40690
+    },
+    "edge_predictor": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/edge_classifier/mosta_edge_model.pt",
+      "sha256": "33bbe07b8405e54cd5bd62f2509551a2cd69ef07107bb11a975c1d12a8d8dfaa",
+      "size_bytes": 242881
+    },
+    "execution_contract": {
+      "path": "/tmp/execution_contract_fig4de_20260825_v1.json",
+      "sha256": "36ae4c0f9bcd5059a88e5e54acd0c5dc3c8638e7261bce93e8c0680d5c4aa164",
+      "size_bytes": 2904
+    },
+    "interaction": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/core/interaction.py",
+      "sha256": "a4c63a86f9804cdc8ef60b0a13bf311cd9af47f1dc610effc6c9200d2b0df991",
+      "size_bytes": 9211
+    },
+    "model_config": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/config.yaml",
+      "sha256": "ebd8b00a8e825034c1e6443f8143889aa0739ad192ebfe01eecef7f406f7b815",
+      "size_bytes": 3539
+    },
+    "model_finetune": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Finetune/best_model.pth",
+      "sha256": "d08d21b86fdcd92c748bb54ca81f998fbb157ca5a7acd9548bbfe16c573bfaa5",
+      "size_bytes": 8620533
+    },
+    "model_score_refine": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Score_Refine/score_model.pth",
+      "sha256": "d7d06657f8548618db1bc85409e73305fbf59feb9446793550b2c9761639e52a",
+      "size_bytes": 1375237
+    },
+    "models": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/core/models.py",
+      "sha256": "51dda73d744aa34f934554f1f48ddbcb7e9e6b0aef926e2ad9ee6f087dc1a69d",
+      "size_bytes": 16408
+    },
+    "palette": {
+      "path": "/tmp/label_to_color_mosta_fig4de_20260825_v1.json",
+      "sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71",
+      "size_bytes": 1363
+    },
+    "reference_h5ad": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/mosta_aligned.h5ad",
+      "sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+      "size_bytes": 15480940504
+    },
+    "runner": {
+      "path": "/tmp/server_compute_fig4de_same_state_20260825_v1.py",
+      "sha256": "eb77d65c499b7adde0dbd741de7b2f7256d1d4bf0fc879091ad9942d8ab8f7e7",
+      "size_bytes": 36599
+    },
+    "runtime": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/downstream/runtime.py",
+      "sha256": "48b75b64f086e508f4bb6cc3a3c5c139be2b39a88bcb28089993b6cce644a6ec",
+      "size_bytes": 2752
+    },
+    "velocity_compute": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/tl/downstream/simulation.py",
+      "sha256": "3ea6e0bd16e82c7c116b4e91ea5819efa918661543f78bfd920614262d23de66",
+      "size_bytes": 75989
+    },
+    "velocity_plot": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/pl/velocity.py",
+      "sha256": "3c87f34beb6d14ba85a77ceba4b50d6cd2da65b4b109da25024e9de7ee0c06c9",
+      "size_bytes": 28602
+    },
+    "workflow_summary": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/summary.json",
+      "sha256": "9ee364c4eaeed26aff4981cae85503c6a610007239a523b9d1c538d258945995",
+      "size_bytes": 20441
+    }
+  },
+  "model": {
+    "directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "edge_predictor_path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/edge_classifier/mosta_edge_model.pt",
+    "edge_predictor_threshold": 0.1192110925912857,
+    "format": "current",
+    "interaction_cutoff": 0.02400244047956264,
+    "interaction_m": 8000,
+    "score_stage": "Score_Refine",
+    "weight_stage": "Finetune"
+  },
+  "outputs": {
+    "calculation_gate.json": {
+      "sha256": "f41490894713caaaea21ba7166c1dd2549951f5b0eee8438b0402ea13b34f9c1",
+      "size_bytes": 9089
+    },
+    "cohort_cells.csv.gz": {
+      "sha256": "53152a6c0747552c380309b5cab712d0f4d55c2540f4074053769b2ce6d14fea",
+      "size_bytes": 93859
+    },
+    "cohort_type_allocation.csv": {
+      "sha256": "2fd3484c00383ff4b147e485816ca0dd538efdd6e9d7706eb1bd9919dd7980db",
+      "size_bytes": 2981
+    },
+    "communication_all_type_edges.csv.gz": {
+      "sha256": "9b9b60fc10191714f046df3f86c899e1003e0fa2b13f124d4d8af35fdc70fd2b",
+      "size_bytes": 17378
+    },
+    "communication_focus_candidates.csv": {
+      "sha256": "4721596da56276c38f303cb5ea55defb3d15be99bd4cb1c39c03c09117a91915",
+      "size_bytes": 1199
+    },
+    "fig4de_same_state_numeric_inputs.npz": {
+      "sha256": "f744cb7012c9be47c86e414a7ce7f58a44a93f99b002fdf4418bed1d6564413e",
+      "size_bytes": 8457500
+    },
+    "projection_gates/gene_full_t3_projection_gate.pdf": {
+      "sha256": "c33cc298771c99df2594196f24745a112d2c94cd3b15f3ecdfb51bcde952ec06",
+      "size_bytes": 182263
+    },
+    "projection_gates/gene_interaction_t3_projection_gate.pdf": {
+      "sha256": "9ac39ab08e77ed3e0b1c3999cd066735ed0bed69f4516a3e91ed552b0aae4263",
+      "size_bytes": 200991
+    },
+    "provenance/execution_contract_fig4de_20260825_v1.json": {
+      "sha256": "36ae4c0f9bcd5059a88e5e54acd0c5dc3c8638e7261bce93e8c0680d5c4aa164",
+      "size_bytes": 2904
+    },
+    "provenance/label_to_color_mosta_fig4de_20260825_v1.json": {
+      "sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71",
+      "size_bytes": 1363
+    },
+    "provenance/server_compute_fig4de_same_state_20260825_v1.py": {
+      "sha256": "eb77d65c499b7adde0dbd741de7b2f7256d1d4bf0fc879091ad9942d8ab8f7e7",
+      "size_bytes": 36599
+    }
+  },
+  "package": {
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "dirty": null,
+    "revision_source": "explicit_exported_runtime_contract"
+  },
+  "package_api_signatures": {
+    "communication": "(*, adata_dict, time_points: 'Sequence[float]', annotation_key: 'str', f_net, device: 'str', out_dir: 'str', save_dense_attention_matrix: 'bool' = False, remove_self_loop: 'bool' = False, winsor_quantile: 'float' = 0.995, save_pickle_path: 'Optional[str]' = None, max_cells_per_timepoint: 'Optional[int]' = None, random_seed: 'Optional[int]' = 42, cell_indices_by_time: 'Optional[Mapping[str, Sequence[int]]]' = None) -> 'dict[str, dict]'",
+    "projection": "(coords: \"'np.ndarray'\", velocity: \"'np.ndarray'\", feature_matrix: \"Optional['np.ndarray']\" = None, labels: 'Optional[Sequence[str]]' = None, label_to_color: 'Optional[Dict[str, str]]' = None, title: 'str' = '', out_path: 'Optional[str]' = None, density: 'float' = 2.0, basis: 'str' = 'spatial', show_legend: 'bool' = False, n_neighbors: 'int' = 30)",
+    "velocity": "(adata: \"'ad.AnnData'\", model, *, dim: 'Optional[int]' = None, interaction_m: 'int' = 1024, interaction_threshold: 'Optional[float]' = None, device: 'str' = 'cuda', time_key: 'Optional[str]' = None, obsm_key: 'str' = 'X_latent', spatial_key: 'str' = 'spatial_aligned', concat_spatial: 'Optional[bool]' = None, write_to_adata: 'bool' = True, reuse_if_present: 'bool' = False) -> 'Dict[str, np.ndarray]'"
+  },
+  "panels": [
+    "Fig4d",
+    "Fig4e compute reuse"
+  ],
+  "python": "/data/cytobridge/projects/CytoBridge-ST-1104/envs/arista-api/bin/python",
+  "schema_version": 1,
+  "scientific_contract": {
+    "anisotropic_stretch": false,
+    "cell_self_loops_removed_for_attention": true,
+    "gene_projection": "scvelo expression-state transition graph to observed aligned spatial coordinates",
+    "generated_state_used": false,
+    "physical_projection": "direct first two fitted model dimensions",
+    "rotation": false,
+    "same_adata_for_velocity_and_communication": true,
+    "same_interaction_module_object": true,
+    "warp": false
+  },
+  "state": {
+    "annotation_key": "Annotation",
+    "full_background_cells": 113350,
+    "full_cell_ids_sha256": "73a3bbd1e3452eea8c037cdd3639040f93463ddd486073f666e1c18b9232bed3",
+    "full_labels_sha256": "19310b3287ccc06953aa9c844cd0d11c9380eb20c00f710acd37a6c580bbf0c0",
+    "full_spatial_sha256": "2c8e27a3c4777207dac635c630b7d91eee7b03030bd1a4cc836e109a48539334",
+    "latent_key": "X_latent",
+    "origin": "observed_real_E15.5",
+    "quantitative_cell_ids_sha256": "6cd9de83553aa3d452f9e1529803b82ee7d70c30d434f3d5c15b5669566e0175",
+    "quantitative_cells": 8000,
+    "quantitative_h5ad_rows_sha256": "94851d4c2a5d124df5ee578446045a2eeb2efd29fc3cbdaffc167a1d1fac7db5",
+    "spatial_key": "spatial_aligned",
+    "spatial_warp": false,
+    "time": 3.0,
+    "time_key": "time_point_processed"
+  },
+  "status": "COMPLETE",
+  "torch_version": "2.13.0+cu130",
+  "wall_time_seconds": 54.38111400604248
+}

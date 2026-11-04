@@ -1,0 +1,111 @@
+{
+  "dataset": "MOSTA",
+  "numerical_authority": {
+    "clusterprofiler_manifest": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/server_download/si-s9-s10-clusterprofiler-mouse-all-pool-2b3c79e-20260826-v1/manifest.json",
+      "sha256": "af1bb4b22e7795b937649279bbfa9aab7f4d46d5070a28151adce9255e3c448b",
+      "size_bytes": 5284
+    },
+    "numerical_audit": "must be PASS before archival",
+    "shared_latest_package_run": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_shared_compute_20260825_v1/server_download/si-s4-s10-global-t0-n50000-dense13-2b3c79e-seed42-20260825-v1/summary.json",
+      "sha256": "355dab8c6adda3271119cc34abedf22856bf1c7882fe5e2696340d36f3fd84a1",
+      "size_bytes": 48965
+    }
+  },
+  "s10": {
+    "details": {
+      "phase_1_display_terms": 20,
+      "phase_2_display_terms": 20,
+      "phase_3_display_terms": 20,
+      "phase_sizes": {
+        "1": 483,
+        "2": 299,
+        "3": 218
+      }
+    },
+    "outputs": {
+      "pdf": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.pdf",
+        "sha256": "60467d826544efaafd2ef07a0b04a5c3e275099ab77bf15d9d78d6683a295d55",
+        "size_bytes": 350796
+      },
+      "png": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.png",
+        "sha256": "210e5943b401769cecb4e7254129013b9c0543fc7f7bca8b557891458f40d4d2",
+        "size_bytes": 344160
+      },
+      "svg": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s10/Figure_S10_MOSTA_latest_package_DP3_clusterProfiler_GO_exact_submitted_style.svg",
+        "sha256": "3db83882d612c6cf0c88f4e6308ea5b53d0d06813703b314b2734ceedd373b6e",
+        "size_bytes": 9309576
+      }
+    }
+  },
+  "s9": {
+    "details": {
+      "pattern_1_display_terms": 20,
+      "pattern_2_display_terms": 11
+    },
+    "outputs": {
+      "pdf": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.pdf",
+        "sha256": "25d682c8a3bfc622680a822d59dc12c211dd325020843ec6b54ea798164124bc",
+        "size_bytes": 48940
+      },
+      "png": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.png",
+        "sha256": "01261d856e0d04f229d43363062945228a7fd151e9d2a92f38afb6f679cca1c8",
+        "size_bytes": 275330
+      },
+      "svg": {
+        "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/figures/render_v6/s9/Figure_S9_MOSTA_latest_package_clusterProfiler_GO_exact_submitted_style.svg",
+        "sha256": "108e6967ae5cf4f33f1307fa975ec3d0ba3c5af8a530d6d97a576a79249958d9",
+        "size_bytes": 3314427
+      }
+    }
+  },
+  "schema_version": 1,
+  "scientific_contract": {
+    "coordinate_warp": false,
+    "go_colormap": {
+      "colors": [
+        "#264653",
+        "#2A9D8F",
+        "#E9C46A",
+        "#F4A261",
+        "#E76F51"
+      ],
+      "name": "mosta_submitted_go_p_adjust"
+    },
+    "go_display": "all and only FDR<0.05 terms, ordered by audited clusterProfiler ranking, up to 20; no filler or cherry picking",
+    "phase_colors": [
+      "#1f77b4",
+      "#ff7f0e",
+      "#2ca02c"
+    ],
+    "wave_colormap": "viridis",
+    "wave_limits": [
+      -1.8,
+      1.8
+    ]
+  },
+  "software": {
+    "matplotlib": "3.8.0",
+    "numpy": "1.26.4",
+    "pandas": "2.0.3"
+  },
+  "style_authority": {
+    "s10": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/style_references/submitted_s10_brain_developmental_wave_map_compact.jpg",
+      "sha256": "3b7b7b0785d20edd2362f71085df23e058e200ca19556ceb12c8c309e8eb7bf8",
+      "size_bytes": 533312
+    },
+    "s9": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_si_s9_s10_clusterprofiler_20260826_v1/style_references/submitted_s9_brain_pattern_compact.jpg",
+      "sha256": "0ca3cf53e775e8f4e5092be73ce84a7cb7414c07e5c7ce4ed7a2f01a7c870394",
+      "size_bytes": 389824
+    },
+    "visual_grammar": "submitted JPEG geometry, direct raw p.adjust five-stop teal-to-coral scale, horizontal Count bars, original filename-form titles"
+  }
+}

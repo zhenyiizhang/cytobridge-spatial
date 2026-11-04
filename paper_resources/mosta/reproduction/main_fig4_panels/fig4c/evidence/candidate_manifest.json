@@ -1,0 +1,456 @@
+{
+  "classification_run": false,
+  "displayed_transitions": [
+    {
+      "centroid_page_pt": [
+        552.4689675231846,
+        322.08313826012795
+      ],
+      "centroid_xy": [
+        0.7890778183937073,
+        2.19954776763916
+      ],
+      "count": 348,
+      "percent": 27.14508580343214,
+      "probability": 0.2714508580343214,
+      "rank": 1,
+      "ribbon_width_pt": 6.8861154446177855,
+      "target_label": "Cartilage"
+    },
+    {
+      "centroid_page_pt": [
+        545.6680654101672,
+        316.3002237863193
+      ],
+      "centroid_xy": [
+        0.6064483523368835,
+        2.3548405170440674
+      ],
+      "count": 253,
+      "percent": 19.734789391575664,
+      "probability": 0.19734789391575663,
+      "rank": 2,
+      "ribbon_width_pt": 5.5522620904836195,
+      "target_label": "Cartilage primordium"
+    },
+    {
+      "centroid_page_pt": [
+        545.3793014024972,
+        331.58813499299424
+      ],
+      "centroid_xy": [
+        0.5986939668655396,
+        1.944303274154663
+      ],
+      "count": 243,
+      "percent": 18.954758190327613,
+      "probability": 0.18954758190327614,
+      "rank": 3,
+      "ribbon_width_pt": 5.41185647425897,
+      "target_label": "Connective tissue"
+    }
+  ],
+  "figure": "Main text Fig. 4c",
+  "historical_percentages_loaded": false,
+  "inputs": {
+    "legacy_reference_png": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/results/mosta_cartilage_transition_0207/lineage_transition__Cartilage_primordium__t1.5_to_t2.png",
+      "sha256": "4fccb4d23e6530f70853eda71cb9820d6deee88c4846966ab31996e61935b6bd"
+    },
+    "legacy_script": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_cartilage_lineage_transition_0_1_local.py",
+      "sha256": "a5b9f9183a75f7eb23fc779d786b4c9252aa4cff0d86e744a141899659ac5dc1"
+    },
+    "manuscript_pdf": {
+      "path": "/Users/zhenyizhang/Desktop/202511/nbme\u9884\u6295\u7a3f/\u6295\u7a3f/\u6295\u7a3f\u4fee\u6539/cytobridge_manuscript_latest_clean.pdf",
+      "sha256": "94c26a14500b16706ab9647ce26c628b9b7f642a58faf79421dd17577cae4337"
+    },
+    "original_ai": {
+      "path": "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai",
+      "sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2"
+    },
+    "palette": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/provenance/label_to_color.json",
+      "sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71"
+    },
+    "render_state": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/server_run_v6_k10_E15_E15p5_render_export/fig4c_render_state_k10_cap50000.npz",
+      "sha256": "dfa497ca9053cc37b5e3752c236c852daf36c1ce31f781ad6ff97fa93919f216"
+    },
+    "render_state_manifest": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/server_run_v6_k10_E15_E15p5_render_export/manifest.json",
+      "sha256": "6801a249a10a415e453ae389241a5f2ff355dad9b19d97c1444ad7206c7115d6"
+    }
+  },
+  "interpretation_limit": "k=10 is a post-hoc spatial majority vote applied to the latest classifier; it is retained because the user requested a classifier-consistent k=10 panel. The stage and rank order differ from the historical E14.0 to E14.5 panel and must be described as E15.0 to E15.5.",
+  "model_loaded": false,
+  "outputs": {
+    "displayed_transitions_csv": {
+      "path": "Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5__displayed_transitions.csv",
+      "sha256": "cc6e51509e7bf4ce94d61c75da7e4cf229c8e85cd508fb28e0713b49408ef223"
+    },
+    "pdf": {
+      "path": "Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.pdf",
+      "sha256": "bc387a82c0409c976cf977f44d91f7b6d0fda54fa2a6b01d31429aea70dc1737"
+    },
+    "plotting_script_snapshot": {
+      "path": "provenance/render_fig4c_original_ai_assembly.py",
+      "sha256": "06cab8e77d471b2dcfa8c638afdff734f9d559541004db1b1d6ae3e5267e25a8"
+    },
+    "png": {
+      "path": "Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.png",
+      "sha256": "c911753bbdf430366677dba716a75f8b7e07ae52b55dd49213ad5f5fc8d2c462"
+    },
+    "scatter_layer": {
+      "path": "Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5__scatter_layer_1273x844.png",
+      "sha256": "06fe1d21952d8da3fd83d6690928927d752b8abe279c0fa48d40e08f8cb42806"
+    },
+    "svg": {
+      "path": "Fig4c_MOSTA_cartilage_lineage_E15p0_to_E15p5_global_t0_50k_latest52D_k10_original_AI_equivalent_v5.svg",
+      "sha256": "c8ea47101d249cb9b9b3497bfa44c0f22022c3327432cb1b9ffed07a4d989c38"
+    }
+  },
+  "rebuild_command": "MPLCONFIGDIR=/tmp/mosta_fig4c_mplconfig python /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/source/render_fig4c_original_ai_assembly.py --render-state /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/server_run_v6_k10_E15_E15p5_render_export/fig4c_render_state_k10_cap50000.npz --render-state-manifest /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/server_run_v6_k10_E15_E15p5_render_export/manifest.json --palette /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/provenance/label_to_color.json --legacy-script /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/evaluation/mosta/code/mosta_cartilage_lineage_transition_0_1_local.py --legacy-reference-png /Users/zhenyizhang/Desktop/CytoBridge-ST-1104/results/mosta_cartilage_transition_0207/lineage_transition__Cartilage_primordium__t1.5_to_t2.png --original-ai /Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai --manuscript-pdf /Users/zhenyizhang/Desktop/202511/nbme\u9884\u6295\u7a3f/\u6295\u7a3f/\u6295\u7a3f\u4fee\u6539/cytobridge_manuscript_latest_clean.pdf --output-dir <new-immutable-output-directory>",
+  "render_only": true,
+  "scientific_claim": "A Cartilage primordium source population at E15.0 distributes at E15.5 among Cartilage, Cartilage primordium, and Connective tissue as the three largest k=10-smoothed predicted identities.",
+  "selection": "E15.0 to E15.5, latest accepted 52D classifier, spatial vote k=10",
+  "server_numeric_manifest": {
+    "classifier": "latest accepted 52D cache",
+    "classifier_knn_neighbors": 10,
+    "particle_cap": 50000,
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4c_cartilage_lineage_global_t0_20260825_v1/server_run_v6_k10_E15_E15p5_render_export/manifest.json",
+    "sha256": "6801a249a10a415e453ae389241a5f2ff355dad9b19d97c1444ad7206c7115d6",
+    "source_count": 1282,
+    "source_time": 2.5,
+    "status": "COMPLETE",
+    "target_time": 3.0,
+    "trajectory": "global_t0 fixed particle; no restart; no warp"
+  },
+  "simulation_run": false,
+  "source": {
+    "centroid_page_pt": [
+      405.2356532252882,
+      325.21803733417636
+    ],
+    "centroid_xy": [
+      0.6823635101318359,
+      2.1153640747070312
+    ],
+    "count": 1282,
+    "label": "Cartilage primordium"
+  },
+  "status": "COMPLETE",
+  "style_contract": {
+    "anisotropic_stretch": false,
+    "background_and_point_style": "historical plotting-script constants",
+    "category_labels": "original AI anchors; CP retains the original centroid-relative vertical offset after its current centroid moves upward",
+    "category_palette": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/provenance/label_to_color.json",
+    "dense_spatial_scatter": "single intentionally rasterized layer, matching original AI",
+    "display_transform": {
+      "anisotropic_scaling": false,
+      "aspect": "equal",
+      "background_alpha": 0.25,
+      "background_cap_per_slice": 20000,
+      "background_color": "#6f6f6f",
+      "background_size_pt2": 2.0,
+      "centroids_data": {
+        "Cartilage": [
+          0.7890778183937073,
+          2.19954776763916
+        ],
+        "Cartilage primordium": [
+          0.6064483523368835,
+          2.3548405170440674
+        ],
+        "Cartilage primordium__source": [
+          0.6823635101318359,
+          2.1153640747070312
+        ],
+        "Connective tissue": [
+          0.5986939668655396,
+          1.944303274154663
+        ]
+      },
+      "centroids_page_pt": {
+        "Cartilage": [
+          552.4689675231846,
+          322.08313826012795
+        ],
+        "Cartilage primordium": [
+          545.6680654101672,
+          316.3002237863193
+        ],
+        "Cartilage primordium__source": [
+          405.2356532252882,
+          325.21803733417636
+        ],
+        "Connective tissue": [
+          545.3793014024972,
+          331.58813499299424
+        ]
+      },
+      "gap_fraction": 0.15,
+      "lineage_alpha": 0.9,
+      "lineage_size_pt2": 4.0,
+      "observed_target_displayed": 20000,
+      "observed_target_total": 113350,
+      "rotation": 0,
+      "seed": 42,
+      "selected_source_displayed": 1282,
+      "selected_target_top3_displayed": 844,
+      "source_background_displayed": 20000,
+      "source_background_total": 50000,
+      "target_x_translation": 3.84704669713974,
+      "warp": false,
+      "x_max": 1.633633017539978,
+      "x_min": -1.7116249799728394,
+      "x_span": 3.3452579975128174,
+      "y_max": 4.451892375946045,
+      "y_min": -0.28313905000686646
+    },
+    "font": "Arial / Arial Bold",
+    "numeric_centroids_used_as_ribbon_endpoints": true,
+    "original_ai_measurements": {
+      "drawing_count": 15856,
+      "image_count": 17,
+      "page_size_pt": [
+        595.2760009765625,
+        841.8900146484375
+      ],
+      "scatter_bbox_pt": [
+        316.0863952636719,
+        237.58531188964844,
+        583.919189453125,
+        415.15863037109375
+      ],
+      "scatter_size_px": [
+        1273,
+        844
+      ],
+      "scatter_xref": 151
+    },
+    "original_cubic_lane_template": {
+      "Cartilage": {
+        "control_x_fraction": [
+          0.3352872982134699,
+          0.6686402518876422
+        ],
+        "control_y_offset_from_source_pt": [
+          22.567291259765625,
+          21.706298828125
+        ]
+      },
+      "Cartilage primordium": {
+        "control_x_fraction": [
+          0.3486474773343102,
+          0.6819922373947778
+        ],
+        "control_y_offset_from_source_pt": [
+          13.727890014648438,
+          8.112899780273438
+        ]
+      },
+      "Connective tissue": {
+        "control_x_fraction": [
+          0.3095069634577474,
+          0.6428369886867553
+        ],
+        "control_y_offset_from_source_pt": [
+          23.208480834960938,
+          30.362472534179688
+        ]
+      }
+    },
+    "original_cubic_points_page": {
+      "Cartilage": [
+        [
+          380.7626037597656,
+          345.134521484375
+        ],
+        [
+          439.43359375,
+          367.3895263671875
+        ],
+        [
+          497.76361083984375,
+          366.5285339355469
+        ],
+        [
+          555.7515869140625,
+          342.5495300292969
+        ]
+      ],
+      "Cartilage primordium": [
+        [
+          380.78851318359375,
+          345.04962158203125
+        ],
+        [
+          431.3265075683594,
+          358.54962158203125
+        ],
+        [
+          479.64453125,
+          352.93463134765625
+        ],
+        [
+          525.740478515625,
+          328.2066345214844
+        ]
+      ],
+      "Connective tissue": [
+        [
+          380.6860046386719,
+          345.28521728515625
+        ],
+        [
+          417.3690185546875,
+          368.03021240234375
+        ],
+        [
+          456.8760070800781,
+          375.1842041015625
+        ],
+        [
+          499.20599365234375,
+          366.7462158203125
+        ]
+      ]
+    },
+    "original_curve_residual_pt": {
+      "Cartilage": [
+        0.3396759033203125,
+        23.121673583984375
+      ],
+      "Cartilage primordium": [
+        2.20851643880206,
+        19.104284922281884
+      ],
+      "Connective tissue": [
+        -2.817316691080743,
+        15.59332784016928
+      ]
+    },
+    "original_text_baselines_pt": {
+      "generated": [
+        349.2779846191406,
+        239.80859375
+      ],
+      "label_cartilage": [
+        550.4987182617188,
+        333.4208984375
+      ],
+      "label_cartilage_primordium": [
+        462.01971435546875,
+        319.5609130859375
+      ],
+      "label_connective_tissue_1": [
+        505.6723937988281,
+        367.8855895996094
+      ],
+      "label_connective_tissue_2": [
+        505.6723937988281,
+        378.68560791015625
+      ],
+      "observed": [
+        494.4375,
+        239.80499267578125
+      ],
+      "panel": [
+        330.0672302246094,
+        219.66302490234375
+      ],
+      "pct_cartilage": [
+        515.0927124023438,
+        348.2709045410156
+      ],
+      "pct_cartilage_primordium": [
+        442.7687072753906,
+        342.2679138183594
+      ],
+      "pct_connective_tissue": [
+        375.376708984375,
+        367.88189697265625
+      ],
+      "source_label": [
+        332.6986999511719,
+        336.1658935546875
+      ],
+      "stage_source": [
+        361.99798583984375,
+        432.4085998535156
+      ],
+      "stage_target": [
+        504.80999755859375,
+        432.4085693359375
+      ],
+      "title": [
+        344.2571105957031,
+        220.50885009765625
+      ]
+    },
+    "original_vector_reference": {
+      "old_ribbons": [
+        {
+          "end": [
+            525.740478515625,
+            328.2066345214844
+          ],
+          "start": [
+            380.78851318359375,
+            345.04962158203125
+          ],
+          "target": "Cartilage primordium",
+          "width_pt": 9.633999824523926
+        },
+        {
+          "end": [
+            499.20599365234375,
+            366.7462158203125
+          ],
+          "start": [
+            380.6860046386719,
+            345.28521728515625
+          ],
+          "target": "Connective tissue",
+          "width_pt": 6.770999908447266
+        },
+        {
+          "end": [
+            555.7515869140625,
+            342.5495300292969
+          ],
+          "start": [
+            380.7626037597656,
+            345.134521484375
+          ],
+          "target": "Cartilage",
+          "width_pt": 5.1620001792907715
+        }
+      ],
+      "ribbon_color": "#3cb44b",
+      "ribbon_curvature": 0.2,
+      "ribbon_width_rule": "2 + 18 * transition_probability",
+      "source_marker_diameter_pt": 3.92,
+      "source_marker_edge_pt": 0.6,
+      "target_marker_diameter_pt": 3.396,
+      "target_marker_edge_pt": 0.5
+    },
+    "panel_rect_pt": [
+      316.0863952636719,
+      202.0,
+      595.0,
+      440.0
+    ],
+    "percentage_labels": "old x anchors and curve-relative vertical offsets; CT retains the old source-marker-relative offset",
+    "ribbon_routing": "category-specific cubic lane template measured from original AI; missing old CT-versus-Cartilage lane separation is restored only in control points; visual routing only; endpoints remain current centroids",
+    "rotation": false,
+    "source": "Figure_mouse1.ai plus historical MOSTA lineage plotting script",
+    "vector_layers": [
+      "transition ribbons",
+      "centroid markers",
+      "all text"
+    ],
+    "warp": false
+  }
+}

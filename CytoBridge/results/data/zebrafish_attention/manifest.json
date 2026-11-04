@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "analysis": "zebrafish_attention",
+  "manuscript_figure": "Supplementary Figure S39",
+  "files": {
+    "directed_pair_concordance.csv": "directed cell-type-pair agreement with external communication methods",
+    "jam_compatibility_percentile_summary.csv": "attention percentiles for JAM-compatible and other edges",
+    "jam_quartile_compatibility.csv": "JAM-compatible edge fractions in the top and bottom attention quartiles",
+    "type_pair_raw_attention_ranks.csv": "complete directed cell-type-pair attention ranks",
+    "somite_18hpf_spatial_null_summary.csv": "observed and label-permutation spatial-neighbor summary",
+    "somite_18hpf_spatial_null_iterations.csv.gz": "spatial-neighbor counts from label permutations",
+    "myog_association.csv": "JAM-gene and myog co-detection counts",
+    "expression_detection_by_stage_type.csv": "gene detection by stage and cell type",
+    "somite_18hpf_spatial_cells.csv.gz": "18 hpf cell coordinates and JAM/myog detection",
+    "trained_jam_display_edges.csv": "fixed display roster of trained-model JAM-compatible edges"
+  },
+  "calculation": {
+    "external_agreement": {
+      "cytobridge_view": "attention",
+      "directed_cell_type_pairs": 361,
+      "external_methods": [
+        "COMMOT",
+        "CellAgentChat"
+      ],
+      "structured_null_permutations": 1000
+    },
+    "jam_compatibility": {
+      "stage": "18hpf",
+      "cell_type": "Somite",
+      "conditions": [
+        "trained",
+        "pre_interaction",
+        "random"
+      ],
+      "cells": 375,
+      "directed_edges_per_condition": 677,
+      "attention_groups": [
+        "top quartile",
+        "bottom quartile"
+      ]
+    },
+    "spatial_context": {
+      "display_edges": 15,
+      "display_edge_rule": "use the supplied display roster without re-selection",
+      "label_permutations": 10000,
+      "observed_complementary_neighbor_pairs": 396,
+      "null_mean": 286.2387,
+      "observed_over_null_mean": 1.383460727008612,
+      "plus_one_upper_tail_p": 0.0000999900009999
+    }
+  },
+  "style": {
+    "canvas_inches": [
+      8.27,
+      11.69
+    ],
+    "png_dpi": 320
+  }
+}

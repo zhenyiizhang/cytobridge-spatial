@@ -1,0 +1,10 @@
+{
+  "physical_cosine": 0.9768720539073807,
+  "physical_undefined_cosine_count": 0,
+  "gene_cosine": 0.952371389021425,
+  "gene_undefined_cosine_count": 0,
+  "growth_pearson_raw": 0.9234439134597778,
+  "growth_pearson_display": 0.9248793247705815,
+  "attention_outgoing_strength_spearman": 0.7824573477068331,
+  "attention_cells_nonzero_union": 3553
+}

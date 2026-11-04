@@ -1,0 +1,139 @@
+# Matched zebrafish reviewer ablation: remove only the interaction component.
+# The data, seed, network sizes for retained components, six-stage schedule,
+# epoch counts, loss weights, optimizer settings, and alpha values match
+# zebrafish_spatial_full_alpha_express_0015.yaml.
+model:
+  components: [velocity, growth, score]
+  velocity_net:
+    hidden_dim: 256
+    n_layers: 5
+    residual: false
+    activation: leaky_relu
+    use_spatial: true
+  growth_net:
+    hidden_dim: 256
+    n_layers: 3
+    residual: false
+    activation: leaky_relu
+  score_net:
+    hidden_dim: 400
+    n_layers: 3
+    activation: leaky_relu
+
+ckpt_dir: results/zebrafish_spatial_full_alpha_express_0015_no_interaction
+reverse: true
+seed: 42
+
+matched_ablation:
+  schema_version: 1
+  family: zebrafish-full-no-lr-no-interaction-v1
+  dataset: zebrafish
+  arm: no_interaction
+  protocol: isolated-interaction-crn-v1
+  shared_seed: 42
+  interaction_grouping_seed_offset: 10000
+  input_contract: exact-shared-aligned-h5ad
+  implementation_contract: exact-shared-training-code-sha256
+
+training:
+  defaults:
+    lr: 0.0001
+    lambda_ot: 10.0
+    lambda_mass: 10.0
+    lambda_energy: 0.01
+    sigma: 0.03
+    batch_size: 512
+    alpha_spatial: 10.0
+    alpha_express: 0.015
+    global_mass: true
+    score_energy_objective: velocity_score_cross_term
+
+  plan:
+    - name: Pretrain
+      mode: neural_ode
+      epochs: 100
+      batch_size: 512
+      OT_loss: weighted_emd_detach
+      train_strategy: v+g
+      interaction_use: false
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: false
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Refine
+      mode: neural_ode
+      epochs: 100
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g
+      interaction_use: false
+      lambda_ot: 1.0
+      lambda_mass: 0.01
+      lambda_energy: 0.0
+      global_mass: true
+      reverse_mass_norm: true
+      reverse_mass_offset: false
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Matched_stage_3_no_interaction
+      mode: neural_ode
+      epochs: 50
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g
+      interaction_use: false
+      lambda_ot: 10.0
+      lambda_mass: 10.0
+      lambda_energy: 0.01
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+      checkpoint_metric: legacy_forward_last_ot
+
+    - name: Train_Score
+      mode: score_matching
+      epochs: 2001
+      batch_size: 128
+      sigma: 0.03
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      save_strategy: last
+
+    - name: Finetune_no_interaction
+      mode: neural_ode
+      epochs: 1000
+      batch_size: 512
+      OT_loss: weighted_emd
+      train_strategy: v+g
+      score_use: true
+      interaction_use: false
+      lr: 0.0001
+      lambda_ot: 10.0
+      lambda_mass: 10.0
+      lambda_energy: 0.01
+      global_mass: true
+      reverse_mass_norm: false
+      reverse_mass_offset: true
+      scheduler_type: plateau
+      scheduler_metric: forward_last_ot
+      scheduler_step_before_reverse: true
+      max_grad_norm: 10.0
+      checkpoint_metric: legacy_forward_last_ot
+      save_strategy: best
+
+    - name: Score_Refine
+      mode: score_matching
+      epochs: 2001
+      batch_size: 128
+      sigma: 0.03
+      train_strategy: s
+      optimizer_type: adamw
+      lr: 0.0001
+      lambda_penalty: 0
+      save_strategy: last

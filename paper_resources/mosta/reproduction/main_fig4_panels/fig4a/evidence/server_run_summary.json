@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "purpose": "MOSTA manuscript Fig. 4a initial-particle-cap sensitivity",
+  "dataset": "mosta",
+  "trajectory_mode": "global_t0_extrapolation",
+  "restart_from_preceding_observed_stage": false,
+  "spatial_warp": false,
+  "observed_times": [
+    0.0,
+    1.0,
+    2.0,
+    3.0
+  ],
+  "generated_times": [
+    0.5,
+    1.5,
+    2.5
+  ],
+  "n_samples": 50000,
+  "seed": 42,
+  "split_population_seed": 43,
+  "parameters": {
+    "split_sde_dt": 0.05,
+    "split_sigma": 0.03,
+    "daughter_noise_std": 0.0,
+    "growth_alpha": 1.0,
+    "interaction_group_size": 1024,
+    "classifier_k": 10
+  },
+  "classifier": {
+    "cache_path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/classifier_cache/classifier_resmlp_6d2d7acf7d0ed92d.pt",
+    "cache_sha256": "f938575c145baa9002de695c39a8637f57d6cb3a06ccfaf4d18b707ca962a7e0",
+    "accuracy": 0.8960273932851629,
+    "balanced_accuracy": 0.8503347888243216
+  },
+  "model": {
+    "directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "weight_stage": "Finetune",
+    "score_stage": "Score_Refine"
+  },
+  "aligned_h5ad": {
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-de-novo-20260813-r2/mosta/preprocess/mosta_aligned.h5ad",
+    "expected_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "shape": [
+      344603,
+      23761
+    ]
+  },
+  "package": {
+    "commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "module_path": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-2b3c79e-runtime/CytoBridge/__init__.py"
+  },
+  "runtime": {
+    "python": "3.10.12 (main, Jun 22 2026, 18:55:27) [GCC 11.4.0]",
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0",
+    "device": "cuda:0",
+    "cuda_device_name": "NVIDIA GeForce RTX 4090 D",
+    "pid": 2427567,
+    "cuda_peak_memory_allocated_bytes": 1423431168,
+    "cuda_peak_memory_reserved_bytes": 8021606400
+  },
+  "simulation_seeds": {
+    "non_split_identity": 42,
+    "split_population": 43,
+    "non_split_interaction_grouping": 10042,
+    "split_interaction_grouping": 10043,
+    "split_interaction_grouping_by_interval": {},
+    "piecewise_interaction_seed_derivation": null
+  },
+  "generated_counts": {
+    "0.5": 63533,
+    "1.5": 86610,
+    "2.5": 100871
+  },
+  "snapshots": [
+    {
+      "time": 0.0,
+      "origin": "observed_real",
+      "source_anchor_time": 0.0,
+      "n": 51365,
+      "n_labels": 23,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0.h5ad",
+      "sha256": "761ed616bbeb02d6ee6797ef210c2759577785619aba4d9d2208a76c803ed9a8"
+    },
+    {
+      "time": 0.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "n": 63533,
+      "n_labels": 25,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_0p5.h5ad",
+      "sha256": "66906cd50b55e8eb31738590023e4a0fe0cab31ae32665bd9e2c0dd641ac1f2b"
+    },
+    {
+      "time": 1.0,
+      "origin": "observed_real",
+      "source_anchor_time": 1.0,
+      "n": 77369,
+      "n_labels": 19,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_1.h5ad",
+      "sha256": "6d7e0c51b5e6376a6c30ff99aeef742efaece94415413583a3baa1b275fc46e6"
+    },
+    {
+      "time": 1.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "n": 86610,
+      "n_labels": 26,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_1p5.h5ad",
+      "sha256": "fee82eeb2244fe11cf838093f43848a924dfa28dff4a7513c81f4154f8d92bf4"
+    },
+    {
+      "time": 2.0,
+      "origin": "observed_real",
+      "source_anchor_time": 2.0,
+      "n": 102519,
+      "n_labels": 26,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_2.h5ad",
+      "sha256": "b200ce09b73aabe0757b68a229a858e1625806d7b342c0ea1099d95dc0e2902f"
+    },
+    {
+      "time": 2.5,
+      "origin": "generated_global_t0",
+      "source_anchor_time": 0.0,
+      "n": 100871,
+      "n_labels": 29,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_2p5.h5ad",
+      "sha256": "69d6edbdea3aa59203a3c278f743a01d6cce06cffae36b8397ddedad8835a205"
+    },
+    {
+      "time": 3.0,
+      "origin": "observed_real",
+      "source_anchor_time": 3.0,
+      "n": 113350,
+      "n_labels": 26,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/mosta-paper-figures/fig4a-global-t0-n50000-2b3c79e-seed42-20260825-v1/slice_data/time_3.h5ad",
+      "sha256": "b9e2f4ff286c99e38c05b917fd356cb78e21add021b3a53fc6bec8b18d7a5a06"
+    }
+  ],
+  "wall_seconds": 52.6827278137207
+}

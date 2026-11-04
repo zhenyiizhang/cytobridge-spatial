@@ -1,0 +1,131 @@
+{
+  "contract_uns_key": "cytobridge_benchmark_contract",
+  "contract_version": "cytobridge-spatiotemporal-benchmark-input-v1",
+  "dataset_id": "arista",
+  "evaluation_targets": [
+    2
+  ],
+  "held_out_benchmark_time": 2,
+  "held_out_source_times": [
+    2
+  ],
+  "prediction_n": 5000,
+  "prediction_n_policy": "fixed_before_truth_access",
+  "protocol": "leave_one_timepoint_out",
+  "representation_refit_per_fold": false,
+  "source_roster_algorithm": "ranked-support-bootstrap-v1",
+  "source_roster_npz": {
+    "algorithm": "ranked-support-bootstrap-v1",
+    "available_n": 8106,
+    "base_seed": 20260718,
+    "bootstrap_seed": 1095629272,
+    "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/source_roster.npz",
+    "prediction_n": 5000,
+    "relative_path": "loto_t2/source_roster.npz",
+    "roster_row_id_sha256": "dcba0b76630955431869f7ef3ba8c9411e62283630f762a0463db7024d90b566",
+    "sha256": "c5d6cf478dfe4e713b069408c32eadac37a2cfbf7a3db8a8764f39f7c5a19b92",
+    "size_bytes": 814410,
+    "source_time": 1,
+    "support_n": 800,
+    "support_row_id_sha256": "29ad53ec1176176235a72f3ed05939caebb71588c1e4901ca55e7e7ab00637f5"
+  },
+  "source_roster_seed": 20260718,
+  "source_roster_support_n": 800,
+  "source_time": 1,
+  "split": "loto_t2",
+  "storage_mode": "independent_train_and_truth",
+  "target_rows_physically_removed_from_train": true,
+  "train": {
+    "csv": {
+      "columns": 122,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/train.csv",
+      "relative_path": "loto_t2/train.csv",
+      "rows": 36763,
+      "sha256": "8ae1bbd2295e3607c75c9d9a85b13276316a12feb0da0b2a6945e49c60e81e0f",
+      "size_bytes": 48782276
+    },
+    "h5ad": {
+      "columns": 16379,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/train.h5ad",
+      "relative_path": "loto_t2/train.h5ad",
+      "rows": 36763,
+      "sha256": "d9f7748c32b471c872e2c2550d5d351c5f8dd5b6505d80ec77921ef360a4d361",
+      "size_bytes": 287155528
+    },
+    "source_roster_npz": {
+      "algorithm": "ranked-support-bootstrap-v1",
+      "available_n": 8106,
+      "base_seed": 20260718,
+      "bootstrap_seed": 1095629272,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/source_roster.npz",
+      "prediction_n": 5000,
+      "relative_path": "loto_t2/source_roster.npz",
+      "roster_row_id_sha256": "dcba0b76630955431869f7ef3ba8c9411e62283630f762a0463db7024d90b566",
+      "sha256": "c5d6cf478dfe4e713b069408c32eadac37a2cfbf7a3db8a8764f39f7c5a19b92",
+      "size_bytes": 814410,
+      "source_time": 1,
+      "support_n": 800,
+      "support_row_id_sha256": "29ad53ec1176176235a72f3ed05939caebb71588c1e4901ca55e7e7ab00637f5"
+    },
+    "training_reference_npz": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/training_reference.npz",
+      "relative_path": "loto_t2/training_reference.npz",
+      "rows": 36763,
+      "sha256": "fc2ab27e7db90b5cac79e2bffe1be088555d8dc3d1c9589f485d230504a91191",
+      "size_bytes": 7238496
+    }
+  },
+  "train_time_counts": {
+    "0": 7668,
+    "1": 8106,
+    "2": 0,
+    "3": 9673,
+    "4": 11316
+  },
+  "training_reference_npz": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/training_reference.npz",
+  "transductive_frozen_representation": true,
+  "truth": {
+    "csv": {
+      "columns": 122,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/truth.csv",
+      "relative_path": "loto_t2/truth.csv",
+      "rows": 9436,
+      "sha256": "f456f7c2dd97dd12207a2bdab30ea724a3408f95b365202cbfa7dc972c8b1ced",
+      "size_bytes": 12560765
+    },
+    "h5ad": {
+      "columns": 16379,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/truth.h5ad",
+      "relative_path": "loto_t2/truth.h5ad",
+      "rows": 9436,
+      "sha256": "5d2faadc772b1e02427fe825cc4ea69a51b2a11e5ee864035b77718d3cf59bb4",
+      "size_bytes": 62923188
+    },
+    "truth_npz": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/truth.npz",
+      "relative_path": "loto_t2/truth.npz",
+      "rows": 9436,
+      "sha256": "b7ee9cdd216be775b4cc5251f2ffe9f79a393367f06b9f58a957a96fb9b716a8",
+      "size_bytes": 1857049
+    }
+  },
+  "truth_by_time_npz": {
+    "2": {
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/truth_t2.npz",
+      "relative_path": "loto_t2/truth_t2.npz",
+      "rows": 9436,
+      "sha256": "b7ee9cdd216be775b4cc5251f2ffe9f79a393367f06b9f58a957a96fb9b716a8",
+      "size_bytes": 1857049,
+      "target": 2
+    }
+  },
+  "truth_cell_count_must_not_control_prediction_n": true,
+  "truth_npz": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/s35-arista-heart-loto-20260826-r1/arista/inputs/loto_t2/truth.npz",
+  "truth_time_counts": {
+    "0": 0,
+    "1": 0,
+    "2": 9436,
+    "3": 0,
+    "4": 0
+  }
+}

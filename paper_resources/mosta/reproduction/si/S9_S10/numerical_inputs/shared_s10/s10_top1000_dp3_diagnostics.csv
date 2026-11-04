@@ -1,0 +1,4 @@
+phase,start_rank,end_rank_exclusive,n_profiles,peak_time_min,peak_time_max,peak_time_mean,within_peak_sse,total_within_peak_sse,n_input_profiles,n_selected_profiles,n_phases,min_phase_size,standardization,n_constant_profiles
+1,0,483,483,0.0,0.75,0.06159420289855073,16.605072463768117,70.34855609421834,2000,1000,3,5,zscore,0
+2,483,782,299,1.0,2.0,1.6530100334448161,31.062290969899664,70.34855609421834,2000,1000,3,5,zscore,0
+3,782,1000,218,2.25,3.0,2.720183486238532,22.681192660550465,70.34855609421834,2000,1000,3,5,zscore,0

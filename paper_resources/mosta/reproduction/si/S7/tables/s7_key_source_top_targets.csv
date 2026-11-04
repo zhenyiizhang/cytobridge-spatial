@@ -1,0 +1,127 @@
+source_time,target_time,source,target_rank,target,count,source_fraction
+0.0,0.5,Brain,1,Brain,10521,0.9228137882641874
+0.0,0.5,Brain,2,Meninges,565,0.04955705639856153
+0.0,0.5,Brain,3,Cavity,188,0.016489781598105428
+0.0,0.5,Brain,4,Choroid plexus,72,0.0063152355056573985
+0.0,0.5,Brain,5,Cartilage primordium,25,0.002192790106131041
+0.0,0.5,Cartilage primordium,1,Cartilage primordium,2293,0.5891572456320657
+0.0,0.5,Cartilage primordium,2,Muscle,994,0.25539568345323743
+0.0,0.5,Cartilage primordium,3,Meninges,152,0.03905447070914697
+0.0,0.5,Cartilage primordium,4,Jaw and tooth,126,0.03237410071942446
+0.0,0.5,Cartilage primordium,5,Dorsal root ganglion,81,0.02081192189105858
+0.0,0.5,Connective tissue,1,Connective tissue,1422,0.5535227715064227
+0.0,0.5,Connective tissue,2,Muscle,677,0.2635266640716232
+0.0,0.5,Connective tissue,3,Cavity,173,0.06734137796808097
+0.0,0.5,Connective tissue,4,Epidermis,121,0.047100038925652
+0.0,0.5,Connective tissue,5,Liver,57,0.022187621642662515
+0.0,0.5,Muscle,1,Muscle,4315,0.8129238884702336
+0.0,0.5,Muscle,2,Connective tissue,368,0.0693293142426526
+0.0,0.5,Muscle,3,Cartilage primordium,362,0.0681989449886963
+0.0,0.5,Muscle,4,Mucosal epithelium,84,0.015825169555388093
+0.0,0.5,Muscle,5,Cavity,70,0.013187641296156745
+0.5,1.0,Brain,1,Brain,10482,0.8952852750256235
+0.5,1.0,Brain,2,Meninges,824,0.07037922787837377
+0.5,1.0,Brain,3,Cavity,219,0.018705158865732832
+0.5,1.0,Brain,4,Spinal cord,66,0.0056371711650153745
+0.5,1.0,Brain,5,Choroid plexus,62,0.005295524427741715
+0.5,1.0,Cartilage primordium,1,Cartilage primordium,1369,0.4543644208430136
+0.5,1.0,Cartilage primordium,2,Muscle,851,0.2824427480916031
+0.5,1.0,Cartilage primordium,3,Connective tissue,442,0.1466976435446399
+0.5,1.0,Cartilage primordium,4,Cavity,140,0.04646531695984069
+0.5,1.0,Cartilage primordium,5,Meninges,62,0.02057749751078659
+0.5,1.0,Connective tissue,1,Connective tissue,1108,0.4995491433724076
+0.5,1.0,Connective tissue,2,Muscle,494,0.22272317403065825
+0.5,1.0,Connective tissue,3,Cavity,246,0.1109107303877367
+0.5,1.0,Connective tissue,4,Epidermis,245,0.11045987376014428
+0.5,1.0,Connective tissue,5,Liver,40,0.018034265103697024
+0.5,1.0,Muscle,1,Muscle,4794,0.7032418952618454
+0.5,1.0,Muscle,2,Connective tissue,829,0.12160774534252604
+0.5,1.0,Muscle,3,Cartilage primordium,365,0.05354261405310254
+0.5,1.0,Muscle,4,Cavity,330,0.04840839078773654
+0.5,1.0,Muscle,5,Epidermis,273,0.040046941469854776
+1.0,1.5,Brain,1,Brain,10521,0.8959380056203696
+1.0,1.5,Brain,2,Meninges,817,0.0695733628544665
+1.0,1.5,Brain,3,Cavity,232,0.01975645065145193
+1.0,1.5,Brain,4,Choroid plexus,51,0.004343012858724346
+1.0,1.5,Brain,5,Cartilage primordium,36,0.0030656561355701267
+1.0,1.5,Cartilage primordium,1,Cartilage primordium,894,0.42369668246445497
+1.0,1.5,Cartilage primordium,2,Connective tissue,733,0.34739336492890993
+1.0,1.5,Cartilage primordium,3,Muscle,169,0.08009478672985781
+1.0,1.5,Cartilage primordium,4,Cavity,120,0.05687203791469194
+1.0,1.5,Cartilage primordium,5,Meninges,88,0.04170616113744076
+1.0,1.5,Connective tissue,1,Connective tissue,1863,0.6298174442190669
+1.0,1.5,Connective tissue,2,Cavity,335,0.11325219743069642
+1.0,1.5,Connective tissue,3,Muscle,209,0.07065584854631508
+1.0,1.5,Connective tissue,4,Epidermis,159,0.0537525354969574
+1.0,1.5,Connective tissue,5,Cartilage primordium,150,0.05070993914807302
+1.0,1.5,Muscle,1,Muscle,2849,0.417680691980648
+1.0,1.5,Muscle,2,Connective tissue,1509,0.2212285588623369
+1.0,1.5,Muscle,3,Spinal cord,865,0.12681425010995456
+1.0,1.5,Muscle,4,Cartilage primordium,563,0.08253921712358891
+1.0,1.5,Muscle,5,Cavity,552,0.08092655035918488
+1.5,2.0,Brain,1,Brain,10564,0.9077161024230967
+1.5,2.0,Brain,2,Meninges,719,0.061780374634816976
+1.5,2.0,Brain,3,Cavity,201,0.01727100876439251
+1.5,2.0,Brain,4,Choroid plexus,75,0.006444406255370338
+1.5,2.0,Brain,5,Cartilage primordium,39,0.003351091252792576
+1.5,2.0,Cartilage primordium,1,Cartilage primordium,938,0.47397675593734206
+1.5,2.0,Cartilage primordium,2,Connective tissue,619,0.31278423446184944
+1.5,2.0,Cartilage primordium,3,Spinal cord,109,0.05507832238504295
+1.5,2.0,Cartilage primordium,4,Meninges,83,0.04194037392622536
+1.5,2.0,Cartilage primordium,5,Cavity,66,0.03335017685699848
+1.5,2.0,Connective tissue,1,Connective tissue,3921,0.7445879225218383
+1.5,2.0,Connective tissue,2,Cartilage primordium,320,0.060767185719711354
+1.5,2.0,Connective tissue,3,Cavity,291,0.05526015951386251
+1.5,2.0,Connective tissue,4,Spinal cord,258,0.04899354348651728
+1.5,2.0,Connective tissue,5,Epidermis,104,0.01974933535890619
+1.5,2.0,Muscle,1,Connective tissue,1309,0.368836291913215
+1.5,2.0,Muscle,2,Muscle,1094,0.30825584671738515
+1.5,2.0,Muscle,3,Spinal cord,550,0.15497323189630882
+1.5,2.0,Muscle,4,Cartilage primordium,254,0.0715694561848408
+1.5,2.0,Muscle,5,Cavity,155,0.04367427444350521
+2.0,2.5,Brain,1,Brain,10568,0.8876942461150777
+2.0,2.5,Brain,2,Meninges,831,0.06980260394792104
+2.0,2.5,Brain,3,Cavity,196,0.01646367072658547
+2.0,2.5,Brain,4,Choroid plexus,196,0.01646367072658547
+2.0,2.5,Brain,5,Cartilage primordium,44,0.0036959260814783705
+2.0,2.5,Cartilage primordium,1,Cartilage primordium,726,0.3793103448275862
+2.0,2.5,Cartilage primordium,2,Connective tissue,550,0.28735632183908044
+2.0,2.5,Cartilage primordium,3,Spinal cord,180,0.09404388714733543
+2.0,2.5,Cartilage primordium,4,Meninges,148,0.07732497387669801
+2.0,2.5,Cartilage primordium,5,Adipose tissue,90,0.047021943573667714
+2.0,2.5,Connective tissue,1,Connective tissue,6169,0.7626406230683644
+2.0,2.5,Connective tissue,2,Spinal cord,419,0.05179873902831005
+2.0,2.5,Connective tissue,3,Cavity,409,0.050562492273457785
+2.0,2.5,Connective tissue,4,Cartilage primordium,310,0.03832364940042032
+2.0,2.5,Connective tissue,5,Heart,126,0.015576709111138584
+2.0,2.5,Muscle,1,Connective tissue,698,0.5415050426687354
+2.0,2.5,Muscle,2,Muscle,377,0.2924747866563227
+2.0,2.5,Muscle,3,Spinal cord,85,0.06594259115593483
+2.0,2.5,Muscle,4,Jaw and tooth,43,0.03335919317300233
+2.0,2.5,Muscle,5,Cartilage primordium,27,0.02094647013188518
+2.0,2.5,Cartilage,1,Adipose tissue,2,1.0
+2.5,3.0,Brain,1,Brain,10309,0.8647039087401442
+2.5,3.0,Brain,2,Meninges,844,0.07079349102499581
+2.5,3.0,Brain,3,Choroid plexus,338,0.028350947827545714
+2.5,3.0,Brain,4,Cavity,232,0.019459822177487
+2.5,3.0,Brain,5,Connective tissue,60,0.0050327126321087065
+2.5,3.0,Cartilage primordium,1,Cartilage,348,0.2714508580343214
+2.5,3.0,Cartilage primordium,2,Cartilage primordium,253,0.19734789391575663
+2.5,3.0,Cartilage primordium,3,Connective tissue,243,0.18954758190327614
+2.5,3.0,Cartilage primordium,4,Meninges,131,0.10218408736349453
+2.5,3.0,Cartilage primordium,5,Brain,115,0.08970358814352575
+2.5,3.0,Connective tissue,1,Connective tissue,6400,0.6948214091846705
+2.5,3.0,Connective tissue,2,Cavity,631,0.06850504831180111
+2.5,3.0,Connective tissue,3,Spinal cord,483,0.0524373032244056
+2.5,3.0,Connective tissue,4,Cartilage,359,0.03897513842145261
+2.5,3.0,Connective tissue,5,Heart,280,0.030398436651829334
+2.5,3.0,Muscle,1,Connective tissue,313,0.6480331262939959
+2.5,3.0,Muscle,2,Muscle,107,0.22153209109730848
+2.5,3.0,Muscle,3,Jaw and tooth,12,0.024844720496894408
+2.5,3.0,Muscle,4,Mucosal epithelium,10,0.020703933747412008
+2.5,3.0,Muscle,5,Brain,9,0.018633540372670808
+2.5,3.0,Cartilage,1,Cartilage,58,0.42962962962962964
+2.5,3.0,Cartilage,2,Connective tissue,19,0.14074074074074075
+2.5,3.0,Cartilage,3,Spinal cord,18,0.13333333333333333
+2.5,3.0,Cartilage,4,Adipose tissue,13,0.0962962962962963
+2.5,3.0,Cartilage,5,Meninges,12,0.08888888888888889

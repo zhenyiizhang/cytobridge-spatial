@@ -1,0 +1,815 @@
+{
+  "data": {
+    "edge_predictor": {
+      "applicable": true,
+      "edge_prior_mode": "learned",
+      "not_applicable": false,
+      "not_applicable_reason": null,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-ot-20260823-r2/preprocess/edge_classifier/chicken_heart_edge_model.pt",
+      "sha256": "220728cd5811ceeb243db01c0f15684b63a0f2d1b8eb26396f71836d9aab94db",
+      "size_bytes": 243105,
+      "unchanged_during_training": true
+    },
+    "input_h5ad": {
+      "not_applicable": false,
+      "not_applicable_reason": null,
+      "path": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-ot-20260823-r2/preprocess/chicken_heart_aligned.h5ad",
+      "sha256": "93ca5d582b0a6f93043fe5fdf050291abbc5a06a3413e16be881af3e2e2b406b",
+      "size_bytes": 144809922,
+      "source_kind": "h5ad_path"
+    },
+    "input_selection": {
+      "is_spatial": true,
+      "obsm_key": "X_latent",
+      "processed_time_key": "time_point_processed",
+      "resolved_latent_key": "X_latent",
+      "spatial_key": "spatial_aligned",
+      "time_key": "time_point_processed"
+    },
+    "latent_dim": 50,
+    "model_input": {
+      "canonical_byte_order": "little",
+      "canonical_order": "C",
+      "dtype": "float32",
+      "nbytes": 738400,
+      "sha256": "9617dd748220c9e5067dc8c191f4f14509e17e3880b9a293fbc54b827b2e8327",
+      "shape": [
+        3550,
+        52
+      ]
+    },
+    "model_input_dim": 52,
+    "n_observations": 3550,
+    "n_timepoints": 4,
+    "obs_names": {
+      "count": 3550,
+      "encoding": "utf-8",
+      "length_prefix": "uint64-big-endian",
+      "sha256": "6e44d689b3543d2236cdbda8a0086b8abba9f750c36c0e82743ca7a9adb0bbed"
+    },
+    "processed_time": {
+      "canonical_byte_order": "little",
+      "canonical_order": "C",
+      "dtype": "float64",
+      "nbytes": 28400,
+      "sha256": "9b70aeeef7d007dcc9847dd0d7a1769fd0599abb928b0a031c90b4c8da4b72fd",
+      "shape": [
+        3550
+      ]
+    },
+    "sample_counts_by_timepoint": [
+      147,
+      528,
+      908,
+      1967
+    ],
+    "seed_applied_before_model_construction": true,
+    "spatial_dim": 2
+  },
+  "environment": {
+    "cuda_available": true,
+    "cuda_compiled_version": "13.0",
+    "cuda_device_index": 0,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090 D",
+    "cudnn_version": 92000,
+    "dependency_versions": {
+      "cuda": {
+        "status": "compiled",
+        "version": "13.0"
+      },
+      "cudnn": {
+        "status": "available",
+        "version": 92000
+      },
+      "numpy": {
+        "distribution": "numpy",
+        "module": "numpy",
+        "status": "available",
+        "version": "1.26.4"
+      },
+      "platform": {
+        "status": "available",
+        "value": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35"
+      },
+      "pot": {
+        "distribution": "POT",
+        "module": "ot",
+        "status": "available",
+        "version": "0.9.7"
+      },
+      "python": {
+        "implementation": "CPython",
+        "status": "available",
+        "version": "3.10.12"
+      },
+      "torch": {
+        "distribution": "torch",
+        "module": "torch",
+        "status": "available",
+        "version": "2.13.0+cu130"
+      },
+      "torch_geometric": {
+        "distribution": "torch-geometric",
+        "module": "torch_geometric",
+        "status": "available",
+        "version": "2.8.0"
+      },
+      "torchdiffeq": {
+        "distribution": "torchdiffeq",
+        "module": "torchdiffeq",
+        "status": "available",
+        "version": "0.2.5"
+      }
+    },
+    "device": "cuda",
+    "device_type": "cuda",
+    "platform": "Linux-5.15.0-179-generic-x86_64-with-glibc2.35",
+    "python_version": "3.10.12",
+    "torch_version": "2.13.0+cu130"
+  },
+  "memory_scope": "CPU max RSS is the process-lifetime high-water mark sampled after training. CUDA peaks are per-stage allocator high-water marks; the run value is the maximum across stages.",
+  "model": {
+    "parameter_count": 2147225,
+    "trainable_parameter_count_at_start": 2087320
+  },
+  "resources": {
+    "cpu_max_rss_mib": 2833.04296875,
+    "cuda_peak_allocated_mib": 1922.01904296875,
+    "cuda_peak_reserved_mib": 2416.0
+  },
+  "schema_version": 1,
+  "scope": "TrainingPipeline.train only; excludes post-training inference, evaluation, and AnnData serialization.",
+  "stages": [
+    {
+      "batch_size": 128,
+      "configured_epochs": 100,
+      "cuda_peak_allocated_mib": 89.74755859375,
+      "cuda_peak_reserved_mib": 96.0,
+      "interaction_active": false,
+      "interaction_rng_action": "inactive_skip_without_rng_advance",
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 600,
+      "recorded_epochs": 100,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "03ecab985e82142c8e54eed8fa86ba1ec4d3053973e68dcab1af6d7bc26f9886",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "bbb359ab1d133ebd75f12d6153e735d0132f599561fe09fccf450a07b0a8aca8",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "4e78e3fbb2f3e15f84fbce50fafd6d0be8216b5d92c26a1abf216245ad4fbd84"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "e9d5f50d28bc215d91481ddbff859db6ae8043a84198adc2fde8bcf82e762d48",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "d30ea7c08a2e9e566f5cd2e15b898fcb3a546466629043869b8218ddd1b70d41",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "4e78e3fbb2f3e15f84fbce50fafd6d0be8216b5d92c26a1abf216245ad4fbd84"
+          }
+        }
+      },
+      "save_strategy": "best",
+      "score_energy_objective": "velocity_score_cross_term",
+      "selected_checkpoint_epoch": 25,
+      "stage": "Pretrain",
+      "stage_index": 0,
+      "trainable_components": [
+        "velocity",
+        "growth"
+      ],
+      "trainable_parameter_count": 713013,
+      "wall_time_seconds": 23.26424241065979
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 100,
+      "cuda_peak_allocated_mib": 89.81201171875,
+      "cuda_peak_reserved_mib": 96.0,
+      "interaction_active": false,
+      "interaction_rng_action": "inactive_skip_without_rng_advance",
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 600,
+      "recorded_epochs": 100,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "3cae46d10d095b2f8763e879a4b635e8565328a8dc5cec57ee4de2d867a659c8",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "2e6b81966f0fc2bb92f1711d5ad351424ff0af0ffa48fe04b38f3d7e7ee5a5ab",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "4e78e3fbb2f3e15f84fbce50fafd6d0be8216b5d92c26a1abf216245ad4fbd84"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "03ecab985e82142c8e54eed8fa86ba1ec4d3053973e68dcab1af6d7bc26f9886",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "bbb359ab1d133ebd75f12d6153e735d0132f599561fe09fccf450a07b0a8aca8",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "4e78e3fbb2f3e15f84fbce50fafd6d0be8216b5d92c26a1abf216245ad4fbd84"
+          }
+        }
+      },
+      "save_strategy": "best",
+      "score_energy_objective": "velocity_score_cross_term",
+      "selected_checkpoint_epoch": 63,
+      "stage": "Refine",
+      "stage_index": 1,
+      "trainable_components": [
+        "velocity",
+        "growth"
+      ],
+      "trainable_parameter_count": 713013,
+      "wall_time_seconds": 23.430974838789552
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 50,
+      "cuda_peak_allocated_mib": 1529.58251953125,
+      "cuda_peak_reserved_mib": 2322.0,
+      "interaction_active": true,
+      "interaction_rng_action": "consume_private_interaction_generator",
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 300,
+      "recorded_epochs": 50,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "af0c3b5ccf2e211554caba5a196cddd4a846d78c4d8a6742a337e77b1cdd664b",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "c3334b0b77c8539cd432eb24ca85760952ae7c6e26e375a6785e31e35ca91456",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "5122ee90b3d3187e77efff76617773063129c6c97da03827b1606c6f210f9202"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "3cae46d10d095b2f8763e879a4b635e8565328a8dc5cec57ee4de2d867a659c8",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "2e6b81966f0fc2bb92f1711d5ad351424ff0af0ffa48fe04b38f3d7e7ee5a5ab",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "4e78e3fbb2f3e15f84fbce50fafd6d0be8216b5d92c26a1abf216245ad4fbd84"
+          }
+        }
+      },
+      "save_strategy": "best",
+      "score_energy_objective": "velocity_score_cross_term",
+      "selected_checkpoint_epoch": 1,
+      "stage": "Init_interaction",
+      "stage_index": 2,
+      "trainable_components": [
+        "velocity",
+        "growth",
+        "interaction"
+      ],
+      "trainable_parameter_count": 1744519,
+      "wall_time_seconds": 29.683444880880415
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 2001,
+      "cuda_peak_allocated_mib": 1922.01904296875,
+      "cuda_peak_reserved_mib": 2322.0,
+      "interaction_active": true,
+      "interaction_rng_action": "consume_private_interaction_generator",
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "score_matching",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 2001,
+      "recorded_epochs": 2001,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "8bc5171a07f1a00611593f296e5369ef83814ed040ed544c5e26f625dc38f0d2",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "7714f55b701f4ec4250b7c03af92199a6ef47df52db5849a84f22e348cff30ee",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "7f2a5bc00fffb254a4f5f29a85becc6a59574596bf6365e4914975d0e6e67ec2",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "98cba24885ee4728932d16d95566ddd66ee6eed4022052f515ed86c49455a448",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "aa8e459f10feb68dcc56d9bb8540ac42af91dbaad952f147ba3957d984774e67"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "af0c3b5ccf2e211554caba5a196cddd4a846d78c4d8a6742a337e77b1cdd664b",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "c3334b0b77c8539cd432eb24ca85760952ae7c6e26e375a6785e31e35ca91456",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "ecc876fe3f0a9c00ff0280ba5f668daf35e739662e6797cdbabae0a5db2ef1b1",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "aefdce03def94ffed42159e55677ec20e91200e1981f25b1f271b6fd99c3c263",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "5122ee90b3d3187e77efff76617773063129c6c97da03827b1606c6f210f9202"
+          }
+        }
+      },
+      "save_strategy": "last",
+      "score_energy_objective": null,
+      "selected_checkpoint_epoch": 2001,
+      "stage": "Train_Score",
+      "stage_index": 3,
+      "trainable_components": [
+        "score"
+      ],
+      "trainable_parameter_count": 342801,
+      "wall_time_seconds": 19.728093510959297
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 1000,
+      "cuda_peak_allocated_mib": 1474.15771484375,
+      "cuda_peak_reserved_mib": 2416.0,
+      "interaction_active": true,
+      "interaction_rng_action": "consume_private_interaction_generator",
+      "learning_rate_end": 1.220703125e-08,
+      "learning_rate_start": 0.0001,
+      "mode": "neural_ode",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 6000,
+      "recorded_epochs": 1000,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "fb4ca1c0f39a24e6311ef757ae3c7fbb702aa51610c81cd106d64996ffc361b4",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "2d22ea17afef628cd9b5a84be26292469feda54b4889a9e1bf66367390819c51",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "7f2a5bc00fffb254a4f5f29a85becc6a59574596bf6365e4914975d0e6e67ec2",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "98cba24885ee4728932d16d95566ddd66ee6eed4022052f515ed86c49455a448",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "065448eb76a831fb50e58087409b1b475407acf95f6f6c7832e81bb8753a0c22"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "8bc5171a07f1a00611593f296e5369ef83814ed040ed544c5e26f625dc38f0d2",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "7714f55b701f4ec4250b7c03af92199a6ef47df52db5849a84f22e348cff30ee",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "7f2a5bc00fffb254a4f5f29a85becc6a59574596bf6365e4914975d0e6e67ec2",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "98cba24885ee4728932d16d95566ddd66ee6eed4022052f515ed86c49455a448",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "aa8e459f10feb68dcc56d9bb8540ac42af91dbaad952f147ba3957d984774e67"
+          }
+        }
+      },
+      "save_strategy": "best",
+      "score_energy_objective": "velocity_score_cross_term",
+      "selected_checkpoint_epoch": 556,
+      "stage": "Finetune",
+      "stage_index": 4,
+      "trainable_components": [
+        "velocity",
+        "growth",
+        "interaction"
+      ],
+      "trainable_parameter_count": 1744519,
+      "wall_time_seconds": 642.1420817081816
+    },
+    {
+      "batch_size": 128,
+      "configured_epochs": 2001,
+      "cuda_peak_allocated_mib": 1762.06689453125,
+      "cuda_peak_reserved_mib": 2416.0,
+      "interaction_active": true,
+      "interaction_rng_action": "consume_private_interaction_generator",
+      "learning_rate_end": 0.0001,
+      "learning_rate_start": 0.0001,
+      "mode": "score_matching",
+      "model_components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "optimizer_step_count": 2001,
+      "recorded_epochs": 2001,
+      "rng_state_digests": {
+        "stage_end": {
+          "global": {
+            "aggregate_sha256": "2d8574625c7bac22c180a20c4aa2ef0aa209d2318e44f0c5e44bda792d7c1f3c",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "0c96e81dcdc75503dfff8396856e9a6b02fa886383e73cafd72a2c0a8d5a0a18",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "c3c8ff2af40ef4ff06987c90ea4906942dbc352fed553c0227b9cbce1d557476",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "e2b50c9b6ef1487dfbe1fd3831a62b8de727f73f5bd618c3cee3efdc70d8f73b",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "26ae139aaee67aecd701fdb1ce16cebb46c16bb84b56f431ec1fe32a62e775da"
+          }
+        },
+        "stage_start": {
+          "global": {
+            "aggregate_sha256": "fb4ca1c0f39a24e6311ef757ae3c7fbb702aa51610c81cd106d64996ffc361b4",
+            "determinism": {
+              "bit_exact_cuda_determinism_claimed": false,
+              "cudnn_benchmark": false,
+              "cudnn_deterministic": true,
+              "deterministic_algorithms_enabled": false,
+              "deterministic_algorithms_warn_only_enabled": false
+            },
+            "numpy_legacy_sha256": "2d22ea17afef628cd9b5a84be26292469feda54b4889a9e1bf66367390819c51",
+            "python_random_sha256": "2d1026d52826de68f9ba3a8438a5e74ad10a8269aaa1ac77873d4f9a41def20a",
+            "torch_cpu_sha256": "7f2a5bc00fffb254a4f5f29a85becc6a59574596bf6365e4914975d0e6e67ec2",
+            "torch_cuda": {
+              "available": true,
+              "selected_device": {
+                "index": 0,
+                "name": "NVIDIA GeForce RTX 4090 D"
+              },
+              "snapshot_scope": "selected_training_device_only",
+              "state_sha256": "98cba24885ee4728932d16d95566ddd66ee6eed4022052f515ed86c49455a448",
+              "visible_device_count": 1
+            }
+          },
+          "private_interaction_grouping": {
+            "active": true,
+            "seed": 10042,
+            "state_sha256": "065448eb76a831fb50e58087409b1b475407acf95f6f6c7832e81bb8753a0c22"
+          }
+        }
+      },
+      "save_strategy": "last",
+      "score_energy_objective": null,
+      "selected_checkpoint_epoch": 2001,
+      "stage": "Score_Refine",
+      "stage_index": 5,
+      "trainable_components": [
+        "score"
+      ],
+      "trainable_parameter_count": 342801,
+      "wall_time_seconds": 22.713248006999493
+    }
+  ],
+  "timing": {
+    "epoch_wall_time_seconds_sum": 753.8575034178793,
+    "run_wall_time_seconds": 761.1574015710503,
+    "stage_wall_time_seconds_sum": 760.9620853564702
+  },
+  "timing_scope": "Stage time includes optimizer setup, stage-specific preparation, epochs, checkpoint selection, and checkpoint write. Epoch time covers one training iteration through its optimizer update. CUDA is synchronized at timing boundaries. Run time ends after the final history write and excludes summary serialization.",
+  "training": {
+    "common_random_numbers": {
+      "components": [
+        "velocity",
+        "growth",
+        "score",
+        "interaction"
+      ],
+      "condition": "full_learned",
+      "constructor_isolation": {
+        "frozen_edge_predictor": {
+          "active": true,
+          "mechanism": "nested torch.random.fork_rng(devices=[])",
+          "trainable_backbone_initialization_isolated": true
+        },
+        "optional_interaction_component": {
+          "construction_device": "cpu_before_model.to(device)",
+          "mechanism": "torch.random.fork_rng(devices=[])",
+          "restores_global_torch_cpu_state": true
+        }
+      },
+      "formal_data_contract": {
+        "edge_predictor_provenance_valid": true,
+        "h5ad_and_exact_model_input_provenance_valid": true,
+        "matched_ablation_declared": false
+      },
+      "global_streams": {
+        "base_seed": 42,
+        "cuda_determinism_boundary": "The selected CUDA RNG state is recorded. cuDNN deterministic mode is requested by set_seed, but bit-exact CUDA kernels are not claimed unless PyTorch deterministic algorithms are separately enforced.",
+        "numpy_legacy": {
+          "api": "numpy.random.seed",
+          "seed": 42
+        },
+        "optional_interaction_advance_policy": "forbidden",
+        "python_random": {
+          "api": "random.seed",
+          "seed": 42
+        },
+        "seed_application": "once_before_model_construction",
+        "torch_cpu": {
+          "api": "torch.manual_seed",
+          "seed": 42
+        },
+        "torch_cuda": {
+          "api": "torch.cuda.manual_seed_all",
+          "available": true,
+          "seed": 42
+        }
+      },
+      "inactive_interaction": {
+        "forward_compute_skipped": true,
+        "no_interaction_arm_skips_constructor_and_generator": false,
+        "no_interaction_constructor_skipped": false,
+        "private_generator_created": true,
+        "private_stream_not_advanced": true
+      },
+      "interaction_grouping_stream": {
+        "active": true,
+        "advances_global_torch_stream": false,
+        "device": "cuda",
+        "generator": "private torch.Generator",
+        "reset_between_stages": false,
+        "seed": 10042,
+        "seed_offset": 10000,
+        "shared_seed_for_full_and_no_lr": true
+      },
+      "interaction_mode": "learned",
+      "protocol": "isolated-interaction-crn-v1",
+      "schema_version": 1,
+      "strict_matched_entrypoint": false
+    },
+    "implementation": {
+      "aggregate_sha256": "a87df1c1b4c1cd1ba4f981693dd7ba93685c6db4aac4aeaf57e622507108c0d1",
+      "contract": "exact-shared-training-code-sha256",
+      "files": {
+        "CytoBridge/tl/core/flow_matching.py": "0dd7e07192017779c3cb5c192b529464c1be2e8f9c4d4f095dae25dbe511ce38",
+        "CytoBridge/tl/core/interaction.py": "a4c63a86f9804cdc8ef60b0a13bf311cd9af47f1dc610effc6c9200d2b0df991",
+        "CytoBridge/tl/core/losses.py": "cf0302534a0425ded0c89df94e11b4f91cb4ffc7bcf7489ecf13e47db84e3c29",
+        "CytoBridge/tl/core/methods.py": "cc551f173b42226312af89b5a29085ef77930c5c91a395f5127b84abeed6eb68",
+        "CytoBridge/tl/core/models.py": "51dda73d744aa34f934554f1f48ddbcb7e9e6b0aef926e2ad9ee6f087dc1a69d",
+        "CytoBridge/tl/graph/spatial_gnn.py": "1fed919055872decf7364e2243fc453ae7d6d67d88b9aef3d7193dc1b40e6453",
+        "CytoBridge/tl/train/fit.py": "21dcf7319be84feb56671f99179f23f9502c23b97971ebb7b6498d991099edac",
+        "CytoBridge/tl/train/trainer.py": "46b60bdfafc6977610a98697d416a090a0e21f9ae93779313094370ac877107f",
+        "CytoBridge/utils/config.py": "fc4fbcddecf0d32bc9b951837eb8a9ca2fba3102d6330d21489c5613d4540379",
+        "CytoBridge/utils/utils.py": "569e3f3777ac23d81dd2a95096a42432367e3d0a6752485ea83bd27ce8ef5d05"
+      },
+      "hash_algorithm": "sha256",
+      "unchanged_during_training": true
+    },
+    "initial_batch_size": 128,
+    "matched_ablation": {
+      "actual_condition": "full_learned",
+      "config_declaration": null,
+      "declared": false,
+      "normalized": null
+    },
+    "optimizer_step_count": 11502,
+    "optimizer_step_count_scope": "Successful optimizer.step calls executed by TrainingPipeline.",
+    "random_streams": {
+      "global_seed": 42,
+      "interaction_grouping_scope": "private Torch Generator; does not advance the global Torch RNG stream",
+      "interaction_grouping_seed": 10042
+    },
+    "score_energy_objective_default": "velocity_score_cross_term",
+    "stage_batch_sizes": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128
+    ]
+  }
+}

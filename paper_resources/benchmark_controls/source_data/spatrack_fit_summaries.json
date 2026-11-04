@@ -1,0 +1,354 @@
+[
+  {
+    "dataset": "zebrafish",
+    "target": 1,
+    "anchor_times": [
+      0,
+      2
+    ],
+    "anchor_counts": [
+      563,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 0.7907851589843631,
+    "pca_distance_max": 12.853406520502917,
+    "marginal_l1_error_left": 3.41740524767431e-16,
+    "marginal_l1_error_right": 4.500150591795274e-10,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        563,
+        800
+      ],
+      "total_mass": 0.9999999999999999,
+      "row_sum_min": 0.0015078938753452231,
+      "row_sum_max": 0.0019654396625089906,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t1/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t1/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "zebrafish",
+    "target": 2,
+    "anchor_times": [
+      1,
+      3
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.6561526013538241,
+    "pca_distance_max": 14.075746969801425,
+    "marginal_l1_error_left": 3.2938062000109625e-16,
+    "marginal_l1_error_right": 1.3993799602386378e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0,
+      "row_sum_min": 0.0008763040088093916,
+      "row_sum_max": 0.0013933574947304576,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t2/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t2/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "zebrafish",
+    "target": 3,
+    "anchor_times": [
+      2,
+      4
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.520401818677783,
+    "pca_distance_max": 15.140567172196702,
+    "marginal_l1_error_left": 3.2363434848692307e-16,
+    "marginal_l1_error_right": 6.672441826816554e-09,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0,
+      "row_sum_min": 0.0009620657281390887,
+      "row_sum_max": 0.0013922160776014385,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t3/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/loto_t3/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "mosta",
+    "target": 1,
+    "anchor_times": [
+      0,
+      2
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 2.0803270656615496,
+    "pca_distance_max": 24.144508902570212,
+    "marginal_l1_error_left": 3.8489177123235407e-16,
+    "marginal_l1_error_right": 1.4081456027039904e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0000000000000002,
+      "row_sum_min": 0.0010253467840991178,
+      "row_sum_max": 0.0014084483370892596,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t1/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "mosta",
+    "target": 2,
+    "anchor_times": [
+      1,
+      3
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.970054187811911,
+    "pca_distance_max": 20.481381261394535,
+    "marginal_l1_error_left": 3.5236570605778894e-16,
+    "marginal_l1_error_right": 2.1151136603563166e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0000000000000002,
+      "row_sum_min": 0.001041380106663965,
+      "row_sum_max": 0.0013714525282062134,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t2/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/loto_t2/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "arista",
+    "target": 1,
+    "anchor_times": [
+      0,
+      2
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.7940920293331146,
+    "pca_distance_max": 14.27074213204987,
+    "marginal_l1_error_left": 3.9963692077815693e-16,
+    "marginal_l1_error_right": 1.1282273032920537e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 0.9999999999999999,
+      "row_sum_min": 0.0010660511753732573,
+      "row_sum_max": 0.0014252855565460125,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t1/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t1/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "arista",
+    "target": 2,
+    "anchor_times": [
+      1,
+      3
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.866558711975813,
+    "pca_distance_max": 14.893962403002833,
+    "marginal_l1_error_left": 3.946495907847236e-16,
+    "marginal_l1_error_right": 9.734818035771024e-09,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 0.9999999999999998,
+      "row_sum_min": 0.0010906758297924532,
+      "row_sum_max": 0.0013835599376817338,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t2/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t2/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "arista",
+    "target": 3,
+    "anchor_times": [
+      2,
+      4
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 1.7879690770059824,
+    "pca_distance_max": 14.301875668823863,
+    "marginal_l1_error_left": 4.0180532512312794e-16,
+    "marginal_l1_error_right": 1.1403270710726512e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0000000000000004,
+      "row_sum_min": 0.0009748164074044531,
+      "row_sum_max": 0.001400873137674618,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t3/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/arista/inputs/loto_t3/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "admouse",
+    "target": 1,
+    "anchor_times": [
+      0,
+      2
+    ],
+    "anchor_counts": [
+      800,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 2.510268581099808,
+    "pca_distance_max": 44.66836572111653,
+    "marginal_l1_error_left": 3.855422925358454e-16,
+    "marginal_l1_error_right": 1.0979792305389202e-08,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        800,
+        800
+      ],
+      "total_mass": 1.0,
+      "row_sum_min": 0.0011087013113883443,
+      "row_sum_max": 0.001381021790436323,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/loto_t1/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/loto_t1/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "chicken_heart",
+    "target": 1,
+    "anchor_times": [
+      0,
+      2
+    ],
+    "anchor_counts": [
+      147,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 0.21401681937277317,
+    "pca_distance_max": 29.84369049137588,
+    "marginal_l1_error_left": 3.3393426912553537e-16,
+    "marginal_l1_error_right": 2.1851614128180416e-09,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        147,
+        800
+      ],
+      "total_mass": 1.0,
+      "row_sum_min": 0.0060577448408378545,
+      "row_sum_max": 0.007181884469109722,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/chicken_heart/inputs/loto_t1/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/chicken_heart/inputs/loto_t1/source_roster.npz",
+    "native_growth_prediction": false
+  },
+  {
+    "dataset": "chicken_heart",
+    "target": 2,
+    "anchor_times": [
+      1,
+      3
+    ],
+    "anchor_counts": [
+      528,
+      800
+    ],
+    "prediction_n": 5000,
+    "interpolation_fraction": 0.5,
+    "fit_seconds": 0.8686916371807456,
+    "pca_distance_max": 30.06363818796807,
+    "marginal_l1_error_left": 3.2656169435263394e-16,
+    "marginal_l1_error_right": 8.774391202005273e-09,
+    "warnings": [],
+    "coupling_checks": {
+      "shape": [
+        528,
+        800
+      ],
+      "total_mass": 1.0,
+      "row_sum_min": 0.0012424753514283936,
+      "row_sum_max": 0.0020408139744488795,
+      "zero_rows": 0
+    },
+    "training_input": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/chicken_heart/inputs/loto_t2/training_reference.npz",
+    "source_roster": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/rev03-arista-heart-all-method-loto-20260826-r1/chicken_heart/inputs/loto_t2/source_roster.npz",
+    "native_growth_prediction": false
+  }
+]

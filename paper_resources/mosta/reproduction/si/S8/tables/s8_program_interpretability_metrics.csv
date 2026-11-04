@@ -1,0 +1,3 @@
+program,n_genes,peak_time,endpoint_delta,time_correlation,representative_genes,top20_gene_count
+1,883,0.0,-2.4058866155007186,-0.9932015822865784,Tubb2b;Ldhb;Calm2;Srp14;Lamtor1,11
+2,1117,3.0,2.902457517099751,0.9908538068650196,Pnpo;Mt2;Hba-a1;Krt15;Gja1,9

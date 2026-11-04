@@ -1,0 +1,13 @@
+{
+  "trajectories": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/zebrafish-global-t0-daughter-noise-support-edge-20260815-545562f-r1/seeds",
+  "classifier": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/downstream/classifier_cache/classifier_resmlp_25f65c49dc60ea4c.pt",
+  "lineage_spatial_smoothing": false,
+  "composition_unchanged": true,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ]
+}

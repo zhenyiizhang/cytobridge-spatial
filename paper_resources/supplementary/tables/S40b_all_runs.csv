@@ -1,0 +1,25 @@
+setting_index,setting,replicate,metric,value
+0,Neighborhood 0.8×,42,Interaction component,0.9688338041305542
+0,Neighborhood 0.8×,43,Interaction component,0.9799513816833496
+0,Neighborhood 0.8×,44,Interaction component,0.9672423601150512
+0,Neighborhood 0.8×,42,Directed-pair ranking,0.965228392480074
+0,Neighborhood 0.8×,42,Top-pair overlap,0.8061489487748976
+0,Neighborhood 0.8×,43,Directed-pair ranking,0.9782388062122752
+0,Neighborhood 0.8×,43,Top-pair overlap,0.9253698024763904
+0,Neighborhood 0.8×,44,Directed-pair ranking,0.9746220116612386
+0,Neighborhood 0.8×,44,Top-pair overlap,0.8578210391984463
+1,Neighborhood 1.2×,42,Interaction component,0.9260686039924622
+1,Neighborhood 1.2×,43,Interaction component,0.9830590486526488
+1,Neighborhood 1.2×,44,Interaction component,0.984483540058136
+1,Neighborhood 1.2×,42,Directed-pair ranking,0.9633213991970324
+1,Neighborhood 1.2×,42,Top-pair overlap,0.8829449873146495
+1,Neighborhood 1.2×,43,Directed-pair ranking,0.9654385544715414
+1,Neighborhood 1.2×,43,Top-pair overlap,0.8535354308887931
+1,Neighborhood 1.2×,44,Directed-pair ranking,0.9660599016713046
+1,Neighborhood 1.2×,44,Top-pair overlap,0.8909998791488457
+2,Expression loss weight 0.05,42,Interaction component,0.9555227756500244
+2,Expression loss weight 0.05,42,Directed-pair ranking,0.9969872230870008
+2,Expression loss weight 0.05,42,Top-pair overlap,0.9248661997430704
+3,Transport:mass weight 10:1,42,Interaction component,0.8357483148574829
+3,Transport:mass weight 10:1,42,Directed-pair ranking,0.9912711636166104
+3,Transport:mass weight 10:1,42,Top-pair overlap,0.8623548646022446

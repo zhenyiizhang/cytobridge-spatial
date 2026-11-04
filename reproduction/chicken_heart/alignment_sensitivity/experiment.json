@@ -1,0 +1,35 @@
+{
+  "translations_median_nn_units": [
+    1,
+    2
+  ],
+  "rotation_degrees": [
+    1,
+    3
+  ],
+  "variants": [
+    "baseline_repeat",
+    "translate_low",
+    "translate_moderate",
+    "rotate_low",
+    "rotate_moderate",
+    "translate_rotate_low",
+    "translate_rotate_moderate"
+  ],
+  "seed": 42,
+  "alignment_seed": 42,
+  "software": "/home/ubuntu/cytobridge_runs/heart_alignment_precision_20260906/software",
+  "input_manifest": "/home/ubuntu/cytobridge_runs/heart_alignment_small_20260906/input_manifest.json",
+  "scratch": "/dev/shm/cytobridge-heart-alignment-small-20260906-r1",
+  "run_archives": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/heart-alignment-small-20260906-r1",
+  "scope": "Small rigid perturbations. The earlier 6-degree experiment is retained separately.",
+  "earlier_experiment": "/home/ubuntu/cytobridge_runs/heart_alignment_integer_20260906",
+  "precision_change": {
+    "base_commit": "c72e592d0dea70941bc4971a79c3c903d7454b08",
+    "original_software": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/chicken-heart-full-ot-20260823-r2/software",
+    "software": "/home/ubuntu/cytobridge_runs/heart_alignment_precision_20260906/software",
+    "change": "Center and scale spatial coordinates in float64, then create float32 model tensors.",
+    "training_objective_and_settings": "unchanged"
+  },
+  "started": "2026-09-06 16:05:53"
+}

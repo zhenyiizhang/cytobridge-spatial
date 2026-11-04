@@ -1,0 +1,4 @@
+time,n_display_cells,n_available_cells,n_unavailable_cells,unavailable_fraction,unavailable_types,unavailable_type_counts,policy
+0.0,51365,51365,0,0.0,,,retain coordinates; unavailable NaN; grey base only; never zero-fill
+0.5,63533,63493,40,0.0006295940692238679,Pancreas;Spinal cord,Pancreas:23;Spinal cord:17,retain coordinates; unavailable NaN; grey base only; never zero-fill
+1.0,77369,77369,0,0.0,,,retain coordinates; unavailable NaN; grey base only; never zero-fill

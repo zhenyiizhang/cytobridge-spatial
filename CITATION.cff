@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use CytoBridge, please cite the software and associated manuscript."
+title: "CytoBridge"
+type: software
+version: 1.5.0rc1
+date-released: 2026-08-12
+license: GPL-3.0-or-later
+repository-code: "https://github.com/zhenyiizhang/cytobridge-spatial"
+url: "https://cytobridge.readthedocs.io/"
+authors:
+  - family-names: Zhang
+    given-names: Zhenyi
+  - family-names: Wang
+    given-names: Zihan
+  - family-names: Shen
+    given-names: Jiantao
+  - family-names: Zhou
+    given-names: Peijie

@@ -1,0 +1,21 @@
+Five-dataset held-out-stage benchmark
+
+Datasets and target stages:
+Zebrafish: 1, 2, 3; MOSTA: 1, 2; ARTISTA: 1, 2, 3;
+AD mouse: 1; chicken heart: 1, 2.
+
+Each target stage is omitted from model fitting. Methods use the shared PCA
+features and aligned spatial coordinates. Predictions start from the common
+5,000-cell roster. Evaluation uses the same transformation and five sets of
+1,024 projection directions for each dataset, target and output space.
+
+PASTE2 uses overlap fraction 1, alpha 0.1, squared Euclidean PCA cost,
+no distance normalization, and an iteration limit of 200. The coupling is
+row-normalized for barycentric interpolation between the two anchor stages.
+
+MIOFlow 2.0 uses shared PCA features, local expression-neighborhood features,
+and neighborhood cell-type composition. Its SDE model is evaluated in
+expression space. It uses a four-dimensional latent representation,
+100 autoencoder epochs per phase, 50 growth-model epochs, and 200 flow epochs.
+
+See protocol.json and run_benchmark.py for the full settings.

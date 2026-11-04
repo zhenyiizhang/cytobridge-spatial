@@ -1,0 +1,6 @@
+"query_id","input_symbol_count","mapped_symbol_count","unique_entrez_count","tested_term_count","significant_term_count_fdr_lt_0p05","displayed_term_count","minimum_p_adjust","top_term","top_term_id","top_term_ontology"
+"s9_pattern_1",883,789,789,3554,305,20,6.00405430704343e-24,"nucleus","GO:0005634","CC"
+"s9_pattern_2",1117,936,936,3520,11,11,2.46010001456902e-06,"extracellular region","GO:0005576","CC"
+"s10_phase_1",483,455,455,3410,328,20,4.29090409887774e-29,"nucleus","GO:0005634","CC"
+"s10_phase_2",299,292,292,3327,534,20,3.1783116699247e-10,"regulation of system process","GO:0044057","BP"
+"s10_phase_3",218,210,210,2896,198,20,1.20662839046057e-09,"cell periphery","GO:0071944","CC"

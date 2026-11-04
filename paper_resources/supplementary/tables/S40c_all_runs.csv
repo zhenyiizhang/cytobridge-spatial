@@ -1,0 +1,17 @@
+setting_index,setting,replicate,condition,reference,metric,value
+0,Neighborhood 0.8×,42,formal_seed42_cutoff0p8,formal_seed42_cutoff1p0,Spatial,-0.9969134456597528
+0,Neighborhood 0.8×,42,formal_seed42_cutoff0p8,formal_seed42_cutoff1p0,Gene state,-1.1649397113839277
+0,Neighborhood 0.8×,43,formal_seed43_cutoff0p8,formal_seed43_cutoff1p0,Spatial,1.0145925471680695
+0,Neighborhood 0.8×,43,formal_seed43_cutoff0p8,formal_seed43_cutoff1p0,Gene state,-0.0010857386703810867
+0,Neighborhood 0.8×,44,formal_seed44_cutoff0p8,formal_seed44_cutoff1p0,Spatial,0.9168909665143499
+0,Neighborhood 0.8×,44,formal_seed44_cutoff0p8,formal_seed44_cutoff1p0,Gene state,0.1675089863655499
+1,Neighborhood 1.2×,42,formal_seed42_cutoff1p2,formal_seed42_cutoff1p0,Spatial,3.575794047366343
+1,Neighborhood 1.2×,42,formal_seed42_cutoff1p2,formal_seed42_cutoff1p0,Gene state,1.1222238774528215
+1,Neighborhood 1.2×,43,formal_seed43_cutoff1p2,formal_seed43_cutoff1p0,Spatial,0.1676762573785684
+1,Neighborhood 1.2×,43,formal_seed43_cutoff1p2,formal_seed43_cutoff1p0,Gene state,0.27542943014415844
+1,Neighborhood 1.2×,44,formal_seed44_cutoff1p2,formal_seed44_cutoff1p0,Spatial,1.6814087660621757
+1,Neighborhood 1.2×,44,formal_seed44_cutoff1p2,formal_seed44_cutoff1p0,Gene state,0.6129859490713985
+2,Expression loss weight 0.05,42,alpha_expr_005_seed42_cutoff1p0,formal_seed42_cutoff1p0,Spatial,0.2502300798314039
+2,Expression loss weight 0.05,42,alpha_expr_005_seed42_cutoff1p0,formal_seed42_cutoff1p0,Gene state,2.5136207976689695
+3,Transport:mass weight 10:1,42,ot_mass_10_to_1_seed42_cutoff1p0,formal_seed42_cutoff1p0,Spatial,3.677463032456507
+3,Transport:mass weight 10:1,42,ot_mass_10_to_1_seed42_cutoff1p0,formal_seed42_cutoff1p0,Gene state,0.9619605302136236

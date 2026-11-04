@@ -1,0 +1,6 @@
+panel,title,content,compact_source,full_calculation_inputs
+a,Spatiotemporal communication,"Observed and generated spatial states, cell-state trajectories, and directed communication",main_figure_5_compact.png,"aligned_h5ad;model_dir;edge_predictor;classifier_cache;slice_dir;sparse_attention_dir"
+b,Generated spatial state,Generated 3.5-DPI spatial state with cell-state labels,main_figure_5_compact.png,"aligned_h5ad;model_dir;classifier_cache;slice_dir"
+c,Spatial velocity,"Full spatial velocity and cosine alignment with the interaction spatial-velocity contribution",main_figure_5_compact.png,"aligned_h5ad;model_dir;slice_dir;velocity_components"
+d,Gene velocity,Gene-expression velocity in the PC1-PC2 projection,main_figure_5_compact.png,"aligned_h5ad;model_dir;slice_dir;velocity_components;aligned_identity"
+e,Growth and interaction,Mean interaction magnitude and growth by time and cell state,main_figure_5_compact.png,"aligned_h5ad;model_dir;edge_predictor;slice_dir;growth_by_cell;communication_by_celltype"

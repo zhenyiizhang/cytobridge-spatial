@@ -1,0 +1,505 @@
+{
+  "dataset": "mosta",
+  "seed": 42,
+  "alpha_spatial": 10.0,
+  "alpha_express": 0.015,
+  "classifier_k": 10,
+  "reference_h5ad": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/preprocess/mosta_aligned.h5ad",
+  "model": {
+    "format": "current",
+    "directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "weight_stage": "Finetune",
+    "score_stage": "Score_Refine",
+    "scientific_contract": {
+      "status": "matches requested preset",
+      "alpha_express": 0.015,
+      "alpha_spatial": 10.0,
+      "seed": 42,
+      "interaction_cutoff": 0.02400244047956264,
+      "components": [
+        "growth",
+        "interaction",
+        "score",
+        "velocity"
+      ],
+      "interaction_component": true,
+      "edge_prior_mode": "learned",
+      "interaction_group_size": 1024,
+      "interaction_group_max_size": 2047,
+      "interaction_group_remainder_policy": "merge a nonzero remainder into the final base-size group",
+      "edge_predictor_threshold": 0.1192110925912857,
+      "edge_predictor_threshold_check": "explicit workflow override",
+      "weight_stage": "Finetune",
+      "score_stage": "Score_Refine"
+    }
+  },
+  "time_points": [
+    0.0,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    1.75,
+    2.0,
+    2.25,
+    2.5,
+    2.75,
+    3.0
+  ],
+  "simulation": {
+    "initial_particles": 51365,
+    "configured_particle_cap": 12000,
+    "initial_particle_cap": 12000,
+    "split_particle_ceiling": null,
+    "split_dt": 0.05,
+    "split_resample_dt": null,
+    "sigma": 0.03,
+    "daughter_noise_std": 0.0,
+    "growth_alpha": 1.0,
+    "interaction_group_size": 1024,
+    "non_split_lineage_rollout": false,
+    "trajectory_mode": "global_t0_extrapolation",
+    "split_sde_piecewise": false,
+    "piecewise_observed_sample_mode": null,
+    "piecewise_include_end": null,
+    "trajectory_scope": "Generated states belong to one split-SDE rollout initialized from t0; later states are global extrapolations rather than independently observed-anchored interval interpolations.",
+    "particle_counts_by_time": {
+      "0.0": 51365,
+      "0.25": 13586,
+      "0.5": 15144,
+      "0.75": 16690,
+      "1.0": 77369,
+      "1.25": 19470,
+      "1.5": 20690,
+      "1.75": 21803,
+      "2.0": 102519,
+      "2.25": 23435,
+      "2.5": 24108,
+      "2.75": 24607,
+      "3.0": 113350
+    },
+    "observed_particle_counts": {
+      "0.0": 51365,
+      "1.0": 77369,
+      "2.0": 102519,
+      "3.0": 113350
+    },
+    "generated_particle_counts": {
+      "0.25": 13586,
+      "0.5": 15144,
+      "0.75": 16690,
+      "1.25": 19470,
+      "1.5": 20690,
+      "1.75": 21803,
+      "2.25": 23435,
+      "2.5": 24108,
+      "2.75": 24607
+    },
+    "slice_origins_by_time": {
+      "0.0": "observed_real",
+      "0.25": "generated_global_t0",
+      "0.5": "generated_global_t0",
+      "0.75": "generated_global_t0",
+      "1.0": "observed_real",
+      "1.25": "generated_global_t0",
+      "1.5": "generated_global_t0",
+      "1.75": "generated_global_t0",
+      "2.0": "observed_real",
+      "2.25": "generated_global_t0",
+      "2.5": "generated_global_t0",
+      "2.75": "generated_global_t0",
+      "3.0": "observed_real"
+    },
+    "source_anchor_times_by_time": {
+      "0.0": 0.0,
+      "0.25": 0.0,
+      "0.5": 0.0,
+      "0.75": 0.0,
+      "1.0": 1.0,
+      "1.25": 0.0,
+      "1.5": 0.0,
+      "1.75": 0.0,
+      "2.0": 2.0,
+      "2.25": 0.0,
+      "2.5": 0.0,
+      "2.75": 0.0,
+      "3.0": 3.0
+    },
+    "stochastic_streams": {
+      "non_split_identity": 42,
+      "split_population": 43,
+      "non_split_interaction_grouping": 10042,
+      "split_interaction_grouping": 10043,
+      "split_interaction_grouping_by_interval": {},
+      "piecewise_interaction_seed_derivation": null
+    },
+    "stochastic_stream_contract": "Brownian diffusion, split/resampling decisions, and daughter noise share the declared split_population stream. Stochastic interaction grouping uses a separate seeded torch.Generator and therefore does not advance the population stream. Piecewise interaction grouping derives a distinct stable seed for each observed interval."
+  },
+  "classifier_accuracy": 0.8960273932851629,
+  "classifier_balanced_accuracy": 0.8503347888243216,
+  "classifier_split": {
+    "cache_protocol_version": 8,
+    "per_class_counts": {
+      "Adipose tissue": {
+        "total": 4094,
+        "train": 3685,
+        "validation": 409
+      },
+      "Adrenal gland": {
+        "total": 151,
+        "train": 136,
+        "validation": 15
+      },
+      "Blood vessel": {
+        "total": 3826,
+        "train": 3443,
+        "validation": 383
+      },
+      "Brain": {
+        "total": 59018,
+        "train": 53116,
+        "validation": 5902
+      },
+      "Cartilage": {
+        "total": 8301,
+        "train": 7471,
+        "validation": 830
+      },
+      "Cartilage primordium": {
+        "total": 12968,
+        "train": 11671,
+        "validation": 1297
+      },
+      "Cavity": {
+        "total": 39512,
+        "train": 35561,
+        "validation": 3951
+      },
+      "Choroid plexus": {
+        "total": 3956,
+        "train": 3560,
+        "validation": 396
+      },
+      "Connective tissue": {
+        "total": 36908,
+        "train": 33217,
+        "validation": 3691
+      },
+      "Dorsal root ganglion": {
+        "total": 4569,
+        "train": 4112,
+        "validation": 457
+      },
+      "Epidermis": {
+        "total": 18050,
+        "train": 16245,
+        "validation": 1805
+      },
+      "Facial nerve": {
+        "total": 64,
+        "train": 58,
+        "validation": 6
+      },
+      "GI tract": {
+        "total": 6124,
+        "train": 5512,
+        "validation": 612
+      },
+      "Heart": {
+        "total": 9390,
+        "train": 8451,
+        "validation": 939
+      },
+      "Inner ear": {
+        "total": 77,
+        "train": 69,
+        "validation": 8
+      },
+      "Jaw and tooth": {
+        "total": 14964,
+        "train": 13468,
+        "validation": 1496
+      },
+      "Kidney": {
+        "total": 1558,
+        "train": 1402,
+        "validation": 156
+      },
+      "Liver": {
+        "total": 16531,
+        "train": 14878,
+        "validation": 1653
+      },
+      "Lung": {
+        "total": 6090,
+        "train": 5481,
+        "validation": 609
+      },
+      "Lung primordium": {
+        "total": 576,
+        "train": 518,
+        "validation": 58
+      },
+      "Meninges": {
+        "total": 30147,
+        "train": 27132,
+        "validation": 3015
+      },
+      "Mesentery": {
+        "total": 1947,
+        "train": 1752,
+        "validation": 195
+      },
+      "Mesothelium": {
+        "total": 4792,
+        "train": 4313,
+        "validation": 479
+      },
+      "Mucosal epithelium": {
+        "total": 5824,
+        "train": 5242,
+        "validation": 582
+      },
+      "Muscle": {
+        "total": 25574,
+        "train": 23017,
+        "validation": 2557
+      },
+      "Olfactory epithelium": {
+        "total": 1672,
+        "train": 1505,
+        "validation": 167
+      },
+      "Ovary": {
+        "total": 327,
+        "train": 294,
+        "validation": 33
+      },
+      "Pancreas": {
+        "total": 1110,
+        "train": 999,
+        "validation": 111
+      },
+      "Smooth muscle": {
+        "total": 4548,
+        "train": 4093,
+        "validation": 455
+      },
+      "Spinal cord": {
+        "total": 19776,
+        "train": 17798,
+        "validation": 1978
+      },
+      "Sympathetic nerve": {
+        "total": 766,
+        "train": 689,
+        "validation": 77
+      },
+      "Thymus": {
+        "total": 371,
+        "train": 334,
+        "validation": 37
+      },
+      "Urogenital ridge": {
+        "total": 1022,
+        "train": 920,
+        "validation": 102
+      }
+    },
+    "training_only_singleton_classes": [],
+    "singleton_class_policy": "A class represented by one row is retained in training and excluded from validation.",
+    "stratification_repairs": []
+  },
+  "snapshots": [
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0p25.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_0p75.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_1.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_1p25.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_1p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_1p75.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_2.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_2p25.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_2p5.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_2p75.h5ad",
+    "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/slice_data/time_3.h5ad"
+  ],
+  "analyses": {
+    "velocity": {
+      "status": "completed",
+      "component_archive": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/velocity_components.npz",
+      "interaction_cutoff": 0.02400244047956264,
+      "interaction_component": true,
+      "interaction_vector_status": "evaluated",
+      "figures": [
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/drift_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/interaction_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/full_time_0.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/drift_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/interaction_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/full_time_1.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/drift_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/interaction_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/full_time_2.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/drift_time_3.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/interaction_time_3.pdf",
+        "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/velocity/full_time_3.pdf"
+      ]
+    },
+    "growth": {
+      "status": "completed",
+      "state_source": "unwarped model state",
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/growth/growth_by_cell.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/growth/growth_timepoint_grid.pdf"
+    },
+    "composition": {
+      "status": "completed",
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/composition/celltype_composition.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/composition/celltype_composition.pdf"
+    },
+    "communication": {
+      "status": "completed",
+      "representation": "sparse model-edge attention",
+      "edge_prior_mode": "learned",
+      "interpretation": null,
+      "edge_selection_by_time": {
+        "0": {
+          "candidate_count": 879878,
+          "selected_count": 739577,
+          "selected_fraction": 0.8405449391847506,
+          "status": "selected_edges"
+        },
+        "0.25": {
+          "candidate_count": 63264,
+          "selected_count": 52426,
+          "selected_fraction": 0.8286861406170966,
+          "status": "selected_edges"
+        },
+        "0.5": {
+          "candidate_count": 76414,
+          "selected_count": 63587,
+          "selected_fraction": 0.832138089878818,
+          "status": "selected_edges"
+        },
+        "0.75": {
+          "candidate_count": 88142,
+          "selected_count": 73927,
+          "selected_fraction": 0.8387261464455084,
+          "status": "selected_edges"
+        },
+        "1": {
+          "candidate_count": 1347670,
+          "selected_count": 1129091,
+          "selected_fraction": 0.8378097011879763,
+          "status": "selected_edges"
+        },
+        "1.25": {
+          "candidate_count": 104854,
+          "selected_count": 91438,
+          "selected_fraction": 0.8720506609189921,
+          "status": "selected_edges"
+        },
+        "1.5": {
+          "candidate_count": 110136,
+          "selected_count": 98186,
+          "selected_fraction": 0.8914977845572747,
+          "status": "selected_edges"
+        },
+        "1.75": {
+          "candidate_count": 114412,
+          "selected_count": 103855,
+          "selected_fraction": 0.907728210327588,
+          "status": "selected_edges"
+        },
+        "2": {
+          "candidate_count": 1820218,
+          "selected_count": 1661660,
+          "selected_fraction": 0.9128906537568577,
+          "status": "selected_edges"
+        },
+        "2.25": {
+          "candidate_count": 118090,
+          "selected_count": 110169,
+          "selected_fraction": 0.9329240409856889,
+          "status": "selected_edges"
+        },
+        "2.5": {
+          "candidate_count": 117764,
+          "selected_count": 110787,
+          "selected_fraction": 0.9407543901362047,
+          "status": "selected_edges"
+        },
+        "2.75": {
+          "candidate_count": 117388,
+          "selected_count": 110902,
+          "selected_fraction": 0.9447473336286503,
+          "status": "selected_edges"
+        },
+        "3": {
+          "candidate_count": 1994286,
+          "selected_count": 1818109,
+          "selected_fraction": 0.9116591100774913,
+          "status": "selected_edges"
+        }
+      },
+      "structural_zero_interpretation": "When candidate edges exist, a structural zero means no candidate edge passed the LR-informed learned edge-predictor gate at that time point; when the candidate count is zero, no edge was available within the spatial cutoff. Neither case establishes absence of all biological communication.",
+      "attention_scope": "full time-slice radius candidate graph",
+      "training_interaction_scope": "stochastic interaction groups with base size 1024; a nonzero remainder is merged into the final group (at most 2047); radius candidates are evaluated only within each group during model training and dynamics",
+      "remove_self_loop": false,
+      "winsor_quantile": 0.995,
+      "table": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/communication/communication_by_celltype.csv",
+      "attention_directory": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/communication/sparse_attention",
+      "trajectory_scope": "Generated states belong to one split-SDE rollout initialized from t0; later states are global extrapolations rather than independently observed-anchored interval interpolations."
+    },
+    "figures": {
+      "status": "completed",
+      "snapshots": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/figures/spatial_snapshots",
+      "lineage": {
+        "status": "not applicable",
+        "reason": "persistent fixed-particle lineage was not enabled for this dataset"
+      },
+      "spatiotemporal_3d": {
+        "status": "completed",
+        "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/figures/spatiotemporal_communication_3d.html",
+        "lineage_ribbons": "omitted"
+      }
+    },
+    "gene_dynamics": {
+      "status": "completed",
+      "pca_loadings_key": "varm['PCs']",
+      "pca_center_source": "reference var['pca_center']",
+      "clip_min": 0.0,
+      "preferred_species_tag": "mouse",
+      "expression": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/gene_dynamics/mean_expression.csv",
+      "top_variable_genes": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/gene_dynamics/top_variable_genes.csv",
+      "figure": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/gene_dynamics/temporal_gene_programs.pdf"
+    },
+    "ligand_receptor": {
+      "status": "completed",
+      "database": "/data/cytobridge/projects/CytoBridge-ST-1104/software/cytobridge-release-3c87a3e/CytoBridge/workflow_databases/CellChatDB.ligrec.mouse.csv",
+      "complex_mode": "min",
+      "require_all_subunits": true,
+      "pca_loadings_key": "varm['PCs']",
+      "pca_center_source": "reference var['pca_center']",
+      "preferred_species_tag": "mouse",
+      "analysis_scope": null,
+      "tables": {
+        "pair_timecourse": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/pair_timecourse.csv",
+        "celltype_timecourse": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/celltype_timecourse.csv",
+        "pattern_summary": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/pattern_summary.csv",
+        "coverage": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/coverage.csv",
+        "trajectory_coverage": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/trajectory_coverage.csv",
+        "dropped_trajectories": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/ligand_receptor/dropped_trajectories.csv"
+      },
+      "trajectory_scope": "Generated states belong to one split-SDE rollout initialized from t0; later states are global extrapolations rather than independently observed-anchored interval interpolations."
+    },
+    "reconstruction_diagnostic": {
+      "status": "not requested",
+      "claim": "not a training holdout or cross-method benchmark"
+    }
+  },
+  "summary_file": "/data/cytobridge/projects/CytoBridge-ST-1104/runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/downstream/summary.json"
+}

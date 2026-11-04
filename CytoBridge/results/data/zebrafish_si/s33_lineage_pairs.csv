@@ -1,0 +1,7 @@
+source_celltype,target_celltype,global_flow
+EVL,Nervous System,0.2092689790779055
+EVL,"Musculature System, Yolk Syncytial Layer",0.0556386325114975
+"Presumptive Mesoderm, Presumptive Ectoderm","Musculature System, Yolk Syncytial Layer",0.0511862744985435
+"Presumptive Mesoderm, Presumptive Ectoderm",Pronephros,0.0418118620297335
+Yolk Syncytial Layer,"Musculature System, Yolk Syncytial Layer",0.0311504907598703
+Presumptive Mesoderm,Nervous System,0.0306260915706156

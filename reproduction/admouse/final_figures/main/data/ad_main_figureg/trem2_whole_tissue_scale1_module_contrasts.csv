@@ -1,0 +1,15 @@
+perturbed_gene,direction,time,population,module,n_reference_particles,n_perturbed_particles,n_genes,mean_reference,mean_perturbed,delta,normalization
+Trem2,low,2.4,all_particles,DAM_microglia,61711,61579,14,0.346052035371563,-0.346052035371563,-0.692104070743126,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,DAM_Lipid_Metabolism,61711,61579,3,0.2237891408792194,-0.2237891408792194,-0.4475782817584388,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,Lysosome_Phagosome,61711,61579,7,0.3866652171049952,-0.3866652171049952,-0.7733304342099904,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,AB_Clearance_Endolysosomal,61711,61579,6,0.2221544490959288,-0.2221544490959288,-0.4443088981918577,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,Inflammation_Complement,61711,61579,10,0.3325881597095377,-0.3325881597095377,-0.6651763194190754,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,Astrocyte_Reactive,61711,61579,11,0.0431534381146428,-0.0431534381146428,-0.0863068762292856,equal-weight pooled particle moments
+Trem2,low,2.4,all_particles,SPP1_CD44_axis,61711,61579,4,0.1673422206200695,-0.1673422206200695,-0.3346844412401391,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,DAM_microglia,61711,64270,14,-0.3484056877605902,0.3484056877605902,0.6968113755211804,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,DAM_Lipid_Metabolism,61711,64270,3,-0.2325305217652727,0.2325305217652727,0.4650610435305455,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,Lysosome_Phagosome,61711,64270,7,-0.3880091668658498,0.3880091668658498,0.7760183337316997,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,AB_Clearance_Endolysosomal,61711,64270,6,-0.2230461461872216,0.2230461461872216,0.4460922923744432,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,Inflammation_Complement,61711,64270,10,-0.3358747912380395,0.3358747912380395,0.6717495824760791,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,Astrocyte_Reactive,61711,64270,11,-0.0567788830372895,0.0567788830372895,0.113557766074579,equal-weight pooled particle moments
+Trem2,high,2.4,all_particles,SPP1_CD44_axis,61711,64270,4,-0.1804261188196219,0.1804261188196219,0.3608522376392438,equal-weight pooled particle moments

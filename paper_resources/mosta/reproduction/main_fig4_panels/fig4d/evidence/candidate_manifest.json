@@ -1,0 +1,257 @@
+{
+  "array_hashes": {
+    "compute_labels": "f79e53461030a770c03110808f3170f1755e831fb735ca351b2211015ad51eee",
+    "compute_spatial": "8eac1fdeb18e86afd56c7e2382d532e68e8100a5ff65658d6dd95f7678951b1d",
+    "full_background_labels": "73522abf44c2ed8f27a67b12bfb18240d3cc09384efc9ee42a081312c8aa395b",
+    "full_background_spatial": "2c8e27a3c4777207dac635c630b7d91eee7b03030bd1a4cc836e109a48539334",
+    "gene_interaction_projected_spatial": "1c1dc6bdd893a16bf5c5eb8c699f86bfe136e49b8f24215a030f3b7d7a87831e"
+  },
+  "created_at_utc": "2026-08-25T11:48:41.098543+00:00",
+  "dataset": "mosta",
+  "display": {
+    "communication_arrows": [
+      {
+        "linewidth_pt": 4.410371866292466,
+        "same_type_loop": false,
+        "source": "Choroid plexus",
+        "target": "Brain",
+        "weight_per_source": 0.0772534659930637
+      },
+      {
+        "linewidth_pt": 3.7578702904900254,
+        "same_type_loop": false,
+        "source": "Meninges",
+        "target": "Brain",
+        "weight_per_source": 0.0505198639189227
+      },
+      {
+        "linewidth_pt": 3.09901275710181,
+        "same_type_loop": false,
+        "source": "Brain",
+        "target": "Meninges",
+        "weight_per_source": 0.029264739021882
+      },
+      {
+        "linewidth_pt": 11.0,
+        "same_type_loop": true,
+        "source": "Brain",
+        "target": "Brain",
+        "weight_per_source": 0.6642239016299438
+      }
+    ],
+    "communication_nodes": [
+      "Brain",
+      "Choroid plexus",
+      "Meninges"
+    ],
+    "full_background_cells_rendered": 113350,
+    "roi_bounds": [
+      -1.3,
+      -0.5,
+      3.3,
+      4.2
+    ],
+    "velocity_cells_input": 8000,
+    "velocity_cells_rendered": 8000,
+    "velocity_y_iqr_bounds": [
+      -2.0950848162174225,
+      6.2281690537929535
+    ]
+  },
+  "host": "ZhenyideMacBook-Pro.local",
+  "inputs": {
+    "calculation_gate": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/server_run_v1/calculation_gate.json",
+      "sha256": "f41490894713caaaea21ba7166c1dd2549951f5b0eee8438b0402ea13b34f9c1",
+      "size_bytes": 9089
+    },
+    "communication": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/server_run_v1/communication_all_type_edges.csv.gz",
+      "sha256": "9b9b60fc10191714f046df3f86c899e1003e0fa2b13f124d4d8af35fdc70fd2b",
+      "size_bytes": 17378
+    },
+    "legacy_helper": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/worktrees/mosta-clean-20260719/cb_reproducibility/downstream_helpers/mosta_fig4d_legacy_style.py",
+      "sha256": "3a348e80c4f0b701b7f0742bfa7ef82c7b42210318b796490e58fa7be81628d9",
+      "size_bytes": 23570
+    },
+    "numeric": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/server_run_v1/fig4de_same_state_numeric_inputs.npz",
+      "sha256": "f744cb7012c9be47c86e414a7ce7f58a44a93f99b002fdf4418bed1d6564413e",
+      "size_bytes": 8457500
+    },
+    "original_ai": {
+      "path": "/Users/zhenyizhang/Desktop/202511/CytoBRIDGE/mosta_figure/Figure_mouse1.ai",
+      "sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+      "size_bytes": 15199759
+    },
+    "palette": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4a_particle_sensitivity_20260825_v1/provenance/label_to_color.json",
+      "sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71",
+      "size_bytes": 1363
+    },
+    "renderer": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/source/render_fig4d_original_ai_equivalent.py",
+      "sha256": "9c1c70a3ead73eb4ddaff4b490f78d6ab4b3abf4cf4e85ee9527b90e593f5582",
+      "size_bytes": 22775
+    },
+    "server_manifest": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/server_run_v1/manifest.json",
+      "sha256": "12ca9d1618dd57b3eb9483f6f89499137754eabd2b4abd1b04f10bf25c34540f",
+      "size_bytes": 9582
+    }
+  },
+  "numeric_contract": {
+    "full_background_cells": 113350,
+    "package_commit": "2b3c79eff3face7c4dd33de24d45384b9dbd8a84",
+    "quantitative_cells": 8000,
+    "reference_h5ad_sha256": "8b9ca0ad3475040235036548d54b96272bf6c49f057f6c2a643152c11350ce25",
+    "same_state_velocity_and_communication": true,
+    "state": "observed_real_E15.5",
+    "velocity_component": "interaction expression-state derivative projected package-natively to observed spatial_aligned"
+  },
+  "outputs": {
+    "pdf": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.pdf",
+      "sha256": "52c84b237a1944fea2f1cbf0352b64b5b82a2307317752337161b168105c8992",
+      "size_bytes": 3118378
+    },
+    "png": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.png",
+      "sha256": "55a20fcf41aa616f2877300179439e495b082352d80ecc403ca9c420cf88da33",
+      "size_bytes": 7931355
+    },
+    "svg": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/mosta_fig4d_velocity_communication_latest52D_20260825_v1/figures/original_AI_equivalent_v5/Fig4d_MOSTA_interaction_gene_velocity_communication_E15p5_latest52D_original_AI_equivalent_v5.svg",
+      "sha256": "3f4328299174744489c155385e94fd70903e86ac3275ce5c2016bf0e8aa369eb",
+      "size_bytes": 7079258
+    }
+  },
+  "panel": "Fig4d",
+  "python": "/opt/anaconda3/bin/python",
+  "schema_version": 1,
+  "spatial_integrity": {
+    "axes_aspect": "auto",
+    "axes_aspect_source": "archived plot_single_velocity_field: plt.subplots(figsize=(16,20)); no set_aspect call",
+    "coordinate_rescaling_applied": false,
+    "coordinate_values_modified": false,
+    "rotation_applied": false,
+    "warp_applied": false
+  },
+  "stage": "E15.5",
+  "status": "COMPLETE",
+  "style_contract": {
+    "ai_geometry": {
+      "observed_background_bbox": [
+        9.551229476928711,
+        503.5107421875,
+        259.6752624511719,
+        813.8118896484375
+      ],
+      "observed_background_pixels": [
+        1222,
+        1516
+      ],
+      "observed_background_xref": 187,
+      "page_points": [
+        595.2760009765625,
+        841.8900146484375
+      ],
+      "typography": {
+        "Brain": {
+          "bbox": [
+            162.8311004638672,
+            547.5001831054688,
+            186.56332397460938,
+            559.9741821289062
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 9.141340255737305
+        },
+        "Choroid Plexus": {
+          "bbox": [
+            60.61040115356445,
+            570.4161987304688,
+            128.7151336669922,
+            582.8901977539062
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 9.141340255737305
+        },
+        "E15.5": {
+          "bbox": [
+            32.8916015625,
+            491.7900085449219,
+            64.24760437011719,
+            508.4219970703125
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 12.0
+        },
+        "Interaction-induced gene velocity": {
+          "bbox": [
+            13.68120002746582,
+            468.83502197265625,
+            236.18319702148438,
+            488.239013671875
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 14.0
+        },
+        "Meninges": {
+          "bbox": [
+            195.6562042236328,
+            597.3410034179688,
+            238.47817993164062,
+            609.8150024414062
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 9.141340255737305
+        },
+        "d": {
+          "bbox": [
+            3.167236328125,
+            469.114990234375,
+            11.721236228942871,
+            488.5190124511719
+          ],
+          "font": "Arial-BoldMT",
+          "size_pt": 14.0
+        }
+      }
+    },
+    "axes_aspect": "auto (verbatim historical notebook default)",
+    "axes_rect_fraction": [
+      0.0329351724137931,
+      0.07428042328042328,
+      0.8624965517241379,
+      0.8209021164021164
+    ],
+    "background_points": {
+      "alpha": 0.35,
+      "size_pt2": 2.35
+    },
+    "communication_arrow_alpha": 1.0,
+    "font": "Arial",
+    "intentional_raster_layer": "complete observed E15.5 cell-type scatter",
+    "legacy_stream": {
+      "arrow_size": 0.26,
+      "cutoff_perc": 3.0,
+      "density": 2.0,
+      "linewidth_pt": 0.55,
+      "min_mass": 1.0,
+      "smooth": 0.8
+    },
+    "original_ai_sha256": "340a5ed88dc911d6923bc6b21cf1ceb39fdbef16edf2e325822a5b422045cbc2",
+    "palette_sha256": "7e95e868e0a6ecd4a2ed13b57e6a8223e77e2302a0f9634ca30f41390c040b71",
+    "panel_points": [
+      290.0,
+      378.0
+    ],
+    "rasterized_background_dpi": 400,
+    "vector_outputs": [
+      "pdf",
+      "svg"
+    ]
+  }
+}

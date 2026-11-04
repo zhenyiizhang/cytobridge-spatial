@@ -1,0 +1,50 @@
+{
+  "comparisons": 33,
+  "cytobridge_first_place_count": 12,
+  "input": {
+    "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/loto_target_stage_means.csv",
+    "sha256": "86236caaca4347b9c0796bb594ce79e46b3bd4e764f6602bb5e2b61b5925b66c"
+  },
+  "linear_ot_first_place_count": 11,
+  "linear_ot_inputs": {
+    "admouse": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/linear_ot_metrics/admouse/loto_metrics_long.csv",
+      "sha256": "7f5bce11b2b9df5fc969e3a4169245458e345cb37b35aeb2cc2e83da209db49e"
+    },
+    "arista": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/linear_ot_metrics/arista/loto_metrics_long.csv",
+      "sha256": "4aa05d9db2c7fabf9753c8904f8fbb2202c2b7dee6795ada97f93bab9980d255"
+    },
+    "chicken_heart": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/linear_ot_metrics/chicken_heart/loto_metrics_long.csv",
+      "sha256": "93d4cf876f981f8e5c2ff1a0ead4f539c83cfd2eb6cb94fc1cf120e72a09a088"
+    },
+    "mosta": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/linear_ot_metrics/mosta/loto_metrics_long.csv",
+      "sha256": "1865ec6485e0d91674c9459bc9bb9abab29f2d11861b7cb18372e32a98422458"
+    },
+    "zebrafish": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/linear_ot_metrics/zebrafish/loto_metrics_long.csv",
+      "sha256": "e16978fbf3c9f4fdef0eea2ae2cb3f31cb0590f59fe3c33018128fac0555a26b"
+    }
+  },
+  "metric": "Sliced-W2; lower is better",
+  "outputs": {
+    "pdf": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/figure/five_dataset_loto_wins_summary.pdf",
+      "sha256": "d13dc689943775ef8b89b7557b533e9f623b01bd9d4568e3cdbdbf585df5ca31"
+    },
+    "png": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/figure/five_dataset_loto_wins_summary.png",
+      "sha256": "fdc15425f6a7683a54413422aa18ca61bd84a790d8559f24a67893db9671cff7"
+    },
+    "win_counts": {
+      "path": "/Users/zhenyizhang/Desktop/CytoBridge-ST-1104/output/five_dataset_loto_wins_summary_20260831_v1/source_data/loto_win_counts.csv",
+      "sha256": "6da2a5defa8e9ed3d6658f720590d56f47c6ca0509893b6cca3beb136ff3571e"
+    }
+  },
+  "projection_repeats": 5,
+  "schema_version": "1.0.0",
+  "source": "refreshed five-dataset benchmark with accepted ARISTA and chicken-heart retraining results",
+  "status": "complete"
+}

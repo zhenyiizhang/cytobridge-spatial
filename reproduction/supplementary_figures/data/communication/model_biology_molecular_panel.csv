@@ -1,0 +1,6 @@
+dataset,status,reason,stage,sender_type,receiver_type,ligand,receptor,pathways,n_model_lr_active_edges,cytobridge_lr_percentile,cytobridge_within_pair_rank,commot_within_pair_rank,within_pair_lr_count,cytobridge_pathway,cytobridge_pathway_percentile,cytobridge_pathway_rank,cytobridge_pathway_count,commot_exact_axis_percentile,commot_top_pathway,commot_top_lr,nichenet_top_receiver_target,nichenet_top_receiver_target_fraction,nichenet_scope
+zebrafish,complete,,4.0,Pronephros,"Musculature System, Yolk Syncytial Layer",col1a2,sdc4,COLLAGEN,26.0,0.9999952616965022,1.0,7.0,1991.0,COLLAGEN,1.0,1.0,64.0,0.9941955782151758,COLLAGEN,col1a1b–sdc4,,,not_evaluable
+mosta,complete,,3.0,Muscle,Connective tissue,col6a3,cd44,COLLAGEN,10.0,0.9995703460667136,1.0,44.0,1757.0,COLLAGEN,1.0,1.0,73.0,0.9932315555704352,ncWNT,sema3c–plxnd1,Cd44,0.2926424945477447,pair_level_receiver_response
+arista,complete,,4.0,sfrpEGC,tlNBL,psap,gpr37l1,PSAP,49.0,0.9997489959839356,1.0,2.0,480.0,PSAP,0.8333333333333334,8.0,42.0,0.9994477911646586,LAMININ,cntn1–nrcam,,,not_evaluable
+admouse,not_evaluable,No global model-linked LR has at least 10 active edges,,,,,,,,,,,,,,,,,,,,,
+chicken_heart,complete,,3.0,Fibroblast cells,Valve cells,cd99,cd99,CD99,492.0,1.0,1.0,2.0,1105.0,CD99,0.9347826086956522,7.0,92.0,0.9999084854339316,COLLAGEN,mdk–ncl,TFPI2,0.1767051222076238,pair_level_receiver_response
