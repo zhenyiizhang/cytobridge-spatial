@@ -1,0 +1,106 @@
+{
+  "dataset": {
+    "name": "admouse",
+    "display_name": "AD mouse brain",
+    "annotation_key": "major_annotation",
+    "time_key": "time_point_processed",
+    "obsm_key": "X_latent",
+    "spatial_key": "spatial_aligned",
+    "concat_spatial": true
+  },
+  "scientific": {
+    "seed": 42,
+    "alpha_spatial": 10.0,
+    "alpha_express": 0.015,
+    "classifier_k": 1
+  },
+  "steps": {
+    "default": ["downstream"]
+  },
+  "preprocess": {
+    "enabled": true,
+    "time_key": "Timepoint",
+    "annotation_source": "major_annotation",
+    "batch_indices": null,
+    "align": {
+      "n_top_genes": 2000,
+      "n_pcs": 50,
+      "normalization_target_sum": 10000.0,
+      "expression_layer": "counts",
+      "counts_layer": "counts",
+      "raw_count_validation": "strict",
+      "observation_id_keys": ["sample", "cell_id"],
+      "input_spatial_key": "spatial",
+      "spatial_dim": 2,
+      "auto_scale_from_centered_x_max": true,
+      "center_x": true,
+      "center_y": false,
+      "flip_y": false,
+      "phase1_epochs": 10000,
+      "phase2_epochs": 500,
+      "alpha": 5.0,
+      "beta": 0.01,
+      "lambda_local": 100.0,
+      "lambda_ot": 1.0,
+      "batch_size": 1024,
+      "distance_pairs": 10000,
+      "learning_rate": 0.001,
+      "random_seed": 42,
+      "time_mapping": {
+        "1": 0.0,
+        "2": 1.0,
+        "3": 2.0
+      }
+    },
+    "note": "The AD raw-H5AD workflow fits a learned edge predictor from the seven complete ligand-receptor pairs represented by the targeted panel and uses the validation-selected threshold 0.9956824779510498. Broader CCI analyses require a more complete panel. The packaged all-spatial configuration is the corresponding no-LR-prior ablation.",
+    "edge_predictor": {
+      "split": 0,
+      "epochs": 100,
+      "batch_size": 1024,
+      "learning_rate": 0.001,
+      "split_strategy": "node_disjoint",
+      "train_sample_ratio_per_epoch": 1.0,
+      "max_train_edges_per_epoch": null,
+      "num_workers": 4
+    }
+  },
+  "train": {
+    "config": "admouse_spatial_full_alpha_express_0015.yaml",
+    "graph_database": "CellChatDB.ligrec.mouse.csv",
+    "interaction_cutoff": 0.012106042891492197,
+    "requires_edge_predictor": true,
+    "edge_predictor_threshold": 0.9956824779510498,
+    "evaluate_after_training": false
+  },
+  "downstream": {
+    "enabled": true,
+    "gene_dynamics_enabled": true,
+    "lr_enabled": true,
+    "preferred_species_tag": "mouse",
+    "model_format": "current",
+    "observed": [0.0, 1.0, 2.0],
+    "interpolated": [
+      0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+      1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+      2.1, 2.2, 2.3, 2.4, 2.5
+    ],
+    "classifier_epochs": 500,
+    "classifier_hidden_size": 128,
+    "classifier_lr": 0.001,
+    "classifier_best_metric": "bacc",
+    "classifier_strict_stratification": true,
+    "communication": {
+        "interpretation": "Spatial-attention summaries over learned-predictor-gated, within-cutoff candidate edges; the predictor was trained from seven strict panel-supported ligand-receptor pairs, so do not report these values as a global cell-cell communication screen."
+    },
+    "lr_scope": {
+      "strict_supported_pair_count": 7,
+      "interpretation": "Strict complete-subunit projection is limited to the seven CellChatDB pairs fully represented by the AD expression panel; it is not a global CCI screen."
+    },
+    "sde_n_samples": null,
+    "sde_dt": 0.05,
+    "split_sde_dt": 0.01,
+    "split_sigma": 0.03,
+    "split_daughter_noise_std": 0.0,
+    "split_growth_alpha": 1.0
+  }
+}

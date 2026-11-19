@@ -1,0 +1,12 @@
+dataset,held_out_time,prediction_source_time,left_transport_anchor,right_transport_anchor,interpolation_fraction,training_times,manifest
+admouse,1.0,0.0,0.0,2.0,0.5,"[0.0, 2.0]",input_manifests/admouse/loto_t1/manifest.json
+arista,1.0,0.0,0.0,2.0,0.5,"[0.0, 2.0, 3.0, 4.0]",input_manifests/arista/loto_t1/manifest.json
+arista,2.0,1.0,1.0,3.0,0.5,"[0.0, 1.0, 3.0, 4.0]",input_manifests/arista/loto_t2/manifest.json
+arista,3.0,2.0,2.0,4.0,0.5,"[0.0, 1.0, 2.0, 4.0]",input_manifests/arista/loto_t3/manifest.json
+chicken_heart,1.0,0.0,0.0,2.0,0.5,"[0.0, 2.0, 3.0]",input_manifests/chicken_heart/loto_t1/manifest.json
+chicken_heart,2.0,1.0,1.0,3.0,0.5,"[0.0, 1.0, 3.0]",input_manifests/chicken_heart/loto_t2/manifest.json
+mosta,1.0,0.0,0.0,2.0,0.5,"[0.0, 2.0, 3.0]",input_manifests/mosta/loto_t1/manifest.json
+mosta,2.0,1.0,1.0,3.0,0.5,"[0.0, 1.0, 3.0]",input_manifests/mosta/loto_t2/manifest.json
+zebrafish,1.0,0.0,0.0,2.0,0.5,"[0.0, 2.0, 3.0, 4.0]",input_manifests/zebrafish/loto_t1/manifest.json
+zebrafish,2.0,1.0,1.0,3.0,0.5,"[0.0, 1.0, 3.0, 4.0]",input_manifests/zebrafish/loto_t2/manifest.json
+zebrafish,3.0,2.0,2.0,4.0,0.5,"[0.0, 1.0, 2.0, 4.0]",input_manifests/zebrafish/loto_t3/manifest.json

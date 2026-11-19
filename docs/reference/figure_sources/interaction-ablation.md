@@ -1,0 +1,70 @@
+---
+orphan: true
+---
+
+# Analysis inputs: Supplementary Figure S9: LR-prior and interaction ablations
+
+The [figure notebook](../../tutorials/paper_figures/interaction_ablation.ipynb) draws the figure from saved numerical results. The steps below calculate those inputs from data and fitted models.
+
+## Calculation programs
+
+Each command lists the input it reads and the output passed to the next calculation. Replace a path in angle brackets with the location of that file on your computer.
+
+
+### 1. compare inference with and without interaction (S9c-d)
+
+```text
+python scripts/paper_figures/interaction_ablation/run_comparison.py --dataset arista --model-dir <run>/training --input-manifest <benchmark-run>/arista/inputs/manifest.json --code-root . --output <inference-results>/arista --seeds 42 43 44 --gpu-metrics --device cuda:0
+```
+
+Start with: `the fitted Full model and its matching benchmark input manifest (full_data split)`
+
+Writes: `<inference-results>/arista/metrics.csv and manifest.json, plus paired predictions for each seed`
+
+Next: `repeat for zebrafish, mosta, admouse, and chicken_heart`
+
+
+No training is repeated. Only the interaction-network output is disabled. Use the corresponding model and input manifest for each dataset.
+
+
+
+### 2. collect completed comparisons (S9)
+
+```text
+python scripts/collect_figure_inputs.py s42 --no-lr-table <matched-ablation-report>/paired_target_deltas.csv --inference-results-dir <inference-results> --output-dir <s42-inputs>
+```
+
+Start with: `the Full/No-LR report and all five completed inference directories`
+
+Writes: `no_lr_paired_target_deltas.csv, inference_metrics.csv, and model records`
+
+Next: `draw all four panels`
+
+
+
+
+### 3. recalculate summaries and draw (S9)
+
+```text
+python -m reproduction.paper_figures --figures 42 --results-dir <s42-inputs> --output-dir <figure-dir>
+```
+
+Start with: `the collected numerical results`
+
+Writes: `S42.pdf/.png; tables/S42_no_lr.csv, S42_interaction_off.csv, and S42_summaries.csv`
+
+
+
+
+## Training scripts
+
+The scripts below train the models used in panels a–b.
+
+
+### S9a-b: fit Full and No-LR-prior models
+
+`scripts/run_matched_ablation_matrix.py and scripts/run_matched_ablation_benchmark_evaluation.py`
+
+Input: matched aligned inputs and Full/No-LR training configurations
+
+Output: paired_target_deltas.csv from the completed matched-ablation report

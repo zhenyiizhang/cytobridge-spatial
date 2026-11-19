@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "dataset": "Zebrafish",
+  "n_observed_cells": 11999,
+  "n_observed_time_points": 5,
+  "training_seeds": [
+    42,
+    43,
+    44,
+    46,
+    47
+  ],
+  "excluded_training_attempt": "Seed 45 was not analyzed because two independent attempts terminated with a non-finite score-matching loss at epoch 320, before Finetune.",
+  "n_pairwise_seed_comparisons": 10,
+  "neighborhood_factors": [
+    0.8,
+    1.0,
+    1.2
+  ],
+  "primary_interaction_metric": "D_AB_state exact directed-edge message attribution",
+  "primary_vector_space": "50-dimensional aligned state space; spatial coordinates excluded",
+  "comparison_rule": "Cutoff variants are compared with the default fit of the same training seed. Other one-factor settings are compared with the accepted seed-42 default."
+}

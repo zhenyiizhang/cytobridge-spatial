@@ -1,0 +1,18 @@
+{
+  "max_coordinate_residual_percent": 1.5468739181828899,
+  "min_median_full_velocity_cosine": 0.9752151016583112,
+  "min_median_interaction_velocity_cosine": 0.8770742789718056,
+  "min_interaction_weight_overlap": 0.8028359627800696,
+  "n_conditions_including_repeat": 7,
+  "n_stages": 4,
+  "translations_median_nn_units": [
+    1,
+    2
+  ],
+  "rotations_degrees": [
+    1,
+    3
+  ],
+  "velocity_summary": "Median cellwise cosine in spatial coordinates, after proper rotation.",
+  "reference": "Each perturbation versus the new unperturbed run. The unperturbed repeat versus the accepted model."
+}

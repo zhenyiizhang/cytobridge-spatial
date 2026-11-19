@@ -1,0 +1,124 @@
+{
+  "cellchat": {
+    "circle_edge_width": "within-method display rank only; raw units are not compared",
+    "circle_network_day": 6,
+    "circle_selection": "independent top-30 positive heterotypic directed edges within each method",
+    "concordance_universe": "all available directed cell-type contexts at each day",
+    "display_edges_per_method": {
+      "CellChat": 30,
+      "CytoBridge D": 30
+    },
+    "displayed_day": 6,
+    "displayed_kendall_tau_b": 0.4832261462201164,
+    "displayed_n_contexts": 121,
+    "displayed_spearman_rho": 0.6640682592684947,
+    "independent_or_causal_validation": false,
+    "mean_kendall_tau_b_equal_time": 0.41440556243154275,
+    "mean_spearman_rho_equal_time": 0.5742338861082955,
+    "per_day": [
+      {
+        "day": 2,
+        "kendall_tau_b": 0.2887077393020647,
+        "n_contexts": 100,
+        "spearman_rho": 0.4149858788216209
+      },
+      {
+        "day": 4,
+        "kendall_tau_b": 0.4712828017724472,
+        "n_contexts": 121,
+        "spearman_rho": 0.6436475202347708
+      },
+      {
+        "day": 6,
+        "kendall_tau_b": 0.4832261462201164,
+        "n_contexts": 121,
+        "spearman_rho": 0.6640682592684947
+      }
+    ],
+    "same_expression_and_shared_lr_prior": true,
+    "seed_stability_max": 0.998320331716916,
+    "seed_stability_min": 0.9952585907670944,
+    "time_aggregation": "unweighted arithmetic mean of Day 2, Day 4, and Day 6 coefficients"
+  },
+  "clone_fate": {
+    "all_source_cells": 4638,
+    "evaluated_lineages": 1237,
+    "training_seeds": [
+      42,
+      43,
+      44
+    ],
+    "simulation_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "aggregation": "average clone probabilities across models before scoring",
+    "metrics": {
+      "tv_agreement": {
+        "full": 0.4803639596500021,
+        "no_interaction": 0.4675115140069953,
+        "relative_change": -0.026755640977668693
+      },
+      "js_similarity": {
+        "full": 0.569471574468823,
+        "no_interaction": 0.5601475778455601,
+        "relative_change": -0.016373067667091012
+      },
+      "dominant_fate_match": {
+        "full": 0.4761519805982215,
+        "no_interaction": 0.4729183508488278,
+        "relative_change": -0.00679117147707986
+      }
+    }
+  },
+  "cytobridge_pathway_readout": {
+    "bar_unit": "percentage of the summed positive Day-6 S_AB_pathway across all pathways and heterotypic directed cell-type pairs",
+    "cellchat_or_nichenet_inference_used": false,
+    "day": 6,
+    "displayed_pathways": [
+      "GRN",
+      "GALECTIN",
+      "TNF",
+      "CCL",
+      "MIF",
+      "ANNEXIN",
+      "SPP1",
+      "CSF"
+    ],
+    "is_causal_validation": false,
+    "score": "S_AB_pathway = D_AB_mean * Q_AB_pathway",
+    "selection": "eight pathways with the largest summed positive CytoBridge S_AB_pathway across directed pairs of different cell types"
+  },
+  "distribution": {
+    "continuous_from_t0": true,
+    "training_seeds": [
+      42,
+      43,
+      44
+    ],
+    "simulations_per_model": 50,
+    "aggregation": "mean within model, then equal mean across models",
+    "equal_weight_W1_W2_error_increase_after_removal_pct": 2.2164940275662404
+  },
+  "model_field": {
+    "coordinate_system": "direct PC1-PC2 component of the 50-PC model state",
+    "full_drift": "v + grad(s) + i",
+    "interaction_component": "i",
+    "is_rna_velocity": false,
+    "projection": "support-masked smoothed conditional mean of saved PC1-PC2 vector components",
+    "spring_used_for_training": false,
+    "training_seeds": [
+      42,
+      43,
+      44
+    ]
+  }
+}

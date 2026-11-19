@@ -1,0 +1,9 @@
+n_samples=50000
+physical_gpu=2
+seed=42
+trajectory_mode=global_t0_extrapolation
+restart_from_preceding_observed_stage=false
+spatial_warp=false
+package_commit=2b3c79eff3face7c4dd33de24d45384b9dbd8a84
+runner_sha256=eda720ad0c327ea307cdb0706b6637950f813b3bf45142f49865be4a48698ee8
+exit_status=0

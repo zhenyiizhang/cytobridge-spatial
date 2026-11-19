@@ -1,0 +1,630 @@
+[
+  {
+    "status": "complete",
+    "dataset": "zebrafish",
+    "created_at": "2026-09-04T05:50:17.779891+00:00",
+    "model_dir": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/training_run_summary.json"
+    },
+    "checkpoints": [
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Finetune/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Init_interaction/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Pretrain/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Refine/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Score_Refine/score_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/zebrafish/training/Train_Score/score_model.pth"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/manifest.json",
+        "size": 88187
+      },
+      "training_reference": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/training_reference.npz",
+        "size": 2388873
+      },
+      "source_roster": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/source_roster.npz",
+        "size": 747747
+      },
+      "truth": {
+        "1.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t1.npz",
+          "size": 206245
+        },
+        "2.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t2.npz",
+          "size": 413471
+        },
+        "3.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t3.npz",
+          "size": 606418
+        },
+        "4.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/zebrafish/inputs/full_data/truth_t4.npz",
+          "size": 1050880
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/run_comparison.py"
+    },
+    "upstream_runner": {
+      "path": "software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py"
+    },
+    "package_root": "software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "0",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/zebrafish/seed_44",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      }
+    ],
+    "metrics": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/results/zebrafish/metrics.csv"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "mosta",
+    "created_at": "2026-09-04T05:52:56.918579+00:00",
+    "model_dir": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/training_run_summary.json"
+    },
+    "checkpoints": [
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Finetune/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Init_interaction/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Pretrain/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Refine/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Score_Refine/score_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/mosta/training/Train_Score/score_model.pth"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/manifest.json",
+        "size": 87023
+      },
+      "training_reference": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/training_reference.npz",
+        "size": 67702045
+      },
+      "source_roster": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/source_roster.npz",
+        "size": 817832
+      },
+      "truth": {
+        "1.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t1.npz",
+          "size": 15188906
+        },
+        "2.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t2.npz",
+          "size": 20158831
+        },
+        "3.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/mosta/inputs/full_data/truth_t3.npz",
+          "size": 22259501
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/run_comparison.py"
+    },
+    "upstream_runner": {
+      "path": "software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py"
+    },
+    "package_root": "software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "1",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1,
+        2,
+        3
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 43,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/results/mosta/metrics.csv"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "arista",
+    "created_at": "2026-09-04T05:50:32.354051+00:00",
+    "model_dir": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/training_run_summary.json"
+    },
+    "checkpoints": [
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Finetune/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Init_interaction/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Pretrain/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Refine/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Score_Refine/score_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/arista_full/training/Train_Score/score_model.pth"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/manifest.json",
+        "size": 94927
+      },
+      "training_reference": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/training_reference.npz",
+        "size": 9094132
+      },
+      "source_roster": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/source_roster.npz",
+        "size": 814868
+      },
+      "truth": {
+        "1.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t1.npz",
+          "size": 1596131
+        },
+        "2.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t2.npz",
+          "size": 1857049
+        },
+        "3.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t3.npz",
+          "size": 1907070
+        },
+        "4.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/arista/inputs/full_data/truth_t4.npz",
+          "size": 2228768
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/run_comparison.py"
+    },
+    "upstream_runner": {
+      "path": "software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py"
+    },
+    "package_root": "software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "2",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/arista/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/arista/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/results/arista/metrics.csv"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "admouse",
+    "created_at": "2026-09-04T05:51:05.837664+00:00",
+    "model_dir": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/training_run_summary.json"
+    },
+    "checkpoints": [
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Finetune/last_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Init_interaction/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Pretrain/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Refine/best_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Score_Refine/score_model.pth"
+      },
+      {
+        "path": "runs/corrected-matched-ablation-20260813-3c87a3e-r1/admouse/training/Train_Score/score_model.pth"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/manifest.json",
+        "size": 47021
+      },
+      "training_reference": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/training_reference.npz",
+        "size": 33928778
+      },
+      "source_roster": {
+        "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/source_roster.npz",
+        "size": 822643
+      },
+      "truth": {
+        "1.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/truth_t1.npz",
+          "size": 11523086
+        },
+        "2.0": {
+          "path": "runs/corrected-benchmark-20260813-matched-3c87a3e-c4f8e203-ff55c7a-r4/admouse/inputs/full_data/truth_t2.npz",
+          "size": 11838789
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/run_comparison.py"
+    },
+    "upstream_runner": {
+      "path": "software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py"
+    },
+    "package_root": "software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "3",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1,
+        2
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 43,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      },
+      {
+        "seed": 44,
+        "initial_states_identical": true,
+        "initial_weights_identical": true
+      }
+    ],
+    "metrics": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/results/admouse/metrics.csv"
+    }
+  },
+  {
+    "status": "complete",
+    "dataset": "chicken_heart",
+    "created_at": "2026-09-04T05:50:12.957616+00:00",
+    "model_dir": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training",
+    "training_performed": false,
+    "training_summary": {
+      "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/training_run_summary.json"
+    },
+    "checkpoints": [
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Finetune/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Init_interaction/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Pretrain/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Refine/best_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Score_Refine/score_model.pth"
+      },
+      {
+        "path": "runs/s35-arista-heart-refresh-20260826-r1/matched/chicken_heart_full/training/Train_Score/score_model.pth"
+      }
+    ],
+    "input": {
+      "mode": "canonical_unified_benchmark_full_data",
+      "input_manifest": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/manifest.json",
+        "size": 75847
+      },
+      "training_reference": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/training_reference.npz",
+        "size": 704522
+      },
+      "source_roster": {
+        "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/source_roster.npz",
+        "size": 361819
+      },
+      "truth": {
+        "1.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t1.npz",
+          "size": 106004
+        },
+        "2.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t2.npz",
+          "size": 181408
+        },
+        "3.0": {
+          "path": "runs/s35-arista-heart-loto-20260826-r1/chicken_heart/inputs/full_data/truth_t3.npz",
+          "size": 390679
+        }
+      }
+    },
+    "aligned_input_matches_training": true,
+    "runner": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/run_comparison.py"
+    },
+    "upstream_runner": {
+      "path": "software/cytobridge-release-838fece-s35-benchmark-r1/scripts/run_five_dataset_weighted_interaction_ablation.py"
+    },
+    "metric_backend": "POT float64 GPU, 64 projection directions per batch",
+    "accelerated_metrics_source": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/accelerated_metrics.py"
+    },
+    "package_root": "software/cytobridge-release-838fece-s35-benchmark-r1",
+    "cuda_visible_devices": "4",
+    "protocol": {
+      "intervention": "interaction network output set to zero at inference",
+      "unchanged": [
+        "checkpoint",
+        "initial cells",
+        "intrinsic drift network",
+        "growth network",
+        "score network",
+        "diffusion",
+        "evaluation transform"
+      ],
+      "inference_seeds": [
+        42,
+        43,
+        44
+      ],
+      "paired_random_streams": true,
+      "growth": "continuous mass weights retained; no resampling",
+      "evaluation": "full-data reconstruction against observed snapshots",
+      "n_initial": 5000,
+      "dt": 0.01,
+      "sigma": 0.03,
+      "targets": [
+        1,
+        2,
+        3
+      ],
+      "n_projections": 1024,
+      "projection_repeats": 5,
+      "same_projection_directions_across_arms_and_seeds": true
+    },
+    "paired_checks": [
+      {
+        "seed": 42,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_42",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 43,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_43",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      },
+      {
+        "seed": 44,
+        "initial_roster_matches": true,
+        "inference_source": "runs/interaction-inference-ablation-20260904-r1/results/chicken_heart/seed_44",
+        "paired_initial_state_checks": "passed in the original run before predictions were saved"
+      }
+    ],
+    "metrics": {
+      "path": "runs/interaction-inference-ablation-20260904-r2/results/chicken_heart/metrics.csv"
+    }
+  }
+]

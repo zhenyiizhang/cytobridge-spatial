@@ -1,0 +1,10 @@
+condition,matching_default,setting,replicate,directed_pair_spearman,top20_set_jaccard,top20_weighted_jaccard,n_time_pair_entries
+formal_seed42_cutoff0p8,formal_seed42_cutoff1p0,Neighborhood 0.8×,42,0.9652283924800741,0.8113207547169812,0.8061489487748976,236
+formal_seed43_cutoff0p8,formal_seed43_cutoff1p0,Neighborhood 0.8×,43,0.9782388062122753,0.8823529411764706,0.9253698024763903,236
+formal_seed44_cutoff0p8,formal_seed44_cutoff1p0,Neighborhood 0.8×,44,0.9746220116612386,0.8461538461538461,0.8578210391984463,236
+formal_seed42_cutoff1p2,formal_seed42_cutoff1p0,Neighborhood 1.2×,42,0.9633213991970323,0.8888888888888888,0.8829449873146495,252
+formal_seed43_cutoff1p2,formal_seed43_cutoff1p0,Neighborhood 1.2×,43,0.9654385544715414,0.8545454545454545,0.8535354308887931,252
+formal_seed44_cutoff1p2,formal_seed44_cutoff1p0,Neighborhood 1.2×,44,0.9660599016713046,0.8888888888888888,0.8909998791488457,252
+alpha_expr_005_seed42_cutoff1p0,formal_seed42_cutoff1p0,Expression loss weight 0.05,42,0.9969872230870007,0.8823529411764706,0.9248661997430705,236
+ot_mass_10_to_1_seed42_cutoff1p0,formal_seed42_cutoff1p0,Transport:mass weight 10:1,42,0.9912711636166103,0.92,0.8623548646022446,236
+ot_mass_1_to_10_seed42_cutoff1p0,formal_seed42_cutoff1p0,Transport:mass weight 1:10,42,0.9493488293535766,0.7142857142857143,0.534906897205749,236

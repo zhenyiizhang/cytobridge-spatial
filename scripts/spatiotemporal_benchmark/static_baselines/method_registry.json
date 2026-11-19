@@ -1,0 +1,296 @@
+{
+  "schema_version": "2.0.0",
+  "contract_uns_key": "cytobridge_benchmark_contract",
+  "protocols": {
+    "loto": "target-removed nearest left/right bracket coupling and fractional interpolation",
+    "no-holdout": "all adjacent P(i,i+1) couplings composed from one fixed t0 bootstrap roster to every later stage"
+  },
+  "methods": {
+    "moscot": {
+      "display_name": "MOSCOT temporal coupling",
+      "category": "temporal_coupling",
+      "official_api": "moscot.problems.time.TemporalProblem.prepare/solve",
+      "module": "moscot",
+      "module_candidates": ["moscot"],
+      "distribution_candidates": ["moscot"],
+      "reference_version": "0.4.3",
+      "reference_commit": "89a7936314da65b6773688cf791d28ff48daa676",
+      "compatibility_versions": {"ott-jax": "0.5.0"},
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "fit_representation": "train-anchor-only block-balanced state and spatial with squared Euclidean cost",
+          "native_output": "temporal optimal-transport coupling",
+          "benchmark_output": "barycentric coupling projection in shared state/spatial coordinates",
+          "output_scope": "hybrid_joint",
+          "hybrid": true,
+          "default_parameters": {
+            "epsilon": 0.05,
+            "threshold": 0.000001,
+            "max_iterations": 5000,
+            "batch_size": 1024,
+            "device": "cpu",
+            "state_block_weight": 0.5,
+            "spatial_block_weight": 0.5
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "not requested; MOSCOT is evaluated on the shared matched representation",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "wot": {
+      "display_name": "Waddington-OT state coupling adapter",
+      "category": "state_only_coupling",
+      "official_api": "wot.ot.OTModel.compute_transport_map",
+      "module": "wot",
+      "module_candidates": ["wot"],
+      "distribution_candidates": ["wot"],
+      "reference_version": "0.5.1",
+      "reference_commit": "ca5e94f05699997b01cf5ae13383f9810f0613f6",
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca"],
+          "fit_representation": "state only; spatial is neither fit nor emitted",
+          "native_output": "official temporal transport coupling",
+          "benchmark_output": "state-only barycentric projection and composition of official WOT transport couplings in shared PCA coordinates",
+          "output_scope": "hybrid_state",
+          "hybrid": true,
+          "default_parameters": {
+            "local_pca": 0,
+            "growth_iters": 1,
+            "epsilon": 0.05,
+            "lambda1": 1.0,
+            "lambda2": 50.0,
+            "scaling_iter": 1000,
+            "inner_iter_max": 50,
+            "max_iter": 100000,
+            "tolerance": 1e-7,
+            "batch_size": 5
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "primary WOT comparator is intentionally state-only on the shared PCA representation",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "paste": {
+      "display_name": "Official PASTE coupling adapter",
+      "category": "static_alignment_coupling",
+      "official_api": "paste.pairwise_align",
+      "module": "paste",
+      "module_candidates": ["paste"],
+      "distribution_candidates": ["paste-bio", "paste"],
+      "reference_version": "1.4.0",
+      "reference_commit": "a9b10b24ba33e94a89dd89e8ee5e4900e18b1886",
+      "compatibility_versions": {"POT": "0.9.4"},
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "fit_representation": "official Euclidean feature cost plus official spatial alignment cost",
+          "native_output": "pairwise slice-alignment coupling",
+          "benchmark_output": "hybrid adapter: barycentric coupling projection in shared state/spatial coordinates",
+          "output_scope": "hybrid_joint",
+          "hybrid": true,
+          "default_parameters": {
+            "alpha": 0.1,
+            "dissimilarity": "euclidean",
+            "norm": false,
+            "num_itermax": 200
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "PASTE primary comparison uses the shared signed-PC Euclidean representation",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "spateo": {
+      "display_name": "Spateo Morpho coupling adapter",
+      "category": "static_alignment_coupling",
+      "official_api": "spateo.align.morpho_align",
+      "module": "spateo",
+      "module_candidates": ["spateo"],
+      "distribution_candidates": ["spateo-release", "spateo"],
+      "reference_version": null,
+      "reference_commit": "1bd8a35e6e7b0dfc712d76b1c32987dc06652774",
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "fit_representation": "signed state PCs in rep_layer='X' with Euclidean dissimilarity plus aligned space",
+          "native_output": "Morpho pairwise alignment coupling",
+          "benchmark_output": "hybrid adapter: barycentric coupling projection in shared state/spatial coordinates",
+          "output_scope": "hybrid_joint",
+          "hybrid": true,
+          "default_parameters": {
+            "max_iter": 50,
+            "dissimilarity": "euclidean",
+            "mode": "SN-S",
+            "device": "cpu",
+            "normalize_g": false,
+            "nn_init": false
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "Spateo primary comparison uses the shared signed-PC Euclidean representation",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "spatrack": {
+      "display_name": "Official spaTrack transfer matrix",
+      "category": "static_alignment_coupling",
+      "official_api": "spaTrack.multiple_time.transfer_matrix.transfer_matrix",
+      "module": "spaTrack",
+      "module_candidates": ["spaTrack", "spatrack"],
+      "distribution_candidates": ["spaTrack", "spatrack"],
+      "reference_version": "1.0.2",
+      "reference_commit": "afe36a2371159f06e197f2574e81482ecfb9e96a",
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "official transfer_matrix uses a KL gene-distance path and exposes no legal Euclidean signed-PC interface",
+          "fit_inputs": [],
+          "native_output": null,
+          "benchmark_output": null,
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        },
+        "native_gene_sensitivity": {
+          "applicable": true,
+          "primary_ranking": false,
+          "fit_inputs": ["once_log_nonnegative_expression", "shared_aligned_spatial"],
+          "fit_representation": "native nonnegative once-log expression plus shared aligned space",
+          "native_output": "expression-spatial transfer matrix",
+          "benchmark_output": "non-primary hybrid sensitivity: coupling applied to shared PCA state/spatial",
+          "output_scope": "hybrid_joint",
+          "hybrid": true,
+          "default_parameters": {
+            "alpha": 0.1,
+            "epsilon": 0.01,
+            "rho": "inf"
+          }
+        }
+      }
+    },
+    "linear_centroid_shift": {
+      "display_name": "Linear centroid-shift control",
+      "category": "explicit_control",
+      "official_api": null,
+      "module": null,
+      "module_candidates": [],
+      "distribution_candidates": [],
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "native_output": "direct common-coordinate control",
+          "benchmark_output": "LOTO bracket centroid shift or sequential adjacent shifts from fixed t0 roster",
+          "output_scope": "native_joint",
+          "hybrid": false,
+          "default_parameters": {}
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "control is defined in the shared matched representation only",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "exact_ot_displacement": {
+      "display_name": "Exact balanced OT displacement control",
+      "category": "explicit_control",
+      "official_api": "POT ot.emd",
+      "module": "ot",
+      "module_candidates": ["ot"],
+      "distribution_candidates": ["POT"],
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "fit_representation": "frozen training-reference joint normalization with squared Euclidean cost",
+          "native_output": "exact balanced adjacent optimal-transport coupling",
+          "benchmark_output": "LOTO barycentric displacement interpolation or composed adjacent displacement maps from the fixed t0 roster",
+          "output_scope": "native_joint",
+          "hybrid": false,
+          "default_parameters": {
+            "solver": "POT ot.emd",
+            "uniform_marginals": true,
+            "cost": "squared_euclidean",
+            "num_iter_max": 2000000,
+            "transform": "frozen_training_reference_joint"
+          }
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "control is defined in the shared matched representation only",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    },
+    "random_independent_pairs": {
+      "display_name": "Random independent-pair control",
+      "category": "explicit_control",
+      "official_api": null,
+      "module": null,
+      "module_candidates": [],
+      "distribution_candidates": [],
+      "representations": {
+        "matched_state_spatial": {
+          "applicable": true,
+          "primary_ranking": true,
+          "fit_inputs": ["shared_signed_state_pca", "shared_aligned_spatial"],
+          "native_output": "random one-hot adjacent coupling control",
+          "benchmark_output": "LOTO bracket interpolation or sequential P01...P(t-1,t) composition from fixed t0 roster",
+          "output_scope": "native_joint",
+          "hybrid": false,
+          "default_parameters": {"sample_with_replacement": true}
+        },
+        "native_gene_sensitivity": {
+          "applicable": false,
+          "primary_ranking": false,
+          "reason": "control is defined in the shared matched representation only",
+          "output_scope": "N/A",
+          "hybrid": false,
+          "default_parameters": {}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+dataset,cytobridge_global_rank,sender_type,receiver_type,ligand,receptor,pathways,cytobridge_percentile,commot_percentile,receiver_target_rank,receiver_target,nichenet_ligand_target_evidence,nichenet_corrected_aupr,nichenet_evidence_scope
+zebrafish,94,Spinal Cord Anterior Region,Nervous System,cdh2,cdh2,CDH,0.9991897501018736,0.9919117159292288,1,Ccnd1,0.0259502549780849,0.092560880851808,strict_confidence1_cross_species_proxy
+zebrafish,94,Spinal Cord Anterior Region,Nervous System,cdh2,cdh2,CDH,0.9991897501018736,0.9919117159292288,2,Cbx5,0.0031476379341005,0.092560880851808,strict_confidence1_cross_species_proxy
+zebrafish,94,Spinal Cord Anterior Region,Nervous System,cdh2,cdh2,CDH,0.9991897501018736,0.9919117159292288,3,Cdk1,0.0028390903386614,0.092560880851808,strict_confidence1_cross_species_proxy
+mosta,1,Muscle,Connective tissue,col6a3,cd44,COLLAGEN,0.9995703460667136,0.9932315555704352,1,Cd44,0.0047402184631184,0.004464817789599,pair_level_receiver_response
+arista,2,sstIN,mpEX,l1cam,l1cam,L1CAM,0.999523092369478,0.9909889558232932,1,EGR1,0.0072077818887024,0.0536365885800451,pair_level_receiver_response
+arista,2,sstIN,mpEX,l1cam,l1cam,L1CAM,0.999523092369478,0.9909889558232932,2,DDIT4,0.006742788627757,0.0536365885800451,pair_level_receiver_response
+arista,2,sstIN,mpEX,l1cam,l1cam,L1CAM,0.999523092369478,0.9909889558232932,3,JUNB,0.0056068529044072,0.0536365885800451,pair_level_receiver_response
+chicken_heart,25,Valve cells,Fibroblast cells,lamb1,dag1,LAMININ,0.9997559611571508,0.9991255274797906,1,ID1,0.0061188421817066,0.0123914943965169,pair_level_receiver_response
+chicken_heart,25,Valve cells,Fibroblast cells,lamb1,dag1,LAMININ,0.9997559611571508,0.9991255274797906,2,FN1,0.0047476161553615,0.0123914943965169,pair_level_receiver_response
+chicken_heart,25,Valve cells,Fibroblast cells,lamb1,dag1,LAMININ,0.9997559611571508,0.9991255274797906,3,HNRNPR,0.0045633926173649,0.0123914943965169,pair_level_receiver_response

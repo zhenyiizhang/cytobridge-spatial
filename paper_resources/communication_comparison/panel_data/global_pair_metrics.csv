@@ -1,0 +1,11 @@
+dataset,cytobridge_view,external_method,n_shared_directed_pairs,spearman_rho,top_fraction,top_left_n,top_right_n,top_intersection_n,top_jaccard,metric_available
+admouse,CytoBridge exact message,COMMOT,64,0.1984384933693878,0.2,1,13,1,0.0769230769230769,True
+admouse,CytoBridge exact message,CellAgentChat,64,0.2321907818491446,0.2,1,13,1,0.0769230769230769,True
+arista,CytoBridge exact message,COMMOT,400,0.5793505401605247,0.2,80,80,40,0.3333333333333333,True
+arista,CytoBridge exact message,CellAgentChat,400,0.4865308867305128,0.2,80,80,42,0.3559322033898305,True
+chicken_heart,CytoBridge exact message,COMMOT,144,0.7905688686115679,0.2,29,29,12,0.2608695652173913,True
+chicken_heart,CytoBridge exact message,CellAgentChat,144,0.1875413343871411,0.2,29,26,5,0.1,True
+mosta,CytoBridge exact message,COMMOT,676,0.9948433505258364,0.2,125,125,125,1.0,True
+mosta,CytoBridge exact message,CellAgentChat,676,0.5007963037648787,0.2,125,136,72,0.3809523809523809,True
+zebrafish,CytoBridge exact message,COMMOT,361,0.8840255444225691,0.2,73,73,51,0.5368421052631579,True
+zebrafish,CytoBridge exact message,CellAgentChat,361,0.4071219353301893,0.2,73,26,21,0.2692307692307692,True

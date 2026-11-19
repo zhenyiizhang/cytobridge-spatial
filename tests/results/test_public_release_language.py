@@ -1,0 +1,382 @@
+from __future__ import annotations
+
+import ast
+import gzip
+import json
+import re
+from pathlib import Path
+
+import pytest
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+
+PUBLIC_GUIDE_NAMES = (
+    "installation.md",
+    "quickstart.md",
+    "data_checkpoints.md",
+    "downstream.md",
+    "nonspatial_workflows.md",
+    "benchmarks.md",
+    "training_compute.md",
+    "paper_reproduction.md",
+    "contributing.md",
+)
+
+PUBLIC_DOCS = (
+    REPOSITORY_ROOT / "docs" / "index.md",
+    *(REPOSITORY_ROOT / "docs" / name for name in PUBLIC_GUIDE_NAMES),
+    *sorted((REPOSITORY_ROOT / "docs" / "tutorials").rglob("*.md")),
+    *sorted((REPOSITORY_ROOT / "docs" / "api").rglob("*.rst")),
+)
+
+PUBLIC_TEXT_FILES = (
+    REPOSITORY_ROOT / "README.md",
+    *PUBLIC_DOCS,
+    *sorted((REPOSITORY_ROOT / "CytoBridge" / "results").rglob("*.py")),
+    *sorted((REPOSITORY_ROOT / "CytoBridge" / "results" / "data").rglob("*.json")),
+    *sorted((REPOSITORY_ROOT / "CytoBridge" / "results" / "data").rglob("*.csv")),
+    *sorted((REPOSITORY_ROOT / "CytoBridge" / "results" / "data").rglob("*.csv.gz")),
+    REPOSITORY_ROOT / "docs" / "data" / "paper_reproduction_registry.csv",
+    REPOSITORY_ROOT / "CytoBridge" / "pp" / "chicken_heart_input.py",
+    REPOSITORY_ROOT / "scripts" / "execute_paper_notebooks.py",
+    *sorted((REPOSITORY_ROOT / "scripts" / "results").rglob("*.py")),
+)
+
+LOCAL_OR_AUDIT_MARKERS = (
+    "/users/",
+    "/home/",
+    "/lustre/",
+    "/opt/",
+    "sha256",
+    "sha-256",
+    "hash",
+    "accepted",
+    "immutable",
+    "reviewed",
+    "claim_guardrail",
+    "literature_direction_context",
+    "descriptive_technical",
+)
+
+# Relative paths such as outputs/admouse/data/ are valid reader inputs.
+PRIVATE_DATA_ROOT = re.compile(r"(?<![\w./-])/data/")
+NUMERICAL_DATA_NOTEBOOKS = {
+    "arista_figures.ipynb": "reproduction.arista.supplementary",
+    "main_figure_4.ipynb": "reproduction.mosta.main_figure",
+    "main_figure_5.ipynb": "reproduction.arista.main_figure",
+    "mosta_figures.ipynb": "reproduction.mosta.figures",
+}
+
+PUBLIC_PROSE_MARKERS = (
+    "source checkout",
+    "collaborator's earlier",
+    "learning goals",
+    "scientific question",
+    "scientific contract",
+    "formal scope",
+    "notes and interpretation",
+    "exercise",
+    "reviewer",
+    "accepted",
+    "immutable",
+    "win count",
+    "outperform",
+)
+
+NOTEBOOK_PORTABILITY_MARKERS = (
+    "sys.path",
+    "repo_root",
+    "path.cwd(",
+)
+
+COMPLETED_NOTEBOOK_OUTPUTS = {
+    "agist_figures.ipynb": "agist_figures",
+    "arista_figures.ipynb": "arista_supplementary_figures",
+    "main_figure_2.ipynb": "main_figure_2",
+    "main_figure_4.ipynb": "main_figure_4",
+    "classifier_smoothing.ipynb": "classifier_smoothing",
+    "lr_complex_aggregation.ipynb": "lr_complex_aggregation",
+    "loto_benchmark.ipynb": "loto_benchmark",
+    "main_figure_5.ipynb": "main_figure_5",
+    "mosta_figures.ipynb": "mosta_figures",
+    "training_histories.ipynb": "training_histories_notebook",
+    "compute_cost.ipynb": "full_model_compute_cost_notebook",
+    "arista_local_domains.ipynb": "arista_local_domains",
+    "zebrafish_attention.ipynb": "zebrafish_attention",
+    "zebrafish_si_s31_s38.ipynb": "zebrafish_si_s31_s38",
+    "nonspatial_figures.ipynb": "nonspatial_figures",
+}
+
+PUBLIC_NOTEBOOKS = (
+    *sorted((REPOSITORY_ROOT / "notebooks").glob("*.ipynb")),
+    *sorted((REPOSITORY_ROOT / "docs" / "tutorials").rglob("*.ipynb")),
+)
+
+
+def _notebook_source(path: Path) -> str:
+    notebook = json.loads(path.read_text(encoding="utf-8"))
+    return "\n".join(
+        "".join(cell.get("source", ())) for cell in notebook.get("cells", ())
+    )
+
+
+def _notebook_markdown(path: Path) -> str:
+    notebook = json.loads(path.read_text(encoding="utf-8"))
+    return "\n".join(
+        "".join(cell.get("source", ()))
+        for cell in notebook.get("cells", ())
+        if cell.get("cell_type") == "markdown"
+    )
+
+
+def _public_text(path: Path) -> str:
+    if path.name.endswith(".gz"):
+        with gzip.open(path, mode="rt", encoding="utf-8") as handle:
+            return handle.read()
+    return path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("path", PUBLIC_TEXT_FILES, ids=lambda path: str(path.name))
+def test_public_files_do_not_expose_local_or_audit_markers(path: Path) -> None:
+    # PYTHONHASHSEED is an executable reproducibility setting, not audit prose.
+    text = _public_text(path).lower().replace("pythonhashseed", "")
+    markers = LOCAL_OR_AUDIT_MARKERS
+    if path.suffix in {".json", ".csv"}:
+        # This machine-readable field verifies downloaded archives. It is not
+        # tutorial prose, and the downloader requires its original field name.
+        markers = tuple(marker for marker in markers if marker not in {"sha256", "hash"})
+    found = [marker for marker in markers if marker in text]
+    if PRIVATE_DATA_ROOT.search(text):
+        found.append("absolute /data/ path")
+    assert not found, f"{path} contains public-release markers: {found}"
+
+
+@pytest.mark.parametrize(
+    "path",
+    PUBLIC_NOTEBOOKS,
+    ids=lambda path: str(path.name),
+)
+def test_notebooks_use_reproduction_only_prose(path: Path) -> None:
+    text = _notebook_markdown(path).lower()
+    found = [
+        marker
+        for marker in (
+            *LOCAL_OR_AUDIT_MARKERS,
+            *PUBLIC_PROSE_MARKERS,
+            *NOTEBOOK_PORTABILITY_MARKERS,
+        )
+        if marker in text
+    ]
+    assert not found, f"{path} contains notebook prose markers: {found}"
+
+
+@pytest.mark.parametrize(
+    ("notebook_name", "output_slug"),
+    COMPLETED_NOTEBOOK_OUTPUTS.items(),
+)
+def test_figure_notebooks_document_inputs_and_portable_outputs(
+    notebook_name: str,
+    output_slug: str,
+) -> None:
+    path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
+    source = _notebook_source(path)
+    lowered = source.lower()
+    if notebook_name == "zebrafish_si_s31_s38.ipynb":
+        assert "cb.datasets.download(" in source
+        assert "cb.tl.fit(" in source
+        assert "--calculate-only" in source
+        assert 'project / "data/zebrafish"' in source
+        assert 'project / "outputs/zebrafish_s31_s38"' in source
+        assert "installation.md" in lowered
+        assert "reference/figure_sources/zebrafish-si.md" not in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
+    if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
+        notebook = json.loads(path.read_text())
+        code = '\n'.join(''.join(cell.get('source', ())) for cell in notebook['cells']
+                         if cell['cell_type'] == 'code')
+        assert any(isinstance(node, ast.ImportFrom)
+                   and node.module == NUMERICAL_DATA_NOTEBOOKS[notebook_name]
+                   and any(name.name.startswith(('draw_', 'plot_')) for name in node.names)
+                   for node in ast.walk(ast.parse(code)))
+        if notebook_name in {"main_figure_5.ipynb", "arista_figures.ipynb"}:
+            assert "../dataset_workflows/arista.ipynb" in source
+            assert 'analysis / "populations"' in code
+        else:
+            assert "cb.datasets.download(" in source
+        assert 'project / "data/' in source
+        assert "installation.md" in lowered or "../dataset_workflows/arista.ipynb" in source
+        if notebook_name == "main_figure_4.ipynb":
+            assert 'project / "outputs/figure4_from_model"' in code
+            assert 'cb.tl.run_interpolation_workflow(' in code
+            assert 'cb.tl.load_dynamical_model_from_dir(' in code
+            assert 'cb.tl.compute_focal_lr_type_hotspots(' in code
+        else:
+            assert "dataset_workflows/" in source
+        assert not any(token in source for token in ("export_mosta", "export_arista", "assemble_main_figure_4"))
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
+    if notebook_name == "main_figure_2.ipynb":
+        for token in ('cb.datasets.download(', 'agist_final',
+                      'calculate("evaluate.py", "truth"',
+                      'calculate("evaluate.py", "predicted"',
+                      'calculate("supplementary.py", "attention"',
+                      'calculate("evaluate.py", "benchmark"',
+                      'calculate("layout/layout.py"'):
+            assert token in source
+        assert "assemble_main_figure_2" not in source
+        assert "CYTOBRIDGE_PROJECT_DIR" in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
+    assert "from cytobridge.results" in lowered
+    if notebook_name in {"agist_figures.ipynb", "nonspatial_figures.ipynb", "main_figure_2.ipynb", "arista_local_domains.ipynb"}:
+        required = {
+            "agist_figures.ipynb": ("cb.datasets.download(", "attraction_inputs(", "data=data, panels=panels"),
+            "nonspatial_figures.ipynb": ("cb.datasets.download(", "collect_nonspatial_inputs(", "data=data, panels=panels"),
+            "arista_local_domains.ipynb": ("arista_figures.ipynb", "calculate_arista_local_domain_panels(domain_data)", "data=domain_data, panels=panels"),
+        }[notebook_name]
+        assert all(token in source for token in required)
+        assert "CYTOBRIDGE_PROJECT_DIR" in source
+        assert "outputs/" in source or 'project / "outputs"' in source
+        assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+        return
+    assert any(heading in lowered for heading in ("## before you start", "## run the notebook"))
+    assert "## where the inputs come from" not in lowered
+    # Check the linked guide's structure. This does not establish that its
+    # numerical-input generation is complete; that needs execution review.
+    guide_links = re.findall(r"\]\((\.\./\.\./reference/figure_sources/[^)]+)\)", source)
+    assert guide_links, f"{path} needs a link to its input and calculation guide"
+    guide_target = guide_links[0]
+    guide = (path.parent / guide_target).resolve()
+    assert guide.is_file()
+    guide_text = guide.read_text(encoding="utf-8").lower()
+    # Followable commands and explicit files, not a compulsory prose template.
+    assert "python " in guide_text or "cytobridge " in guide_text
+    assert "--output-dir" in guide_text
+    assert any(extension in guide_text for extension in (".csv", ".json", ".npz", ".h5ad"))
+    assert "..." not in source
+    assert not any(marker in lowered for marker in NOTEBOOK_PORTABILITY_MARKERS)
+    assert 'Path(os.environ.get("CYTOBRIDGE_PROJECT_DIR", ".")) / "outputs"' in source
+    assert f'/ "{output_slug}"' in source
+
+
+def test_old_stvcr_page_points_to_current_ablation_and_benchmark() -> None:
+    path = (
+        REPOSITORY_ROOT
+        / "docs"
+        / "tutorials"
+        / "paper_figures"
+        / "lr_prior_ablation_stvcr.md"
+    )
+    source = path.read_text()
+    assert "interaction_ablation.ipynb" in source
+    assert "loto_benchmark.ipynb" in source
+    assert not path.with_suffix(".ipynb").exists()
+
+
+@pytest.mark.parametrize(
+    "notebook_name",
+    tuple(name for name in COMPLETED_NOTEBOOK_OUTPUTS if name != "compute_cost.ipynb"),
+)
+def test_figure_notebooks_show_outputs_created_by_their_plotting_cells(
+    notebook_name: str,
+) -> None:
+    path = REPOSITORY_ROOT / "docs" / "tutorials" / "paper_figures" / notebook_name
+    source = _notebook_source(path)
+    if notebook_name == "zebrafish_si_s31_s38.ipynb":
+        assert "display(Image(filename=str(path)))" in source
+        for variable, producer in (
+            ("population_figures", "plot_populations_and_growth"),
+            ("removal_figures", "plot_removal"),
+            ("ysl_figures", "calculate_ysl_genes"),
+            ("loss_figures", "plot_loss_weights"),
+            ("daughter_figures", "plot_daughter_results"),
+            ("reconstruction_figures", "plot_gene_reconstruction"),
+        ):
+            assert source.index(f"{variable} = {producer}(") < source.index(f"show_figures({variable})")
+        return
+    if notebook_name in NUMERICAL_DATA_NOTEBOOKS:
+        assert "display(Image(filename=str(path)" in source
+        assert "if Path(path).suffix ==" in source
+        if notebook_name == "mosta_figures.ipynb":
+            for calculation, plot in (("evaluate_growth_by_timepoint(", "plot_brain_growth(brain,"),
+                                      ("summarize_label_composition(", "plot_composition(composition,"),
+                                      ("project_communication_to_lr_timecourses(", "plot_lr_profiles(lr.pair_timecourse,")):
+                assert source.index(calculation) < source.index(plot)
+            assert "show(plot_lr_profiles(lr.pair_timecourse," in source
+        elif notebook_name == 'main_figure_4.ipynb':
+            for calculation, plot in (
+                ('population_result = cb.tl.run_interpolation_workflow(', 'show(draw_main_figure('),
+                ('lr = cb.tl.compute_focal_lr_type_hotspots(', 'show(draw_interaction_maps('),
+                ('lineage = cartilage_lineage_inputs(', 'show(draw_cartilage('),
+                ('numeric_d = calculate_velocity_panel(', 'show(draw_interaction_velocity('),
+                ('numeric_e = calculate_velocity_panel(', 'show(draw_brain_velocity('),
+            ):
+                assert source.index(calculation) < source.index(plot)
+        else:
+            assert source.index("figures = draw_") < source.rindex("show(")
+        return
+    assert "display(Image(filename" in source
+    if notebook_name == "main_figure_2.ipynb":
+        assert source.index('calculate("evaluate.py", "predicted"') < source.index('calculate("layout/layout.py"')
+        assert source.index('calculate("layout/layout.py"') < source.index('display(Image(filename=str(figures')
+        return
+    if notebook_name == "arista_local_domains.ipynb":
+        assert source.index("figures = draw_supplementary(") < source.index("show(paths)", source.index("figures = draw_supplementary("))
+        assert "data=domain_data, panels=panels" in source
+        return
+    notebook = json.loads(path.read_text())
+    code = '\n'.join(''.join(c['source']) for c in notebook['cells'] if c['cell_type']=='code')
+    calls = [node for node in ast.walk(ast.parse(code)) if isinstance(node, ast.Call)]
+    preview_position = min(node.lineno for node in calls
+                           if isinstance(node.func, ast.Name) and node.func.id == 'Image')
+    producer_positions = [node.lineno for node in calls if isinstance(node.func, ast.Name)
+                          and node.func.id.startswith(('plot_', 'draw_', 'assemble_'))]
+    assert producer_positions
+    assert min(producer_positions) < preview_position
+
+
+@pytest.mark.parametrize(
+    "path",
+    (REPOSITORY_ROOT / "README.md", *PUBLIC_DOCS),
+    ids=lambda path: str(path.name),
+)
+def test_public_docs_avoid_internal_revision_language(path: Path) -> None:
+    text = path.read_text(encoding="utf-8").lower()
+    found = [marker for marker in PUBLIC_PROSE_MARKERS if marker in text]
+    assert not found, f"{path} contains internal revision language: {found}"
+
+
+@pytest.mark.parametrize(
+    "path",
+    PUBLIC_DOCS,
+    ids=lambda path: str(path.name),
+)
+def test_public_docs_avoid_maintenance_jargon(path: Path) -> None:
+    text = path.read_text(encoding="utf-8").lower()
+    markers = (
+        "public smoke",
+        "smoke command",
+        "dry run",
+        "availability:",
+        "artifact chain",
+        "reproduction route",
+        "provenance break",
+        "manuscript result bundle",
+        "package-native",
+        "handoff",
+    )
+    found = [marker for marker in markers if marker in text]
+    assert not found, f"{path} contains maintenance jargon: {found}"
+
+
+def test_home_page_uses_reader_cards_and_hides_project_records() -> None:
+    index = (REPOSITORY_ROOT / "docs" / "index.md").read_text(encoding="utf-8")
+    config = (REPOSITORY_ROOT / "docs" / "conf.py").read_text(encoding="utf-8")
+
+    assert index.count("{grid-item-card}") == 6
+    assert "cytobridge-home-cards" in index
+    assert "limitations" not in index.casefold()
+    assert not (REPOSITORY_ROOT / "docs/limitations.md").exists()
+    assert not (REPOSITORY_ROOT / "docs/release_notes.md").exists()

@@ -1,0 +1,7 @@
+condition,compatibility_class,n_directed_edges,mean_attention_percentile,median_attention_percentile
+trained,Jam-compatible,66,0.76981351981351975,0.86464497041420119
+trained,non-compatible,611,0.47085484074027445,0.46153846153846156
+pre_interaction,Jam-compatible,66,0.56511117088040164,0.62204142011834318
+pre_interaction,non-compatible,611,0.49296671476578313,0.48520710059171596
+random,Jam-compatible,66,0.51017572171418324,0.55029585798816572
+random,non-compatible,611,0.49890082220435999,0.49556213017751477

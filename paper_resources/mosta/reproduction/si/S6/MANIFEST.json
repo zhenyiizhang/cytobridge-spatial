@@ -1,0 +1,36 @@
+{
+  "arista_assets_used": false,
+  "dataset": "MOSTA",
+  "forbidden_transforms": {
+    "rotation": false,
+    "stretch": false,
+    "warp": false
+  },
+  "outputs": {
+    "pdf": {
+      "path": "figures/Figure_S6_MOSTA_latest_package_global_t0_50k_exact_submitted_style.pdf",
+      "sha256": "c7d64bcef512c96cfad54d7ada5f3e8bd273067b2729cf454fa9d5a5ed70c9ac"
+    },
+    "svg": {
+      "path": "figures/Figure_S6_MOSTA_latest_package_global_t0_50k_exact_submitted_style.svg",
+      "sha256": "fe81ea3b70278acc170c52034bc7f1060d6250f2a4af907b24909c4ac0620567"
+    }
+  },
+  "panel": "S6",
+  "schema_version": 1,
+  "source_figure_manifest": {
+    "path": "figures/Figure_S6_MOSTA_latest_package_global_t0_50k_exact_submitted_style_manifest.json",
+    "reported_status": "pdf_visual_qa_passed",
+    "sha256": "5e34b53677fd5ec75c5d6ae35f15b4df3b16fb8c91c37bb317f6d5ee9f696d99"
+  },
+  "status": "ACCEPTED_IMMUTABLE_SI_PANEL",
+  "visual_qa": {
+    "actual_pdf_render_inspected": true,
+    "note": "PASS: fully vector PDF/SVG, submitted legend and stack order restored, 240-dpi PDF render was visually inspected.",
+    "render": {
+      "path": "qa/s6_corrected_fixed_submitted_order_pdf_240dpi.png",
+      "sha256": "b8836e297e67f82b321ec7ad004fe6f83bbcb6d2597ef3b354131fdf945c7a51"
+    },
+    "status": "PASS"
+  }
+}

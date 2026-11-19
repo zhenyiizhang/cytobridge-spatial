@@ -1,0 +1,47 @@
+{
+  "analysis": "agist_figures",
+  "figures": {
+    "S2": {
+      "title": "Velocity-direction agreement across time and state-space partitions",
+      "source_version": "2026-08-11",
+      "calculation": "summary statistics recalculated from packaged cell-level cosine values",
+      "uncertainty": "normal-approximation 95% confidence interval of the cell-level mean",
+      "layout_inches": [
+        8.27,
+        7.25
+      ],
+      "png_dpi": 320
+    },
+    "S3": {
+      "title": "Finite-range cell-cell attraction benchmark",
+      "source_version": "2026-08-10",
+      "calculation": "panel values recalculated from packaged processed arrays and tables",
+      "growth_uncertainty": "sample standard deviation across five inference seeds",
+      "ablation_uncertainty": "standard error across five paired inference seeds",
+      "layout_inches": [
+        8.27,
+        11.69
+      ],
+      "png_dpi": 320
+    }
+  },
+  "files": {
+    "s2_velocity_cosine_per_cell.csv.gz": "cell-level physical and gene velocity cosine values",
+    "s2_velocity_cosine_by_time.csv": "paper-source time summaries",
+    "s2_velocity_cosine_by_state_cluster.csv": "paper-source state-partition summaries",
+    "s2_velocity_cosine_overall.csv": "paper-source overall summaries",
+    "s2_velocity_cosine_by_time_and_state_cluster.csv": "paper-source joint summaries",
+    "s2_cluster_selection_diagnostics.csv": "state-partition selection table",
+    "s3_observed_snapshots.npz": "processed observed time, spatial, and gene coordinates",
+    "s3_display_trajectories.npz": "deterministic sixty-particle trajectory display arrays",
+    "s3_growth_mass_metrics.csv": "relative population mass by seed and time",
+    "s3_interaction_radial_curve.csv": "radial interaction coefficient curves",
+    "s3_interaction_ablation_metrics.csv": "paired interaction-on and interaction-off distribution metrics",
+    "full_recompute_inputs.csv": "relative registry for inputs outside the compact bundle"
+  },
+  "full_rerun": {
+    "included": false,
+    "registry": "full_recompute_inputs.csv",
+    "statement": "The compact bundle reproduces the plotted analysis from processed data. It does not run model training or regenerate the processed inputs."
+  }
+}

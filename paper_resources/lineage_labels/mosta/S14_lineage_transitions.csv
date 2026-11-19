@@ -1,0 +1,1460 @@
+source,target,count,start_time,end_time
+Brain,Brain,10709,0.0,0.5
+Cavity,Cavity,5801,0.0,0.5
+Muscle,Muscle,5261,0.0,0.5
+Meninges,Meninges,4385,0.0,0.5
+Cartilage primordium,Cartilage primordium,2761,0.0,0.5
+Jaw and tooth,Jaw and tooth,2487,0.0,0.5
+Connective tissue,Connective tissue,2087,0.0,0.5
+Liver,Liver,1401,0.0,0.5
+GI tract,GI tract,1390,0.0,0.5
+Heart,Heart,1385,0.0,0.5
+Epidermis,Epidermis,1318,0.0,0.5
+Dorsal root ganglion,Dorsal root ganglion,1203,0.0,0.5
+Blood vessel,Blood vessel,770,0.0,0.5
+Mesentery,Mesentery,529,0.0,0.5
+Mucosal epithelium,Mucosal epithelium,519,0.0,0.5
+Urogenital ridge,Urogenital ridge,433,0.0,0.5
+Choroid plexus,Choroid plexus,409,0.0,0.5
+Mesothelium,Mesothelium,385,0.0,0.5
+Lung primordium,Lung primordium,340,0.0,0.5
+Cartilage primordium,Muscle,294,0.0,0.5
+Blood vessel,Cavity,265,0.0,0.5
+Ovary,Ovary,246,0.0,0.5
+Connective tissue,Muscle,229,0.0,0.5
+Brain,Meninges,220,0.0,0.5
+Kidney,Kidney,214,0.0,0.5
+Meninges,Brain,205,0.0,0.5
+Cavity,Epidermis,195,0.0,0.5
+Mesentery,Epidermis,193,0.0,0.5
+Brain,Cavity,188,0.0,0.5
+Meninges,Epidermis,175,0.0,0.5
+Cavity,Liver,168,0.0,0.5
+Cartilage primordium,Connective tissue,158,0.0,0.5
+Sympathetic nerve,Sympathetic nerve,152,0.0,0.5
+Meninges,Cavity,143,0.0,0.5
+Mesothelium,Muscle,137,0.0,0.5
+Heart,Cavity,137,0.0,0.5
+Urogenital ridge,Connective tissue,137,0.0,0.5
+Cartilage primordium,Meninges,127,0.0,0.5
+Cartilage primordium,Jaw and tooth,123,0.0,0.5
+Urogenital ridge,Muscle,116,0.0,0.5
+Connective tissue,Epidermis,106,0.0,0.5
+Urogenital ridge,GI tract,97,0.0,0.5
+Urogenital ridge,Mesothelium,88,0.0,0.5
+Lung primordium,GI tract,81,0.0,0.5
+Blood vessel,Muscle,75,0.0,0.5
+Meninges,Choroid plexus,75,0.0,0.5
+Brain,Spinal cord,70,0.0,0.5
+Jaw and tooth,Muscle,65,0.0,0.5
+Cartilage primordium,Cavity,63,0.0,0.5
+Muscle,Epidermis,58,0.0,0.5
+Mesentery,Cavity,58,0.0,0.5
+Connective tissue,Cavity,58,0.0,0.5
+Blood vessel,Heart,58,0.0,0.5
+Lung primordium,Lung,53,0.0,0.5
+Meninges,Connective tissue,52,0.0,0.5
+Mesothelium,Cavity,49,0.0,0.5
+Urogenital ridge,Cavity,47,0.0,0.5
+Blood vessel,Connective tissue,47,0.0,0.5
+GI tract,Mesentery,43,0.0,0.5
+Blood vessel,Meninges,41,0.0,0.5
+Ovary,GI tract,40,0.0,0.5
+Pancreas,Pancreas,39,0.0,0.5
+Cavity,Connective tissue,37,0.0,0.5
+Meninges,Jaw and tooth,37,0.0,0.5
+Blood vessel,Epidermis,35,0.0,0.5
+Brain,Epidermis,33,0.0,0.5
+Cavity,Mesothelium,32,0.0,0.5
+Kidney,GI tract,31,0.0,0.5
+Connective tissue,GI tract,31,0.0,0.5
+Dorsal root ganglion,Epidermis,29,0.0,0.5
+Cavity,Muscle,28,0.0,0.5
+Cartilage primordium,Epidermis,27,0.0,0.5
+Lung primordium,Mesothelium,26,0.0,0.5
+Blood vessel,Mesothelium,26,0.0,0.5
+Connective tissue,Heart,26,0.0,0.5
+GI tract,Cavity,23,0.0,0.5
+Mesentery,Muscle,23,0.0,0.5
+Urogenital ridge,Epidermis,21,0.0,0.5
+Cavity,Mesentery,20,0.0,0.5
+Mesentery,Connective tissue,20,0.0,0.5
+Connective tissue,Meninges,18,0.0,0.5
+Muscle,Connective tissue,17,0.0,0.5
+Jaw and tooth,Epidermis,17,0.0,0.5
+Connective tissue,Liver,17,0.0,0.5
+Mucosal epithelium,Muscle,16,0.0,0.5
+Cartilage primordium,Mucosal epithelium,16,0.0,0.5
+Choroid plexus,Brain,16,0.0,0.5
+Lung primordium,Kidney,16,0.0,0.5
+Dorsal root ganglion,Muscle,15,0.0,0.5
+Connective tissue,Cartilage primordium,15,0.0,0.5
+Cavity,Meninges,14,0.0,0.5
+Muscle,Cavity,14,0.0,0.5
+Meninges,Muscle,14,0.0,0.5
+Muscle,Meninges,13,0.0,0.5
+Cavity,GI tract,13,0.0,0.5
+Meninges,Cartilage primordium,13,0.0,0.5
+Brain,Choroid plexus,13,0.0,0.5
+Lung primordium,Cavity,13,0.0,0.5
+Blood vessel,Jaw and tooth,12,0.0,0.5
+Meninges,Spinal cord,12,0.0,0.5
+Lung primordium,Mucosal epithelium,12,0.0,0.5
+Urogenital ridge,Cartilage primordium,12,0.0,0.5
+Urogenital ridge,Mesentery,12,0.0,0.5
+Cartilage primordium,Dorsal root ganglion,11,0.0,0.5
+Epidermis,Jaw and tooth,11,0.0,0.5
+Pancreas,GI tract,11,0.0,0.5
+Ovary,Pancreas,10,0.0,0.5
+Jaw and tooth,Meninges,10,0.0,0.5
+Dorsal root ganglion,GI tract,10,0.0,0.5
+Mesentery,GI tract,10,0.0,0.5
+Jaw and tooth,Mucosal epithelium,9,0.0,0.5
+Muscle,Mucosal epithelium,9,0.0,0.5
+Mucosal epithelium,Connective tissue,9,0.0,0.5
+Dorsal root ganglion,Meninges,8,0.0,0.5
+Mucosal epithelium,Jaw and tooth,8,0.0,0.5
+Cartilage primordium,Mesothelium,7,0.0,0.5
+Brain,Muscle,7,0.0,0.5
+Mesothelium,Meninges,7,0.0,0.5
+Dorsal root ganglion,Sympathetic nerve,7,0.0,0.5
+Ovary,Lung,7,0.0,0.5
+Muscle,Jaw and tooth,6,0.0,0.5
+Meninges,Mucosal epithelium,6,0.0,0.5
+Blood vessel,Cartilage primordium,6,0.0,0.5
+Mesothelium,Connective tissue,6,0.0,0.5
+Lung primordium,Connective tissue,6,0.0,0.5
+Epidermis,Cavity,6,0.0,0.5
+Jaw and tooth,Cartilage primordium,6,0.0,0.5
+Epidermis,Mucosal epithelium,6,0.0,0.5
+Brain,Mucosal epithelium,6,0.0,0.5
+Urogenital ridge,Sympathetic nerve,5,0.0,0.5
+GI tract,Muscle,5,0.0,0.5
+Mucosal epithelium,Meninges,5,0.0,0.5
+Kidney,Connective tissue,5,0.0,0.5
+Ovary,Kidney,5,0.0,0.5
+Mucosal epithelium,Epidermis,5,0.0,0.5
+Cartilage primordium,Urogenital ridge,5,0.0,0.5
+Mucosal epithelium,Blood vessel,5,0.0,0.5
+Cavity,Pancreas,5,0.0,0.5
+Lung primordium,Ovary,4,0.0,0.5
+Spinal cord,Spinal cord,4,0.0,0.5
+Connective tissue,Spinal cord,4,0.0,0.5
+Dorsal root ganglion,Spinal cord,4,0.0,0.5
+Dorsal root ganglion,Connective tissue,4,0.0,0.5
+Muscle,Cartilage primordium,4,0.0,0.5
+Connective tissue,Mucosal epithelium,4,0.0,0.5
+Mucosal epithelium,Cartilage primordium,4,0.0,0.5
+Epidermis,Connective tissue,3,0.0,0.5
+GI tract,Connective tissue,3,0.0,0.5
+GI tract,Epidermis,3,0.0,0.5
+GI tract,Lung,3,0.0,0.5
+Sympathetic nerve,GI tract,3,0.0,0.5
+GI tract,Mesothelium,3,0.0,0.5
+Heart,Connective tissue,3,0.0,0.5
+Lung primordium,Epidermis,3,0.0,0.5
+Meninges,Mesothelium,3,0.0,0.5
+Jaw and tooth,Cavity,3,0.0,0.5
+Jaw and tooth,Connective tissue,3,0.0,0.5
+Sympathetic nerve,Dorsal root ganglion,3,0.0,0.5
+Muscle,Mesothelium,3,0.0,0.5
+Ovary,Epidermis,3,0.0,0.5
+Cartilage primordium,Mesentery,3,0.0,0.5
+Connective tissue,Kidney,3,0.0,0.5
+Cartilage primordium,GI tract,3,0.0,0.5
+Mucosal epithelium,Cavity,3,0.0,0.5
+Muscle,Mesentery,2,0.0,0.5
+Sympathetic nerve,Cavity,2,0.0,0.5
+Muscle,Sympathetic nerve,2,0.0,0.5
+Cavity,Lung,2,0.0,0.5
+Brain,Dorsal root ganglion,2,0.0,0.5
+Dorsal root ganglion,Mesothelium,2,0.0,0.5
+Lung primordium,Blood vessel,2,0.0,0.5
+Dorsal root ganglion,Kidney,2,0.0,0.5
+Lung primordium,Muscle,2,0.0,0.5
+Choroid plexus,Mucosal epithelium,2,0.0,0.5
+Cavity,Sympathetic nerve,2,0.0,0.5
+Connective tissue,Mesothelium,2,0.0,0.5
+Cavity,Jaw and tooth,2,0.0,0.5
+Cavity,Brain,2,0.0,0.5
+Mesothelium,Epidermis,2,0.0,0.5
+Urogenital ridge,Blood vessel,1,0.0,0.5
+Jaw and tooth,Mesothelium,1,0.0,0.5
+Blood vessel,Cartilage,1,0.0,0.5
+Sympathetic nerve,Epidermis,1,0.0,0.5
+Jaw and tooth,Blood vessel,1,0.0,0.5
+Sympathetic nerve,Meninges,1,0.0,0.5
+Sympathetic nerve,Muscle,1,0.0,0.5
+Dorsal root ganglion,Jaw and tooth,1,0.0,0.5
+Epidermis,Cartilage primordium,1,0.0,0.5
+Urogenital ridge,Mucosal epithelium,1,0.0,0.5
+Epidermis,Pancreas,1,0.0,0.5
+Epidermis,Dorsal root ganglion,1,0.0,0.5
+Cartilage primordium,Brain,1,0.0,0.5
+Kidney,Dorsal root ganglion,1,0.0,0.5
+Brain,Sympathetic nerve,1,0.0,0.5
+Urogenital ridge,Kidney,1,0.0,0.5
+Urogenital ridge,Lung,1,0.0,0.5
+Epidermis,Muscle,1,0.0,0.5
+Cartilage primordium,Blood vessel,1,0.0,0.5
+Cavity,Blood vessel,1,0.0,0.5
+Kidney,Muscle,1,0.0,0.5
+Lung primordium,Pancreas,1,0.0,0.5
+Mucosal epithelium,Mesothelium,1,0.0,0.5
+Cartilage primordium,Sympathetic nerve,1,0.0,0.5
+Mesothelium,Cartilage primordium,1,0.0,0.5
+Mesentery,Lung,1,0.0,0.5
+Choroid plexus,Cavity,1,0.0,0.5
+Choroid plexus,Meninges,1,0.0,0.5
+Connective tissue,Adipose tissue,1,0.0,0.5
+Lung primordium,Urogenital ridge,1,0.0,0.5
+Muscle,Spinal cord,1,0.0,0.5
+Pancreas,Epidermis,1,0.0,0.5
+Ovary,Connective tissue,1,0.0,0.5
+Blood vessel,Sympathetic nerve,1,0.0,0.5
+Connective tissue,Jaw and tooth,1,0.0,0.5
+Blood vessel,GI tract,1,0.0,0.5
+Ovary,Mesothelium,1,0.0,0.5
+Ovary,Mucosal epithelium,1,0.0,0.5
+Cartilage primordium,Lung,1,0.0,0.5
+Mesothelium,Mesentery,1,0.0,0.5
+Kidney,Pancreas,1,0.0,0.5
+Brain,Brain,10097,0.5,1.0
+Cavity,Cavity,6391,0.5,1.0
+Muscle,Muscle,5461,0.5,1.0
+Meninges,Meninges,3687,0.5,1.0
+Jaw and tooth,Jaw and tooth,2588,0.5,1.0
+Epidermis,Epidermis,2028,0.5,1.0
+Cartilage primordium,Cartilage primordium,1920,0.5,1.0
+Connective tissue,Connective tissue,1821,0.5,1.0
+Liver,Liver,1579,0.5,1.0
+GI tract,GI tract,1371,0.5,1.0
+Heart,Heart,1310,0.5,1.0
+Dorsal root ganglion,Dorsal root ganglion,1108,0.5,1.0
+Cartilage primordium,Connective tissue,557,0.5,1.0
+Blood vessel,Cavity,526,0.5,1.0
+Mucosal epithelium,Mucosal epithelium,490,0.5,1.0
+Choroid plexus,Choroid plexus,449,0.5,1.0
+Brain,Meninges,305,0.5,1.0
+Connective tissue,Epidermis,304,0.5,1.0
+Meninges,Brain,289,0.5,1.0
+Mesentery,Epidermis,269,0.5,1.0
+Urogenital ridge,Connective tissue,247,0.5,1.0
+Brain,Spinal cord,244,0.5,1.0
+Muscle,Connective tissue,238,0.5,1.0
+Lung primordium,Lung,234,0.5,1.0
+Meninges,Cavity,224,0.5,1.0
+Muscle,Spinal cord,224,0.5,1.0
+Mesothelium,Cavity,221,0.5,1.0
+Meninges,Epidermis,212,0.5,1.0
+Mesothelium,Mesothelium,201,0.5,1.0
+Cavity,Epidermis,195,0.5,1.0
+Mesentery,Mesentery,185,0.5,1.0
+Brain,Cavity,179,0.5,1.0
+Kidney,Kidney,173,0.5,1.0
+Connective tissue,Cavity,169,0.5,1.0
+GI tract,Mesentery,167,0.5,1.0
+Meninges,Connective tissue,161,0.5,1.0
+Heart,Cavity,159,0.5,1.0
+Muscle,Cavity,148,0.5,1.0
+Sympathetic nerve,Sympathetic nerve,142,0.5,1.0
+Meninges,Choroid plexus,109,0.5,1.0
+Muscle,Epidermis,105,0.5,1.0
+Cavity,Liver,105,0.5,1.0
+Cartilage primordium,Muscle,103,0.5,1.0
+Ovary,Ovary,100,0.5,1.0
+Meninges,Jaw and tooth,97,0.5,1.0
+Spinal cord,Spinal cord,94,0.5,1.0
+Blood vessel,Connective tissue,86,0.5,1.0
+Cartilage primordium,Cavity,83,0.5,1.0
+Connective tissue,Muscle,83,0.5,1.0
+Ovary,GI tract,80,0.5,1.0
+Mesothelium,Muscle,79,0.5,1.0
+Connective tissue,Spinal cord,71,0.5,1.0
+Cartilage primordium,Jaw and tooth,71,0.5,1.0
+Epidermis,Cavity,71,0.5,1.0
+Lung,Lung,67,0.5,1.0
+Lung primordium,GI tract,64,0.5,1.0
+Mesentery,Cavity,62,0.5,1.0
+Mesothelium,Connective tissue,54,0.5,1.0
+Meninges,Cartilage primordium,49,0.5,1.0
+Mesentery,GI tract,49,0.5,1.0
+GI tract,Cavity,47,0.5,1.0
+Blood vessel,Epidermis,46,0.5,1.0
+GI tract,Lung,46,0.5,1.0
+Kidney,GI tract,46,0.5,1.0
+Jaw and tooth,Muscle,46,0.5,1.0
+Pancreas,Pancreas,45,0.5,1.0
+Cavity,Connective tissue,45,0.5,1.0
+Mucosal epithelium,Connective tissue,44,0.5,1.0
+Epidermis,Connective tissue,44,0.5,1.0
+Cartilage primordium,Epidermis,42,0.5,1.0
+Urogenital ridge,GI tract,42,0.5,1.0
+Connective tissue,Heart,42,0.5,1.0
+Cavity,Mesothelium,42,0.5,1.0
+Blood vessel,Heart,37,0.5,1.0
+Urogenital ridge,Mesothelium,36,0.5,1.0
+Brain,Mucosal epithelium,36,0.5,1.0
+Urogenital ridge,Cavity,35,0.5,1.0
+Cavity,Meninges,34,0.5,1.0
+Muscle,Cartilage primordium,34,0.5,1.0
+Urogenital ridge,Mesentery,33,0.5,1.0
+Brain,Choroid plexus,32,0.5,1.0
+GI tract,Connective tissue,31,0.5,1.0
+Choroid plexus,Brain,29,0.5,1.0
+Ovary,Pancreas,29,0.5,1.0
+Epidermis,Jaw and tooth,28,0.5,1.0
+Connective tissue,Cartilage primordium,27,0.5,1.0
+Blood vessel,Blood vessel,26,0.5,1.0
+Brain,Epidermis,26,0.5,1.0
+Muscle,Meninges,26,0.5,1.0
+Blood vessel,Meninges,24,0.5,1.0
+Connective tissue,Meninges,24,0.5,1.0
+Ovary,Lung,22,0.5,1.0
+Dorsal root ganglion,Connective tissue,22,0.5,1.0
+Dorsal root ganglion,Spinal cord,21,0.5,1.0
+Mesentery,Muscle,20,0.5,1.0
+Cartilage primordium,Meninges,20,0.5,1.0
+Mesentery,Connective tissue,19,0.5,1.0
+GI tract,Smooth muscle,17,0.5,1.0
+Mucosal epithelium,Jaw and tooth,17,0.5,1.0
+Connective tissue,GI tract,17,0.5,1.0
+Jaw and tooth,Connective tissue,17,0.5,1.0
+GI tract,Mesothelium,16,0.5,1.0
+Cavity,Lung,16,0.5,1.0
+Urogenital ridge,Muscle,15,0.5,1.0
+Epidermis,Mucosal epithelium,15,0.5,1.0
+Cavity,Muscle,15,0.5,1.0
+Lung primordium,Mesothelium,14,0.5,1.0
+Muscle,Jaw and tooth,14,0.5,1.0
+Dorsal root ganglion,Epidermis,14,0.5,1.0
+Lung primordium,Kidney,14,0.5,1.0
+Dorsal root ganglion,Muscle,14,0.5,1.0
+Jaw and tooth,Cartilage primordium,13,0.5,1.0
+Urogenital ridge,Epidermis,13,0.5,1.0
+Blood vessel,Muscle,13,0.5,1.0
+Mucosal epithelium,Muscle,13,0.5,1.0
+Urogenital ridge,Urogenital ridge,12,0.5,1.0
+Dorsal root ganglion,Sympathetic nerve,12,0.5,1.0
+GI tract,Epidermis,12,0.5,1.0
+Connective tissue,Liver,12,0.5,1.0
+Sympathetic nerve,Connective tissue,11,0.5,1.0
+Connective tissue,Adipose tissue,11,0.5,1.0
+Choroid plexus,Meninges,11,0.5,1.0
+Dorsal root ganglion,GI tract,11,0.5,1.0
+Cavity,GI tract,11,0.5,1.0
+Kidney,Connective tissue,10,0.5,1.0
+Muscle,Mucosal epithelium,10,0.5,1.0
+Pancreas,GI tract,10,0.5,1.0
+GI tract,Muscle,10,0.5,1.0
+Epidermis,Meninges,10,0.5,1.0
+Kidney,Lung,10,0.5,1.0
+Meninges,Adipose tissue,9,0.5,1.0
+Epidermis,Muscle,9,0.5,1.0
+Mesothelium,Lung,9,0.5,1.0
+Blood vessel,Mesothelium,8,0.5,1.0
+Cartilage primordium,Spinal cord,8,0.5,1.0
+Blood vessel,Jaw and tooth,8,0.5,1.0
+Mucosal epithelium,Cartilage primordium,8,0.5,1.0
+Sympathetic nerve,Dorsal root ganglion,8,0.5,1.0
+Mucosal epithelium,Cavity,7,0.5,1.0
+Muscle,Mesentery,7,0.5,1.0
+Liver,Cavity,7,0.5,1.0
+Jaw and tooth,Cavity,7,0.5,1.0
+Meninges,Muscle,7,0.5,1.0
+Lung primordium,Lung primordium,7,0.5,1.0
+Dorsal root ganglion,Meninges,7,0.5,1.0
+Mucosal epithelium,Lung,7,0.5,1.0
+Muscle,Dorsal root ganglion,7,0.5,1.0
+Connective tissue,Mucosal epithelium,6,0.5,1.0
+Muscle,GI tract,6,0.5,1.0
+Muscle,Lung,6,0.5,1.0
+Mesentery,Jaw and tooth,6,0.5,1.0
+Brain,Facial nerve,6,0.5,1.0
+Epidermis,GI tract,6,0.5,1.0
+Epidermis,Mesentery,6,0.5,1.0
+Jaw and tooth,Mucosal epithelium,6,0.5,1.0
+Ovary,Kidney,6,0.5,1.0
+Sympathetic nerve,Cavity,6,0.5,1.0
+Jaw and tooth,Epidermis,6,0.5,1.0
+Cavity,Mesentery,6,0.5,1.0
+Blood vessel,Cartilage primordium,6,0.5,1.0
+Cavity,Jaw and tooth,5,0.5,1.0
+Ovary,Connective tissue,5,0.5,1.0
+Ovary,Mesothelium,5,0.5,1.0
+Choroid plexus,Cavity,4,0.5,1.0
+Cavity,Pancreas,4,0.5,1.0
+Mesothelium,Epidermis,4,0.5,1.0
+Mesothelium,Cartilage primordium,4,0.5,1.0
+Brain,Muscle,4,0.5,1.0
+Connective tissue,Jaw and tooth,4,0.5,1.0
+Cartilage primordium,Dorsal root ganglion,4,0.5,1.0
+Jaw and tooth,Meninges,4,0.5,1.0
+Urogenital ridge,Kidney,4,0.5,1.0
+Cartilage primordium,Mesothelium,4,0.5,1.0
+Cartilage primordium,GI tract,3,0.5,1.0
+Epidermis,Spinal cord,3,0.5,1.0
+Epidermis,Dorsal root ganglion,3,0.5,1.0
+Ovary,Cavity,3,0.5,1.0
+Muscle,Mesothelium,3,0.5,1.0
+Dorsal root ganglion,Choroid plexus,3,0.5,1.0
+Dorsal root ganglion,Cartilage primordium,3,0.5,1.0
+Mesothelium,Meninges,3,0.5,1.0
+Meninges,Spinal cord,3,0.5,1.0
+Choroid plexus,Jaw and tooth,3,0.5,1.0
+Dorsal root ganglion,Cavity,3,0.5,1.0
+Cartilage primordium,Lung,2,0.5,1.0
+Pancreas,Lung,2,0.5,1.0
+Cartilage primordium,Cartilage,2,0.5,1.0
+Cartilage primordium,Mucosal epithelium,2,0.5,1.0
+Mesothelium,Mesentery,2,0.5,1.0
+Mucosal epithelium,Meninges,2,0.5,1.0
+Connective tissue,Mesentery,2,0.5,1.0
+Urogenital ridge,Lung,2,0.5,1.0
+Epidermis,Lung,2,0.5,1.0
+Kidney,Spinal cord,2,0.5,1.0
+Brain,Dorsal root ganglion,2,0.5,1.0
+Dorsal root ganglion,Mesothelium,2,0.5,1.0
+Lung primordium,Mucosal epithelium,2,0.5,1.0
+Lung primordium,Pancreas,2,0.5,1.0
+Mucosal epithelium,Epidermis,2,0.5,1.0
+Connective tissue,Kidney,2,0.5,1.0
+Sympathetic nerve,Spinal cord,2,0.5,1.0
+Meninges,Mesothelium,2,0.5,1.0
+Cavity,Spinal cord,2,0.5,1.0
+Mesothelium,Pancreas,2,0.5,1.0
+Brain,Jaw and tooth,1,0.5,1.0
+Sympathetic nerve,Smooth muscle,1,0.5,1.0
+Sympathetic nerve,Muscle,1,0.5,1.0
+Cartilage,Cartilage,1,0.5,1.0
+Spinal cord,Meninges,1,0.5,1.0
+Blood vessel,Dorsal root ganglion,1,0.5,1.0
+Brain,Lung,1,0.5,1.0
+GI tract,Pancreas,1,0.5,1.0
+Cartilage primordium,Kidney,1,0.5,1.0
+Connective tissue,Mesothelium,1,0.5,1.0
+GI tract,Sympathetic nerve,1,0.5,1.0
+GI tract,Mucosal epithelium,1,0.5,1.0
+GI tract,Dorsal root ganglion,1,0.5,1.0
+Jaw and tooth,Mesothelium,1,0.5,1.0
+Lung,Cavity,1,0.5,1.0
+Lung primordium,Cavity,1,0.5,1.0
+Lung primordium,Connective tissue,1,0.5,1.0
+Dorsal root ganglion,Mesentery,1,0.5,1.0
+Lung primordium,Smooth muscle,1,0.5,1.0
+Meninges,Lung,1,0.5,1.0
+Cartilage primordium,Mesentery,1,0.5,1.0
+Connective tissue,Lung,1,0.5,1.0
+Connective tissue,Dorsal root ganglion,1,0.5,1.0
+Choroid plexus,Epidermis,1,0.5,1.0
+Mesothelium,Smooth muscle,1,0.5,1.0
+Mucosal epithelium,GI tract,1,0.5,1.0
+Cavity,Heart,1,0.5,1.0
+Cavity,Dorsal root ganglion,1,0.5,1.0
+Cavity,Cartilage,1,0.5,1.0
+Muscle,Kidney,1,0.5,1.0
+Adipose tissue,Adipose tissue,1,0.5,1.0
+Brain,Brain,9906,1.0,1.5
+Cavity,Cavity,7542,1.0,1.5
+Muscle,Muscle,3705,1.0,1.5
+Meninges,Meninges,3618,1.0,1.5
+Connective tissue,Connective tissue,2842,1.0,1.5
+Epidermis,Epidermis,2712,1.0,1.5
+Jaw and tooth,Jaw and tooth,2702,1.0,1.5
+Cartilage primordium,Cartilage primordium,1711,1.0,1.5
+Liver,Liver,1680,1.0,1.5
+Heart,Heart,1358,1.0,1.5
+GI tract,GI tract,1213,1.0,1.5
+Muscle,Spinal cord,1022,1.0,1.5
+Dorsal root ganglion,Dorsal root ganglion,1022,1.0,1.5
+Muscle,Connective tissue,817,1.0,1.5
+Spinal cord,Spinal cord,634,1.0,1.5
+Mucosal epithelium,Mucosal epithelium,477,1.0,1.5
+Choroid plexus,Choroid plexus,455,1.0,1.5
+Lung,Lung,422,1.0,1.5
+Cartilage primordium,Connective tissue,288,1.0,1.5
+Cavity,Connective tissue,282,1.0,1.5
+Mesentery,Mesentery,220,1.0,1.5
+Brain,Meninges,217,1.0,1.5
+Epidermis,Cavity,193,1.0,1.5
+Cavity,Epidermis,173,1.0,1.5
+Mesothelium,Mesothelium,153,1.0,1.5
+GI tract,Smooth muscle,145,1.0,1.5
+Meninges,Cavity,138,1.0,1.5
+Kidney,Kidney,138,1.0,1.5
+Connective tissue,Cavity,134,1.0,1.5
+Connective tissue,Epidermis,125,1.0,1.5
+Epidermis,Connective tissue,123,1.0,1.5
+Meninges,Connective tissue,116,1.0,1.5
+Sympathetic nerve,Sympathetic nerve,114,1.0,1.5
+Connective tissue,Spinal cord,113,1.0,1.5
+Cavity,Meninges,112,1.0,1.5
+GI tract,Lung,99,1.0,1.5
+Muscle,Cavity,98,1.0,1.5
+GI tract,Connective tissue,92,1.0,1.5
+Brain,Choroid plexus,91,1.0,1.5
+Brain,Spinal cord,83,1.0,1.5
+Mesothelium,Connective tissue,81,1.0,1.5
+Jaw and tooth,Connective tissue,80,1.0,1.5
+Epidermis,Spinal cord,73,1.0,1.5
+GI tract,Cavity,73,1.0,1.5
+Meninges,Brain,72,1.0,1.5
+Pancreas,Pancreas,72,1.0,1.5
+Mesentery,Cavity,70,1.0,1.5
+Choroid plexus,Meninges,68,1.0,1.5
+Muscle,Cartilage primordium,65,1.0,1.5
+Mesothelium,Cavity,64,1.0,1.5
+Brain,Cavity,62,1.0,1.5
+GI tract,Mesentery,59,1.0,1.5
+Meninges,Jaw and tooth,57,1.0,1.5
+Mucosal epithelium,Connective tissue,57,1.0,1.5
+Dorsal root ganglion,Spinal cord,56,1.0,1.5
+Muscle,Meninges,50,1.0,1.5
+Mesentery,Connective tissue,49,1.0,1.5
+Meninges,Epidermis,49,1.0,1.5
+Cavity,Heart,49,1.0,1.5
+Connective tissue,Meninges,48,1.0,1.5
+Epidermis,Meninges,46,1.0,1.5
+Muscle,Epidermis,46,1.0,1.5
+Meninges,Adipose tissue,45,1.0,1.5
+Connective tissue,Adipose tissue,44,1.0,1.5
+Cavity,Liver,43,1.0,1.5
+Choroid plexus,Brain,40,1.0,1.5
+Spinal cord,Brain,39,1.0,1.5
+Connective tissue,Heart,35,1.0,1.5
+Epidermis,Jaw and tooth,35,1.0,1.5
+Mesentery,Epidermis,35,1.0,1.5
+Brain,Mucosal epithelium,33,1.0,1.5
+Dorsal root ganglion,Connective tissue,33,1.0,1.5
+Kidney,GI tract,32,1.0,1.5
+Ovary,Pancreas,31,1.0,1.5
+Cavity,Blood vessel,31,1.0,1.5
+Mesothelium,Lung,31,1.0,1.5
+Epidermis,Mucosal epithelium,30,1.0,1.5
+Epidermis,Adipose tissue,30,1.0,1.5
+Muscle,Dorsal root ganglion,30,1.0,1.5
+Heart,Cavity,29,1.0,1.5
+Ovary,GI tract,28,1.0,1.5
+Meninges,Cartilage primordium,25,1.0,1.5
+Muscle,Jaw and tooth,24,1.0,1.5
+Connective tissue,Cartilage primordium,24,1.0,1.5
+Jaw and tooth,Cartilage primordium,21,1.0,1.5
+Adipose tissue,Adipose tissue,21,1.0,1.5
+Smooth muscle,Smooth muscle,20,1.0,1.5
+Brain,Facial nerve,19,1.0,1.5
+Meninges,Choroid plexus,19,1.0,1.5
+Ovary,Ovary,18,1.0,1.5
+Mesentery,GI tract,18,1.0,1.5
+Kidney,Lung,17,1.0,1.5
+Cavity,Cartilage,17,1.0,1.5
+Cavity,Lung,17,1.0,1.5
+Sympathetic nerve,Dorsal root ganglion,17,1.0,1.5
+Cavity,Mesothelium,16,1.0,1.5
+Liver,Cavity,15,1.0,1.5
+Sympathetic nerve,Connective tissue,14,1.0,1.5
+Blood vessel,Connective tissue,14,1.0,1.5
+Cartilage primordium,Cavity,13,1.0,1.5
+Jaw and tooth,Mucosal epithelium,13,1.0,1.5
+Cartilage primordium,Spinal cord,13,1.0,1.5
+Ovary,Lung,13,1.0,1.5
+Cavity,Cartilage primordium,12,1.0,1.5
+Cavity,Adipose tissue,12,1.0,1.5
+Cartilage primordium,Meninges,12,1.0,1.5
+Mucosal epithelium,Cartilage primordium,12,1.0,1.5
+Meninges,Spinal cord,12,1.0,1.5
+Dorsal root ganglion,Sympathetic nerve,12,1.0,1.5
+GI tract,Epidermis,12,1.0,1.5
+GI tract,Mesothelium,11,1.0,1.5
+Jaw and tooth,Cavity,11,1.0,1.5
+Cavity,Choroid plexus,10,1.0,1.5
+Epidermis,GI tract,10,1.0,1.5
+Choroid plexus,Mucosal epithelium,9,1.0,1.5
+Muscle,Mucosal epithelium,9,1.0,1.5
+Connective tissue,Smooth muscle,9,1.0,1.5
+Connective tissue,Lung,9,1.0,1.5
+Cavity,Brain,8,1.0,1.5
+Cartilage primordium,Jaw and tooth,8,1.0,1.5
+Cavity,Jaw and tooth,8,1.0,1.5
+Mucosal epithelium,Jaw and tooth,8,1.0,1.5
+Blood vessel,Cavity,8,1.0,1.5
+Mucosal epithelium,Lung,7,1.0,1.5
+Muscle,GI tract,7,1.0,1.5
+Lung primordium,Lung,7,1.0,1.5
+Choroid plexus,Jaw and tooth,7,1.0,1.5
+Choroid plexus,Connective tissue,7,1.0,1.5
+Mesentery,Muscle,6,1.0,1.5
+Facial nerve,Facial nerve,6,1.0,1.5
+Mesentery,Smooth muscle,6,1.0,1.5
+Kidney,Connective tissue,6,1.0,1.5
+Connective tissue,Dorsal root ganglion,6,1.0,1.5
+GI tract,Muscle,6,1.0,1.5
+Pancreas,GI tract,6,1.0,1.5
+Cartilage primordium,Dorsal root ganglion,6,1.0,1.5
+Epidermis,Muscle,5,1.0,1.5
+Muscle,Sympathetic nerve,5,1.0,1.5
+Sympathetic nerve,Smooth muscle,5,1.0,1.5
+Epidermis,Dorsal root ganglion,5,1.0,1.5
+Connective tissue,Liver,5,1.0,1.5
+Muscle,Lung,5,1.0,1.5
+Jaw and tooth,Epidermis,5,1.0,1.5
+Ovary,Kidney,5,1.0,1.5
+Jaw and tooth,Muscle,5,1.0,1.5
+Choroid plexus,Cavity,5,1.0,1.5
+Cavity,Spinal cord,5,1.0,1.5
+Cavity,Smooth muscle,5,1.0,1.5
+Cavity,Muscle,4,1.0,1.5
+Blood vessel,Heart,4,1.0,1.5
+Urogenital ridge,Connective tissue,4,1.0,1.5
+Cartilage primordium,Epidermis,4,1.0,1.5
+Urogenital ridge,Cavity,4,1.0,1.5
+Connective tissue,Mesentery,4,1.0,1.5
+Kidney,Smooth muscle,4,1.0,1.5
+Lung,Cavity,4,1.0,1.5
+Connective tissue,GI tract,4,1.0,1.5
+Epidermis,Smooth muscle,4,1.0,1.5
+Cartilage primordium,Cartilage,4,1.0,1.5
+Mesentery,Lung,3,1.0,1.5
+Cartilage primordium,Adipose tissue,3,1.0,1.5
+Mucosal epithelium,Cavity,3,1.0,1.5
+Dorsal root ganglion,Smooth muscle,3,1.0,1.5
+Heart,Connective tissue,3,1.0,1.5
+Cavity,Mucosal epithelium,3,1.0,1.5
+Connective tissue,Muscle,3,1.0,1.5
+Ovary,Cavity,3,1.0,1.5
+Connective tissue,Mucosal epithelium,3,1.0,1.5
+Epidermis,Heart,3,1.0,1.5
+Epidermis,Lung,3,1.0,1.5
+Pancreas,Lung,3,1.0,1.5
+Dorsal root ganglion,GI tract,3,1.0,1.5
+Cavity,GI tract,3,1.0,1.5
+Kidney,Spinal cord,3,1.0,1.5
+Dorsal root ganglion,Meninges,3,1.0,1.5
+Muscle,Cartilage,3,1.0,1.5
+Muscle,Adipose tissue,2,1.0,1.5
+Sympathetic nerve,Cavity,2,1.0,1.5
+Sympathetic nerve,Spinal cord,2,1.0,1.5
+Ovary,Connective tissue,2,1.0,1.5
+Mucosal epithelium,Pancreas,2,1.0,1.5
+GI tract,Pancreas,2,1.0,1.5
+Jaw and tooth,Mesothelium,2,1.0,1.5
+Brain,Epidermis,2,1.0,1.5
+Connective tissue,Cartilage,2,1.0,1.5
+Lung,GI tract,2,1.0,1.5
+Cartilage,Cartilage,2,1.0,1.5
+Meninges,Dorsal root ganglion,2,1.0,1.5
+GI tract,Mucosal epithelium,2,1.0,1.5
+Connective tissue,Jaw and tooth,2,1.0,1.5
+Meninges,Muscle,2,1.0,1.5
+GI tract,Kidney,2,1.0,1.5
+Jaw and tooth,Lung,2,1.0,1.5
+Mesentery,Jaw and tooth,2,1.0,1.5
+Epidermis,Brain,2,1.0,1.5
+Mesothelium,Epidermis,2,1.0,1.5
+Mesothelium,Mesentery,2,1.0,1.5
+Choroid plexus,Epidermis,2,1.0,1.5
+Cavity,Dorsal root ganglion,1,1.0,1.5
+Pancreas,Mesothelium,1,1.0,1.5
+Cavity,Mesentery,1,1.0,1.5
+Connective tissue,Mesothelium,1,1.0,1.5
+Pancreas,Cavity,1,1.0,1.5
+Spinal cord,Sympathetic nerve,1,1.0,1.5
+Mesothelium,Smooth muscle,1,1.0,1.5
+Cartilage primordium,Mucosal epithelium,1,1.0,1.5
+Cartilage primordium,Lung,1,1.0,1.5
+Cartilage,Epidermis,1,1.0,1.5
+Dorsal root ganglion,Kidney,1,1.0,1.5
+Sympathetic nerve,Meninges,1,1.0,1.5
+Cartilage,Connective tissue,1,1.0,1.5
+Brain,Sympathetic nerve,1,1.0,1.5
+Brain,Muscle,1,1.0,1.5
+Urogenital ridge,Epidermis,1,1.0,1.5
+Urogenital ridge,GI tract,1,1.0,1.5
+Urogenital ridge,Lung,1,1.0,1.5
+Dorsal root ganglion,Epidermis,1,1.0,1.5
+Epidermis,Kidney,1,1.0,1.5
+Dorsal root ganglion,Mesothelium,1,1.0,1.5
+Jaw and tooth,Meninges,1,1.0,1.5
+Mucosal epithelium,Epidermis,1,1.0,1.5
+Mesentery,Mesothelium,1,1.0,1.5
+Mucosal epithelium,Meninges,1,1.0,1.5
+Meninges,Mucosal epithelium,1,1.0,1.5
+Meninges,Lung,1,1.0,1.5
+Muscle,Brain,1,1.0,1.5
+Meninges,Cartilage,1,1.0,1.5
+Liver,Blood vessel,1,1.0,1.5
+Kidney,Epidermis,1,1.0,1.5
+Muscle,Kidney,1,1.0,1.5
+Dorsal root ganglion,Muscle,1,1.0,1.5
+GI tract,Sympathetic nerve,1,1.0,1.5
+Muscle,Mesentery,1,1.0,1.5
+Muscle,Mesothelium,1,1.0,1.5
+Epidermis,Mesothelium,1,1.0,1.5
+Muscle,Smooth muscle,1,1.0,1.5
+Epidermis,Liver,1,1.0,1.5
+Mesothelium,Muscle,1,1.0,1.5
+Epidermis,Cartilage primordium,1,1.0,1.5
+Epidermis,Cartilage,1,1.0,1.5
+Urogenital ridge,Mesothelium,1,1.0,1.5
+Brain,Brain,9575,1.5,2.0
+Cavity,Cavity,6918,1.5,2.0
+Connective tissue,Connective tissue,4357,1.5,2.0
+Meninges,Meninges,3784,1.5,2.0
+Jaw and tooth,Jaw and tooth,2597,1.5,2.0
+Epidermis,Epidermis,2431,1.5,2.0
+Muscle,Muscle,1947,1.5,2.0
+Spinal cord,Spinal cord,1857,1.5,2.0
+Liver,Liver,1701,1.5,2.0
+Cartilage primordium,Cartilage primordium,1641,1.5,2.0
+Heart,Heart,1439,1.5,2.0
+Dorsal root ganglion,Dorsal root ganglion,971,1.5,2.0
+GI tract,GI tract,868,1.5,2.0
+Muscle,Spinal cord,828,1.5,2.0
+Muscle,Connective tissue,792,1.5,2.0
+Lung,Lung,629,1.5,2.0
+Cavity,Connective tissue,611,1.5,2.0
+Mucosal epithelium,Mucosal epithelium,518,1.5,2.0
+Choroid plexus,Choroid plexus,417,1.5,2.0
+Epidermis,Cavity,300,1.5,2.0
+GI tract,Smooth muscle,223,1.5,2.0
+Brain,Choroid plexus,211,1.5,2.0
+Brain,Meninges,209,1.5,2.0
+Smooth muscle,Smooth muscle,199,1.5,2.0
+Cavity,Meninges,195,1.5,2.0
+Cavity,Heart,192,1.5,2.0
+Jaw and tooth,Connective tissue,173,1.5,2.0
+Adipose tissue,Adipose tissue,156,1.5,2.0
+Cartilage primordium,Connective tissue,151,1.5,2.0
+Spinal cord,Brain,142,1.5,2.0
+Meninges,Connective tissue,141,1.5,2.0
+Connective tissue,Spinal cord,138,1.5,2.0
+Cavity,Epidermis,134,1.5,2.0
+Cavity,Blood vessel,127,1.5,2.0
+Kidney,Kidney,127,1.5,2.0
+Connective tissue,Meninges,114,1.5,2.0
+Mesentery,Mesentery,103,1.5,2.0
+Epidermis,Connective tissue,99,1.5,2.0
+Sympathetic nerve,Sympathetic nerve,95,1.5,2.0
+Pancreas,Pancreas,94,1.5,2.0
+Epidermis,Adipose tissue,93,1.5,2.0
+Epidermis,Spinal cord,91,1.5,2.0
+Connective tissue,Cavity,88,1.5,2.0
+GI tract,Connective tissue,84,1.5,2.0
+Cavity,Cartilage,80,1.5,2.0
+Choroid plexus,Meninges,80,1.5,2.0
+Meninges,Adipose tissue,78,1.5,2.0
+Mesentery,Connective tissue,72,1.5,2.0
+Mesentery,Cavity,71,1.5,2.0
+Mesothelium,Mesothelium,69,1.5,2.0
+Dorsal root ganglion,Spinal cord,64,1.5,2.0
+Meninges,Cavity,63,1.5,2.0
+Epidermis,Meninges,62,1.5,2.0
+Connective tissue,Adipose tissue,62,1.5,2.0
+GI tract,Cavity,58,1.5,2.0
+Mesothelium,Cavity,51,1.5,2.0
+GI tract,Lung,51,1.5,2.0
+Jaw and tooth,Cartilage primordium,44,1.5,2.0
+Connective tissue,Smooth muscle,44,1.5,2.0
+Choroid plexus,Brain,43,1.5,2.0
+Cavity,Adipose tissue,42,1.5,2.0
+Muscle,Cavity,39,1.5,2.0
+Cavity,Choroid plexus,39,1.5,2.0
+Dorsal root ganglion,Connective tissue,36,1.5,2.0
+Mucosal epithelium,Connective tissue,35,1.5,2.0
+Mesothelium,Connective tissue,35,1.5,2.0
+Cavity,Brain,33,1.5,2.0
+Mesentery,Smooth muscle,33,1.5,2.0
+Blood vessel,Blood vessel,32,1.5,2.0
+Meninges,Jaw and tooth,32,1.5,2.0
+Meninges,Spinal cord,32,1.5,2.0
+Connective tissue,Cartilage primordium,32,1.5,2.0
+Epidermis,Jaw and tooth,30,1.5,2.0
+Cartilage,Cartilage,28,1.5,2.0
+Cartilage primordium,Cartilage,28,1.5,2.0
+Connective tissue,Epidermis,25,1.5,2.0
+Muscle,Meninges,25,1.5,2.0
+Meninges,Cartilage primordium,25,1.5,2.0
+Epidermis,Mucosal epithelium,23,1.5,2.0
+Brain,Facial nerve,21,1.5,2.0
+Muscle,Dorsal root ganglion,21,1.5,2.0
+Brain,Mucosal epithelium,20,1.5,2.0
+Facial nerve,Facial nerve,20,1.5,2.0
+Muscle,Jaw and tooth,19,1.5,2.0
+Cavity,Lung,18,1.5,2.0
+Cavity,Liver,18,1.5,2.0
+Jaw and tooth,Mucosal epithelium,16,1.5,2.0
+Mesothelium,Smooth muscle,16,1.5,2.0
+Cartilage primordium,Spinal cord,16,1.5,2.0
+Cavity,Cartilage primordium,15,1.5,2.0
+Cavity,Smooth muscle,14,1.5,2.0
+Connective tissue,Heart,13,1.5,2.0
+Muscle,Epidermis,13,1.5,2.0
+Liver,Cavity,13,1.5,2.0
+Sympathetic nerve,Connective tissue,13,1.5,2.0
+Cavity,Spinal cord,12,1.5,2.0
+Brain,Spinal cord,12,1.5,2.0
+Meninges,Brain,12,1.5,2.0
+Liver,Blood vessel,12,1.5,2.0
+Brain,Inner ear,12,1.5,2.0
+Muscle,Lung,12,1.5,2.0
+Sympathetic nerve,Smooth muscle,11,1.5,2.0
+GI tract,Kidney,11,1.5,2.0
+Cavity,Jaw and tooth,11,1.5,2.0
+GI tract,Pancreas,11,1.5,2.0
+Mesothelium,Lung,11,1.5,2.0
+Connective tissue,Cartilage,11,1.5,2.0
+Choroid plexus,Mucosal epithelium,11,1.5,2.0
+Cartilage primordium,Meninges,10,1.5,2.0
+Epidermis,Lung,10,1.5,2.0
+Kidney,GI tract,9,1.5,2.0
+Muscle,Brain,9,1.5,2.0
+Cartilage primordium,Adipose tissue,9,1.5,2.0
+Choroid plexus,Cavity,9,1.5,2.0
+Cartilage primordium,Dorsal root ganglion,9,1.5,2.0
+Choroid plexus,Connective tissue,8,1.5,2.0
+Mucosal epithelium,Lung,8,1.5,2.0
+Jaw and tooth,Cavity,8,1.5,2.0
+Dorsal root ganglion,Sympathetic nerve,8,1.5,2.0
+Epidermis,GI tract,8,1.5,2.0
+Muscle,Cartilage primordium,8,1.5,2.0
+Pancreas,Lung,7,1.5,2.0
+Jaw and tooth,Epidermis,7,1.5,2.0
+Meninges,Cartilage,7,1.5,2.0
+Connective tissue,Lung,7,1.5,2.0
+Sympathetic nerve,Spinal cord,7,1.5,2.0
+Sympathetic nerve,Dorsal root ganglion,7,1.5,2.0
+Spinal cord,Meninges,7,1.5,2.0
+Epidermis,Dorsal root ganglion,7,1.5,2.0
+Ovary,Pancreas,7,1.5,2.0
+Muscle,Smooth muscle,6,1.5,2.0
+Heart,Connective tissue,6,1.5,2.0
+Epidermis,Smooth muscle,6,1.5,2.0
+Choroid plexus,Jaw and tooth,6,1.5,2.0
+Connective tissue,Dorsal root ganglion,6,1.5,2.0
+Muscle,Mucosal epithelium,5,1.5,2.0
+Spinal cord,Sympathetic nerve,5,1.5,2.0
+Mucosal epithelium,Inner ear,5,1.5,2.0
+Muscle,Cartilage,5,1.5,2.0
+Dorsal root ganglion,Smooth muscle,5,1.5,2.0
+Kidney,Smooth muscle,5,1.5,2.0
+GI tract,Epidermis,5,1.5,2.0
+Muscle,Sympathetic nerve,4,1.5,2.0
+Facial nerve,Mucosal epithelium,4,1.5,2.0
+Dorsal root ganglion,Meninges,4,1.5,2.0
+Lung,Cavity,4,1.5,2.0
+Jaw and tooth,Meninges,4,1.5,2.0
+Ovary,Ovary,4,1.5,2.0
+Kidney,Lung,4,1.5,2.0
+Cavity,Mesothelium,4,1.5,2.0
+GI tract,Mesothelium,4,1.5,2.0
+Ovary,Cavity,3,1.5,2.0
+Connective tissue,Kidney,3,1.5,2.0
+Ovary,Lung,3,1.5,2.0
+Brain,Cavity,3,1.5,2.0
+Mucosal epithelium,Meninges,3,1.5,2.0
+Spinal cord,Connective tissue,3,1.5,2.0
+Epidermis,Heart,3,1.5,2.0
+Epidermis,Muscle,3,1.5,2.0
+Brain,Olfactory epithelium,3,1.5,2.0
+Mesentery,Lung,3,1.5,2.0
+Cavity,Dorsal root ganglion,3,1.5,2.0
+Mucosal epithelium,Cartilage primordium,3,1.5,2.0
+Cavity,GI tract,3,1.5,2.0
+GI tract,Mucosal epithelium,3,1.5,2.0
+GI tract,Spinal cord,3,1.5,2.0
+Lung,Smooth muscle,3,1.5,2.0
+Heart,Blood vessel,3,1.5,2.0
+Cartilage primordium,Cavity,3,1.5,2.0
+Pancreas,Kidney,2,1.5,2.0
+Connective tissue,GI tract,2,1.5,2.0
+Connective tissue,Mucosal epithelium,2,1.5,2.0
+Muscle,Kidney,2,1.5,2.0
+Mesothelium,Pancreas,2,1.5,2.0
+Connective tissue,Pancreas,2,1.5,2.0
+GI tract,Mesentery,2,1.5,2.0
+Lung,Connective tissue,2,1.5,2.0
+Smooth muscle,Cavity,2,1.5,2.0
+Epidermis,Cartilage primordium,2,1.5,2.0
+Mucosal epithelium,Facial nerve,2,1.5,2.0
+Mucosal epithelium,Epidermis,2,1.5,2.0
+Jaw and tooth,Lung,2,1.5,2.0
+Smooth muscle,Lung,2,1.5,2.0
+Muscle,GI tract,2,1.5,2.0
+Connective tissue,Sympathetic nerve,2,1.5,2.0
+GI tract,Adrenal gland,2,1.5,2.0
+Mesentery,GI tract,2,1.5,2.0
+GI tract,Muscle,2,1.5,2.0
+Cartilage primordium,GI tract,2,1.5,2.0
+Epidermis,Mesothelium,1,1.5,2.0
+Ovary,Adrenal gland,1,1.5,2.0
+Liver,Epidermis,1,1.5,2.0
+Heart,Cavity,1,1.5,2.0
+Adipose tissue,Connective tissue,1,1.5,2.0
+Liver,Adrenal gland,1,1.5,2.0
+Pancreas,Adrenal gland,1,1.5,2.0
+Pancreas,Cavity,1,1.5,2.0
+Pancreas,GI tract,1,1.5,2.0
+Meninges,Choroid plexus,1,1.5,2.0
+Connective tissue,Choroid plexus,1,1.5,2.0
+Pancreas,Mesothelium,1,1.5,2.0
+Meninges,Dorsal root ganglion,1,1.5,2.0
+Brain,Dorsal root ganglion,1,1.5,2.0
+Jaw and tooth,GI tract,1,1.5,2.0
+Brain,Cartilage,1,1.5,2.0
+Spinal cord,Cartilage,1,1.5,2.0
+Kidney,Connective tissue,1,1.5,2.0
+Spinal cord,Kidney,1,1.5,2.0
+Choroid plexus,Epidermis,1,1.5,2.0
+Cavity,Pancreas,1,1.5,2.0
+Kidney,Cavity,1,1.5,2.0
+Cavity,Muscle,1,1.5,2.0
+Cavity,Mucosal epithelium,1,1.5,2.0
+Sympathetic nerve,Meninges,1,1.5,2.0
+Kidney,Adrenal gland,1,1.5,2.0
+Jaw and tooth,Muscle,1,1.5,2.0
+Cartilage,Spinal cord,1,1.5,2.0
+Mesentery,Epidermis,1,1.5,2.0
+Mesothelium,Meninges,1,1.5,2.0
+Mucosal epithelium,Spinal cord,1,1.5,2.0
+Mucosal epithelium,Brain,1,1.5,2.0
+Mucosal epithelium,Cartilage,1,1.5,2.0
+Mesothelium,Kidney,1,1.5,2.0
+Cartilage primordium,Lung,1,1.5,2.0
+Mesothelium,Jaw and tooth,1,1.5,2.0
+Mesothelium,Epidermis,1,1.5,2.0
+Lung,Spinal cord,1,1.5,2.0
+Cartilage primordium,Epidermis,1,1.5,2.0
+Epidermis,Sympathetic nerve,1,1.5,2.0
+Epidermis,Cartilage,1,1.5,2.0
+Mucosal epithelium,Olfactory epithelium,1,1.5,2.0
+Mucosal epithelium,Pancreas,1,1.5,2.0
+Epidermis,Brain,1,1.5,2.0
+Connective tissue,Jaw and tooth,1,1.5,2.0
+Lung,Mucosal epithelium,1,1.5,2.0
+Cartilage,Dorsal root ganglion,1,1.5,2.0
+Mesothelium,Adrenal gland,1,1.5,2.0
+Dorsal root ganglion,Cavity,1,1.5,2.0
+Facial nerve,Inner ear,1,1.5,2.0
+Mesentery,Mesothelium,1,1.5,2.0
+Muscle,Heart,1,1.5,2.0
+Muscle,Inner ear,1,1.5,2.0
+Connective tissue,Muscle,1,1.5,2.0
+Mesentery,Jaw and tooth,1,1.5,2.0
+Lung,Adrenal gland,1,1.5,2.0
+Liver,Mesothelium,1,1.5,2.0
+Meninges,Epidermis,1,1.5,2.0
+Brain,Brain,9167,2.0,2.5
+Cavity,Cavity,6154,2.0,2.5
+Connective tissue,Connective tissue,5765,2.0,2.5
+Meninges,Meninges,4054,2.0,2.5
+Spinal cord,Spinal cord,2921,2.0,2.5
+Jaw and tooth,Jaw and tooth,2385,2.0,2.5
+Epidermis,Epidermis,2001,2.0,2.5
+Liver,Liver,1686,2.0,2.5
+Heart,Heart,1638,2.0,2.5
+Cartilage primordium,Cartilage primordium,1416,2.0,2.5
+Muscle,Muscle,1048,2.0,2.5
+Dorsal root ganglion,Dorsal root ganglion,897,2.0,2.5
+Lung,Lung,732,2.0,2.5
+GI tract,GI tract,571,2.0,2.5
+Mucosal epithelium,Mucosal epithelium,563,2.0,2.5
+Smooth muscle,Smooth muscle,559,2.0,2.5
+Choroid plexus,Choroid plexus,542,2.0,2.5
+Muscle,Connective tissue,452,2.0,2.5
+Adipose tissue,Adipose tissue,422,2.0,2.5
+Cavity,Connective tissue,375,2.0,2.5
+Brain,Choroid plexus,370,2.0,2.5
+Muscle,Spinal cord,327,2.0,2.5
+Epidermis,Cavity,288,2.0,2.5
+Cavity,Heart,271,2.0,2.5
+Jaw and tooth,Connective tissue,239,2.0,2.5
+Cavity,Meninges,189,2.0,2.5
+GI tract,Smooth muscle,175,2.0,2.5
+Connective tissue,Spinal cord,173,2.0,2.5
+Blood vessel,Blood vessel,173,2.0,2.5
+Brain,Meninges,172,2.0,2.5
+Cavity,Blood vessel,171,2.0,2.5
+Cartilage primordium,Cartilage,167,2.0,2.5
+Meninges,Connective tissue,150,2.0,2.5
+Cartilage,Cartilage,146,2.0,2.5
+Connective tissue,Meninges,141,2.0,2.5
+Connective tissue,Smooth muscle,139,2.0,2.5
+Kidney,Kidney,138,2.0,2.5
+Cavity,Epidermis,136,2.0,2.5
+Epidermis,Adipose tissue,112,2.0,2.5
+Spinal cord,Brain,112,2.0,2.5
+Connective tissue,Cavity,111,2.0,2.5
+Cavity,Cartilage,107,2.0,2.5
+Cartilage primordium,Connective tissue,102,2.0,2.5
+Pancreas,Pancreas,101,2.0,2.5
+Meninges,Adipose tissue,91,2.0,2.5
+Connective tissue,Cartilage,89,2.0,2.5
+Sympathetic nerve,Sympathetic nerve,89,2.0,2.5
+Connective tissue,Adipose tissue,72,2.0,2.5
+Choroid plexus,Meninges,66,2.0,2.5
+Dorsal root ganglion,Spinal cord,60,2.0,2.5
+Epidermis,Spinal cord,56,2.0,2.5
+Cavity,Adipose tissue,55,2.0,2.5
+Connective tissue,Heart,54,2.0,2.5
+Epidermis,Connective tissue,51,2.0,2.5
+Meninges,Spinal cord,48,2.0,2.5
+Mesentery,Smooth muscle,41,2.0,2.5
+GI tract,Cavity,40,2.0,2.5
+Meninges,Jaw and tooth,38,2.0,2.5
+Mesothelium,Cavity,36,2.0,2.5
+Cavity,Brain,36,2.0,2.5
+Muscle,Jaw and tooth,35,2.0,2.5
+GI tract,Connective tissue,34,2.0,2.5
+Meninges,Brain,33,2.0,2.5
+Meninges,Cavity,33,2.0,2.5
+GI tract,Lung,32,2.0,2.5
+Dorsal root ganglion,Connective tissue,31,2.0,2.5
+Brain,Olfactory epithelium,31,2.0,2.5
+Epidermis,Meninges,30,2.0,2.5
+Brain,Inner ear,29,2.0,2.5
+Choroid plexus,Brain,29,2.0,2.5
+Facial nerve,Facial nerve,28,2.0,2.5
+Jaw and tooth,Cartilage primordium,28,2.0,2.5
+Cartilage primordium,Adipose tissue,28,2.0,2.5
+GI tract,Kidney,27,2.0,2.5
+Cavity,Lung,27,2.0,2.5
+Meninges,Cartilage,26,2.0,2.5
+Cavity,Jaw and tooth,26,2.0,2.5
+Mesentery,Cavity,25,2.0,2.5
+Cartilage primordium,Meninges,24,2.0,2.5
+Epidermis,Jaw and tooth,22,2.0,2.5
+Cavity,Spinal cord,22,2.0,2.5
+Cartilage primordium,Spinal cord,22,2.0,2.5
+Epidermis,Mucosal epithelium,21,2.0,2.5
+Spinal cord,Meninges,21,2.0,2.5
+Cavity,Liver,21,2.0,2.5
+Mesentery,Mesentery,20,2.0,2.5
+Cavity,Choroid plexus,20,2.0,2.5
+Inner ear,Inner ear,19,2.0,2.5
+Jaw and tooth,Mucosal epithelium,19,2.0,2.5
+Mesentery,Connective tissue,18,2.0,2.5
+Cavity,Smooth muscle,18,2.0,2.5
+Adipose tissue,Meninges,17,2.0,2.5
+Muscle,Cavity,16,2.0,2.5
+Dorsal root ganglion,Smooth muscle,16,2.0,2.5
+Muscle,Brain,16,2.0,2.5
+Brain,Mucosal epithelium,15,2.0,2.5
+Mesothelium,Mesothelium,14,2.0,2.5
+Connective tissue,Lung,14,2.0,2.5
+Brain,Facial nerve,14,2.0,2.5
+Choroid plexus,Mucosal epithelium,14,2.0,2.5
+Dorsal root ganglion,Sympathetic nerve,14,2.0,2.5
+Liver,Cavity,14,2.0,2.5
+Lung,Cavity,13,2.0,2.5
+GI tract,Pancreas,13,2.0,2.5
+Connective tissue,Epidermis,13,2.0,2.5
+Liver,Blood vessel,13,2.0,2.5
+Connective tissue,Jaw and tooth,12,2.0,2.5
+Muscle,Sympathetic nerve,12,2.0,2.5
+Connective tissue,Cartilage primordium,11,2.0,2.5
+Facial nerve,Mucosal epithelium,10,2.0,2.5
+Mesothelium,Connective tissue,10,2.0,2.5
+Epidermis,Smooth muscle,10,2.0,2.5
+Sympathetic nerve,Smooth muscle,10,2.0,2.5
+Jaw and tooth,Cavity,9,2.0,2.5
+Mucosal epithelium,Lung,9,2.0,2.5
+Mesothelium,Smooth muscle,9,2.0,2.5
+Sympathetic nerve,Spinal cord,9,2.0,2.5
+Meninges,Dorsal root ganglion,8,2.0,2.5
+Meninges,Choroid plexus,8,2.0,2.5
+Mesothelium,Lung,8,2.0,2.5
+Adrenal gland,Adrenal gland,8,2.0,2.5
+Mucosal epithelium,Cartilage,8,2.0,2.5
+Connective tissue,Dorsal root ganglion,8,2.0,2.5
+Muscle,Smooth muscle,8,2.0,2.5
+Mucosal epithelium,Connective tissue,7,2.0,2.5
+Muscle,Dorsal root ganglion,7,2.0,2.5
+Muscle,Cartilage,7,2.0,2.5
+Epidermis,GI tract,7,2.0,2.5
+Choroid plexus,Jaw and tooth,7,2.0,2.5
+Choroid plexus,Connective tissue,7,2.0,2.5
+Jaw and tooth,Cartilage,6,2.0,2.5
+Connective tissue,Mucosal epithelium,6,2.0,2.5
+Heart,Blood vessel,6,2.0,2.5
+Epidermis,Lung,6,2.0,2.5
+Mucosal epithelium,Olfactory epithelium,6,2.0,2.5
+Lung,Smooth muscle,6,2.0,2.5
+Brain,Spinal cord,6,2.0,2.5
+Muscle,Inner ear,5,2.0,2.5
+Pancreas,Cavity,5,2.0,2.5
+Smooth muscle,Lung,5,2.0,2.5
+Pancreas,Lung,5,2.0,2.5
+GI tract,Adrenal gland,5,2.0,2.5
+Facial nerve,Inner ear,5,2.0,2.5
+Epidermis,Cartilage,5,2.0,2.5
+Epidermis,Brain,5,2.0,2.5
+Cartilage primordium,Cavity,5,2.0,2.5
+Brain,Dorsal root ganglion,5,2.0,2.5
+Lung,Kidney,5,2.0,2.5
+Pancreas,Adrenal gland,4,2.0,2.5
+Spinal cord,Dorsal root ganglion,4,2.0,2.5
+Meninges,Cartilage primordium,4,2.0,2.5
+Mucosal epithelium,Inner ear,4,2.0,2.5
+Muscle,Mucosal epithelium,4,2.0,2.5
+Muscle,Meninges,4,2.0,2.5
+Kidney,Smooth muscle,4,2.0,2.5
+Dorsal root ganglion,Cartilage,4,2.0,2.5
+Cartilage,Connective tissue,4,2.0,2.5
+Choroid plexus,Cavity,4,2.0,2.5
+Cavity,Mucosal epithelium,4,2.0,2.5
+Jaw and tooth,Smooth muscle,4,2.0,2.5
+Connective tissue,Kidney,4,2.0,2.5
+Connective tissue,Sympathetic nerve,3,2.0,2.5
+Mesothelium,Pancreas,3,2.0,2.5
+Cartilage primordium,Dorsal root ganglion,3,2.0,2.5
+Brain,Cartilage,3,2.0,2.5
+Connective tissue,Brain,3,2.0,2.5
+Jaw and tooth,Epidermis,3,2.0,2.5
+Pancreas,Kidney,3,2.0,2.5
+Epidermis,Heart,3,2.0,2.5
+Meninges,Inner ear,3,2.0,2.5
+Cartilage,Spinal cord,3,2.0,2.5
+Lung,Pancreas,3,2.0,2.5
+Ovary,Adrenal gland,3,2.0,2.5
+Muscle,Lung,3,2.0,2.5
+Olfactory epithelium,Olfactory epithelium,3,2.0,2.5
+Muscle,Epidermis,3,2.0,2.5
+Cavity,Cartilage primordium,3,2.0,2.5
+Muscle,Kidney,3,2.0,2.5
+Sympathetic nerve,Connective tissue,3,2.0,2.5
+Liver,Epidermis,3,2.0,2.5
+Muscle,Heart,2,2.0,2.5
+Mucosal epithelium,Brain,2,2.0,2.5
+Lung,Cartilage,2,2.0,2.5
+Mucosal epithelium,GI tract,2,2.0,2.5
+Muscle,GI tract,2,2.0,2.5
+Connective tissue,GI tract,2,2.0,2.5
+Cartilage,Meninges,2,2.0,2.5
+Epidermis,Cartilage primordium,2,2.0,2.5
+Cartilage,Heart,2,2.0,2.5
+Heart,Connective tissue,2,2.0,2.5
+Cartilage,Adipose tissue,2,2.0,2.5
+Brain,Sympathetic nerve,2,2.0,2.5
+Lung,Connective tissue,2,2.0,2.5
+Jaw and tooth,Lung,2,2.0,2.5
+Jaw and tooth,Meninges,2,2.0,2.5
+Liver,Heart,2,2.0,2.5
+Meninges,Heart,2,2.0,2.5
+Spinal cord,Smooth muscle,2,2.0,2.5
+Lung,Spinal cord,2,2.0,2.5
+Cartilage,Epidermis,2,2.0,2.5
+Sympathetic nerve,Heart,1,2.0,2.5
+Cavity,Adrenal gland,1,2.0,2.5
+Brain,Cavity,1,2.0,2.5
+Cartilage primordium,Epidermis,1,2.0,2.5
+Sympathetic nerve,Kidney,1,2.0,2.5
+Olfactory epithelium,Lung,1,2.0,2.5
+Cartilage primordium,Sympathetic nerve,1,2.0,2.5
+Sympathetic nerve,Epidermis,1,2.0,2.5
+Ovary,Ovary,1,2.0,2.5
+Sympathetic nerve,Dorsal root ganglion,1,2.0,2.5
+Adipose tissue,Spinal cord,1,2.0,2.5
+Spinal cord,Kidney,1,2.0,2.5
+Spinal cord,Connective tissue,1,2.0,2.5
+Cartilage primordium,Mucosal epithelium,1,2.0,2.5
+Spinal cord,Adipose tissue,1,2.0,2.5
+Smooth muscle,Kidney,1,2.0,2.5
+Blood vessel,Heart,1,2.0,2.5
+Lung,Adrenal gland,1,2.0,2.5
+Mucosal epithelium,Pancreas,1,2.0,2.5
+Brain,Connective tissue,1,2.0,2.5
+Cartilage,Cavity,1,2.0,2.5
+Lung,Epidermis,1,2.0,2.5
+Lung,GI tract,1,2.0,2.5
+Liver,Cartilage,1,2.0,2.5
+Cavity,Dorsal root ganglion,1,2.0,2.5
+Kidney,Lung,1,2.0,2.5
+Kidney,GI tract,1,2.0,2.5
+Kidney,Connective tissue,1,2.0,2.5
+Kidney,Cavity,1,2.0,2.5
+Kidney,Adrenal gland,1,2.0,2.5
+Meninges,Facial nerve,1,2.0,2.5
+Jaw and tooth,Olfactory epithelium,1,2.0,2.5
+Cartilage,Blood vessel,1,2.0,2.5
+Mesentery,Lung,1,2.0,2.5
+Heart,Lung,1,2.0,2.5
+Dorsal root ganglion,Cavity,1,2.0,2.5
+Mesothelium,Epidermis,1,2.0,2.5
+GI tract,Mucosal epithelium,1,2.0,2.5
+Epidermis,Muscle,1,2.0,2.5
+Mucosal epithelium,Cavity,1,2.0,2.5
+Epidermis,Liver,1,2.0,2.5
+Epidermis,Kidney,1,2.0,2.5
+Mucosal epithelium,Kidney,1,2.0,2.5
+Muscle,Adipose tissue,1,2.0,2.5
+Epidermis,Blood vessel,1,2.0,2.5
+Dorsal root ganglion,Meninges,1,2.0,2.5
+Dorsal root ganglion,Lung,1,2.0,2.5
+Dorsal root ganglion,Kidney,1,2.0,2.5
+Dorsal root ganglion,Epidermis,1,2.0,2.5
+Heart,Adipose tissue,1,2.0,2.5
+Brain,Brain,8698,2.5,3.0
+Cavity,Cavity,5887,2.5,3.0
+Connective tissue,Connective tissue,5852,2.5,3.0
+Meninges,Meninges,4317,2.5,3.0
+Spinal cord,Spinal cord,3503,2.5,3.0
+Jaw and tooth,Jaw and tooth,2270,2.5,3.0
+Heart,Heart,1942,2.5,3.0
+Epidermis,Epidermis,1755,2.5,3.0
+Liver,Liver,1685,2.5,3.0
+Smooth muscle,Smooth muscle,984,2.5,3.0
+Cartilage primordium,Cartilage primordium,941,2.5,3.0
+Choroid plexus,Choroid plexus,900,2.5,3.0
+Lung,Lung,793,2.5,3.0
+Adipose tissue,Adipose tissue,745,2.5,3.0
+Dorsal root ganglion,Dorsal root ganglion,742,2.5,3.0
+Muscle,Muscle,623,2.5,3.0
+Mucosal epithelium,Mucosal epithelium,613,2.5,3.0
+Cartilage,Cartilage,524,2.5,3.0
+GI tract,GI tract,436,2.5,3.0
+Cartilage primordium,Cartilage,407,2.5,3.0
+Blood vessel,Blood vessel,357,2.5,3.0
+Brain,Choroid plexus,343,2.5,3.0
+Connective tissue,Smooth muscle,304,2.5,3.0
+Connective tissue,Cartilage,259,2.5,3.0
+Brain,Meninges,237,2.5,3.0
+Epidermis,Cavity,217,2.5,3.0
+Muscle,Connective tissue,208,2.5,3.0
+Cavity,Heart,189,2.5,3.0
+Jaw and tooth,Connective tissue,188,2.5,3.0
+Kidney,Kidney,172,2.5,3.0
+Connective tissue,Cavity,170,2.5,3.0
+Connective tissue,Spinal cord,158,2.5,3.0
+Meninges,Connective tissue,155,2.5,3.0
+Cavity,Meninges,138,2.5,3.0
+Connective tissue,Heart,136,2.5,3.0
+Connective tissue,Meninges,133,2.5,3.0
+Cavity,Epidermis,119,2.5,3.0
+Connective tissue,Adipose tissue,109,2.5,3.0
+Dorsal root ganglion,Spinal cord,102,2.5,3.0
+Pancreas,Pancreas,101,2.5,3.0
+Sympathetic nerve,Sympathetic nerve,96,2.5,3.0
+Muscle,Spinal cord,95,2.5,3.0
+Cavity,Blood vessel,85,2.5,3.0
+Cavity,Connective tissue,82,2.5,3.0
+Epidermis,Adipose tissue,80,2.5,3.0
+GI tract,Smooth muscle,75,2.5,3.0
+Cavity,Cartilage,72,2.5,3.0
+Inner ear,Inner ear,62,2.5,3.0
+Brain,Olfactory epithelium,61,2.5,3.0
+Meninges,Adipose tissue,59,2.5,3.0
+Connective tissue,Jaw and tooth,54,2.5,3.0
+Spinal cord,Brain,54,2.5,3.0
+Spinal cord,Meninges,46,2.5,3.0
+Meninges,Brain,45,2.5,3.0
+Cartilage primordium,Connective tissue,44,2.5,3.0
+Meninges,Cartilage,42,2.5,3.0
+Olfactory epithelium,Olfactory epithelium,41,2.5,3.0
+Connective tissue,Lung,40,2.5,3.0
+Brain,Inner ear,39,2.5,3.0
+Cavity,Adipose tissue,35,2.5,3.0
+Adipose tissue,Meninges,30,2.5,3.0
+Cavity,Smooth muscle,30,2.5,3.0
+Meninges,Jaw and tooth,29,2.5,3.0
+GI tract,Cavity,28,2.5,3.0
+Cavity,Jaw and tooth,26,2.5,3.0
+Meninges,Cavity,26,2.5,3.0
+Cartilage primordium,Adipose tissue,26,2.5,3.0
+Muscle,Cavity,25,2.5,3.0
+Heart,Blood vessel,25,2.5,3.0
+Muscle,Brain,24,2.5,3.0
+Meninges,Spinal cord,24,2.5,3.0
+Epidermis,Spinal cord,24,2.5,3.0
+Cavity,Lung,24,2.5,3.0
+Adrenal gland,Adrenal gland,23,2.5,3.0
+Dorsal root ganglion,Smooth muscle,22,2.5,3.0
+Lung,Cavity,21,2.5,3.0
+Facial nerve,Inner ear,21,2.5,3.0
+GI tract,Kidney,21,2.5,3.0
+Cartilage,Meninges,20,2.5,3.0
+Epidermis,Mucosal epithelium,20,2.5,3.0
+Cavity,Spinal cord,20,2.5,3.0
+Spinal cord,Cartilage,19,2.5,3.0
+Dorsal root ganglion,Sympathetic nerve,19,2.5,3.0
+Epidermis,Connective tissue,18,2.5,3.0
+Facial nerve,Facial nerve,18,2.5,3.0
+Connective tissue,Epidermis,17,2.5,3.0
+Cartilage primordium,Meninges,16,2.5,3.0
+Muscle,Jaw and tooth,16,2.5,3.0
+Jaw and tooth,Mucosal epithelium,16,2.5,3.0
+Dorsal root ganglion,Cartilage,15,2.5,3.0
+Dorsal root ganglion,Connective tissue,15,2.5,3.0
+Meninges,Choroid plexus,15,2.5,3.0
+Sympathetic nerve,Smooth muscle,15,2.5,3.0
+Mucosal epithelium,Olfactory epithelium,14,2.5,3.0
+Jaw and tooth,Cartilage,14,2.5,3.0
+Jaw and tooth,Cavity,14,2.5,3.0
+Choroid plexus,Brain,14,2.5,3.0
+Mesentery,Smooth muscle,14,2.5,3.0
+Cavity,Brain,14,2.5,3.0
+Jaw and tooth,Smooth muscle,14,2.5,3.0
+Cavity,Liver,13,2.5,3.0
+Cartilage primordium,Spinal cord,13,2.5,3.0
+Choroid plexus,Meninges,13,2.5,3.0
+Lung,Smooth muscle,13,2.5,3.0
+Muscle,Inner ear,12,2.5,3.0
+Cartilage primordium,Jaw and tooth,12,2.5,3.0
+Liver,Blood vessel,12,2.5,3.0
+Smooth muscle,Cavity,12,2.5,3.0
+Mucosal epithelium,Lung,11,2.5,3.0
+Muscle,Sympathetic nerve,11,2.5,3.0
+Spinal cord,Smooth muscle,11,2.5,3.0
+Muscle,Cartilage,11,2.5,3.0
+Epidermis,Jaw and tooth,10,2.5,3.0
+GI tract,Lung,10,2.5,3.0
+Cavity,Mucosal epithelium,9,2.5,3.0
+Epidermis,Smooth muscle,9,2.5,3.0
+Muscle,Smooth muscle,9,2.5,3.0
+Dorsal root ganglion,Meninges,8,2.5,3.0
+Epidermis,Lung,8,2.5,3.0
+Pancreas,Cavity,8,2.5,3.0
+Muscle,Lung,7,2.5,3.0
+Kidney,Smooth muscle,7,2.5,3.0
+Blood vessel,Heart,7,2.5,3.0
+Mucosal epithelium,Inner ear,7,2.5,3.0
+Brain,Spinal cord,7,2.5,3.0
+Cavity,Choroid plexus,7,2.5,3.0
+Cartilage,Epidermis,7,2.5,3.0
+Mesothelium,Cavity,7,2.5,3.0
+Cartilage,Adipose tissue,7,2.5,3.0
+Connective tissue,Mucosal epithelium,7,2.5,3.0
+Choroid plexus,Olfactory epithelium,6,2.5,3.0
+GI tract,Pancreas,6,2.5,3.0
+Epidermis,Kidney,6,2.5,3.0
+Jaw and tooth,Lung,6,2.5,3.0
+Epidermis,Meninges,6,2.5,3.0
+Epidermis,Muscle,5,2.5,3.0
+Spinal cord,Epidermis,5,2.5,3.0
+Spinal cord,Sympathetic nerve,5,2.5,3.0
+Cavity,Adrenal gland,5,2.5,3.0
+Cartilage,Connective tissue,5,2.5,3.0
+Lung,Cartilage,5,2.5,3.0
+Pancreas,Adrenal gland,5,2.5,3.0
+Brain,Cartilage,5,2.5,3.0
+Connective tissue,Sympathetic nerve,4,2.5,3.0
+Sympathetic nerve,Spinal cord,4,2.5,3.0
+Lung,Kidney,4,2.5,3.0
+Choroid plexus,Connective tissue,4,2.5,3.0
+Connective tissue,Kidney,4,2.5,3.0
+Adipose tissue,Heart,4,2.5,3.0
+Dorsal root ganglion,Epidermis,4,2.5,3.0
+GI tract,Mucosal epithelium,4,2.5,3.0
+Mesentery,Cavity,4,2.5,3.0
+Cartilage,Heart,4,2.5,3.0
+Pancreas,Kidney,4,2.5,3.0
+Liver,Epidermis,3,2.5,3.0
+Mesothelium,Mesothelium,3,2.5,3.0
+Meninges,Inner ear,3,2.5,3.0
+Meninges,Heart,3,2.5,3.0
+Lung,Spinal cord,3,2.5,3.0
+Lung,Adrenal gland,3,2.5,3.0
+Liver,Cavity,3,2.5,3.0
+Facial nerve,Mucosal epithelium,3,2.5,3.0
+Mucosal epithelium,Epidermis,3,2.5,3.0
+Smooth muscle,Lung,3,2.5,3.0
+Muscle,Mucosal epithelium,3,2.5,3.0
+Epidermis,GI tract,3,2.5,3.0
+Brain,Connective tissue,3,2.5,3.0
+Mucosal epithelium,Connective tissue,3,2.5,3.0
+Heart,Meninges,3,2.5,3.0
+Spinal cord,Kidney,3,2.5,3.0
+GI tract,Connective tissue,3,2.5,3.0
+Dorsal root ganglion,Brain,3,2.5,3.0
+Connective tissue,Dorsal root ganglion,2,2.5,3.0
+Meninges,Dorsal root ganglion,2,2.5,3.0
+Adipose tissue,Epidermis,2,2.5,3.0
+Brain,Sympathetic nerve,2,2.5,3.0
+Cartilage,Cavity,2,2.5,3.0
+Spinal cord,Dorsal root ganglion,2,2.5,3.0
+Muscle,Blood vessel,2,2.5,3.0
+Epidermis,Brain,2,2.5,3.0
+Mesentery,Mesentery,2,2.5,3.0
+Connective tissue,Brain,2,2.5,3.0
+Mesothelium,Lung,2,2.5,3.0
+Adipose tissue,Cavity,2,2.5,3.0
+Sympathetic nerve,Cartilage,2,2.5,3.0
+Sympathetic nerve,Cavity,2,2.5,3.0
+Sympathetic nerve,Dorsal root ganglion,2,2.5,3.0
+Dorsal root ganglion,Kidney,2,2.5,3.0
+Kidney,Lung,2,2.5,3.0
+Kidney,Epidermis,2,2.5,3.0
+Lung,Connective tissue,2,2.5,3.0
+Jaw and tooth,Epidermis,2,2.5,3.0
+Inner ear,Cartilage,2,2.5,3.0
+Liver,Heart,2,2.5,3.0
+Brain,Blood vessel,2,2.5,3.0
+Lung,Adipose tissue,2,2.5,3.0
+Pancreas,Lung,2,2.5,3.0
+Brain,Dorsal root ganglion,2,2.5,3.0
+GI tract,Adrenal gland,2,2.5,3.0
+Epidermis,Cartilage,2,2.5,3.0
+Spinal cord,Connective tissue,1,2.5,3.0
+Ovary,Cavity,1,2.5,3.0
+Smooth muscle,Connective tissue,1,2.5,3.0
+Muscle,GI tract,1,2.5,3.0
+Spinal cord,Heart,1,2.5,3.0
+Pancreas,Spinal cord,1,2.5,3.0
+Smooth muscle,Spinal cord,1,2.5,3.0
+Mucosal epithelium,Smooth muscle,1,2.5,3.0
+Muscle,Dorsal root ganglion,1,2.5,3.0
+Adipose tissue,Lung,1,2.5,3.0
+Mucosal epithelium,Kidney,1,2.5,3.0
+Muscle,Meninges,1,2.5,3.0
+Cartilage primordium,GI tract,1,2.5,3.0
+Mucosal epithelium,Choroid plexus,1,2.5,3.0
+Heart,Adipose tissue,1,2.5,3.0
+Brain,Heart,1,2.5,3.0
+GI tract,Epidermis,1,2.5,3.0
+Facial nerve,Brain,1,2.5,3.0
+Epidermis,Heart,1,2.5,3.0
+Brain,Mucosal epithelium,1,2.5,3.0
+Dorsal root ganglion,Cavity,1,2.5,3.0
+Dorsal root ganglion,Adipose tissue,1,2.5,3.0
+Connective tissue,Pancreas,1,2.5,3.0
+Connective tissue,Inner ear,1,2.5,3.0
+Connective tissue,GI tract,1,2.5,3.0
+Connective tissue,Cartilage primordium,1,2.5,3.0
+Cartilage,Lung,1,2.5,3.0
+Choroid plexus,Smooth muscle,1,2.5,3.0
+Choroid plexus,Jaw and tooth,1,2.5,3.0
+Cartilage,Smooth muscle,1,2.5,3.0
+Choroid plexus,Cartilage,1,2.5,3.0
+Cavity,Olfactory epithelium,1,2.5,3.0
+Cavity,Kidney,1,2.5,3.0
+Cartilage primordium,Cavity,1,2.5,3.0
+Cartilage primordium,Epidermis,1,2.5,3.0
+Cavity,Cartilage primordium,1,2.5,3.0
+Cartilage primordium,Mucosal epithelium,1,2.5,3.0
+Cartilage primordium,Lung,1,2.5,3.0
+Adipose tissue,Cartilage,1,2.5,3.0
+Heart,Cartilage,1,2.5,3.0
+Mucosal epithelium,Cavity,1,2.5,3.0
+Heart,Cavity,1,2.5,3.0
+Mucosal epithelium,Cartilage,1,2.5,3.0
+Mucosal epithelium,Brain,1,2.5,3.0
+Mucosal epithelium,Adipose tissue,1,2.5,3.0
+Mesothelium,Smooth muscle,1,2.5,3.0
+Mesothelium,Pancreas,1,2.5,3.0
+Meninges,Sympathetic nerve,1,2.5,3.0
+Meninges,Olfactory epithelium,1,2.5,3.0
+Meninges,Epidermis,1,2.5,3.0
+Blood vessel,Liver,1,2.5,3.0
+Lung,Pancreas,1,2.5,3.0
+Brain,Adipose tissue,1,2.5,3.0
+Lung,Inner ear,1,2.5,3.0
+Liver,GI tract,1,2.5,3.0
+Liver,Cartilage,1,2.5,3.0
+Liver,Adrenal gland,1,2.5,3.0
+Kidney,Spinal cord,1,2.5,3.0
+Kidney,Cavity,1,2.5,3.0
+Kidney,Adrenal gland,1,2.5,3.0
+Jaw and tooth,Pancreas,1,2.5,3.0
+Inner ear,Brain,1,2.5,3.0
+Heart,Lung,1,2.5,3.0
+Heart,Epidermis,1,2.5,3.0
+Heart,Connective tissue,1,2.5,3.0
+Brain,Cavity,1,2.5,3.0

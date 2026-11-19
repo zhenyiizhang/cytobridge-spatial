@@ -1,0 +1,589 @@
+condition,sender_type,receiver_type,raw_attention_mean,n_directed_edges,zero_completed_no_edge,rank_from_top,n_complete_directed_type_pairs
+trained,Angioblastic Mesenchymal Cell,Angioblastic Mesenchymal Cell,0.3751247211486331,389,False,49,196
+trained,Angioblastic Mesenchymal Cell,Erythroid Lineage Cell,0,0,True,119,196
+trained,Angioblastic Mesenchymal Cell,Forebrain,0.3834138141025471,79,False,45,196
+trained,Angioblastic Mesenchymal Cell,Hatching Gland,0.23014322736046527,11,False,112,196
+trained,Angioblastic Mesenchymal Cell,"Immature Eye, Midbrain",0.23811466060578818,8,False,111,196
+trained,Angioblastic Mesenchymal Cell,Nervous System,0.40557631079492895,87,False,31,196
+trained,Angioblastic Mesenchymal Cell,Neural Crest,0.36814590426515942,242,False,53,196
+trained,Angioblastic Mesenchymal Cell,"Neural Crest, Otic Vesicle",0.38127241532007849,9,False,46,196
+trained,Angioblastic Mesenchymal Cell,Notochord,0.39018502086400986,6,False,39,196
+trained,Angioblastic Mesenchymal Cell,Pronephros,0,0,True,119,196
+trained,Angioblastic Mesenchymal Cell,"Segmental Plate, Tail Bud",0,0,True,119,196
+trained,Angioblastic Mesenchymal Cell,Somite,0.47081353408949717,7,False,15,196
+trained,Angioblastic Mesenchymal Cell,Yolk Syncytial Layer,0,0,True,119,196
+trained,Angioblastic Mesenchymal Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Erythroid Lineage Cell,Angioblastic Mesenchymal Cell,0,0,True,119,196
+trained,Erythroid Lineage Cell,Erythroid Lineage Cell,0.35705959025238243,728,False,55,196
+trained,Erythroid Lineage Cell,Forebrain,0,0,True,119,196
+trained,Erythroid Lineage Cell,Hatching Gland,0,0,True,119,196
+trained,Erythroid Lineage Cell,"Immature Eye, Midbrain",0,0,True,119,196
+trained,Erythroid Lineage Cell,Nervous System,0.25809708663395464,7,False,107,196
+trained,Erythroid Lineage Cell,Neural Crest,0,0,True,119,196
+trained,Erythroid Lineage Cell,"Neural Crest, Otic Vesicle",0,0,True,119,196
+trained,Erythroid Lineage Cell,Notochord,0.34706305309397273,61,False,63,196
+trained,Erythroid Lineage Cell,Pronephros,0.3552895170085284,49,False,58,196
+trained,Erythroid Lineage Cell,"Segmental Plate, Tail Bud",0.33311784693173002,7,False,71,196
+trained,Erythroid Lineage Cell,Somite,0.40067633208054215,67,False,35,196
+trained,Erythroid Lineage Cell,Yolk Syncytial Layer,0,0,True,119,196
+trained,Erythroid Lineage Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Forebrain,Angioblastic Mesenchymal Cell,0.38804532511112017,78,False,40,196
+trained,Forebrain,Erythroid Lineage Cell,0.53767645359039307,1,False,8,196
+trained,Forebrain,Forebrain,0.47956779901809743,1167,False,11,196
+trained,Forebrain,Hatching Gland,0.25684784166514874,16,False,108,196
+trained,Forebrain,"Immature Eye, Midbrain",0.4405746375736983,23,False,18,196
+trained,Forebrain,Nervous System,0.63052325521196639,175,False,4,196
+trained,Forebrain,Neural Crest,0.33967318366735411,234,False,67,196
+trained,Forebrain,"Neural Crest, Otic Vesicle",0.3136161852341432,13,False,81,196
+trained,Forebrain,Notochord,0.37827583402395248,16,False,47,196
+trained,Forebrain,Pronephros,0,0,True,119,196
+trained,Forebrain,"Segmental Plate, Tail Bud",0,0,True,119,196
+trained,Forebrain,Somite,0.43474715948104858,1,False,20,196
+trained,Forebrain,Yolk Syncytial Layer,0,0,True,119,196
+trained,Forebrain,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Hatching Gland,Angioblastic Mesenchymal Cell,0.21778155456889756,11,False,114,196
+trained,Hatching Gland,Erythroid Lineage Cell,0,0,True,119,196
+trained,Hatching Gland,Forebrain,0.34330541239334988,13,False,66,196
+trained,Hatching Gland,Hatching Gland,0.47410792812253488,66,False,13,196
+trained,Hatching Gland,"Immature Eye, Midbrain",0.26963979005813599,1,False,102,196
+trained,Hatching Gland,Nervous System,0.22398340702056879,2,False,113,196
+trained,Hatching Gland,Neural Crest,0.3460797700099647,32,False,64,196
+trained,Hatching Gland,"Neural Crest, Otic Vesicle",0.21253455430269241,2,False,115,196
+trained,Hatching Gland,Notochord,0.26675823330879211,1,False,104,196
+trained,Hatching Gland,Pronephros,0,0,True,119,196
+trained,Hatching Gland,"Segmental Plate, Tail Bud",0,0,True,119,196
+trained,Hatching Gland,Somite,0,0,True,119,196
+trained,Hatching Gland,Yolk Syncytial Layer,1.1387276649475098,2,False,1,196
+trained,Hatching Gland,"Yolk Syncytial Layer, Periderm",0.49743098020553589,3,False,10,196
+trained,"Immature Eye, Midbrain",Angioblastic Mesenchymal Cell,0.2763074576854706,5,False,99,196
+trained,"Immature Eye, Midbrain",Erythroid Lineage Cell,0,0,True,119,196
+trained,"Immature Eye, Midbrain",Forebrain,0.50825871420758106,28,False,9,196
+trained,"Immature Eye, Midbrain",Hatching Gland,0.17655466496944419,1,False,116,196
+trained,"Immature Eye, Midbrain","Immature Eye, Midbrain",0.25833045887319661,19,False,106,196
+trained,"Immature Eye, Midbrain",Nervous System,0.33026010751724239,25,False,73,196
+trained,"Immature Eye, Midbrain",Neural Crest,0.29710773247129774,68,False,87,196
+trained,"Immature Eye, Midbrain","Neural Crest, Otic Vesicle",0.32685571536421776,8,False,77,196
+trained,"Immature Eye, Midbrain",Notochord,0,0,True,119,196
+trained,"Immature Eye, Midbrain",Pronephros,0,0,True,119,196
+trained,"Immature Eye, Midbrain","Segmental Plate, Tail Bud",0,0,True,119,196
+trained,"Immature Eye, Midbrain",Somite,0,0,True,119,196
+trained,"Immature Eye, Midbrain",Yolk Syncytial Layer,0,0,True,119,196
+trained,"Immature Eye, Midbrain","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Nervous System,Angioblastic Mesenchymal Cell,0.40949874451117857,84,False,29,196
+trained,Nervous System,Erythroid Lineage Cell,0.47408810630440712,8,False,14,196
+trained,Nervous System,Forebrain,0.66178369098866474,169,False,3,196
+trained,Nervous System,Hatching Gland,0.169576421380043,2,False,117,196
+trained,Nervous System,"Immature Eye, Midbrain",0.40504170244648341,21,False,32,196
+trained,Nervous System,Nervous System,0.42691472836442895,925,False,24,196
+trained,Nervous System,Neural Crest,0.36620852279935706,481,False,54,196
+trained,Nervous System,"Neural Crest, Otic Vesicle",0.38399292482063174,64,False,43,196
+trained,Nervous System,Notochord,0.43459719193928292,403,False,21,196
+trained,Nervous System,Pronephros,0.28327740728855133,2,False,96,196
+trained,Nervous System,"Segmental Plate, Tail Bud",0.43822435537974042,6,False,19,196
+trained,Nervous System,Somite,0.42694996049006778,12,False,23,196
+trained,Nervous System,Yolk Syncytial Layer,0,0,True,119,196
+trained,Nervous System,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Neural Crest,Angioblastic Mesenchymal Cell,0.35142878916425008,192,False,61,196
+trained,Neural Crest,Erythroid Lineage Cell,0,0,True,119,196
+trained,Neural Crest,Forebrain,0.33663253167813473,220,False,68,196
+trained,Neural Crest,Hatching Gland,0.24952580812184702,23,False,110,196
+trained,Neural Crest,"Immature Eye, Midbrain",0.28623036619113834,46,False,94,196
+trained,Neural Crest,Nervous System,0.35632560162778837,498,False,56,196
+trained,Neural Crest,Neural Crest,0.32853781836821411,1093,False,74,196
+trained,Neural Crest,"Neural Crest, Otic Vesicle",0.33146396685730323,88,False,72,196
+trained,Neural Crest,Notochord,0.30634196701587413,102,False,83,196
+trained,Neural Crest,Pronephros,0.32713574171066284,2,False,76,196
+trained,Neural Crest,"Segmental Plate, Tail Bud",0.31529556587338448,4,False,80,196
+trained,Neural Crest,Somite,0.40379153720794186,31,False,33,196
+trained,Neural Crest,Yolk Syncytial Layer,0,0,True,119,196
+trained,Neural Crest,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,"Neural Crest, Otic Vesicle",Angioblastic Mesenchymal Cell,0.4219610144694646,9,False,25,196
+trained,"Neural Crest, Otic Vesicle",Erythroid Lineage Cell,0,0,True,119,196
+trained,"Neural Crest, Otic Vesicle",Forebrain,0.40699038867439541,14,False,30,196
+trained,"Neural Crest, Otic Vesicle",Hatching Gland,0.14283654093742371,1,False,118,196
+trained,"Neural Crest, Otic Vesicle","Immature Eye, Midbrain",0.30526589974761004,4,False,84,196
+trained,"Neural Crest, Otic Vesicle",Nervous System,0.37104425597935914,80,False,50,196
+trained,"Neural Crest, Otic Vesicle",Neural Crest,0.33601108168353555,119,False,70,196
+trained,"Neural Crest, Otic Vesicle","Neural Crest, Otic Vesicle",0.45593728816934992,56,False,16,196
+trained,"Neural Crest, Otic Vesicle",Notochord,0.2957074455916881,12,False,88,196
+trained,"Neural Crest, Otic Vesicle",Pronephros,0,0,True,119,196
+trained,"Neural Crest, Otic Vesicle","Segmental Plate, Tail Bud",0,0,True,119,196
+trained,"Neural Crest, Otic Vesicle",Somite,0.61698013544082642,2,False,5,196
+trained,"Neural Crest, Otic Vesicle",Yolk Syncytial Layer,0,0,True,119,196
+trained,"Neural Crest, Otic Vesicle","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Notochord,Angioblastic Mesenchymal Cell,0.38772551467021305,6,False,41,196
+trained,Notochord,Erythroid Lineage Cell,0.38392310456870354,73,False,44,196
+trained,Notochord,Forebrain,0.34977921843528748,8,False,62,196
+trained,Notochord,Hatching Gland,0.28909474983811373,4,False,92,196
+trained,Notochord,"Immature Eye, Midbrain",0.35375761985778809,1,False,59,196
+trained,Notochord,Nervous System,0.39639749972091415,543,False,36,196
+trained,Notochord,Neural Crest,0.33616271858605057,104,False,69,196
+trained,Notochord,"Neural Crest, Otic Vesicle",0.28816936082310141,9,False,93,196
+trained,Notochord,Notochord,0.42842950478013331,3831,False,22,196
+trained,Notochord,Pronephros,0.39504624605178834,5,False,37,196
+trained,Notochord,"Segmental Plate, Tail Bud",0.34402413909532586,49,False,65,196
+trained,Notochord,Somite,0.42001818176614092,292,False,26,196
+trained,Notochord,Yolk Syncytial Layer,0,0,True,119,196
+trained,Notochord,"Yolk Syncytial Layer, Periderm",0.27101227641105652,1,False,100,196
+trained,Pronephros,Angioblastic Mesenchymal Cell,0.32831285893917084,2,False,75,196
+trained,Pronephros,Erythroid Lineage Cell,0.29167922084428821,49,False,89,196
+trained,Pronephros,Forebrain,0.26318186521530151,1,False,105,196
+trained,Pronephros,Hatching Gland,0,0,True,119,196
+trained,Pronephros,"Immature Eye, Midbrain",0,0,True,119,196
+trained,Pronephros,Nervous System,0.27859756350517273,2,False,98,196
+trained,Pronephros,Neural Crest,0.35533592104911799,2,False,57,196
+trained,Pronephros,"Neural Crest, Otic Vesicle",0.29014453291893,1,False,90,196
+trained,Pronephros,Notochord,0.41375795432499479,7,False,28,196
+trained,Pronephros,Pronephros,0.27937046438455582,8,False,97,196
+trained,Pronephros,"Segmental Plate, Tail Bud",0.3010732233524322,2,False,85,196
+trained,Pronephros,Somite,0.27021092921495432,12,False,101,196
+trained,Pronephros,Yolk Syncytial Layer,0,0,True,119,196
+trained,Pronephros,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,"Segmental Plate, Tail Bud",Angioblastic Mesenchymal Cell,0.4008910059928894,2,False,34,196
+trained,"Segmental Plate, Tail Bud",Erythroid Lineage Cell,0.28427758387156893,7,False,95,196
+trained,"Segmental Plate, Tail Bud",Forebrain,0.31091767549514771,1,False,82,196
+trained,"Segmental Plate, Tail Bud",Hatching Gland,0,0,True,119,196
+trained,"Segmental Plate, Tail Bud","Immature Eye, Midbrain",0,0,True,119,196
+trained,"Segmental Plate, Tail Bud",Nervous System,0.26884484887123106,5,False,103,196
+trained,"Segmental Plate, Tail Bud",Neural Crest,0.35358650734027225,12,False,60,196
+trained,"Segmental Plate, Tail Bud","Neural Crest, Otic Vesicle",0.36919167637825012,1,False,52,196
+trained,"Segmental Plate, Tail Bud",Notochord,0.2990501507602889,29,False,86,196
+trained,"Segmental Plate, Tail Bud",Pronephros,0.32072305679321289,1,False,79,196
+trained,"Segmental Plate, Tail Bud","Segmental Plate, Tail Bud",0.37616334855556488,2,False,48,196
+trained,"Segmental Plate, Tail Bud",Somite,0.32185542583465571,1,False,78,196
+trained,"Segmental Plate, Tail Bud",Yolk Syncytial Layer,0,0,True,119,196
+trained,"Segmental Plate, Tail Bud","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Somite,Angioblastic Mesenchymal Cell,0,0,True,119,196
+trained,Somite,Erythroid Lineage Cell,0.47828223764896394,75,False,12,196
+trained,Somite,Forebrain,0.53803807497024536,1,False,7,196
+trained,Somite,Hatching Gland,0,0,True,119,196
+trained,Somite,"Immature Eye, Midbrain",0,0,True,119,196
+trained,Somite,Nervous System,0.37019490769931246,14,False,51,196
+trained,Somite,Neural Crest,0.39317963610995899,44,False,38,196
+trained,Somite,"Neural Crest, Otic Vesicle",0.28911468386650085,4,False,91,196
+trained,Somite,Notochord,0.38765869776910872,237,False,42,196
+trained,Somite,Pronephros,0.41558212637901304,10,False,27,196
+trained,Somite,"Segmental Plate, Tail Bud",0.2526430189609527,1,False,109,196
+trained,Somite,Somite,0.89035171885566133,677,False,2,196
+trained,Somite,Yolk Syncytial Layer,0,0,True,119,196
+trained,Somite,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,0,0,True,119,196
+trained,Yolk Syncytial Layer,Erythroid Lineage Cell,0,0,True,119,196
+trained,Yolk Syncytial Layer,Forebrain,0,0,True,119,196
+trained,Yolk Syncytial Layer,Hatching Gland,0.57962654531002045,2,False,6,196
+trained,Yolk Syncytial Layer,"Immature Eye, Midbrain",0,0,True,119,196
+trained,Yolk Syncytial Layer,Nervous System,0,0,True,119,196
+trained,Yolk Syncytial Layer,Neural Crest,0,0,True,119,196
+trained,Yolk Syncytial Layer,"Neural Crest, Otic Vesicle",0,0,True,119,196
+trained,Yolk Syncytial Layer,Notochord,0,0,True,119,196
+trained,Yolk Syncytial Layer,Pronephros,0,0,True,119,196
+trained,Yolk Syncytial Layer,"Segmental Plate, Tail Bud",0,0,True,119,196
+trained,Yolk Syncytial Layer,Somite,0,0,True,119,196
+trained,Yolk Syncytial Layer,Yolk Syncytial Layer,0,0,True,119,196
+trained,Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Angioblastic Mesenchymal Cell,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Erythroid Lineage Cell,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Forebrain,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Hatching Gland,0.44604834914207458,1,False,17,196
+trained,"Yolk Syncytial Layer, Periderm","Immature Eye, Midbrain",0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Nervous System,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Neural Crest,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm","Neural Crest, Otic Vesicle",0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Notochord,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Pronephros,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm","Segmental Plate, Tail Bud",0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Somite,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm",Yolk Syncytial Layer,0,0,True,119,196
+trained,"Yolk Syncytial Layer, Periderm","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Angioblastic Mesenchymal Cell,Angioblastic Mesenchymal Cell,0.032323741447419875,389,False,62,196
+pre_interaction,Angioblastic Mesenchymal Cell,Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,Angioblastic Mesenchymal Cell,Forebrain,0.033561349150877912,79,False,48,196
+pre_interaction,Angioblastic Mesenchymal Cell,Hatching Gland,0.045597872273488438,11,False,7,196
+pre_interaction,Angioblastic Mesenchymal Cell,"Immature Eye, Midbrain",0.03131730319000775,8,False,77,196
+pre_interaction,Angioblastic Mesenchymal Cell,Nervous System,0.033093678411738575,87,False,55,196
+pre_interaction,Angioblastic Mesenchymal Cell,Neural Crest,0.031555221966383086,242,False,74,196
+pre_interaction,Angioblastic Mesenchymal Cell,"Neural Crest, Otic Vesicle",0.031333157585726801,9,False,76,196
+pre_interaction,Angioblastic Mesenchymal Cell,Notochord,0.031177914390961282,6,False,80,196
+pre_interaction,Angioblastic Mesenchymal Cell,Pronephros,0,0,True,119,196
+pre_interaction,Angioblastic Mesenchymal Cell,"Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,Angioblastic Mesenchymal Cell,Somite,0.033910755600248019,7,False,44,196
+pre_interaction,Angioblastic Mesenchymal Cell,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Angioblastic Mesenchymal Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,Angioblastic Mesenchymal Cell,0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,Erythroid Lineage Cell,0.034968917910521292,728,False,41,196
+pre_interaction,Erythroid Lineage Cell,Forebrain,0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,Hatching Gland,0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,"Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,Nervous System,0.038624849702630699,7,False,24,196
+pre_interaction,Erythroid Lineage Cell,Neural Crest,0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,"Neural Crest, Otic Vesicle",0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,Notochord,0.03511258269675438,61,False,39,196
+pre_interaction,Erythroid Lineage Cell,Pronephros,0.033302477313851775,49,False,52,196
+pre_interaction,Erythroid Lineage Cell,"Segmental Plate, Tail Bud",0.03375152737966601,7,False,46,196
+pre_interaction,Erythroid Lineage Cell,Somite,0.030318533556897211,67,False,92,196
+pre_interaction,Erythroid Lineage Cell,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Erythroid Lineage Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Forebrain,Angioblastic Mesenchymal Cell,0.033434679492925938,78,False,50,196
+pre_interaction,Forebrain,Erythroid Lineage Cell,0.0253828503191471,1,False,116,196
+pre_interaction,Forebrain,Forebrain,0.031863669633399247,1167,False,68,196
+pre_interaction,Forebrain,Hatching Gland,0.043643019162118379,16,False,10,196
+pre_interaction,Forebrain,"Immature Eye, Midbrain",0.03575587774748383,23,False,34,196
+pre_interaction,Forebrain,Nervous System,0.032790115539516676,175,False,58,196
+pre_interaction,Forebrain,Neural Crest,0.032063953498871874,234,False,64,196
+pre_interaction,Forebrain,"Neural Crest, Otic Vesicle",0.034809578854877163,13,False,42,196
+pre_interaction,Forebrain,Notochord,0.031697533791884731,16,False,72,196
+pre_interaction,Forebrain,Pronephros,0,0,True,119,196
+pre_interaction,Forebrain,"Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,Forebrain,Somite,0.041049111634492798,1,False,15,196
+pre_interaction,Forebrain,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Forebrain,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Hatching Gland,Angioblastic Mesenchymal Cell,0.042421103370460546,11,False,11,196
+pre_interaction,Hatching Gland,Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,Hatching Gland,Forebrain,0.040346688519303571,13,False,16,196
+pre_interaction,Hatching Gland,Hatching Gland,0.053989599882201672,66,False,3,196
+pre_interaction,Hatching Gland,"Immature Eye, Midbrain",0.033158544450998299,1,False,54,196
+pre_interaction,Hatching Gland,Nervous System,0.040208315476775149,2,False,17,196
+pre_interaction,Hatching Gland,Neural Crest,0.034593392920214634,32,False,43,196
+pre_interaction,Hatching Gland,"Neural Crest, Otic Vesicle",0.041069511324167203,2,False,14,196
+pre_interaction,Hatching Gland,Notochord,0.038186408579349497,1,False,26,196
+pre_interaction,Hatching Gland,Pronephros,0,0,True,119,196
+pre_interaction,Hatching Gland,"Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,Hatching Gland,Somite,0,0,True,119,196
+pre_interaction,Hatching Gland,Yolk Syncytial Layer,0.051215942949056549,2,False,5,196
+pre_interaction,Hatching Gland,"Yolk Syncytial Layer, Periderm",0.043738048523664398,3,False,9,196
+pre_interaction,"Immature Eye, Midbrain",Angioblastic Mesenchymal Cell,0.0281830724328756,5,False,103,196
+pre_interaction,"Immature Eye, Midbrain",Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain",Forebrain,0.032003304056291024,28,False,65,196
+pre_interaction,"Immature Eye, Midbrain",Hatching Gland,0.030945481732487599,1,False,85,196
+pre_interaction,"Immature Eye, Midbrain","Immature Eye, Midbrain",0.029494734186875145,19,False,97,196
+pre_interaction,"Immature Eye, Midbrain",Nervous System,0.026166791208088354,25,False,113,196
+pre_interaction,"Immature Eye, Midbrain",Neural Crest,0.031267435782972461,68,False,78,196
+pre_interaction,"Immature Eye, Midbrain","Neural Crest, Otic Vesicle",0.03245644085109229,8,False,60,196
+pre_interaction,"Immature Eye, Midbrain",Notochord,0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain",Pronephros,0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain","Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain",Somite,0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain",Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,"Immature Eye, Midbrain","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Nervous System,Angioblastic Mesenchymal Cell,0.031633706375335614,84,False,73,196
+pre_interaction,Nervous System,Erythroid Lineage Cell,0.035488313296809737,8,False,37,196
+pre_interaction,Nervous System,Forebrain,0.031478748056133779,169,False,75,196
+pre_interaction,Nervous System,Hatching Gland,0.052362034097313853,2,False,4,196
+pre_interaction,Nervous System,"Immature Eye, Midbrain",0.031947560253597393,21,False,66,196
+pre_interaction,Nervous System,Nervous System,0.031064484587593613,925,False,82,196
+pre_interaction,Nervous System,Neural Crest,0.030412444000649304,481,False,90,196
+pre_interaction,Nervous System,"Neural Crest, Otic Vesicle",0.030626066582044534,64,False,88,196
+pre_interaction,Nervous System,Notochord,0.0335597641391693,403,False,49,196
+pre_interaction,Nervous System,Pronephros,0.039650873281061601,2,False,19,196
+pre_interaction,Nervous System,"Segmental Plate, Tail Bud",0.027251566139360219,6,False,109,196
+pre_interaction,Nervous System,Somite,0.025475164720167684,12,False,115,196
+pre_interaction,Nervous System,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Nervous System,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Neural Crest,Angioblastic Mesenchymal Cell,0.032232051899578999,192,False,63,196
+pre_interaction,Neural Crest,Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,Neural Crest,Forebrain,0.031007771160114848,220,False,84,196
+pre_interaction,Neural Crest,Hatching Gland,0.039765787513359678,23,False,18,196
+pre_interaction,Neural Crest,"Immature Eye, Midbrain",0.028658536303302482,46,False,101,196
+pre_interaction,Neural Crest,Nervous System,0.031762438929119813,498,False,69,196
+pre_interaction,Neural Crest,Neural Crest,0.030256730398676105,1093,False,93,196
+pre_interaction,Neural Crest,"Neural Crest, Otic Vesicle",0.033164118099111004,88,False,53,196
+pre_interaction,Neural Crest,Notochord,0.027399313846128197,102,False,108,196
+pre_interaction,Neural Crest,Pronephros,0.047706138342618901,2,False,6,196
+pre_interaction,Neural Crest,"Segmental Plate, Tail Bud",0.030441312585025974,4,False,89,196
+pre_interaction,Neural Crest,Somite,0.030373667246631989,31,False,91,196
+pre_interaction,Neural Crest,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Neural Crest,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,"Neural Crest, Otic Vesicle",Angioblastic Mesenchymal Cell,0.036234421448575076,9,False,32,196
+pre_interaction,"Neural Crest, Otic Vesicle",Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,"Neural Crest, Otic Vesicle",Forebrain,0.028990804483847915,14,False,100,196
+pre_interaction,"Neural Crest, Otic Vesicle",Hatching Gland,0.041266232728958102,1,False,13,196
+pre_interaction,"Neural Crest, Otic Vesicle","Immature Eye, Midbrain",0.035654654726386001,4,False,36,196
+pre_interaction,"Neural Crest, Otic Vesicle",Nervous System,0.03080981362145389,80,False,86,196
+pre_interaction,"Neural Crest, Otic Vesicle",Neural Crest,0.031231758795177682,119,False,79,196
+pre_interaction,"Neural Crest, Otic Vesicle","Neural Crest, Otic Vesicle",0.033415847657514416,56,False,51,196
+pre_interaction,"Neural Crest, Otic Vesicle",Notochord,0.029006042284890978,12,False,99,196
+pre_interaction,"Neural Crest, Otic Vesicle",Pronephros,0,0,True,119,196
+pre_interaction,"Neural Crest, Otic Vesicle","Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,"Neural Crest, Otic Vesicle",Somite,0.026319409720599599,2,False,112,196
+pre_interaction,"Neural Crest, Otic Vesicle",Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,"Neural Crest, Otic Vesicle","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Notochord,Angioblastic Mesenchymal Cell,0.036640292964875636,6,False,29,196
+pre_interaction,Notochord,Erythroid Lineage Cell,0.03737677825130007,73,False,27,196
+pre_interaction,Notochord,Forebrain,0.02938542980700725,8,False,98,196
+pre_interaction,Notochord,Hatching Gland,0.031916734762489747,4,False,67,196
+pre_interaction,Notochord,"Immature Eye, Midbrain",0.035720203071832601,1,False,35,196
+pre_interaction,Notochord,Nervous System,0.038998299328057977,543,False,22,196
+pre_interaction,Notochord,Neural Crest,0.032428059297112274,104,False,61,196
+pre_interaction,Notochord,"Neural Crest, Otic Vesicle",0.035036643967032377,9,False,40,196
+pre_interaction,Notochord,Notochord,0.039161138712758843,3831,False,21,196
+pre_interaction,Notochord,Pronephros,0.036391760781407302,5,False,30,196
+pre_interaction,Notochord,"Segmental Plate, Tail Bud",0.030790005449433666,49,False,87,196
+pre_interaction,Notochord,Somite,0.032980318879708599,292,False,57,196
+pre_interaction,Notochord,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Notochord,"Yolk Syncytial Layer, Periderm",0.028645444661378801,1,False,102,196
+pre_interaction,Pronephros,Angioblastic Mesenchymal Cell,0.028158971108496099,2,False,104,196
+pre_interaction,Pronephros,Erythroid Lineage Cell,0.029750266587551706,49,False,95,196
+pre_interaction,Pronephros,Forebrain,0.026857383549213399,1,False,110,196
+pre_interaction,Pronephros,Hatching Gland,0,0,True,119,196
+pre_interaction,Pronephros,"Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,Pronephros,Nervous System,0.03873732872307295,2,False,23,196
+pre_interaction,Pronephros,Neural Crest,0.031740702688693952,2,False,70,196
+pre_interaction,Pronephros,"Neural Crest, Otic Vesicle",0.020774850621819399,1,False,118,196
+pre_interaction,Pronephros,Notochord,0.031068276347858515,7,False,81,196
+pre_interaction,Pronephros,Pronephros,0.033869511680677492,8,False,45,196
+pre_interaction,Pronephros,"Segmental Plate, Tail Bud",0.041349984705448095,2,False,12,196
+pre_interaction,Pronephros,Somite,0.026067144082238206,12,False,114,196
+pre_interaction,Pronephros,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Pronephros,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,"Segmental Plate, Tail Bud",Angioblastic Mesenchymal Cell,0.032550083473324748,2,False,59,196
+pre_interaction,"Segmental Plate, Tail Bud",Erythroid Lineage Cell,0.045133236263479475,7,False,8,196
+pre_interaction,"Segmental Plate, Tail Bud",Forebrain,0.0280349552631378,1,False,105,196
+pre_interaction,"Segmental Plate, Tail Bud",Hatching Gland,0,0,True,119,196
+pre_interaction,"Segmental Plate, Tail Bud","Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,"Segmental Plate, Tail Bud",Nervous System,0.03521310836076734,5,False,38,196
+pre_interaction,"Segmental Plate, Tail Bud",Neural Crest,0.029943967238068542,12,False,94,196
+pre_interaction,"Segmental Plate, Tail Bud","Neural Crest, Otic Vesicle",0.039173223078250802,1,False,20,196
+pre_interaction,"Segmental Plate, Tail Bud",Notochord,0.029513035997234479,29,False,96,196
+pre_interaction,"Segmental Plate, Tail Bud",Pronephros,0.027962859719991601,1,False,106,196
+pre_interaction,"Segmental Plate, Tail Bud","Segmental Plate, Tail Bud",0.026857214979827401,2,False,111,196
+pre_interaction,"Segmental Plate, Tail Bud",Somite,0.027926217764615999,1,False,107,196
+pre_interaction,"Segmental Plate, Tail Bud",Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,"Segmental Plate, Tail Bud","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Somite,Angioblastic Mesenchymal Cell,0,0,True,119,196
+pre_interaction,Somite,Erythroid Lineage Cell,0.033650730450948046,75,False,47,196
+pre_interaction,Somite,Forebrain,0.021611068397760301,1,False,117,196
+pre_interaction,Somite,Hatching Gland,0,0,True,119,196
+pre_interaction,Somite,"Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,Somite,Nervous System,0.031039513913648422,14,False,83,196
+pre_interaction,Somite,Neural Crest,0.03170028390278188,44,False,71,196
+pre_interaction,Somite,"Neural Crest, Otic Vesicle",0.032998968847095925,4,False,56,196
+pre_interaction,Somite,Notochord,0.036010822913911979,237,False,33,196
+pre_interaction,Somite,Pronephros,0.036799678392708243,10,False,28,196
+pre_interaction,Somite,"Segmental Plate, Tail Bud",0.036308284848928403,1,False,31,196
+pre_interaction,Somite,Somite,0.038541246742076103,677,False,25,196
+pre_interaction,Somite,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Somite,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Forebrain,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Hatching Gland,0.058910146355628953,2,False,2,196
+pre_interaction,Yolk Syncytial Layer,"Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Nervous System,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Neural Crest,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,"Neural Crest, Otic Vesicle",0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Notochord,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Pronephros,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,"Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Somite,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Angioblastic Mesenchymal Cell,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Erythroid Lineage Cell,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Forebrain,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Hatching Gland,0.066851288080215399,1,False,1,196
+pre_interaction,"Yolk Syncytial Layer, Periderm","Immature Eye, Midbrain",0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Nervous System,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Neural Crest,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm","Neural Crest, Otic Vesicle",0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Notochord,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Pronephros,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm","Segmental Plate, Tail Bud",0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Somite,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm",Yolk Syncytial Layer,0,0,True,119,196
+pre_interaction,"Yolk Syncytial Layer, Periderm","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Angioblastic Mesenchymal Cell,Angioblastic Mesenchymal Cell,0.029026047585192054,389,False,63,196
+random,Angioblastic Mesenchymal Cell,Erythroid Lineage Cell,0,0,True,119,196
+random,Angioblastic Mesenchymal Cell,Forebrain,0.029997531147791572,79,False,50,196
+random,Angioblastic Mesenchymal Cell,Hatching Gland,0.028848966668275224,11,False,67,196
+random,Angioblastic Mesenchymal Cell,"Immature Eye, Midbrain",0.028153603198006701,8,False,73,196
+random,Angioblastic Mesenchymal Cell,Nervous System,0.028013119773789345,87,False,75,196
+random,Angioblastic Mesenchymal Cell,Neural Crest,0.028936139134736298,242,False,66,196
+random,Angioblastic Mesenchymal Cell,"Neural Crest, Otic Vesicle",0.030279430250326731,9,False,48,196
+random,Angioblastic Mesenchymal Cell,Notochord,0.02806176990270608,6,False,74,196
+random,Angioblastic Mesenchymal Cell,Pronephros,0,0,True,119,196
+random,Angioblastic Mesenchymal Cell,"Segmental Plate, Tail Bud",0,0,True,119,196
+random,Angioblastic Mesenchymal Cell,Somite,0.034689126802342242,7,False,19,196
+random,Angioblastic Mesenchymal Cell,Yolk Syncytial Layer,0,0,True,119,196
+random,Angioblastic Mesenchymal Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Erythroid Lineage Cell,Angioblastic Mesenchymal Cell,0,0,True,119,196
+random,Erythroid Lineage Cell,Erythroid Lineage Cell,0.030927904786229862,728,False,43,196
+random,Erythroid Lineage Cell,Forebrain,0,0,True,119,196
+random,Erythroid Lineage Cell,Hatching Gland,0,0,True,119,196
+random,Erythroid Lineage Cell,"Immature Eye, Midbrain",0,0,True,119,196
+random,Erythroid Lineage Cell,Nervous System,0.023104008287191342,7,False,111,196
+random,Erythroid Lineage Cell,Neural Crest,0,0,True,119,196
+random,Erythroid Lineage Cell,"Neural Crest, Otic Vesicle",0,0,True,119,196
+random,Erythroid Lineage Cell,Notochord,0.030953100989343649,61,False,42,196
+random,Erythroid Lineage Cell,Pronephros,0.029955569977815004,49,False,51,196
+random,Erythroid Lineage Cell,"Segmental Plate, Tail Bud",0.029409659760338901,7,False,58,196
+random,Erythroid Lineage Cell,Somite,0.046355153698084912,67,False,6,196
+random,Erythroid Lineage Cell,Yolk Syncytial Layer,0,0,True,119,196
+random,Erythroid Lineage Cell,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Forebrain,Angioblastic Mesenchymal Cell,0.027687899231050979,78,False,79,196
+random,Forebrain,Erythroid Lineage Cell,0.033433899283409098,1,False,27,196
+random,Forebrain,Forebrain,0.031677811934860835,1167,False,37,196
+random,Forebrain,Hatching Gland,0.026705654920078762,16,False,89,196
+random,Forebrain,"Immature Eye, Midbrain",0.036910061643499345,23,False,13,196
+random,Forebrain,Nervous System,0.031049556668315569,175,False,40,196
+random,Forebrain,Neural Crest,0.029455859620028536,234,False,57,196
+random,Forebrain,"Neural Crest, Otic Vesicle",0.0318492625195246,13,False,35,196
+random,Forebrain,Notochord,0.032671635970473255,16,False,31,196
+random,Forebrain,Pronephros,0,0,True,119,196
+random,Forebrain,"Segmental Plate, Tail Bud",0,0,True,119,196
+random,Forebrain,Somite,0.016054484993219299,1,False,118,196
+random,Forebrain,Yolk Syncytial Layer,0,0,True,119,196
+random,Forebrain,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Hatching Gland,Angioblastic Mesenchymal Cell,0.027243747291239791,11,False,84,196
+random,Hatching Gland,Erythroid Lineage Cell,0,0,True,119,196
+random,Hatching Gland,Forebrain,0.029245415989022937,13,False,60,196
+random,Hatching Gland,Hatching Gland,0.047611376962088225,66,False,4,196
+random,Hatching Gland,"Immature Eye, Midbrain",0.017581108957528999,1,False,116,196
+random,Hatching Gland,Nervous System,0.023881519213318748,2,False,106,196
+random,Hatching Gland,Neural Crest,0.029684913519304194,32,False,56,196
+random,Hatching Gland,"Neural Crest, Otic Vesicle",0.032693812623619999,2,False,29,196
+random,Hatching Gland,Notochord,0.027079362422227801,1,False,87,196
+random,Hatching Gland,Pronephros,0,0,True,119,196
+random,Hatching Gland,"Segmental Plate, Tail Bud",0,0,True,119,196
+random,Hatching Gland,Somite,0,0,True,119,196
+random,Hatching Gland,Yolk Syncytial Layer,0.055819498375058146,2,False,2,196
+random,Hatching Gland,"Yolk Syncytial Layer, Periderm",0.047483791907628331,3,False,5,196
+random,"Immature Eye, Midbrain",Angioblastic Mesenchymal Cell,0.03071007356047626,5,False,45,196
+random,"Immature Eye, Midbrain",Erythroid Lineage Cell,0,0,True,119,196
+random,"Immature Eye, Midbrain",Forebrain,0.032069736226860913,28,False,33,196
+random,"Immature Eye, Midbrain",Hatching Gland,0.023335695266723602,1,False,110,196
+random,"Immature Eye, Midbrain","Immature Eye, Midbrain",0.025457378918010878,19,False,98,196
+random,"Immature Eye, Midbrain",Nervous System,0.024467077963054137,25,False,105,196
+random,"Immature Eye, Midbrain",Neural Crest,0.024787408203872641,68,False,101,196
+random,"Immature Eye, Midbrain","Neural Crest, Otic Vesicle",0.026160683715715977,8,False,95,196
+random,"Immature Eye, Midbrain",Notochord,0,0,True,119,196
+random,"Immature Eye, Midbrain",Pronephros,0,0,True,119,196
+random,"Immature Eye, Midbrain","Segmental Plate, Tail Bud",0,0,True,119,196
+random,"Immature Eye, Midbrain",Somite,0,0,True,119,196
+random,"Immature Eye, Midbrain",Yolk Syncytial Layer,0,0,True,119,196
+random,"Immature Eye, Midbrain","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Nervous System,Angioblastic Mesenchymal Cell,0.026172633936983446,84,False,94,196
+random,Nervous System,Erythroid Lineage Cell,0.028425708645954686,8,False,72,196
+random,Nervous System,Forebrain,0.031118507973695423,169,False,39,196
+random,Nervous System,Hatching Gland,0.0251257484778761,2,False,100,196
+random,Nervous System,"Immature Eye, Midbrain",0.028985778313307491,21,False,65,196
+random,Nervous System,Nervous System,0.029822778514007414,925,False,52,196
+random,Nervous System,Neural Crest,0.029797892647712074,481,False,54,196
+random,Nervous System,"Neural Crest, Otic Vesicle",0.027778339135693341,64,False,77,196
+random,Nervous System,Notochord,0.035062759213389839,403,False,18,196
+random,Nervous System,Pronephros,0.037804942578077247,2,False,12,196
+random,Nervous System,"Segmental Plate, Tail Bud",0.042492374156912115,6,False,8,196
+random,Nervous System,Somite,0.031048724738260067,12,False,41,196
+random,Nervous System,Yolk Syncytial Layer,0,0,True,119,196
+random,Nervous System,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Neural Crest,Angioblastic Mesenchymal Cell,0.026069595696753777,192,False,96,196
+random,Neural Crest,Erythroid Lineage Cell,0,0,True,119,196
+random,Neural Crest,Forebrain,0.027395337820053055,220,False,81,196
+random,Neural Crest,Hatching Gland,0.033825221592965284,23,False,24,196
+random,Neural Crest,"Immature Eye, Midbrain",0.026256634610826505,46,False,93,196
+random,Neural Crest,Nervous System,0.026614513433347576,498,False,90,196
+random,Neural Crest,Neural Crest,0.027323330064923587,1093,False,82,196
+random,Neural Crest,"Neural Crest, Otic Vesicle",0.027569544967263885,88,False,80,196
+random,Neural Crest,Notochord,0.027197354829267495,102,False,86,196
+random,Neural Crest,Pronephros,0.0337189510464668,2,False,25,196
+random,Neural Crest,"Segmental Plate, Tail Bud",0.028755230829119651,4,False,68,196
+random,Neural Crest,Somite,0.029161060889882375,31,False,62,196
+random,Neural Crest,Yolk Syncytial Layer,0,0,True,119,196
+random,Neural Crest,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,"Neural Crest, Otic Vesicle",Angioblastic Mesenchymal Cell,0.024551634262833279,9,False,104,196
+random,"Neural Crest, Otic Vesicle",Erythroid Lineage Cell,0,0,True,119,196
+random,"Neural Crest, Otic Vesicle",Forebrain,0.025426078720816484,14,False,99,196
+random,"Neural Crest, Otic Vesicle",Hatching Gland,0.049335166811942999,1,False,3,196
+random,"Neural Crest, Otic Vesicle","Immature Eye, Midbrain",0.029010700061917249,4,False,64,196
+random,"Neural Crest, Otic Vesicle",Nervous System,0.029784108803141814,80,False,55,196
+random,"Neural Crest, Otic Vesicle",Neural Crest,0.029295129967587291,119,False,59,196
+random,"Neural Crest, Otic Vesicle","Neural Crest, Otic Vesicle",0.02867845299520658,56,False,69,196
+random,"Neural Crest, Otic Vesicle",Notochord,0.025940536831815991,12,False,97,196
+random,"Neural Crest, Otic Vesicle",Pronephros,0,0,True,119,196
+random,"Neural Crest, Otic Vesicle","Segmental Plate, Tail Bud",0,0,True,119,196
+random,"Neural Crest, Otic Vesicle",Somite,0.033906696364283548,2,False,23,196
+random,"Neural Crest, Otic Vesicle",Yolk Syncytial Layer,0,0,True,119,196
+random,"Neural Crest, Otic Vesicle","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Notochord,Angioblastic Mesenchymal Cell,0.021724539498488068,6,False,114,196
+random,Notochord,Erythroid Lineage Cell,0.031331156788725507,73,False,38,196
+random,Notochord,Forebrain,0.023701828671619251,8,False,107,196
+random,Notochord,Hatching Gland,0.02979992004111405,4,False,53,196
+random,Notochord,"Immature Eye, Midbrain",0.024602968245744702,1,False,103,196
+random,Notochord,Nervous System,0.030419571368061442,543,False,47,196
+random,Notochord,Neural Crest,0.030262894382198795,104,False,49,196
+random,Notochord,"Neural Crest, Otic Vesicle",0.027043519541621156,9,False,88,196
+random,Notochord,Notochord,0.03649443157233101,3831,False,14,196
+random,Notochord,Pronephros,0.02779479138553138,5,False,76,196
+random,Notochord,"Segmental Plate, Tail Bud",0.032530705102396217,49,False,32,196
+random,Notochord,Somite,0.034351844455383362,292,False,21,196
+random,Notochord,Yolk Syncytial Layer,0,0,True,119,196
+random,Notochord,"Yolk Syncytial Layer, Periderm",0.034348361194133703,1,False,22,196
+random,Pronephros,Angioblastic Mesenchymal Cell,0.0291942004114389,2,False,61,196
+random,Pronephros,Erythroid Lineage Cell,0.030675275669414123,49,False,46,196
+random,Pronephros,Forebrain,0.035075038671493503,1,False,17,196
+random,Pronephros,Hatching Gland,0,0,True,119,196
+random,Pronephros,"Immature Eye, Midbrain",0,0,True,119,196
+random,Pronephros,Nervous System,0.032683487981557797,2,False,30,196
+random,Pronephros,Neural Crest,0.017614217009395298,2,False,115,196
+random,Pronephros,"Neural Crest, Otic Vesicle",0.023027028888463901,1,False,112,196
+random,Pronephros,Notochord,0.023461758026054873,7,False,109,196
+random,Pronephros,Pronephros,0.036341308150440399,8,False,15,196
+random,Pronephros,"Segmental Plate, Tail Bud",0.033207496628165196,2,False,28,196
+random,Pronephros,Somite,0.038414586024979706,12,False,10,196
+random,Pronephros,Yolk Syncytial Layer,0,0,True,119,196
+random,Pronephros,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,"Segmental Plate, Tail Bud",Angioblastic Mesenchymal Cell,0.0285822413861751,2,False,70,196
+random,"Segmental Plate, Tail Bud",Erythroid Lineage Cell,0.027219617473227598,7,False,85,196
+random,"Segmental Plate, Tail Bud",Forebrain,0.0165880527347326,1,False,117,196
+random,"Segmental Plate, Tail Bud",Hatching Gland,0,0,True,119,196
+random,"Segmental Plate, Tail Bud","Immature Eye, Midbrain",0,0,True,119,196
+random,"Segmental Plate, Tail Bud",Nervous System,0.03077125623822206,5,False,44,196
+random,"Segmental Plate, Tail Bud",Neural Crest,0.023600483002761959,12,False,108,196
+random,"Segmental Plate, Tail Bud","Neural Crest, Otic Vesicle",0.035602036863565403,1,False,16,196
+random,"Segmental Plate, Tail Bud",Notochord,0.028563436056519332,29,False,71,196
+random,"Segmental Plate, Tail Bud",Pronephros,0.026402704417705501,1,False,92,196
+random,"Segmental Plate, Tail Bud","Segmental Plate, Tail Bud",0.024680948816239799,2,False,102,196
+random,"Segmental Plate, Tail Bud",Somite,0.042898628860712003,1,False,7,196
+random,"Segmental Plate, Tail Bud",Yolk Syncytial Layer,0,0,True,119,196
+random,"Segmental Plate, Tail Bud","Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Somite,Angioblastic Mesenchymal Cell,0,0,True,119,196
+random,Somite,Erythroid Lineage Cell,0.034410024024546092,75,False,20,196
+random,Somite,Forebrain,0.0220948942005634,1,False,113,196
+random,Somite,Hatching Gland,0,0,True,119,196
+random,Somite,"Immature Eye, Midbrain",0,0,True,119,196
+random,Somite,Nervous System,0.026606763047831362,14,False,91,196
+random,Somite,Neural Crest,0.027265558061613227,44,False,83,196
+random,Somite,"Neural Crest, Otic Vesicle",0.031708612106740426,4,False,36,196
+random,Somite,Notochord,0.032009705178093761,237,False,34,196
+random,Somite,Pronephros,0.027696516737341841,10,False,78,196
+random,Somite,"Segmental Plate, Tail Bud",0.033656071871518999,1,False,26,196
+random,Somite,Somite,0.038025980051799441,677,False,11,196
+random,Somite,Yolk Syncytial Layer,0,0,True,119,196
+random,Somite,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,Yolk Syncytial Layer,Angioblastic Mesenchymal Cell,0,0,True,119,196
+random,Yolk Syncytial Layer,Erythroid Lineage Cell,0,0,True,119,196
+random,Yolk Syncytial Layer,Forebrain,0,0,True,119,196
+random,Yolk Syncytial Layer,Hatching Gland,0.065148774534463799,2,False,1,196
+random,Yolk Syncytial Layer,"Immature Eye, Midbrain",0,0,True,119,196
+random,Yolk Syncytial Layer,Nervous System,0,0,True,119,196
+random,Yolk Syncytial Layer,Neural Crest,0,0,True,119,196
+random,Yolk Syncytial Layer,"Neural Crest, Otic Vesicle",0,0,True,119,196
+random,Yolk Syncytial Layer,Notochord,0,0,True,119,196
+random,Yolk Syncytial Layer,Pronephros,0,0,True,119,196
+random,Yolk Syncytial Layer,"Segmental Plate, Tail Bud",0,0,True,119,196
+random,Yolk Syncytial Layer,Somite,0,0,True,119,196
+random,Yolk Syncytial Layer,Yolk Syncytial Layer,0,0,True,119,196
+random,Yolk Syncytial Layer,"Yolk Syncytial Layer, Periderm",0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Angioblastic Mesenchymal Cell,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Erythroid Lineage Cell,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Forebrain,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Hatching Gland,0.039356112480163498,1,False,9,196
+random,"Yolk Syncytial Layer, Periderm","Immature Eye, Midbrain",0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Nervous System,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Neural Crest,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm","Neural Crest, Otic Vesicle",0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Notochord,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Pronephros,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm","Segmental Plate, Tail Bud",0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Somite,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm",Yolk Syncytial Layer,0,0,True,119,196
+random,"Yolk Syncytial Layer, Periderm","Yolk Syncytial Layer, Periderm",0,0,True,119,196

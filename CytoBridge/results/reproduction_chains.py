@@ -1,0 +1,1040 @@
+"""Ordered calculations used by the dataset and paper-figure tutorials.
+
+Each row records one command or function call, its input, its output, and the
+next calculation. GPU training and external benchmark programs remain separate
+commands; this module only describes how their files connect.
+"""
+
+from __future__ import annotations
+
+from copy import deepcopy
+
+
+def _row(
+    paper_part: str,
+    step: str,
+    code_or_command: str,
+    reads: str,
+    writes: str,
+    next_step: str,
+    note: str = "",
+    entry_type: str = "command",
+) -> dict[str, str]:
+    if entry_type not in {"command", "source"}:
+        raise ValueError("entry_type must be 'command' or 'source'")
+    return {
+        "paper_part": paper_part,
+        "step": step,
+        "code_or_command": code_or_command,
+        "reads": reads,
+        "writes": writes,
+        "next_step": next_step,
+        "note": note,
+        "entry_type": entry_type,
+    }
+
+
+FIGURE_REPRODUCTION_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
+    "agist": (
+        _row(
+            'S3',
+            "calculate cell-level velocity agreement",
+            "python scripts/build_agist_velocity_time_cluster_breakdown.py --archive-a <inferred-velocity.npz> --archive-b <generator-velocity.npz> --data-csv <agist-cells.csv> --cluster-assignments <state-clusters.csv> --cluster-diagnostics <cluster-diagnostics.csv> --style <paper-style.json> --output-dir <agist-summary>",
+            "model states plus inferred and generator velocity vectors",
+            "velocity_cosine_per_cell_full.csv",
+            'summarize S3',
+            'This cell-level table comes from the paper evaluation folder. The next step recalculates the summaries shown in S3.',
+        ),
+        _row(
+            'S3',
+            "summarize and draw",
+            "python scripts/execute_paper_notebooks.py --notebook main_figure_2 --output-dir <notebook-run>",
+            "s2_velocity_cosine_per_cell.csv.gz",
+            "S2 summary CSV files and Supplementary_Figure_S2.pdf/.png",
+            "finished figure",
+        ),
+        _row(
+            'S4',
+            "generate the benchmark",
+            "python -m scripts.run_spatial_synthetic_benchmark generate --data-dir <data> --version spatial_attraction_2d_gene_2d_space_v8_balanced_joint_interaction --n-particles 400 --interaction-strength 0.5 --gene-interaction-gain 3.0",
+            "declared simulator parameters and fixed seeds",
+            "attractive_observed.h5ad; attractive_fixed_reference.npz; no_interaction_fixed_reference.npz; manifest.json",
+            'train S4',
+        ),
+        _row(
+            'S4',
+            'fit the model used for S4',
+            "python -m scripts.train_spatial_synthetic_realdata_epochs --data-dir <data> --output-root <run>/training --config configs/spatial_synthetic_attraction_realdata_epochs.yaml --device cuda",
+            "attractive_observed.h5ad; manifest.json; training YAML",
+            "training/model/Score_Refine/best_model.pth; training/model/adata.h5ad; training/training_manifest.json",
+            'evaluate S4',
+        ),
+        _row(
+            'S4',
+            "run five-seed evaluation",
+            "python -m scripts.run_spatial_synthetic_benchmark evaluate --data-dir <data> --model-dir <run>/training/model --stage Score_Refine --evaluation-dir <run>/evaluation_fixed400_five_seed --seeds 1,4,8,32,256 --device cuda",
+            "fixed references; Score_Refine checkpoint; model config",
+            "dense_rollout_seed_1.npz; growth_mass_metrics.csv; interaction_radial_curve.csv; interaction_ablation_metrics.csv; acceptance.json",
+            'draw S4',
+        ),
+        _row(
+            'S4',
+            "draw the manuscript figure",
+            "python -m scripts.reporting.build_v11b_main_figure --run-root <run> --pdf-output <output.pdf>",
+            "training/model/adata.h5ad; evaluation_fixed400_five_seed/*.csv; dense_rollout_seed_1.npz",
+            "manuscript_figure/finite_range_cell_cell_attraction_benchmark.pdf/.png",
+            "finished figure",
+        ),
+    ),
+    "nonspatial": (
+        _row(
+            'S5 Weinreb; S6 scNT',
+            "prepare model input",
+            "cytobridge nonspatial prepare --dataset <dataset> --input-h5ad <raw.h5ad> --output-dir <run>/preprocess",
+            "raw expression H5AD and dataset configuration",
+            "<run>/preprocess/model_input_50pc.h5ad; lr_expression.h5ad; pca_artifacts.npz; preprocess_manifest.json",
+            "build prior",
+            "Run this command twice to reproduce both figures: use --dataset weinreb for S4 and --dataset scnt_cortex for S5. Each code block is one command.",
+        ),
+        _row(
+            'S5 Weinreb; S6 scNT',
+            "build the LR edge prior",
+            "cytobridge nonspatial build-prior --dataset <dataset> --preprocess-manifest <run>/preprocess/preprocess_manifest.json --output-dir <run>/edge_prior --device cuda:0",
+            "preprocess_manifest.json; lr_expression.h5ad; bundled mouse LR database",
+            "<run>/edge_prior predictor, graph inputs, and manifest.json",
+            "train the Full model",
+        ),
+        _row(
+            'S5 Weinreb; S6 scNT',
+            "train the Full model",
+            "cytobridge nonspatial train --dataset <dataset> --arm full --preprocess-manifest <run>/preprocess/preprocess_manifest.json --edge-prior-manifest <run>/edge_prior/manifest.json --output-dir <run>/full --device cuda:0",
+            "preprocess_manifest.json; edge-prior manifest; Full-arm configuration",
+            "<run>/full/model checkpoints; resolved configuration; training summary",
+            "train the No-interaction model with the same settings",
+        ),
+        _row(
+            'S5 Weinreb; S6 scNT',
+            "train the No-interaction model with the same settings",
+            "cytobridge nonspatial train --dataset <dataset> --arm no_interaction --preprocess-manifest <run>/preprocess/preprocess_manifest.json --output-dir <run>/no_interaction --device cuda:0",
+            "preprocess_manifest.json; No-interaction-arm configuration",
+            "<run>/no_interaction/model checkpoints; resolved configuration; training summary",
+            "compare the two models",
+        ),
+        _row(
+            "S4c/S5c",
+            "compare the two trained models",
+            "cytobridge nonspatial evaluate --dataset <dataset> --prepared-h5ad <run>/preprocess/model_input_50pc.h5ad --full-run-dir <run>/full --no-interaction-run-dir <run>/no_interaction --output-dir <run>/evaluation --inference-seed 10000 --inference-seed 10001 --device cuda:0",
+            "model_input_50pc.h5ad; Full and No-interaction model directories",
+            "distribution metrics and paired trajectory summaries",
+            "dataset-specific evaluation",
+        ),
+        _row(
+            "S4d",
+            "evaluate Weinreb clone fate",
+            "cytobridge nonspatial weinreb-clone-fate --prepared-h5ad <run>/preprocess/model_input_50pc.h5ad --full-run-dir <run>/full --no-interaction-run-dir <run>/no_interaction --output-dir <run>/clone_fate --device cuda:0",
+            "prepared lineage labels and both fitted arms",
+            "frozen_baseline_clone_fate_summary.csv and its run record",
+            'assemble S5 panel data',
+        ),
+        _row(
+            "S5d",
+            "evaluate scNT new-RNA direction",
+            "cytobridge nonspatial scnt-direction --source-h5ad <raw.h5ad> --prepared-h5ad <run>/preprocess/model_input_50pc.h5ad --pca-artifacts-npz <run>/preprocess/pca_artifacts.npz --full-run-dir <run>/full --no-interaction-run-dir <run>/no_interaction --output-dir <run>/scnt_direction --device cuda:0",
+            "reference scNT new-RNA direction and both fitted models",
+            "timewise_scnt_direction_alignment.csv and its run record",
+            'assemble S6 panel data',
+        ),
+        _row(
+            "S4e-f; S5e-f",
+            "calculate interaction attribution",
+            "cytobridge nonspatial attribution --dataset <dataset> --expression-h5ad <run>/preprocess/lr_expression.h5ad --latent-h5ad <run>/preprocess/model_input_50pc.h5ad --edge-prior-manifest <run>/edge_prior/manifest.json --training-run-dir <run>/full --output-dir <run>/attribution --device cuda:0",
+            "lr_expression.h5ad; model_input_50pc.h5ad; edge-prior record; Full-model directory",
+            "GNN message, network, CellChat-comparison, and pathway tables",
+            "assemble panel data",
+        ),
+        _row(
+            "S4/S5",
+            "recalculate and draw from the included numerical files",
+            "python scripts/execute_paper_notebooks.py --notebook nonspatial_figures --output-dir <notebook-run>",
+            "included numerical files under nonspatial_figures/*",
+            "<notebook-run>/nonspatial_figures/outputs/nonspatial_figures/S4.pdf and S5.pdf, matching PNGs, and derived CSV tables",
+            "finished figure",
+            "The included numerical files reproduce the paper figure. They use the paper's saved Full checkpoint and the corrected No-interaction run; they are not the output of a new matched two-arm run. Steps 1–8 show the public route for producing both arms in a new run. The notebook recalculates the displayed values and draws new PDF and PNG files rather than loading finished figure pages.",
+        ),
+    ),
+    "classifier-smoothing": (
+        _row(
+            "S6a",
+            "run the per-dataset k sweep",
+            "from CytoBridge.tl import select_spatial_smoothing_k\nselection = select_spatial_smoothing_k(\n    predicted_labels,\n    true_labels,\n    spatial_coords,\n    k_values=(1, 5, 10, 20, 50),\n    score_mask=held_out_rows,\n    groups=time_points,\n)",
+            "aligned H5AD and trained model outputs",
+            "<dataset>/classifier_smoothing/k_metrics.csv and selection JSON",
+            "merge five datasets",
+        ),
+        _row(
+            'S46',
+            "merge and draw",
+            "python scripts/execute_paper_notebooks.py --notebook classifier_smoothing --output-dir <notebook-run>",
+            "five_dataset_k_metrics.csv; formal_k_policy.csv; frame_sensitivity.csv; transition_by_interval.csv",
+            "classifier_spatial_smoothing_sensitivity.pdf/.png and summary tables",
+            "finished figure",
+            "The generated-frame tables come from the paper evaluation folder. The notebook recalculates the displayed summaries from those tables.",
+        ),
+    ),
+    "arista-lr": (
+        _row(
+            'S24–S25, S27–S30',
+            'run ARTISTA downstream',
+            "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training> --output-dir <downstream>",
+            "paper aligned H5AD and training directory",
+            "spatial snapshots; growth; composition; gene_dynamics/*.csv; ligand_receptor/pair_timecourse.csv; coverage and pattern tables",
+            'build corrected ARTISTA figures',
+        ),
+        _row(
+            'S24–S25, S27, S30',
+            "draw interpolation, growth, lineage/composition, and gene programs",
+            "paper_resources/artista",
+            "downstream slice H5ADs, growth, composition, gene-dynamics and GO tables",
+            "corrected vector PDF/PNG pages plus run records",
+            'finished S24–S25, S27, S30',
+            'The panel renderers are kept with the ARTISTA paper results. The directory is listed for reference and is not a command.',
+            "source",
+        ),
+        _row(
+            'S28–S29',
+            "recluster all LR profiles and draw",
+            "python scripts/execute_paper_notebooks.py --notebook arista_figures --output-dir <notebook-run>",
+            "ligand_receptor_all_pair_timecourse.csv (531 pairs × 9 times)",
+            "k-selection, assignments, prototypes, balanced display roster, displayed time courses, and the S23-S24 PDF/PNG files",
+            "finished figure",
+        ),
+    ),
+    "lr-complex": (
+        _row(
+            'S47',
+            "calculate both complex rules",
+            "python scripts/run_lr_complex_aggregation_sensitivity.py --workflow-summary <downstream/summary.json> --output-dir <sensitivity>",
+            "each dataset downstream LR trajectories and strict all-subunit coverage",
+            "<sensitivity>/comparison/paired_scores.csv and run record",
+            "merge four datasets",
+        ),
+        _row(
+            'S47',
+            "collect the four completed sensitivity tables",
+            (
+                "python scripts/collect_figure_inputs.py s41 \\\n"
+                "  --dataset-result zebrafish=<zebrafish-sensitivity> \\\n"
+                "  --dataset-result mosta=<mosta-sensitivity> \\\n"
+                "  --dataset-result arista=<arista-sensitivity> \\\n"
+                "  --dataset-result chicken_heart=<chicken-heart-sensitivity> \\\n"
+                "  --output-dir <s41-inputs>"
+            ),
+            "comparison/paired_scores.csv from each completed sensitivity run",
+            "<s41-inputs>/<dataset>/paired_scores.csv and manifest.json",
+            'draw S47',
+        ),
+        _row(
+            'S47',
+            "summarize and draw",
+            "python -m reproduction.paper_figures --figures 41 --results-dir <s41-inputs> --output-dir <figure-dir>",
+            'the collected S47 input directory',
+            "S41.pdf/.png; tables/S41_top100_jaccard.csv; per-time and dataset summary CSVs",
+            "finished figure",
+        ),
+    ),
+    "zebrafish-si": (
+        _row(
+            'S36–S37; S42',
+            "calculate populations, growth, and expression reconstruction",
+            "python scripts/run_zebrafish_paper_downstream.py --aligned-h5ad data/zebrafish/aligned.h5ad --model-dir data/zebrafish/model --output-dir outputs/zebrafish_analysis --shared-cache-dir outputs/zebrafish_analysis/classifier_cache --stage s22,growth,s25 --video-formats none --device cuda:0",
+            "downloaded aligned zebrafish H5AD and trained model",
+            "s22 state arrays; growth/growth_per_cell.csv; s25 expression tables",
+            "draw the new results",
+            'S36 uses fixed population size. The S42 reconstruction comparison uses observed stages. See the tutorial for these separate calculations.',
+        ),
+        _row(
+            'S36–S37', "draw populations and growth",
+            "python -m reproduction.zebrafish.plot_population_growth --run-dir outputs/zebrafish_analysis --aligned-h5ad data/zebrafish/aligned.h5ad --output-dir outputs/zebrafish_population_figures",
+            "new s22 state arrays and growth/growth_per_cell.csv",
+            "S31 and S32 PDF/PNG and plotted arrays", "finished figures",
+        ),
+        _row(
+            'S41', "simulate the initial YSL lineage and draw gene dynamics",
+            "python -m reproduction.zebrafish.ysl_gene_dynamics --data-dir data/zebrafish --output-dir outputs/zebrafish_ysl_genes --device cuda:0",
+            "downloaded model and aligned cells",
+            "continuous and resampled trajectories; lineage expression; temporal z scores; S35 PDF/PNG",
+            "finished figure",
+            "The figure uses continuous population weights for descendants of the initial YSL cells. It does not use the interval-specific s25 calculation.",
+        ),
+        _row(
+            'S42', "draw expression reconstruction",
+            "python -m reproduction.zebrafish.plot_gene_dynamics --run-dir outputs/zebrafish_analysis --output-dir outputs/zebrafish_gene_figures",
+            "new s25 observed and reconstructed expression tables",
+            "reconstruction metrics and S38 PDF/PNG", "finished figure",
+        ),
+        _row(
+            'S44',
+            "prepare the loss-weight training files",
+            "python scripts/paper_figures/zebrafish_loss_weight/prepare_configs.py --base-config <zebrafish-training.yaml> --output-dir <loss-config-dir>",
+            "base zebrafish training YAML",
+            "one training YAML for each loss setting",
+            "train one model from each YAML with the next command",
+        ),
+        _row(
+            'S44',
+            "train one loss setting",
+            "cytobridge workflow --config zebrafish --step train --train --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --training-config <loss-setting.yaml> --edge-predictor-path <run>/preprocess/edge_classifier/zebrafish_edge_model.pt --output-dir <loss-setting-run> --device cuda:0",
+            "aligned zebrafish H5AD, one loss-setting YAML, and its matched edge model",
+            "<loss-setting-run>/training with model checkpoints and training history",
+            "evaluate this trained model",
+            "Run this command once for each YAML written in the preceding step. CytoBridge reads the fitted threshold from the edge model's matching .meta.json file; provide --edge-predictor-threshold only when that metadata file is unavailable.",
+        ),
+        _row(
+            'S44',
+            "evaluate each trained loss setting",
+            "python scripts/paper_figures/zebrafish_loss_weight/evaluate_model.py --aligned-h5ad <run>/preprocess/zebrafish_aligned.h5ad --training-dir <loss-setting-run>/training --condition <condition-name> --output-dir <loss-evaluation-root>/<condition-name> --device cuda:0",
+            "aligned H5AD and the trained model for each loss setting",
+            "evaluation tables for each setting",
+            'collect the two expression-weight evaluations, then draw S44',
+        ),
+        _row(
+            'S44',
+            "combine the expression-weight evaluations",
+            "python scripts/paper_figures/zebrafish_loss_weight/collect_alpha_metrics.py --reference <loss-evaluation-root>/reference/distribution_metrics.csv --alternative <loss-evaluation-root>/alpha_expr_005/distribution_metrics.csv --output <loss-evaluation-root>/alpha_metrics.csv",
+            "distribution_metrics.csv for expression weights 0.015 and 0.05",
+            "alpha_metrics.csv with model, time, space, and w1 columns",
+            'draw S44',
+            "Use reference, alpha_expr_005, ot_mass_10_to_1, and ot_mass_1_to_10 as the evaluation folder names. The alpha_expr_005 model uses alpha_express=0.05; the other settings are specified by prepare_configs.py.",
+        ),
+        _row(
+            'S44',
+            "draw loss-weight sensitivity",
+            "python scripts/paper_figures/zebrafish_loss_weight/plot_figure.py --alpha-metrics <loss-evaluation-root>/alpha_metrics.csv --evaluation-root <loss-evaluation-root> --output-dir <loss-figure-dir>",
+            "evaluation tables for all loss settings",
+            "s32_loss_weight_metrics.csv and the S36 PDF/PNG",
+            "finished figure",
+        ),
+        _row(
+            'S45',
+            "run daughter-noise sensitivity",
+            "python -m reproduction.zebrafish.daughter_noise --data-dir data/zebrafish --seed 42 --output-dir outputs/daughter_noise/seed_42 --device cuda:0",
+            "downloaded zebrafish aligned data, model, and full-state classifier",
+            "four trajectories, composition_long.csv, lineage_transition_long.csv, and particle_counts.csv",
+            'draw S45',
+            "Repeat for seeds 43 through 46 in separate directories. All simulations start at time zero and continue to time four.",
+        ),
+        _row(
+            'S45',
+            "draw daughter-noise sensitivity",
+            "python -m reproduction.zebrafish.plot_daughter_noise --run-dir outputs/daughter_noise/seed_42 --run-dir outputs/daughter_noise/seed_43 --run-dir outputs/daughter_noise/seed_44 --run-dir outputs/daughter_noise/seed_45 --run-dir outputs/daughter_noise/seed_46 --output-dir outputs/daughter_noise_figure",
+            "composition and lineage tables from the five completed runs",
+            "daughter-noise sensitivity PDF/PNG and plotted tables",
+            "recalculate all eight pages",
+        ),
+        _row(
+            'S36–S37, S39–S42, S44–S45',
+            "recalculate and draw all eight figures",
+            "python scripts/execute_paper_notebooks.py --notebook zebrafish_si_s31_s38 --output-dir <notebook-run>",
+            "included NPZ arrays and CSV tables",
+            "Supplementary_Figure_S31.pdf/.png through Supplementary_Figure_S38.pdf/.png plus derived tables",
+            "finished figures",
+        ),
+    ),
+    "interaction-ablation": (
+        _row(
+            "S42a-b", "fit Full and No-LR-prior models",
+            "scripts/run_matched_ablation_matrix.py and scripts/run_matched_ablation_benchmark_evaluation.py",
+            "matched aligned inputs and Full/No-LR training configurations",
+            "paired_target_deltas.csv from the completed matched-ablation report",
+            "retain these LR-prior results",
+            "The No-LR model keeps the interaction network and spatial cutoff. These scripts use the manuscript model records.", "source",
+        ),
+        _row(
+            "S42c-d", "compare inference with and without interaction",
+            "python scripts/paper_figures/interaction_ablation/run_comparison.py --dataset arista --model-dir <run>/training --input-manifest <benchmark-run>/arista/inputs/manifest.json --code-root . --output <inference-results>/arista --seeds 42 43 44 --gpu-metrics --device cuda:0",
+            "the fitted Full model and its matching benchmark input manifest (full_data split)",
+            "<inference-results>/arista/metrics.csv and manifest.json, plus paired predictions for each seed",
+            "repeat for zebrafish, mosta, admouse, and chicken_heart",
+            "No training is repeated. Only the interaction-network output is disabled. Use the corresponding model and input manifest for each dataset.",
+        ),
+        _row(
+            'S9', "collect completed comparisons",
+            "python scripts/collect_figure_inputs.py s42 --no-lr-table <matched-ablation-report>/paired_target_deltas.csv --inference-results-dir <inference-results> --output-dir <s42-inputs>",
+            "the Full/No-LR report and all five completed inference directories",
+            "no_lr_paired_target_deltas.csv, inference_metrics.csv, and model records",
+            "draw all four panels",
+        ),
+        _row(
+            'S9', "recalculate summaries and draw",
+            "python -m reproduction.paper_figures --figures 42 --results-dir <s42-inputs> --output-dir <figure-dir>",
+            "the collected numerical results",
+            "S42.pdf/.png; tables/S42_no_lr.csv, S42_interaction_off.csv, and S42_summaries.csv",
+            "finished figure",
+        ),
+    ),
+    "lr-prior-stvcr": (
+        _row(
+            "S42a-b",
+            "fit and evaluate Full and No-LR models",
+            "scripts/run_matched_ablation_matrix.py and scripts/run_matched_ablation_benchmark_evaluation.py",
+            "five manuscript aligned H5ADs; matched Full/No-LR configs; seed 42",
+            "per-arm full_data_metrics_long.csv and evaluation manifests",
+            "combine paired Full and No-LR results",
+            "These two files run the matched Full and No-LR evaluation. Their inputs are tied to the completed manuscript runs, so they are listed for reference rather than presented as a copy-and-run command.",
+            "source",
+        ),
+        _row(
+            "S42c-d",
+            "prepare held-out benchmark inputs",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
+            "the same held-out target stages and a fixed set of 5,000 starting states",
+            "held-out inputs and fixed starting states for every target stage",
+            "run CytoBridge and stVCR",
+        ),
+        _row(
+            "S42c-d",
+            "run held-out CytoBridge and stVCR",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> --software-root <method-checkouts> run --methods cytobridge stvcr --tracks loto --device cuda",
+            "held-out inputs, fixed starting states, and the two installed methods",
+            "one prediction folder for each method, dataset, and target stage",
+            "evaluate the predictions",
+        ),
+        _row(
+            "S42c-d",
+            "evaluate held-out predictions",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> evaluate --tracks loto",
+            "held-out truth and CytoBridge/stVCR predictions",
+            "target-stage means and a table showing which method completed each target",
+            'pair the results for S9',
+        ),
+        _row(
+            'S9',
+            "collect the five completed LOTO target summaries",
+            (
+                "python scripts/collect_figure_inputs.py s45 \\\n"
+                "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
+                "  --protocol <s45-protocol.json> \\\n"
+                "  --output-dir <s45-inputs>"
+            ),
+            "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
+            "<s45-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            "combine the No-LR and stVCR rows",
+            'Use the protocol.json included with the S8 paper results unless the benchmark contract itself has changed.',
+        ),
+        _row(
+            'S9',
+            "combine the matched rows",
+            (
+                "python scripts/collect_figure_inputs.py s42 \\\n"
+                "  --no-lr-table <matched-ablation-report>/paired_target_deltas.csv \\\n"
+                "  --loto-results-dir <s45-inputs> \\\n"
+                "  --output-dir <s42-inputs>"
+            ),
+            "paired_target_deltas.csv from the matched Full/No-LR report and the collected S45 input directory",
+            "<s42-inputs>/no_lr_paired_target_deltas.csv; stvcr_paired_target_deltas.csv; manifest.json",
+            'draw S9',
+        ),
+        _row(
+            'S9',
+            "summarize and draw",
+            "cytobridge figure lr-prior-stvcr --results-dir <s42-inputs> --output-dir <figure-dir>",
+            'the collected S9 input directory',
+            "lr_prior_stvcr_comparison.pdf/.png and panel summaries",
+            "finished figure",
+        ),
+    ),
+    "loto-benchmark": (
+        _row(
+            'S8',
+            "prepare held-out benchmark inputs",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> prepare",
+            "the same held-out target stages and fixed starting states for all methods",
+            "held-out inputs and fixed starting states for every target stage",
+            "run the compared methods",
+        ),
+        _row(
+            'S8',
+            "run the compared methods",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> --software-root <method-checkouts> run --methods cytobridge stvcr stories mioflow moscot wot paste spateo linear_centroid_shift exact_ot_displacement random_independent_pairs --tracks loto --device cuda",
+            "held-out inputs, fixed starting states, and installed comparison methods",
+            "one prediction folder for each method, dataset, and target stage",
+            "evaluate the predictions",
+        ),
+        _row(
+            'S8',
+            "evaluate held-out predictions",
+            "python -m scripts.spatiotemporal_benchmark.run_unified_benchmark --datasets zebrafish mosta arista admouse chicken_heart --model-runs <matched-model-runs> --run-root <benchmark-run> evaluate --tracks loto",
+            "held-out truth and method predictions",
+            "repeat-level metrics and a table showing which method completed each target",
+            'merge the updated ARTISTA and heart results',
+        ),
+        _row(
+            'S8',
+            "collect the five completed target summaries",
+            (
+                "python scripts/collect_figure_inputs.py s45 \\\n"
+                "  --dataset-summary zebrafish=<benchmark-run>/zebrafish/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary mosta=<benchmark-run>/mosta/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary arista=<benchmark-run>/arista/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary admouse=<benchmark-run>/admouse/reports/loto/loto_target_summary.csv \\\n"
+                "  --dataset-summary chicken_heart=<benchmark-run>/chicken_heart/reports/loto/loto_target_summary.csv \\\n"
+                "  --protocol <s45-protocol.json> \\\n"
+                "  --output-dir <s45-inputs>"
+            ),
+            "the loto_target_summary.csv written for each dataset by the benchmark summarizer",
+            "<s45-inputs>/loto_target_stage_means.csv; native_output_support.csv; protocol.json; manifest.json",
+            'draw S8',
+            'Use the protocol.json included with the S8 paper results unless the benchmark contract itself has changed. Replace the ARTISTA or chicken-heart summary path with a retrained run to update that dataset without changing the other three.',
+        ),
+        _row(
+            'S8',
+            "calculate paired ratios and draw",
+            "cytobridge figure loto-benchmark --results-dir <s45-inputs> --output-dir <figure-dir>",
+            'the collected S8 input directory',
+            "five_dataset_loto_benchmark.pdf/.png and ratio/summary tables",
+            "finished figure",
+        ),
+    ),
+    "training-histories": (
+        _row(
+            'S43',
+            "record training objectives",
+            "cytobridge workflow --config <dataset> --step preprocess --step train --train --input-h5ad <raw.h5ad> --output-dir <run> --device cuda:0",
+            "raw H5AD, full-model dataset configuration, and matching LR database",
+            "<run>/training/training_history.csv; stage checkpoints; <run>/training/training_run_summary.json",
+            "collect histories",
+        ),
+        _row(
+            'S43',
+            "collect the five completed histories",
+            (
+                "python scripts/collect_training_history_inputs.py \\\n"
+                "  --run zebrafish=<zebrafish-run>/training \\\n"
+                "  --run mosta=<mosta-run>/training \\\n"
+                "  --run arista=<arista-run>/training \\\n"
+                "  --run admouse=<admouse-run>/training \\\n"
+                "  --run chicken_heart=<heart-run>/training \\\n"
+                "  --output-dir <s46-inputs>"
+            ),
+            "training_history.csv from each of the five completed runs",
+            "<s46-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            'draw S43',
+        ),
+        _row(
+            'S43',
+            "smooth within stage and draw",
+            "cytobridge figure training-histories --results-dir <s46-inputs> --output-dir <figure-dir>",
+            "<s46-inputs>/arista_training_history.csv; panel_metrics.csv; manifest.json",
+            "representative_training_curves.pdf/.png and displayed stage metrics",
+            "finished figure",
+        ),
+    ),
+    "arista-local-domains": (
+        _row(
+            'S26',
+            'run corrected ARTISTA downstream',
+            "cytobridge workflow --config arista --step downstream --aligned-h5ad <aligned.h5ad> --model-dir <training> --output-dir <downstream>",
+            'manuscript ARTISTA aligned H5AD and retrained model',
+            "5-DPI cell states, velocity components, sparse attention and strict LR tables",
+            "domain analysis",
+        ),
+        _row(
+            'S26',
+            "draw from the saved domain and matched-null results",
+            "python scripts/results/plot_arista_local_domains.py --results-dir <domain-result-dir> --output-dir <figure-dir>",
+            "ROI assignments, domain metadata, cell-type edges, and matched-null tables",
+            "arista_local_interaction_domains.pdf/.png and displayed tables",
+            "open the notebook for the same calculation with saved output",
+        ),
+        _row(
+            'S26',
+            "run the same calculation in the notebook",
+            "python scripts/execute_paper_notebooks.py --notebook arista_local_domains --output-dir <notebook-run>",
+            "ROI, domain, edge and null tables",
+            "arista_local_interaction_domains.pdf/.png and displayed tables",
+            "finished figure",
+        ),
+    ),
+    "zebrafish-attention": (
+        _row(
+            'S38',
+            "compare model scores with external methods",
+            "python -m scripts.run_zebrafish_attention_analysis analyze --spec <analysis-spec.json> --output-dir <attention-analysis> --n-selected-pairs 30",
+            "manuscript zebrafish checkpoint; aligned cells; COMMOT/CellAgentChat outputs; fixed LR universe",
+            "directed-pair concordance, expression, display-edge and interaction-sensitivity tables plus analysis_manifest.json",
+            'combine with JAM controls and draw S38',
+            "Run this command from the root of a cloned CytoBridge GitHub repository. The installed package contains the final figure command, while this manuscript comparison script remains in the repository.",
+        ),
+        _row(
+            'S38',
+            'combine JAM controls and draw S38',
+            "python -m scripts.run_zebrafish_attention_analysis figure --analysis-dir <attention-analysis> --jam-manifest <trained-jam>/run_manifest.json --jam-manifest <before-interaction-jam>/run_manifest.json --jam-manifest <randomized-jam>/run_manifest.json --output-dir <attention-figure>",
+            "attention-analysis tables and one or more matched JAM control manifests",
+            "spatial-null, JAM, summary and panel tables; vector PDF/PNG; report_manifest.json",
+            "recalculate the displayed statistics",
+            "Run this command from the same repository checkout. Repeat --jam-manifest for the trained, before-interaction, and randomized comparison results.",
+        ),
+        _row(
+            'S38',
+            "recalculate displayed statistics and draw",
+            "python scripts/execute_paper_notebooks.py --notebook zebrafish_attention --output-dir <notebook-run>",
+            "directed_pair_concordance.csv; JAM tables; spatial-null tables; expression and edge tables",
+            "zebrafish_attention_controls.pdf/.png and summary tables",
+            "finished figure",
+        ),
+    ),
+    "compute-cost": (
+        _row(
+            "Supplementary Table 2",
+            "measure each manuscript full-model run",
+            "cytobridge workflow --config <dataset> --step preprocess --step train --train --input-h5ad <raw.h5ad> --output-dir <run> --device cuda:0",
+            "one raw H5AD and manuscript model configuration per dataset",
+            "training_run_summary.json with elapsed seconds, peak host RSS and peak PyTorch allocation",
+            "collect the five measured runs",
+        ),
+        _row(
+            "Supplementary Table 2",
+            "collect the five training summaries",
+            "python scripts/collect_full_model_compute_cost.py --run admouse=<admouse-training>/training_run_summary.json --run arista=<arista-training>/training_run_summary.json --run chicken_heart=<heart-training>/training_run_summary.json --run mosta=<mosta-training>/training_run_summary.json --run zebrafish=<zebrafish-training>/training_run_summary.json --output-dir <compute-cost-results>",
+            "five manuscript training_run_summary.json files",
+            "full_model_compute_cost.csv and manifest.json",
+            "check and format the table",
+        ),
+        _row(
+            "Supplementary Table 2",
+            "check and format the collected table",
+            "python -m scripts.results.build_full_model_compute_cost_table --results-dir <compute-cost-results> --output-dir <formatted-table-run>",
+            "full_model_compute_cost.csv and manifest.json",
+            "checked raw table plus formatted CSV and Markdown files",
+            "format the display values in the notebook",
+        ),
+        _row(
+            "Supplementary Table 2",
+            "format the table",
+            "python scripts/execute_paper_notebooks.py --notebook compute_cost --output-dir <notebook-run>",
+            "full_model_compute_cost.csv",
+            "full_model_compute_cost_formatted.csv/.md",
+            "copy the displayed values to the TeX-native table",
+        ),
+    ),
+    "main-figure-2": (
+        _row(
+            "Main Figure 2a-e",
+            "download the observations and generator fields",
+            "python -m CytoBridge.datasets agist --output-dir . --kind agist_analysis_data.zip",
+            "AGIST analysis-data download",
+            "data/agist: observations and generator velocity fields",
+            "download the additional Figure 2 inputs",
+        ),
+        _row(
+            "Main Figure 2b-e",
+            "download the original model and generator references",
+            "python -m CytoBridge.datasets agist --output-dir . --kind agist_figure2_inputs.zip",
+            "additional Figure 2 data release",
+            "data/agist/figure2: original model and generator growth and attention",
+            "download the matching score model",
+        ),
+        _row(
+            "Main Figure 2b-e",
+            "download the original score model",
+            "python -m CytoBridge.datasets agist --output-dir . --kind agist_figure2_score_model.zip",
+            "original 1214 score-model download",
+            "data/agist/figure2/model_1214/score_model",
+            "execute the Figure 2 notebook",
+        ),
+        _row(
+            "Main Figure 2a-e",
+            "calculate the model outputs and draw the numerical panels",
+            "python scripts/execute_paper_notebooks.py --notebook main_figure_2 --project-dir . --output-dir outputs/figure2_notebook --timeout 7200 --save-outputs",
+            "AGIST observations and generator references; original 1214 model and score model",
+            "new snapshot, velocity, attention, growth and distance panels; cell arrays and distance tables",
+            "inspect the calculated figures in the notebook",
+        ),
+    ),
+    "main-figure-5-reference": (
+        _row(
+            "Main Figure 5a-e", "download the numerical inputs",
+            "python -m CytoBridge.datasets arista --kind arista_figure_data.zip --output-dir .",
+            "public paper data release", "data/arista/paper numerical inputs",
+            "download the spatial display states",
+        ),
+        _row(
+            "Main Figure 5a-e", "download the spatial display states",
+            "python -m CytoBridge.datasets arista --kind arista_spatial_display_data.zip --output-dir .",
+            "public paper data release", "data/arista/paper/display_states and growth data",
+            "draw the panels",
+        ),
+        _row(
+            "Main Figure 5a-e", "draw the panels",
+            "python -m reproduction.arista.main_figure --data-dir data/arista/paper --output-dir outputs/main_figure_5_reference",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
+            "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
+        ),
+    ),
+    "main-figure-4": (
+        _row(
+            "Main Figure 4a-e", "download the numerical inputs",
+            "python -m CytoBridge.datasets mosta --kind mosta_figure_data.zip --output-dir .",
+            "public paper data release", "data/mosta/paper numerical inputs",
+            "draw the panels",
+        ),
+        _row(
+            "Main Figure 4a-e", "draw the panels",
+            "python -m reproduction.mosta.main_figure --data-dir data/mosta/paper --output-dir outputs/main_figure_4",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
+            "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
+        ),
+    ),
+    "mosta-reference-pages": (
+        _row(
+            'S16–S23', "download the numerical inputs",
+            "python -m CytoBridge.datasets mosta --kind mosta_figure_data.zip --output-dir .",
+            "public paper data release", "data/mosta/paper numerical inputs",
+            "draw the panels",
+        ),
+        _row(
+            'S16–S23', "draw the panels",
+            "python -m reproduction.mosta.figures --data-dir data/mosta/paper --output-dir outputs/mosta_reference_pages",
+            "downloaded numerical populations and included analysis tables",
+            "new PDF and PNG figures with recalculated summary tables",
+            "finished figures",
+            "To simulate populations first, follow the dataset analysis tutorial. This command draws the saved paper populations.",
+        ),
+    ),
+}
+
+
+def describe_figure_steps(name: str) -> list[dict[str, str]]:
+    """Return the calculations used to make one paper figure."""
+
+    try:
+        rows = FIGURE_REPRODUCTION_CHAINS[name]
+    except KeyError as error:
+        choices = ", ".join(sorted(FIGURE_REPRODUCTION_CHAINS))
+        raise ValueError(f"Unknown figure workflow {name!r}; choose from {choices}.") from error
+    return deepcopy(list(rows))
+
+
+def describe_figure_reproduction_chain(name: str) -> list[dict[str, str]]:
+    """Backward-compatible name for :func:`describe_figure_steps`."""
+
+    return describe_figure_steps(name)
+
+
+def describe_dataset_run_steps(dataset: str) -> list[dict[str, str]]:
+    """Return the main training steps and the files written by each step."""
+
+    if dataset not in {"zebrafish", "mosta", "arista", "admouse", "chicken_heart"}:
+        raise ValueError(f"Unknown dataset: {dataset}")
+    return [
+        _row(
+            dataset,
+            "Run a new dataset from raw counts",
+            (
+                f"cytobridge workflow --config {dataset} --train \\\n"
+                "  --input-h5ad <raw.h5ad> --output-dir <run> --device cuda"
+            ),
+            "raw H5AD, dataset configuration, and the included or user-supplied LR database",
+            f"<run>/preprocess/{dataset}_aligned.h5ad; <run>/preprocess/edge_classifier/{dataset}_edge_model.pt when the configuration uses a ligand--receptor edge predictor; <run>/training/<stage>/best_model.pth or score_model.pth; <run>/training/adata.h5ad; <run>/training/training_history.csv; <run>/training/training_run_summary.json; <run>/downstream/summary.json, result tables, and figures",
+            "inspect <run>/downstream, or rerun only the downstream analysis in a new output directory",
+            "Start here with raw data. This one command preprocesses, trains, and runs the analyses selected in the configuration. The separate preprocessing-only run below is optional.",
+        ),
+        _row(
+            dataset,
+            "Inspect the aligned data without training (optional)",
+            (
+                f"cytobridge workflow --config {dataset} --step preprocess \\\n"
+                "  --input-h5ad <raw.h5ad> --output-dir <preprocess-only>"
+            ),
+            "raw H5AD and the dataset configuration",
+            f"<preprocess-only>/preprocess/{dataset}_aligned.h5ad and preprocessing records; no edge predictor or CytoBridge model",
+            "inspect the aligned H5AD; use the first command, starting again from the raw H5AD, when ready to fit a model",
+            "This is an alternative inspection run, not a prerequisite for training.",
+        ),
+        _row(
+            dataset,
+            "Run downstream analysis again (optional)",
+            (
+                f"cytobridge workflow --config {dataset} --step downstream \\\n"
+                f"  --aligned-h5ad <run>/preprocess/{dataset}_aligned.h5ad \\\n"
+                "  --model-dir <run>/training --output-dir <downstream-rerun>"
+            ),
+            f"aligned H5AD; <run>/training; dataset-matched LR database",
+            "<downstream-rerun>/downstream/summary.json; slice_data/*.h5ad; velocity/velocity_components.npz; growth/growth_by_cell.csv; composition/celltype_composition.csv; communication and ligand_receptor tables; standard figures",
+            "paper-specific continuation shown in the paper-figure notebook",
+            "The first command already runs these analyses. Use this form only to repeat downstream analysis, and choose a new output directory so the original results are not overwritten.",
+        ),
+    ]
+
+
+def describe_dataset_artifact_chain(preset: str) -> list[dict[str, str]]:
+    """Backward-compatible name for :func:`describe_dataset_run_steps`."""
+
+    return describe_dataset_run_steps(preset)
+
+
+DATASET_PAPER_CHAINS: dict[str, tuple[dict[str, str], ...]] = {
+    "zebrafish": (
+        _row(
+            'S36–S37, S39–S41; S42',
+            "Start from the paper's saved files: calculate the zebrafish panel inputs",
+            (
+                "python -m scripts.run_zebrafish_paper_downstream \\\n"
+                "  --aligned-h5ad <saved-paper-files>/preprocess/zebrafish_aligned.h5ad \\\n"
+                "  --model-dir <saved-paper-files>/training \\\n"
+                "  --acceptance-report <matched-ablation-run>/matched_ablation_acceptance.json \\\n"
+                "  --lr-database <zebrafish-lr.csv> \\\n"
+                "  --output-dir <zebrafish-paper-results> --stage all --device cuda"
+            ),
+            "paper aligned H5AD and model; matched-ablation acceptance report; zebrafish LR database",
+            "state transport, growth, virtual-removal, gene-dynamics, inverse-PCA, and communication tables",
+            'use the S36–S37, S39–S42, S44–S45 notebook to calculate panel values and draw the figures',
+            "The standard dataset workflow does not create the acceptance report. It belongs to the separate matched-ablation calculation described in scripts/README.md and must identify the same model files.",
+        ),
+        _row(
+            'S44',
+            "Start from the paper's saved files: prepare the loss-weight comparison",
+            (
+                "python scripts/paper_figures/zebrafish_loss_weight/prepare_configs.py \\\n"
+                "  --base-config CytoBridge/configs/zebrafish_training.yaml \\\n"
+                "  --output-dir <loss-config-dir>"
+            ),
+            "included zebrafish training configuration",
+            "one training YAML per loss setting",
+            'train each YAML with the command shown in the S36–S37, S39–S42, S44–S45 notebook',
+            "This is a comparison across separately trained models, not an output of one standard downstream run.",
+        ),
+        _row(
+            'S45',
+            "Start from the paper's saved files: calculate daughter-noise sensitivity",
+            (
+                "python -m reproduction.zebrafish.daughter_noise --data-dir data/zebrafish "
+                "--seed 42 --output-dir outputs/daughter_noise/seed_42 --device cuda:0"
+            ),
+            "downloaded zebrafish model, aligned cells, and 52-feature classifier",
+            "daughter-noise composition, lineage, and particle-count tables",
+            "repeat for seeds 43–46 and collect the runs with reproduction.zebrafish.plot_daughter_noise",
+            'See the S45 tutorial for the complete simulation and plotting commands.',
+        ),
+        _row(
+            'S38',
+            "Start from the paper's saved files: compare interaction scores with external methods",
+            (
+                "python -m scripts.run_zebrafish_attention_analysis analyze \\\n"
+                "  --spec <paper-analysis-spec.json> \\\n"
+                "  --output-dir <attention-analysis> --n-selected-pairs 30"
+            ),
+            "paper model and aligned cells; fixed LR pairs; COMMOT and CellAgentChat result files named by the analysis specification",
+            "directed-pair, expression, display-edge, and interaction-sensitivity tables",
+            'run the report command, then use the S38 notebook',
+            "The comparison-method files and analysis specification are archived paper inputs, not outputs of the standard workflow. Their required fields and the report command are documented in scripts/README.md.",
+        ),
+    ),
+    "mosta": (
+        _row(
+            'Main Figure 4; S16–S23',
+            "Use the MOSTA outputs from the model run above",
+            "<run>/downstream",
+            "the downstream directory written by the complete raw-data run",
+            "generated states; growth; composition; lineage when requested; gene-dynamics and LR tables when their inputs are supplied; standard figures already stored under <run>/downstream",
+            "inspect <run>/downstream, or write a new plotting script for the question being studied",
+            "No second downstream command is required. To repeat the downstream analysis, use the optional rerun command above with <downstream-rerun> as a new output directory. The standard downstream analysis does not calculate GO-enrichment tables or assemble the paper pages.",
+            "source",
+        ),
+        _row(
+            'Main Figure 4; S16–S23',
+            "Start from the paper's saved files: export Main Figure 4 and S16–S23",
+            (
+                "python scripts/results/export_mosta_figures.py \\\n"
+                "  --release-dir paper_resources/mosta \\\n"
+                "  --output-dir <figure-dir>"
+            ),
+            "included MOSTA result release and its recorded panel builders",
+            "five Main Figure 4 vector panels and eight SI vector pages",
+            "view the exports in the Main Figure 4 and MOSTA paper notebooks",
+            "This command redraws the paper's saved result files. It does not convert an arbitrary new downstream directory into the manuscript pages.",
+        ),
+    ),
+    "arista": (
+        _row(
+            'Main Figure 5; S24–S30',
+            'Use the ARTISTA outputs from the model run above',
+            "<run>/downstream",
+            "the downstream directory written by the complete raw-data run",
+            "slice H5ADs; growth; composition; velocity; sparse interaction scores; gene and LR tables already stored under <run>/downstream",
+            "inspect <run>/downstream, or write a new plotting script for the question being studied",
+            'No second downstream command is required. To repeat the downstream analysis, use the optional rerun command above with <downstream-rerun> as a new output directory. The paper pages below use the saved ARTISTA paper result directory rather than the current <run> directory.',
+            "source",
+        ),
+        _row(
+            'Main Figure 5; S24–S25, S27, S30',
+            "Start from the paper's saved files: locate the spatial, growth, composition, and gene-program builders",
+            "paper_resources/artista",
+            'included ARTISTA paper result directory and the file record for each panel',
+            "vector panels and assembled Main Figure 5/S19-S22 pages",
+            'use the Main Figure 5 and ARTISTA paper notebooks',
+            'The repository release contains these panel builders. No general command currently converts a new ARTISTA downstream directory into S24–S25, S27, S30, so this directory is listed as the saved paper source rather than as a command.',
+            "source",
+        ),
+        _row(
+            'S28–S29',
+            "Start from the paper's saved files: redraw the LR-profile figures",
+            "cytobridge figure arista-lr --output-dir <figure-dir>",
+            'saved ARTISTA paper LR-profile tables included with the package',
+            "S23 and S24 PDF/PNG files and their source tables",
+            'view the ARTISTA paper notebook',
+            'This installed command redraws the published S28–S29 results; it does not read the current <run> directory.',
+        ),
+        _row(
+            'S26',
+            "Start from the paper's saved files: redraw the local-domain figure",
+            "cytobridge figure arista-local-domains --output-dir <figure-dir>",
+            'saved ARTISTA paper ROI, domain, edge, and null-analysis tables included with the package',
+            "local-domain panel tables and S25 PDF/PNG",
+            'view the ARTISTA local-domain paper notebook',
+            'This installed command redraws the published S26 result; it does not read the current <run> directory.',
+        ),
+    ),
+    "admouse": (
+        _row(
+            'S31',
+            "Calculate cell-type counts, proportions, and spatial population panels",
+            (
+                "python reproduction/admouse/plot_population.py \\\n"
+                "  --run-dir data/admouse/populations \\\n"
+                "  --output-dir outputs/admouse_population"
+            ),
+            "formal r2 generated cell-state arrays and k=1 cell-type labels at 25 model times",
+            "celltype_counts_and_proportions.csv and ad_supplementary1.pdf/.png",
+            "view the recalculated population panels",
+            "This command calculates from cell states and labels, not from a finished image. It reproduces the original model-time-labelled panels. The manuscript age mapping is archived separately.",
+        ),
+        _row(
+            "Main Figure 6",
+            "AD spatial, gene-program, LR, and Trem2 analyses",
+            "reproduction/admouse/final_figures/main/",
+            "r2 spatial populations, gene profiles, LR time courses, and Trem2 perturbation results",
+            "main-figure panels and their numerical tables",
+            "follow the panel map in reproduction/admouse/README.md",
+            "The supplied scripts and small tables are now archived. Some scripts require the original server data layout and are not yet portable commands.",
+            "source",
+        ),
+        _row(
+            'S32–S33',
+            "Gene Ontology analysis of temporal gene programs",
+            "reproduction/admouse/final_figures/supplementary/go/",
+            "gene lists for temporal programs 1 and 4 from the Figure 6 clustering",
+            "GO dot, network, and overlap plots",
+            "assemble the GO panels",
+            "The gene lists and R plotting scripts are included. The required R annotation packages are listed in those scripts.",
+            "source",
+        ),
+        _row(
+            'S34',
+            "NicheNet ligand activity and ligand-receptor networks",
+            "reproduction/admouse/final_figures/supplementary/nichenet/",
+            "51 generated/observed states on the 0.05 time grid, inverse-PCA expression summaries, and NicheNet priors",
+            "50-window ligand activities, seven-interval summaries, and six LR network panels",
+            "follow interpolation, input preparation, NicheNet scoring, then nichenet1.R and nichenet2.R",
+            'These are the supplied S34 calculation and plotting scripts. The 0.05 value is the output-time interval, not the expression-loss weight. Large states and R prior matrices remain in the server data collection.',
+            "source",
+        ),
+        _row(
+            'S35',
+            "Spp1 perturbation module scores",
+            "reproduction/admouse/final_figures/supplementary/downstream/scripts/ad_supplementary2.py",
+            "whole_tissue_spp1_modules_endpoint.csv in the matching archived data folder",
+            "Spp1 activation and knockdown module-score panels",
+            'assemble the S35 panel',
+            "The script and its exact small plotting table are archived together.",
+            "source",
+        ),
+    ),
+    "chicken_heart": (
+        _row(
+            "Main Figure 3",
+            "Continue from the model run above: calculate the chicken-heart paper outputs",
+            (
+                "python scripts/run_chicken_heart_paper_downstream.py \\\n"
+                "  --run-root <run> \\\n"
+                "  --input-h5ad <run>/preprocess/chicken_heart_aligned.h5ad \\\n"
+                "  --model-dir <run>/training \\\n"
+                "  --standard-downstream <run>/downstream \\\n"
+                "  --output-dir <chicken-heart-paper-output> --device cuda"
+            ),
+            "aligned H5AD, retrained model, and its downstream directory",
+            "perturbation, interaction-off, LR-time-course, and model interaction-score tables and figures",
+            "assemble the selected Main Figure 3 panels",
+            "The calculation is available for a new run, but the repository does not currently contain the updated Main Figure 3 page-assembly command.",
+        ),
+        _row(
+            'S12–S13',
+            "Recreate the alignment-sensitivity figures from the calculated results",
+            (
+                "python reproduction/chicken_heart/alignment_sensitivity/plot_sensitivity.py \\\n"
+                "  --output-dir outputs/heart_alignment"
+            ),
+            "coordinate arrays, comparison CSV tables, and the perturbation manifest included with this figure code",
+            'S12 and S13 as PDF and PNG, with a combined two-page PDF',
+            "inspect the section overlays and the alignment, velocity, and interaction comparisons",
+            "Translations are 1 and 2 median-neighbor distances. Rotations are 1 and 3 degrees. The calculation record includes preprocessing, alignment, training, and downstream comparison for all seven conditions.",
+        ),
+        _row(
+            'S14',
+            "Use the growth results from the model run above",
+            "<run>/downstream/growth",
+            "the growth directory written by the complete raw-data run",
+            "<run>/downstream/growth/growth_by_cell.csv and growth_timepoint_grid.pdf",
+            'use the table and standard plot in a new analysis, or compare them with S14',
+            'No second downstream command is required. The exact S14 page-assembly command is not included.',
+            "source",
+        ),
+        _row(
+            'S15',
+            "Use the velocity results from the model run above",
+            "<run>/downstream/velocity",
+            "the velocity directory written by the complete raw-data run",
+            "<run>/downstream/velocity/velocity_components.npz and full/drift/interaction vector PDFs",
+            'use the arrays and standard plots in a new analysis, or compare them with S15',
+            'No second downstream command is required. The exact S15 page assembly and its comparison-method input are not included.',
+            "source",
+        ),
+    ),
+}
+
+
+def describe_dataset_paper_steps(dataset: str) -> list[dict[str, str]]:
+    """Return the dataset-specific calculations used by paper figures."""
+
+    try:
+        rows = DATASET_PAPER_CHAINS[dataset]
+    except KeyError as error:
+        choices = ", ".join(sorted(DATASET_PAPER_CHAINS))
+        raise ValueError(f"Unknown dataset {dataset!r}; choose from {choices}.") from error
+    return deepcopy(list(rows))
+
+
+def describe_dataset_paper_chain(preset: str) -> list[dict[str, str]]:
+    """Backward-compatible name for :func:`describe_dataset_paper_steps`."""
+
+    return describe_dataset_paper_steps(preset)
+
+
+__all__ = [
+    "FIGURE_REPRODUCTION_CHAINS",
+    "DATASET_PAPER_CHAINS",
+    "describe_dataset_artifact_chain",
+    "describe_dataset_paper_chain",
+    "describe_dataset_paper_steps",
+    "describe_dataset_run_steps",
+    "describe_figure_steps",
+    "describe_figure_reproduction_chain",
+]

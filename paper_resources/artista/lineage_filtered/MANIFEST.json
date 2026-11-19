@@ -1,0 +1,13 @@
+{
+  "figure": "S21",
+  "spatial_label_smoothing": false,
+  "minimum_count": 10,
+  "source_cumulative_fraction": 0.85,
+  "filter_order": [
+    "minimum_count",
+    "cumulative_fraction"
+  ],
+  "particle_count": 7668,
+  "time_count": 9,
+  "previous_results_preserved": true
+}

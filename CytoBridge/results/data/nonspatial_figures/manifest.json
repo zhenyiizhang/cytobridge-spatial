@@ -1,0 +1,94 @@
+{
+  "analysis": "grouped_nonspatial_s4_s5",
+  "figures": {
+    "s4": "Weinreb non-spatial interactions",
+    "s5": "scNT-seq non-spatial interactions"
+  },
+  "files": {
+    "external_inputs.json": {
+      "bytes": 3883
+    },
+    "scnt_cell_colors.json": {
+      "bytes": 194
+    },
+    "scnt_direction.csv": {
+      "bytes": 3222
+    },
+    "scnt_distribution.csv": {
+      "bytes": 561
+    },
+    "scnt_interaction_vectors.csv": {
+      "bytes": 445
+    },
+    "scnt_metrics.json": {
+      "bytes": 2098
+    },
+    "scnt_model_fields.npz": {
+      "bytes": 115231
+    },
+    "scnt_network_edges.csv": {
+      "bytes": 2063
+    },
+    "scnt_network_nodes.csv": {
+      "bytes": 98
+    },
+    "scnt_network_pairs.csv": {
+      "bytes": 3022
+    },
+    "scnt_observed_cells.npz": {
+      "bytes": 158192
+    },
+    "scnt_pathways.csv": {
+      "bytes": 431
+    },
+    "weinreb_cell_colors.json": {
+      "bytes": 265
+    },
+    "weinreb_clone_fate.csv": {
+      "bytes": 399
+    },
+    "weinreb_concordance.csv": {
+      "bytes": 174
+    },
+    "weinreb_distribution.csv": {
+      "bytes": 1014
+    },
+    "weinreb_metrics.json": {
+      "bytes": 3615
+    },
+    "weinreb_model_fields.npz": {
+      "bytes": 199715
+    },
+    "weinreb_network_edges.csv": {
+      "bytes": 3178
+    },
+    "weinreb_network_nodes.csv": {
+      "bytes": 151
+    },
+    "weinreb_observed_cells.npz": {
+      "bytes": 736128
+    },
+    "weinreb_pathways.csv": {
+      "bytes": 476
+    }
+  },
+  "schema_version": 1,
+  "conditions_by_dataset": {
+    "weinreb": {
+      "training_seeds": [
+        42,
+        43,
+        44
+      ],
+      "with_interaction": "LR-informed Full",
+      "without_interaction": "retrained without interaction using the Full energy expression"
+    },
+    "scnt": {
+      "training_seeds": [
+        42,
+        43,
+        44
+      ]
+    }
+  }
+}

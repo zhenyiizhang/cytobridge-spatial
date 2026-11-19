@@ -1,0 +1,5 @@
+time,stage,source,target,source_n_cells,target_n_cells,is_same_type,original_ai_edge_identity,weight_sum,weight_per_source,row_fraction,mean_per_edge,directional_asymmetry,draw_order,legacy_display_role,is_self_edge
+3.0,E15.5,Choroid plexus,Brain,140,1202,False,True,10.81548523902893,0.0772534659930637,0.113337849658497,0.6362050140605253,0.0644562266991941,1,original_AI_cross_type_identity,False
+3.0,E15.5,Meninges,Brain,836,1202,False,True,42.234606236219406,0.0505198639189227,0.0446933166035174,0.6812033263906356,0.0212551248970406,2,original_AI_cross_type_identity,False
+3.0,E15.5,Brain,Meninges,1202,836,False,True,35.176216304302216,0.029264739021882,0.0407903391613862,0.676465698159658,-0.0212551248970406,3,original_AI_cross_type_identity,False
+3.0,E15.5,Brain,Brain,1202,1202,True,True,798.3971297591925,0.6642239016299438,0.9258212829550888,0.7413158122183774,0.0,4,focus_same_type_loop,True

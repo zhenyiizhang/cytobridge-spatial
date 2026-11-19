@@ -1,0 +1,11 @@
+{
+  "figure": "S21",
+  "classifier": "classifier_resmlp_dedb1d6442f4d3d3.pt",
+  "lineage_labels": "fixed_particle_lineage_labels_unsmoothed.npz",
+  "spatial_label_smoothing": false,
+  "particle_count": 7668,
+  "time_count": 9,
+  "calculation": "reproduction/arista/simulate_paper_populations.py",
+  "plotting": "reproduction/arista/supplementary.py",
+  "previous_results_preserved": true
+}

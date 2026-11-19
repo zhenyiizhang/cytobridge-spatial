@@ -1,0 +1,3 @@
+stage_label,cell_type,gene_a,gene_b,n_cells,both_detected,gene_a_only,gene_b_only,neither_detected,fisher_odds_ratio,fisher_two_sided_p
+18hpf,Somite,jam3b,myog,375,39,27,115,194,2.4367149758454105,0.0014231767132461769
+18hpf,Somite,jam2a,myog,375,33,37,121,184,1.3562653562653562,0.28190428798652511

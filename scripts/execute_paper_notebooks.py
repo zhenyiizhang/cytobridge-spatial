@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+"""Execute the paper-figure notebooks and optionally save their outputs."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import tempfile
+
+import nbformat
+from nbclient import NotebookClient
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+NOTEBOOK_DIR = PROJECT_ROOT / "docs" / "tutorials" / "paper_figures"
+OPERATIONS = {
+    "main_figure_2": "calculate AGIST snapshots, model fields, attention, growth and W2 before drawing panels",
+    "agist_attention_recovery": "infer attention at four times and calculate per-time Spearman correlations",
+    "agist_figures": "evaluate simulated states and model fields, then calculate and draw S4",
+    "nonspatial_figures": "evaluate three LR models and calculate S5-S6 panels from named analysis outputs",
+    "main_figure_4": "simulate populations and lineage, calculate communication/LR and velocity fields, then draw Figure 4",
+    "main_figure_5": "draw all panels from cell states and numerical results",
+    "mosta_figures": "draw S16-S23 from cell states and numerical results",
+    "chicken_heart_daily": "calculate velocities, cell-type transitions and interactions from the trained model",
+    "zebrafish_si_s31_s38": "simulate populations and perturbations, calculate downstream results and draw S36–S42",
+    "arista_figures": "draw S24-S30 from cell states and numerical results",
+    "compute_cost": "format recorded measurements as a table",
+}
+DOWNLOAD_NOTEBOOKS = {"main_figure_4", "main_figure_5", "mosta_figures", "arista_figures",
+                      "chicken_heart_daily", "zebrafish_si_s31_s38", "arista_local_domains",
+                      "agist_figures", "main_figure_2", "agist_attention_recovery", "nonspatial_figures"}
+EXCLUDED_NOTEBOOKS = {"lr_prior_ablation_stvcr"}  # Superseded by interaction_ablation.
+
+# The kernels run in temporary output directories. Keep the CytoBridge code folder on
+# their import path when this script is used before installing a wheel.
+_pythonpath = os.environ.get("PYTHONPATH")
+os.environ["PYTHONPATH"] = (
+    str(PROJECT_ROOT)
+    if not _pythonpath
+    else os.pathsep.join((str(PROJECT_ROOT), _pythonpath))
+)
+os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
+
+
+def _portable_output_paths(notebook, run_dir: Path) -> None:
+    """Replace temporary run-directory prefixes in displayed path values."""
+
+    prefixes = {str(run_dir), str(run_dir.resolve())}
+
+    def replace(value):
+        if isinstance(value, str):
+            for prefix in prefixes:
+                value = value.replace(f"{prefix}/", "")
+            return value
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                value[index] = replace(item)
+            return value
+        if isinstance(value, dict):
+            for key, item in value.items():
+                value[key] = replace(item)
+            return value
+        return value
+
+    for cell in notebook.cells:
+        if cell.cell_type == "code":
+            cell.outputs = replace(cell.get("outputs", []))
+
+
+def execute_notebook(
+    path: Path,
+    run_dir: Path,
+    *,
+    timeout: int,
+    save_outputs: bool,
+) -> dict[str, object]:
+    notebook = nbformat.read(path, as_version=4)
+    client = NotebookClient(
+        notebook,
+        timeout=timeout,
+        kernel_name="python3",
+        resources={"metadata": {"path": str(run_dir)}},
+    )
+    client.execute()
+    _portable_output_paths(notebook, run_dir)
+    if save_outputs:
+        nbformat.write(notebook, path)
+    code_cells = [cell for cell in notebook.cells if cell.cell_type == "code"]
+    return {
+        "notebook": path.name,
+        "operation": OPERATIONS.get(path.stem, "draw figures from included numerical results"),
+        "training_performed": False,
+        "code_cells": len(code_cells),
+        "executed_cells": sum(cell.execution_count is not None for cell in code_cells),
+        "outputs": sum(len(cell.get("outputs", ())) for cell in code_cells),
+    }
+
+
+def run(
+    output_dir: Path,
+    *,
+    timeout: int,
+    save_outputs: bool = False,
+    notebook_names: tuple[str, ...] = (),
+) -> list[dict[str, object]]:
+    if notebook_names:
+        notebooks = []
+        for name in notebook_names:
+            filename = name if name.endswith(".ipynb") else f"{name}.ipynb"
+            path = NOTEBOOK_DIR / filename
+            if not path.is_file():
+                raise FileNotFoundError(f"Unknown paper-figure notebook: {name}")
+            notebooks.append(path)
+        if len(notebooks) != len(set(notebooks)):
+            raise ValueError("A notebook was selected more than once")
+    else:
+        notebooks = [p for p in sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+                     if p.stem not in EXCLUDED_NOTEBOOKS]
+    prerequisites = {
+        "agist_attention_recovery": ["main_figure_2"],
+        "main_figure_5": ["../dataset_workflows/arista"],
+        "chicken_heart_daily": ["../dataset_workflows/chicken_heart"],
+        "arista_figures": ["main_figure_5"],
+        "arista_local_domains": ["main_figure_5"],
+    }
+    ordered = []
+    def add(path):
+        for name in prerequisites.get(path.stem, []):
+            add((NOTEBOOK_DIR / (name + ".ipynb")).resolve())
+        if path.resolve() not in [p.resolve() for p in ordered]:
+            ordered.append(path)
+    for path in notebooks:
+        add(path)
+    notebooks = ordered
+    if not notebooks:
+        raise FileNotFoundError(f"No notebooks found in {NOTEBOOK_DIR}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    summaries = []
+    for path in notebooks:
+        run_dir = output_dir / path.stem
+        run_dir.mkdir()
+        summaries.append(
+            execute_notebook(
+                path,
+                run_dir,
+                timeout=timeout,
+                save_outputs=save_outputs,
+            )
+        )
+    return summaries
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--project-dir", type=Path,
+                        help="Shared project containing data/. Notebook results go to its outputs/.")
+    parser.add_argument("--report", type=Path, help="Save the execution summary as JSON.")
+    parser.add_argument("--bundled-only", action="store_true",
+                        help="Run notebooks whose numerical inputs are included in the CytoBridge code folder")
+    parser.add_argument(
+        "--notebook",
+        action="append",
+        default=[],
+        help=(
+            "Notebook filename or stem to execute. Repeat this option to run "
+            "several notebooks; omit it to run the full paper-figure set."
+        ),
+    )
+    parser.add_argument(
+        "--save-outputs",
+        action="store_true",
+        help="Store the executed cells in the published notebooks.",
+    )
+    args = parser.parse_args()
+    if args.project_dir:
+        os.environ["CYTOBRIDGE_PROJECT_DIR"] = str(args.project_dir.expanduser().resolve())
+    os.environ.setdefault("CYTOBRIDGE_SOURCE_DIR", str(PROJECT_ROOT))
+    if args.bundled_only:
+        if args.notebook:
+            parser.error("Use either --bundled-only or --notebook")
+        args.notebook = [p.stem for p in sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+                         if p.stem not in DOWNLOAD_NOTEBOOKS | EXCLUDED_NOTEBOOKS]
+
+    if args.output_dir is not None:
+        summaries = run(
+            args.output_dir.expanduser().resolve(),
+            timeout=args.timeout,
+            save_outputs=args.save_outputs,
+            notebook_names=tuple(args.notebook),
+        )
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(json.dumps(summaries, indent=2) + "\n")
+        print(json.dumps(summaries, indent=2))
+        return
+
+    with tempfile.TemporaryDirectory(prefix="cytobridge-paper-notebooks-") as tmp:
+        summaries = run(
+            Path(tmp),
+            timeout=args.timeout,
+            save_outputs=args.save_outputs,
+            notebook_names=tuple(args.notebook),
+        )
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(summaries, indent=2) + "\n")
+    print(json.dumps(summaries, indent=2))
+
+
+if __name__ == "__main__":
+    main()

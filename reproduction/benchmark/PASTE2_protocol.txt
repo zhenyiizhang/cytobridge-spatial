@@ -1,0 +1,11 @@
+PASTE2 settings
+
+Overlap fraction: 1
+Expression cost: squared Euclidean distance between shared PCA features
+Spatial weight alpha: 0.1
+Distance normalization: false
+Solver iteration limit: 200, with convergence checks
+Training support: at most 800 cells per anchor stage
+Starting roster: 5,000 cells
+Prediction: row-normalized coupling and barycentric interpolation
+Evaluation: shared Sliced-W2 transformation, 1,024 projections and five repeats

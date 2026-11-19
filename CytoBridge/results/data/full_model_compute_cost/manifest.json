@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "analysis": "full_model_compute_cost",
+  "manuscript_table": "Supplementary Table 2",
+  "files": {
+    "full_model_compute_cost.csv": "training time and peak memory by dataset"
+  },
+  "measurement": {
+    "row_definition": "one measured full-model run per dataset",
+    "training_stages": 6,
+    "hardware": {
+      "gpu_count": 1,
+      "gpu_model": "NVIDIA GeForce RTX 4090 D"
+    },
+    "training_time": {
+      "field": "training_time_seconds",
+      "unit": "s",
+      "scope": "TrainingPipeline.train",
+      "includes": [
+        "stage preparation",
+        "optimizer setup",
+        "epochs",
+        "checkpoint selection",
+        "checkpoint writing"
+      ],
+      "excludes": [
+        "preprocessing",
+        "prediction",
+        "evaluation",
+        "downstream analysis",
+        "AnnData serialization"
+      ]
+    },
+    "host_memory": {
+      "field": "peak_host_memory_mib",
+      "unit": "MiB",
+      "scope": "process-lifetime maximum resident set size sampled after training"
+    },
+    "gpu_memory": {
+      "field": "peak_gpu_allocation_mib",
+      "unit": "MiB",
+      "scope": "maximum PyTorch allocation across training stages"
+    },
+    "run_summary": "single measured runs; no averaging across runs"
+  },
+  "display": {
+    "training_time": {
+      "unit": "min",
+      "divisor": 60,
+      "decimal_places": 1
+    },
+    "memory": {
+      "unit": "GiB",
+      "divisor": 1024,
+      "decimal_places": 2
+    }
+  }
+}

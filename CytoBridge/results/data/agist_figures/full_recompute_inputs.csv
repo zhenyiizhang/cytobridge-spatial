@@ -1,0 +1,12 @@
+figure,role,relative_identifier,availability
+S2,velocity component archive A,ebfb921b-884a-4aad-b4e3-99ae9b8a512d.zip,external
+S2,velocity component archive B,ed999aeb-bfe3-4426-8c04-3ee56f094b81.zip,external
+S2,simulation time table,mouse_brain_simulation.csv,external
+S2,state partition assignments,agist_state_cluster_assignments.csv,external
+S2,state partition selection,s2_cluster_selection_diagnostics.csv,bundled
+S3,simulation training input,attractive_observed.h5ad,external
+S3,trained model checkpoint,Score_Refine/best_model.pth,external
+S3,model configuration,training/config.yaml,external
+S3,full trajectory rollout,evaluation_fixed400_five_seed/dense_rollout_seed_1.npz,external
+S3,processed snapshot display,s3_observed_snapshots.npz,bundled
+S3,processed trajectory display,s3_display_trajectories.npz,bundled

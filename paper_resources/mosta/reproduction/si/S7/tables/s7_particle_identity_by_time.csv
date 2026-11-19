@@ -1,0 +1,8 @@
+time,n_rows,n_unique_particle_ids,duplicate_particle_ids,ids_exact_0_to_49999,n_labels
+0.0,50000,50000,0,True,23
+0.5,50000,50000,0,True,25
+1.0,50000,50000,0,True,22
+1.5,50000,50000,0,True,24
+2.0,50000,50000,0,True,26
+2.5,50000,50000,0,True,26
+3.0,50000,50000,0,True,27

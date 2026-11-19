@@ -1,0 +1,6 @@
+dataset,comparisons,cytobridge_lower,mean_relative_error_pct
+admouse,3,3,165.81087080800324
+arista,9,9,157.170720339264
+chicken_heart,6,5,83.60619681147845
+mosta,6,6,105.77413985014358
+zebrafish,9,7,112.6426763839275

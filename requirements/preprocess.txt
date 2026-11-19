@@ -1,0 +1,5 @@
+# Raw-count preprocessing, alignment, and interaction-graph construction.
+POT>=0.9,<0.10
+qnorm>=0.8,<1
+scanpy>=1.9.8,<2
+torch>=2.1,<3
